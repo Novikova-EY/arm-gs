@@ -116,6 +116,11 @@ STATION_TYPE_FIELDS = {
     "name": "Тип  электростанции",
 }
 
+# Поля для зарубежных стран, имеющих общие границы с РФ
+FOREIGN_BORDER_COUNTRY_FIELDS = {
+    "name": "Наименование страны",
+}
+
 # Поля для типов ТЭС
 TES_TYPE_FIELDS = {
     "name": "Тип ТЭС",
@@ -148,8 +153,8 @@ TECHNOLOGY_TYPE_FIELDS = {
 }
 
 ECONOMIC_ACTIVITY_TYPE_FIELDS = {
-    "name": "Вид экономической деятельности",
-    "name_2": "Вид экономической деятельности_2",
+    "name": "Полное наименование",
+    "name_2": "Краткое наименование",
     "display_order": "Порядок отображения",
 }
 
@@ -207,6 +212,7 @@ ALL_FIELDS = {
     **FUEL_TYPE_FIELDS,
     **CONDITION_TYPE_FIELDS,
     **STATION_TYPE_FIELDS,
+    **FOREIGN_BORDER_COUNTRY_FIELDS,
     **TES_TYPE_FIELDS,
     **TES_MACHINE_TYPE_FIELDS,
     **MACHINE_TYPE_FIELDS,
@@ -243,6 +249,7 @@ def get_field_name_ru(field_name: str, entity_type: str = None) -> str:
             "fuel_type": FUEL_TYPE_FIELDS,
             "condition_type": CONDITION_TYPE_FIELDS,
             "station_type": STATION_TYPE_FIELDS,
+            "foreign_border_country": FOREIGN_BORDER_COUNTRY_FIELDS,
             "tes_type": TES_TYPE_FIELDS,
             "tes_machine_type": TES_MACHINE_TYPE_FIELDS,
             "machine_type": MACHINE_TYPE_FIELDS,

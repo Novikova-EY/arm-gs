@@ -245,7 +245,10 @@
 ] %}
 {# Кнопка «Добавить агрегат» и редактирование — для admin, generation-admin, generation-editor #}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor', 'generation_admin', 'generation_editor'] %}
+{% set fuel_edit_roles = ['admin', 'fuel-admin', 'fuel-editor'] %}
 {% set can_edit = can_edit if can_edit is defined else (current_user.role_names | select('in', edit_roles) | list | length > 0) %}
+{% set can_edit_fuel = can_edit_fuel if can_edit_fuel is defined else (current_user.role_names | select('in', fuel_edit_roles) | list | length > 0) %}
+{% set can_edit_any = can_edit or can_edit_fuel %}
 
 <!-- Стили для режима чтения -->
 <style>
@@ -362,7 +365,7 @@
 
         <div class="station-header-tep d-flex align-items-center justify-content-between flex-wrap gap-3 mt-4 mb-4">
             <h2 class="mb-0 ms-3 d-flex align-items-center gap-3 flex-grow-1 min-w-0">Информация об  электростанции
-                {% if can_edit %}
+                {% if can_edit_any %}
                     <span class="edit-indicator ms-3">Режим редактирования</span>
                 {% else %}
                     <span class="readonly-indicator ms-3">Режим просмотра</span>
@@ -438,6 +441,16 @@
                                         {{ form.id_station_type(class="form-select") }}
                                     {% else %}
                                         {{ station.station_type.name if station.station_type else '—' }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-5 text-start fw-semibold">Признак электростанции:</div>
+                                <div class="col-7 text-start" id="station_sign_span">
+                                    {% if can_edit_fuel %}
+                                        {{ form.station_sign(class="form-select") }}
+                                    {% else %}
+                                        {{ station.station_sign_display }}
                                     {% endif %}
                                 </div>
                             </div>
@@ -900,7 +913,7 @@
                             </table>
                         </div>
                         {% endif %}
-                        {% if can_edit %}
+                        {% if can_edit_any %}
                         <div class="d-flex justify-content-end mt-3 gap-3 flex-wrap">
                             <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
                             {% if can_save_machines_all_versions %}

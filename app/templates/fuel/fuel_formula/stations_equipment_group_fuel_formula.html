@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Формулы для расчета топлива по группам оборудования{% endblock %}
+{% block title %}Структура топливного баланса{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -54,18 +54,14 @@
     </div>
 
     <div class="col-12 mb-2">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex gap-2">
-                <h2 class="text-center mb-4">Формулы для расчета топлива по группам оборудования</h2>
-            </div>
-            <div class="d-flex align-items-center gap-2 ms-auto">
-                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
-                    ➕ Добавить электростанцию
-                </a>
-                <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
-                    ➕ Добавить группу оборудования
-                </a>
-            </div>
+        <h2 class="text-center mb-4">Структура топливного баланса</h2>
+        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+            <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                ➕ Добавить электростанцию
+            </a>
+            <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
+                ➕ Добавить группу оборудования
+            </a>
         </div>
     </div>
 
@@ -73,7 +69,7 @@
 
 {% set column_count = 1 + (formula_columns_merge|length) + (formula_columns_rest|length) %}
 
-    <table class="table table-hover table-striped table-bordered table-responsive fuel-formula-table" data-auto-export-excel="off" data-export-title="Формулы для расчета топлива по группам оборудования">
+    <table class="table table-hover table-striped table-bordered table-responsive fuel-formula-table" data-auto-export-excel="off" data-export-title="Структура топливного баланса">
         <thead class="table-success">
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                 <th class="fuel-formula-lg">Группа оборудования</th>

@@ -32,8 +32,10 @@ from app.common.perimeter_variant.registry import (
     CODE_WITHOUT_NT,
     entity_perimeter_bindings,
     is_o1_perimeter_variant_code,
+    model_supports_perimeter_variant,
     ordered_tree_variants_for_display,
     perimeter_variant_applies_to_year,
+    perimeter_variant_definitions,
     perimeter_variant_year_bounds_for_code,
     perimeter_entity_context_for_model,
     perimeter_variant_display_label_for_entity,
@@ -114,6 +116,7 @@ from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_gaes_charge_consumption_model import (
     StationGaesChargeConsumption,
 )
+from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 
 
 PLACEHOLDER_NAMES = {"не указано", "не указано2"}
@@ -439,14 +442,22 @@ _EES_RUSSIA_DEMAND_MODEL_NAME = EesRussiaEnergyConsumptionParameter.__name__
 
 
 def _is_ees_russia_without_nt_tree_root(e: SummaryEntity) -> bool:
-    """Корень дерева ОЭС: агрегат «ЭЭС России … без НТ» (ветка ОЭС/СЗ/РЭС под ним)."""
-    if e.demand_model_name != _EES_RUSSIA_DEMAND_MODEL_NAME:
-        return False
+    """Корень дерева ОЭС: агрегат «ЕЭС России … без НТ» (ветка ОЭС/СЗ/РЭС под ним)."""
     if int(e.depth or 0) != 0:
         return False
     if e.entity_kind not in (ENTITY_KIND_EES_RUSSIA, "group-root"):
         return False
-    return e.perimeter_variant_code in (None, CODE_WITHOUT_NT) and bool(e.children)
+    if not e.children:
+        return False
+    if e.demand_model_name == _EES_RUSSIA_DEMAND_MODEL_NAME:
+        return e.perimeter_variant_code in (None, CODE_WITHOUT_NT)
+    if e.demand_model_name == EnergySystemTypeEnergyConsumptionParameter.__name__:
+        label_cf = (e.label or "").strip().casefold()
+        return (
+            label_cf == EES_UNIFIED_REF_NAME.casefold()
+            and e.perimeter_variant_code in (None, CODE_WITHOUT_NT)
+        )
+    return False
 
 
 def _synchronous_area_display_label(sa: SynchronousArea) -> str:
@@ -780,6 +791,11 @@ def _is_ees_unified_energy_system_type(
 def _filter_ees_unified_summary_variants(
     variants: tuple[PerimeterVariantDefinition, ...],
 ) -> tuple[PerimeterVariantDefinition, ...]:
+    """У «ЭЭС России» с вариантами ГАЭС plain with_nt/without_nt заменяются строками EesRussia*."""
+    if not any(
+        "with_gaes" in v.code or "without_gaes" in v.code for v in variants
+    ):
+        return variants
     return tuple(v for v in variants if v.code not in {CODE_WITH_NT, CODE_WITHOUT_NT})
 
 
@@ -845,8 +861,27 @@ def _order_variants_with_gaes_charge_rows(
         return list(variant_entities)
     if not _has_gaes_variant_codes(variant_entities):
         ordered = _order_variants_by_nt_groups_with_o1_after_base(variant_entities)
-        before, after = _split_variants_around_gaes_charge_rows(ordered)
-        return before + [charge_marker] + after
+        result: list[SummaryEntity] = []
+        charge_inserted = False
+        for nt_group in ("with_nt", "without_nt", "other"):
+            grouped = [
+                e
+                for e in ordered
+                if _nt_group_for_variant_code(str(e.perimeter_variant_code or "")) == nt_group
+            ]
+            if not grouped:
+                continue
+            result.extend(grouped)
+            if (
+                charge_marker is not None
+                and nt_group == "with_nt"
+                and not charge_inserted
+            ):
+                result.append(charge_marker)
+                charge_inserted = True
+        if charge_marker is not None and not charge_inserted:
+            result.append(charge_marker)
+        return result
 
     if _has_kaliningrad_variant_entities(variant_entities):
         return _order_first_sa_kaliningrad_variant_entities(
@@ -876,28 +911,78 @@ def _order_variants_with_gaes_charge_rows(
             ]
             if not grouped:
                 continue
-            before = [
+            with_gaes_variants = [
+                e
+                for e in grouped
+                if "with_gaes" in str(e.perimeter_variant_code or "")
+                and "without_gaes" not in str(e.perimeter_variant_code or "")
+            ]
+            plain_variants = [
                 e
                 for e in grouped
                 if "without_gaes" not in str(e.perimeter_variant_code or "")
+                and "with_gaes" not in str(e.perimeter_variant_code or "")
             ]
-            before.sort(
-                key=lambda e: (
-                    0 if "with_gaes" in str(e.perimeter_variant_code or "") else 1,
-                    _variant_o1_after_base_sort_key(e),
-                )
-            )
-            after = [
+            without_gaes_variants = [
                 e
                 for e in grouped
                 if "without_gaes" in str(e.perimeter_variant_code or "")
             ]
-            after.sort(key=_variant_o1_after_base_sort_key)
-            result.extend(before)
-            if before:
+            with_gaes_variants.sort(key=_variant_o1_after_base_sort_key)
+            plain_variants.sort(key=_variant_o1_after_base_sort_key)
+            without_gaes_variants.sort(key=_variant_o1_after_base_sort_key)
+            result.extend(with_gaes_variants)
+            if with_gaes_variants and charge_marker is not None:
                 result.append(charge_marker)
-            result.extend(after)
+            elif without_gaes_variants and charge_marker is not None:
+                result.append(charge_marker)
+            result.extend(without_gaes_variants)
+            result.extend(plain_variants)
     return result
+
+
+_SOUTH_UES_SUMMARY_EXPAND_GAES_VARIANT_CODES: tuple[str, ...] = (
+    CODE_WITH_NT_WITH_GAES,
+    CODE_WITH_NT_WITHOUT_GAES,
+    CODE_WITHOUT_NT_WITH_GAES,
+    CODE_WITHOUT_NT_WITHOUT_GAES,
+)
+
+_SOUTH_UES_GAES_VARIANT_LABEL_SUFFIX: dict[str, str] = {
+    CODE_WITH_NT_WITH_GAES: "с НТ с зарядом ГАЭС",
+    CODE_WITH_NT_WITHOUT_GAES: "с НТ без заряда ГАЭС",
+    CODE_WITHOUT_NT_WITH_GAES: "без НТ с зарядом ГАЭС",
+    CODE_WITHOUT_NT_WITHOUT_GAES: "без НТ без заряда ГАЭС",
+}
+
+
+def _is_south_union_energy_system_perimeter_binding(
+    binding_entity_kind: str,
+    binding_entity_name: str | None,
+) -> bool:
+    return (
+        str(binding_entity_kind or "") == "union_energy_system"
+        and (binding_entity_name or "").strip().casefold() == SOUTH_UES_NAME_CF
+    )
+
+
+def _south_ues_summary_expand_perimeter_variants(
+    tree_years: list[int] | None,
+) -> tuple[PerimeterVariantDefinition, ...]:
+    """Варианты «с/без заряда ГАЭС» для /summary_table/ и /summary/oes/ (не в дереве БД)."""
+    catalog = perimeter_variant_definitions()
+    out: list[PerimeterVariantDefinition] = []
+    for code in _SOUTH_UES_SUMMARY_EXPAND_GAES_VARIANT_CODES:
+        vdef = catalog.get(code)
+        if vdef is None:
+            suffix = _SOUTH_UES_GAES_VARIANT_LABEL_SUFFIX.get(code, code)
+            vdef = PerimeterVariantDefinition(code, suffix)
+        if tree_years and not any(
+            perimeter_variant_applies_to_year(vdef, int(y)) for y in tree_years
+        ):
+            continue
+        out.append(vdef)
+    return tuple(out)
 
 
 def _expand_summary_entity_perimeter_variants(
@@ -907,6 +992,7 @@ def _expand_summary_entity_perimeter_variants(
     expand: bool,
     tree_years: list[int] | None = None,
     binding_entity_name: str | None = None,
+    use_ees_russia_gaes_variants: bool = False,
 ) -> list[SummaryEntity]:
     """Дублирует только строку сущности по вариантам периметра, не её дочернюю ветку."""
     if not expand:
@@ -915,19 +1001,25 @@ def _expand_summary_entity_perimeter_variants(
         binding_entity_kind,
         binding_entity_name or entity.label,
     )
-    if (
-        binding is None
-        and _is_ees_unified_energy_system_type(
-            binding_entity_kind,
-            binding_entity_name,
-            entity,
-        )
+    ees_russia_binding = None
+    if _is_ees_unified_energy_system_type(
+        binding_entity_kind,
+        binding_entity_name,
+        entity,
     ):
-        # «ЕЭС России» (EnergySystemType): в БД привязки только у агрегата «ЭЭС России».
-        binding = resolve_entity_perimeter_binding(
+        ees_russia_binding = resolve_entity_perimeter_binding(
             ENTITY_KIND_EES_RUSSIA,
             EES_RUSSIA_AGGREGATE_NAME,
         )
+    if use_ees_russia_gaes_variants and ees_russia_binding is not None and ees_russia_binding.variants:
+        binding = ees_russia_binding
+    elif (
+        binding is None
+        and ees_russia_binding is not None
+        and ees_russia_binding.variants
+    ):
+        # «ЕЭС России» (EnergySystemType): в БД привязки только у агрегата «ЭЭС России».
+        binding = ees_russia_binding
     if binding is None:
         return [entity]
     variants = _perimeter_variants_for_entity_binding(
@@ -935,6 +1027,11 @@ def _expand_summary_entity_perimeter_variants(
         tree_years,
         all_bound_variants=expand,
     )
+    if _is_south_union_energy_system_perimeter_binding(
+        binding_entity_kind,
+        binding_entity_name,
+    ):
+        variants = _south_ues_summary_expand_perimeter_variants(tree_years)
     if _is_ees_unified_energy_system_type(
         binding_entity_kind,
         binding_entity_name,
@@ -1161,6 +1258,7 @@ def _build_oes_summary_table_raw_entities(
     include_synchronous_area_rows: bool = True,
     russia_country_summary_ec_divisor: int = 1,
     expand_south_ues_perimeter_variants: bool = False,
+    ees_unified_use_ees_russia_gaes_variants: bool = False,
     tree_years: list[int] | None = None,
 ) -> list[SummaryEntity]:
     """Плоский верхний порядок для страницы «Сводная таблица».
@@ -1222,6 +1320,7 @@ def _build_oes_summary_table_raw_entities(
             depth=0,
             always_show_subject_row_under_res=always_show_subject_row_under_res,
             expand_entity_perimeter_variants=expand_south_ues_perimeter_variants,
+            ees_unified_use_ees_russia_gaes_variants=ees_unified_use_ees_russia_gaes_variants,
             tree_years=tree_years,
         )
     )
@@ -1287,6 +1386,7 @@ def build_oes_summary_context(
     include_oes_summary_table_sync_sa_ees_verification: bool = False,
     expand_south_ues_perimeter_variants: bool = False,
     summary_table_top_order: bool = False,
+    ees_unified_use_ees_russia_gaes_variants: bool = False,
 ) -> dict[str, Any]:
     """Сводка по ОЭС (GET ds_ues, ds_res, ds_rd, ds_eu).
 
@@ -1370,6 +1470,7 @@ def build_oes_summary_context(
             include_synchronous_area_rows=include_synchronous_area_rows,
             russia_country_summary_ec_divisor=russia_country_summary_ec_divisor,
             expand_south_ues_perimeter_variants=expand_south_ues_perimeter_variants,
+            ees_unified_use_ees_russia_gaes_variants=ees_unified_use_ees_russia_gaes_variants,
             tree_years=years,
         )
     else:
@@ -3106,6 +3207,13 @@ def _summary_row_visible_for_export_ui(
         not is_ver
         and opts.territory_compact_on
         and row.get("pd_ec_territory_detail_row")
+        and not (
+            opts.nt_detail_on
+            and (
+                row.get("pd_ec_nt_extra_row")
+                or row.get("pd_ec_territory_detail_relaxed_compact_nt_gaes")
+            )
+        )
     ):
         return False
     if not is_ver and opts.territory_compact_on and row.get("pd_ec_territory_compact_hide_row"):
@@ -3413,6 +3521,45 @@ def mask_summary_rows_perimeter_variant_year_display(
         row["year_row_ids"] = rids
 
 
+_SUMMARY_NO_PERIMETER_VARIANT_SELECT_MODELS = frozenset(
+    {
+        "EnergyZoneEnergyConsumptionParameter",
+        "EnergySystemTypeEnergyConsumptionParameter",
+    }
+)
+
+
+def _summary_row_allows_perimeter_variant_select(row: dict[str, Any]) -> bool:
+    """Строка блока сущности, для которой в сводке можно менять perimeter_variant_code."""
+    if not row.get("show_entity_cell"):
+        return False
+    dm_name = str(row.get("demand_model_name") or "").strip()
+    if not dm_name or dm_name in _SUMMARY_NO_PERIMETER_VARIANT_SELECT_MODELS:
+        return False
+    if _is_ec_summary_verification_row(row):
+        return False
+    if row.get("pd_ec_summary_readonly_row"):
+        return False
+    if row.get("entity_kind") == "ees_energy_consumption_composite":
+        return False
+    from app.energy_consumption.services.energy_consumption_parameter_services import (
+        _summary_demand_model_class,
+    )
+
+    try:
+        model_cls = _summary_demand_model_class(dm_name)
+    except ValueError:
+        return False
+    if not model_supports_perimeter_variant(model_cls):
+        return False
+    is_gaes_charge = str(row.get("parameter_key") or "") == GAES_CHARGE_PARAMETER_KEY
+    has_code = bool(str(row.get("perimeter_variant_code") or "").strip())
+    options = row.get("perimeter_variant_options") or []
+    if is_gaes_charge or has_code or len(options) >= 1:
+        return True
+    return bool(row.get("pd_ec_perimeter_entity_kind"))
+
+
 def tag_energy_consumption_summary_rows_perimeter_variant_labels(
     summary_rows: list[dict[str, Any]],
 ) -> None:
@@ -3454,6 +3601,9 @@ def tag_energy_consumption_summary_rows_perimeter_variant_labels(
             )
         elif row.get("show_entity_cell"):
             row["perimeter_variant_options"] = []
+        row["show_perimeter_variant_select"] = _summary_row_allows_perimeter_variant_select(
+            row
+        )
 
 
 def _summary_table_hide_gaes_charge_territory_row(row: dict[str, Any]) -> bool:
@@ -3571,11 +3721,48 @@ def filter_oes_summary_hidden_tites_union_energy_system_rows(
     ]
 
 
-def _is_oes_max_summary_page_hidden_row(row: dict[str, Any]) -> bool:
+def _summary_rows_have_ees_russia_perimeter_variant_blocks(
+    summary_rows: list[dict[str, Any]],
+) -> bool:
+    """Блоки агрегата «ЭЭС России», а не строки «ЕЭС России» с данными EesRussia* по ГАЭС."""
+    ees_russia_label_cf = EES_RUSSIA_AGGREGATE_NAME.casefold()
+    for row in summary_rows:
+        if row.get("demand_model_name") != EesRussiaEnergyConsumptionParameter.__name__:
+            continue
+        if not str(row.get("perimeter_variant_code") or "").strip():
+            continue
+        if _summary_row_base_label_cf(row) == ees_russia_label_cf:
+            return True
+    return False
+
+
+def _is_oes_max_duplicate_ees_unified_energy_system_type_row(
+    row: dict[str, Any],
+    *,
+    has_ees_russia_variant_blocks: bool,
+) -> bool:
+    """EnergySystemType «ЕЭС России» дублирует блоки EesRussia* на /summary/oes/."""
+    if not has_ees_russia_variant_blocks:
+        return False
+    if row.get("demand_model_name") != EnergySystemTypeEnergyConsumptionParameter.__name__:
+        return False
+    return _summary_row_base_label_cf(row) == EES_UNIFIED_REF_NAME.casefold()
+
+
+def _is_oes_max_summary_page_hidden_row(
+    row: dict[str, Any],
+    *,
+    has_ees_russia_variant_blocks: bool = False,
+) -> bool:
     """Строки, не показываемые на /energy_consumption/summary/oes/ (режим максимумов)."""
     if _is_centralized_zone_russia_summary_row(row):
         return True
     if row.get("entity_kind") == ENTITY_KIND_RUSSIA_FEDERATION:
+        return True
+    if _is_oes_max_duplicate_ees_unified_energy_system_type_row(
+        row,
+        has_ees_russia_variant_blocks=has_ees_russia_variant_blocks,
+    ):
         return True
     return False
 
@@ -3586,13 +3773,19 @@ def filter_oes_max_summary_page_hidden_rows(
     """На /summary/oes/ (не summary_table): без «ЦЗ России», «Россия с НТ», «Заряд ГАЭС»."""
     if not summary_rows:
         return []
+    has_ees_russia_variant_blocks = _summary_rows_have_ees_russia_perimeter_variant_blocks(
+        summary_rows
+    )
     out: list[dict[str, Any]] = []
     i = 0
     n = len(summary_rows)
     while i < n:
         row = summary_rows[i]
         if not row.get("show_entity_cell"):
-            if _is_oes_max_summary_page_hidden_row(row):
+            if _is_oes_max_summary_page_hidden_row(
+                row,
+                has_ees_russia_variant_blocks=has_ees_russia_variant_blocks,
+            ):
                 i += 1
                 continue
             out.append(dict(row))
@@ -3600,7 +3793,14 @@ def filter_oes_max_summary_page_hidden_rows(
             continue
         block_size = max(int(row.get("entity_rowspan") or 1), 1)
         block = summary_rows[i : i + block_size]
-        kept = [r for r in block if not _is_oes_max_summary_page_hidden_row(r)]
+        kept = [
+            r
+            for r in block
+            if not _is_oes_max_summary_page_hidden_row(
+                r,
+                has_ees_russia_variant_blocks=has_ees_russia_variant_blocks,
+            )
+        ]
         if not kept:
             i += block_size
             continue
@@ -5069,11 +5269,32 @@ def apply_energy_consumption_summary_table_variant_toggle_rows(
     _mark_summary_table_collapsed_nt_gaes_variant_row_rules(rows)
     _mark_summary_table_expanded_nt_gaes_variant_row_rules(rows)
     _mark_summary_table_nt_on_gaes_off_variant_row_rules(rows)
+    _mark_collapsed_nt_gaes_visible_rows_skip_empty_hide(rows)
+
+
+def _mark_collapsed_nt_gaes_visible_rows_skip_empty_hide(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """Базовые строки «без НТ» (ОЭС Юга, ЕЭС России, …) не скрываются «Пустые строки»."""
+    for row in summary_rows:
+        if row.get("pd_ec_collapsed_nt_gaes_visible_row"):
+            row["pd_ec_skip_empty_hide_row"] = True
 
 
 def _is_plain_with_nt_perimeter_variant_code(code: str) -> bool:
     c = str(code or "").strip()
     return bool(c) and not is_o1_perimeter_variant_code(c) and c == CODE_WITH_NT
+
+
+def _is_plain_without_nt_perimeter_variant_code(code: str) -> bool:
+    c = str(code or "").strip()
+    return bool(c) and not is_o1_perimeter_variant_code(c) and c == CODE_WITHOUT_NT
+
+
+def _entity_has_without_nt_gaes_split_variants(codes: set[str]) -> bool:
+    return any(
+        "without_nt" in c and ("with_gaes" in c or "without_gaes" in c) for c in codes
+    )
 
 
 def _entity_has_with_nt_gaes_split_variants(codes: set[str]) -> bool:
@@ -5100,14 +5321,20 @@ def _mark_summary_table_expanded_nt_gaes_variant_row_rules(
         row.pop("pd_ec_expanded_nt_gaes_redundant_row", None)
 
     for entity_key, codes in codes_by_entity.items():
-        if not _entity_has_with_nt_gaes_split_variants(codes):
-            continue
-        for row in rows:
-            if _perimeter_variant_entity_key(row) != entity_key:
-                continue
-            code = str(row.get("perimeter_variant_code") or "").strip()
-            if _is_plain_with_nt_perimeter_variant_code(code):
-                row["pd_ec_expanded_nt_gaes_redundant_row"] = True
+        if _entity_has_with_nt_gaes_split_variants(codes):
+            for row in rows:
+                if _perimeter_variant_entity_key(row) != entity_key:
+                    continue
+                code = str(row.get("perimeter_variant_code") or "").strip()
+                if _is_plain_with_nt_perimeter_variant_code(code):
+                    row["pd_ec_expanded_nt_gaes_redundant_row"] = True
+        if _entity_has_without_nt_gaes_split_variants(codes):
+            for row in rows:
+                if _perimeter_variant_entity_key(row) != entity_key:
+                    continue
+                code = str(row.get("perimeter_variant_code") or "").strip()
+                if _is_plain_without_nt_perimeter_variant_code(code):
+                    row["pd_ec_expanded_nt_gaes_redundant_row"] = True
 
 
 def _collapsed_nt_gaes_primary_variant_codes_for_entity(
@@ -5292,7 +5519,7 @@ def _mark_non_o1_perimeter_rows_hidden_when_entity_has_o1_variants(
 def _mark_centralized_zone_without_nt_rows_skip_empty_hide(
     summary_rows: list[dict[str, Any]],
 ) -> None:
-    """«ЦЗ России без НТ» (включая O-1) не скрываются режимом «Скрыть пустые строки»."""
+    """«ЦЗ России без НТ» (включая O-1) не скрываются режимом «Пустые строки»."""
     for row in summary_rows:
         if not row.get("pd_ec_nt_without_row"):
             continue
@@ -5541,6 +5768,7 @@ def _build_new_territories_subjects_summary_rows(
         row["id_union_energy_system"] = south_ues_id
         if row.get("demand_model_name") == RegionalDistrictEnergyConsumptionParameter.__name__:
             row["pd_ec_nt_under_south_detail_row"] = True
+            row["pd_ec_territory_detail_relaxed_compact_nt_gaes"] = True
     _apply_nt_under_south_subject_sum_formula(out, years, rounding_digits)
     return out
 
@@ -5772,7 +6000,7 @@ def inject_south_fd_new_territories_summary_rows(
     if south_fd_id is None:
         return
 
-    # Южный ФО на сводке должен быть виден даже при включённом «Скрыть пустые строки»,
+    # Южный ФО на сводке должен быть виден даже при включённом «Пустые строки»,
     # иначе при отсутствии данных по конкретным показателям пользователь не увидит сам факт наличия строки.
     # (Особенно важно для проверки поведения вариантов периметра «+НТ».)
     for row in summary_rows:
@@ -9523,6 +9751,232 @@ def _sum_tites_energy_units_by_parameter(
     return dict(summed)
 
 
+def _is_oes_ees_unified_summary_block_anchor_row(row: dict[str, Any]) -> bool:
+    """Корневая строка блока «ЕЭС России» на сводке по ОЭС (тип энергосистемы)."""
+    if not row.get("show_entity_cell"):
+        return False
+    type_model = EnergySystemTypeEnergyConsumptionParameter.__name__
+    if row.get("demand_model_name") != type_model:
+        return False
+    if _summary_row_base_label_cf(row) != EES_UNIFIED_REF_NAME.casefold():
+        return False
+    return row.get("entity_kind") in (
+        "group-root",
+        "perimeter_variant",
+        ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+        "default",
+    )
+
+
+def _ues_row_included_for_oes_ees_unified_block_variant(
+    row: dict[str, Any],
+    ees_unified_perimeter_variant: str | None,
+) -> bool:
+    row_code = row.get("perimeter_variant_code")
+    if row_code is None:
+        return True
+    target = ees_unified_perimeter_variant or CODE_WITHOUT_NT
+    return str(row_code) == str(target)
+
+
+def _sum_oes_ees_branch_ues_parameter_by_year(
+    rows: list[dict[str, Any]],
+    *,
+    years: list[int],
+    parameter_key: str,
+    perimeter_variant_code: str | None,
+) -> dict[int, Decimal | None]:
+    """Сумма потребления по ОЭС ветки «ЕЭС России» (без ТИТЭС Сибири/Востока)."""
+    ues_model = UnionEnergySystemEnergyConsumptionParameter.__name__
+    target_pvc = perimeter_variant_code or CODE_WITHOUT_NT
+    sums: dict[int, Decimal] = {}
+    seen_years: set[int] = set()
+    counted_ues: set[int] = set()
+    i = 0
+    n = len(rows)
+    while i < n:
+        row = rows[i]
+        if not row.get("show_entity_cell"):
+            i += 1
+            continue
+        if row.get("demand_model_name") != ues_model:
+            i += 1
+            continue
+        if row.get("parent_fk_column") != "id_union_energy_system":
+            i += 1
+            continue
+        if _is_oes_summary_hidden_tites_union_energy_system_label(
+            _summary_row_base_label_cf(row)
+        ):
+            i += 1
+            continue
+        if _summary_row_skip_oes_gaes_charge_verification(row):
+            i += 1
+            continue
+        code = row.get("perimeter_variant_code")
+        if not _ues_row_included_for_oes_ees_unified_block_variant(row, target_pvc):
+            i += 1
+            continue
+        ues_id = row.get("parent_id")
+        if ues_id is None:
+            i += 1
+            continue
+        try:
+            ues_id_int = int(ues_id)
+        except (TypeError, ValueError):
+            i += 1
+            continue
+        block_size = max(int(row.get("entity_rowspan") or 1), 1)
+        if ues_id_int in counted_ues:
+            i += block_size
+            continue
+        counted_ues.add(ues_id_int)
+        param_row = _find_summary_parameter_row(
+            rows,
+            parameter_key=parameter_key,
+            demand_model_name=ues_model,
+            parent_fk_column="id_union_energy_system",
+            parent_id=ues_id_int,
+            perimeter_variant_code=code,
+        )
+        if param_row is not None:
+            for year, value in _raw_year_values_from_summary_row(param_row, years).items():
+                if value is None:
+                    continue
+                y = int(year)
+                sums[y] = sums.get(y, Decimal(0)) + value
+                seen_years.add(y)
+        i += block_size
+    return {int(y): sums.get(int(y)) if int(y) in seen_years else None for y in years}
+
+
+def _ees_unified_with_nt_year_addon(
+    years: list[int],
+    parameter_key: str,
+) -> dict[int, Decimal | None]:
+    if parameter_key not in _FO_FORMULA_BASE_PARAMETER_KEYS:
+        return {int(y): None for y in years}
+    return _new_territories_parameter_year_values(years, parameter_key)
+
+
+def tag_oes_ees_unified_summary_nt_toggle_rows(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """«ЕЭС России»: при +НТ выкл. — одна подпись «ЕЭС России», не скрывать пустой блок."""
+    type_model = EnergySystemTypeEnergyConsumptionParameter.__name__
+    label_cf = EES_UNIFIED_REF_NAME.casefold()
+    for row in summary_rows:
+        if row.get("demand_model_name") != type_model:
+            continue
+        if _summary_row_base_label_cf(row) != label_cf:
+            continue
+        code = str(row.get("perimeter_variant_code") or "")
+        if code == CODE_WITHOUT_NT:
+            row["pd_ec_entity_label_compact_nt"] = EES_UNIFIED_REF_NAME
+            row["pd_ec_entity_label_compact_nt_gaes"] = EES_UNIFIED_REF_NAME
+            row["pd_ec_skip_empty_hide_row"] = True
+        elif code == CODE_WITH_NT:
+            row["pd_ec_skip_empty_hide_row"] = True
+
+
+def apply_oes_ees_unified_consumption_formula_to_summary_rows(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    ues_source_rows: list[dict[str, Any]] | None = None,
+) -> None:
+    """«ЕЭС России» на /summary/oes/: mln/sipr = сумма ОЭС (+ НТ для варианта with_nt)."""
+    if not summary_rows or not years:
+        return
+
+    ues_rows = ues_source_rows if ues_source_rows is not None else summary_rows
+
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if not _is_oes_ees_unified_summary_block_anchor_row(row):
+            i += 1
+            continue
+
+        block_size = max(int(row.get("entity_rowspan") or 1), 1)
+        block = summary_rows[i : i + block_size]
+        parent_pvc = row.get("perimeter_variant_code")
+
+        for parameter_key in _FO_FORMULA_BASE_PARAMETER_KEYS:
+            target_row = next(
+                (r for r in block if r.get("parameter_key") == parameter_key),
+                None,
+            )
+            if target_row is None:
+                continue
+            computed_by_year = _sum_oes_ees_branch_ues_parameter_by_year(
+                ues_rows,
+                years=years,
+                parameter_key=parameter_key,
+                perimeter_variant_code=parent_pvc,
+            )
+            if _nt_group_for_variant_code(str(parent_pvc or "")) == "with_nt":
+                nt_addon = _ees_unified_with_nt_year_addon(years, parameter_key)
+                computed_by_year = {
+                    int(y): (
+                        (computed_by_year.get(int(y)) or Decimal(0))
+                        + (nt_addon.get(int(y)) or Decimal(0))
+                        if computed_by_year.get(int(y)) is not None
+                        or nt_addon.get(int(y)) is not None
+                        else None
+                    )
+                    for y in years
+                }
+            existing_by_year = _raw_year_values_from_summary_row(target_row, years)
+            merged_by_year: dict[int, Decimal | None] = {}
+            for year in years:
+                y = int(year)
+                computed = computed_by_year.get(y)
+                if computed is not None:
+                    merged_by_year[y] = computed
+                else:
+                    merged_by_year[y] = existing_by_year.get(y)
+            _write_numeric_year_values_to_summary_row(
+                target_row,
+                years,
+                merged_by_year,
+                parameter_key=parameter_key,
+                rounding_digits=rounding_digits,
+            )
+            target_row["pd_ec_formula_derived_row"] = True
+            if parameter_key == "energy_consumption_mln_kvt_ch":
+                formula_key = (
+                    "oes_ees_russia_with_nt_mln"
+                    if _nt_group_for_variant_code(str(parent_pvc or "")) == "with_nt"
+                    else "oes_ees_russia_without_nt_mln"
+                )
+                target_row["pd_ec_formula_text_key"] = formula_key
+                target_row["ees_aggregate_embedded_demand_rows"] = True
+
+        for block_row in block:
+            block_row["pd_ec_formula_derived_row"] = True
+
+        _recompute_growth_rows_from_base_series(
+            block,
+            years,
+            base_parameter_key="energy_consumption_mln_kvt_ch",
+            abs_parameter_key=None,
+            yoy_parameter_key=ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+            rounding_digits=rounding_digits,
+        )
+        _recompute_growth_rows_from_base_series(
+            block,
+            years,
+            base_parameter_key="energy_consumption_sipr_mln_kvt_ch",
+            abs_parameter_key=ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY,
+            yoy_parameter_key=ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
+            rounding_digits=rounding_digits,
+        )
+        i += block_size
+
+
 def _is_oes_tites_root_summary_block_anchor_row(row: dict[str, Any]) -> bool:
     """Корневая строка блока «ТИТЭС» на сводке по ОЭС (тип энергосистемы)."""
     if not row.get("show_entity_cell"):
@@ -12152,13 +12606,70 @@ def apply_oes_territory_detail_gaes_entity_labels(
             row["perimeter_variant_label"] = _GAES_PERIMETER_VARIANT_LABEL_WITHOUT
 
 
+def apply_oes_max_summary_formula_calculations(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    eu_source_rows_for_tites: list[dict[str, Any]] | None = None,
+    apply_display_masks: bool = True,
+) -> None:
+    """Формулы строк сводки ОЭС как на /energy_consumption/summary/oes/ (до UI-фильтров)."""
+    eu_source_rows = (
+        eu_source_rows_for_tites
+        if eu_source_rows_for_tites is not None
+        else summary_rows
+    )
+    apply_oes_ees_unified_consumption_formula_to_summary_rows(
+        summary_rows,
+        years=years,
+        rounding_digits=rounding_digits,
+        ues_source_rows=eu_source_rows,
+    )
+    apply_oes_tites_root_formula_to_summary_rows(
+        summary_rows,
+        years=years,
+        rounding_digits=rounding_digits,
+        eu_source_rows=eu_source_rows,
+    )
+    apply_summary_table_formula_calculations(
+        summary_rows,
+        years,
+        rounding_digits,
+        eu_source_rows_for_tites=eu_source_rows,
+    )
+    inject_south_ues_new_territories_summary_rows(
+        summary_rows,
+        years=years,
+        rounding_digits=rounding_digits,
+    )
+    inject_union_energy_system_without_gaes_summary_rows(
+        summary_rows,
+        years=years,
+        rounding_digits=rounding_digits,
+    )
+    inject_oes_territory_detail_without_gaes_summary_rows(
+        summary_rows,
+        years=years,
+        rounding_digits=rounding_digits,
+    )
+    if apply_display_masks:
+        mask_summary_rows_perimeter_variant_year_display(summary_rows, years)
+        apply_sipr_consumption_display_fallback_to_summary_rows(summary_rows, years)
+        recompute_sipr_growth_metrics_for_summary_rows(
+            summary_rows,
+            years,
+            rounding_digits,
+        )
+
+
 def build_summary_table_rows_with_formulas_for_version(
     *,
     database_version_id: int,
     years: list[int],
     rounding_digits: int = 1,
 ) -> list[dict[str, Any]]:
-    """Строки сводной таблицы ОЭС с пересчитанными формулами для указанной версии БД."""
+    """Строки сводки ОЭС с пересчитанными формулами для указанной версии БД."""
     from flask import g
 
     if not years:
@@ -12177,27 +12688,24 @@ def build_summary_table_rows_with_formulas_for_version(
             filter_year_list=sorted(years),
             ees_top_from_db=True,
             russia_country_summary_ec_divisor=1,
+            include_ees_russia_rows=False,
+            include_synchronous_area_rows=False,
+            include_oes_summary_table_sync_sa_ees_verification=False,
             expand_south_ues_perimeter_variants=True,
             summary_table_top_order=True,
+            ees_unified_use_ees_russia_gaes_variants=True,
         )
         summary_rows = list(ctx.get("summary_rows") or [])
         eu_source_rows = list(summary_rows)
         ctx_years = list(ctx.get("years") or years)
-        tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
-        summary_rows = filter_summary_rows_for_summary_table_page(summary_rows)
         apply_energy_consumption_summary_table_variant_toggle_rows(summary_rows)
         apply_summary_table_russia_federation_row_rules(summary_rows)
-        apply_oes_tites_root_formula_to_summary_rows(
-            summary_rows,
-            ctx_years,
-            rounding_digits,
-            eu_source_rows=eu_source_rows,
-        )
-        apply_summary_table_formula_calculations(
+        apply_oes_max_summary_formula_calculations(
             summary_rows,
             ctx_years,
             rounding_digits,
             eu_source_rows_for_tites=eu_source_rows,
+            apply_display_masks=False,
         )
         summary_rows = filter_oes_summary_hidden_tites_union_energy_system_rows(
             summary_rows
@@ -12360,6 +12868,26 @@ def _join_gaes_charge_regional_energy_system(q):
     )
 
 
+_GAES_STATION_TYPE_NAME_CF = "гаэс"
+
+
+def _apply_gaes_station_type_filter(q):
+    q = q.join(StationType, Station.id_station_type == StationType.id)
+    q = dps.filter_parents_by_version(q, StationType)
+    return q.filter(func.lower(StationType.name) == _GAES_STATION_TYPE_NAME_CF)
+
+
+def _gaes_stations_for_entity_query(
+    demand_model_name: str | None,
+    parent_id: int | None,
+):
+    """Все электростанции типа ГАЭС в территории сущности сводки (текущая версия БД)."""
+    q = db.session.query(Station.id, Station.name).select_from(Station)
+    q = dps.filter_parents_by_version(q, Station)
+    q = _apply_gaes_station_type_filter(q)
+    return _apply_gaes_charge_summary_entity_filter(q, demand_model_name, parent_id)
+
+
 def _apply_gaes_charge_summary_entity_filter(
     q,
     demand_model_name: str | None,
@@ -12428,24 +12956,23 @@ def _apply_gaes_charge_summary_entity_filter(
     return None
 
 
+def clear_gaes_charge_summary_cache() -> None:
+    """Сброс LRU-кэша строк заряда ГАЭС после сохранения в БД."""
+    _entity_has_gaes_charge_stations.cache_clear()
+    _gaes_charge_raw_station_values_for_entity.cache_clear()
+
+
 @lru_cache(maxsize=4096)
 def _entity_has_gaes_charge_stations(
     current_version_id: int | None,
     demand_model_name: str | None,
     parent_id: int | None,
 ) -> bool:
-    """True, если у сущности сводки есть станции ГАЭС с данными заряда (любой год)."""
+    """True, если у сущности сводки есть электростанции типа ГАЭС (текущая версия БД)."""
     del current_version_id
     if not demand_model_name or parent_id is None:
         return False
-    q = (
-        db.session.query(Station.id)
-        .select_from(StationGaesChargeConsumption)
-        .join(Station, Station.id == StationGaesChargeConsumption.id_station)
-    )
-    q = dps.filter_parents_by_version(q, StationGaesChargeConsumption)
-    q = dps.filter_parents_by_version(q, Station)
-    q = _apply_gaes_charge_summary_entity_filter(q, demand_model_name, int(parent_id))
+    q = _gaes_stations_for_entity_query(demand_model_name, int(parent_id))
     if q is None:
         return False
     return q.limit(1).first() is not None
@@ -12470,53 +12997,60 @@ def _gaes_charge_raw_station_values_for_entity(
     parent_id: int | None,
     years: tuple[int, ...],
 ) -> tuple[tuple[int, str, tuple[tuple[int, Any], ...]], ...]:
-    """Потребление ГАЭС на заряд по станциям для выбранной сущности и годов."""
+    """Потребление ГАЭС на заряд по станциям типа ГАЭС для сущности и годов.
+
+    В таблицу попадают все станции типа ГАЭС текущей версии БД в территории сущности,
+    даже если по ним ещё нет сохранённых значений заряда.
+    """
     del current_version_id, parent_fk_column
     if not demand_model_name or not years:
         return tuple()
 
-    q = (
+    stations_q = _gaes_stations_for_entity_query(demand_model_name, parent_id)
+    if stations_q is None:
+        return tuple()
+
+    station_rows = (
+        stations_q.order_by(Station.name.asc().nullslast(), Station.id.asc()).all()
+    )
+    if not station_rows:
+        return tuple()
+
+    station_ids = [int(station_id) for station_id, _ in station_rows if station_id is not None]
+    if not station_ids:
+        return tuple()
+
+    charge_q = (
         db.session.query(
-            Station.id,
-            Station.name,
+            StationGaesChargeConsumption.id_station,
             StationGaesChargeConsumption.year_number,
             func.sum(StationGaesChargeConsumption.charge_consumption),
         )
-        .select_from(StationGaesChargeConsumption)
-        .join(Station, Station.id == StationGaesChargeConsumption.id_station)
+        .filter(StationGaesChargeConsumption.id_station.in_(station_ids))
+        .filter(StationGaesChargeConsumption.year_number.in_(years))
     )
-    q = dps.filter_parents_by_version(q, StationGaesChargeConsumption)
-    q = dps.filter_parents_by_version(q, Station)
-    q = q.filter(StationGaesChargeConsumption.year_number.in_(years))
-    q = _apply_gaes_charge_summary_entity_filter(q, demand_model_name, parent_id)
-    if q is None:
-        return tuple()
+    charge_q = dps.filter_parents_by_version(charge_q, StationGaesChargeConsumption)
+    charge_rows = charge_q.group_by(
+        StationGaesChargeConsumption.id_station,
+        StationGaesChargeConsumption.year_number,
+    ).all()
 
-    rows = (
-        q.group_by(Station.id, Station.name, StationGaesChargeConsumption.year_number)
-        .order_by(
-            Station.name.asc().nullslast(),
-            Station.id.asc(),
-            StationGaesChargeConsumption.year_number.asc(),
-        )
-        .all()
-    )
-    grouped: dict[int, dict[str, Any]] = {}
-    for station_id, station_name, year, value in rows:
+    values_by_station: dict[int, list[tuple[int, Any]]] = {
+        sid: [] for sid in station_ids
+    }
+    for station_id, year, value in charge_rows:
         if station_id is None or year is None or value is None:
             continue
-        sid = int(station_id)
-        item = grouped.setdefault(
-            sid,
-            {
-                "name": (station_name or "").strip() or "Без названия",
-                "values": [],
-            },
-        )
-        item["values"].append((int(year), value))
+        values_by_station[int(station_id)].append((int(year), value))
+
     return tuple(
-        (sid, str(data["name"]), tuple(data["values"]))
-        for sid, data in grouped.items()
+        (
+            int(station_id),
+            (station_name or "").strip() or "Без названия",
+            tuple(values_by_station.get(int(station_id), ())),
+        )
+        for station_id, station_name in station_rows
+        if station_id is not None
     )
 
 
@@ -12537,6 +13071,10 @@ def _gaes_charge_rows_for_entity(
     if not station_rows:
         return []
     entity_label_cf = str(entity.label or "").strip().casefold()
+    south_ues_charge_totals_only = (
+        entity.demand_model_name == UnionEnergySystemEnergyConsumptionParameter.__name__
+        and entity_label_cf == SOUTH_UES_NAME_CF
+    )
     totals_only = (
         (
             entity.demand_model_name == SynchronousAreaEnergyConsumptionParameter.__name__
@@ -12550,6 +13088,7 @@ def _gaes_charge_rows_for_entity(
             entity.demand_model_name == EesRussiaEnergyConsumptionParameter.__name__
             and entity_label_cf == EES_RUSSIA_AGGREGATE_NAME.casefold()
         )
+        or south_ues_charge_totals_only
     )
 
     def _value_maps(raw_values: dict[int, Any]) -> tuple[list[str], list[str]]:
@@ -12585,7 +13124,6 @@ def _gaes_charge_rows_for_entity(
         "hist_numeric_tooltip": "",
         "perimeter_variant_code": None,
         "pd_ec_gaes_injected_row": True,
-        "show_perimeter_variant_select": False,
         "perimeter_variant_label": "",
         "perimeter_variant_options": [],
         "entity_note_row_id": None,
@@ -12610,7 +13148,10 @@ def _gaes_charge_rows_for_entity(
         return rows
 
     out: list[dict[str, Any]] = []
-    show_total_row = entity.demand_model_name != UnionEnergySystemEnergyConsumptionParameter.__name__
+    show_total_row = (
+        entity.demand_model_name != UnionEnergySystemEnergyConsumptionParameter.__name__
+        or south_ues_charge_totals_only
+    )
     if show_total_row and (len(station_rows) > 1 or totals_only):
         total: dict[int, Any] = {}
         for _, _, values_tuple in station_rows:
@@ -13694,6 +14235,7 @@ def _build_energy_system_type_entities(
     depth: int = 0,
     always_show_subject_row_under_res: bool = False,
     expand_entity_perimeter_variants: bool = False,
+    ees_unified_use_ees_russia_gaes_variants: bool = False,
     tree_years: list[int] | None = None,
 ) -> list[SummaryEntity]:
     energy_system_type = _get_energy_system_type_by_name(name)
@@ -13744,6 +14286,10 @@ def _build_energy_system_type_entities(
         binding_entity_name=getattr(energy_system_type, "name", None) or name,
         expand=expand_entity_perimeter_variants,
         tree_years=tree_years,
+        use_ees_russia_gaes_variants=(
+            ees_unified_use_ees_russia_gaes_variants
+            and str(name or "").casefold() == EES_UNIFIED_REF_NAME.casefold()
+        ),
     )
     return expanded or [base]
 

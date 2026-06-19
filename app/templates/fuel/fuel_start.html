@@ -9,12 +9,13 @@
 <div class="container content-start-container">
     <div class="container-fluid">
         <h2 class="text-center align-middle mb-4">Модуль «Топливо»</h2>
+        <h4 class="text-center mb-4">Отчетные сведения</h4>
         <div class="row g-4 justify-content-center">
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Группы оборудования электростанций
+                            Словарь станций и групп оборудования
                         </a>
                     </div>
                 </div>
@@ -32,7 +33,7 @@
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Топливные параметры групп оборудования<br>(основные)
+                            Сведения о работе ТЭС
                         </a>
                     </div>
                 </div>
@@ -41,7 +42,7 @@
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Топливные параметры групп оборудования<br>(дополнительные)
+                            Детализация топлива
                         </a>
                     </div>
                 </div>
@@ -50,26 +51,7 @@
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_cost') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Стоимость для групп оборудования
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_price') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Цена для групп оборудования
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Удельные показатели групп оборудования
+                            Стоимость сожженного топлива
                         </a>
                     </div>
                 </div>
@@ -78,8 +60,35 @@
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
                         <a href="{{ url_for('fuel_bp.stations_without_equipment_group') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Агрегаты электростанций без группы оборудования
+                            Агрегаты без группы оборудования (проверка)
                         </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <span class="btn btn-primary disabled fs-4 w-100 py-4" tabindex="-1" aria-disabled="true" style="pointer-events: none;">
+                            Сведения о затратах ТЭС на производство ЭЭ и ТЭ
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <span class="btn btn-primary disabled fs-4 w-100 py-4" tabindex="-1" aria-disabled="true" style="pointer-events: none;">
+                            Калорийные эквиваленты топлива
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <span class="btn btn-primary disabled fs-4 w-100 py-4" tabindex="-1" aria-disabled="true" style="pointer-events: none;">
+                            Тепло и тарифы из СТ
+                        </span>
                     </div>
                 </div>
             </div>
@@ -94,12 +103,40 @@
 
 <div class="container content-start-container">
     <div class="container-fluid">
+        <h4 class="text-center mb-4">Расчетные значения</h4>
         <div class="row g-4 justify-content-center">
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.fuel_calculation_form') }}" class="btn btn-primary fs-4 w-100 py-4">
+                        <a href="{{ url_for('fuel_bp.fuel_calculation_form') }}" class="btn btn-success fs-4 w-100 py-4">
                             Расчет топливных показателей на перспективный период
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.equipment_group_fuel_formulas_page') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Структура топливного баланса
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_price') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Цена сожженного топлива
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Технико-экономические показатели групп оборудования
                         </a>
                     </div>
                 </div>

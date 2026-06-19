@@ -22,7 +22,7 @@
            inputmode="decimal" autocomplete="off"
            value="{% if coef_a_manual_display != '—' %}{{ coef_a_manual_display }}{% endif %}"
            {% if coef_a_manual_tooltip %}title="{{ coef_a_manual_tooltip|e }}" data-db-full="{{ coef_a_manual_tooltip|e }}"{% endif %}>
-    <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч.</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч.') }}
+    <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч') }}
     <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed"
           {% if coef_a_computed_tooltip %}title="{{ coef_a_computed_tooltip|e }}"{% endif %}>{{ coef_a_computed_display }}</span>
     <span class="lt-ei-coef-label lt-ei-coef-label-x">X</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_x, 'Коэффициент X') }}
@@ -30,13 +30,28 @@
           {% if coef_x_tooltip %}title="{{ coef_x_tooltip|e }}"{% endif %}>{{ coef_x_display }}</span>
     {% else %}
     <span class="lt-ei-coef-readonly-val">{{ coef_a_manual_display }}</span>
-    <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч.</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч.') }}
+    <span class="lt-ei-coef-label lt-ei-coef-label-calc">Арасч</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_a_computed, 'Коэффициент Арасч') }}
     <span class="lt-ei-coef-readonly-val lt-ei-coef-a-computed"
           {% if coef_a_computed_tooltip %}title="{{ coef_a_computed_tooltip|e }}"{% endif %}>{{ coef_a_computed_display }}</span>
     <span class="lt-ei-coef-label lt-ei-coef-label-x">X</span>{{ lt_ei_formula_info_icon(_coef_hints.coefficient_x, 'Коэффициент X') }}
     <span class="lt-ei-coef-readonly-val">{{ coef_x_display }}</span>
     {% endif %}
 </div>
+{%- endmacro %}
+
+{% macro lt_ei_fd_total_k_control(territory_kind, territory_id, row_kind, k_display, k_tooltip) -%}
+<span class="lt-ei-coef-label">k</span>
+{% if can_edit %}
+<input type="hidden" name="fd_total_k_territory_kind[]" value="{{ territory_kind }}">
+<input type="hidden" name="fd_total_k_territory_id[]" value="{{ territory_id if territory_id is not none else '' }}">
+<input type="hidden" name="fd_total_k_row_kind[]" value="{{ row_kind }}">
+<input type="text" name="fd_total_k_value[]" class="text-center fuel-param-input lt-ei-coef-input lt-ei-fd-total-k-input"
+       inputmode="decimal" autocomplete="off"
+       value="{% if k_display != '—' %}{{ k_display }}{% endif %}"
+       {% if k_tooltip %}title="{{ k_tooltip|e }}" data-db-full="{{ k_tooltip|e }}"{% endif %}>
+{% else %}
+<span class="lt-ei-coef-readonly-val">{{ k_display }}</span>
+{% endif %}
 {%- endmacro %}
 
 {% block extra_head %}
@@ -112,6 +127,11 @@
         white-space: nowrap;
         overflow-wrap: normal;
         word-break: normal;
+        overflow: hidden;
+    }
+    #powerDemandSummaryScrollWrap .power-demand-summary-table td.summary-year-cell .fuel-param-input {
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     #powerDemandSummaryScrollWrap .power-demand-summary-table .lt-ei-unit-col,
     #powerDemandSummaryScrollWrap .power-demand-summary-table td.summary-unit-cell {
@@ -161,13 +181,11 @@
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols td.summary-parameter-cell {
         position: sticky;
         left: 0;
-        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
     }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols th.lt-ei-unit-col,
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols td.summary-unit-cell {
         position: sticky;
         left: var(--lt-ei-label-col-w);
-        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
     }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols thead th.lt-ei-label-col {
         z-index: 1051;
@@ -177,12 +195,43 @@
         z-index: 1050;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
     }
-    /* Липкие ячейки: тот же фон, что у столбцов годов в строке (ниже — перекрытие полосатости). */
+    /* Столбцы годов в шапке: выше tbody (графики, липкие подписи), иначе при вертикальном скролле перекрывают thead (z-index: 50 в style.css). */
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols thead th.summary-year-col {
+        z-index: 1049;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+    }
+    /* Липкие ячейки: z-index по строке (--lt-ei-row-stack в JS, cap 50) и непрозрачный фон,
+       иначе при горизонтальном скролле «просвечивают» ячейки справа и текст накладывается. */
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols tbody td.summary-parameter-cell {
-        z-index: 22;
+        z-index: calc(300 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: var(--bs-body-bg, #fff);
+        background-clip: padding-box;
+        transform: translateZ(0);
     }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols tbody td.summary-unit-cell {
-        z-index: 21;
+        z-index: calc(290 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: var(--bs-body-bg, #fff);
+        background-clip: padding-box;
+        transform: translateZ(0);
+    }
+    /* Столбцы годов всегда ниже липких левых ячеек (иначе при скролле текст рисуется поверх). */
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols tbody td.summary-year-cell {
+        position: relative;
+        z-index: calc(min(var(--lt-ei-row-stack, 0), 50));
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr:hover > td.summary-year-cell {
+        z-index: calc(min(var(--lt-ei-row-stack, 0), 50));
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.fuel-params-edit-table .fuel-param-input:focus {
+        z-index: auto;
+    }
+    /* Bootstrap table-hover: inset box-shadow и --bs-table-hover-bg (rgba!) ломают липкие ячейки. */
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols th.lt-ei-label-col,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols th.lt-ei-unit-col,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols td.summary-unit-cell {
+        --bs-table-bg-state: transparent;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
     }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr:nth-of-type(odd):not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning) > td.summary-parameter-cell,
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr:nth-of-type(odd):not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning) > td.summary-unit-cell {
@@ -192,13 +241,57 @@
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr:nth-of-type(even):not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.lt-ei-coef-row):not(.table-warning) > td.summary-unit-cell {
         background-color: var(--bs-body-bg, #fff);
     }
-    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr:hover:not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr:hover:not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-parameter-cell {
+        z-index: calc(500 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #e9ecef;
+    }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr:hover:not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-unit-cell {
-        background-color: var(--bs-table-hover-bg, #e9ecef);
+        z-index: calc(490 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #e9ecef;
     }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped.table-hover > tbody > tr:hover:not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning):not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-parameter-cell,
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped.table-hover > tbody > tr:hover:not(.lt-ei-row-intensity):not(.lt-ei-row-graph-point):not(.lt-ei-ref-product-output):not(.lt-ei-ref-consumption):not(.lt-ei-ref-accum-capital):not(.table-warning):not(.lt-ei-territory-header-row):not(.lt-ei-ved-header-row):not(.lt-ei-ved-separator-row) > td.summary-unit-cell {
-        background-color: var(--bs-table-hover-bg, #e9ecef);
+        background-color: #e9ecef;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-row-intensity:hover > td.summary-parameter-cell {
+        z-index: calc(500 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #b6d4fe;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-row-intensity:hover > td.summary-unit-cell {
+        z-index: calc(490 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #b6d4fe;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-row-graph-point:hover > td.summary-parameter-cell {
+        z-index: calc(500 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #e2d9f3;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-row-graph-point:hover > td.summary-unit-cell {
+        z-index: calc(490 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #e2d9f3;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-ref-product-output:hover > td.summary-parameter-cell {
+        z-index: calc(500 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #f8d7da;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-ref-product-output:hover > td.summary-unit-cell {
+        z-index: calc(490 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #f8d7da;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-ref-consumption:hover > td.summary-parameter-cell {
+        z-index: calc(500 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #badbcc;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-ref-consumption:hover > td.summary-unit-cell {
+        z-index: calc(490 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #badbcc;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-ref-accum-capital:hover > td.summary-parameter-cell {
+        z-index: calc(500 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #cbd5e1;
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-ref-accum-capital:hover > td.summary-unit-cell {
+        z-index: calc(490 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #cbd5e1;
     }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols tr.lt-ei-coef-row > td.lt-ei-coef-cell {
         background: transparent;
@@ -233,8 +326,12 @@
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-striped > tbody > tr.table-warning > td.summary-unit-cell {
         background-color: var(--bs-warning-bg-subtle, #fff3cd);
     }
-    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.table-warning:hover > td.summary-parameter-cell,
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.table-warning:hover > td.summary-parameter-cell {
+        z-index: calc(500 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #ffecb5;
+    }
     #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.table-warning:hover > td.summary-unit-cell {
+        z-index: calc(490 + min(var(--lt-ei-row-stack, 0), 50));
         background-color: #ffecb5;
     }
     .pd-ec-max-year-visibility-table col[data-ec-summary-col-year].pd-ec-year-col-hidden,
@@ -267,7 +364,8 @@
     #powerDemandSummaryTable .lt-ei-graph-point-row-calc .bi-calculator {
         font-size: 1em;
     }
-    /* Строки коэффициентов: липнут слева при горизонтальном скролле (как левые столбцы) */
+    /* Строки коэффициентов: липнут слева при горизонтальном скролле (как левые столбцы).
+       overflow: visible обязателен — иначе sticky у .lt-ei-coef-inline не срабатывает. */
     #powerDemandSummaryScrollWrap tr.lt-ei-coef-row > td.lt-ei-coef-cell {
         padding: 0;
         vertical-align: middle;
@@ -293,10 +391,17 @@
         box-sizing: border-box;
         position: sticky;
         left: 0;
-        z-index: 23;
+        z-index: calc(350 + min(var(--lt-ei-row-stack, 0), 50));
+        --bs-table-bg-state: transparent;
         background-color: #f8f9fa;
+        background-clip: padding-box;
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
         padding: 0.35rem 0.5rem;
+        transform: translateZ(0);
+    }
+    #powerDemandSummaryTable.lt-ei-sticky-lead-cols.table-hover > tbody > tr.lt-ei-coef-row:hover > td.lt-ei-coef-cell .lt-ei-coef-inline {
+        z-index: calc(510 + min(var(--lt-ei-row-stack, 0), 50));
+        background-color: #e9ecef;
     }
     .lt-ei-coef-inline {
         display: inline-flex;
@@ -384,7 +489,7 @@
         transform: translateX(-50%);
         width: 80rem;
         max-width: min(80rem, calc(100vw - 2.5rem));
-        z-index: 30;
+        z-index: calc(360 + min(var(--lt-ei-row-stack, 0), 50));
         margin: 0.75rem 0 1rem;
         box-sizing: border-box;
         pointer-events: none;
@@ -392,7 +497,8 @@
     #powerDemandSummaryScrollWrap .lt-ei-chart-sticky-center .lt-ei-scatter-chart-host {
         pointer-events: auto;
     }
-    /* Заголовки ФО/ВЭД: по центру видимой области при горизонтальном скролле (как график) */
+    /* Заголовки ФО/ВЭД: по центру видимой области при горизонтальном скролле (как график).
+       overflow: visible обязателен — иначе sticky left:50% привязывается к ячейке, а не к экрану. */
     #powerDemandSummaryScrollWrap tr.lt-ei-territory-header-row > td {
         padding: 0;
         vertical-align: middle;
@@ -415,9 +521,12 @@
         transform: translateX(-50%);
         width: max-content;
         max-width: min(80rem, calc(100vw - 2.5rem));
-        z-index: 29;
+        z-index: calc(340 + min(var(--lt-ei-row-stack, 0), 50));
         padding: 0.5rem 1rem;
         box-sizing: border-box;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     #powerDemandSummaryScrollWrap .lt-ei-entity-sticky-center.lt-ei-territory-header-label {
         font-weight: 700;
@@ -481,6 +590,28 @@
         outline: 0;
         box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.2);
     }
+    #powerDemandSummaryTable .lt-ei-param-inline input.lt-ei-fd-total-k-input.fuel-param-input {
+        display: inline-block;
+        width: 5.5rem;
+        min-width: 5.5rem;
+        max-width: 5.5rem;
+        min-height: 0;
+        height: auto;
+        flex-shrink: 0;
+        margin: 0 0 0 0.35rem;
+        padding: 0.15rem 0.35rem;
+        font-size: inherit;
+        line-height: 1.5;
+        border: 1px solid #adb5bd !important;
+        border-radius: 0.2rem;
+        box-shadow: none;
+        background-color: #fff;
+        vertical-align: middle;
+        box-sizing: border-box;
+    }
+    #powerDemandSummaryTable .lt-ei-param-inline .lt-ei-coef-label {
+        margin-left: 0.35rem;
+    }
     #powerDemandSummaryTable tr.lt-ei-ref-product-output > td {
         background-color: #fce4e4;
     }
@@ -512,6 +643,50 @@
         background-color: transparent;
         background-clip: padding-box;
     }
+    /* Группировка строк (сворачивание блоков РФ / ФО / ВЭД) */
+    #powerDemandSummaryTable tbody tr.lt-ei-territory-collapsed-hidden,
+    #powerDemandSummaryTable tbody tr.lt-ei-ved-collapsed-hidden,
+    #powerDemandSummaryTable tbody tr.lt-ei-industrial-group-collapsed-hidden,
+    #powerDemandSummaryTable tbody tr.lt-ei-industrial-child-collapsed-hidden {
+        display: none !important;
+    }
+    .lt-ei-group-toggle {
+        flex-shrink: 0;
+        width: 1.65rem;
+        height: 1.65rem;
+        min-width: 1.65rem;
+        padding: 0;
+        line-height: 1;
+        font-size: 1.15rem;
+        font-weight: 700;
+        border: 1px solid rgba(0, 0, 0, 0.25);
+        border-radius: 0.15rem;
+        background-color: #fff;
+        color: #212529;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+    .lt-ei-group-toggle:hover,
+    .lt-ei-group-toggle:focus {
+        background-color: #f8f9fa;
+        color: #212529;
+        border-color: rgba(0, 0, 0, 0.35);
+    }
+    tr.lt-ei-territory-header-row .lt-ei-group-toggle {
+        border-color: rgba(255, 255, 255, 0.65);
+        background-color: rgba(255, 255, 255, 0.15);
+        color: #fff;
+    }
+    tr.lt-ei-territory-header-row .lt-ei-group-toggle:hover,
+    tr.lt-ei-territory-header-row .lt-ei-group-toggle:focus {
+        background-color: rgba(255, 255, 255, 0.3);
+        color: #fff;
+    }
+    .power-demand-summary-loader-shell {
+        position: relative;
+    }
+    .power-demand-summary-loader-overlay {
+        transition: opacity 0.12s ease;
+    }
 </style>
 {% if lt_ei_year_segments %}
 <script>
@@ -534,13 +709,13 @@ window.__ltEiYearSegBoot = {
 <div class="container-fluid mt-2">
     <div class="lt-ei-page-fixed-header">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
-        <a href="{{ url_for('energy_consumption_bp.hub') }}" class="btn btn-secondary fs-5">
+        <a href="{{ url_for('long_term_consumption_bp.electrical_intensity_start') }}" class="btn btn-secondary fs-5">
             <i class="bi bi-graph-up-arrow"></i> Экономика
         </a>
         <a href="{{ url_for('start.index') }}" class="btn btn-secondary fs-5">На главную</a>
     </div>
 
-    <h1 class="text-center mb-4">{{ page_title }}</h1>
+    <h1 class="text-center mb-2">{{ page_title }}</h1>
     </div>
 
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
@@ -574,7 +749,7 @@ window.__ltEiYearSegBoot = {
 
         <div class="col-12 mb-2">
             <div class="collapse mt-2{% if has_active_filters %} show{% endif %} power-demand-filters-collapse" id="ltEiFiltersCollapse">
-                <form method="GET" action="{{ url_for('long_term_consumption_bp.electrical_intensity') }}"
+                <form method="GET" action="{{ url_for('electrical_intensity_root_bp.electrical_intensity') }}"
                       class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
                     {% for key, values in request.args.lists() %}
                         {% if key != 'ds_fd' and key != 'ds_ved' %}
@@ -603,7 +778,7 @@ window.__ltEiYearSegBoot = {
                         <button type="submit" class="btn btn-outline-primary">Поиск</button>
                     </div>
                     <div class="pd-summary-filter-field pd-summary-filter-actions">
-                        <a href="{{ url_for('long_term_consumption_bp.electrical_intensity') }}" class="btn btn-outline-danger">Сбросить</a>
+                        <a href="{{ url_for('electrical_intensity_root_bp.electrical_intensity') }}" class="btn btn-outline-danger">Сбросить</a>
                     </div>
                 </form>
             </div>
@@ -612,15 +787,18 @@ window.__ltEiYearSegBoot = {
         <div class="col-12 mb-2">
             <div class="collapse mt-2 power-demand-import-export-collapse" id="ltEiImportExportCollapse">
                 <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+                    {# Как summary/oes: форма GET + type="button" + fetch; спиннер только на кнопке #}
                     <form method="GET"
-                          action="{{ url_for('long_term_consumption_bp.electrical_intensity_export_xlsx') }}"
+                          action="{{ url_for('electrical_intensity_root_bp.electrical_intensity_export_xlsx') }}"
+                          id="ltEiExportForm"
                           class="d-inline m-0">
                         {% for key, values in request.args.lists() %}
                             {% for value in values %}
                             <input type="hidden" name="{{ key }}" value="{{ value }}">
                             {% endfor %}
                         {% endfor %}
-                        <button type="submit"
+                        <button type="button"
+                                id="ltEiExportBtn"
                                 class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                                 style="white-space: nowrap;">
                             <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
@@ -629,7 +807,7 @@ window.__ltEiYearSegBoot = {
                     {% if can_edit %}
                     <div id="ltEiConsumptionImportWrap"
                          class="d-inline-flex align-items-center gap-2 ms-auto flex-shrink-0"
-                         data-import-url="{{ url_for('long_term_consumption_bp.electrical_intensity_import_xlsx') }}"
+                         data-import-url="{{ url_for('electrical_intensity_root_bp.electrical_intensity_import_xlsx') }}"
                          data-csrf-token="{{ csrf_token }}">
                         <input type="file"
                                id="ltEiConsumptionImportFile"
@@ -649,7 +827,7 @@ window.__ltEiYearSegBoot = {
 
         <div class="col-12 mb-2">
             <div class="d-flex align-items-center flex-wrap gap-2 w-100">
-                <form method="GET" action="{{ url_for('long_term_consumption_bp.electrical_intensity') }}"
+                <form method="GET" action="{{ url_for('electrical_intensity_root_bp.electrical_intensity') }}"
                       class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
                       id="powerDemandSummaryYearForm"
                       {% if lt_ei_year_segments and filter_year_list %}data-pd-filter-year-min="{{ filter_year_list[0] }}" data-pd-filter-year-max="{{ filter_year_list[-1] }}"{% endif %}>
@@ -673,7 +851,7 @@ window.__ltEiYearSegBoot = {
                         {% endfor %}
                     </select>
                     <button type="submit" class="btn btn-outline-success">Применить</button>
-                    <a href="{{ url_for('long_term_consumption_bp.electrical_intensity') }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ url_for('electrical_intensity_root_bp.electrical_intensity') }}" class="btn btn-outline-danger">Сбросить</a>
                 </form>
                 {% if lt_ei_year_segments %}
                 {% set lt_ei_seg = lt_ei_year_seg_state if lt_ei_year_seg_state is defined else {'mode': 'segments', 'reporting': true, 'medium': true, 'long': true} %}
@@ -687,7 +865,7 @@ window.__ltEiYearSegBoot = {
                 <div class="d-inline-flex align-items-center gap-2 ms-auto flex-shrink-0">
                     {% if can_edit %}
                     <form method="POST"
-                          action="{{ url_for('long_term_consumption_bp.electrical_intensity_calculate_graph_points') }}"
+                          action="{{ url_for('electrical_intensity_root_bp.electrical_intensity_calculate_graph_points') }}"
                           class="d-inline m-0"
                           id="ltEiCalculateGraphPointsForm">
                         {{ form.hidden_tag() }}
@@ -696,12 +874,12 @@ window.__ltEiYearSegBoot = {
                         <button type="submit"
                                 class="btn btn-outline-primary text-nowrap"
                                 id="ltEiCalculateGraphPointsBtn"
-                                title="Рассчитать характерные точки графика для всех территорий и ВЭД (годы не позже текущего) и сохранить в БД">
-                            Рассчитать точки графика
+                                title="Рассчитать коэффициенты Х для всех территорий и ВЭД (годы не позже текущего) и сохранить в БД">
+                            Рассчитать коэффициенты Х
                         </button>
                     </form>
                     <div id="ltEiGraphPointCalcMeta" class="d-none"
-                         data-row-calc-url="{{ url_for('long_term_consumption_bp.electrical_intensity_calculate_graph_points_row') }}"
+                         data-row-calc-url="{{ url_for('electrical_intensity_root_bp.electrical_intensity_calculate_graph_points_row') }}"
                          data-page-query="{{ request.query_string.decode() }}"
                          data-csrf-token="{{ csrf_token }}"></div>
                     {% endif %}
@@ -728,7 +906,15 @@ window.__ltEiYearSegBoot = {
     {% set lt_ei_label_col_w = "24rem" %}
     {% set lt_ei_unit_col_w = "6.5rem" %}
     {% set lt_ei_fixed_cols = 2 %}
-    <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll">
+    <div id="powerDemandSummaryLoaderShell" class="power-demand-summary-loader-shell" aria-busy="true">
+        <div id="powerDemandSummaryLoadingOverlay" class="power-demand-summary-loader-overlay" aria-live="polite"
+             style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1030; display: flex; align-items: center; justify-content: center; --loader-size: 5rem;">
+            <div class="text-center">
+                <div class="loader loader-dual-ring" aria-hidden="true"></div>
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+        </div>
+        <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll" style="visibility: hidden;">
         <table id="powerDemandSummaryTable"
                class="table table-bordered table-striped align-middle power-demand-summary-table lt-ei-sticky-lead-cols{% if can_edit %} table-hover fuel-params-edit-table{% endif %}{% if lt_ei_year_segments %} pd-ec-max-year-visibility-table{% endif %}"
                data-rounding-digits="{{ rd }}"
@@ -765,7 +951,8 @@ window.__ltEiYearSegBoot = {
             </thead>
             <tbody>
                 {% for block in territory_blocks %}
-                <tr class="lt-ei-territory-header-row">
+                <tr class="lt-ei-territory-header-row"
+                    data-lt-ei-group-key="t:{{ block.territory_kind }}|{{ block.territory_id if block.territory_id is not none else '' }}">
                     <td colspan="{{ years|length + lt_ei_fixed_cols }}">
                         <div class="lt-ei-entity-sticky-center summary-entity-cell lt-ei-territory-header-label">{{ block.abbr }} — {{ block.label }}</div>
                     </td>
@@ -779,6 +966,9 @@ window.__ltEiYearSegBoot = {
                                 {% if ref_row.label_em %}<em>{% endif %}<span>{{ ref_row.row_label }}</span>{% if ref_row.label_em %}</em>{% endif %}
                                 {% if ref_row.formula_hint %}{{ lt_ei_formula_info_icon(ref_row.formula_hint) }}{% endif %}
                             </span>
+                            {% if ref_row.has_coefficient_k %}
+                            {{ lt_ei_fd_total_k_control(block.territory_kind, block.territory_id, ref_row.row_kind, ref_row.coefficient_k_display, ref_row.coefficient_k_tooltip) }}
+                            {% endif %}
                         </div>
                     </td>
                     <td class="text-center align-middle summary-unit-cell">{{ ref_row.unit_label or '' }}</td>
@@ -839,7 +1029,10 @@ window.__ltEiYearSegBoot = {
                 {% endif %}
                 {% if block.layout == 'ved_sections' and block.ved_sections %}
                 {% for section in block.ved_sections %}
-                <tr class="lt-ei-ved-header-row">
+                <tr class="lt-ei-ved-header-row"
+                    data-lt-ei-group-key="v:{{ block.territory_kind }}|{{ block.territory_id if block.territory_id is not none else '' }}|{% if section.get('is_industrial_group') %}industrial{% else %}{{ section.ved_id }}{% endif %}"
+                    {% if section.get('is_industrial_group') %}data-lt-ei-industrial-group="1"{% endif %}
+                    {% if section.get('is_industrial_group_child') %}data-lt-ei-industrial-group-child="1"{% endif %}>
                     <td colspan="{{ years|length + lt_ei_fixed_cols }}">
                         <div class="lt-ei-entity-sticky-center summary-entity-cell lt-ei-ved-header-label">{{ section.ved_name }}</div>
                     </td>
@@ -885,7 +1078,7 @@ window.__ltEiYearSegBoot = {
                             <button type="button"
                                     class="btn btn-link btn-sm p-0 lt-ei-graph-point-row-calc"
                                     title="Рассчитать эту строку без сохранения в БД"
-                                    aria-label="Рассчитать строку характерных точек графика"
+                                    aria-label="Рассчитать строку коэффициентов эластичности"
                                     data-territory-kind="{{ block.territory_kind }}"
                                     data-territory-id="{{ block.territory_id if block.territory_id is not none else '' }}"
                                     data-ved-id="{{ section.ved_id }}"><i class="bi bi-calculator" aria-hidden="true"></i></button>
@@ -907,9 +1100,12 @@ window.__ltEiYearSegBoot = {
                         <input type="hidden" name="cell_ved_id[]" value="{{ section.ved_id if section.ved_id is not none else '' }}">
                         <input type="hidden" name="row_kind[]" value="{{ row.row_kind }}">
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
+                        <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}{{ disp }}{% endif %}">
+                        <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}1{% endif %}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
                                inputmode="decimal" autocomplete="off"
                                value="{% if disp != '—' %}{{ disp }}{% endif %}"
+                               {% if row.row_kind == 'graph_point' and disp != '—' %}data-initial-display="{{ disp }}"{% endif %}
                                {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
                         {% else %}
                         {{ disp }}
@@ -955,7 +1151,7 @@ window.__ltEiYearSegBoot = {
                             <button type="button"
                                     class="btn btn-link btn-sm p-0 lt-ei-graph-point-row-calc"
                                     title="Рассчитать эту строку без сохранения в БД"
-                                    aria-label="Рассчитать строку характерных точек графика"
+                                    aria-label="Рассчитать строку коэффициентов эластичности"
                                     data-territory-kind="{{ block.territory_kind }}"
                                     data-territory-id="{{ block.territory_id if block.territory_id is not none else '' }}"
                                     data-ved-id=""><i class="bi bi-calculator" aria-hidden="true"></i></button>
@@ -977,9 +1173,12 @@ window.__ltEiYearSegBoot = {
                         <input type="hidden" name="cell_ved_id[]" value="">
                         <input type="hidden" name="row_kind[]" value="{{ row.row_kind }}">
                         <input type="hidden" name="cell_year[]" value="{{ y }}">
+                        <input type="hidden" name="cell_orig_value[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}{{ disp }}{% endif %}">
+                        <input type="hidden" name="cell_gp_had_display[]" value="{% if row.row_kind == 'graph_point' and disp != '—' %}1{% endif %}">
                         <input type="text" name="cell_value[]" class="form-control form-control-lg text-center fuel-param-input"
                                inputmode="decimal" autocomplete="off"
                                value="{% if disp != '—' %}{{ disp }}{% endif %}"
+                               {% if row.row_kind == 'graph_point' and disp != '—' %}data-initial-display="{{ disp }}"{% endif %}
                                {% if _diag_tt %}title="{{ _diag_tt|e }}"{% elif _yr_tt %}title="{{ _yr_tt|e }}" data-db-full="{{ _yr_tt|e }}"{% endif %}>
                         {% else %}
                         {{ disp }}
@@ -992,6 +1191,7 @@ window.__ltEiYearSegBoot = {
                 {% endfor %}
             </tbody>
         </table>
+        </div>
     </div>
 
     {% if can_edit %}
@@ -1005,7 +1205,7 @@ window.__ltEiYearSegBoot = {
         <div class="card-body p-0">
             <div class="table-responsive">
             <table class="table table-hover table-striped table-bordered" id="electrical-intensity-logs-table"
-                   data-ei-logs-base-url="{{ url_for('long_term_consumption_bp.electrical_intensity_logs') }}">
+                   data-ei-logs-base-url="{{ url_for('electrical_intensity_root_bp.electrical_intensity_logs') }}">
                 <thead class="table-light">
                     <tr>
                         <th class="ec-log-col-date" style="width:140px;">Дата</th>
@@ -1126,14 +1326,73 @@ window.__ltEiYearSegBoot = {
 
 <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/electrical_intensity_charts.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/electrical_intensity_row_groups.js') }}" defer></script>
 
 <script>
+const powerDemandSummaryLoaderShell = document.getElementById("powerDemandSummaryLoaderShell");
+const powerDemandSummaryLoadingOverlay = document.getElementById("powerDemandSummaryLoadingOverlay");
+const powerDemandSummaryScrollWrap = document.getElementById("powerDemandSummaryScrollWrap");
+const pdEcSummaryLoaderStartedAt = Date.now();
+const PD_EC_SUMMARY_LOADER_MIN_MS = 400;
+
+function finishPowerDemandSummaryInitialRender() {
+    if (!powerDemandSummaryLoaderShell || powerDemandSummaryLoaderShell.dataset.ready === "1") {
+        return;
+    }
+    powerDemandSummaryLoaderShell.dataset.ready = "1";
+    var waitMs = Math.max(0, PD_EC_SUMMARY_LOADER_MIN_MS - (Date.now() - pdEcSummaryLoaderStartedAt));
+
+    function revealPowerDemandSummaryTable() {
+        window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(function () {
+                if (powerDemandSummaryScrollWrap) {
+                    powerDemandSummaryScrollWrap.style.visibility = "";
+                }
+                if (powerDemandSummaryLoadingOverlay) {
+                    powerDemandSummaryLoadingOverlay.style.display = "none";
+                }
+                powerDemandSummaryLoaderShell.setAttribute("aria-busy", "false");
+            });
+        });
+    }
+
+    if (waitMs > 0) {
+        setTimeout(revealPowerDemandSummaryTable, waitMs);
+    } else {
+        revealPowerDemandSummaryTable();
+    }
+}
+
+window.__pdPdSummaryFinishInitialRender = finishPowerDemandSummaryInitialRender;
+
+function ensurePowerDemandSummaryInteractive() {
+    if (powerDemandSummaryScrollWrap) {
+        powerDemandSummaryScrollWrap.style.visibility = "";
+    }
+    if (powerDemandSummaryLoadingOverlay) {
+        powerDemandSummaryLoadingOverlay.style.display = "none";
+    }
+    if (powerDemandSummaryLoaderShell) {
+        powerDemandSummaryLoaderShell.setAttribute("aria-busy", "false");
+    }
+}
+
+window.__pdPdSummaryEnsureInteractive = ensurePowerDemandSummaryInteractive;
+
 document.addEventListener("DOMContentLoaded", function () {
+    ensurePowerDemandSummaryInteractive();
+    if (typeof window.__pdPdSummaryFinishInitialRender === "function") {
+        window.__pdPdSummaryFinishInitialRender();
+    }
+
     if (typeof initEcMaxYearPeriodMode === "function") {
         initEcMaxYearPeriodMode();
     }
 
     function refreshLtEiSummaryTableLayout() {
+        if (typeof window.armGsAssignLtEiRowStackIndices === "function") {
+            window.armGsAssignLtEiRowStackIndices();
+        }
         if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
             window.armGsUpdatePdSummaryControlsStickyHeight();
         }
@@ -1160,6 +1419,30 @@ document.addEventListener("DOMContentLoaded", function () {
             "#ltEiImportExportCollapse [data-bs-toggle=\"tooltip\"]"
         ).forEach(function (el) {
             new bootstrap.Tooltip(el);
+        });
+    }
+
+    var eiForm = document.getElementById("electrical-intensity-form");
+    var eiSaveBtn = document.querySelector('button[type="submit"][form="electrical-intensity-form"]');
+    if (eiForm && eiSaveBtn) {
+        eiForm.addEventListener("keydown", function (e) {
+            if (e.key !== "Enter" || e.isComposing) return;
+            var t = e.target;
+            if (!t || !t.classList || !t.classList.contains("fuel-param-input")) return;
+            e.preventDefault();
+            eiSaveBtn.click();
+        });
+        eiForm.addEventListener("submit", function () {
+            eiForm.querySelectorAll('input.fuel-param-input[name="cell_value[]"]').forEach(function (inp) {
+                var initial = (inp.getAttribute("data-initial-display") || "").trim();
+                if (!initial || inp.value.trim()) return;
+                var td = inp.closest("td");
+                if (!td) return;
+                var origInp = td.querySelector('input[name="cell_orig_value[]"]');
+                if (origInp && !origInp.value.trim()) {
+                    origInp.value = initial;
+                }
+            });
         });
     }
 
@@ -1258,8 +1541,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             var tt = tooltips[yearKey] || "";
                             var titleText = diag || tt || "";
                             var inp = td.querySelector('input[name="cell_value[]"]');
+                            var origInp = td.querySelector('input[name="cell_orig_value[]"]');
                             if (inp) {
                                 inp.value = (disp && disp !== "—") ? disp : "";
+                                if (origInp) {
+                                    origInp.value = (disp && disp !== "—") ? disp : "";
+                                }
                                 if (titleText) {
                                     inp.title = titleText;
                                     if (tt) inp.setAttribute("data-db-full", tt);
@@ -1291,7 +1578,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (gpCalcAllForm) {
         gpCalcAllForm.addEventListener("submit", function (e) {
             if (!window.confirm(
-                "Рассчитать характерные точки графика для всех территорий и ВЭД "
+                "Рассчитать коэффициенты Х для всех территорий и ВЭД "
                 + "(годы не позже текущего) и сохранить в базу данных?"
             )) {
                 e.preventDefault();
@@ -1376,55 +1663,195 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }, 250);
 
-    var wrap = document.getElementById("ltEiConsumptionImportWrap");
-    if (!wrap) return;
-    var inp = document.getElementById("ltEiConsumptionImportFile");
-    var btn = document.getElementById("ltEiConsumptionImportBtn");
-    var importUrl = wrap.dataset.importUrl || "";
-    var csrf = wrap.dataset.csrfToken || "";
-    if (!inp || !btn || !importUrl) return;
-    btn.addEventListener("click", function () { inp.click(); });
-    inp.addEventListener("change", function () {
-        if (!inp.files || inp.files.length === 0) return;
-        var fd = new FormData();
-        fd.append("file", inp.files[0]);
-        fd.append("csrf_token", csrf);
-        var prevHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Импорт…';
-        fetch(importUrl, {
-            method: "POST",
-            body: fd,
-            credentials: "same-origin",
-            headers: { "X-Requested-With": "XMLHttpRequest" }
-        })
-            .then(function (resp) {
-                return resp.json().catch(function () { return null; }).then(function (j) {
-                    return { resp: resp, data: j };
-                });
-            })
-            .then(function (pack) {
-                btn.disabled = false;
-                btn.innerHTML = prevHtml;
-                inp.value = "";
-                var data = pack.data;
-                if (!pack.resp.ok || !data || !data.ok) {
-                    alert((data && data.error) ? data.error : "Не удалось выполнить импорт.");
-                    return;
+    /* Экспорт как на summary/oes: форма + fetch, только кнопка с disabled/спиннером. */
+    (function () {
+        var form = document.getElementById("ltEiExportForm");
+        var exportBtn = document.getElementById("ltEiExportBtn");
+        if (!form || !exportBtn) {
+            return;
+        }
+
+        function parseFilenameFromContentDisposition(cd) {
+            if (!cd) {
+                return "elektroemkost.xlsx";
+            }
+            var mUtf = /filename\*=UTF-8''([^;\n]+)/i.exec(cd);
+            if (mUtf && mUtf[1]) {
+                try {
+                    return decodeURIComponent(mUtf[1].trim());
+                } catch (e1) {
+                    return mUtf[1].trim();
                 }
-                var msg = data.message || "Готово.";
-                var hints = data.hints || [];
-                if (hints.length) msg += "\n\n" + hints.join("\n\n");
-                alert(msg);
-                window.location.reload();
+            }
+            var mQuot = /filename="([^"]+)"/i.exec(cd);
+            if (mQuot && mQuot[1]) {
+                return mQuot[1].trim();
+            }
+            var mBare = /filename=([^;\n]+)/i.exec(cd);
+            if (mBare && mBare[1]) {
+                return mBare[1].trim().replace(/^["']|["']$/g, "");
+            }
+            return "elektroemkost.xlsx";
+        }
+
+        var newBtn = exportBtn.cloneNode(true);
+        exportBtn.parentNode.replaceChild(newBtn, exportBtn);
+
+        newBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var button = this;
+            if (button.disabled) {
+                return;
+            }
+
+            var params = new URLSearchParams(window.location.search);
+            var rdSel = document.getElementById("rounding_digits");
+            if (rdSel) {
+                params.set("rounding_digits", rdSel.value);
+            }
+            var tableEl = document.getElementById("powerDemandSummaryTable");
+            if (tableEl && tableEl.classList.contains("pd-ec-max-year-visibility-table")) {
+                var evYears = [];
+                tableEl.querySelectorAll("thead th.summary-year-col[data-ec-summary-col-year]").forEach(function (th) {
+                    if (th.classList.contains("pd-ec-year-col-hidden")) {
+                        return;
+                    }
+                    var yy = parseInt(th.getAttribute("data-ec-summary-col-year") || "", 10);
+                    if (!isNaN(yy)) {
+                        evYears.push(yy);
+                    }
+                });
+                if (evYears.length) {
+                    params.set("export_years", evYears.join(","));
+                }
+            }
+
+            var exportUrl = form.action + (params.toString() ? "?" + params.toString() : "");
+            var originalHtml = button.innerHTML;
+
+            button.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Экспорт…';
+            button.disabled = true;
+
+            fetch(exportUrl, { credentials: "same-origin", cache: "no-store" })
+                .then(function (response) {
+                    if (!response.ok) {
+                        return response.text().then(function (text) {
+                            throw new Error(
+                                "Ошибка сервера (" +
+                                    response.status +
+                                    "): " +
+                                    (text ? text.substring(0, 200) : "")
+                            );
+                        });
+                    }
+                    var contentType = response.headers.get("content-type") || "";
+                    var ctLow = contentType.toLowerCase();
+                    if (
+                        ctLow.indexOf("application/vnd.openxmlformats") !== -1 ||
+                        ctLow.indexOf("application/octet-stream") !== -1
+                    ) {
+                        var fn = parseFilenameFromContentDisposition(response.headers.get("Content-Disposition"));
+                        return response.blob().then(function (blob) {
+                            var url = window.URL.createObjectURL(blob);
+                            var a = document.createElement("a");
+                            a.href = url;
+                            a.download = fn || "elektroemkost.xlsx";
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+                        });
+                    }
+                    return response.text().then(function () {
+                        throw new Error("Получен неожиданный тип ответа от сервера");
+                    });
+                })
+                .catch(function (error) {
+                    console.error("[EXPORT electrical_intensity]", error);
+                    alert(
+                        "Ошибка при экспорте: " +
+                            (error && error.message ? error.message : String(error)) +
+                            "\n\nПроверьте консоль браузера (F12) для подробностей."
+                    );
+                })
+                .finally(function () {
+                    button.innerHTML = originalHtml;
+                    button.disabled = false;
+                    if (typeof window.__pdPdSummaryEnsureInteractive === "function") {
+                        window.__pdPdSummaryEnsureInteractive();
+                    }
+                });
+        });
+    })();
+
+    (function () {
+        var wrap = document.getElementById("ltEiConsumptionImportWrap");
+        if (!wrap) {
+            return;
+        }
+        var inp = document.getElementById("ltEiConsumptionImportFile");
+        var btn = document.getElementById("ltEiConsumptionImportBtn");
+        var importUrl = wrap.dataset.importUrl || "";
+        var csrf = wrap.dataset.csrfToken || "";
+        if (!inp || !btn || !importUrl) {
+            return;
+        }
+        btn.addEventListener("click", function () { inp.click(); });
+        inp.addEventListener("change", function () {
+            if (!inp.files || inp.files.length === 0) return;
+            var fd = new FormData();
+            fd.append("file", inp.files[0]);
+            fd.append("csrf_token", csrf);
+            var prevHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Импорт…';
+            fetch(importUrl, {
+                method: "POST",
+                body: fd,
+                credentials: "same-origin",
+                headers: { "X-Requested-With": "XMLHttpRequest" }
             })
-            .catch(function (err) {
-                btn.disabled = false;
-                btn.innerHTML = prevHtml;
-                inp.value = "";
-                alert("Не удалось получить ответ сервера при импорте." + (err && err.message ? "\n" + err.message : ""));
-            });
-    });
+                .then(function (resp) {
+                    return resp.json().catch(function () { return null; }).then(function (j) {
+                        return { resp: resp, data: j };
+                    });
+                })
+                .then(function (pack) {
+                    btn.disabled = false;
+                    btn.innerHTML = prevHtml;
+                    inp.value = "";
+                    var data = pack.data;
+                    if (!pack.resp.ok || !data || !data.ok) {
+                        alert((data && data.error) ? data.error : "Не удалось выполнить импорт.");
+                        return;
+                    }
+                    var msg = data.message || "Готово.";
+                    var hints = data.hints || [];
+                    if (hints.length) msg += "\n\n" + hints.join("\n\n");
+                    alert(msg);
+                    window.location.reload();
+                })
+                .catch(function (err) {
+                    btn.disabled = false;
+                    btn.innerHTML = prevHtml;
+                    inp.value = "";
+                    alert("Не удалось получить ответ сервера при импорте." + (err && err.message ? "\n" + err.message : ""));
+                });
+        });
+    })();
+
+    if (typeof window.__pdPdSummaryFinishInitialRender === "function") {
+        window.__pdPdSummaryFinishInitialRender();
+    }
+});
+
+window.addEventListener("load", function () {
+    if (typeof window.__pdPdSummaryFinishInitialRender === "function") {
+        window.__pdPdSummaryFinishInitialRender();
+    }
 });
 </script>
 {% endif %}

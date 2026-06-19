@@ -803,6 +803,7 @@
                data-save-perimeter-variant-url="{{ url_for('energy_consumption_bp.demand_summary_save_perimeter_variant') }}"
                data-save-block-variant-url="{{ url_for('energy_consumption_bp.demand_summary_save_block_variant') }}"
                data-save-formula-url="{{ url_for('energy_consumption_bp.demand_summary_persist_formula_block') }}"
+               data-persist-computed-url="{{ url_for('energy_consumption_bp.demand_summary_persist_computed_rows') }}"
                data-summary-start-year="{{ start_year }}"
                data-summary-end-year="{{ end_year }}"
                {% endif %}>
@@ -5634,7 +5635,26 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
             }
-            window.location.reload();
+            const persistComputedUrl = table.dataset.persistComputedUrl || "";
+            if (persistComputedUrl) {
+                const pResp = await fetch(persistComputedUrl, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: headers,
+                    body: JSON.stringify({ rounding_digits: roundingDigits })
+                });
+                const pData = await pResp.json().catch(function () { return null; });
+                if (!pResp.ok || !pData || !pData.ok) {
+                    const pMsg = (pData && pData.error)
+                        ? pData.error
+                        : "Не удалось записать расчётные значения в БД.";
+                    alert(pMsg);
+                    saveBtn.innerHTML = originalHtml;
+                    saveBtn.disabled = false;
+                    return;
+                }
+            }
+            window.armGsPageScrollRestore.reload({ table: table, changedInputs: changed });
         } catch (e) {
             alert("������ ���� ��� ����������.");
             saveBtn.innerHTML = originalHtml;

@@ -12,9 +12,9 @@ class EconomicActivityTypeFilterForm(FlaskForm):
     # Пакетное обновление
     ids = HiddenField("ID записей")
     name = StringField(
-        "Вид экономической деятельности",
+        "Полное наименование",
         validators=[
-            DataRequired(message="Поле «Вид экономической деятельности» обязательно."),
+            DataRequired(message="Поле «Полное наименование» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
@@ -41,15 +41,15 @@ class AddEconomicActivityTypeForm(FlaskForm):
     csrf_token = HiddenField()
 
     name = StringField(
-        "Вид экономической деятельности",
+        "Полное наименование",
         validators=[
-            DataRequired(message="Поле «Вид экономической деятельности» обязательно."),
+            DataRequired(message="Поле «Полное наименование» обязательно."),
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
 
     name_2 = StringField(
-        "Вид экономической деятельности_2",
+        "Краткое наименование",
         validators=[Optional(), Length(max=255, message="Длина не более 255 символов.")],
     )
 

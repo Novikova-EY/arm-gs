@@ -82,6 +82,16 @@ def _format_cell_display(value: Any, rounding_digits: int) -> str:
     return apply_thousand_grouping_to_display(shown) if shown else "—"
 
 
+def _format_cell_input_value(value: Any) -> str:
+    """Полная точность для полей ввода (как в Excel), без группировки разрядов."""
+    if value is None:
+        return ""
+    shown = format_decimal_trim_for_display(value, digits=0)
+    if not shown or shown == "—":
+        return ""
+    return shown.replace(" ", "").replace("\u00a0", "")
+
+
 def _parse_decimal(raw: str | None) -> Decimal | None:
     if raw is None:
         return None
@@ -100,19 +110,15 @@ def _load_values_by_fd_year(
     version_id: int | None,
     fd_id: int,
 ) -> dict[int, Decimal | None]:
-    q = FederalDistrictAccumMonetaryIncomeParameter.query.filter(
-        FederalDistrictAccumMonetaryIncomeParameter.id_federal_district == fd_id,
+    from app.common.services.economics_fd_data_cache import get_fd_year_values
+
+    return get_fd_year_values(
+        "accum_monetary_income",
+        version_id=version_id,
+        model=FederalDistrictAccumMonetaryIncomeParameter,
+        value_attr="accum_monetary_income_mln_rub",
+        fd_id=fd_id,
     )
-    if version_id is not None:
-        q = q.filter(
-            FederalDistrictAccumMonetaryIncomeParameter.database_version_id == version_id
-        )
-    result: dict[int, Decimal | None] = {}
-    for row in q.all():
-        if row.year_number is None:
-            continue
-        result[int(row.year_number)] = row.accum_monetary_income_mln_rub
-    return result
 
 
 def build_accum_monetary_income_page_context(
@@ -124,6 +130,7 @@ def build_accum_monetary_income_page_context(
     filter_year_list: list[int],
     coeff_base_year: int,
     summary_include_medium_years: bool,
+    summary_include_long_years: bool,
     fd_filter_ids: frozenset[int],
     has_active_filters: bool,
 ) -> dict[str, Any]:
@@ -147,6 +154,10 @@ def build_accum_monetary_income_page_context(
                 year: _format_cell_display(cells.get(year), rounding_digits)
                 for year in display_years
             },
+            "cells_input": {
+                year: _format_cell_input_value(cells.get(year))
+                for year in display_years
+            },
         }
         rows.append(row)
 
@@ -166,6 +177,7 @@ def build_accum_monetary_income_page_context(
         "end_year": end_year,
         "coeff_base_year": coeff_base_year,
         "summary_include_medium_years": summary_include_medium_years,
+        "summary_include_long_years": summary_include_long_years,
         "lt_ved_year_segments": True,
         "accum_monetary_income_rows": rows,
         "federal_district_list": federal_district_list,
@@ -232,6 +244,13 @@ def save_accum_monetary_income_from_post(form_data: Any) -> tuple[int, int]:
             database_version_id=version_id,
         )
         updated += 1
+
+    if updated:
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        invalidate_economics_fd_data_cache(version_id, "accum_monetary_income")
 
     return updated, skipped
 

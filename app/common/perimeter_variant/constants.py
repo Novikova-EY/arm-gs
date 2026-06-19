@@ -18,6 +18,7 @@ CODE_WITHOUT_NT_WITH_GAES = "without_nt_with_gaes"
 CODE_WITHOUT_NT_WITHOUT_GAES = "without_nt_without_gaes"
 CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES = "without_nt_with_gaes_with_kaliningrad_es"
 CODE_O1 = "o1"
+CODE_TERRITORIAL_BOUNDARIES = "territorial_boundaries"
 
 # Варианты блоков «с/без заряда ГАЭС» на сводке — не строки дерева ОЭС/ЕЭС.
 TREE_EXCLUDED_VARIANT_CODES: frozenset[str] = frozenset(
@@ -28,6 +29,25 @@ TREE_EXCLUDED_VARIANT_CODES: frozenset[str] = frozenset(
         CODE_WITHOUT_NT_WITHOUT_GAES,
     }
 )
+
+# Устаревшие коды with_nt / without_nt на сводке → варианты с зарядом ГАЭС в той же НТ-группе.
+LEGACY_NT_GROUP_GAES_VARIANT_CANDIDATES: dict[str, tuple[str, ...]] = {
+    CODE_WITH_NT: (CODE_WITH_NT_WITH_GAES, CODE_WITH_NT_WITHOUT_GAES),
+    CODE_WITHOUT_NT: (CODE_WITHOUT_NT_WITH_GAES, CODE_WITHOUT_NT_WITHOUT_GAES),
+}
+
+
+def perimeter_variant_codes_in_legacy_nt_group(code: str | None) -> tuple[str, ...]:
+    """Код и связанные GAES-варианты той же группы (с НТ / без НТ) для поиска строк в БД."""
+    if not code:
+        return ()
+    s = str(code).strip()
+    if s in LEGACY_NT_GROUP_GAES_VARIANT_CANDIDATES:
+        return (s,) + LEGACY_NT_GROUP_GAES_VARIANT_CANDIDATES[s]
+    for legacy, gaes_codes in LEGACY_NT_GROUP_GAES_VARIANT_CANDIDATES.items():
+        if s in gaes_codes:
+            return (legacy,) + gaes_codes
+    return (s,)
 
 
 def is_tree_display_variant_code(code: str | None) -> bool:
@@ -82,6 +102,9 @@ FALLBACK_PERIMETER_VARIANT_BY_CODE: dict[str, PerimeterVariantDefinition] = {
         effective_from_year=2025,
     ),
     CODE_O1: PerimeterVariantDefinition(CODE_O1, "О-1"),
+    CODE_TERRITORIAL_BOUNDARIES: PerimeterVariantDefinition(
+        CODE_TERRITORIAL_BOUNDARIES, "(в территориальных границах)"
+    ),
 }
 
 FALLBACK_ENTITY_PERIMETER_BINDINGS: tuple[EntityPerimeterBinding, ...] = (
@@ -134,5 +157,12 @@ FALLBACK_ENTITY_PERIMETER_BINDINGS: tuple[EntityPerimeterBinding, ...] = (
             FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITH_NT],
             FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITHOUT_NT],
         ),
+    ),
+    EntityPerimeterBinding(
+        entity_kind="regional_district",
+        entity_name_cf="чукотский ао",
+        entity_name="Чукотский АО",
+        label_prefix="Чукотский АО",
+        variants=(FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_TERRITORIAL_BOUNDARIES],),
     ),
 )

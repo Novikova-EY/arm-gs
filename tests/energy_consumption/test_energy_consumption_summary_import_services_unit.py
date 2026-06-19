@@ -91,8 +91,8 @@ def test_aggregate_sheet_labels_skips_kaliningrad_sync_zone_in_variant_column_mo
     assert len(acc) == 0
 
 
-def test_aggregate_sheet_labels_skips_duplicate_row_without_variant_when_explicit_exists():
-    """Две строки с одним наименованием: без варианта и с o1 — берётся только явный вариант."""
+def test_aggregate_sheet_labels_keeps_both_none_and_o1_variant_rows():
+    """Две строки с одним наименованием: без варианта (NULL) и с o1 — обе в аккумулятор."""
     matrix = [
         ("perimeter-variants", "Наименование", 2024, 2025),
         ("", "ЭС Камчатского края", 100, 110),
@@ -100,8 +100,10 @@ def test_aggregate_sheet_labels_skips_duplicate_row_without_variant_when_explici
     ]
     acc, variant_column_mode = service._aggregate_sheet_labels(matrix, sheet_title="СиПР")
     assert variant_column_mode is True
+    assert acc[("ЭС Камчатского края", 2024, None)] == Decimal("100")
+    assert acc[("ЭС Камчатского края", 2025, None)] == Decimal("110")
     assert acc[("ЭС Камчатского края", 2024, "o1")] == Decimal("200")
-    assert ("ЭС Камчатского края", 2024, None) not in acc
+    assert acc[("ЭС Камчатского края", 2025, "o1")] == Decimal("210")
 
 
 def test_aggregate_sheet_labels_imports_none_variant_row_when_o1_row_is_zero_placeholder():
@@ -121,7 +123,7 @@ def test_aggregate_sheet_labels_imports_none_variant_row_when_o1_row_is_zero_pla
 
 
 def test_aggregate_sheet_labels_merges_none_and_o1_rows_per_year():
-    """По годам: ненулевой o1 приоритетнее; при нулевом o1 берётся строка без варианта."""
+    """Оба варианта сохраняются; нулевая ячейка o1 за год не импортируется."""
     matrix = [
         ("perimeter-variants", "Наименование", 2025, 2026),
         ("", "ЭС Камчатского края", 1727, 1822),
@@ -131,9 +133,30 @@ def test_aggregate_sheet_labels_merges_none_and_o1_rows_per_year():
         matrix, sheet_title="млн. кВт.ч"
     )
     assert variant_column_mode is True
+    assert acc[("ЭС Камчатского края", 2025, None)] == Decimal("1727")
     assert acc[("ЭС Камчатского края", 2025, "o1")] == Decimal("1899")
-    assert ("ЭС Камчатского края", 2025, None) not in acc
     assert acc[("ЭС Камчатского края", 2026, None)] == Decimal("1822")
+    assert ("ЭС Камчатского края", 2026, "o1") not in acc
+
+
+def test_aggregate_sheet_labels_kamchatka_res_dual_variant_rows_from_arme_template():
+    """Шаблон «Для работы в АРМе»: параллельные строки без варианта и o1 с разными значениями."""
+    matrix = [
+        (None, "perimeter-variants", "Наименование", 2024, 2025, 2026),
+        (None, None, None, "2024 г.", "2025 г.", "2026 г."),
+        (None, None, "ЭС Камчатского края", "1452.133", "1440.669", "1530.909"),
+        (None, "o1", "ЭС Камчатского края", "1617.294", "1601.348", "1695.335"),
+    ]
+    acc, variant_column_mode = service._aggregate_sheet_labels(
+        matrix, sheet_title="млн. кВт.ч"
+    )
+    assert variant_column_mode is True
+    assert acc[("ЭС Камчатского края", 2024, None)] == Decimal("1452.133")
+    assert acc[("ЭС Камчатского края", 2025, None)] == Decimal("1440.669")
+    assert acc[("ЭС Камчатского края", 2026, None)] == Decimal("1530.909")
+    assert acc[("ЭС Камчатского края", 2024, "o1")] == Decimal("1617.294")
+    assert acc[("ЭС Камчатского края", 2025, "o1")] == Decimal("1601.348")
+    assert acc[("ЭС Камчатского края", 2026, "o1")] == Decimal("1695.335")
 
 
 def test_aggregate_from_screen_export_matrix_reads_mln_and_sipr_rows():
@@ -194,3 +217,99 @@ def test_resolve_row_binding_never_binds_kaliningrad_sync_zone():
         variant_column_mode=True,
     )
     assert bind is None
+
+
+def test_collapse_labels_clears_variant_for_entity_without_bindings(monkeypatch):
+    """ФО без привязок в каталоге: код из колонки perimeter-variants не пишется в БД."""
+    fd_model = service.FederalDistrictEnergyConsumptionParameter
+    fk_fd = service._MODEL_FK[fd_model]
+    fd = type("FD", (), {"id": 124, "name": "Центральный ФО"})()
+    ctx = {"ues": [], "res": [], "rd": [], "fd": [(fd, "Центральный ФО")], "sync_area": [], "energy_unit": []}
+    acc_labels = defaultdict(
+        lambda: Decimal("0"),
+        {("Центральный ФО", 2024, "with_nt_with_gaes"): Decimal("100")},
+    )
+    monkeypatch.setattr(
+        service,
+        "perimeter_entity_context_for_model",
+        lambda *_a, **_k: ("federal_district", "Центральный ФО"),
+    )
+    monkeypatch.setattr(service, "perimeter_variant_codes_for_entity", lambda *_a, **_k: ())
+
+    acc, _explicit = service._collapse_labels_to_bind_keys(
+        acc_labels,
+        ctx=ctx,
+        years_ok={2024},
+        variant_column_mode=True,
+    )
+
+    assert acc[(fd_model, fk_fd, 124, 2024, None)] == Decimal("100")
+    assert (fd_model, fk_fd, 124, 2024, "with_nt_with_gaes") not in acc
+
+
+def test_mirror_res_skips_o1_when_regional_district_has_no_perimeter_variants(monkeypatch):
+    """Зеркало РЭС→субъект: o1 не копируется, если у субъекта нет привязки вариантов."""
+    res_model = service.RegionalEnergySystemEnergyConsumptionParameter
+    fk_res = service._MODEL_FK[res_model]
+    acc = defaultdict(
+        lambda: Decimal("0"),
+        {
+            (res_model, fk_res, 601, 2024, None): Decimal("1452"),
+            (res_model, fk_res, 601, 2024, "o1"): Decimal("1617"),
+        },
+    )
+    monkeypatch.setattr(service, "_single_regional_district_id_for_res", lambda *_a, **_k: 77)
+    monkeypatch.setattr(
+        service,
+        "_regional_district_accepts_import_perimeter_variant",
+        lambda rd_id, pvc: pvc is None,
+    )
+    service._mirror_res_accumulator_rows_to_single_district_rd(
+        acc,
+        database_version_id=1,
+        explicit_rd_subject_year_pairs=frozenset(),
+    )
+    rd_model = service.RegionalDistrictEnergyConsumptionParameter
+    fk_rd = service._MODEL_FK[rd_model]
+    assert acc[(rd_model, fk_rd, 77, 2024, None)] == Decimal("1452")
+    assert (rd_model, fk_rd, 77, 2024, "o1") not in acc
+
+
+def test_import_row_year_numeric_pairs_ees_gaes_sparse_middle_years_use_column_positions():
+    """Шаблон «Для работы в АРМе»: факт 2024–2025 в середине сетки, не в хвосте."""
+    year_cols = {ci: 2016 + (ci - 3) for ci in range(3, 19)}  # 2016..2031
+    row = [None] * 19
+    row[2] = "ЕЭС России"
+    row[11] = Decimal("1174085.033")
+    row[12] = Decimal("1161297.7021041")
+    pairs = service._import_row_year_numeric_pairs(
+        tuple(row),
+        year_cols,
+        label="ЕЭС России",
+        row_variant=service.CODE_WITH_NT_WITH_GAES,
+        variant_column_mode=True,
+    )
+    assert pairs == [
+        (2024, Decimal("1174085.033")),
+        (2025, Decimal("1161297.7021041")),
+    ]
+
+
+def test_import_row_year_numeric_pairs_ees_gaes_sparse_trailing_years_right_align():
+    """Разреженные значения только у правого края сетки → последние N лет."""
+    year_cols = {ci: 2016 + (ci - 3) for ci in range(3, 19)}
+    row = [None] * 19
+    row[2] = "ЕЭС России"
+    row[17] = Decimal("1174085.033")
+    row[18] = Decimal("1161297.7021041")
+    pairs = service._import_row_year_numeric_pairs(
+        tuple(row),
+        year_cols,
+        label="ЕЭС России",
+        row_variant=service.CODE_WITH_NT_WITH_GAES,
+        variant_column_mode=True,
+    )
+    assert pairs == [
+        (2030, Decimal("1174085.033")),
+        (2031, Decimal("1161297.7021041")),
+    ]

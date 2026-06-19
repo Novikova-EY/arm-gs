@@ -1,0 +1,7 @@
+{# Строка итога по уровню иерархии #}
+<tr class="{{ row_class|default('table-info') }} text-center align-middle" style="font-weight: bold;">
+    <td class="text-start">{{ label }}</td>
+    {% for period_num, period_label in period_columns %}
+    <td>{{ format_transfer_cell(period_totals.get(period_num)) }}</td>
+    {% endfor %}
+</tr>

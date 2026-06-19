@@ -7,6 +7,7 @@ from app.refdata.models.organizations import Department, BusinessUnit  # noqa: F
 # --- Территории ---
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.refdata.models.territories.federal_district_model import FederalDistrict
+from app.refdata.models.territories.foreign_border_country_model import ForeignBorderCountry
 
 # --- Энергосистемы ---
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem

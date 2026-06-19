@@ -98,17 +98,15 @@ def _load_values_by_fd_year(
     version_id: int | None,
     fd_id: int,
 ) -> dict[int, Decimal | None]:
-    q = FederalDistrictPopulationParameter.query.filter(
-        FederalDistrictPopulationParameter.id_federal_district == fd_id,
+    from app.common.services.economics_fd_data_cache import get_fd_year_values
+
+    return get_fd_year_values(
+        "population",
+        version_id=version_id,
+        model=FederalDistrictPopulationParameter,
+        value_attr="population_thousand_persons",
+        fd_id=fd_id,
     )
-    if version_id is not None:
-        q = q.filter(FederalDistrictPopulationParameter.database_version_id == version_id)
-    result: dict[int, Decimal | None] = {}
-    for row in q.all():
-        if row.year_number is None:
-            continue
-        result[int(row.year_number)] = row.population_thousand_persons
-    return result
 
 
 def build_population_page_context(
@@ -120,6 +118,7 @@ def build_population_page_context(
     filter_year_list: list[int],
     coeff_base_year: int,
     summary_include_medium_years: bool,
+    summary_include_long_years: bool,
     fd_filter_ids: frozenset[int],
     has_active_filters: bool,
 ) -> dict[str, Any]:
@@ -162,6 +161,7 @@ def build_population_page_context(
         "end_year": end_year,
         "coeff_base_year": coeff_base_year,
         "summary_include_medium_years": summary_include_medium_years,
+        "summary_include_long_years": summary_include_long_years,
         "lt_ved_year_segments": True,
         "population_rows": rows,
         "federal_district_list": federal_district_list,
@@ -228,6 +228,13 @@ def save_population_from_post(form_data: Any) -> tuple[int, int]:
             database_version_id=version_id,
         )
         updated += 1
+
+    if updated:
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        invalidate_economics_fd_data_cache(version_id, "population")
 
     return updated, skipped
 

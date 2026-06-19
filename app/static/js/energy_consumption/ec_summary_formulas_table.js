@@ -121,6 +121,55 @@
         }
     }
 
+    function syncFiltersToUrl(pageNeed, aggNeed, cellNeed, textNeed) {
+        const params = new URLSearchParams();
+        pageNeed.forEach(function (v) {
+            params.append("page", v);
+        });
+        aggNeed.forEach(function (v) {
+            params.append("aggregation", v);
+        });
+        cellNeed.forEach(function (v) {
+            params.append("cell", v);
+        });
+        if (textNeed) {
+            params.set("q", textNeed);
+        }
+        const qs = params.toString();
+        const url = window.location.pathname + (qs ? "?" + qs : "") + window.location.hash;
+        window.history.replaceState(null, "", url);
+    }
+
+    function restoreFiltersFromUrl(table) {
+        const params = new URLSearchParams(window.location.search);
+        const pages = params.getAll("page");
+        const aggs = params.getAll("aggregation");
+        const cells = params.getAll("cell");
+        const text = params.get("q") || "";
+
+        [
+            { col: "page", values: pages },
+            { col: "aggregation", values: aggs },
+            { col: "cell", values: cells },
+        ].forEach(function (item) {
+            if (!item.values.length) {
+                return;
+            }
+            table
+                .querySelectorAll(
+                    'input.ec-formula-filter-cb[data-ec-filter-col="' + item.col + '"]'
+                )
+                .forEach(function (cb) {
+                    cb.checked = item.values.indexOf(cb.value) >= 0;
+                });
+        });
+
+        const textInput = table.querySelector('.ec-col-filter[data-col="formula_text"]');
+        if (textInput && text) {
+            textInput.value = text;
+        }
+    }
+
     function applyFilters(table, dataRows) {
         const textNeed = (function () {
             const inp = table.querySelector('.ec-col-filter[data-col="formula_text"]');
@@ -165,6 +214,8 @@
         if (counter) {
             counter.textContent = String(visible);
         }
+
+        syncFiltersToUrl(pageNeed, aggNeed, cellNeed, textNeed);
     }
 
     function buildFilterMenu(table, col, values) {
@@ -238,6 +289,8 @@
         columns.forEach(function (col) {
             buildFilterMenu(table, col, Array.from(columnValues[col]));
         });
+
+        restoreFiltersFromUrl(table);
 
         table.addEventListener("click", function (ev) {
             const applyCol = ev.target.closest(".ec-formula-filter-apply-col");
@@ -342,7 +395,10 @@
                 });
                 if (data.ok) {
                     showFlash("Сохранено.", true);
-                    window.location.reload();
+                    window.armGsPageScrollRestore.reload({
+                        table: table,
+                        anchorElement: textarea
+                    });
                 } else {
                     showFlash(data.error || "Ошибка сохранения.", false);
                 }
@@ -354,7 +410,10 @@
                 const data = await postJson(resetUrl, { formula_key: key });
                 if (data.ok) {
                     showFlash("Сброшено.", true);
-                    window.location.reload();
+                    window.armGsPageScrollRestore.reload({
+                        table: table,
+                        anchorElement: textarea
+                    });
                 } else {
                     showFlash(data.error || "Ошибка.", false);
                 }

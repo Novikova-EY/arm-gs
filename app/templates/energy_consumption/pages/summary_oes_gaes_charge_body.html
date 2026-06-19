@@ -418,7 +418,7 @@
                     class="btn btn-primary text-wrap flex-shrink-0"
                     aria-pressed="true"
                     title="Скрыть строки, у которых все показатели пусты или равны нулю">
-                Скрыть пустые строки
+                Пустые строки
             </button>
             {% endif %}
             {% if active_summary in ('oes', 'fo') %}
@@ -970,7 +970,7 @@
                         data-pd-coeff-year-colspan-k="2"
                         data-pd-coeff-year-colspan-mw="1">
                         {{ year }}
-                        <div class="text-wrap power-demand-year-feature-caption" style="word-wrap: break-word; white-space: normal;">
+                        <div class="power-demand-year-feature-caption">
                             {% if year in year_features %}
                             {{ year_features[year] }}
                             {% endif %}
@@ -1036,7 +1036,7 @@
                     <th class="text-center align-middle summary-year-col"
                         {% if pd_ec_max_year_segments %}data-ec-summary-col-year="{{ year }}"{% endif %}>
                         {{ year }}
-                        <div class="text-wrap power-demand-year-feature-caption" style="word-wrap: break-word; white-space: normal;">
+                        <div class="power-demand-year-feature-caption">
                             {% if year in year_features %}
                             {{ year_features[year] }}
                             {% endif %}
@@ -3130,12 +3130,15 @@ if (summaryTable) {
     }
     .summary-year-col {
         min-width: 0;
-        overflow-wrap: anywhere;
+        white-space: nowrap;
+        word-break: normal;
+        overflow-wrap: normal;
     }
     .power-demand-year-feature-caption {
         font-size: 0.95em;
         line-height: 1.25;
         margin-top: 0.2rem;
+        white-space: nowrap;
     }
     .summary-entity-cell {
         font-weight: 700;
@@ -3338,11 +3341,16 @@ if (summaryTable) {
     .summary-hist-cell {
         white-space: normal;
     }
-    .summary-hist-cell,
-    .summary-year-cell {
+    .summary-hist-cell {
         min-width: 0;
         overflow-wrap: anywhere;
         word-break: break-word;
+    }
+    .summary-year-cell {
+        min-width: 0;
+        white-space: nowrap;
+        word-break: normal;
+        overflow-wrap: normal;
     }
     .summary-year-cell.summary-plan-empty {
         min-height: 2.5rem;
@@ -5645,7 +5653,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
             }
-            window.location.reload();
+            window.armGsPageScrollRestore.reload({ table: table, changedInputs: changed });
         } catch (e) {
             alert("Ошибка сети при сохранении.");
             saveBtn.innerHTML = originalHtml;

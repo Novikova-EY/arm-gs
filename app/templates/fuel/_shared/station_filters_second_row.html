@@ -1,8 +1,8 @@
 <!-- Вторая строка фильтров -->
 <div class="col-12 mb-2">
-    <div class="collapse" id="importExportCollapse">
+    <div class="collapse power-demand-import-export-collapse{% if show_ee_generation_import|default(false) or show_ee_transfers_import|default(false) %} mt-2{% endif %}" id="importExportCollapse">
 
-        <div class="d-flex align-items-center w-100 flex-wrap gap-2">
+        <div class="d-flex {% if show_ee_generation_import|default(false) or show_ee_transfers_import|default(false) %}justify-content-between{% else %}align-items-center{% endif %} w-100 flex-wrap gap-2">
 
             <!-- Левая часть (экспорт) -->
             <div class="d-flex gap-2 flex-shrink-0">
@@ -75,6 +75,37 @@
                 <button type="button" id="exportFuelFormulasToExcel" class="btn btn-outline-success" style="white-space: nowrap;">
                     Экспорт в Excel
                 </button>
+                {% elif show_ee_generation_import|default(false) %}
+                <!-- Экспорт (страница «Выработка ЭЭ» — как на /energy_consumption/summary_table/) -->
+                <form method="GET"
+                      action="{{ export_ee_generation_action|default(url_for('energy_balance_bp.export_ee_generation')) }}"
+                      id="exportEeGenerationForm"
+                      class="d-inline m-0">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportEeGenerationBtn"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                            style="white-space: nowrap;">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                    </button>
+                </form>
+                {% elif show_ee_transfers_import|default(false) %}
+                <form method="GET"
+                      action="{{ export_ee_transfers_action|default(url_for('energy_balance_bp.export_ee_transfers')) }}"
+                      id="exportEeTransfersForm"
+                      class="d-inline m-0">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportEeTransfersBtn"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                            style="white-space: nowrap;">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                    </button>
+                </form>
                 {% else %}
                 <!-- Экспорт в Excel (страница groups) -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_groups') }}" id="exportExcelFormFull">
@@ -416,6 +447,86 @@
                             }
                             btn.disabled = true;
                             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_ee_generation_import|default(false) %}
+                <div class="d-inline-flex align-items-center gap-2 flex-shrink-0" id="importEeGenerationWrap">
+                    <form action="{{ import_ee_generation_action|default(url_for('energy_balance_bp.import_ee_generation')) }}"
+                        method="POST" enctype="multipart/form-data"
+                        class="d-inline m-0" id="importEeGenerationForm">
+                        {{ form.csrf_token }}
+                        {% for key, value in request.args.items() %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                        <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importEeGenerationFile" required>
+                        <button type="button"
+                                class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2"
+                                style="white-space: nowrap;"
+                                id="importEeGenerationBtn">
+                            <i class="bi bi-upload"></i> Импорт из Excel
+                        </button>
+                    </form>
+                </div>
+                <script>
+                (function() {
+                    var form = document.getElementById('importEeGenerationForm');
+                    var btn = document.getElementById('importEeGenerationBtn');
+                    var fileInput = document.getElementById('importEeGenerationFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
+                            var prevHtml = btn.innerHTML;
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Импорт…';
+                            btn.dataset.prevHtml = prevHtml;
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_ee_transfers_import|default(false) %}
+                <div class="d-inline-flex align-items-center gap-2 flex-shrink-0" id="importEeTransfersWrap">
+                    <form action="{{ import_ee_transfers_action|default(url_for('energy_balance_bp.import_ee_transfers')) }}"
+                        method="POST" enctype="multipart/form-data"
+                        class="d-inline m-0" id="importEeTransfersForm">
+                        {{ form.csrf_token }}
+                        {% for key, value in request.args.items() %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                        <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importEeTransfersFile" required>
+                        <button type="button"
+                                class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2"
+                                style="white-space: nowrap;"
+                                id="importEeTransfersBtn">
+                            <i class="bi bi-upload"></i> Импорт из Excel
+                        </button>
+                    </form>
+                </div>
+                <script>
+                (function() {
+                    var form = document.getElementById('importEeTransfersForm');
+                    var btn = document.getElementById('importEeTransfersBtn');
+                    var fileInput = document.getElementById('importEeTransfersFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Импорт…';
                         });
                     }
                 })();

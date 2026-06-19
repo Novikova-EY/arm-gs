@@ -33,7 +33,8 @@ from app.generation.models.machine.machine_model import Machine
 from app.generation.models.station.station_gaes_charge_consumption_model import (
     StationGaesChargeConsumption,
 )
-from app.generation.models.station.station_energy_generation_model import (
+from app.energy_balance.models.station_energy_generation_model import (
+    STATION_ENERGY_GENERATION_PERIOD_YEAR,
     StationEnergyGeneration,
 )
 from app.generation.models.station.station_model import Station
@@ -52,7 +53,7 @@ from app.refdata.models.refdata_for_stations.condition_type_model import Conditi
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.generation.services.station_services.station_services import _is_excluded_district
-from config import SCHEMA_GENERATION
+from config import SCHEMA_ENERGY_BALANCE, SCHEMA_GENERATION
 
 logger = logging.getLogger(__name__)
 
@@ -379,6 +380,7 @@ def _sync_station_year_table_all_versions(
     table_label: str,
     versions_touched_set: set[Optional[int]],
     change_log: list[str],
+    month_number: int | None = None,
 ) -> int:
     """
     Копирует помесячные/погодовые значения на все станции с тем же external_code.
@@ -395,6 +397,8 @@ def _sync_station_year_table_all_versions(
                 model_cls.id_station == target_station.id,
                 model_cls.year_number.in_(list(year_values.keys())),
             )
+            if month_number is not None and hasattr(model_cls, "month_number"):
+                q = q.filter(model_cls.month_number == month_number)
             q = filter_by_explicit_db_version(q, model_cls, version_id)
             by_year = {r.year_number: r for r in q.all()}
             for year, new_val in year_values.items():
@@ -403,10 +407,13 @@ def _sync_station_year_table_all_versions(
                 if is_same_decimal(to_decimal(old_val), to_decimal(new_val)):
                     continue
                 if rec is None:
-                    rec = model_cls(
-                        id_station=target_station.id,
-                        year_number=year,
-                    )
+                    create_kwargs = {
+                        "id_station": target_station.id,
+                        "year_number": year,
+                    }
+                    if month_number is not None and hasattr(model_cls, "month_number"):
+                        create_kwargs["month_number"] = month_number
+                    rec = model_cls(**create_kwargs)
                     setattr(rec, value_attr, new_val)
                     set_db_version_on_create(rec)
                     if version_id is not None:
@@ -560,12 +567,12 @@ def update_station_machines_all_versions_from_form(
         has_general_info_form = False
 
     if has_energy_form or has_gaes_form:
-        for seq_table in (
-            "gs_gen_station_energy_generations",
-            "gs_gen_station_gaes_charge_consumptions",
+        for seq_schema, seq_table in (
+            (SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations"),
+            (SCHEMA_GENERATION, "gs_gen_station_gaes_charge_consumptions"),
         ):
             try:
-                quick_fix_seq(SCHEMA_GENERATION, seq_table, "id")
+                quick_fix_seq(seq_schema, seq_table, "id")
             except Exception:
                 pass
 
@@ -594,6 +601,7 @@ def update_station_machines_all_versions_from_form(
                 table_label="Выработка электроэнергии",
                 versions_touched_set=versions_touched_set,
                 change_log=station_table_log,
+                month_number=STATION_ENERGY_GENERATION_PERIOD_YEAR,
             )
 
         if has_gaes_form and station_external_code:
@@ -725,12 +733,12 @@ def update_station_machines_all_versions_from_form(
         }
 
     try:
-        for seq_table in (
-            "gs_gen_station_energy_generations",
-            "gs_gen_station_gaes_charge_consumptions",
+        for seq_schema, seq_table in (
+            (SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations"),
+            (SCHEMA_GENERATION, "gs_gen_station_gaes_charge_consumptions"),
         ):
             try:
-                quick_fix_seq(SCHEMA_GENERATION, seq_table, "id")
+                quick_fix_seq(seq_schema, seq_table, "id")
             except Exception:
                 pass
         _commit_with_retry()

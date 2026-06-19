@@ -118,22 +118,28 @@ def hub():
     return render_template("power_demand/power_demand_start.html")
 
 
-@power_demand_bp.route("/summary_formulas/")
+@power_demand_bp.route("/formulas/")
 @login_required
-def power_demand_summary_formulas():
+def power_demand_formulas():
     if not getattr(current_user, "has_admin", False):
         flash("Недостаточно прав для редактирования текстов формул.", "danger")
         return redirect(url_for("power_demand_bp.hub"))
     return render_template(
         "power_demand/power_demand_summary_formulas.html",
-        page_title="Тексты формул сводок максимумов потребления мощности",
+        page_title="Тексты формул для модуля «Нагрузки»",
         formula_rows=list_formulas_for_admin(),
     )
 
 
-@power_demand_bp.route("/summary_formulas/save", methods=["POST"])
+@power_demand_bp.route("/summary_formulas/")
 @login_required
-def power_demand_summary_formulas_save():
+def power_demand_summary_formulas():
+    return redirect(url_for("power_demand_bp.power_demand_formulas", **request.args))
+
+
+@power_demand_bp.route("/formulas/save", methods=["POST"])
+@login_required
+def power_demand_formulas_save():
     if not getattr(current_user, "has_admin", False):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
@@ -149,9 +155,9 @@ def power_demand_summary_formulas_save():
     return jsonify(ok=True)
 
 
-@power_demand_bp.route("/summary_formulas/reset", methods=["POST"])
+@power_demand_bp.route("/formulas/reset", methods=["POST"])
 @login_required
-def power_demand_summary_formulas_reset():
+def power_demand_formulas_reset():
     if not getattr(current_user, "has_admin", False):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
@@ -161,6 +167,18 @@ def power_demand_summary_formulas_reset():
     reset_formula_text_override(key)
     db.session.commit()
     return jsonify(ok=True)
+
+
+@power_demand_bp.route("/summary_formulas/save", methods=["POST"])
+@login_required
+def power_demand_summary_formulas_save():
+    return power_demand_formulas_save()
+
+
+@power_demand_bp.route("/summary_formulas/reset", methods=["POST"])
+@login_required
+def power_demand_summary_formulas_reset():
+    return power_demand_formulas_reset()
 
 
 # --- Россия (без родителя) ---
@@ -350,7 +368,7 @@ def ees_russia_with_nt_demand():
 @power_demand_bp.route("/ees/", methods=["GET", "POST"])
 @login_required
 def ees_demand():
-    """ЭЭС — отдельная таблица параметров нагрузки (без FK на справочник)."""
+    """ЭЭС России без НТ — отдельная таблица параметров нагрузки (без FK на справочник)."""
     form = _csrf()
     if request.method == "POST":
         if not form.validate_on_submit():
@@ -363,19 +381,71 @@ def ees_demand():
                 None,
                 request.form,
                 require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITHOUT_NT,
             )
             flash("Данные сохранены.", "success")
         except Exception as e:
             flash(f"Ошибка сохранения: {e}", "danger")
         return _redirect_preserving_rounding("power_demand_bp.ees_demand")
 
-    rows = dps.get_demand_rows(EesDemandParameter, None, None)
+    rows = dps.get_demand_rows(
+        EesDemandParameter,
+        None,
+        None,
+        perimeter_variant_code=CODE_WITHOUT_NT,
+    )
     rd = _parse_power_demand_rounding_digits()
     return render_template(
         "power_demand/power_demand_edit.html",
         form=form,
-        page_title="Нагрузки: ЭЭС",
-        parent_label="ЭЭС",
+        page_title="Нагрузки: ЭЭС России без НТ",
+        parent_label="ЭЭС России без НТ",
+        back_url=url_for("power_demand_bp.hub"),
+        rows=rows,
+        fk_column=None,
+        parent_id=None,
+        format_dt=dps.format_peak_datetime,
+        year_options=dps.year_dropdown_numbers(rows),
+        show_combined_oess_eess=False,
+        rounding_digits=rd,
+    )
+
+
+@power_demand_bp.route("/ees_with_nt/", methods=["GET", "POST"])
+@login_required
+def ees_with_nt_demand():
+    """ЭЭС России с НТ — те же поля, что у /ees/, вариант периметра with_nt."""
+    form = _csrf()
+    if request.method == "POST":
+        if not form.validate_on_submit():
+            flash("Ошибка CSRF.", "danger")
+            return redirect(request.url)
+        try:
+            dps.save_demand_rows_from_post(
+                EesDemandParameter,
+                None,
+                None,
+                request.form,
+                require_combined_oe_ees=False,
+                perimeter_variant_code=CODE_WITH_NT,
+            )
+            flash("Данные сохранены.", "success")
+        except Exception as e:
+            flash(f"Ошибка сохранения: {e}", "danger")
+        return _redirect_preserving_rounding("power_demand_bp.ees_with_nt_demand")
+
+    rows = dps.get_demand_rows(
+        EesDemandParameter,
+        None,
+        None,
+        perimeter_variant_code=CODE_WITH_NT,
+    )
+    rd = _parse_power_demand_rounding_digits()
+    return render_template(
+        "power_demand/power_demand_edit.html",
+        form=form,
+        page_title="Нагрузки: ЭЭС России с НТ",
+        parent_label="ЭЭС России с НТ",
         back_url=url_for("power_demand_bp.hub"),
         rows=rows,
         fk_column=None,
@@ -624,6 +694,7 @@ def energy_unit_demand(parent_id: int):
         "Нагрузки: энергорайон",
         p.name,
         "power_demand_bp.energy_unit_list",
+        show_combined_on_es=True,
     )
 
 
@@ -709,15 +780,35 @@ def synchronous_area_list():
 @login_required
 def synchronous_area_demand(parent_id: int):
     p = SynchronousArea.query.get_or_404(parent_id)
+    is_first = (p.name or "").strip().casefold().startswith("первая синхронная зона")
+    suffix = " без НТ" if is_first else ""
     return _demand_detail(
         SynchronousAreaDemandParameter,
         "id_synchronous_area",
         SynchronousArea,
         parent_id,
-        "Нагрузки: синхронная зона",
-        p.name,
+        f"Нагрузки: {p.name}{suffix}",
+        f"{p.name}{suffix}",
         "power_demand_bp.synchronous_area_list",
         show_combined_oess_eess=False,
+        perimeter_variant_code=CODE_WITHOUT_NT,
+    )
+
+
+@power_demand_bp.route("/synchronous_areas/<int:parent_id>/with_nt/", methods=["GET", "POST"])
+@login_required
+def synchronous_area_with_nt_demand(parent_id: int):
+    p = SynchronousArea.query.get_or_404(parent_id)
+    return _demand_detail(
+        SynchronousAreaDemandParameter,
+        "id_synchronous_area",
+        SynchronousArea,
+        parent_id,
+        f"Нагрузки: {p.name} с НТ",
+        f"{p.name} с НТ",
+        "power_demand_bp.synchronous_area_list",
+        show_combined_oess_eess=False,
+        perimeter_variant_code=CODE_WITH_NT,
     )
 
 

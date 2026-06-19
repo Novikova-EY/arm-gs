@@ -8,6 +8,9 @@ from app.energy_consumption.pages._summary_page_transforms import (
     finalize_oes_max_summary_tites_formula,
 )
 from app.energy_consumption.services.energy_consumption_summary_services import (
+    _mark_summary_table_collapsed_nt_gaes_variant_row_rules,
+    _mark_summary_table_expanded_nt_gaes_variant_row_rules,
+    _mark_summary_table_nt_on_gaes_off_variant_row_rules,
     build_oes_summary_context,
     filter_oes_max_summary_page_hidden_rows,
     get_demand_summary_filter_refdata,
@@ -46,12 +49,16 @@ def build_summary_oes_page_context(
         include_oes_summary_table_sync_sa_ees_verification=False,
         expand_south_ues_perimeter_variants=True,
         summary_table_top_order=True,
+        ees_unified_use_ees_russia_gaes_variants=True,
     )
     context = apply_max_summary_page_variant_behaviour(context)
     context["page_title"] = "Потребление ЭЭ по ЭС"
     context["summary_rows"] = filter_oes_max_summary_page_hidden_rows(
         list(context.get("summary_rows") or [])
     )
+    _mark_summary_table_collapsed_nt_gaes_variant_row_rules(context["summary_rows"])
+    _mark_summary_table_expanded_nt_gaes_variant_row_rules(context["summary_rows"])
+    _mark_summary_table_nt_on_gaes_off_variant_row_rules(context["summary_rows"])
     context = finalize_oes_max_summary_tites_formula(context)
     context["summary_variant_toggle_default_off"] = False
     context.update(get_demand_summary_filter_refdata())

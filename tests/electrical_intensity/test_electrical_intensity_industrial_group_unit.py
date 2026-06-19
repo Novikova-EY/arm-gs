@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Юнит-тесты блока «Промышленное производство» на странице электроёмкости (ФО)."""
 
 from __future__ import annotations
@@ -7,10 +7,10 @@ from decimal import Decimal
 
 import pytest
 
-from app.energy_consumption.long_term_consumption.services import (
+from app.energy_consumption.electrical_intensity.services import (
     electrical_intensity_services as eis,
 )
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
     INDUSTRIAL_GROUP_SECTION_LABEL,
     ROW_KIND_INTENSITY,
 )

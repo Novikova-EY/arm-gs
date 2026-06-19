@@ -5,6 +5,7 @@ refdata_bp = Blueprint('refdata_bp', __name__)
 from .refdata_routes import *
 from .territories.federal_district_routes import *
 from .territories.regional_district_routes import *
+from .territories.foreign_border_country_routes import *
 from .energy_systems.union_energy_system_routes import *
 from .energy_systems.regional_energy_system_routes import *
 from .energy_systems.energy_area_routes import *

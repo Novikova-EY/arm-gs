@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ page_title | default('Электростанции Российской Федерации') }}{% endblock %}
+{% block title %}{{ page_title | default('Электростанции РФ') }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -21,8 +21,7 @@
 </div>
 
 <div class="container-fluid mt-2">
-    {# Скроллим весь блок страницы: при прокрутке скрывается все над шапкой таблицы #}
-    <div class="table-responsive" id="stationsTableContainer">
+    <div class="page-table-scroll">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for(_list_endpoint) }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
@@ -50,10 +49,26 @@
         </div>
     </div>
 
-    <!-- Фильтры -->
-    {% include 'generation/stations/station_filters.html' %}
+    {# Липкая панель: кнопки, фильтры, импорт/экспорт, строка годов — над шапкой таблицы (как на power_demand/summary/oes) #}
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+        {% include 'generation/stations/station_filters.html' %}
+    </div>
+
+    <style>
+    .page-table-scroll #stationsTableContainer table thead tr:nth-child(1) th {
+        top: var(--pd-summary-controls-sticky-height, 0px);
+    }
+    .page-table-scroll #stationsTableContainer table thead tr:nth-child(2) th {
+        top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
+    }
+    .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-filters-collapse,
+    .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
+        overflow: visible !important;
+    }
+    </style>
 
     <!-- Таблица с данными -->
+    <div class="table-responsive" id="stationsTableContainer">
         <table class="table table-hover table-striped table-bordered table-responsive">
 
             <!-- Шапка таблицы с данными -->
@@ -766,14 +781,15 @@
             </tbody>
             
         </table>
+    </div>
 
-        <!-- Пагинация (скрывается при прокрутке вниз) -->
+        <!-- Пагинация -->
         <div class="mt-2">
             {% if per_page is not none %}
                 {% include 'generation/includes/pagination_station.html' %}
             {% endif %}
         </div>
-    </div>
+    </div><!-- /.page-table-scroll -->
 </div>
 {% endif %}
 

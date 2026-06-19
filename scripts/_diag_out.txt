@@ -1,0 +1,36 @@
+﻿
+============================================================
+15 size=362265
+charts 82 chart rels 82 drawings ['xl/drawings/drawing1.xml']
+theme accents [('1', '4F81BD'), ('2', 'C0504D'), ('3', '9BBB59'), ('4', '8064A2'), ('5', '4BACC6'), ('6', 'F79646')]
+chart1 len 2268 start <chartSpace xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns="http://schemas.openxmlformats.org/drawingml/2006/chart"><roundedCorners val="0" /><style val="2" /><chart><title><tx>
+chart1 rels: <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.microsoft.com/office/2011/relationships/chartStyle" Target="style1.xml"/><Relationship Id="rId2" Type="http://schem
+drawing anchors 0 chart refs 82
+openpyxl sheet 'ЄрсышЎр 1' charts on sheet 82
+  first chart series 2 size 15 7.5
+
+============================================================
+14 size=324774
+charts 82 chart rels 0 drawings ['xl/drawings/drawing1.xml']
+theme accents []
+chart1 len 2037 start <chartSpace xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns="http://schemas.openxmlformats.org/drawingml/2006/chart"><style val="2" /><chart><title><tx><rich><a:bodyPr /><a:p><a:
+drawing anchors 0 chart refs 82
+openpyxl sheet 'ЄрсышЎр 1' charts on sheet 82
+  first chart series 2 size 15 7.5
+
+============================================================
+REF size=921130
+charts 76 chart rels 76 drawings ['xl/drawings/drawing1.xml']
+theme accents [('1', '4F81BD'), ('2', 'C0504D'), ('3', '9BBB59'), ('4', '8064A2'), ('5', '4BACC6'), ('6', 'F79646')]
+chart1 len 17230 start <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+ <c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" 
+chart1 rels: <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId2" Type="http://schemas.microsoft.com/office/2011/relationships/chartColorStyle" Target="colors37.xml"/><Relationship Id="rId1" Type="http
+drawing anchors 76 chart refs 76
+openpyxl sheet 'ЄрсышЎр 1' charts on sheet 76
+  first chart series 2 size 15 7.5
+XML OK: xl/charts/chart1.xml
+XML OK: xl/drawings/drawing1.xml
+XML OK: [Content_Types].xml

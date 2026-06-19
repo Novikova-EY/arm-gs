@@ -26,10 +26,10 @@ class EconomicActivityType(db.Model, AuditMixin, VersionedModelMixin, RefdataUui
     # Порядок отображения
     display_order = db.Column(db.Integer, nullable=True)
 
-    # Вид экономической деятельности
+    # Полное наименование (страницы «Экономики»)
     name = db.Column(db.String(255), nullable=True, index=True)
 
-    # Вид экономической деятельности_2
+    # Краткое наименование (страницы «Электроёмкости»)
     name_2 = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -18,7 +18,8 @@
         <input type="hidden" name="economic_activity_type_filter"   value="{{ economic_activity_type_filter or '' }}">
 
         <div class="mb-3">
-            <label for="name" class="form-label">Вид экономической деятельности</label>
+            <label for="name" class="form-label">Полное наименование</label>
+            <div class="form-text">Отображается на страницах «Экономики».</div>
             {{ form.name(class="form-control", id="name") }}
             {% if form.name.errors %}
                 <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
@@ -26,7 +27,8 @@
         </div>
 
         <div class="mb-3">
-            <label for="name_2" class="form-label">Вид экономической деятельности_2</label>
+            <label for="name_2" class="form-label">Краткое наименование</label>
+            <div class="form-text">Отображается на страницах «Электроёмкости».</div>
             {{ form.name_2(class="form-control", id="name_2") }}
             {% if form.name_2.errors %}
                 <div class="text-danger">{{ form.name_2.errors|join(', ') }}</div>

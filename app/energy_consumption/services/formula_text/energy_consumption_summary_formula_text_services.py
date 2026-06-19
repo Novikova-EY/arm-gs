@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Тексты формул сводок: чтение переопределений и администрирование."""
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def migrate_legacy_electrical_intensity_formula_texts() -> None:
     elif _LEGACY_EI_MIGRATED_DONE:
         return
     try:
-        from app.energy_consumption.long_term_consumption.models.formula_text.electrical_intensity_formula_text_model import (
+        from app.energy_consumption.electrical_intensity.models.formula_text.electrical_intensity_formula_text_model import (
             ElectricalIntensityFormulaText,
         )
 
@@ -154,10 +154,14 @@ def apply_row_formula_text_overrides(summary_rows: list[dict[str, Any]] | None) 
                 row[field] = ec_formula_text(str(key), text)
 
 
-def list_formulas_for_admin(*, page: str | None = None) -> list[dict[str, Any]]:
+def list_formulas_for_admin(
+    *,
+    page: str | None = None,
+    exclude_page: str | None = None,
+) -> list[dict[str, Any]]:
     overrides = get_formula_text_overrides()
     out: list[dict[str, Any]] = []
-    for item in iter_formula_defs(page=page):
+    for item in iter_formula_defs(page=page, exclude_page=exclude_page):
         effective = ec_formula_text(item.key)
         page_lines = list(item.page_label_lines())
         out.append(

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 Диагностическая разметка строки «Характерные точки графика» в Excel.
 
@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_diagnostic_services import (  # noqa: E402
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_diagnostic_services import (  # noqa: E402
     compute_intensity_cell_diagnostics,
 )
 

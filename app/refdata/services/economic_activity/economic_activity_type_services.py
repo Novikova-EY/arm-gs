@@ -558,8 +558,8 @@ def export_economic_activity_type_service(
         data.append({
             "№": idx,
             "Порядок отображения": o.display_order if o.display_order is not None else "",
-            "Наименование": _dash(o.name),
-            "Вид экономической деятельности_2": _dash(o.name_2),
+            "Полное наименование": _dash(o.name),
+            "Краткое наименование": _dash(o.name_2),
         })
 
     log_to_db(

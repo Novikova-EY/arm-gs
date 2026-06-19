@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Юнит-тесты блока «Население» РФ на странице электроёмкости."""
 
 from __future__ import annotations
@@ -6,12 +6,13 @@ from __future__ import annotations
 from decimal import Decimal
 from unittest.mock import patch
 
-from app.energy_consumption.long_term_consumption.services import (
+from app.energy_consumption.electrical_intensity.services import (
     electrical_intensity_services as eis,
 )
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
     POPULATION_SECTION_LABEL,
     POPULATION_SECTION_MARKER,
+    REF_ROW_ACCUM_MONETARY_INCOME,
     REF_ROW_HOUSEHOLD_CONSUMPTION,
     REF_ROW_POPULATION,
     REF_ROW_RF_VED_CONSUMPTION,
@@ -57,6 +58,10 @@ def test_build_population_section_for_rf(app):
         eis,
         "_aggregate_rf_household_and_population_by_year",
         return_value=(household_by_year, population_by_year),
+    ), patch.object(
+        eis,
+        "_federal_districts_for_page",
+        return_value=[],
     ):
         section = eis._build_population_section_for_rf(
             version_id=1,
@@ -64,14 +69,16 @@ def test_build_population_section_for_rf(app):
             display_years=[2020, 2021],
             rounding_digits=1,
             fd_filter_ids=frozenset(),
+            current_year=2020,
         )
 
     assert section["ved_id"] == POPULATION_SECTION_MARKER
     assert section["ved_name"] == POPULATION_SECTION_LABEL
     assert section["has_ei_model_block"] is False
-    assert len(section["reference_rows"]) == 2
+    assert len(section["reference_rows"]) == 3
     assert section["reference_rows"][0]["row_kind"] == REF_ROW_HOUSEHOLD_CONSUMPTION
     assert section["reference_rows"][1]["row_kind"] == REF_ROW_POPULATION
+    assert section["reference_rows"][2]["row_kind"] == REF_ROW_ACCUM_MONETARY_INCOME
     assert section["reference_rows"][0]["cells"][2020] == Decimal("400")
     assert section["reference_rows"][1]["cells"][2020] == Decimal("1000")
 
@@ -112,7 +119,7 @@ def test_rf_summary_includes_household_from_fd_aggregate(app):
     ), patch.object(
         eis,
         "_aggregate_fd_maps_for_rf",
-        return_value=({}, product_by_ved, {}, None),
+        return_value=({}, product_by_ved, {}, None, {}, {}, None),
     ), patch.object(
         eis,
         "_load_rf_gaes_charge_cells",
@@ -133,6 +140,7 @@ def test_rf_summary_includes_household_from_fd_aggregate(app):
             rounding_digits=1,
             coeff_base_year=2020,
             fd_filter_ids=frozenset(),
+            current_year=2020,
         )
 
     assert summary is not None
@@ -147,7 +155,7 @@ def test_rf_ved_sections_skip_household_ved(app):
     with app.app_context(), patch.object(
         eis,
         "_aggregate_fd_maps_for_rf",
-        return_value=({}, {}, {}, None),
+        return_value=({}, {}, {}, None, {}, {}, None),
     ), patch.object(
         eis,
         "_resolve_price_year_for_rf_labels",

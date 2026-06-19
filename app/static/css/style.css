@@ -217,6 +217,28 @@ tfoot {
     z-index: 1052;
 }
 
+/* Как на /generation/stations/station_list: свёрнутая строка «Импорт/Экспорт» не занимает место в потоке */
+.page-table-scroll .pd-ec-summary-sticky-stack > .col-12:has(> #importExportCollapse:not(.show)) {
+    display: none;
+}
+
+/* Как station_list: 8px от последней строки фильтров до шапки таблицы (компенсация border-bottom панели) */
+.page-table-scroll .pd-ec-summary-sticky-stack.border-bottom > .col-12.mb-2:last-child {
+    margin-bottom: calc(0.5rem - var(--bs-border-width, 1px)) !important;
+}
+
+/* Выпадающие фильтры/Select2 не обрезать и не наезжать на строку годов */
+.page-table-scroll .pd-ec-summary-sticky-stack .power-demand-filters-collapse,
+.page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
+    overflow: visible !important;
+}
+
+/* До инициализации dropdown/Select2 не показывать развёрнутый <select multiple> */
+.page-table-scroll #filtersCollapse select.form-select[multiple]:not(.select2-hidden-accessible):not(.d-none) {
+    height: calc(1.5em + 0.75rem + 2px);
+    overflow: hidden;
+}
+
 /* Журнал изменений сводки нагрузок: без липкой шапки, прокрутка только у .page-table-scroll */
 .page-table-scroll #pd-summary-logs-table thead th {
     position: static;

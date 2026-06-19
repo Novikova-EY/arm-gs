@@ -1,0 +1,9 @@
+﻿REF accents [('1', '4F81BD'), ('2', 'C0504D'), ('3', '9BBB59'), ('4', '8064A2'), ('5', '4BACC6'), ('6', 'F79646')]
+REF chart1 rels:
+ <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId2" Type="http://schemas.microsoft.com/office/2011/relationships/chartColorStyle" Target="colors1.xml"/><Relationship Id="rId1" Type="http://schemas.microsoft.com/office/2011/relationships/chartStyle" Target="style1.xml"/></Relationships>
+REF xl/charts/style1.xml len 9946
+REF xl/charts/colors1.xml len 878
+EXP accents []
+EXP no chart1 rels

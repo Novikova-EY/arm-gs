@@ -327,7 +327,7 @@
                     class="btn btn-primary text-wrap flex-shrink-0"
                     aria-pressed="true"
                     title="Скрыть энергосистемы, у которых все показатели пусты или равны нулю">
-                Скрыть пустые строки
+                Пустые строки
             </button>
             {% endif %}
             {% if summary_route_variant == 'coeff' %}
@@ -358,7 +358,7 @@
                     class="btn btn-primary text-wrap flex-shrink-0"
                     aria-pressed="true"
                     title="Скрыть энергосистемы, у которых все показатели пусты или равны нулю">
-                Скрыть пустые строки
+                Пустые строки
             </button>
             {% endif %}
             {% endif %}
@@ -4590,9 +4590,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
             }
-            window.location.reload();
-        } catch (e) {
-            alert("Ошибка сети при сохранении.");
+            window.armGsPageScrollRestore.reload({ table: table, changedInputs: changed });
             saveBtn.innerHTML = originalHtml;
             saveBtn.disabled = false;
         }

@@ -2,8 +2,7 @@
 {% if current_user.is_authenticated %}
 {% set energy_consumption_gaes_charge_only_page = energy_consumption_gaes_charge_only_page | default(false) %}
 {% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
-{# TODO: временно скрыт; вернуть: current_user.is_authenticated and current_user.has_admin #}
-{% set show_perimeter_variant_column = false %}
+{% set show_perimeter_variant_column = current_user.is_authenticated and current_user.has_admin %}
 {% set summary_route_variant = 'max' %}
 {% set show_hist_col = false %}
 {% set pd_readonly_parameter_keys = ('energy_consumption_yoy_growth_pct', 'energy_consumption_sipr_abs_growth_mln', 'energy_consumption_sipr_yoy_growth_pct') %}
@@ -419,7 +418,7 @@
                     class="btn btn-primary text-wrap flex-shrink-0"
                     aria-pressed="true"
                     title="Скрыть строки, у которых все показатели пусты или равны нулю">
-                Скрыть пустые строки
+                Пустые строки
             </button>
             {% endif %}
             {% if active_summary in ('oes', 'fo', 'ez') %}
@@ -1001,7 +1000,7 @@
                 {% else %}
                 <tr class="table-success">
                     {% if show_perimeter_variant_column %}
-                    <th class="text-center align-middle summary-perimeter-variant-col text-wrap">Вариант<br>периметра</th>
+                    <th class="text-center align-middle summary-perimeter-variant-col text-wrap">Варианты<br>периметра</th>
                     {% endif %}
                     <th class="text-center align-middle summary-entity-col">Энергосистема</th>
                     <th class="text-center align-middle summary-parameter-col">
@@ -1166,6 +1165,7 @@
                                 {% if row.get('pd_ec_formula_source_pvc') is not none %}data-formula-source-pvc="{{ row.pd_ec_formula_source_pvc or '' }}"{% endif %}
                                 {% if row.get('pd_ec_formula_persist_context') %}data-formula-persist-context='{{ row.pd_ec_formula_persist_context | tojson }}'{% endif %}
                                 title="{% if row.get('pd_ec_formula_derived_row') %}Расчётная строка: значения на экране по формуле; выбранный вариант — под каким кодом хранить/читать данные в БД{% else %}Вариант периметра для записи и чтения данных этого блока в БД{% endif %}">
+                            <option value="" {% if not row.perimeter_variant_code %}selected{% endif %}>не указано</option>
                             {% for opt in row.perimeter_variant_options|default(perimeter_variant_options) %}
                             <option value="{{ opt.code }}" {% if (row.perimeter_variant_code or '') == opt.code %}selected{% endif %}>{{ opt.label }}</option>
                             {% endfor %}
@@ -1173,7 +1173,7 @@
                         <span class="pd-ec-perimeter-variant-select-label" aria-hidden="true"></span>
                         </div>
                         {% else %}
-                        <span class="text-wrap pd-ec-perimeter-variant-display"{% if row.get('pd_ec_formula_derived_row') %} title="Расчётная строка — вариант задаётся в выпадающем списке у блока «без заряда ГАЭС»"{% endif %}>{{ _pd_ec_pv_label or '—' }}</span>
+                        <span class="text-wrap pd-ec-perimeter-variant-display"{% if row.get('pd_ec_formula_derived_row') %} title="Расчётная строка — вариант задаётся в выпадающем списке у блока «без заряда ГАЭС»"{% endif %}>{{ _pd_ec_pv_label or 'не указано' }}</span>
                         {% endif %}
                     </td>
                     {% endif %}
@@ -5669,6 +5669,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 };
                 if (blockVariantUrl) {
                     vPayload.block_kind = blockKind;
+                    vPayload.from_variant_code = sel.getAttribute("data-initial") || null;
                 } else {
                     vPayload.from_variant_code = sel.getAttribute("data-initial") || null;
                     vPayload.to_variant_code = sel.value || null;
@@ -5809,7 +5810,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     return;
                 }
             }
-            window.location.reload();
+            window.armGsPageScrollRestore.reload({ table: table, changedInputs: changed });
         } catch (e) {
             alert("Ошибка сети при сохранении.");
             saveBtn.innerHTML = originalHtml;

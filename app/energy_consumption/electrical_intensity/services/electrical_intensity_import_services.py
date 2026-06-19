@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Импорт электроёмкости из Excel."""
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from openpyxl import load_workbook
 
 from app.common.services.database_version_services import get_current_version
 from app.extensions import db
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
     EI_MODEL_ROW_KINDS,
     REF_ROW_LABEL_BY_KIND,
     RUSSIA_TERRITORY_LABELS,
@@ -20,7 +20,7 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
     ROW_KINDS,
     ROW_LABEL_BY_KIND,
 )
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_services import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_services import (
     _ei_row_kinds_for_ved,
     _is_total_consumption_ved,
     _refdata_ved_ids,
@@ -29,10 +29,10 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
 from app.refdata.models.economic_activity.economic_activity_type_model import (
     EconomicActivityType,
 )
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_logging import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_logging import (
     log_electrical_intensity_excel_import,
 )
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_services import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_services import (
     _federal_districts_for_page,
     _get_or_create_fd_coef,
     _get_or_create_fd_year_row,
@@ -85,8 +85,9 @@ def _parse_cell_value(cell_value: Any) -> Decimal | None:
 def _build_ved_lookup(version_id: int | None) -> dict[str, int]:
     lookup: dict[str, int] = {}
     for ved in _refdata_ved_types_for_version(version_id):
-        if ved.name:
-            lookup[_normalize_label(ved.name)] = ved.id
+        for candidate in (ved.name, getattr(ved, "name_2", None)):
+            if candidate:
+                lookup[_normalize_label(candidate)] = ved.id
     return lookup
 
 
@@ -290,4 +291,16 @@ def import_electrical_intensity_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
 
     stats["territories"] = len(territories_seen)
     log_electrical_intensity_excel_import(user, stats, database_version_id=version_id)
+    if stats["cells_written"]:
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        invalidate_economics_fd_data_cache(
+            version_id,
+            "ei_year",
+            "ei_coef",
+            "pop_ei_year",
+            "pop_ei_coef",
+        )
     return stats

@@ -140,9 +140,12 @@
                     <a href="{{ url_for('economics_bp.population') }}" class="btn btn-outline-danger">Сбросить</a>
                 </form>
                 {% if lt_ved_year_segments %}
+                {% set lt_ved_seg = lt_ved_year_seg_state if lt_ved_year_seg_state is defined else {'mode': 'segments', 'reporting': true, 'medium': false, 'long': false} %}
+                {% set lt_ved_seg_on = lt_ved_seg.mode == 'segments' %}
                 <div id="powerDemandCoeffSegToggles" class="d-flex flex-wrap align-items-center gap-2 flex-grow-1 justify-content-center justify-content-md-start" role="toolbar" aria-label="Периоды по годам">
-                    <button type="button" class="btn btn-warning text-wrap" data-coeff-seg="reporting" aria-pressed="true" title="Показать или скрыть отчетный период">Отчетный период</button>
-                    <button type="button" class="btn btn-outline-warning text-wrap" data-coeff-seg="medium" aria-pressed="false" title="Показать или скрыть среднесрочный период">Среднесрочный период</button>
+                    <button type="button" class="btn {% if lt_ved_seg_on and lt_ved_seg.reporting %}btn-warning{% else %}btn-outline-warning{% endif %} text-wrap" data-coeff-seg="reporting" aria-pressed="{{ 'true' if lt_ved_seg_on and lt_ved_seg.reporting else 'false' }}" title="Показать или скрыть отчетный период">Отчетный период</button>
+                    <button type="button" class="btn {% if lt_ved_seg_on and lt_ved_seg.medium %}btn-warning{% else %}btn-outline-warning{% endif %} text-wrap" data-coeff-seg="medium" aria-pressed="{{ 'true' if lt_ved_seg_on and lt_ved_seg.medium else 'false' }}" title="Показать или скрыть среднесрочный период">Среднесрочный период</button>
+                    <button type="button" class="btn {% if lt_ved_seg_on and lt_ved_seg.long %}btn-warning{% else %}btn-outline-warning{% endif %} text-wrap" data-coeff-seg="long" aria-pressed="{{ 'true' if lt_ved_seg_on and lt_ved_seg.long else 'false' }}" title="Показать или скрыть долгосрочный период (текущий год + 17 лет)">Долгосрочный период</button>
                 </div>
                 {% endif %}
                 <div class="d-inline-flex align-items-center gap-2 ms-auto flex-shrink-0">
@@ -175,8 +178,9 @@
                {% if lt_ved_year_segments %}
                data-ec-max-year-segments="1"
                data-coeff-base-year="{{ coeff_base_year }}"
-               data-coeff-long-loaded="1"
+               data-coeff-long-loaded="{% if summary_include_long_years %}1{% else %}0{% endif %}"
                data-pd-server-medium-loaded="{% if summary_include_medium_years %}1{% else %}0{% endif %}"
+               data-pd-server-long-loaded="{% if summary_include_long_years %}1{% else %}0{% endif %}"
                {% endif %}>
             <colgroup>
                 <col class="summary-col-parameter" style="width: {{ lt_pop_label_col_w }}; min-width: {{ lt_pop_label_col_w }}; max-width: {{ lt_pop_label_col_w }}; box-sizing: border-box;">

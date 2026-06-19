@@ -36,6 +36,12 @@
 
         legendChartGap: 24,
 
+        legendSymbolWidth: 18,
+
+        legendSymbolHeight: 12,
+
+        legendTextGap: "\u2002\u2002",
+
     };
 
     var legendChartGapPlugin = {
@@ -205,6 +211,8 @@
         if (!bases || !bases.length || coefX == null) return [];
 
         var a = coefA;
+
+        if (a == null) a = payload.initial_coef_a_computed;
 
         if (a == null) a = payload.initial_coef_a;
 
@@ -385,7 +393,11 @@
 
                             pointStyle: "circle",
 
-                            boxWidth: 10,
+                            boxWidth: EXCEL.legendSymbolWidth,
+
+                            boxHeight: EXCEL.legendSymbolHeight,
+
+                            pointStyleWidth: EXCEL.legendSymbolWidth,
 
                             padding: 12,
 
@@ -399,7 +411,9 @@
 
                                 defaults.forEach(function (item) {
 
-                                    if (item.text === "Расчетная") {
+                                    item.text = EXCEL.legendTextGap + item.text;
+
+                                    if (item.text.indexOf("Расчетная") >= 0) {
 
                                         item.pointStyle = "line";
 
@@ -409,7 +423,7 @@
 
                                         item.fillStyle = EXCEL.colorCalc;
 
-                                    } else if (item.text === "Фактическая") {
+                                    } else if (item.text.indexOf("Фактическая") >= 0) {
 
                                         item.fillStyle = EXCEL.colorFact;
 
@@ -626,6 +640,24 @@
                     );
 
                 }
+
+                if (coefA == null) {
+
+                    var computedEl = coefRow.querySelector(".lt-ei-coef-a-computed");
+
+                    coefA = parseDecimalInput(
+
+                        computedEl && computedEl.getAttribute("title")
+
+                            ? computedEl.getAttribute("title")
+
+                            : null
+
+                    );
+
+                }
+
+                if (coefA == null) coefA = payload.initial_coef_a_computed;
 
                 if (coefA == null) coefA = payload.initial_coef_a;
 

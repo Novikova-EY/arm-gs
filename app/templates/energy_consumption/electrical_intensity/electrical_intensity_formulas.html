@@ -124,8 +124,8 @@
         <div id="ecFormulaSummaryScrollWrap" class="table-responsive power-demand-summary-scroll" style="visibility: hidden;">
             <table id="ecFormulaSummaryTable"
                    class="table table-bordered table-striped table-hover align-middle power-demand-summary-table fuel-params-edit-table"
-                   data-save-url="{{ url_for('long_term_consumption_bp.electrical_intensity_formulas_page_save') }}"
-                   data-reset-url="{{ url_for('long_term_consumption_bp.electrical_intensity_formulas_page_reset') }}"
+                   data-save-url="{{ url_for('electrical_intensity_root_bp.electrical_intensity_formulas_save') }}"
+                   data-reset-url="{{ url_for('electrical_intensity_root_bp.electrical_intensity_formulas_reset') }}"
                    data-csrf-token="{{ csrf_token }}">
                 <colgroup>
                     <col style="width: 16%; min-width: 10rem;" />

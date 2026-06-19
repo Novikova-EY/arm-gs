@@ -1,0 +1,264 @@
+{% extends 'base.html' %}
+
+{% block title %}Зарубежные страны, имеющие общие границы с РФ{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container mt-2">
+
+    <h1 class="text-center mb-4">Зарубежные страны, имеющие общие границы с РФ</h1>
+
+    <form method="GET"
+        action="{{ url_for('refdata_bp.foreign_border_country_list') }}"
+        class="mb-3"
+        id="filterForm">
+
+        <div class="row g-2 align-items-center">
+            <div class="col-12 col-lg-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap flex-lg-nowrap">
+                    <div class="flex-grow-1" style="min-width: 220px;">
+                        {{ form.foreign_border_country_filter(
+                            class="form-control",
+                            value=foreign_border_country_filter or '',
+                            placeholder="Поиск по странам"
+                        ) }}
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary"
+                            onclick="this.form.page.value=1">
+                            Поиск
+                    </button>
+
+                    <a href="{{ url_for('refdata_bp.foreign_border_country_list') }}"
+                            class="btn btn-outline-danger"
+                            data-no-preloader>
+                            Сбросить
+                    </a>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4 text-lg-end">
+                <a class="btn btn-warning fw-bold"
+                    href="{{ url_for('refdata_bp.export_foreign_border_country',
+                                        foreign_border_country_filter=foreign_border_country_filter or '',
+                                        sort_by=sort_by, sort_dir=sort_dir) }}"
+                    target="_blank" rel="noopener">
+                    Экспорт в Excel
+                </a>
+
+                <select name="per_page"
+                        class="form-select d-inline-block w-auto"
+                        onchange="this.form.page.value=1; this.form.submit()">
+                    <option value="5"  {% if per_page|int == 5 %}selected{% endif %}>5 строк</option>
+                    <option value="10" {% if per_page|int == 10 %}selected{% endif %}>10 строк</option>
+                    <option value="25" {% if per_page|int == 25 %}selected{% endif %}>25 строк</option>
+                    <option value="50" {% if per_page|int == 50 %}selected{% endif %}>50 строк</option>
+                </select>
+            </div>
+        </div>
+
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+    </form>
+
+    {% if current_user.has_admin %}
+        <form method="POST" action="{{ url_for('refdata_bp.foreign_border_country_list') }}">
+            {{ form.csrf_token }}
+
+            <input type="hidden" name="page" value="{{ pagination.page }}">
+            <input type="hidden" name="per_page" value="{{ per_page }}">
+            <input type="hidden" name="sort_by" value="{{ sort_by }}">
+            <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+            <input type="hidden" name="foreign_border_country_filter" value="{{ foreign_border_country_filter }}">
+
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 mb-3">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button type="submit" class="btn btn-outline-primary">Сохранить изменения</button>
+                    {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-success" title="Применить изменения ко всем версиям БД">Сохранить во всех версиях</button>{% endif %}
+                </div>
+
+                <a href="{{ url_for('refdata_bp.add_foreign_border_country',
+                                    page=page,
+                                    per_page=per_page,
+                                    sort_by=sort_by,
+                                    sort_dir=sort_dir,
+                                    foreign_border_country_filter=foreign_border_country_filter,
+                                ) }}" class="btn btn-primary">
+                    Добавить новую запись
+                </a>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered">
+                    <thead class="table-success">
+                        <tr>
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.foreign_border_country_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            foreign_border_country_filter=foreign_border_country_filter,
+                                            sort_by='number',
+                                            sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}"
+                                            class="text-black">
+                                    №
+                                    {% if sort_by == 'number' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.foreign_border_country_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            foreign_border_country_filter=foreign_border_country_filter,
+                                            sort_by='display_order',
+                                            sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}"
+                                            class="text-black">
+                                    Порядок отображения
+                                    {% if sort_by == 'display_order' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('refdata_bp.foreign_border_country_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            foreign_border_country_filter=foreign_border_country_filter,
+                                            sort_by='name',
+                                            sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}"
+                                            class="text-black">
+                                    Наименование страны
+                                    {% if sort_by == 'name' %}
+                                        {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
+                            <th class="text-center align-middle">Удалить</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for country in foreign_border_country_list %}
+                        <tr>
+                            <td class="text-center align-middle">
+                                {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                                <input type="hidden" name="foreign_border_country_ids[]" value="{{ country.id }}">
+                            </td>
+
+                            <td>
+                                <input
+                                    type="number"
+                                    name="display_orders[]"
+                                    class="form-control text-center"
+                                    value="{{ country.display_order if country.display_order is not none else '' }}"
+                                    style="width: 100%;"
+                                    min="0" step="1" placeholder=""
+                                >
+                            </td>
+
+                            <td>
+                                <input type="text" name="foreign_border_country_names[]" class="form-control" value="{{ country.name }}">
+                            </td>
+
+                            <td class="text-center align-middle">
+                                <input type="checkbox" name="foreign_border_country_delete[]" value="{{ country.id }}" class="form-check-input">
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-bordered">
+                <thead class="table-success">
+                    <tr>
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.foreign_border_country_list',
+                                        page=pagination.page,
+                                        per_page=per_page,
+                                        foreign_border_country_filter=foreign_border_country_filter,
+                                        sort_by='number',
+                                        sort_dir='asc' if sort_by != 'number' or sort_dir == 'desc' else 'desc') }}"
+                                        class="text-black">
+                                №
+                                {% if sort_by == 'number' %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.foreign_border_country_list',
+                                        page=pagination.page,
+                                        per_page=per_page,
+                                        foreign_border_country_filter=foreign_border_country_filter,
+                                        sort_by='display_order',
+                                        sort_dir='asc' if sort_by != 'display_order' or sort_dir == 'desc' else 'desc') }}"
+                                        class="text-black">
+                                Порядок отображения
+                                {% if sort_by == 'display_order' %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+
+                        <th class="text-center align-middle">
+                            <a href="{{ url_for('refdata_bp.foreign_border_country_list',
+                                        page=pagination.page,
+                                        per_page=per_page,
+                                        foreign_border_country_filter=foreign_border_country_filter,
+                                        sort_by='name',
+                                        sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}"
+                                        class="text-black">
+                                Наименование страны
+                                {% if sort_by == 'name' %}
+                                    {% if sort_dir == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for country in foreign_border_country_list %}
+                    <tr class="align-middle">
+                        <td class="text-center">
+                            {{ loop.index + (pagination.page - 1) * pagination.per_page }}
+                        </td>
+                        <td class="text-center">
+                            {{ country.display_order if country.display_order is not none else '' }}
+                        </td>
+                        <td>{{ country.name }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    <div>
+        {% include 'refdata/territories/foreign_border_country/foreign_border_country_pagination.html' %}
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+{% endif %}
+{% endblock %}

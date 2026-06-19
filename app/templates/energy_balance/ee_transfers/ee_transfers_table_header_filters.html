@@ -1,0 +1,174 @@
+<!-- Энергосистема -->
+
+<th class="text-center align-middle ee-year-th-with-feature" style="min-width: 280px;">
+
+    <span class="d-inline-flex align-items-center justify-content-center gap-1">
+
+        Энергосистема
+
+        <span class="dropdown d-inline-block">
+
+            <button class="btn dropdown-toggle filter-button ee-transfers-to-filter-btn" type="button"
+
+                    data-bs-toggle="dropdown" data-bs-auto-close="outside"
+
+                    aria-label="Фильтр по энергосистеме">
+
+                {% if transfer_to_res_filter or transfer_to_country_filter or transfer_to_rd_filter or transfer_to_energy_unit_filter %}
+
+                <i class="bi bi-funnel-fill text-warning"></i>
+
+                {% endif %}
+
+            </button>
+
+            <ul class="dropdown-menu w-100 filter-dropdown-menu" style="max-height: 300px; overflow-y: auto;">
+
+                <li class="dropdown-header">РЭС</li>
+
+                {% for res in regional_energy_system_list if res.name|lower == 'не указано' %}
+
+                    <li>
+
+                        <label class="dropdown-item">
+
+                            <input type="checkbox" name="transfer_to_res_filter"
+
+                                value="{{ res.id }}"
+
+                                {% if res.id|string in transfer_to_res_filter|map('string') %}checked{% endif %}>
+
+                            {{ res.name }}
+
+                        </label>
+
+                    </li>
+
+                {% endfor %}
+
+                {% for res in regional_energy_system_list if res.name|lower != 'не указано' %}
+
+                    <li>
+
+                        <label class="dropdown-item">
+
+                            <input type="checkbox" name="transfer_to_res_filter"
+
+                                value="{{ res.id }}"
+
+                                {% if res.id|string in transfer_to_res_filter|map('string') %}checked{% endif %}>
+
+                            {{ res.name }}
+
+                        </label>
+
+                    </li>
+
+                {% endfor %}
+
+                {% if transfer_regional_district_list %}
+
+                <li class="dropdown-header">Субъекты РФ</li>
+
+                {% for rd in transfer_regional_district_list %}
+
+                    <li>
+
+                        <label class="dropdown-item">
+
+                            <input type="checkbox" name="transfer_to_rd_filter"
+
+                                value="{{ rd.id }}"
+
+                                {% if rd.id|string in transfer_to_rd_filter|map('string') %}checked{% endif %}>
+
+                            {{ rd.name }}
+
+                        </label>
+
+                    </li>
+
+                {% endfor %}
+
+                {% endif %}
+
+                {% if transfer_energy_unit_list %}
+
+                <li class="dropdown-header">Энергорайоны</li>
+
+                {% for eu in transfer_energy_unit_list %}
+
+                    <li>
+
+                        <label class="dropdown-item">
+
+                            <input type="checkbox" name="transfer_to_energy_unit_filter"
+
+                                value="{{ eu.id }}"
+
+                                {% if eu.id|string in transfer_to_energy_unit_filter|map('string') %}checked{% endif %}>
+
+                            {{ eu.name }}
+
+                        </label>
+
+                    </li>
+
+                {% endfor %}
+
+                {% endif %}
+
+                {% if foreign_border_country_list %}
+
+                <li class="dropdown-header">Зарубежные страны</li>
+
+                {% for country in foreign_border_country_list %}
+
+                    <li>
+
+                        <label class="dropdown-item">
+
+                            <input type="checkbox" name="transfer_to_country_filter"
+
+                                value="{{ country.id }}"
+
+                                {% if country.id|string in transfer_to_country_filter|map('string') %}checked{% endif %}>
+
+                            {{ country.name }}
+
+                        </label>
+
+                    </li>
+
+                {% endfor %}
+
+                {% endif %}
+
+            </ul>
+
+        </span>
+
+        {% if transfer_to_res_filter or transfer_to_country_filter or transfer_to_rd_filter or transfer_to_energy_unit_filter %}
+
+        <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+
+                type="button"
+
+                data-filter-names="transfer_to_res_filter,transfer_to_country_filter,transfer_to_rd_filter,transfer_to_energy_unit_filter"
+
+                title="Сбросить фильтр"
+
+                style="padding: 2px 6px; line-height: 1;">
+
+            <i class="bi bi-x-lg"></i>
+
+        </button>
+
+        {% endif %}
+
+    </span>
+
+    <div class="ee-year-feature-caption">("-" - выдача, "+" - прием)</div>
+
+</th>
+

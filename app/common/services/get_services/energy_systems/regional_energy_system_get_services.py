@@ -149,6 +149,7 @@ def invalidate_res_lookups_cache() -> None:
     get_res_to_est_id_map.cache_clear()
     get_res_to_rd_ids_map.cache_clear()
     get_res_to_fd_ids_map.cache_clear()
+    get_res_to_synchronous_area_ids_map.cache_clear()
 
 
 def get_res_to_est_id_map() -> Dict[int, int]:
@@ -241,6 +242,36 @@ def get_res_to_fd_ids_map() -> Dict[int, List[int]]:
     
     # Убираем дубликаты
     return {k: list(set(v)) for k, v in acc.items()}
+
+
+@lru_cache(maxsize=1)
+def get_res_to_synchronous_area_ids_map() -> Dict[int, frozenset[int]]:
+    """{РЭС.id: frozenset(СинхроннаяЗона.id, …)} через субъекты РФ (кэшируется)."""
+    current_version = get_current_version()
+    res_to_rd = get_res_to_rd_ids_map()
+
+    rd_to_sa_query = db.session.query(
+        RegionalDistrict.id,
+        RegionalDistrict.id_synchronous_area,
+    )
+    if current_version:
+        rd_to_sa_query = rd_to_sa_query.filter(
+            RegionalDistrict.database_version_id == current_version
+        )
+    rd_to_sa = {
+        int(rd_id): int(sa_id)
+        for rd_id, sa_id in rd_to_sa_query.filter(
+            RegionalDistrict.id_synchronous_area.isnot(None)
+        ).all()
+    }
+
+    acc: Dict[int, set[int]] = defaultdict(set)
+    for res_id, rd_ids in res_to_rd.items():
+        for rd_id in rd_ids:
+            sa_id = rd_to_sa.get(rd_id)
+            if sa_id is not None:
+                acc[int(res_id)].add(sa_id)
+    return {res_id: frozenset(sa_ids) for res_id, sa_ids in acc.items()}
 
 
 def get_regional_energy_system_name(regional_energy_system_ids: Union[str, int, List[int]]) -> str:

@@ -218,30 +218,34 @@ function initializeStationFilters() {
         return (custom && custom.trim()) ? custom.trim() : 'ОЭС';
     }
 
-    // Откладываем инициализацию, чтобы collapse успел отрисоваться
-    setTimeout(() => {
-        const uesPlaceholder = unionEnergySystemPlaceholder();
-        initializeSelect2IfAvailable('#energy_system_type', 'Тип энергосистемы');
-        initializeSelect2IfAvailable('#union_energy_system', uesPlaceholder);
-        initializeSelect2IfAvailable('#regional_energy_system', 'Региональная энергосистема');
-        initializeSelect2IfAvailable('#federal_district', 'Федеральный округ');
-        initializeSelect2IfAvailable('#regional_district', 'Субъект РФ');
-        initializeSelect2IfAvailable('#tes_type_filter', 'Тип ТЭС');
-        // Если Select2 нет — мультиселекты сворачиваем в dropdown с чекбоксами; одиночные — обычный <select>.
-        if (!hasSelect2) {
-            const uesEl = document.querySelector('#union_energy_system');
-            const maybeMulti = (sel, ph) => {
-                const n = document.querySelector(sel);
-                if (n && n.multiple) ensureDropdownMultiSelect(sel, ph);
-            };
-            maybeMulti('#energy_system_type', 'Тип энергосистемы');
-            if (uesEl && uesEl.multiple) ensureDropdownMultiSelect('#union_energy_system', uesPlaceholder);
-            maybeMulti('#regional_energy_system', 'Региональная энергосистема');
-            maybeMulti('#federal_district', 'Федеральный округ');
-            maybeMulti('#regional_district', 'Субъект РФ');
-            maybeMulti('#tes_type_filter', 'Тип ТЭС');
-        }
-    }, 100);
+    const uesPlaceholder = unionEnergySystemPlaceholder();
+    const maybeMulti = (sel, ph) => {
+        const n = document.querySelector(sel);
+        if (n && n.multiple) ensureDropdownMultiSelect(sel, ph);
+    };
+
+    // Без Select2 сворачиваем мультиселекты сразу — иначе развёрнутый список наезжает на строку годов.
+    if (!hasSelect2) {
+        const uesEl = document.querySelector('#union_energy_system');
+        maybeMulti('#energy_system_type', 'Тип энергосистемы');
+        if (uesEl && uesEl.multiple) ensureDropdownMultiSelect('#union_energy_system', uesPlaceholder);
+        maybeMulti('#regional_energy_system', 'Региональная энергосистема');
+        maybeMulti('#federal_district', 'Федеральный округ');
+        maybeMulti('#regional_district', 'Субъект РФ');
+        maybeMulti('#tes_type_filter', 'Тип ТЭС');
+    }
+
+    // Select2 откладываем, чтобы collapse успел отрисоваться
+    if (hasSelect2) {
+        setTimeout(() => {
+            initializeSelect2IfAvailable('#energy_system_type', 'Тип энергосистемы');
+            initializeSelect2IfAvailable('#union_energy_system', uesPlaceholder);
+            initializeSelect2IfAvailable('#regional_energy_system', 'Региональная энергосистема');
+            initializeSelect2IfAvailable('#federal_district', 'Федеральный округ');
+            initializeSelect2IfAvailable('#regional_district', 'Субъект РФ');
+            initializeSelect2IfAvailable('#tes_type_filter', 'Тип ТЭС');
+        }, 100);
+    }
 
     function parseMaybeJSON(value, fallback) {
         if (value == null) return fallback;

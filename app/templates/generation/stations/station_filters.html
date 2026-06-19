@@ -14,6 +14,7 @@
                 🔍 Фильтры / Поиск
             </button>
 
+            {% if not external_code_check_mode %}
             <button id="importExportToggleBtn"
                     class="btn btn-outline-secondary text-dark"
                     type="button"
@@ -23,6 +24,7 @@
                     aria-controls="importExportCollapse">
                 📁 Импорт / Экспорт
             </button>
+            {% endif %}
         </div>
 
         <!-- Центр: Найдено станций -->
@@ -31,6 +33,7 @@
         </div>
 
         <!-- Правая группа ВНУТРИ формы -->
+        {% if not external_code_check_mode %}
         <form method="get" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" id="stationFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
 
             <!-- Скрытые фильтры -->
@@ -69,6 +72,7 @@
                 </select>
             </div>
         </form>
+        {% endif %}
     </div>
 </div>
 
@@ -77,8 +81,10 @@
 <!-- Блок фильтров -->
 {% include 'generation/stations/station_filters_first_row.html' %}
 
+{% if not external_code_check_mode %}
 <!-- Блок импорта/экспорта -->
 {% include 'generation/stations/station_filters_second_row.html' %}
+{% endif %}
 
 <!-- Третья строка фильтров -->
 {% include 'generation/stations/station_filters_third_row.html' %}

@@ -1,4 +1,4 @@
-import importlib
+﻿import importlib
 import os
 import json
 import datetime as dt
@@ -204,9 +204,8 @@ def create_app():
     ConcurrentUpdateMiddleware(app)
     
     # Инициализация автоматических бэкапов по расписанию
-    # ВРЕМЕННО ОТКЛЮЧЕНО из-за отсутствия apscheduler
-    # from app.common.services.scheduled_backup_service import scheduled_backup_service
-    # scheduled_backup_service.init_app(app)
+    from app.common.services.scheduled_backup_service import scheduled_backup_service
+    scheduled_backup_service.init_app(app)
 
 
     # Слушатель для установки search_path — РЕГИСТРИРУЕМ ПОСЛЕ init_app И В КОНТЕКСТЕ
@@ -305,6 +304,7 @@ def create_app():
         importlib.import_module("app.power_demand.models")  # noqa: F401 — без «import app.…», иначе затрём Flask app
         importlib.import_module("app.economics.models")  # noqa: F401 — таблицы «Экономика» (gs_ekp)
         importlib.import_module("app.energy_consumption.models")  # noqa: F401 — таблицы gs_ec
+        importlib.import_module("app.energy_balance.models")  # noqa: F401 — таблицы gs_bem
         importlib.import_module("app.territories.models")  # noqa: F401 — таблицы gs_ter
 
         # Проброс мапперов
@@ -727,8 +727,10 @@ def create_app():
     from app.power_demand.routes import power_demand_bp
     from app.energy_consumption.routes import energy_consumption_bp
     from app.economics.routes import economics_bp
-    from app.energy_consumption.long_term_consumption.routes import long_term_consumption_bp
+    from app.energy_consumption.electrical_intensity.routes import long_term_consumption_bp
+    from app.energy_consumption.electrical_intensity.routes import electrical_intensity_root_bp
     from app.territories.routes import territories_bp
+    from app.energy_balance.routes import energy_balance_bp
     from app.common.perimeter_variant.admin_routes import perimeter_variant_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
@@ -746,8 +748,10 @@ def create_app():
     app.register_blueprint(history_bp, url_prefix="/history")
     app.register_blueprint(power_demand_bp, url_prefix="/power_demand")
     app.register_blueprint(energy_consumption_bp, url_prefix="/energy_consumption")
+    app.register_blueprint(energy_balance_bp, url_prefix="/energy_balance")
     app.register_blueprint(economics_bp, url_prefix="/economics")
     app.register_blueprint(long_term_consumption_bp, url_prefix="/energy_consumption")
+    app.register_blueprint(electrical_intensity_root_bp, url_prefix="/electrical_intensity")
 
     @app.route("/long_term_consumption")
     @app.route("/long_term_consumption/", defaults={"path": ""})
@@ -758,9 +762,12 @@ def create_app():
 
         if path.startswith("electrical_intensity"):
             if path == "electrical_intensity":
-                target = "/energy_consumption/electrical_intensity_fo/"
+                target = "/electrical_intensity/electrical_intensity_fo/"
+            elif path == "electrical_intensity/formulas" or path.startswith("electrical_intensity/formulas/"):
+                rest = path[len("electrical_intensity/formulas") :].lstrip("/")
+                target = "/electrical_intensity/formulas/" + (f"{rest}" if rest else "")
             elif path.startswith("electrical_intensity/"):
-                target = f"/energy_consumption/electrical_intensity_fo/{path[len('electrical_intensity/'):]}"
+                target = f"/electrical_intensity/electrical_intensity_fo/{path[len('electrical_intensity/'):]}"
             else:
                 target = f"/energy_consumption/{path}"
         else:
@@ -774,7 +781,11 @@ def create_app():
         """Электроёмкость перенесена в модуль спроса."""
         from flask import redirect
 
-        base = "/energy_consumption/electrical_intensity_fo"
+        if subpath == "formulas" or subpath.startswith("formulas/"):
+            rest = subpath[len("formulas") :].lstrip("/")
+            target = "/electrical_intensity/formulas/" + (f"{rest}" if rest else "")
+            return redirect(target, code=301)
+        base = "/electrical_intensity/electrical_intensity_fo"
         target = f"{base}/" if not subpath else f"{base}/{subpath}"
         return redirect(target, code=301)
     app.register_blueprint(territories_bp, url_prefix="/territories")

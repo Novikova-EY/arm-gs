@@ -1,0 +1,58 @@
+{# Группа «не указано» — построчно StationEnergyGeneration; группа «ЭСПП» — свод ESPPEnergyGeneration по РЭС #}
+{% if sign_group.merge_station_names %}
+    {% for station_row in sign_group.stations %}
+    <tr class="text-center align-middle">
+        {% if loop.first %}
+        <td class="align-middle" rowspan="{{ sign_group.rowspan }}">{{ sign_group.sign }}</td>
+        {% endif %}
+        <td class="text-start">
+            {% if station_row.station_id %}
+            <a href="{{ url_for('station_bp.station_details', station_id=station_row.station_id, **request.args) }}"
+               class="text-decoration-none">
+                {{ station_row.station_name }}
+            </a>
+            {% else %}
+                {{ station_row.station_name }}
+            {% endif %}
+        </td>
+        <td>{{ station_row.station_type_name }}</td>
+        <td>{{ station_row.tes_types }}</td>
+        <td>{{ station_row.tes_machine_type }}</td>
+        <td>{{ station_row.primary_fuel }}</td>
+        <td>{{ station_row.fuel_so }}</td>
+        {% if loop.first %}
+            {% for period_num, period_label in period_columns %}
+            <td rowspan="{{ sign_group.rowspan }}" class="align-middle">
+                {{ format_generation_cell(sign_group.periods.get(period_num)) }}
+            </td>
+            {% endfor %}
+        {% endif %}
+    </tr>
+    {% endfor %}
+{% else %}
+    {% for station_row in sign_group.stations %}
+    <tr class="text-center align-middle">
+        {% if loop.first %}
+        <td class="align-middle" rowspan="{{ sign_group.rowspan }}"></td>
+        {% endif %}
+        <td class="text-start">
+            {% if station_row.station_id %}
+            <a href="{{ url_for('station_bp.station_details', station_id=station_row.station_id, **request.args) }}"
+               class="text-decoration-none">
+                {{ station_row.station_name }}
+            </a>
+            {% else %}
+                {{ station_row.station_name }}
+            {% endif %}
+        </td>
+        <td>{{ station_row.station_type_name }}</td>
+        <td>{{ station_row.tes_types }}</td>
+        <td>{{ station_row.tes_machine_type }}</td>
+        <td>{{ station_row.primary_fuel }}</td>
+        <td>{{ station_row.fuel_so }}</td>
+        {% for period_num, period_label in period_columns %}
+        <td>{{ format_generation_cell(station_row.periods.get(period_num)) }}</td>
+        {% endfor %}
+    </tr>
+    {% endfor %}
+{% endif %}

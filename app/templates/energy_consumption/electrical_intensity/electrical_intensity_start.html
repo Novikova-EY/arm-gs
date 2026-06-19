@@ -14,7 +14,7 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('long_term_consumption_bp.electrical_intensity') }}" class="btn btn-primary fs-4 w-100 py-4">
+                        <a href="{{ url_for('electrical_intensity_root_bp.electrical_intensity') }}" class="btn btn-success fs-4 w-100 py-4">
                             Электроемкость по ФО
                         </a>
                     </div>
@@ -23,7 +23,9 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Электроемкость по субъектам РФ</a>
+                        <span class="btn btn-success disabled fs-4 w-100 py-4" tabindex="-1" aria-disabled="true" style="pointer-events: none;">
+                            Электроемкость по субъектам РФ
+                        </span>
                     </div>
                 </div>
             </div>
@@ -35,7 +37,7 @@
             <div class="col-12 col-md-8 col-lg-6">
                 <div class="card shadow-sm w-100 border-secondary">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('long_term_consumption_bp.electrical_intensity_formulas_page') }}"
+                        <a href="{{ electrical_intensity_formulas_url }}"
                            class="btn btn-outline-secondary fs-5 w-100 py-3">
                             Текстовое описание для подсказок «i» формул
                         </a>

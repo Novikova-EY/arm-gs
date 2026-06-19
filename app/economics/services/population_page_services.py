@@ -5,81 +5,15 @@ from __future__ import annotations
 
 from flask import request
 
-from app.common.services.get_services.years.years_get_services import (
-    get_filter_end_year,
-    get_filter_start_year,
-    get_ges_tep_current_price_year_number,
-    get_year_numbers_sorted_for_current_db_version,
+from app.economics.services.ved_consumption_page_services import (
+    expand_years_for_period_segments,
+    filter_year_list_for_page,
+    infer_max_year_segment_state,
+    parse_include_long_years,
+    parse_include_medium_years,
+    parse_summary_year_range,
+    summary_period_base_year_n,
 )
-
-
-def filter_year_list_for_page() -> list[int]:
-    nums = get_year_numbers_sorted_for_current_db_version()
-    if nums:
-        return nums
-    return list(range(get_filter_start_year(), get_filter_end_year() + 1))
-
-
-def summary_period_base_year_n() -> int:
-    n = get_ges_tep_current_price_year_number()
-    if n is not None:
-        return int(n)
-    return int(get_filter_end_year())
-
-
-def parse_include_medium_years() -> bool:
-    return str(request.args.get("pd_medium") or "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-
-
-def expand_years_for_period_segments(
-    sy: int, ey: int, n: int, *, include_medium_years: bool
-) -> tuple[int, int]:
-    bounds = filter_year_list_for_page()
-    if not bounds:
-        lo, hi = sy, ey
-    else:
-        lo, hi = bounds[0], bounds[-1]
-    eff_sy = max(lo, min(sy, n - 9))
-    cap_ey = n + 6 if include_medium_years else n
-    eff_ey = min(hi, max(ey, cap_ey))
-    if eff_sy > eff_ey:
-        eff_sy, eff_ey = eff_ey, eff_sy
-    return eff_sy, eff_ey
-
-
-def parse_summary_year_range() -> tuple[int, int]:
-    bounds = filter_year_list_for_page()
-    n = summary_period_base_year_n()
-    default_sy = n - 9
-    default_ey = n
-    if bounds:
-        lo, hi = bounds[0], bounds[-1]
-        default_sy = max(lo, min(default_sy, hi))
-        default_ey = max(lo, min(default_ey, hi))
-        if default_sy > default_ey:
-            default_sy, default_ey = default_ey, default_sy
-    sy_raw = request.args.get("start_year")
-    ey_raw = request.args.get("end_year")
-    try:
-        sy = int(sy_raw) if sy_raw not in (None, "") else default_sy
-    except (TypeError, ValueError):
-        sy = default_sy
-    try:
-        ey = int(ey_raw) if ey_raw not in (None, "") else default_ey
-    except (TypeError, ValueError):
-        ey = default_ey
-    if sy > ey:
-        sy, ey = ey, sy
-    if bounds:
-        lo, hi = bounds[0], bounds[-1]
-        sy = max(lo, min(sy, hi))
-        ey = max(lo, min(ey, hi))
-    return sy, ey
 
 
 def parse_federal_district_filter_ids() -> frozenset[int]:
@@ -96,8 +30,13 @@ def parse_population_page_kwargs(*, rounding_digits: int) -> dict:
     sy, ey = parse_summary_year_range()
     n = summary_period_base_year_n()
     include_medium = parse_include_medium_years()
+    include_long = parse_include_long_years()
     eff_sy, eff_ey = expand_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+        sy,
+        ey,
+        n,
+        include_medium_years=include_medium,
+        include_long_years=include_long,
     )
     year_list = filter_year_list_for_page()
     display_years = [y for y in year_list if eff_sy <= y <= eff_ey]
@@ -114,6 +53,10 @@ def parse_population_page_kwargs(*, rounding_digits: int) -> dict:
         "filter_year_list": year_list,
         "coeff_base_year": n,
         "summary_include_medium_years": include_medium,
+        "summary_include_long_years": include_long,
+        "lt_ved_year_seg_state": infer_max_year_segment_state(
+            sy, ey, n, include_medium, include_long
+        ),
         "fd_filter_ids": fd_ids,
         "has_active_filters": bool(fd_ids),
     }

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Реестр формул для страницы электроёмкости."""
 
 from __future__ import annotations
@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterator
 
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
     EI_CALCULATED_FORMULA_TOOLTIP,
     EI_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
     EI_COEFFICIENT_A_FORMULA_TOOLTIP,
@@ -15,13 +15,16 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
     EI_FD_TOTAL_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
     EI_FD_TOTAL_CONSUMPTION_FORMULA_TOOLTIP,
     EI_FD_TOTAL_NETWORK_LOSSES_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_NETWORK_LOSSES_PLAN_FORMULA_TOOLTIP,
     EI_FD_TOTAL_POWER_STATION_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_POWER_STATION_PLAN_FORMULA_TOOLTIP,
     EI_FD_TOTAL_VED_CONSUMPTION_FORMULA_TOOLTIP,
     EI_FD_TOTAL_VRP_FORMULA_TOOLTIP,
     EI_GRAPH_POINT_FORMULA_TOOLTIP,
     EI_INDUSTRIAL_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
     EI_INDUSTRIAL_CONSUMPTION_FORMULA_TOOLTIP,
     EI_INDUSTRIAL_PRODUCT_OUTPUT_FORMULA_TOOLTIP,
+    EI_VED_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
     EI_INTENSITY_FORMULA_TOOLTIP,
     EI_POP_CALCULATED_FORMULA_TOOLTIP,
     EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
@@ -32,6 +35,7 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
     EI_POP_PER_CAPITA_FORMULA_TOOLTIP,
     EI_POP_REF_ACCUM_MONETARY_INCOME_FORMULA_TOOLTIP,
     EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_POP_REF_HOUSEHOLD_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
     EI_POP_REF_POPULATION_FORMULA_TOOLTIP,
     EI_RF_CONSUMPTION_WITHOUT_GAES_FORMULA_TOOLTIP,
     EI_RF_GAES_FORMULA_TOOLTIP,
@@ -45,11 +49,13 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
     EI_RF_POP_PER_CAPITA_FORMULA_TOOLTIP,
     EI_RF_POP_POPULATION_FORMULA_TOOLTIP,
     EI_RF_SUMMARY_VED_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_RF_VED_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
     EI_RF_VED_CONSUMPTION_FORMULA_TOOLTIP,
     EI_RF_VED_INTENSITY_FORMULA_TOOLTIP,
     EI_RF_VED_PRODUCT_OUTPUT_FORMULA_TOOLTIP,
     POP_REF_ROW_LABEL_BY_KIND,
     POP_REF_ROW_FORMULA_KEY_BY_KIND,
+    POP_REF_ROW_PLAN_FORMULA_KEY_BY_KIND,
     REF_ROW_POPULATION,
     REF_ROW_HOUSEHOLD_CONSUMPTION,
     REF_ROW_ACCUM_MONETARY_INCOME,
@@ -130,7 +136,7 @@ ELECTRICAL_INTENSITY_FORMULA_REGISTRY: tuple[ElectricalIntensityFormulaDef, ...]
     ElectricalIntensityFormulaDef(
         key="ei_coefficient_a_computed",
         page=_PAGE,
-        row_label="Коэффициент Арасч.",
+        row_label="Коэффициент Арасч",
         default_text=EI_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
     ),
     ElectricalIntensityFormulaDef(
@@ -150,6 +156,12 @@ ELECTRICAL_INTENSITY_FORMULA_REGISTRY: tuple[ElectricalIntensityFormulaDef, ...]
         page=_PAGE,
         row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_CONSUMPTION],
         default_text=EI_INDUSTRIAL_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_ved_consumption_plan",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_CONSUMPTION],
+        default_text=EI_VED_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
     ),
     ElectricalIntensityFormulaDef(
         key="ei_industrial_accum_fixed_capital",
@@ -182,10 +194,22 @@ ELECTRICAL_INTENSITY_FORMULA_REGISTRY: tuple[ElectricalIntensityFormulaDef, ...]
         default_text=EI_FD_TOTAL_NETWORK_LOSSES_FORMULA_TOOLTIP,
     ),
     ElectricalIntensityFormulaDef(
+        key="ei_fd_total_network_losses_plan",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_NETWORK_LOSSES],
+        default_text=EI_FD_TOTAL_NETWORK_LOSSES_PLAN_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
         key="ei_fd_total_power_station",
         page=_PAGE,
         row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_POWER_STATION],
         default_text=EI_FD_TOTAL_POWER_STATION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_power_station_plan",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_POWER_STATION],
+        default_text=EI_FD_TOTAL_POWER_STATION_PLAN_FORMULA_TOOLTIP,
     ),
     ElectricalIntensityFormulaDef(
         key="ei_fd_total_accum_fixed_capital",
@@ -242,6 +266,12 @@ ELECTRICAL_INTENSITY_FORMULA_REGISTRY: tuple[ElectricalIntensityFormulaDef, ...]
         default_text=EI_RF_VED_PRODUCT_OUTPUT_FORMULA_TOOLTIP,
     ),
     ElectricalIntensityFormulaDef(
+        key="ei_rf_ved_accum_fixed_capital",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_ACCUM_FIXED_CAPITAL],
+        default_text=EI_RF_VED_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
         key="ei_rf_ved_intensity",
         page=_PAGE,
         row_label=RF_VED_INTENSITY_ROW_LABEL,
@@ -296,6 +326,12 @@ ELECTRICAL_INTENSITY_FORMULA_REGISTRY: tuple[ElectricalIntensityFormulaDef, ...]
         default_text=EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
     ),
     ElectricalIntensityFormulaDef(
+        key=POP_REF_ROW_PLAN_FORMULA_KEY_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        page=_PAGE,
+        row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        default_text=EI_POP_REF_HOUSEHOLD_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
         key=POP_REF_ROW_FORMULA_KEY_BY_KIND[REF_ROW_ACCUM_MONETARY_INCOME],
         page=_PAGE,
         row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_ACCUM_MONETARY_INCOME],
@@ -334,7 +370,7 @@ ELECTRICAL_INTENSITY_FORMULA_REGISTRY: tuple[ElectricalIntensityFormulaDef, ...]
     ElectricalIntensityFormulaDef(
         key="ei_pop_coefficient_a_computed",
         page=_PAGE,
-        row_label="Коэффициент Арасч.",
+        row_label="Коэффициент Арасч",
         default_text=EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
     ),
     ElectricalIntensityFormulaDef(

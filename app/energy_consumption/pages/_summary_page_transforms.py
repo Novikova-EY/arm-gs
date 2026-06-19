@@ -15,6 +15,8 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     apply_gaes_without_charge_formula_to_summary_rows,
     apply_oes_territory_detail_gaes_entity_labels,
     apply_oes_tites_root_formula_to_summary_rows,
+    apply_oes_ees_unified_consumption_formula_to_summary_rows,
+    tag_oes_ees_unified_summary_nt_toggle_rows,
     apply_summary_table_formula_calculations,
     apply_summary_table_russia_federation_row_rules,
     inject_summary_table_decentralized_zone_row,
@@ -190,6 +192,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     apply_energy_consumption_summary_table_variant_toggle_rows(summary_rows)
     if context.get("active_summary") == "oes":
         apply_summary_table_russia_federation_row_rules(summary_rows)
+    tag_oes_ees_unified_summary_nt_toggle_rows(summary_rows)
     if context.get("active_summary") == "fo":
         apply_federal_district_formula_to_summary_rows(
             summary_rows,
@@ -236,6 +239,12 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
     if context.get("active_summary") == "oes":
+        apply_oes_ees_unified_consumption_formula_to_summary_rows(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+            ues_source_rows=eu_source_rows_for_tites,
+        )
         apply_oes_tites_root_formula_to_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),

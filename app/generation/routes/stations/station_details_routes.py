@@ -14,12 +14,12 @@ from flask_login import login_required, current_user
 from flask import session
 from app.generation.forms.station_forms import StationFilterForm
 from app.generation.forms.machine_forms import MachineFilterSmallForm
+from app.generation.models.station.station_constants import STATION_SIGN_UNSPECIFIED
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.station.station_power_model import StationPower
-from app.generation.models.station.station_energy_generation_model import StationEnergyGeneration
 from app.generation.models.station.station_gaes_charge_consumption_model import (
     StationGaesChargeConsumption,
 )
@@ -58,6 +58,46 @@ def _is_gaes_station(station: Station) -> bool:
         return st.name.strip().lower() == "гаэс"
     except Exception:
         return False
+
+
+def _save_station_meta_from_form(
+    user,
+    station: Station,
+    form,
+    regional_district_list,
+    *,
+    can_edit: bool,
+    can_edit_fuel: bool,
+):
+    """Сохраняет поля карточки станции с учётом раздельных прав (генерация / топливо)."""
+    if can_edit_fuel and not can_edit:
+        if "station_sign" not in request.form:
+            return []
+        form.process(formdata=request.form)
+        return update_station_from_form_service(
+            user,
+            station,
+            form,
+            regional_district_list,
+            can_edit_generation=False,
+            can_edit_fuel=True,
+        )
+
+    if not can_edit:
+        return []
+
+    form.process(formdata=request.form)
+    if not form.validate():
+        print("Ошибки в form (station meta):", form.errors)
+        return []
+    return update_station_from_form_service(
+        user,
+        station,
+        form,
+        regional_district_list,
+        can_edit_generation=True,
+        can_edit_fuel=can_edit_fuel,
+    )
 
 
 _ALLOWED_STATION_ROUNDINGS = frozenset({-1, 0, 1, 2, 3})
@@ -157,6 +197,7 @@ from app.generation.services.station_services.station_services import (
     delete_machines_service,
     update_machines_from_form_service,
     save_station_energy_generation_service,
+    station_annual_energy_by_year,
     save_station_gaes_charge_consumption_service,
     _apply_machine_display_names,
     _apply_machine_gen_companies_for_version,
@@ -609,8 +650,12 @@ def station_details(station_id):
     form_machines = MachineFilterSmallForm()
 
     edit_roles = ["admin", "generation-admin", "generation-editor", "generation_admin", "generation_editor"]
+    fuel_edit_roles = ["admin", "fuel-admin", "fuel-editor"]
     can_edit = current_user.is_authenticated and any(
         role in current_user.role_names for role in edit_roles
+    )
+    can_edit_fuel = current_user.is_authenticated and any(
+        role in current_user.role_names for role in fuel_edit_roles
     )
 
     # Получение параметров запроса с дефолтными значениями
@@ -633,6 +678,7 @@ def station_details(station_id):
             "id_regional_district",
             "location",
             "note",
+            "station_sign",
         }
     )
     # Признаки формы агрегатов: удаление/поля агрегатов/примечание агрегата/собственник агрегата
@@ -688,22 +734,9 @@ def station_details(station_id):
         for sp in station_power_query.all()
     }
 
-    station_energy_query = (
-        StationEnergyGeneration.query.filter_by(id_station=station.id)
-        .filter(
-            StationEnergyGeneration.year_number >= start_year,
-            StationEnergyGeneration.year_number <= end_year
-        )
+    station.station_energy_by_year = station_annual_energy_by_year(
+        station.id, start_year, end_year, station_version_id
     )
-    station_energy_query = filter_by_explicit_db_version(
-        station_energy_query,
-        StationEnergyGeneration,
-        station_version_id,
-    )
-    station.station_energy_by_year = {
-        row.year_number: row.electricity_generation
-        for row in station_energy_query.all()
-    }
 
     if is_gaes_station:
         gaes_charge_query = (
@@ -791,6 +824,8 @@ def station_details(station_id):
         form.process(obj=station)
         if form.id_condition_type.data is None:
             form.id_condition_type.data = 0
+        if not form.station_sign.data:
+            form.station_sign.data = STATION_SIGN_UNSPECIFIED
         # Для energy_unit и station_type оставляем None как есть, 
         # так как теперь coerce возвращает None для пустых значений
 
@@ -805,11 +840,12 @@ def station_details(station_id):
             "id_regional_district",
             "location",
             "note",
+            "station_sign",
         }
 
         # Единая отправка: карточка станции + агрегаты + выработка (+ потребление ГАЭС) одной кнопкой / Enter
         if is_unified_station_page_save:
-            if not can_edit:
+            if not can_edit and not can_edit_fuel:
                 flash("Недостаточно прав для сохранения.", "danger")
                 return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
 
@@ -824,15 +860,15 @@ def station_details(station_id):
                 )
                 return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
 
-            if machine_ids_to_delete:
+            if machine_ids_to_delete and can_edit:
                 try:
                     changes = delete_machines_service(user, station, machine_ids_to_delete)
                     if changes:
                         flash("Выбранные агрегаты и связанные данные были удалены!", "success")
                         for machine_id in machine_ids_to_delete:
                             invalidate_cache("machine", machine_id=machine_id)
-                        invalidate_cache("station_full", station_id=station.id)
-                        invalidate_cache_pattern("station_list:*")
+                            invalidate_cache("station_full", station_id=station.id)
+                            invalidate_cache_pattern("station_list:*")
                 except Exception as e:
                     import traceback
 
@@ -840,7 +876,7 @@ def station_details(station_id):
                     flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
 
             machines_all_versions_handled = False
-            if is_machines_form or request.values.get("all_versions") == "1":
+            if can_edit and (is_machines_form or request.values.get("all_versions") == "1"):
                 machines_all_versions_handled = _handle_station_machines_all_versions_save(
                     user,
                     station,
@@ -870,23 +906,26 @@ def station_details(station_id):
                 any(k in submitted_keys for k in station_meta_field_keys)
                 and request.values.get("all_versions") != "1"
             ):
-                form.process(formdata=request.form)
-                if form.validate():
-                    try:
-                        station_changes = update_station_from_form_service(user, station, form, regional_district_list)
-                        if station_changes:
-                            flash("Изменения в  электростанции успешно обновлены!", "success")
-                            invalidate_cache("station_full", station_id=station.id)
-                            invalidate_cache_pattern("station_list:*")
-                    except Exception as e:
-                        import traceback
+                try:
+                    station_changes = _save_station_meta_from_form(
+                        user,
+                        station,
+                        form,
+                        regional_district_list,
+                        can_edit=can_edit,
+                        can_edit_fuel=can_edit_fuel,
+                    )
+                    if station_changes:
+                        flash("Изменения в  электростанции успешно обновлены!", "success")
+                        invalidate_cache("station_full", station_id=station.id)
+                        invalidate_cache_pattern("station_list:*")
+                except Exception as e:
+                    import traceback
 
-                        traceback.print_exc()
-                        flash(f"Ошибка при обновлении полей электростанции: {e}", "danger")
-                else:
-                    print("Ошибки в form (unified save):", form.errors)
+                    traceback.print_exc()
+                    flash(f"Ошибка при обновлении полей электростанции: {e}", "danger")
 
-            if is_station_gaes_combined_energy_form and request.values.get("all_versions") != "1":
+            if can_edit and is_station_gaes_combined_energy_form and request.values.get("all_versions") != "1":
                 if not is_gaes_station:
                     flash("Совместное сохранение доступно только для электростанций типа ГАЭС.", "warning")
                 else:
@@ -921,7 +960,7 @@ def station_details(station_id):
 
                         traceback.print_exc()
                         flash(f"Ошибка при сохранении выработки/потребления: {e}", "danger")
-            elif is_station_energy_form:
+            elif can_edit and is_station_energy_form:
                 try:
                     gen_changes = save_station_energy_generation_service(
                         user,
@@ -940,7 +979,7 @@ def station_details(station_id):
 
                     traceback.print_exc()
                     flash(f"Ошибка при сохранении выработки электроэнергии: {e}", "danger")
-            elif is_station_gaes_charge_form:
+            elif can_edit and is_station_gaes_charge_form:
                 if not is_gaes_station:
                     flash("Блок доступен только для электростанций типа ГАЭС.", "warning")
                 else:
@@ -1165,35 +1204,41 @@ def station_details(station_id):
         # Обработка отправки основной формы электростанции
         # ВАЖНО: Обрабатываем только если НЕ было удаления агрегатов
         elif is_station_form:
-            # Привязываем форму к POST-данным, иначе поля (в т.ч. id_energy_unit) остаются пустыми
-            form.process(formdata=request.form)
-            print(f"[DEBUG] Форма электростанции отправлена. id_energy_unit.data = {form.id_energy_unit.data}, id_station_type.data = {form.id_station_type.data}")
-            print(f"[DEBUG] Валидация формы: validate() = {form.validate()}, validate_on_submit() = {form.validate_on_submit()}")
-            if not form.validate():
-                print("Ошибки в form:", form.errors)
-                print(f"[DEBUG] Данные формы: {form.data}")
-                print(f"[DEBUG] CSRF токен: {form.csrf_token.data}")
-                print(f"[DEBUG] CSRF токен из request: {request.form.get('csrf_token')}")
-            if form.validate_on_submit():
-                try:
-                    # Проверка версии из формы для предотвращения concurrent updates
-                    form_version = request.form.get('version', type=int)
-                    if form_version and hasattr(station, 'version') and station.version != form_version:
-                        flash('Данные были изменены другим пользователем. Пожалуйста, обновите страницу.', 'warning')
-                        log_to_db(user, f"Обнаружен конфликт версий при обновлении электростанции {station.name} (ожидаемая: {form_version}, текущая: {station.version})", entity_type="station", entity_id=station.id)
-                        return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
-                    
-                    changes = update_station_from_form_service(user, station, form, regional_district_list)
-                    if changes:
-                        flash("Изменения в  электростанции успешно обновлены!", "success")
-                        # Инвалидация кэша после успешного обновления
-                        invalidate_cache('station_full', station_id=station.id)
-                        invalidate_cache_pattern('station_list:*')
+            if not can_edit and not can_edit_fuel:
+                flash("Недостаточно прав для сохранения.", "danger")
+                return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+            try:
+                form_version = request.form.get("version", type=int)
+                if form_version and hasattr(station, "version") and station.version != form_version:
+                    flash(
+                        "Данные были изменены другим пользователем. Пожалуйста, обновите страницу.",
+                        "warning",
+                    )
+                    log_to_db(
+                        user,
+                        f"Обнаружен конфликт версий при обновлении электростанции {station.name} (ожидаемая: {form_version}, текущая: {station.version})",
+                        entity_type="station",
+                        entity_id=station.id,
+                    )
                     return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
-                except Exception as e:
-                    print(f"Ошибка при обновлении: {str(e)}")
-                    flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
-                    return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+
+                changes = _save_station_meta_from_form(
+                    user,
+                    station,
+                    form,
+                    regional_district_list,
+                    can_edit=can_edit,
+                    can_edit_fuel=can_edit_fuel,
+                )
+                if changes:
+                    flash("Изменения в  электростанции успешно обновлены!", "success")
+                    invalidate_cache("station_full", station_id=station.id)
+                    invalidate_cache_pattern("station_list:*")
+                return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
+            except Exception as e:
+                print(f"Ошибка при обновлении: {str(e)}")
+                flash(f"Ошибка при обновлении данных: {str(e)}", "danger")
+                return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
 
     # Timing: measure preparation time right before render
     before_render_at = time.perf_counter()
@@ -1317,6 +1362,7 @@ def station_details(station_id):
         energy_system_types=energy_system_type_list,
         station_logs=station_logs_formatted,
         can_edit=can_edit,
+        can_edit_fuel=can_edit_fuel,
         can_save_machines_all_versions=can_save_machines_all_versions,
         can_save_equipment_group_all_versions=can_save_equipment_group_all_versions,
         can_add_equipment_group=can_add_equipment_group,
@@ -1722,20 +1768,9 @@ def station_details_station_energy_row(station_id):
     if not station:
         abort(404)
 
-    station_energy_query = (
-        StationEnergyGeneration.query.filter_by(id_station=station.id).filter(
-            StationEnergyGeneration.year_number >= start_year,
-            StationEnergyGeneration.year_number <= end_year,
-        )
+    station.station_energy_by_year = station_annual_energy_by_year(
+        station.id, start_year, end_year, station_version_id
     )
-    station_energy_query = filter_by_explicit_db_version(
-        station_energy_query,
-        StationEnergyGeneration,
-        station_version_id,
-    )
-    station.station_energy_by_year = {
-        row.year_number: row.electricity_generation for row in station_energy_query.all()
-    }
 
     from app.common.services.help_services import format_decimal_for_display
 

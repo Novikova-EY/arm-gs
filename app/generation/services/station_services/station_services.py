@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 from app.logs.services.logging_service import log_to_db
 from sqlalchemy.exc import IntegrityError
 from config import (
+    SCHEMA_ENERGY_BALANCE,
     SCHEMA_GENERATION,
     STATION_UNIQUE_EXCLUDED_DISTRICT_IDS,
     STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS,
@@ -27,6 +28,10 @@ from app.common.services.database_version_filter import (
 
 # Модели
 from app.generation.models.station.station_model import Station
+from app.generation.models.station.station_constants import (
+    STATION_SIGN_ESPP,
+    STATION_SIGN_UNSPECIFIED,
+)
 from app.generation.models.station.station_power_model import StationPower
 
 from app.generation.models.machine.machine_model import Machine
@@ -730,6 +735,17 @@ def get_stations_list(
         extra_station_ids = [row[0] for row in station_query.with_entities(Station.id).all()]
 
     all_station_ids = list(set(raw_station_ids).union(set(extra_station_ids)))
+
+    if filters.get("all_db_versions"):
+        from app.generation.services.station_services.external_code_check_services import (
+            dedupe_station_ids_by_external_code,
+        )
+        from app.common.services.database_version_filter import get_current_db_version_id
+
+        all_station_ids = dedupe_station_ids_by_external_code(
+            all_station_ids,
+            get_current_db_version_id(),
+        )
     
     # Проверка на дубликаты в raw_station_ids (могут появиться из-за JOIN'ов)
     raw_unique = set(raw_station_ids)
@@ -3895,7 +3911,15 @@ def _is_excluded_district(district_id: int | None, database_version_id: int | No
     return False
 
 
-def update_station_from_form_service(user, station: Station, form, regional_district_list) -> list:
+def update_station_from_form_service(
+    user,
+    station: Station,
+    form,
+    regional_district_list,
+    *,
+    can_edit_generation: bool = True,
+    can_edit_fuel: bool = True,
+) -> list:
     changes = []
     try:
         def _norm_text(v) -> str:
@@ -3929,10 +3953,17 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
                     normalized.append(ch)
             return "".join(normalized)
 
+        if not can_edit_generation and not can_edit_fuel:
+            return changes
+
         # Название + субъект РФ: проверка уникальности до присваивания
-        new_name = _normalize_angle_quotes(form.name.data)
-        new_district_id = form.id_regional_district.data
-        if station.name != new_name or station.id_regional_district != new_district_id:
+        new_name = _normalize_angle_quotes(form.name.data) if can_edit_generation else station.name
+        new_district_id = (
+            form.id_regional_district.data if can_edit_generation else station.id_regional_district
+        )
+        if can_edit_generation and (
+            station.name != new_name or station.id_regional_district != new_district_id
+        ):
             if not _is_excluded_district(new_district_id, station.database_version_id):
                 with db.session.no_autoflush:
                     conflict = (
@@ -3950,193 +3981,211 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
                         "Станция с таким названием уже существует в выбранном субъекте РФ и версии БД."
                     )
 
-        if station.name != new_name:
+        if can_edit_generation and station.name != new_name:
             changes.append(f"Название: {station.name} → {new_name}")
             station.name = new_name
 
-        # Состояние
-        new_condition_type_id = int(form.id_condition_type.data)
-        new_condition_type = db.session.query(ConditionType).filter_by(id=new_condition_type_id).first()
-        if new_condition_type:
-            old_value = station.condition_type.name if station.condition_type else "не указано"
-            new_value = new_condition_type.name
-            if old_value != new_value:
-                changes.append(f"Состояние: {old_value} → {new_value}")
-            station.id_condition_type = new_condition_type.id
-
-        # Тип  электростанции
-        if form.id_station_type.data and int(form.id_station_type.data) != 0:
-            new_station_type_id = int(form.id_station_type.data)
-            new_station_type = db.session.query(StationType).filter_by(id=new_station_type_id).first()
-            if new_station_type:
-                old_value = station.station_type.name if station.station_type else "не указано"
-                new_value = new_station_type.name
+        if can_edit_generation:
+            # Состояние
+            new_condition_type_id = int(form.id_condition_type.data)
+            new_condition_type = db.session.query(ConditionType).filter_by(id=new_condition_type_id).first()
+            if new_condition_type:
+                old_value = station.condition_type.name if station.condition_type else "не указано"
+                new_value = new_condition_type.name
                 if old_value != new_value:
-                    changes.append(f"Тип  электростанции: {old_value} → {new_value}")
-                station.id_station_type = new_station_type.id
-        else:
-            if station.id_station_type is not None:
-                old_value = station.station_type.name if station.station_type else "не указано"
-                changes.append(f"Тип  электростанции: {old_value} → не указано")
-                station.id_station_type = None
+                    changes.append(f"Состояние: {old_value} → {new_value}")
+                station.id_condition_type = new_condition_type.id
 
-        # Группа электростанции
-        new_group_id = form.id_station_group.data
-        if new_group_id:
-            group_exists = db.session.query(StationGroup).filter_by(id=new_group_id).first()
-            if group_exists and station.id_group != new_group_id:
-                old_group = station.group.name if station.group else "не указано"
-                new_group = group_exists.name
-                changes.append(f"Группа: {old_group} → {new_group}")
-                station.id_group = new_group_id
+            # Тип  электростанции
+            if form.id_station_type.data and int(form.id_station_type.data) != 0:
+                new_station_type_id = int(form.id_station_type.data)
+                new_station_type = db.session.query(StationType).filter_by(id=new_station_type_id).first()
+                if new_station_type:
+                    old_value = station.station_type.name if station.station_type else "не указано"
+                    new_value = new_station_type.name
+                    if old_value != new_value:
+                        changes.append(f"Тип  электростанции: {old_value} → {new_value}")
+                    station.id_station_type = new_station_type.id
+            else:
+                if station.id_station_type is not None:
+                    old_value = station.station_type.name if station.station_type else "не указано"
+                    changes.append(f"Тип  электростанции: {old_value} → не указано")
+                    station.id_station_type = None
 
-        # Примечание
-        old_note = station.note.strip() if station.note and station.note.strip() else None
-        new_note = form.note.data.strip() if form.note.data and form.note.data.strip() else None
-        if old_note != new_note:
-            changes.append(f"Примечание: {station.note} → {new_note}")
-            station.note = new_note
+            # Группа электростанции
+            new_group_id = form.id_station_group.data
+            if new_group_id:
+                group_exists = db.session.query(StationGroup).filter_by(id=new_group_id).first()
+                if group_exists and station.id_group != new_group_id:
+                    old_group = station.group.name if station.group else "не указано"
+                    new_group = group_exists.name
+                    changes.append(f"Группа: {old_group} → {new_group}")
+                    station.id_group = new_group_id
 
-        # Субъект РФ
-        if station.id_regional_district != new_district_id:
-            old_value = station.regional_district.name if station.regional_district else "не указано"
-            new_value = next(
-                (d[1] if isinstance(d, tuple) else d["name"]
-                 for d in regional_district_list
-                 if (d[0] if isinstance(d, tuple) else d["id"]) == new_district_id),
-                "не указано",
+            # Примечание
+            old_note = station.note.strip() if station.note and station.note.strip() else None
+            new_note = form.note.data.strip() if form.note.data and form.note.data.strip() else None
+            if old_note != new_note:
+                changes.append(f"Примечание: {station.note} → {new_note}")
+                station.note = new_note
+
+        if can_edit_fuel:
+            # Признак электростанции
+            new_station_sign_raw = getattr(form, "station_sign", None)
+            new_station_sign_value = (
+                new_station_sign_raw.data if new_station_sign_raw is not None else None
             )
-            changes.append(f"Субъект РФ: {old_value} → {new_value}")
-            station.id_regional_district = new_district_id
-
-            # Обновление федерального округа (как производного от субъекта)
-            new_regional_district_obj = (
-                db.session.query(RegionalDistrict)
-                .options(
-                    joinedload(RegionalDistrict.federal_district),
-                    joinedload(RegionalDistrict.regional_energy_systems),
-                )
-                .filter_by(id=new_district_id)
-                .first()
+            if _is_unspecified_text(new_station_sign_value):
+                new_station_sign = None
+            elif _norm_text(new_station_sign_value) == STATION_SIGN_ESPP:
+                new_station_sign = STATION_SIGN_ESPP
+            else:
+                new_station_sign = None
+            old_station_sign_display = station.station_sign_display
+            new_station_sign_display = (
+                STATION_SIGN_ESPP if new_station_sign == STATION_SIGN_ESPP else STATION_SIGN_UNSPECIFIED
             )
-            if new_regional_district_obj:
-                old_federal_district = (
-                    station.regional_district.federal_district.name
-                    if station.regional_district and station.regional_district.federal_district
-                    else "не указано"
+            if station.station_sign != new_station_sign:
+                changes.append(
+                    f"Признак электростанции: {old_station_sign_display} → {new_station_sign_display}"
                 )
-                new_federal_district = (
-                    new_regional_district_obj.federal_district.name
-                    if new_regional_district_obj.federal_district
-                    else "не указано"
+                station.station_sign = new_station_sign
+
+        if can_edit_generation:
+            # Субъект РФ
+            if station.id_regional_district != new_district_id:
+                old_value = station.regional_district.name if station.regional_district else "не указано"
+                new_value = next(
+                    (d[1] if isinstance(d, tuple) else d["name"]
+                     for d in regional_district_list
+                     if (d[0] if isinstance(d, tuple) else d["id"]) == new_district_id),
+                    "не указано",
                 )
-                if old_federal_district != new_federal_district:
-                    changes.append(f"Федеральный округ: {old_federal_district} → {new_federal_district}")
+                changes.append(f"Субъект РФ: {old_value} → {new_value}")
+                station.id_regional_district = new_district_id
 
-                station.regional_district = new_regional_district_obj
-                
-                # Проверка соответствия Субъекта РФ и Региональной энергосистемы
-                # Определяем, какая РЭС должна быть проверена (новая из формы или текущая)
-                res_id_to_check = form.id_regional_energy_system.data
-                if res_id_to_check == 0:
-                    res_id_to_check = station.id_regional_energy_system
-                
-                if res_id_to_check:
-                    # Проверяем, входит ли новый субъект РФ в указанную региональную энергосистему
-                    res_ids_for_district = {res.id for res in new_regional_district_obj.regional_energy_systems}
-                    if res_id_to_check not in res_ids_for_district:
-                        res_obj = db.session.get(RegionalEnergySystem, res_id_to_check)
-                        res_name = res_obj.name if res_obj else "не указано"
-                        raise ValueError(
-                            f"Субъект РФ '{new_value}' не входит в указанную региональную энергосистему '{res_name}'. "
-                            f"Пожалуйста, выберите соответствующую региональную энергосистему или измените субъект РФ."
-                        )
+                # Обновление федерального округа (как производного от субъекта)
+                new_regional_district_obj = (
+                    db.session.query(RegionalDistrict)
+                    .options(
+                        joinedload(RegionalDistrict.federal_district),
+                        joinedload(RegionalDistrict.regional_energy_systems),
+                    )
+                    .filter_by(id=new_district_id)
+                    .first()
+                )
+                if new_regional_district_obj:
+                    old_federal_district = (
+                        station.regional_district.federal_district.name
+                        if station.regional_district and station.regional_district.federal_district
+                        else "не указано"
+                    )
+                    new_federal_district = (
+                        new_regional_district_obj.federal_district.name
+                        if new_regional_district_obj.federal_district
+                        else "не указано"
+                    )
+                    if old_federal_district != new_federal_district:
+                        changes.append(f"Федеральный округ: {old_federal_district} → {new_federal_district}")
 
-        # Региональная энергосистема (прямая связь через id_regional_energy_system)
-        new_res_id = form.id_regional_energy_system.data
-        if new_res_id == 0:
-            new_res_id = None
-        if station.id_regional_energy_system != new_res_id:
-            from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
-            old_res_obj = (
-                db.session.get(RegionalEnergySystem, station.id_regional_energy_system)
-                if station.id_regional_energy_system
-                else None
-            )
-            new_res_obj = db.session.get(RegionalEnergySystem, new_res_id) if new_res_id else None
-            old_res_name = old_res_obj.name if old_res_obj else "не указано"
-            new_res_name = new_res_obj.name if new_res_obj else "не указано"
-            changes.append(f"Региональная энергосистема: {old_res_name} → {new_res_name}")
-            station.id_regional_energy_system = new_res_id
+                    station.regional_district = new_regional_district_obj
 
-        # Местоположение
-        new_location_raw = getattr(form, "location", None).data if getattr(form, "location", None) is not None else None
-        new_location = _norm_text(new_location_raw) or None
-        old_location = _norm_text(getattr(station, "location", None)) or None
-        if old_location != new_location:
-            changes.append(f"Местоположение: {old_location or 'не указано'} → {new_location or 'не указано'}")
-            station.location = new_location
+                    # Проверка соответствия Субъекта РФ и Региональной энергосистемы
+                    res_id_to_check = form.id_regional_energy_system.data
+                    if res_id_to_check == 0:
+                        res_id_to_check = station.id_regional_energy_system
 
-        # Энергоузел
-        from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+                    if res_id_to_check:
+                        res_ids_for_district = {res.id for res in new_regional_district_obj.regional_energy_systems}
+                        if res_id_to_check not in res_ids_for_district:
+                            res_obj = db.session.get(RegionalEnergySystem, res_id_to_check)
+                            res_name = res_obj.name if res_obj else "не указано"
+                            raise ValueError(
+                                f"Субъект РФ '{new_value}' не входит в указанную региональную энергосистему '{res_name}'. "
+                                f"Пожалуйста, выберите соответствующую региональную энергосистему или измените субъект РФ."
+                            )
 
-        # Приводим выбранное значение формы к id/None
-        new_energy_unit_id = None
-        try:
-            if getattr(form, "id_energy_unit", None) is not None and form.id_energy_unit.data not in (None, "", 0, "0"):
-                new_energy_unit_id = int(form.id_energy_unit.data)
-        except Exception:
+            # Региональная энергосистема (прямая связь через id_regional_energy_system)
+            new_res_id = form.id_regional_energy_system.data
+            if new_res_id == 0:
+                new_res_id = None
+            if station.id_regional_energy_system != new_res_id:
+                from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+                old_res_obj = (
+                    db.session.get(RegionalEnergySystem, station.id_regional_energy_system)
+                    if station.id_regional_energy_system
+                    else None
+                )
+                new_res_obj = db.session.get(RegionalEnergySystem, new_res_id) if new_res_id else None
+                old_res_name = old_res_obj.name if old_res_obj else "не указано"
+                new_res_name = new_res_obj.name if new_res_obj else "не указано"
+                changes.append(f"Региональная энергосистема: {old_res_name} → {new_res_name}")
+                station.id_regional_energy_system = new_res_id
+
+            # Местоположение
+            new_location_raw = getattr(form, "location", None).data if getattr(form, "location", None) is not None else None
+            new_location = _norm_text(new_location_raw) or None
+            old_location = _norm_text(getattr(station, "location", None)) or None
+            if old_location != new_location:
+                changes.append(f"Местоположение: {old_location or 'не указано'} → {new_location or 'не указано'}")
+                station.location = new_location
+
+            # Энергоузел
+            from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+
             new_energy_unit_id = None
-        if new_energy_unit_id == 0:
-            new_energy_unit_id = None
+            try:
+                if getattr(form, "id_energy_unit", None) is not None and form.id_energy_unit.data not in (None, "", 0, "0"):
+                    new_energy_unit_id = int(form.id_energy_unit.data)
+            except Exception:
+                new_energy_unit_id = None
+            if new_energy_unit_id == 0:
+                new_energy_unit_id = None
 
-        # Если выбран "не указано" (по имени), считаем это None и не логируем как изменение
-        new_energy_unit_obj = db.session.get(EnergyUnit, new_energy_unit_id) if new_energy_unit_id is not None else None
-        station_version_id = getattr(station, "database_version_id", None)
-        energy_unit_version_id = getattr(new_energy_unit_obj, "database_version_id", None) if new_energy_unit_obj else None
-        try:
-            from flask import current_app
-            current_app.logger.debug(
-                "[ENERGY_UNIT_SAVE] station_id=%s station_version_id=%s form_energy_unit=%s loaded_energy_unit=%s loaded_version_id=%s",
-                getattr(station, "id", None),
-                station_version_id,
-                new_energy_unit_id,
-                getattr(new_energy_unit_obj, "id", None),
-                energy_unit_version_id,
-            )
-        except Exception:
-            pass
-        if new_energy_unit_id is not None and new_energy_unit_obj is None:
-            raise ValueError("Выбранный энергоузел не найден. Обновите страницу и попробуйте снова.")
-        if new_energy_unit_obj is not None:
-            if station_version_id != energy_unit_version_id:
-                raise ValueError(
-                    "Выбранный энергоузел относится к другой версии БД. "
-                    "Выберите энергоузел из текущей версии электростанции."
+            new_energy_unit_obj = db.session.get(EnergyUnit, new_energy_unit_id) if new_energy_unit_id is not None else None
+            station_version_id = getattr(station, "database_version_id", None)
+            energy_unit_version_id = getattr(new_energy_unit_obj, "database_version_id", None) if new_energy_unit_obj else None
+            try:
+                from flask import current_app
+                current_app.logger.debug(
+                    "[ENERGY_UNIT_SAVE] station_id=%s station_version_id=%s form_energy_unit=%s loaded_energy_unit=%s loaded_version_id=%s",
+                    getattr(station, "id", None),
+                    station_version_id,
+                    new_energy_unit_id,
+                    getattr(new_energy_unit_obj, "id", None),
+                    energy_unit_version_id,
                 )
-        if new_energy_unit_obj is not None and _is_unspecified_text(getattr(new_energy_unit_obj, "name", None)):
-            new_energy_unit_id = None
-            new_energy_unit_obj = None
+            except Exception:
+                pass
+            if new_energy_unit_id is not None and new_energy_unit_obj is None:
+                raise ValueError("Выбранный энергоузел не найден. Обновите страницу и попробуйте снова.")
+            if new_energy_unit_obj is not None:
+                if station_version_id != energy_unit_version_id:
+                    raise ValueError(
+                        "Выбранный энергоузел относится к другой версии БД. "
+                        "Выберите энергоузел из текущей версии электростанции."
+                    )
+            if new_energy_unit_obj is not None and _is_unspecified_text(getattr(new_energy_unit_obj, "name", None)):
+                new_energy_unit_id = None
+                new_energy_unit_obj = None
 
-        old_energy_unit_id_raw = getattr(station, "id_energy_unit", None)
-        old_energy_unit_id = old_energy_unit_id_raw
-        if old_energy_unit_id == 0:
-            old_energy_unit_id = None
-        old_energy_unit_obj = getattr(station, "energy_unit", None) or (db.session.get(EnergyUnit, old_energy_unit_id) if old_energy_unit_id is not None else None)
-        if old_energy_unit_obj is not None and _is_unspecified_text(getattr(old_energy_unit_obj, "name", None)):
-            old_energy_unit_id = None
-            old_energy_unit_obj = None
+            old_energy_unit_id_raw = getattr(station, "id_energy_unit", None)
+            old_energy_unit_id = old_energy_unit_id_raw
+            if old_energy_unit_id == 0:
+                old_energy_unit_id = None
+            old_energy_unit_obj = getattr(station, "energy_unit", None) or (db.session.get(EnergyUnit, old_energy_unit_id) if old_energy_unit_id is not None else None)
+            if old_energy_unit_obj is not None and _is_unspecified_text(getattr(old_energy_unit_obj, "name", None)):
+                old_energy_unit_id = None
+                old_energy_unit_obj = None
 
-        if old_energy_unit_id != new_energy_unit_id:
-            old_value = (getattr(old_energy_unit_obj, "name", None) or "не указано") if old_energy_unit_obj else "не указано"
-            new_value = (getattr(new_energy_unit_obj, "name", None) or "не указано") if new_energy_unit_obj else "не указано"
-            changes.append(f"Энергоузел: {old_value} → {new_value}")
-            station.id_energy_unit = new_energy_unit_id
-        else:
-            # Видимых изменений нет, но если в базе был "технический" placeholder (например, name='не указано' с id!=0),
-            # нормализуем хранение до None без создания записи в логе.
-            if old_energy_unit_id is None and old_energy_unit_id_raw not in (None, 0, "0"):
-                station.id_energy_unit = None
+            if old_energy_unit_id != new_energy_unit_id:
+                old_value = (getattr(old_energy_unit_obj, "name", None) or "не указано") if old_energy_unit_obj else "не указано"
+                new_value = (getattr(new_energy_unit_obj, "name", None) or "не указано") if new_energy_unit_obj else "не указано"
+                changes.append(f"Энергоузел: {old_value} → {new_value}")
+                station.id_energy_unit = new_energy_unit_id
+            else:
+                if old_energy_unit_id is None and old_energy_unit_id_raw not in (None, 0, "0"):
+                    station.id_energy_unit = None
 
         _commit_with_retry()
         clear_station_aggregation_cache("после обновления электростанции")  # Очищаем кэш после обновления электростанции
@@ -4151,6 +4200,42 @@ def update_station_from_form_service(user, station: Station, form, regional_dist
         raise
 
 
+def station_annual_energy_generation_query(
+    station_id: int,
+    start_year: int,
+    end_year: int,
+    station_version_id: int | None,
+):
+    """Записи выработки с периодом «год» (month_number = 0) для таблицы на карточке станции."""
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.energy_balance.models.station_energy_generation_model import (
+        STATION_ENERGY_GENERATION_PERIOD_YEAR,
+        StationEnergyGeneration,
+    )
+
+    q = StationEnergyGeneration.query.filter(
+        StationEnergyGeneration.id_station == station_id,
+        StationEnergyGeneration.year_number >= start_year,
+        StationEnergyGeneration.year_number <= end_year,
+        StationEnergyGeneration.month_number == STATION_ENERGY_GENERATION_PERIOD_YEAR,
+    )
+    return filter_by_explicit_db_version(q, StationEnergyGeneration, station_version_id)
+
+
+def station_annual_energy_by_year(
+    station_id: int,
+    start_year: int,
+    end_year: int,
+    station_version_id: int | None,
+) -> dict[int, object]:
+    return {
+        row.year_number: row.electricity_generation
+        for row in station_annual_energy_generation_query(
+            station_id, start_year, end_year, station_version_id
+        ).all()
+    }
+
+
 def save_station_energy_generation_service(
     user,
     station: Station,
@@ -4163,8 +4248,10 @@ def save_station_energy_generation_service(
     Сохраняет выработку электроэнергии электростанцией по годам (млн кВт·ч).
     Возвращает список строк изменений для логирования (пустой, если сохранять нечего).
     """
-    from app.common.services.database_version_filter import filter_by_explicit_db_version
-    from app.generation.models.station.station_energy_generation_model import StationEnergyGeneration
+    from app.energy_balance.models.station_energy_generation_model import (
+        STATION_ENERGY_GENERATION_PERIOD_YEAR,
+        StationEnergyGeneration,
+    )
     from app.generation.services.machine_services.machine_services import to_decimal, is_same_decimal
 
     changes: list[str] = []
@@ -4183,13 +4270,12 @@ def save_station_energy_generation_service(
         return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
 
     try:
-        q = StationEnergyGeneration.query.filter(
-            StationEnergyGeneration.id_station == station.id,
-            StationEnergyGeneration.year_number >= start_year,
-            StationEnergyGeneration.year_number <= end_year,
-        )
-        q = filter_by_explicit_db_version(q, StationEnergyGeneration, station_version_id)
-        by_year = {r.year_number: r for r in q.all()}
+        by_year = {
+            r.year_number: r
+            for r in station_annual_energy_generation_query(
+                station.id, start_year, end_year, station_version_id
+            ).all()
+        }
 
         for year in range(start_year, end_year + 1):
             field = f"st_gen_{year}"
@@ -4218,6 +4304,7 @@ def save_station_energy_generation_service(
                 rec = StationEnergyGeneration(
                     id_station=station.id,
                     year_number=year,
+                    month_number=STATION_ENERGY_GENERATION_PERIOD_YEAR,
                     electricity_generation=new_val,
                 )
                 set_db_version_on_create(rec)
@@ -4235,7 +4322,7 @@ def save_station_energy_generation_service(
             return []
 
         try:
-            quick_fix_seq(SCHEMA_GENERATION, "gs_gen_station_energy_generations", "id")
+            quick_fix_seq(SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations", "id")
         except Exception:
             pass
         _commit_with_retry()
@@ -4343,6 +4430,12 @@ def save_station_gaes_charge_consumption_service(
         except Exception:
             pass
         _commit_with_retry()
+
+        from app.energy_consumption.services.energy_consumption_summary_services import (
+            clear_gaes_charge_summary_cache,
+        )
+
+        clear_gaes_charge_summary_cache()
 
         rd_name = station.regional_district.name if station.regional_district else "не указано"
         log_to_db(

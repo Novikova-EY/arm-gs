@@ -72,6 +72,9 @@ def filter_by_db_version(query, model_class):
     if model_name == 'Log':
         return query
 
+    if has_app_context() and getattr(g, 'include_all_db_versions', False):
+        return query
+
     if current_version_id is not None and hasattr(model_class, 'database_version_id'):
         # При выбранной версии показываем ТОЛЬКО записи этой версии
         # Записи без версии (NULL) НЕ показываются, так как они относятся к другим версиям

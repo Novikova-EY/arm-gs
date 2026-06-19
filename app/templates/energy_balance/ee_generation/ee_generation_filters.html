@@ -1,0 +1,38 @@
+{# Фильтры страницы «Выработка ЭЭ» #}
+
+{% set filters_action = url_for('energy_balance_bp.ee_generation') %}
+
+{% set use_equipment_group_filter = false %}
+
+{% set total_count_label = 'электростанций' %}
+
+{% set per_page_count_label = 'электростанций' %}
+
+{% set per_page_all_label = 'электростанции' %}
+
+{% set import_redirect_endpoint = 'energy_balance_bp.ee_generation' %}
+
+{% set show_ee_generation_import = true %}
+
+{% set import_ee_generation_action = url_for('energy_balance_bp.import_ee_generation') %}
+
+{% set export_ee_generation_action = url_for('energy_balance_bp.export_ee_generation') %}
+
+{% set ee_period_mode = ee_period_mode|default('years') %}
+
+{% set use_single_year = (ee_period_mode == 'months') %}
+
+{% set show_ee_period_mode_toggle = true %}
+
+{% set show_rounding_digits = true %}
+
+{% set center_top_pagination = true %}
+
+{% set show_regional_totals_toggle = true %}
+
+{% set show_ee_verification_toggle = true %}
+
+{% set selected_year = selected_year|default(start_year)|default(end_year) %}
+
+{% include 'fuel/_shared/station_filters.html' %}
+

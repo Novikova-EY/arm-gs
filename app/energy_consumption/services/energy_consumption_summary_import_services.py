@@ -590,6 +590,8 @@ def _import_row_year_numeric_pairs(
 
     first_year_ci = year_col_indices[0]
     first_val_ci = parsed[0][0]
+    last_val_ci = parsed[-1][0]
+    last_year_ci = year_col_indices[-1]
     values = [val for _, val in parsed]
     if (
         first_val_ci > first_year_ci
@@ -604,7 +606,9 @@ def _import_row_year_numeric_pairs(
                     shifted.append((year_cols[target_ci], val))
             if len(shifted) == len(values):
                 return shifted
-        if len(values) < len(year_col_indices):
+        # Разреженные строки у правого края сетки — последние N лет; иначе год берём
+        # из фактической колонки (шаблон «Для работы в АРМе»: факт 2024–2025, прогноз пуст).
+        if len(values) < len(year_col_indices) and last_val_ci >= last_year_ci:
             target_cols = year_col_indices[-len(values) :]
             return [(year_cols[ci], val) for ci, val in zip(target_cols, values)]
 
@@ -1063,35 +1067,43 @@ def _classify_screen_export_parameter_label(param_label: str) -> str | None:
     return None
 
 
+def _explicit_perimeter_variant_placeholder_rows(
+    acc: defaultdict[tuple[str, int, str | None], Decimal],
+) -> set[tuple[str, str]]:
+    """Строки Excel с явным кодом варианта, где все годы нулевые (заглушка под другую строку)."""
+    by_label_pvc: dict[tuple[str, str], list[Decimal]] = defaultdict(list)
+    for (label, _year_n, pvc), total in acc.items():
+        if pvc is not None:
+            by_label_pvc[(label, pvc)].append(total)
+    return {
+        key
+        for key, totals in by_label_pvc.items()
+        if totals and all(val == 0 for val in totals)
+    }
+
+
 def _merge_perimeter_variant_duplicate_year_values(
     acc: defaultdict[tuple[str, int, str | None], Decimal],
 ) -> defaultdict[tuple[str, int, str | None], Decimal]:
-    """Сводит дубли одного наименования с пустым вариантом и o1 по каждому году.
+    """Убирает только нулевые заглушки; разные варианты одной сущности сохраняются отдельно.
 
-    На листе «млн. кВт.ч» для части лет данные в строке с кодом варианта, для других —
-    в строке с пустой ячейкой варианта (o1 с нулями — заглушка). Для листа «СиПР» при
-    наличии ненулевого значения в строке с явным вариантом оно имеет приоритет.
+  Пустая ячейка perimeter-variants → ``None`` (NULL в БД). Для одной сущности могут быть
+  параллельные строки без варианта и с ``o1`` (например, «ЭС Камчатского края») — обе
+  записываются в свои варианты периметра.
+
+  Строка с явным кодом варианта, нулевая по всем годам, пропускается целиком. Отдельные
+  нулевые ячейки внутри не-заглушки также не импортируются.
     """
-    by_label_year: dict[tuple[str, int], dict[str | None, Decimal]] = defaultdict(dict)
-    for (label, year_n, pvc), total in acc.items():
-        bucket = by_label_year[(label, year_n)]
-        bucket[pvc] = bucket.get(pvc, Decimal("0")) + total
-
+    placeholder_rows = _explicit_perimeter_variant_placeholder_rows(acc)
     merged: defaultdict[tuple[str, int, str | None], Decimal] = defaultdict(
         lambda: Decimal("0")
     )
-    for (label, year_n), variants in by_label_year.items():
-        base = variants.get(None)
-        explicit_items = [(pvc, val) for pvc, val in variants.items() if pvc is not None]
-        explicit_nonzero = [(pvc, val) for pvc, val in explicit_items if val != 0]
-        if explicit_nonzero:
-            for pvc, val in explicit_nonzero:
-                merged[(label, year_n, pvc)] += val
-        elif base is not None:
-            merged[(label, year_n, None)] += base
-        else:
-            for pvc, val in explicit_items:
-                merged[(label, year_n, pvc)] += val
+    for (label, year_n, pvc), total in acc.items():
+        if pvc is not None and (label, pvc) in placeholder_rows:
+            continue
+        if pvc is not None and total == 0:
+            continue
+        merged[(label, year_n, pvc)] += total
     return merged
 
 
@@ -1296,6 +1308,53 @@ def _single_regional_district_id_for_res(
     return rd_id if rq.first() is not None else None
 
 
+def _import_perimeter_variant_without_entity_bindings(
+    model_cls: Type[Any],
+    fk_column: str,
+    parent_id: int,
+    perimeter_variant_code: str | None,
+) -> str | None:
+    """Для сущностей без привязок в каталоге код из Excel не записывается (NULL в БД)."""
+    if perimeter_variant_code is None:
+        return None
+    if not model_supports_perimeter_variant(model_cls):
+        return perimeter_variant_code
+    entity_ctx = perimeter_entity_context_for_model(
+        model_cls.__name__,
+        parent_fk_column=fk_column,
+        parent_id=int(parent_id),
+    )
+    if entity_ctx is None:
+        return perimeter_variant_code
+    allowed = perimeter_variant_codes_for_entity(*entity_ctx)
+    if not allowed:
+        return None
+    return perimeter_variant_code
+
+
+def _regional_district_accepts_import_perimeter_variant(
+    rd_id: int,
+    perimeter_variant_code: str | None,
+) -> bool:
+    """Можно ли записать код варианта в параметры субъекта РФ (в т.ч. при зеркале с РЭС).
+
+    Пустой вариант (NULL в БД) допустим всегда: при импорте Excel он не валидируется
+  против каталога привязок. Явный код — только если он привязан к этому субъекту.
+    """
+    if perimeter_variant_code is None:
+        return True
+    ctx = perimeter_entity_context_for_model(
+        RegionalDistrictEnergyConsumptionParameter.__name__,
+        parent_fk_column=_MODEL_FK[RegionalDistrictEnergyConsumptionParameter],
+        parent_id=int(rd_id),
+    )
+    if ctx is None:
+        return False
+    entity_kind, entity_name = ctx
+    allowed = perimeter_variant_codes_for_entity(entity_kind, entity_name)
+    return perimeter_variant_code in allowed
+
+
 def _mirror_res_accumulator_rows_to_single_district_rd(
     acc: defaultdict[tuple[Type[Any], str, int, int, str | None], Decimal],
     *,
@@ -1321,6 +1380,8 @@ def _mirror_res_accumulator_rows_to_single_district_rd(
         if rd_id is None:
             continue
         if (rd_id, year_n) in explicit_rd_subject_year_pairs:
+            continue
+        if not _regional_district_accepts_import_perimeter_variant(rd_id, pvc):
             continue
         key_rd = (rd_model, fk_rd, rd_id, year_n, pvc)
         acc[key_rd] += total
@@ -1379,12 +1440,27 @@ def _collapse_labels_to_bind_keys(
                         bind.parent_id,
                         effective_pvc,
                     )
+        if model_supports_perimeter_variant(bind.demand_model):
+            cleared_pvc = _import_perimeter_variant_without_entity_bindings(
+                bind.demand_model,
+                bind.fk_column,
+                int(bind.parent_id),
+                bind.perimeter_variant_code,
+            )
+            if cleared_pvc != bind.perimeter_variant_code:
+                effective_pvc = cleared_pvc
+                bind = _ImportBind(
+                    bind.demand_model,
+                    bind.fk_column,
+                    bind.parent_id,
+                    cleared_pvc,
+                )
         key = (
             bind.demand_model,
             bind.fk_column,
             bind.parent_id,
             year_n,
-            bind.perimeter_variant_code,
+            effective_pvc,
         )
         acc[key] += total
         if bind.demand_model is rd_model:
@@ -1492,12 +1568,16 @@ def _apply_accumulator_for_version(
                 validation_parent_id = (
                     None if write_fk == _FK_AGGREGATE_NO_PARENT else parent_id
                 )
-                perimeter_variant_code = ecps._resolve_perimeter_variant_for_context(
-                    perimeter_variant_code,
-                    model,
-                    None if write_fk == _FK_AGGREGATE_NO_PARENT else write_fk,
-                    validation_parent_id,
-                )
+                try:
+                    perimeter_variant_code = ecps._resolve_perimeter_variant_for_context(
+                        perimeter_variant_code,
+                        model,
+                        None if write_fk == _FK_AGGREGATE_NO_PARENT else write_fk,
+                        validation_parent_id,
+                    )
+                except ValueError:
+                    # Расчётная строка сводки для сущности без привязки варианта в каталоге.
+                    return
                 if perimeter_variant_code is ecps._UNSET:
                     perimeter_variant_code = None
         row = _find_existing_parameter_row(
@@ -1571,7 +1651,11 @@ def _accumulator_from_formula_summary_rows(
         fk_column = row.get("parent_fk_column") or _FK_AGGREGATE_NO_PARENT
         parent_id = int(row.get("parent_id") or 0)
         perimeter_variant_code = row.get("perimeter_variant_code")
-        raw_by_year = _raw_year_values_from_summary_row(row, years)
+        raw_by_year = _raw_year_values_from_summary_row(
+            row,
+            years,
+            ignore_perimeter_variant_year_bounds=True,
+        )
         for year in years:
             value = raw_by_year.get(int(year))
             if value is None:
@@ -1638,12 +1722,18 @@ def persist_all_energy_consumption_summary_computed_rows(
         years=years,
         rounding_digits=rounding_digits,
     )
-    return _persist_formula_summary_rows(
+    touched = _persist_formula_summary_rows(
         summary_rows,
         database_version_id=database_version_id,
         years=years,
         skip_accumulator_keys_by_field=skip_accumulator_keys_by_field,
     )
+    from app.power_demand.services.pd_ec_consumption_index_cache import (
+        invalidate_pd_ec_consumption_index_cache,
+    )
+
+    invalidate_pd_ec_consumption_index_cache(version_id=database_version_id)
+    return touched
 
 
 def persist_summary_table_formula_rows_after_import(

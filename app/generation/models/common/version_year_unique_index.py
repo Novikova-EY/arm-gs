@@ -11,3 +11,15 @@ def version_year_unique_index(index_name: str, parent_id_column: str) -> Index:
         text("COALESCE(database_version_id, -1)"),
         unique=True,
     )
+
+
+def version_year_month_unique_index(index_name: str, parent_id_column: str) -> Index:
+    """Одна строка на (сущность, год, месяц/«год», версия БД)."""
+    return Index(
+        index_name,
+        parent_id_column,
+        "year_number",
+        "month_number",
+        text("COALESCE(database_version_id, -1)"),
+        unique=True,
+    )

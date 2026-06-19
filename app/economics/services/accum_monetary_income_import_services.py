@@ -3,7 +3,7 @@
 
 Поддерживаемые форматы:
 - экспорт страницы (территория в столбце 1, годы с столбца 2);
-- шаблон «Накопленные инвестиции_для загрузки.xlsx» (лист «таблица»):
+- шаблон «Накопленные денежные доходы населения_для загрузки.xlsx» (лист «таблица»):
   аббревиатура ФО в столбце 2, подпись показателя в столбце 3,
   годы с столбца 4; импортируются только строки
   «Накопленные денежные доходы населения».
@@ -429,6 +429,8 @@ def import_accum_monetary_income_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
         "warnings": list(parse_stats.get("warnings") or []),
         "sheet_name": parse_stats.get("sheet_name"),
         "years_ensured": years_created,
+        "import_year_min": min(all_years) if all_years else None,
+        "import_year_max": max(all_years) if all_years else None,
     }
 
     for version_id in version_ids:
@@ -449,4 +451,10 @@ def import_accum_monetary_income_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
         log_accum_monetary_income_excel_import(
             user, stats, database_version_id=current_version_id
         )
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        for vid in version_ids:
+            invalidate_economics_fd_data_cache(vid, "accum_monetary_income")
     return stats

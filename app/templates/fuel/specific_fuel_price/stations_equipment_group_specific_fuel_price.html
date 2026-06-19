@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
 
-{% block title %}Цена для групп оборудования{% endblock %}
+{% block title %}Цена сожженного топлива{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -25,18 +25,14 @@
     </div>
 
     <div class="col-12 mb-2">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex gap-2">
-                <h2 class="text-center mb-4">Цена для групп оборудования</h2>
-            </div>
-            <div class="d-flex align-items-center gap-2 ms-auto">
-                <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
-                    ➕ Добавить электростанцию
-                </a>
-                <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
-                    ➕ Добавить группу оборудования
-                </a>
-            </div>
+        <h2 class="text-center mb-4">Цена сожженного топлива</h2>
+        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+            <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
+                ➕ Добавить электростанцию
+            </a>
+            <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
+                ➕ Добавить группу оборудования
+            </a>
         </div>
     </div>
 

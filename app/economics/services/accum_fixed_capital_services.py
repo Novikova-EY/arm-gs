@@ -60,9 +60,9 @@ def _normalize_label(text: str | None) -> str:
 
 
 def _ved_display_name(ved: EconomicActivityType) -> str | None:
-    """Подпись строки ВЭД на странице накопленных инвестиций (поле name_2 справочника /refdata/ved)."""
-    name_2 = (getattr(ved, "name_2", None) or "").strip()
-    return name_2 or None
+    """Подпись ВЭД на страницах «Экономики» (полное наименование, /refdata/ved)."""
+    label = (ved.name or "").strip()
+    return label or None
 
 
 def _federal_district_name_key(name: str | None) -> str:
@@ -169,6 +169,17 @@ def _load_values_map(
     model: type,
     territory_filter: Any | None = None,
 ) -> dict[tuple[int, int], Decimal | None]:
+    from app.common.services.economics_fd_data_cache import get_fd_ved_year_values
+
+    if model is FederalDistrictAccumFixedCapitalParameter:
+        return get_fd_ved_year_values(
+            "accum_fixed_capital",
+            version_id=version_id,
+            model=model,
+            value_attr="accumulated_fixed_capital_investment_mln_rub",
+            territory_filter=territory_filter,
+        )
+
     q = model.query
     if version_id is not None:
         q = q.filter(model.database_version_id == version_id)
@@ -193,6 +204,7 @@ def build_accum_fixed_capital_page_context(
     filter_year_list: list[int],
     coeff_base_year: int,
     summary_include_medium_years: bool,
+    summary_include_long_years: bool,
     fd_filter_ids: frozenset[int],
     ved_filter_ids: frozenset[int],
     has_active_filters: bool,
@@ -265,6 +277,7 @@ def build_accum_fixed_capital_page_context(
         "end_year": end_year,
         "coeff_base_year": coeff_base_year,
         "summary_include_medium_years": summary_include_medium_years,
+        "summary_include_long_years": summary_include_long_years,
         "lt_afci_year_segments": True,
         "territory_blocks": territory_blocks,
         "federal_district_list": federal_district_list,
@@ -384,7 +397,7 @@ def _ved_row(
         cells[year] = values_by_ved_year.get((ved.id, year))
     row = {
         "ved_id": ved.id,
-        "ved_name": _ved_display_name(ved) or ved.name,
+        "ved_name": _ved_display_name(ved),
         "is_total": _normalize_label(ved.name) == _normalize_label(TOTAL_ACCUM_FIXED_CAPITAL_NAME),
         "is_industrial_group": False,
         "is_industrial_component": False,
@@ -681,6 +694,13 @@ def save_accum_fixed_capital_from_post(form_data: Any) -> tuple[int, int]:
             ved_cache=ved_cache,
         )
         updated += 1
+
+    if updated:
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        invalidate_economics_fd_data_cache(version_id, "accum_fixed_capital")
 
     return updated, skipped
 

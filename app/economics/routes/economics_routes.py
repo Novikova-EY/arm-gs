@@ -108,6 +108,19 @@ def _csrf():
     return EmptyCSRFForm()
 
 
+def _build_economics_page_context(build_fn, page_kw: dict) -> dict:
+    page_kw.pop("data_start_year", None)
+    page_kw.pop("data_end_year", None)
+    lt_ved_year_seg_state = page_kw.pop("lt_ved_year_seg_state", None)
+    lt_afci_year_seg_state = page_kw.pop("lt_afci_year_seg_state", None)
+    context = build_fn(**page_kw)
+    if lt_ved_year_seg_state is not None:
+        context["lt_ved_year_seg_state"] = lt_ved_year_seg_state
+    if lt_afci_year_seg_state is not None:
+        context["lt_afci_year_seg_state"] = lt_afci_year_seg_state
+    return context
+
+
 def _redirect_preserving_query(endpoint: str, **extra):
     qs = (request.form.get("preserve_qs") or "").strip()
     if qs:
@@ -165,9 +178,7 @@ def ved_consumption():
         return _redirect_preserving_query("economics_bp.ved_consumption", rounding_digits=rd)
 
     page_kw = parse_ved_consumption_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_ved_consumption_page_context(**page_kw)
+    context = _build_economics_page_context(build_ved_consumption_page_context, page_kw)
     context["form"] = form
     context["can_edit"] = getattr(current_user, "has_admin", False)
     vid = get_current_version()
@@ -216,9 +227,7 @@ def ved_consumption_logs():
 def ved_consumption_export_xlsx():
     rd = _parse_rounding_digits()
     page_kw = parse_ved_consumption_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_ved_consumption_page_context(**page_kw)
+    context = _build_economics_page_context(build_ved_consumption_page_context, page_kw)
     stream = build_ved_consumption_excel_stream(context)
     return send_file(
         stream,
@@ -287,7 +296,7 @@ def economics_formulas():
         return redirect(url_for("economics_bp.hub"))
     return render_template(
         "economics/economics_formulas.html",
-        page_title="Тексты формул — Экономика",
+        page_title="Тексты формул для модуля «Экономика»",
         formula_rows=efts.list_formulas_for_admin(),
     )
 
@@ -375,9 +384,7 @@ def accum_fixed_capital():
         )
 
     page_kw = parse_accum_fixed_capital_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_accum_fixed_capital_page_context(**page_kw)
+    context = _build_economics_page_context(build_accum_fixed_capital_page_context, page_kw)
     context["form"] = form
     context["can_edit"] = getattr(current_user, "has_admin", False)
     vid = get_current_version()
@@ -426,9 +433,7 @@ def accum_fixed_capital_logs():
 def accum_fixed_capital_export_xlsx():
     rd = _parse_rounding_digits()
     page_kw = parse_accum_fixed_capital_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_accum_fixed_capital_page_context(**page_kw)
+    context = _build_economics_page_context(build_accum_fixed_capital_page_context, page_kw)
     stream = build_accum_fixed_capital_excel_stream(context)
     return send_file(
         stream,
@@ -536,9 +541,7 @@ def product_output():
         )
 
     page_kw = parse_product_output_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_product_output_page_context(**page_kw)
+    context = _build_economics_page_context(build_product_output_page_context, page_kw)
     context["form"] = form
     context["can_edit"] = getattr(current_user, "has_admin", False)
     vid = get_current_version()
@@ -587,9 +590,7 @@ def product_output_logs():
 def product_output_export_xlsx():
     rd = _parse_rounding_digits()
     page_kw = parse_product_output_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_product_output_page_context(**page_kw)
+    context = _build_economics_page_context(build_product_output_page_context, page_kw)
     stream = build_product_output_excel_stream(context)
     return send_file(
         stream,
@@ -697,9 +698,7 @@ def population():
         )
 
     page_kw = parse_population_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_population_page_context(**page_kw)
+    context = _build_economics_page_context(build_population_page_context, page_kw)
     context["form"] = form
     context["can_edit"] = getattr(current_user, "has_admin", False)
     vid = get_current_version()
@@ -748,9 +747,7 @@ def population_logs():
 def population_export_xlsx():
     rd = _parse_rounding_digits()
     page_kw = parse_population_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_population_page_context(**page_kw)
+    context = _build_economics_page_context(build_population_page_context, page_kw)
     stream = build_population_excel_stream(context)
     return send_file(
         stream,
@@ -846,9 +843,7 @@ def accum_monetary_income():
         )
 
     page_kw = parse_accum_monetary_income_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_accum_monetary_income_page_context(**page_kw)
+    context = _build_economics_page_context(build_accum_monetary_income_page_context, page_kw)
     context["form"] = form
     context["can_edit"] = getattr(current_user, "has_admin", False)
     vid = get_current_version()
@@ -897,9 +892,7 @@ def accum_monetary_income_logs():
 def accum_monetary_income_export_xlsx():
     rd = _parse_rounding_digits()
     page_kw = parse_accum_monetary_income_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    context = build_accum_monetary_income_page_context(**page_kw)
+    context = _build_economics_page_context(build_accum_monetary_income_page_context, page_kw)
     stream = build_accum_monetary_income_excel_stream(context)
     return send_file(
         stream,
@@ -964,5 +957,12 @@ def accum_monetary_income_import_xlsx():
     warnings = stats.get("warnings") or []
     if warnings:
         msg += f" Предупреждений: {len(warnings)}."
-    hints = warnings[:20]
+    hints = list(warnings[:20])
+    y_min = stats.get("import_year_min")
+    y_max = stats.get("import_year_max")
+    if y_min is not None and y_max is not None:
+        hints.append(
+            f"В файле годы {y_min}–{y_max}. Для сверки на странице расширьте диапазон "
+            f"«Год начала» / «Год конца» и при необходимости включите среднесрочный период."
+        )
     return jsonify(ok=True, message=msg, hints=hints, **stats)

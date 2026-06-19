@@ -144,6 +144,17 @@ def _load_values_map(
     model: type,
     territory_filter: Any | None = None,
 ) -> dict[tuple[int, int], Decimal | None]:
+    from app.common.services.economics_fd_data_cache import get_fd_ved_year_values
+
+    if model is FederalDistrictEATConsumptionParameter:
+        return get_fd_ved_year_values(
+            "ved_consumption",
+            version_id=version_id,
+            model=model,
+            value_attr="energy_consumption_mln_kvt_ch",
+            territory_filter=territory_filter,
+        )
+
     q = model.query
     if version_id is not None:
         q = q.filter(model.database_version_id == version_id)
@@ -168,6 +179,7 @@ def build_ved_consumption_page_context(
     filter_year_list: list[int],
     coeff_base_year: int,
     summary_include_medium_years: bool,
+    summary_include_long_years: bool,
     fd_filter_ids: frozenset[int],
     ved_filter_ids: frozenset[int],
     has_active_filters: bool,
@@ -239,6 +251,7 @@ def build_ved_consumption_page_context(
         "end_year": end_year,
         "coeff_base_year": coeff_base_year,
         "summary_include_medium_years": summary_include_medium_years,
+        "summary_include_long_years": summary_include_long_years,
         "lt_ved_year_segments": True,
         "territory_blocks": territory_blocks,
         "federal_district_list": federal_district_list,
@@ -616,6 +629,13 @@ def save_ved_consumption_from_post(form_data: Any) -> tuple[int, int]:
             ved_cache=ved_cache,
         )
         updated += 1
+
+    if updated:
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        invalidate_economics_fd_data_cache(version_id, "ved_consumption")
 
     return updated, skipped
 

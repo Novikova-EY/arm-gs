@@ -1,0 +1,37 @@
+{# Фильтры страницы «Перетоки ЭЭ» #}
+
+{% set filters_action = url_for('energy_balance_bp.ee_transfers') %}
+
+{% set use_equipment_group_filter = false %}
+
+{% set total_count_label = 'перетоков' %}
+
+{% set per_page_count_label = 'перетоков' %}
+
+{% set per_page_all_label = 'перетоки' %}
+
+{% set import_redirect_endpoint = 'energy_balance_bp.ee_transfers' %}
+
+{% set show_ee_transfers_import = true %}
+
+{% set import_ee_transfers_action = url_for('energy_balance_bp.import_ee_transfers') %}
+
+{% set export_ee_transfers_action = url_for('energy_balance_bp.export_ee_transfers') %}
+
+{% set ee_period_mode = ee_period_mode|default('years') %}
+
+{% set use_single_year = (ee_period_mode == 'months') %}
+
+{% set show_ee_period_mode_toggle = true %}
+
+{% set show_rounding_digits = true %}
+
+{% set center_top_pagination = true %}
+
+{% set show_regional_totals_toggle = true %}
+
+{% set regional_totals_toggle_label = 'Показать сальдо по регионам' %}
+
+{% set selected_year = selected_year|default(start_year)|default(end_year) %}
+
+{% include 'fuel/_shared/station_filters.html' %}

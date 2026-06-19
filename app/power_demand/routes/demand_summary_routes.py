@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from flask import jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
 
@@ -27,6 +29,14 @@ from app.power_demand.services.pd_summary_formula_template_vars import (
 from app.power_demand.services.formula_text.power_demand_summary_formula_text_services import (
     apply_row_formula_text_overrides,
     build_pd_formula_texts_map,
+)
+from app.power_demand.services.demand_summary_client_render_services import (
+    build_client_render_config,
+    build_summary_data_json_response,
+)
+from app.power_demand.services.pd_summary_page_cache import (
+    cached_load_pd_summary_data,
+    clear_pd_summary_page_cache,
 )
 from app.power_demand.services.demand_summary_services import (
     EZ_EXPORT_PARAMETER_KEYS,
@@ -72,6 +82,168 @@ def _attach_pd_summary_formula_texts(context: dict) -> None:
     context["pd_formula_texts"] = formula_texts
     inject_pd_formula_template_variables(context, formula_texts)
     apply_row_formula_text_overrides(context.get("summary_rows"))
+
+
+def _attach_pd_summary_client_render(context: dict, *, scope: str, data_path: str) -> None:
+    context["pd_summary_client_render"] = True
+    context["pd_summary_client_render_config"] = build_client_render_config(
+        scope=scope,
+        data_path=data_path,
+    )
+
+
+def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
+    def loader() -> dict:
+        context = context_builder(for_shell=False)
+        return build_summary_data_json_response(context).get_json()
+
+    return jsonify(cached_load_pd_summary_data(scope, loader))
+
+
+def _parse_oes_max_summary_args() -> dict:
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    include_medium = _parse_summary_include_medium_years()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
+        sy, ey, n, include_medium_years=include_medium
+    )
+    oes_ordered = _parse_oes_territory_ordered()
+    ues_l, res_l, rd_l, eu_l = oes_ordered
+    return {
+        "sy": sy,
+        "ey": ey,
+        "include_medium": include_medium,
+        "eff_sy": eff_sy,
+        "eff_ey": eff_ey,
+        "oes_ordered": oes_ordered,
+        "ues_l": ues_l,
+        "res_l": res_l,
+        "rd_l": rd_l,
+        "eu_l": eu_l,
+    }
+
+
+def _build_oes_max_summary_context(*, for_shell: bool) -> dict:
+    args = _parse_oes_max_summary_args()
+    context = build_oes_summary_context(
+        _parse_rounding_digits(),
+        start_year=args["sy"],
+        end_year=args["ey"],
+        data_start_year=args["eff_sy"],
+        data_end_year=args["eff_ey"],
+        filter_year_list=_filter_year_list_for_summary(),
+        oes_territory_ordered=args["oes_ordered"],
+        for_client_render_shell=for_shell,
+    )
+    if for_shell:
+        context.update(get_demand_summary_filter_refdata())
+        context["pd_oes_filters_cascade"] = get_power_demand_oes_filter_cascade_data()
+    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["has_active_summary_filters"] = bool(
+        args["ues_l"] or args["res_l"] or args["rd_l"] or args["eu_l"]
+    )
+    context["summary_route_variant"] = "max"
+    context["coeff_base_year"] = _summary_period_base_year_n()
+    context["summary_include_medium_years"] = args["include_medium"]
+    _attach_pd_summary_formula_texts(context)
+    if for_shell:
+        context["pd_summary_logs_lazy"] = True
+    return context
+
+
+def _parse_fo_max_summary_args() -> dict:
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    include_medium = _parse_summary_include_medium_years()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
+        sy, ey, n, include_medium_years=include_medium
+    )
+    fo_sets = _parse_fo_filter_sets()
+    f_fd, f_res = fo_sets
+    return {
+        "sy": sy,
+        "ey": ey,
+        "include_medium": include_medium,
+        "eff_sy": eff_sy,
+        "eff_ey": eff_ey,
+        "fo_sets": fo_sets,
+        "f_fd": f_fd,
+        "f_res": f_res,
+    }
+
+
+def _build_fo_max_summary_context(*, for_shell: bool) -> dict:
+    args = _parse_fo_max_summary_args()
+    context = build_federal_district_summary_context(
+        _parse_rounding_digits(),
+        start_year=args["sy"],
+        end_year=args["ey"],
+        data_start_year=args["eff_sy"],
+        data_end_year=args["eff_ey"],
+        filter_year_list=_filter_year_list_for_summary(),
+        fo_filter_sets=args["fo_sets"],
+        fo_aggregate_by_res=True,
+        for_client_render_shell=for_shell,
+    )
+    if for_shell:
+        context.update(get_demand_summary_filter_refdata())
+        context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
+    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["has_active_summary_filters"] = bool(args["f_fd"] or args["f_res"])
+    context["summary_route_variant"] = "max"
+    context["coeff_base_year"] = _summary_period_base_year_n()
+    context["summary_include_medium_years"] = args["include_medium"]
+    _attach_pd_summary_formula_texts(context)
+    if for_shell:
+        context["pd_summary_logs_lazy"] = True
+    return context
+
+
+def _parse_ez_max_summary_args() -> dict:
+    sy, ey = _parse_summary_year_range()
+    n = _summary_period_base_year_n()
+    include_medium = _parse_summary_include_medium_years()
+    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
+        sy, ey, n, include_medium_years=include_medium
+    )
+    ez_ordered = _parse_ez_territory_ordered()
+    ez_l, res_l = ez_ordered
+    return {
+        "sy": sy,
+        "ey": ey,
+        "include_medium": include_medium,
+        "eff_sy": eff_sy,
+        "eff_ey": eff_ey,
+        "ez_ordered": ez_ordered,
+        "ez_l": ez_l,
+        "res_l": res_l,
+    }
+
+
+def _build_ez_max_summary_context(*, for_shell: bool) -> dict:
+    args = _parse_ez_max_summary_args()
+    context = build_energy_zones_summary_context(
+        _parse_rounding_digits(),
+        start_year=args["sy"],
+        end_year=args["ey"],
+        data_start_year=args["eff_sy"],
+        data_end_year=args["eff_ey"],
+        filter_year_list=_filter_year_list_for_summary(),
+        ez_territory_ordered=args["ez_ordered"],
+        for_client_render_shell=for_shell,
+    )
+    if for_shell:
+        context.update(get_demand_summary_filter_refdata())
+        context["pd_ez_filters_cascade"] = get_power_demand_ez_filter_cascade_data()
+    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["has_active_summary_filters"] = bool(args["ez_l"] or args["res_l"])
+    context["summary_route_variant"] = "max"
+    context["coeff_base_year"] = _summary_period_base_year_n()
+    context["summary_include_medium_years"] = args["include_medium"]
+    _attach_pd_summary_formula_texts(context)
+    if for_shell:
+        context["pd_summary_logs_lazy"] = True
+    return context
 
 
 def _parse_rounding_digits() -> int:
@@ -329,9 +501,14 @@ def _demand_summary_excel_response(
         summary_rows=context["summary_rows"],
         years=context["years"],
         sheet_title=context["page_title"],
+        year_features=context.get("year_features"),
         year_is_plan=context.get("year_is_plan"),
         export_coeff_k_columns=export_coeff_k_columns,
         coeff_base_year=int(coeff_excel) if coeff_excel is not None else None,
+        rounding_digits=int(context.get("rounding_digits") or 1),
+        rounding_digits_k=context.get("rounding_digits_k"),
+        show_hist_col=not export_coeff_k_columns,
+        coeff_include_long=bool(context.get("coeff_include_long")),
     )
     fn = f"{filename_prefix}_{context['start_year']}_{context['end_year']}.xlsx"
     return send_file(
@@ -644,7 +821,117 @@ def demand_summary_save_cell():
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
+    clear_pd_summary_page_cache()
     return jsonify(ok=True, display_value=display)
+
+
+@power_demand_bp.route("/summary/perimeter_variant", methods=["POST"])
+@login_required
+def demand_summary_save_perimeter_variant():
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    data = request.get_json(silent=True) or {}
+    demand_model_name = str(data.get("demand_model_name") or "").strip()
+    if not demand_model_name:
+        return jsonify(ok=False, error="Не указана модель параметров."), 400
+
+    pfk_raw = data.get("parent_fk_column")
+    parent_fk_column = str(pfk_raw).strip() if pfk_raw not in (None, "") else None
+    pid_raw = data.get("parent_id")
+    parent_id = None
+    if pid_raw not in (None, ""):
+        try:
+            parent_id = int(pid_raw)
+        except (TypeError, ValueError):
+            return jsonify(ok=False, error="Неверный идентификатор объекта."), 400
+
+    from_variant = dps._UNSET
+    to_variant = dps._UNSET
+    if "from_variant_code" in data:
+        from_variant = dps._parse_reassign_variant_code_payload(
+            data.get("from_variant_code")
+        )
+    if "to_variant_code" in data:
+        to_variant = dps._parse_reassign_variant_code_payload(data.get("to_variant_code"))
+    elif "to_variant_code" not in data and "perimeter_variant_code" in data:
+        to_variant = dps._parse_reassign_variant_code_payload(
+            data.get("perimeter_variant_code")
+        )
+
+    summary_log_scope: str | None = None
+    sls_raw = data.get("summary_log_scope")
+    if sls_raw not in (None, ""):
+        s = str(sls_raw).strip().lower()
+        if s in ("oes", "fo", "ez"):
+            summary_log_scope = s
+
+    try:
+        updated = dps.reassign_summary_entity_perimeter_variant(
+            demand_model_name,
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id,
+            from_variant_code=from_variant,
+            to_variant_code=to_variant,
+            summary_log_scope=summary_log_scope,
+        )
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    clear_pd_summary_page_cache()
+    return jsonify(ok=True, updated=updated)
+
+
+@power_demand_bp.route("/summary/block_variant", methods=["POST"])
+@login_required
+def demand_summary_save_block_variant():
+    """Назначает вариант периметра блоку строк сводки нагрузок."""
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    data = request.get_json(silent=True) or {}
+    demand_model_name = str(data.get("demand_model_name") or "").strip()
+    if not demand_model_name:
+        return jsonify(ok=False, error="Не указана модель параметров."), 400
+
+    block_kind = str(data.get("block_kind") or "").strip()
+    if not block_kind:
+        return jsonify(ok=False, error="Не указан тип блока сводки."), 400
+
+    pfk_raw = data.get("parent_fk_column")
+    parent_fk_column = str(pfk_raw).strip() if pfk_raw not in (None, "") else None
+    pid_raw = data.get("parent_id")
+    parent_id = None
+    if pid_raw not in (None, ""):
+        try:
+            parent_id = int(pid_raw)
+        except (TypeError, ValueError):
+            return jsonify(ok=False, error="Неверный идентификатор объекта."), 400
+
+    block_scope_raw = data.get("block_scope")
+    block_scope = (
+        str(block_scope_raw).strip() if block_scope_raw not in (None, "") else None
+    )
+
+    summary_log_scope: str | None = None
+    sls_raw = data.get("summary_log_scope")
+    if sls_raw not in (None, ""):
+        s = str(sls_raw).strip().lower()
+        if s in ("oes", "fo", "ez"):
+            summary_log_scope = s
+
+    try:
+        dps.set_summary_block_variant_code(
+            demand_model_name,
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id,
+            block_kind=block_kind,
+            perimeter_variant_code=data.get("perimeter_variant_code", dps._UNSET),
+            block_scope=block_scope,
+            from_variant_code=data.get("from_variant_code", dps._UNSET),
+            summary_log_scope=summary_log_scope,
+        )
+    except ValueError as e:
+        return jsonify(ok=False, error=str(e)), 400
+    clear_pd_summary_page_cache()
+    return jsonify(ok=True)
 
 
 @power_demand_bp.route("/summary/logs/<scope>", methods=["GET"])
@@ -688,98 +975,64 @@ def demand_summary_scope_logs(scope: str):
 @power_demand_bp.route("/summary/oes/")
 @login_required
 def demand_summary_oes():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    context = _build_oes_max_summary_context(for_shell=True)
+    _attach_pd_summary_client_render(
+        context,
+        scope="oes",
+        data_path="/power_demand/summary/oes/data.json",
     )
-    oes_ordered = _parse_oes_territory_ordered()
-    ues_l, res_l, rd_l, eu_l = oes_ordered
-    context = build_oes_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        oes_territory_ordered=oes_ordered,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_power_demand_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_pd_summary_logs(context)
-    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
+
+
+@power_demand_bp.route("/summary/oes/data.json")
+@login_required
+def demand_summary_oes_data():
+    return _build_summary_data_json_response(
+        scope="oes",
+        context_builder=_build_oes_max_summary_context,
+    )
 
 
 @power_demand_bp.route("/summary/energy_zones/")
 @login_required
 def demand_summary_energy_zones():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    context = _build_ez_max_summary_context(for_shell=True)
+    _attach_pd_summary_client_render(
+        context,
+        scope="ez",
+        data_path="/power_demand/summary/energy_zones/data.json",
     )
-    ez_ordered = _parse_ez_territory_ordered()
-    ez_l, res_l = ez_ordered
-    context = build_energy_zones_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        ez_territory_ordered=ez_ordered,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_ez_filters_cascade"] = get_power_demand_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ez_l or res_l)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_pd_summary_logs(context)
-    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
+
+
+@power_demand_bp.route("/summary/energy_zones/data.json")
+@login_required
+def demand_summary_energy_zones_data():
+    return _build_summary_data_json_response(
+        scope="ez",
+        context_builder=_build_ez_max_summary_context,
+    )
 
 
 @power_demand_bp.route("/summary/federal_districts/")
 @login_required
 def demand_summary_federal_districts():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+    context = _build_fo_max_summary_context(for_shell=True)
+    _attach_pd_summary_client_render(
+        context,
+        scope="fo",
+        data_path="/power_demand/summary/federal_districts/data.json",
     )
-    fo_sets = _parse_fo_filter_sets()
-    f_fd, f_res = fo_sets
-    context = build_federal_district_summary_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        fo_filter_sets=fo_sets,
-        fo_aggregate_by_res=True,
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_res)
-    context["summary_route_variant"] = "max"
-    context["coeff_base_year"] = _summary_period_base_year_n()
-    context["summary_include_medium_years"] = include_medium
-    _attach_pd_summary_logs(context)
-    _attach_pd_summary_formula_texts(context)
     return render_template("power_demand/power_demand_summary.html", **context)
+
+
+@power_demand_bp.route("/summary/federal_districts/data.json")
+@login_required
+def demand_summary_federal_districts_data():
+    return _build_summary_data_json_response(
+        scope="fo",
+        context_builder=_build_fo_max_summary_context,
+    )
 
 
 @power_demand_bp.route("/summary/coeff/oes/")

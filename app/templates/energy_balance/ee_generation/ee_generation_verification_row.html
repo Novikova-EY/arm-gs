@@ -1,0 +1,14 @@
+{# Строка проверки сумм по РЭС (скрыта по умолчанию, включается кнопкой «Проверка») #}
+<tr class="ee-verification-row ee-verify-for-row summary-row-hidden text-center align-middle" style="font-weight: bold;">
+    <td></td>
+    <td class="text-start">{{ label }}</td>
+    <td colspan="5"></td>
+    {% for period_num, period_label in period_columns %}
+    {% set verification_value = period_totals.get(period_num) %}
+    <td>
+        <span class="{% if is_verification_nonzero(verification_value) %}text-danger{% endif %}">
+            {{ format_verification_cell(verification_value) }}
+        </span>
+    </td>
+    {% endfor %}
+</tr>

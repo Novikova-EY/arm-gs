@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 
 """GET-параметры страницы электроёмкости."""
 
@@ -32,7 +32,8 @@ from app.economics.services.ved_consumption_page_services import (
 
 )
 
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
+    EI_COEFFICIENT_X_AVG_START_YEAR,
     POPULATION_SECTION_MARKER,
 )
 
@@ -80,7 +81,7 @@ def parse_electrical_intensity_summary_year_range() -> tuple[int, int]:
 
     n = summary_period_base_year_n()
 
-    default_sy = n - 9
+    default_sy = EI_COEFFICIENT_X_AVG_START_YEAR
 
     default_ey = n + SUMMARY_LONG_TERM_YEARS_AFTER_N
 

@@ -122,6 +122,7 @@ scp C:\arm_gs\packaging\generation-app_1.0.181_amd64.deb novikova-eyu@10.31.205.
 cd /tmp
 sudo dpkg -i generation-app_1.0.181_amd64.deb || sudo apt -f install
 GnT8xs!
+
 cd /opt/generation-app/
 source venv/bin/activate
 cd /opt/generation-app/app

@@ -12,6 +12,9 @@ from sqlalchemy import asc, not_
 from app.energy_consumption.forms.energy_consumption_parameter_forms import EmptyCSRFForm
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
+from app.energy_consumption.services.energy_consumption_summary_formula_registry import (
+    PAGE_ELECTRICAL_INTENSITY,
+)
 from app.energy_consumption.services.formula_text.energy_consumption_summary_formula_text_services import (
     list_formulas_for_admin,
     reset_formula_text_override,
@@ -118,23 +121,29 @@ def hub():
     return render_template("energy_consumption/energy_consumption_start.html")
 
 
-@energy_consumption_bp.route("/summary_formulas/")
+@energy_consumption_bp.route("/formulas/")
 @login_required
-def energy_consumption_summary_formulas():
+def energy_consumption_formulas():
     if not getattr(current_user, "has_admin", False):
         flash("Недостаточно прав для редактирования текстов формул.", "danger")
         return redirect(url_for("energy_consumption_bp.hub"))
     return render_template(
         "energy_consumption/energy_consumption_summary_formulas.html",
-        page_title="Тексты формул сводок потребления ЭЭ и электроёмкости",
-        formula_rows=list_formulas_for_admin(),
+        page_title="Тексты формул для модуля «Спрос»",
+        formula_rows=list_formulas_for_admin(exclude_page=PAGE_ELECTRICAL_INTENSITY),
         has_active_summary_filters=False,
     )
 
 
-@energy_consumption_bp.route("/summary_formulas/save", methods=["POST"])
+@energy_consumption_bp.route("/summary_formulas/")
 @login_required
-def energy_consumption_summary_formulas_save():
+def energy_consumption_summary_formulas():
+    return redirect(url_for("energy_consumption_bp.energy_consumption_formulas", **request.args))
+
+
+@energy_consumption_bp.route("/formulas/save", methods=["POST"])
+@login_required
+def energy_consumption_formulas_save():
     if not getattr(current_user, "has_admin", False):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
@@ -150,9 +159,9 @@ def energy_consumption_summary_formulas_save():
     return jsonify(ok=True)
 
 
-@energy_consumption_bp.route("/summary_formulas/reset", methods=["POST"])
+@energy_consumption_bp.route("/formulas/reset", methods=["POST"])
 @login_required
-def energy_consumption_summary_formulas_reset():
+def energy_consumption_formulas_reset():
     if not getattr(current_user, "has_admin", False):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
@@ -162,6 +171,18 @@ def energy_consumption_summary_formulas_reset():
     reset_formula_text_override(key)
     db.session.commit()
     return jsonify(ok=True)
+
+
+@energy_consumption_bp.route("/summary_formulas/save", methods=["POST"])
+@login_required
+def energy_consumption_summary_formulas_save():
+    return energy_consumption_formulas_save()
+
+
+@energy_consumption_bp.route("/summary_formulas/reset", methods=["POST"])
+@login_required
+def energy_consumption_summary_formulas_reset():
+    return energy_consumption_formulas_reset()
 
 
 # --- Россия (без родителя) ---

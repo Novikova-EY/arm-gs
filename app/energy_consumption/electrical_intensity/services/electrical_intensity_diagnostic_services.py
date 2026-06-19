@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Диагностическая разметка строки «Характерные точки графика» (по данным электроёмкости)."""
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.common.services.help_services import format_decimal_trim_for_display
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
     REF_ROW_ACCUM_FIXED_CAPITAL,
     REF_ROW_ACCUM_MONETARY_INCOME,
     REF_ROW_FD_ACCUM_FIXED_CAPITAL,

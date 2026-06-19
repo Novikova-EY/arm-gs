@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Добавить зарубежную страну{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+  <div class="container mt-5">
+      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить зарубежную страну</h2>
+
+      <form action="{{ url_for('refdata_bp.add_foreign_border_country') }}" method="POST">
+        {{ form.hidden_tag() }}
+
+        <input type="hidden" name="page" value="{{ pagination.page if pagination else 1 }}">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
+        <input type="hidden" name="sort_by" value="{{ sort_by }}">
+        <input type="hidden" name="sort_dir" value="{{ sort_dir }}">
+        <input type="hidden" name="foreign_border_country_filter" value="{{ foreign_border_country_filter }}">
+
+        <div class="mb-3">
+            <label for="name" class="form-label">Наименование страны</label>
+            {{ form.name(class="form-control", id="name") }}
+            {% if form.name.errors %}
+                <div class="text-danger">{{ form.name.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mt-4 d-flex flex-wrap gap-2 align-items-center">
+            <button type="submit" class="btn btn-primary">Добавить</button>
+            {% if current_user.has_admin %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-primary" title="Добавить запись во все версии БД">Добавить во всех версиях</button>{% endif %}
+            <a href="{{ url_for('refdata_bp.foreign_border_country_list',
+                                page=page,
+                                per_page=per_page,
+                                sort_by=sort_by,
+                                sort_dir=sort_dir,
+                                foreign_border_country_filter=foreign_border_country_filter,
+                                ) }}"
+                                class="btn btn-outline-danger">
+                        Отмена
+            </a>
+        </div>
+      </form>
+  </div>
+{% endif %}
+{% endblock %}

@@ -721,12 +721,14 @@ def demand_summary_save_perimeter_variant():
         except (TypeError, ValueError):
             return jsonify(ok=False, error="Неверный идентификатор объекта."), 400
 
-    from_variant = data.get("from_variant_code", dps._UNSET)
-    to_variant = data.get("to_variant_code", dps._UNSET)
+    from_variant = dps._UNSET
+    to_variant = dps._UNSET
     if "from_variant_code" in data:
-        from_variant = dps._resolve_perimeter_variant_for_save(data.get("from_variant_code"))
+        from_variant = dps._parse_reassign_variant_code_payload(
+            data.get("from_variant_code")
+        )
     if "to_variant_code" in data:
-        to_variant = dps._resolve_perimeter_variant_for_save(data.get("to_variant_code"))
+        to_variant = dps._parse_reassign_variant_code_payload(data.get("to_variant_code"))
 
     try:
         updated = dps.reassign_summary_entity_perimeter_variant(
@@ -779,6 +781,7 @@ def demand_summary_save_block_variant():
             block_kind=block_kind,
             perimeter_variant_code=data.get("perimeter_variant_code", dps._UNSET),
             block_scope=block_scope,
+            from_variant_code=data.get("from_variant_code", dps._UNSET),
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400

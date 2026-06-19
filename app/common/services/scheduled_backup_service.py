@@ -7,8 +7,6 @@ import os
 import subprocess
 from datetime import datetime
 from flask import current_app
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 import logging
 
 # Настройка логирования
@@ -31,6 +29,15 @@ class ScheduledBackupService:
         # Проверяем, включены ли автоматические бэкапы
         if not app.config.get('ENABLE_SCHEDULED_BACKUPS', False):
             logger.info("Автоматические бэкапы отключены в конфигурации")
+            return
+
+        try:
+            from apscheduler.schedulers.background import BackgroundScheduler
+            from apscheduler.triggers.cron import CronTrigger
+        except ImportError:
+            logger.error(
+                "APScheduler не установлен. Установите: pip install APScheduler==3.10.4"
+            )
             return
         
         # Создаем scheduler

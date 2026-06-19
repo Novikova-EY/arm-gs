@@ -12,6 +12,10 @@ from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
+from app.generation.models.station.station_constants import (
+    STATION_SIGN_ESPP,
+    STATION_SIGN_UNSPECIFIED,
+)
 
 class Station(db.Model, AuditMixin, VersionedModelMixin):
     __tablename__ = 'gs_gen_stations'
@@ -122,6 +126,9 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     kto = db.Column(db.String(80), unique=True, nullable=True)
     location = db.Column(db.String(255), unique=True, nullable=True)
     note = db.Column(db.String(1000), nullable=True)
+    
+    # Признак электростанции: «ЭСПП» или не указано (NULL)
+    station_sign = db.Column(db.String(20), nullable=True)
 
     # timestamps (UTC, server-side)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -209,6 +216,11 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         gen_companies = {machine.gen_company.name for machine in self.machines if machine.gen_company}
         return ", ".join(gen_companies) if gen_companies else None
 
+    @property
+    def station_sign_display(self) -> str:
+        if self.station_sign == STATION_SIGN_ESPP:
+            return STATION_SIGN_ESPP
+        return STATION_SIGN_UNSPECIFIED
 
     def __repr__(self) -> str:
         return f"<Station id={self.id} name={self.name!r}>"

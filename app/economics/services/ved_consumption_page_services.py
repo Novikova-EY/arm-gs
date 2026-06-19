@@ -278,8 +278,13 @@ def parse_ved_consumption_page_kwargs(*, rounding_digits: int) -> dict:
     sy, ey = parse_summary_year_range()
     n = summary_period_base_year_n()
     include_medium = parse_include_medium_years()
+    include_long = parse_include_long_years()
     eff_sy, eff_ey = expand_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
+        sy,
+        ey,
+        n,
+        include_medium_years=include_medium,
+        include_long_years=include_long,
     )
     year_list = filter_year_list_for_page()
     display_years = [y for y in year_list if eff_sy <= y <= eff_ey]
@@ -297,6 +302,10 @@ def parse_ved_consumption_page_kwargs(*, rounding_digits: int) -> dict:
         "filter_year_list": year_list,
         "coeff_base_year": n,
         "summary_include_medium_years": include_medium,
+        "summary_include_long_years": include_long,
+        "lt_ved_year_seg_state": infer_max_year_segment_state(
+            sy, ey, n, include_medium, include_long
+        ),
         "fd_filter_ids": fd_ids,
         "ved_filter_ids": ved_ids,
         "has_active_filters": has_active_ved_filters(fd_ids, ved_ids),

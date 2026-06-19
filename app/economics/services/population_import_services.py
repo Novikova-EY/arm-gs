@@ -354,4 +354,10 @@ def import_population_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
         log_population_excel_import(
             user, stats, database_version_id=current_version_id
         )
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        for vid in version_ids:
+            invalidate_economics_fd_data_cache(vid, "population")
     return stats

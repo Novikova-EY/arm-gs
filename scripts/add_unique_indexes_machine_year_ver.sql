@@ -24,8 +24,8 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_pgu_machine_names_machine_year
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_station_powers_station_year_ver
   ON gs_gen.gs_gen_station_powers (id_station, year_number, COALESCE(database_version_id, -1));
 
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_station_energy_gen_station_year_ver
-  ON gs_gen.gs_gen_station_energy_generations (id_station, year_number, COALESCE(database_version_id, -1));
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_station_energy_gen_station_year_month_ver
+  ON gs_gen.gs_gen_station_energy_generations (id_station, year_number, month_number, COALESCE(database_version_id, -1));
 
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_station_gaes_charge_station_year_ver
   ON gs_gen.gs_gen_station_gaes_charge_consumptions (id_station, year_number, COALESCE(database_version_id, -1));

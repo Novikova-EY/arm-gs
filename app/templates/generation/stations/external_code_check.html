@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title | default('Проверка external_code') }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="page-table-scroll">
+        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+            <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
+            <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+            <a href="{{ url_for('station_bp.external_code_check') }}" class="btn btn-secondary fs-5">Проверка external_code</a>
+        </div>
+
+        <div class="col-12 mb-2">
+            <h2 class="text-center mb-4">Проверка external_code</h2>
+            <p class="text-center text-muted mb-0">
+                Сравнение external_code станций и агрегатов по всем версиям базы данных
+                (выборка объединяет записи из всех версий, текущая версия в сессии используется только для отображения названий).
+                Ячейки с расхождениями подсвечены.
+            </p>
+        </div>
+
+        <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+            {% include 'generation/stations/station_filters.html' %}
+        </div>
+
+        <style>
+        .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-filters-collapse,
+        .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
+            overflow: visible !important;
+        }
+        </style>
+
+        <div class="table-responsive" id="externalCodeTableContainer">
+            <table class="table table-hover table-striped table-bordered table-responsive">
+                <thead class="table-success">
+                    <tr class="text-center align-middle">
+                        <th colspan="3">Агрегат</th>
+                        <th colspan="{{ database_versions|length }}">Версии базы данных (external_code)</th>
+                    </tr>
+                    <tr class="text-center align-middle">
+                        <th style="width: 50px;">гр.</th>
+                        <th style="width: 80px;">cт. №</th>
+                        <th style="width: 260px;">Тип агрегата</th>
+                        {% for version in database_versions %}
+                            <th style="min-width: 140px; word-break: break-word;">{{ version.version_number }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
+                        {% for es_type_id in sorted_energy_system_type_ids %}
+                            {% set es_type_group = stations_grouped[es_type_id] %}
+
+                            {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
+                                {% include 'generation/stations/aggregated_data/energy_system_types/energy_system_type_header.html' %}
+                            {% endif %}
+
+                            {% for ues in union_energy_system_list %}
+                                {% set ues_id = ues.id %}
+                                {% set ues_group = es_type_group.get(ues_id) %}
+                                {% if ues_group %}
+                                    {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
+                                        {% include 'generation/stations/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
+                                    {% endif %}
+
+                                    {% for res_id, res_group in ues_group.items() %}
+                                        {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
+                                            {% include 'generation/stations/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}
+                                        {% endif %}
+
+                                        {% for rd_id, rd_group in res_group.items() %}
+                                            {% set rd_name = regional_district_names.get(rd_id, '') %}
+                                            {% if rd_name|lower != 'не указано' %}
+                                                {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
+                                                    {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
+                                                {% endif %}
+
+                                                {% for eu_id, eu_group in rd_group.items() %}
+                                                    {% set eu_name = energy_unit_names.get(eu_id) %}
+                                                    {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
+                                                    {% if not skip_eu %}
+                                                        {% if eu_name|lower != 'не указано' %}
+                                                            {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
+                                                                {% set current_eu_id = eu_id %}
+                                                                {% include 'generation/stations/aggregated_data/energy_units/energy_unit_header.html' %}
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% endif %}
+
+                                                    {% for station in eu_group %}
+                                                        {% include 'generation/stations/external_code_station_rows.html' %}
+                                                    {% endfor %}
+                                                {% endfor %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                    {% else %}
+                        {% for station in stations %}
+                            {% include 'generation/stations/external_code_station_rows.html' %}
+                        {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script id="initial-state-json" type="application/json">
+    {
+        "hasActiveFilters": {{ has_active_filters | tojson }}
+    }
+</script>
+
+<script id="filters-data" type="application/json">
+    {{ {
+        'energy_system_type_list': energy_system_type_list,
+        'union_energy_system_list': union_energy_system_list,
+        'regional_energy_system_list': regional_energy_system_list,
+        'federal_district_list': federal_district_list,
+        'regional_district_list': regional_district_list,
+        'energy_system_type_filter': energy_system_type_filter,
+        'union_energy_system_filter': union_energy_system_filter,
+        'regional_energy_system_filter': regional_energy_system_filter,
+        'federal_district_filter': federal_district_filter,
+        'regional_district_filter': regional_district_filter,
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+        'regional_district_mapping': regional_district_mapping,
+        'est_to_ues_mapping': est_to_ues_mapping,
+        'est_to_res_mapping': est_to_res_mapping,
+        'est_to_rd_mapping': est_to_rd_mapping,
+        'est_to_fd_mapping': est_to_fd_mapping,
+        'ues_to_est_mapping': ues_to_est_mapping,
+        'ues_to_res_mapping': ues_to_res_mapping,
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+        'res_to_est_mapping': res_to_est_mapping,
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+        'res_to_rd_mapping': res_to_rd_mapping,
+        'res_to_fd_mapping': res_to_fd_mapping,
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+        'rd_to_res_mapping': rd_to_res_mapping,
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+        'rd_to_est_mapping': rd_to_est_mapping,
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+        'fd_to_res_mapping': fd_to_res_mapping,
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+        'fd_to_est_mapping': fd_to_est_mapping
+    } | tojson | safe }}
+</script>
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if (typeof initializeStationFilters === "function") {
+        initializeStationFilters();
+    }
+});
+</script>
+<script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,78 @@
+<tr>
+    <td class="text-center align-middle fw-bold" colspan="3" style="vertical-align: middle;">
+        <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+            {{ station.name }}
+        </a>
+        {% if station.regional_district %}
+            <div class="small text-muted">{{ station.regional_district.name }}</div>
+        {% endif %}
+    </td>
+    {% for version in database_versions %}
+        {% set code = station.external_codes_by_version.get(version.id, '') %}
+        <td class="text-center align-middle small {% if station.external_code_mismatch %}table-warning{% endif %}" style="word-break: break-all;">
+            {{ code if code else '—' }}
+        </td>
+    {% endfor %}
+</tr>
+
+{% for machine in station.machines %}
+    {% if not machine.pgu_machines %}
+        <tr class="text-center machine-row" style="vertical-align: middle;">
+            {% if machine.group_rowspan > 0 %}
+                <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}">
+                    {{ machine.machine_group }}
+                </td>
+            {% endif %}
+
+            <td class="rowspan-td" rowspan="{{ machine.total_rows or 1 }}">
+                {{ machine.machine_number }}
+            </td>
+
+            <td class="rowspan-td" rowspan="{{ machine.total_rows or 1 }}">
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                    {{ machine.display_name or machine.machine_name }}
+                </a>
+            </td>
+
+            {% for version in database_versions %}
+                {% set code = machine.external_codes_by_version.get(version.id, '') %}
+                <td class="text-center align-middle small {% if machine.external_code_mismatch %}table-warning{% endif %}" style="word-break: break-all;">
+                    {{ code if code else '—' }}
+                </td>
+            {% endfor %}
+        </tr>
+    {% else %}
+        <tr class="text-center machine-row" style="vertical-align: middle;">
+            {% if machine.group_rowspan > 0 %}
+                <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}">
+                    {{ machine.machine_group }}
+                </td>
+            {% endif %}
+
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+                {{ machine.machine_number }}
+            </td>
+
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}">
+                <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">
+                    {{ machine.display_name or machine.machine_name }}
+                </a>
+            </td>
+
+            {% for version in database_versions %}
+                {% set code = machine.external_codes_by_version.get(version.id, '') %}
+                <td class="text-center align-middle small {% if machine.external_code_mismatch %}table-warning{% endif %}" rowspan="{{ machine.total_rows }}" style="word-break: break-all;">
+                    {{ code if code else '—' }}
+                </td>
+            {% endfor %}
+        </tr>
+
+        {% for pgu in machine.pgu_machines %}
+            <tr class="text-center pgu-row">
+                <td class="text-start ps-4">
+                    {{ pgu.pgu_machine_name or pgu.pgu_machine_number }}
+                </td>
+            </tr>
+        {% endfor %}
+    {% endif %}
+{% endfor %}

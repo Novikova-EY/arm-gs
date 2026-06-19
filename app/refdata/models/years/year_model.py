@@ -98,6 +98,30 @@ class Year(db.Model, AuditMixin, VersionedModelMixin):
     fd_population_consumption_year_parameters = db.relationship(
         'FederalDistrictPopulationConsumptionYearParameter', back_populates='year'
     )
+    station_energy_generations = db.relationship(
+        'StationEnergyGeneration',
+        back_populates='year',
+        primaryjoin=(
+            "and_(Year.number==StationEnergyGeneration.year_number, "
+            "Year.database_version_id==StationEnergyGeneration.database_version_id)"
+        ),
+    )
+    espp_energy_generations = db.relationship(
+        'ESPPEnergyGeneration',
+        back_populates='year',
+        primaryjoin=(
+            "and_(Year.number==ESPPEnergyGeneration.year_number, "
+            "Year.database_version_id==ESPPEnergyGeneration.database_version_id)"
+        ),
+    )
+    regional_energy_system_energy_generations = db.relationship(
+        'RegionalEnergySystemEnergyGeneration',
+        back_populates='year',
+        primaryjoin=(
+            "and_(Year.number==RegionalEnergySystemEnergyGeneration.year_number, "
+            "Year.database_version_id==RegionalEnergySystemEnergyGeneration.database_version_id)"
+        ),
+    )
 
     def __repr__(self) -> str:
         return f"<Year id={self.id} number={self.number}>"

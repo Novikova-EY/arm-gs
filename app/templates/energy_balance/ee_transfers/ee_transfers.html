@@ -1,0 +1,744 @@
+{% extends 'base.html' %}
+
+
+
+{% block title %}Перетоки ЭЭ{% endblock %}
+
+
+
+{% block content %}
+
+{% if current_user.is_authenticated %}
+
+
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+
+    <div class="text-center">
+
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+
+            <span class="visually-hidden">Загрузка...</span>
+
+        </div>
+
+        <p class="mt-3 h4">Загрузка данных...</p>
+
+        <p class="text-muted">Это может занять некоторое время</p>
+
+    </div>
+
+</div>
+
+
+
+<div class="container-fluid mt-2" id="eeTransfersPage"
+     data-ee-reporting-start="{{ ee_reporting_start_year }}"
+     data-ee-reporting-end="{{ ee_reporting_end_year }}">
+
+    <div class="page-table-scroll">
+
+        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+
+            <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5">Модуль «Балансы ЭЭ и ЭМ»</a>
+
+            <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+
+        </div>
+
+
+
+        <div class="col-12 mb-2 text-center">
+
+            <h2 class="mb-4">Перетоки электрической энергии</h2>
+
+        </div>
+
+
+
+        <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+
+            {% include 'energy_balance/ee_transfers/ee_transfers_filters.html' %}
+
+        </div>
+
+
+
+        {% set column_count = 1 + (period_columns|length) %}
+
+
+
+        <style>
+
+        .page-table-scroll #eeTransfersTable thead th {
+
+            position: sticky;
+
+            top: var(--pd-summary-controls-sticky-height, 0px);
+
+            z-index: 50;
+
+            background-color: var(--bs-success-bg-subtle, #d1e7dd);
+
+            box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+
+        }
+
+        #eeTransfersTable tbody tr.summary-row-hidden {
+
+            display: none;
+
+        }
+
+        #eeTransfersTable thead th.ee-year-th-with-feature {
+
+            min-width: 7.25rem;
+
+            max-width: 10rem;
+
+            word-break: normal;
+
+            overflow-wrap: normal;
+
+        }
+
+        #eeTransfersTable thead .ee-year-feature-caption {
+
+            display: block;
+
+            margin-top: 0.2rem;
+
+            font-size: 0.82em;
+
+            line-height: 1.3;
+
+            font-weight: inherit;
+
+            text-align: center;
+
+            word-break: normal;
+
+            overflow-wrap: normal;
+
+            word-wrap: normal;
+
+            hyphens: none;
+
+        }
+
+        #eeTransfersTable thead th .filter-dropdown-menu {
+
+            min-width: 320px;
+
+        }
+
+        #eeTransfersTable .ee-transfers-to-filter-btn {
+
+            padding: 0 0.35rem 0 0;
+
+            line-height: 1;
+
+            min-height: 0;
+
+            white-space: nowrap;
+
+        }
+
+        </style>
+
+
+
+        <table class="table table-hover table-striped table-bordered" id="eeTransfersTable">
+
+            <thead class="table-success">
+
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+
+                    {% include 'energy_balance/ee_transfers/ee_transfers_table_header_filters.html' %}
+
+                    {% for period_num, period_label in period_columns %}
+
+                    {% set year_feature_label = year_features.get(period_num) if (ee_period_mode == 'years' and year_features) else none %}
+
+                    <th class="text-center align-middle{% if year_feature_label %} ee-year-th-with-feature{% endif %}"{% if not year_feature_label %} style="min-width: 72px;"{% endif %}>
+
+                        {{ period_label }}
+
+                        {% if year_feature_label %}
+
+                        <div class="ee-year-feature-caption">{{ year_feature_label }}</div>
+
+                        {% endif %}
+
+                        <span class="text-muted small fw-normal d-block">млн кВт·ч</span>
+
+                    </th>
+
+                    {% endfor %}
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% if hierarchy and hierarchy|length > 0 %}
+
+                {% set transfer_aggregates = transfer_aggregates|default({}) %}
+
+                {% set should_show_totals = should_show_totals|default({}) %}
+
+                {% for ues_block in hierarchy %}
+
+                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+
+                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+
+                    </tr>
+
+                    {% for res_block in ues_block.res_list %}
+
+                    <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+
+                        <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+
+                    </tr>
+
+                    {% for transfer_row in res_block.transfer_rows %}
+
+                    <tr class="text-center align-middle">
+
+                        <td class="text-start">{{ transfer_row.to_name }}</td>
+
+                        {% for period_num, period_label in period_columns %}
+
+                        <td>{{ format_transfer_cell(transfer_row.periods.get(period_num)) }}</td>
+
+                        {% endfor %}
+
+                    </tr>
+
+                    {% endfor %}
+
+                    {% set show_res_totals = should_show_totals.get('from_groups', {}).get(res_block.group_key) %}
+
+                    {% if show_res_totals %}
+
+                        {% with label=res_block.res_name ~ ', всего', period_totals=transfer_aggregates.get('from_groups', {}).get(res_block.group_key, {}), row_class='table-secondary' %}
+
+                            {% include 'energy_balance/ee_transfers/ee_transfers_total_row.html' %}
+
+                        {% endwith %}
+
+                    {% endif %}
+
+                    {% endfor %}
+
+                    {% set show_ues_totals = should_show_totals.get('union_energy_systems', {}).get(ues_block.ues_id) %}
+
+                    {% if show_ues_totals %}
+
+                        {% with label=ues_block.ues_name ~ ', всего', period_totals=transfer_aggregates.get('union_energy_systems', {}).get(ues_block.ues_id, {}), row_class='table-primary' %}
+
+                            {% include 'energy_balance/ee_transfers/ee_transfers_total_row.html' %}
+
+                        {% endwith %}
+
+                    {% endif %}
+
+                {% endfor %}
+
+                {% if should_show_totals.get('total') %}
+
+                    {% with label='Россия, всего', period_totals=transfer_aggregates.get('total', {}), row_class='table-danger' %}
+
+                        {% include 'energy_balance/ee_transfers/ee_transfers_total_row.html' %}
+
+                    {% endwith %}
+
+                {% endif %}
+
+                {% else %}
+
+                    <tr>
+
+                        <td colspan="{{ column_count }}" class="text-center text-muted py-4">Перетоки не найдены</td>
+
+                    </tr>
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+
+
+        <div class="mt-2">
+
+            {% if per_page is not none %}
+
+                {% set pagination_endpoint = 'energy_balance_bp.ee_transfers' %}
+
+                {% include 'generation/includes/pagination_station.html' %}
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script id="filters-data" type="application/json">
+
+    {{ {
+
+        'energy_system_type_list': energy_system_type_list,
+
+        'union_energy_system_list': union_energy_system_list,
+
+        'regional_energy_system_list': regional_energy_system_list,
+
+        'federal_district_list': federal_district_list,
+
+        'regional_district_list': regional_district_list,
+
+        'energy_system_type_filter': energy_system_type_filter,
+
+        'union_energy_system_filter': union_energy_system_filter,
+
+        'regional_energy_system_filter': regional_energy_system_filter,
+
+        'federal_district_filter': federal_district_filter,
+
+        'regional_district_filter': regional_district_filter,
+
+        'regional_energy_system_mapping': regional_energy_system_mapping,
+
+        'regional_district_mapping': regional_district_mapping,
+
+        'est_to_ues_mapping': est_to_ues_mapping,
+
+        'est_to_res_mapping': est_to_res_mapping,
+
+        'est_to_rd_mapping': est_to_rd_mapping,
+
+        'est_to_fd_mapping': est_to_fd_mapping,
+
+        'ues_to_est_mapping': ues_to_est_mapping,
+
+        'ues_to_res_mapping': ues_to_res_mapping,
+
+        'ues_to_rd_mapping': ues_to_rd_mapping,
+
+        'ues_to_fd_mapping': ues_to_fd_mapping,
+
+        'res_to_est_mapping': res_to_est_mapping,
+
+        'res_to_ues_mapping_one': res_to_ues_mapping_one,
+
+        'res_to_rd_mapping': res_to_rd_mapping,
+
+        'res_to_fd_mapping': res_to_fd_mapping,
+
+        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+
+        'rd_to_res_mapping': rd_to_res_mapping,
+
+        'rd_to_ues_mapping': rd_to_ues_mapping,
+
+        'rd_to_est_mapping': rd_to_est_mapping,
+
+        'fd_to_rd_mapping': fd_to_rd_mapping,
+
+        'fd_to_res_mapping': fd_to_res_mapping,
+
+        'fd_to_ues_mapping': fd_to_ues_mapping,
+
+        'fd_to_est_mapping': fd_to_est_mapping
+
+    } | tojson | safe }}
+
+</script>
+
+
+
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function() {
+
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+
+
+    if (typeof initializeStationFilters === "function") {
+
+        initializeStationFilters();
+
+    }
+
+
+
+    function navigateWithTransferToFilters() {
+
+        const params = new URLSearchParams(window.location.search);
+
+        params.delete('transfer_to_res_filter');
+
+        params.delete('transfer_to_country_filter');
+
+        params.delete('transfer_to_rd_filter');
+
+        params.delete('transfer_to_energy_unit_filter');
+
+        document.querySelectorAll('input[name="transfer_to_res_filter"]:checked').forEach(cb => {
+
+            params.append('transfer_to_res_filter', cb.value);
+
+        });
+
+        document.querySelectorAll('input[name="transfer_to_country_filter"]:checked').forEach(cb => {
+
+            params.append('transfer_to_country_filter', cb.value);
+
+        });
+
+        document.querySelectorAll('input[name="transfer_to_rd_filter"]:checked').forEach(cb => {
+
+            params.append('transfer_to_rd_filter', cb.value);
+
+        });
+
+        document.querySelectorAll('input[name="transfer_to_energy_unit_filter"]:checked').forEach(cb => {
+
+            params.append('transfer_to_energy_unit_filter', cb.value);
+
+        });
+
+        params.set('page', '1');
+
+        window.location.href = window.location.pathname + '?' + params.toString();
+
+    }
+
+
+
+    document.querySelectorAll(
+
+        'input[name="transfer_to_res_filter"], input[name="transfer_to_country_filter"], input[name="transfer_to_rd_filter"], input[name="transfer_to_energy_unit_filter"]'
+
+    ).forEach(input => {
+
+        input.addEventListener('change', navigateWithTransferToFilters);
+
+    });
+
+
+
+    document.querySelectorAll('.filter-clear-btn[data-filter-names]').forEach(button => {
+
+        button.addEventListener('click', function(e) {
+
+            e.preventDefault();
+
+            e.stopPropagation();
+
+            const names = (this.getAttribute('data-filter-names') || '').split(',').map(s => s.trim()).filter(Boolean);
+
+            if (!names.length) return;
+
+            const params = new URLSearchParams(window.location.search);
+
+            names.forEach(name => params.delete(name));
+
+            params.set('page', '1');
+
+            window.location.href = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+
+        });
+
+    });
+
+
+
+    document.getElementById('rounding_digits')?.addEventListener('change', function() {
+
+        const url = new URL(window.location.href);
+
+        url.searchParams.set('rounding_digits', this.value);
+
+        window.location.href = url.toString();
+
+    });
+
+
+
+    document.querySelectorAll('.ee-period-mode-btn').forEach(button => {
+
+        button.addEventListener('click', function() {
+
+            const mode = this.dataset.eePeriodMode;
+
+            if (!mode) return;
+
+            const params = new URLSearchParams(window.location.search);
+
+            params.set('ee_period_mode', mode);
+
+            params.set('page', '1');
+
+            if (mode === 'months') {
+
+                params.delete('start_year');
+
+                params.delete('end_year');
+
+            } else {
+
+                params.delete('year');
+
+                const pageRoot = document.getElementById('eeTransfersPage');
+
+                const reportingStart = pageRoot?.dataset.eeReportingStart;
+
+                const reportingEnd = pageRoot?.dataset.eeReportingEnd;
+
+                if (reportingStart) {
+
+                    params.set('start_year', reportingStart);
+
+                }
+
+                if (reportingEnd) {
+
+                    params.set('end_year', reportingEnd);
+
+                }
+
+            }
+
+            window.location.href = window.location.pathname + '?' + params.toString();
+
+        });
+
+    });
+
+
+
+    const showTotalsCheckbox = document.getElementById('show_totals_switch');
+
+    if (showTotalsCheckbox) {
+
+        showTotalsCheckbox.addEventListener('change', function() {
+
+            const params = new URLSearchParams(window.location.search);
+
+            if (showTotalsCheckbox.checked) {
+
+                params.set('show_totals', '1');
+
+            } else {
+
+                params.delete('show_totals');
+
+            }
+
+            params.set('page', '1');
+
+            window.location.href = window.location.pathname + '?' + params.toString();
+
+        });
+
+    }
+
+
+
+    (function() {
+
+        const form = document.getElementById('exportEeTransfersForm');
+
+        const exportBtn = document.getElementById('exportEeTransfersBtn');
+
+        if (!form || !exportBtn) return;
+
+
+
+        const newBtn = exportBtn.cloneNode(true);
+
+        exportBtn.parentNode.replaceChild(newBtn, exportBtn);
+
+
+
+        function parseFilenameFromContentDisposition(cd) {
+
+            if (!cd) return 'export.xlsx';
+
+            const mUtf = /filename\*=UTF-8''([^;\n]+)/i.exec(cd);
+
+            if (mUtf && mUtf[1]) {
+
+                try { return decodeURIComponent(mUtf[1].trim()); } catch (e) { return mUtf[1].trim(); }
+
+            }
+
+            const mQuot = /filename="([^"]+)"/i.exec(cd);
+
+            if (mQuot && mQuot[1]) return mQuot[1].trim();
+
+            const mBare = /filename=([^;\n]+)/i.exec(cd);
+
+            if (mBare && mBare[1]) return mBare[1].trim().replace(/^["']|["']$/g, '');
+
+            return 'export.xlsx';
+
+        }
+
+
+
+        newBtn.addEventListener('click', function(e) {
+
+            e.preventDefault();
+
+            e.stopPropagation();
+
+            const button = this;
+
+            if (button.disabled) return;
+
+
+
+            const originalHtml = button.innerHTML;
+
+            button.disabled = true;
+
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Экспорт…';
+
+
+
+            const params = new URLSearchParams(new URL(window.location.href).search);
+
+            params.delete('page');
+
+            params.set('per_page', 'all');
+
+            params.delete('transfer_to_res_filter');
+
+            params.delete('transfer_to_country_filter');
+
+            params.delete('transfer_to_rd_filter');
+
+            params.delete('transfer_to_energy_unit_filter');
+
+            document.querySelectorAll('input[name="transfer_to_res_filter"]:checked').forEach(cb => {
+
+                params.append('transfer_to_res_filter', cb.value);
+
+            });
+
+            document.querySelectorAll('input[name="transfer_to_country_filter"]:checked').forEach(cb => {
+
+                params.append('transfer_to_country_filter', cb.value);
+
+            });
+
+            document.querySelectorAll('input[name="transfer_to_rd_filter"]:checked').forEach(cb => {
+
+                params.append('transfer_to_rd_filter', cb.value);
+
+            });
+
+            document.querySelectorAll('input[name="transfer_to_energy_unit_filter"]:checked').forEach(cb => {
+
+                params.append('transfer_to_energy_unit_filter', cb.value);
+
+            });
+
+            const exportUrl = form.action + '?' + params.toString();
+
+
+
+            fetch(exportUrl, { method: 'GET', credentials: 'same-origin' })
+
+                .then(response => {
+
+                    if (!response.ok) {
+
+                        return response.text().then(text => {
+
+                            throw new Error(`Ошибка сервера (${response.status}): ${text.substring(0, 200)}`);
+
+                        });
+
+                    }
+
+                    const contentType = response.headers.get('content-type') || '';
+
+                    if (contentType.includes('application/vnd.openxmlformats') || contentType.includes('application/vnd.ms-excel')) {
+
+                        return response.blob().then(blob => {
+
+                            const url = window.URL.createObjectURL(blob);
+
+                            const a = document.createElement('a');
+
+                            a.href = url;
+
+                            a.download = parseFilenameFromContentDisposition(response.headers.get('content-disposition'));
+
+                            document.body.appendChild(a);
+
+                            a.click();
+
+                            window.URL.revokeObjectURL(url);
+
+                            document.body.removeChild(a);
+
+                        });
+
+                    }
+
+                    return response.text().then(() => {
+
+                        throw new Error('Получен неожиданный тип ответа от сервера');
+
+                    });
+
+                })
+
+                .catch(error => {
+
+                    alert('Ошибка при экспорте данных: ' + error.message);
+
+                })
+
+                .finally(() => {
+
+                    button.innerHTML = originalHtml;
+
+                    button.disabled = false;
+
+                });
+
+        });
+
+    })();
+
+
+
+});
+
+</script>
+
+
+
+{% endif %}
+
+{% endblock %}
+

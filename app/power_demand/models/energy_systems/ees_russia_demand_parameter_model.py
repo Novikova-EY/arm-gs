@@ -32,7 +32,7 @@ class EesRussiaDemandParameter(db.Model, AuditMixin, PerimeterVariantColumnMixin
     # Максимальное потребление мощности, МВт
     max_power_consumption_mw = db.Column(Numeric(25, 3), nullable=True)
 
-    # Дата и время максимального потребления мощности, МВт
+    # Дата и время максимума потребления мощности, МВт
     peak_datetime_msk = db.Column(db.DateTime(timezone=True), nullable=True)
 
     # Средняя дневная температура воздуха, °C

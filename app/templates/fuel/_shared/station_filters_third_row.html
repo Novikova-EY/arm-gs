@@ -2,9 +2,23 @@
 <div class="col-12 mb-2">
     <div class="d-flex align-items-center w-100 flex-wrap gap-3 mb-2">
 
-        <!-- Слева: интервал лет (и сброс) -->
+        <!-- Слева: переключатель режима (опц.), интервал лет (и сброс) -->
         <div class="d-flex align-items-center gap-2 station-filters-third-left" style="{% if center_top_pagination|default(false) %}flex: 0 1 auto{% else %}flex: 1 1 0{% endif %}; min-width: 0;">
-            <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex align-items-center gap-2 flex-nowrap overflow-x-auto pb-1" id="yearForm">
+            {% if show_ee_period_mode_toggle|default(false) %}
+            <div class="btn-group flex-shrink-0 align-items-center" role="group" aria-label="Режим отображения периода">
+                <button type="button"
+                        class="btn ee-period-mode-btn{% if ee_period_mode|default('years') == 'years' %} btn-primary text-white{% else %} btn-outline-primary{% endif %}"
+                        data-ee-period-mode="years">
+                    Год
+                </button>
+                <button type="button"
+                        class="btn ee-period-mode-btn{% if ee_period_mode|default('years') == 'months' %} btn-primary text-white{% else %} btn-outline-primary{% endif %}"
+                        data-ee-period-mode="months">
+                    Месяцы
+                </button>
+            </div>
+            {% endif %}
+            <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex align-items-center gap-2 flex-nowrap overflow-x-auto" id="yearForm">
                 {% for key, value in request.args.items() %}
                     {% if key != "per_page" and key != "start_year" and key != "end_year" and key != "year" %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
@@ -46,7 +60,7 @@
 
                 {% if not hide_filters_third_row_reset|default(false) %}
                 <div class="filter-item flex-shrink-0">
-                    <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
+                    <a href="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="btn btn-outline-danger flex-shrink-0">Сбросить</a>
                 </div>
                 {% endif %}
             </form>
@@ -122,6 +136,27 @@
                     {% endif %}
                 {% endfor %}
                 <div class="d-flex align-items-center flex-wrap gap-4">
+                    {% if show_regional_totals_toggle|default(false) %}
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="checkbox" class="btn-check" id="show_totals_switch" autocomplete="off"
+                            {% if request.args.get('show_totals') == '1' %}checked{% endif %}>
+                        <label for="show_totals_switch"
+                            class="btn {% if request.args.get('show_totals') == '1' %}btn-primary{% else %}btn-outline-secondary text-dark{% endif %} px-3 text-center"
+                            style="min-width: 260px;">
+                            {{ regional_totals_toggle_label|default('Показать суммы по регионам') }}
+                        </label>
+                    </div>
+                    {% endif %}
+                    {% if show_ee_verification_toggle|default(false) %}
+                    <button type="button"
+                            id="eeGenerationVerificationToggle"
+                            class="btn btn-outline-info text-nowrap flex-shrink-0"
+                            aria-pressed="false"
+                            style="min-width: 7.75rem;"
+                            title="Показать строки проверки сумм («Проверка для …»)">
+                        Проверка
+                    </button>
+                    {% endif %}
                     <div id="per_page_select_block" class="ms-2">
                         <div class="d-flex align-items-center gap-2" id="per_page_select_wrapper">
                             <label for="per_page_select" class="mb-0" style="white-space: nowrap; min-width: 100px;">Показать:</label>

@@ -17,7 +17,7 @@ WITH checks AS (
   UNION ALL SELECT 'pgu_machine_powers', database_version_id, COUNT(*), COALESCE(SUM(cnt-1),0)::int FROM (SELECT database_version_id, id_pgu_machine, year_number, COUNT(*) cnt FROM gs_gen.gs_gen_pgu_machine_powers GROUP BY 1,2,3 HAVING COUNT(*)>1) x GROUP BY 2
   UNION ALL SELECT 'pgu_machine_names', database_version_id, COUNT(*), COALESCE(SUM(cnt-1),0)::int FROM (SELECT database_version_id, id_pgu_machine, year_number, COUNT(*) cnt FROM gs_gen.gs_gen_pgu_machine_names GROUP BY 1,2,3 HAVING COUNT(*)>1) x GROUP BY 2
   UNION ALL SELECT 'station_powers', database_version_id, COUNT(*), COALESCE(SUM(cnt-1),0)::int FROM (SELECT database_version_id, id_station, year_number, COUNT(*) cnt FROM gs_gen.gs_gen_station_powers GROUP BY 1,2,3 HAVING COUNT(*)>1) x GROUP BY 2
-  UNION ALL SELECT 'station_energy_gen', database_version_id, COUNT(*), COALESCE(SUM(cnt-1),0)::int FROM (SELECT database_version_id, id_station, year_number, COUNT(*) cnt FROM gs_gen.gs_gen_station_energy_generations GROUP BY 1,2,3 HAVING COUNT(*)>1) x GROUP BY 2
+  UNION ALL SELECT 'station_energy_gen', database_version_id, COUNT(*), COALESCE(SUM(cnt-1),0)::int FROM (SELECT database_version_id, id_station, year_number, month_number, COUNT(*) cnt FROM gs_gen.gs_gen_station_energy_generations GROUP BY 1,2,3,4 HAVING COUNT(*)>1) x GROUP BY 2
   UNION ALL SELECT 'station_gaes_charge', database_version_id, COUNT(*), COALESCE(SUM(cnt-1),0)::int FROM (SELECT database_version_id, id_station, year_number, COUNT(*) cnt FROM gs_gen.gs_gen_station_gaes_charge_consumptions GROUP BY 1,2,3 HAVING COUNT(*)>1) x GROUP BY 2
 )
 SELECT t, ver, dup_groups, extra FROM checks ORDER BY extra DESC, t, ver;
@@ -98,7 +98,7 @@ DELETE FROM gs_gen.gs_gen_station_energy_generations
 WHERE id IN (
     SELECT id FROM (
         SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY id_station, year_number, COALESCE(database_version_id, -1)
+            PARTITION BY id_station, year_number, month_number, COALESCE(database_version_id, -1)
             ORDER BY created_at ASC, id ASC
         ) rn FROM gs_gen.gs_gen_station_energy_generations
     ) x WHERE rn > 1
@@ -125,7 +125,7 @@ WITH checks AS (
   UNION ALL SELECT 'pgu_machine_powers', COUNT(*) FROM (SELECT database_version_id, id_pgu_machine, year_number FROM gs_gen.gs_gen_pgu_machine_powers GROUP BY 1,2,3 HAVING COUNT(*)>1) x
   UNION ALL SELECT 'pgu_machine_names', COUNT(*) FROM (SELECT database_version_id, id_pgu_machine, year_number FROM gs_gen.gs_gen_pgu_machine_names GROUP BY 1,2,3 HAVING COUNT(*)>1) x
   UNION ALL SELECT 'station_powers', COUNT(*) FROM (SELECT database_version_id, id_station, year_number FROM gs_gen.gs_gen_station_powers GROUP BY 1,2,3 HAVING COUNT(*)>1) x
-  UNION ALL SELECT 'station_energy_gen', COUNT(*) FROM (SELECT database_version_id, id_station, year_number FROM gs_gen.gs_gen_station_energy_generations GROUP BY 1,2,3 HAVING COUNT(*)>1) x
+  UNION ALL SELECT 'station_energy_gen', COUNT(*) FROM (SELECT database_version_id, id_station, year_number, month_number FROM gs_gen.gs_gen_station_energy_generations GROUP BY 1,2,3,4 HAVING COUNT(*)>1) x
   UNION ALL SELECT 'station_gaes_charge', COUNT(*) FROM (SELECT database_version_id, id_station, year_number FROM gs_gen.gs_gen_station_gaes_charge_consumptions GROUP BY 1,2,3 HAVING COUNT(*)>1) x
 )
 SELECT t, dup_groups FROM checks ORDER BY t;

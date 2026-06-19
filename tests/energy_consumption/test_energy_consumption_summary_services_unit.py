@@ -303,6 +303,16 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
     )
 
 
+def test_collapsed_nt_gaes_visible_rows_skip_empty_hide_marks_south_ues_without_nt():
+    south_without_nt = _south_variant_row(service.CODE_WITHOUT_NT, "70.0")
+    rows = [south_without_nt]
+
+    service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
+
+    assert south_without_nt.get("pd_ec_collapsed_nt_gaes_visible_row") is True
+    assert south_without_nt.get("pd_ec_skip_empty_hide_row") is True
+
+
 def test_collapsed_nt_gaes_variant_row_rules_mark_primary_rows():
     ees_russia_row = {
         "entity_label": "ЕЭС России",
@@ -367,6 +377,69 @@ def test_expanded_nt_gaes_variant_row_rules_mark_plain_with_nt_redundant():
     assert plain_with_nt.get("pd_ec_expanded_nt_gaes_redundant_row") is True
     assert with_nt_with_gaes.get("pd_ec_expanded_nt_gaes_redundant_row") is None
     assert with_nt_without_gaes.get("pd_ec_expanded_nt_gaes_redundant_row") is None
+
+
+def test_expanded_nt_gaes_variant_row_rules_mark_plain_without_nt_redundant():
+    plain_without_nt = {
+        "entity_label": "ЕЭС России",
+        "demand_model_name": "EesRussiaEnergyConsumptionParameter",
+        "parent_fk_column": None,
+        "parent_id": None,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "perimeter_variant_code": service.CODE_WITHOUT_NT,
+    }
+    without_nt_with_gaes = {
+        **plain_without_nt,
+        "perimeter_variant_code": service.CODE_WITHOUT_NT_WITH_GAES,
+        "entity_label": "ЕЭС России без НТ с зарядом ГАЭС",
+    }
+    without_nt_without_gaes = {
+        **plain_without_nt,
+        "perimeter_variant_code": service.CODE_WITHOUT_NT_WITHOUT_GAES,
+        "entity_label": "ЕЭС России без НТ без заряда ГАЭС",
+    }
+    rows = [without_nt_with_gaes, plain_without_nt, without_nt_without_gaes]
+
+    service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
+
+    assert plain_without_nt.get("pd_ec_expanded_nt_gaes_redundant_row") is True
+    assert without_nt_with_gaes.get("pd_ec_expanded_nt_gaes_redundant_row") is None
+    assert without_nt_without_gaes.get("pd_ec_expanded_nt_gaes_redundant_row") is None
+
+
+def test_order_variants_with_gaes_charge_rows_inserts_charge_between_gaes_variants():
+    def _variant(code: str) -> service.SummaryEntity:
+        return service.SummaryEntity(
+            label=service.EES_RUSSIA_AGGREGATE_NAME,
+            depth=0,
+            parameters=service.PARAMETERS_ENERGY_CONSUMPTION,
+            demand_rows=[],
+            perimeter_variant_code=code,
+        )
+
+    variants = [
+        _variant(service.CODE_WITH_NT_WITH_GAES),
+        _variant(service.CODE_WITH_NT),
+        _variant(service.CODE_WITH_NT_WITHOUT_GAES),
+        _variant(service.CODE_WITHOUT_NT_WITH_GAES),
+        _variant(service.CODE_WITHOUT_NT),
+        _variant(service.CODE_WITHOUT_NT_WITHOUT_GAES),
+    ]
+    charge_marker = service._gaes_charge_marker_entity(variants[0])
+
+    ordered = service._order_variants_with_gaes_charge_rows(variants, charge_marker)
+    codes = [str(entity.perimeter_variant_code or "") for entity in ordered]
+
+    assert codes == [
+        service.CODE_WITH_NT_WITH_GAES,
+        "",
+        service.CODE_WITH_NT_WITHOUT_GAES,
+        service.CODE_WITH_NT,
+        service.CODE_WITHOUT_NT_WITH_GAES,
+        "",
+        service.CODE_WITHOUT_NT_WITHOUT_GAES,
+        service.CODE_WITHOUT_NT,
+    ]
 
 
 def _res_base_row() -> dict:
@@ -639,6 +712,175 @@ def test_expand_ees_unified_energy_system_type_uses_ees_russia_binding(monkeypat
         e.demand_model_name == "EesRussiaEnergyConsumptionParameter"
         for e in gaes_variant_rows
     )
+
+
+def test_expand_south_ues_uses_gaes_variants_when_expand_true(monkeypatch):
+    from app.common.perimeter_variant.constants import (
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+        CODE_WITHOUT_NT_WITH_GAES,
+        CODE_WITH_NT_WITHOUT_GAES,
+        CODE_WITH_NT_WITH_GAES,
+    )
+    from app.common.perimeter_variant.registry_types import (
+        EntityPerimeterBinding,
+        PerimeterVariantDefinition,
+    )
+
+    south_binding = EntityPerimeterBinding(
+        entity_kind="union_energy_system",
+        entity_name_cf="оэс юга",
+        entity_name="ОЭС Юга",
+        label_prefix="ОЭС Юга",
+        variants=(
+            PerimeterVariantDefinition(service.CODE_WITH_NT, "с НТ", effective_from_year=2024),
+            PerimeterVariantDefinition(service.CODE_WITHOUT_NT, "без НТ"),
+        ),
+    )
+
+    def _fake_resolve(kind, name):
+        if kind == "union_energy_system" and name == "ОЭС Юга":
+            return south_binding
+        return None
+
+    monkeypatch.setattr(service, "resolve_entity_perimeter_binding", _fake_resolve)
+    monkeypatch.setattr(service.dps, "get_demand_rows", lambda *args, **kwargs: [])
+
+    entity = service.SummaryEntity(
+        label="ОЭС Юга",
+        depth=1,
+        parameters=service.PARAMETERS_ENERGY_CONSUMPTION,
+        demand_rows=[],
+        entity_kind="group",
+        children=[],
+        demand_model_name="UnionEnergySystemEnergyConsumptionParameter",
+        parent_fk_column="id_union_energy_system",
+        parent_id=118,
+    )
+
+    expanded = service._expand_summary_entity_perimeter_variants(
+        entity,
+        binding_entity_kind="union_energy_system",
+        binding_entity_name="ОЭС Юга",
+        expand=True,
+        tree_years=[2024],
+    )
+
+    variant_codes = [
+        str(e.perimeter_variant_code or "")
+        for e in expanded
+        if e.perimeter_variant_code
+    ]
+    charge_count = sum(1 for e in expanded if not e.perimeter_variant_code)
+
+    assert variant_codes == [
+        CODE_WITH_NT_WITH_GAES,
+        CODE_WITH_NT_WITHOUT_GAES,
+        CODE_WITHOUT_NT_WITH_GAES,
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+    ]
+    assert charge_count == 2
+
+
+def test_expand_ees_unified_prefers_ees_russia_gaes_when_flag_set(monkeypatch):
+    from app.common.perimeter_variant.constants import (
+        CODE_WITHOUT_NT,
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+        CODE_WITHOUT_NT_WITH_GAES,
+        CODE_WITH_NT,
+        CODE_WITH_NT_WITHOUT_GAES,
+        CODE_WITH_NT_WITH_GAES,
+        EES_RUSSIA_AGGREGATE_NAME,
+        EES_UNIFIED_REF_NAME,
+        ENTITY_KIND_EES_RUSSIA,
+        ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+    )
+    from app.common.perimeter_variant.registry_types import (
+        EntityPerimeterBinding,
+        PerimeterVariantDefinition,
+    )
+
+    est_binding = EntityPerimeterBinding(
+        entity_kind=ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+        entity_name_cf=EES_UNIFIED_REF_NAME.casefold(),
+        entity_name=EES_UNIFIED_REF_NAME,
+        label_prefix=EES_UNIFIED_REF_NAME,
+        variants=(
+            PerimeterVariantDefinition(CODE_WITH_NT, "с НТ", effective_from_year=2024),
+            PerimeterVariantDefinition(CODE_WITHOUT_NT, "без НТ"),
+        ),
+    )
+    gaes_variants = (
+        PerimeterVariantDefinition(CODE_WITH_NT_WITH_GAES, "с НТ с зарядом ГАЭС"),
+        PerimeterVariantDefinition(CODE_WITH_NT_WITHOUT_GAES, "с НТ без заряда ГАЭС"),
+        PerimeterVariantDefinition(CODE_WITHOUT_NT_WITH_GAES, "без НТ с зарядом ГАЭС"),
+        PerimeterVariantDefinition(CODE_WITHOUT_NT_WITHOUT_GAES, "без НТ без заряда ГАЭС"),
+    )
+    ees_binding = EntityPerimeterBinding(
+        entity_kind=ENTITY_KIND_EES_RUSSIA,
+        entity_name_cf=EES_RUSSIA_AGGREGATE_NAME.casefold(),
+        entity_name=EES_RUSSIA_AGGREGATE_NAME,
+        label_prefix=EES_RUSSIA_AGGREGATE_NAME,
+        variants=gaes_variants,
+    )
+
+    def _fake_resolve(kind, name):
+        if kind == ENTITY_KIND_ENERGY_SYSTEM_TYPE and name == EES_UNIFIED_REF_NAME:
+            return est_binding
+        if kind == ENTITY_KIND_EES_RUSSIA and name == EES_RUSSIA_AGGREGATE_NAME:
+            return ees_binding
+        return None
+
+    monkeypatch.setattr(service, "resolve_entity_perimeter_binding", _fake_resolve)
+    monkeypatch.setattr(service.dps, "get_demand_rows", lambda *args, **kwargs: [])
+
+    entity = service.SummaryEntity(
+        label=EES_UNIFIED_REF_NAME,
+        depth=0,
+        parameters=service.PARAMETERS_ENERGY_CONSUMPTION,
+        demand_rows=[],
+        entity_kind="group-root",
+        children=[],
+        demand_model_name="EnergySystemTypeEnergyConsumptionParameter",
+        parent_fk_column="id_energy_system_type",
+        parent_id=7,
+    )
+
+    without_flag = service._expand_summary_entity_perimeter_variants(
+        entity,
+        binding_entity_kind=ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+        binding_entity_name=EES_UNIFIED_REF_NAME,
+        expand=True,
+        tree_years=[2024],
+        use_ees_russia_gaes_variants=False,
+    )
+    with_flag = service._expand_summary_entity_perimeter_variants(
+        entity,
+        binding_entity_kind=ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+        binding_entity_name=EES_UNIFIED_REF_NAME,
+        expand=True,
+        tree_years=[2024],
+        use_ees_russia_gaes_variants=True,
+    )
+
+    plain_codes = {
+        str(e.perimeter_variant_code)
+        for e in without_flag
+        if e.perimeter_variant_code
+    }
+    assert plain_codes == {CODE_WITH_NT, CODE_WITHOUT_NT}
+
+    gaes_codes = {
+        str(e.perimeter_variant_code)
+        for e in with_flag
+        if e.perimeter_variant_code
+    }
+    assert gaes_codes == {
+        CODE_WITH_NT_WITH_GAES,
+        CODE_WITH_NT_WITHOUT_GAES,
+        CODE_WITHOUT_NT_WITH_GAES,
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+    }
+    assert all(e.label == EES_UNIFIED_REF_NAME for e in with_flag if e.perimeter_variant_code)
 
 
 def test_apply_gaes_without_charge_formula_keeps_south_without_nt_without_gaes_db_values():
@@ -3303,6 +3545,48 @@ def test_filter_oes_max_summary_page_hidden_rows():
     assert filtered[0].get("entity_rowspan") == 1
 
 
+def test_filter_oes_max_keeps_ees_unified_gaes_rows_when_no_ees_russia_aggregate():
+    from app.common.perimeter_variant.constants import (
+        CODE_WITH_NT_WITH_GAES,
+        EES_RUSSIA_AGGREGATE_NAME,
+        EES_UNIFIED_REF_NAME,
+    )
+
+    rows = [
+        {
+            "entity_label": f"{EES_UNIFIED_REF_NAME} с НТ с зарядом ГАЭС",
+            "demand_model_name": "EesRussiaEnergyConsumptionParameter",
+            "perimeter_variant_code": CODE_WITH_NT_WITH_GAES,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+        },
+        {
+            "entity_label": EES_RUSSIA_AGGREGATE_NAME,
+            "demand_model_name": "EesRussiaEnergyConsumptionParameter",
+            "perimeter_variant_code": CODE_WITH_NT_WITH_GAES,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+        },
+        {
+            "entity_label": EES_UNIFIED_REF_NAME,
+            "demand_model_name": "EnergySystemTypeEnergyConsumptionParameter",
+            "perimeter_variant_code": CODE_WITH_NT_WITH_GAES,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+        },
+    ]
+
+    filtered = service.filter_oes_max_summary_page_hidden_rows(rows)
+    filtered_labels = [row.get("entity_label") for row in filtered]
+
+    assert f"{EES_UNIFIED_REF_NAME} с НТ с зарядом ГАЭС" in filtered_labels
+    assert EES_RUSSIA_AGGREGATE_NAME in filtered_labels
+    assert EES_UNIFIED_REF_NAME not in filtered_labels
+
+
 def test_inject_verification_rows_use_independent_insert_positions(monkeypatch):
     def _row(**kwargs: object) -> dict:
         return dict(kwargs)
@@ -3495,6 +3779,14 @@ def test_order_variants_with_gaes_charge_rows_pairs_o1_after_base_nt_group():
     ]
 
     assert variant_codes == ["with_nt", "o1_with_nt", "without_nt", "o1_without_nt"]
+    charge_indices = [
+        index
+        for index, entity in enumerate(ordered)
+        if entity.perimeter_variant_code is None
+    ]
+    assert charge_indices == [2]
+    assert ordered[1].perimeter_variant_code == "o1_with_nt"
+    assert ordered[3].perimeter_variant_code == "without_nt"
 
 
 def test_order_first_sa_kaliningrad_variants_for_summary_table():
@@ -5518,4 +5810,30 @@ def test_inject_chaun_bilibino_without_chersky_transfer_row_is_idempotent(monkey
     )
     assert count_after_first == 1
     assert count_after_second == 1
+
+
+def test_clear_gaes_charge_summary_cache_clears_lru_helpers(monkeypatch):
+    service._entity_has_gaes_charge_stations.cache_clear()
+    service._gaes_charge_raw_station_values_for_entity.cache_clear()
+
+    monkeypatch.setattr(
+        service,
+        "_gaes_stations_for_entity_query",
+        lambda *_args, **_kwargs: None,
+    )
+    service._entity_has_gaes_charge_stations(1, "UnionEnergySystemEnergyConsumptionParameter", 117)
+    service._gaes_charge_raw_station_values_for_entity(
+        1,
+        "UnionEnergySystemEnergyConsumptionParameter",
+        "id_union_energy_system",
+        117,
+        (2024,),
+    )
+    assert service._entity_has_gaes_charge_stations.cache_info().currsize == 1
+    assert service._gaes_charge_raw_station_values_for_entity.cache_info().currsize == 1
+
+    service.clear_gaes_charge_summary_cache()
+
+    assert service._entity_has_gaes_charge_stations.cache_info().currsize == 0
+    assert service._gaes_charge_raw_station_values_for_entity.cache_info().currsize == 0
 

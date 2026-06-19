@@ -2462,7 +2462,7 @@ def stations_without_equipment_group():
     )
     context["station_list_endpoint"] = "fuel_bp.stations_without_equipment_group"
     context["pagination_endpoint"] = "fuel_bp.stations_without_equipment_group"
-    context["page_title"] = "Агрегаты электростанций без группы оборудования"
+    context["page_title"] = "Агрегаты без группы оборудования (проверка)"
 
     has_active_filters = has_any_filters(request.args)
 

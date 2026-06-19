@@ -30,6 +30,8 @@ from app.economics.services.product_output_services import (
     _normalize_label,
     _username,
     _po_types_for_version,
+    _ved_row_label,
+    _ved_short_label,
 )
 from app.generation.services.machine_services.machine_services import (
     is_same_decimal,
@@ -79,12 +81,26 @@ def _build_fd_lookup() -> dict[str, int]:
     return lookup
 
 
+def _ved_lookup_label_candidates(ved) -> list[str]:
+    """Все подписи ВЭД для сопоставления при импорте (как на странице и в экспорте)."""
+    labels: list[str] = []
+    for candidate in (_ved_row_label(ved), _ved_short_label(ved)):
+        if not candidate:
+            continue
+        text = str(candidate).strip()
+        if text and text not in labels:
+            labels.append(text)
+    return labels
+
+
 def _build_ved_lookup(version_id: int | None) -> dict[str, int]:
     lookup: dict[str, int] = {}
     total_ved_id: int | None = None
     for ved in _po_types_for_version(version_id):
-        if ved.name:
-            key = _normalize_label(ved.name)
+        for raw in _ved_lookup_label_candidates(ved):
+            key = _normalize_label(raw)
+            if not key:
+                continue
             lookup[key] = ved.id
             if key == _normalize_label(TOTAL_PRODUCT_OUTPUT_NAME):
                 total_ved_id = ved.id
@@ -341,4 +357,10 @@ def import_product_output_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
         log_product_output_excel_import(
             user, stats, database_version_id=current_version_id
         )
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        for vid in version_ids:
+            invalidate_economics_fd_data_cache(vid, "product_output")
     return stats

@@ -1,11 +1,11 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Редактирование текстов формул электроёмкости (модуль спроса)."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from app.energy_consumption.long_term_consumption.services.formula_text import (
+from app.energy_consumption.electrical_intensity.services.formula_text import (
     electrical_intensity_formula_text_services as eifts,
 )
 

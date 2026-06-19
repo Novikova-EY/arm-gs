@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.common.perimeter_variant.constants import (
     CENTRALIZED_ZONE_AGGREGATE_NAME,
     CODE_O1,
+    CODE_TERRITORIAL_BOUNDARIES,
     CODE_WITHOUT_CRIMEA_SEV,
     CODE_WITHOUT_NT,
     CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES,
@@ -37,6 +38,7 @@ __all__ = [
     "CODE_WITHOUT_NT_WITH_GAES",
     "CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES",
     "CODE_O1",
+    "CODE_TERRITORIAL_BOUNDARIES",
     "CODE_WITHOUT_CRIMEA_SEV",
     "CODE_WITHOUT_NT_WITH_KALININGRAD_ES",
     "CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES",
@@ -398,6 +400,42 @@ def perimeter_entity_context_for_model(
             "energy_zone",
             "app.refdata.models.energy_systems.energy_zone_model:EnergyZone",
         ),
+        ("RegionalDistrictDemandParameter", "id_regional_district"): (
+            "regional_district",
+            "app.refdata.models.territories.regional_district_model:RegionalDistrict",
+        ),
+        ("RegionalDistrictEnergyConsumptionParameter", "id_regional_district"): (
+            "regional_district",
+            "app.refdata.models.territories.regional_district_model:RegionalDistrict",
+        ),
+        ("RegionalEnergySystemDemandParameter", "id_regional_energy_system"): (
+            "regional_energy_system",
+            "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
+        ),
+        ("RegionalEnergySystemEnergyConsumptionParameter", "id_regional_energy_system"): (
+            "regional_energy_system",
+            "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
+        ),
+        ("FederalDistrictDemandParameter", "id_federal_district"): (
+            "federal_district",
+            "app.refdata.models.territories.federal_district_model:FederalDistrict",
+        ),
+        ("FederalDistrictEnergyConsumptionParameter", "id_federal_district"): (
+            "federal_district",
+            "app.refdata.models.territories.federal_district_model:FederalDistrict",
+        ),
+        ("EnergyZoneDemandParameter", "id_energy_zone"): (
+            "energy_zone",
+            "app.refdata.models.energy_systems.energy_zone_model:EnergyZone",
+        ),
+        ("SynchronousAreaDemandParameter", "id_synchronous_area"): (
+            "synchronous_area",
+            "app.refdata.models.energy_systems.synchronous_area_model:SynchronousArea",
+        ),
+        ("EnergyUnitDemandParameter", "id_energy_unit"): (
+            "energy_unit",
+            "app.refdata.models.energy_systems.energy_unit_model:EnergyUnit",
+        ),
     }
     if parent_fk_column and parent_id is not None:
         lookup = parent_lookup.get((key, parent_fk_column))
@@ -434,5 +472,6 @@ ENTITY_KIND_CHOICES: tuple[tuple[str, str], ...] = (
     ("union_energy_system", "ОЭС (объединённая энергосистема)"),
     ("federal_district", "Федеральный округ"),
     ("regional_energy_system", "Региональная энергосистема"),
+    ("regional_district", "Субъект РФ"),
     ("energy_zone", "Энергозона"),
 )

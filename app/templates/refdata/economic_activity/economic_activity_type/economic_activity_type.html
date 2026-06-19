@@ -7,6 +7,11 @@
 <div class="container mt-2">
 
     <h1 class="text-center mb-4">Список видов экономической деятельности</h1>
+    <p class="text-muted text-center mb-4">
+        Перечень ВЭД, их порядок на экране и два наименования:
+        <strong>полное</strong> — для страниц «Экономики»;
+        <strong>краткое</strong> — для страниц «Электроёмкости».
+    </p>
 
     <form method="GET"
         action="{{ url_for('refdata_bp.economic_activity_type_list') }}"
@@ -145,8 +150,9 @@
                                 </a>
                             </th>
 
-                        <!-- Шапка таблицы. Столбец "Вид экономической деятельности" -->
-                        <th class="text-center align-middle">
+                        <!-- Шапка таблицы. Полное наименование -->
+                        <th class="text-center align-middle"
+                            title="Полное наименование для страниц «Экономики».">
                             <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 
@@ -154,7 +160,7 @@
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Вид экономической деятельности
+                                Полное наименование
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -165,7 +171,8 @@
                             </a>
                         </th>
 
-                        <th class="text-center align-middle">
+                        <th class="text-center align-middle"
+                            title="Краткое наименование для страниц «Электроёмкости».">
                             <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 
@@ -173,7 +180,7 @@
                                         sort_by='name_2', 
                                         sort_dir='asc' if sort_by != 'name_2' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Вид экономической деятельности_2
+                                Краткое наименование
                                 {% if sort_by == 'name_2' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -278,8 +285,9 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Вид экономической деятельности" -->
-                        <th class="text-center align-middle">
+                        <!-- Шапка таблицы. Полное наименование -->
+                        <th class="text-center align-middle"
+                            title="Полное наименование для страниц «Экономики».">
                             <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 
@@ -287,7 +295,7 @@
                                         sort_by='name', 
                                         sort_dir='asc' if sort_by != 'name' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Вид экономической деятельности
+                                Полное наименование
                                 {% if sort_by == 'name' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲
@@ -298,7 +306,8 @@
                             </a>
                         </th>
 
-                        <th class="text-center align-middle">
+                        <th class="text-center align-middle"
+                            title="Краткое наименование для страниц «Электроёмкости».">
                             <a href="{{ url_for('refdata_bp.economic_activity_type_list', 
                                         page=pagination.page, 
                                         per_page=per_page, 
@@ -306,7 +315,7 @@
                                         sort_by='name_2', 
                                         sort_dir='asc' if sort_by != 'name_2' or sort_dir == 'desc' else 'desc') }}" 
                                         class="text-black">
-                                Вид экономической деятельности_2
+                                Краткое наименование
                                 {% if sort_by == 'name_2' %}
                                     {% if sort_dir == 'asc' %}
                                         ▲

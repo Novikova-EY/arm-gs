@@ -1,422 +1,138 @@
-# -*- coding: utf-8 -*-
-"""Маршруты электроёмкости (долгосрочный спрос)."""
+﻿# -*- coding: utf-8 -*-
+"""Маршруты электроёмкости (долгосрочный спрос) — legacy-редиректы под /energy_consumption."""
 
 from __future__ import annotations
 
-from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
-from flask_login import current_user, login_required
+from flask import redirect, render_template, request, url_for
+from flask_login import login_required
 
-from app.energy_consumption.forms.energy_consumption_parameter_forms import EmptyCSRFForm
-from app.extensions import db
-from app.energy_consumption.long_term_consumption.routes.long_term_consumption_bp import long_term_consumption_bp
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_import_services import (
-    import_electrical_intensity_from_xlsx_bytes,
-)
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_export_services import (
-    build_electrical_intensity_excel_stream,
-)
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_page_services import (
-    parse_electrical_intensity_page_kwargs,
-)
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_logging import (
-    count_electrical_intensity_logs,
-    load_formatted_electrical_intensity_logs,
-    load_electrical_intensity_logs_raw,
-)
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_services import (
-    build_electrical_intensity_page_context,
-    calculate_and_save_all_graph_points,
-    compute_graph_points_for_row,
-    save_electrical_intensity_from_post,
-)
-from app.common.services.database_version_services import get_current_version
-from app.logs.services.log_display_utils import format_logs_for_display
-from app.energy_consumption.long_term_consumption.services.formula_text.long_term_consumption_formula_text_services import (
-    list_formulas_for_admin as list_electrical_intensity_formulas_for_admin,
-    reset_formula_text_override as reset_electrical_intensity_formula_text_override,
-    save_formula_text_override as save_electrical_intensity_formula_text_override,
-)
-
-
-def _csrf():
-    return EmptyCSRFForm()
-
-
-def _csrf_ok() -> bool:
-    """Проверка CSRF для AJAX (токен из session, как в fuel batch UI)."""
-    expected = session.get("csrf_token") or ""
-    if not str(expected).strip():
-        return True
-    token = (
-        request.headers.get("X-CSRF-Token")
-        or request.headers.get("X-CSRFToken")
-        or (request.get_json(silent=True) or {}).get("csrf_token")
-        or request.form.get("csrf_token")
-    )
-    return bool(token) and token == expected
-
-
-def _redirect_preserving_query(endpoint: str, **extra):
-    qs = (request.form.get("preserve_qs") or "").strip()
-    if qs:
-        base = url_for(endpoint, **extra)
-        return redirect(f"{base}?{qs}" if "?" not in base else f"{base}&{qs}")
-    args = {k: v for k, v in request.args.items(multi=True)}
-    flat: dict = {}
-    for k, v in args.items():
-        flat[k] = v[0] if isinstance(v, list) and len(v) == 1 else v
-    flat.update(extra)
-    return redirect(url_for(endpoint, **flat))
-
-
-def _parse_rounding_digits() -> int:
-    raw = request.args.get("rounding_digits")
-    if request.method == "POST" and (raw is None or str(raw).strip() == ""):
-        raw = request.form.get("rounding_digits")
-    if raw is None or str(raw).strip() == "":
-        return 1
-    try:
-        v = int(raw)
-    except (ValueError, TypeError):
-        return 1
-    if v in (0, 1, 2, 3, -1):
-        return v
-    return 1
+from app.energy_consumption.electrical_intensity.routes.long_term_consumption_bp import long_term_consumption_bp
 
 
 @long_term_consumption_bp.route("/electrical_intensity_start/")
 @login_required
 def electrical_intensity_start():
     return render_template(
-        "energy_consumption/long_term_consumption/electrical_intensity_start.html",
+        "energy_consumption/electrical_intensity/electrical_intensity_start.html",
+        electrical_intensity_formulas_url=url_for(
+            "electrical_intensity_root_bp.electrical_intensity_formulas",
+        ),
     )
+
+
+def _redirect_to_electrical_intensity_fo(subpath: str = ""):
+    qs = request.query_string.decode()
+    target = url_for("electrical_intensity_root_bp.electrical_intensity")
+    if subpath:
+        target = f"{target.rstrip('/')}/{subpath}"
+    if qs:
+        target = f"{target}?{qs}"
+    return redirect(target, code=301)
 
 
 @long_term_consumption_bp.route("/electrical_intensity/", methods=["GET", "POST"])
 @long_term_consumption_bp.route("/electrical_intensity", defaults={"subpath": ""}, methods=["GET", "POST"])
 @long_term_consumption_bp.route("/electrical_intensity/<path:subpath>")
 def electrical_intensity_legacy_redirect(subpath=""):
-    qs = request.query_string.decode()
-    base = "/energy_consumption/electrical_intensity_fo"
-    target = f"{base}/{subpath}" if subpath else f"{base}/"
-    if qs:
-        target = f"{target}?{qs}"
-    return redirect(target, code=301)
+    if subpath == "formulas" or subpath.startswith("formulas/"):
+        qs = request.query_string.decode()
+        target = url_for("electrical_intensity_root_bp.electrical_intensity_formulas")
+        if subpath.startswith("formulas/"):
+            suffix = subpath[len("formulas/") :]
+            target = f"{target.rstrip('/')}/{suffix}"
+        if qs:
+            target = f"{target}?{qs}"
+        return redirect(target, code=301)
+    return _redirect_to_electrical_intensity_fo(subpath)
 
 
 @long_term_consumption_bp.route("/electrical_intensity_fo/", methods=["GET", "POST"])
 @login_required
-def electrical_intensity():
-    form = _csrf()
-    rd = _parse_rounding_digits()
-
-    if request.method == "POST":
-        if not getattr(current_user, "has_admin", False):
-            flash("Недостаточно прав для изменения данных.", "danger")
-            return _redirect_preserving_query(
-                "long_term_consumption_bp.electrical_intensity", rounding_digits=rd
-            )
-        if not form.validate_on_submit():
-            flash("Ошибка CSRF.", "danger")
-            return _redirect_preserving_query(
-                "long_term_consumption_bp.electrical_intensity", rounding_digits=rd
-            )
-        try:
-            updated, skipped = save_electrical_intensity_from_post(request.form)
-            db.session.commit()
-            flash(f"Сохранено ячеек: {updated}. Пропущено: {skipped}.", "success")
-        except Exception as exc:
-            db.session.rollback()
-            flash(f"Ошибка сохранения: {exc}", "danger")
-        return _redirect_preserving_query(
-            "long_term_consumption_bp.electrical_intensity", rounding_digits=rd
-        )
-
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    lt_ei_initial_visible_years = page_kw.pop("lt_ei_initial_visible_years", None)
-    lt_ei_year_seg_state = page_kw.pop("lt_ei_year_seg_state", None)
-    context = build_electrical_intensity_page_context(**page_kw)
-    if lt_ei_initial_visible_years is not None:
-        context["lt_ei_initial_visible_years"] = lt_ei_initial_visible_years
-    if lt_ei_year_seg_state is not None:
-        context["lt_ei_year_seg_state"] = lt_ei_year_seg_state
-    context["form"] = form
-    context["can_edit"] = getattr(current_user, "has_admin", False)
-    vid = get_current_version()
-    context["electrical_intensity_logs_formatted"] = load_formatted_electrical_intensity_logs(
-        vid, limit=50
+def electrical_intensity_legacy():
+    from app.energy_consumption.electrical_intensity.routes.electrical_intensity_fo_routes import (
+        electrical_intensity,
     )
-    return render_template("energy_consumption/long_term_consumption/electrical_intensity.html", **context)
+
+    return electrical_intensity()
 
 
 @long_term_consumption_bp.route(
     "/electrical_intensity_fo/calculate_graph_points", methods=["POST"]
 )
 @login_required
-def electrical_intensity_calculate_graph_points():
-    """Рассчитать все характерные точки графика (≤ текущего года) и сохранить в БД."""
-    form = _csrf()
-    rd = _parse_rounding_digits()
-    if not getattr(current_user, "has_admin", False):
-        flash("Недостаточно прав для изменения данных.", "danger")
-        return _redirect_preserving_query(
-            "long_term_consumption_bp.electrical_intensity", rounding_digits=rd
-        )
-    if not form.validate_on_submit():
-        flash("Ошибка CSRF.", "danger")
-        return _redirect_preserving_query(
-            "long_term_consumption_bp.electrical_intensity", rounding_digits=rd
-        )
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    page_kw.pop("lt_ei_initial_visible_years", None)
-    page_kw.pop("lt_ei_year_seg_state", None)
-    try:
-        updated, skipped = calculate_and_save_all_graph_points(
-            rounding_digits=page_kw["rounding_digits"],
-            display_years=page_kw["display_years"],
-            fd_filter_ids=page_kw["fd_filter_ids"],
-            ved_filter_ids=page_kw["ved_filter_ids"],
-            population_filter_selected=page_kw["population_filter_selected"],
-        )
-        db.session.commit()
-        flash(
-            f"Рассчитаны и сохранены точки графика: {updated}. Без изменений: {skipped}.",
-            "success",
-        )
-    except Exception as exc:
-        db.session.rollback()
-        flash(f"Ошибка расчёта точек графика: {exc}", "danger")
-    return _redirect_preserving_query(
-        "long_term_consumption_bp.electrical_intensity", rounding_digits=rd
+def electrical_intensity_calculate_graph_points_legacy():
+    from app.energy_consumption.electrical_intensity.routes.electrical_intensity_fo_routes import (
+        electrical_intensity_calculate_graph_points,
     )
+
+    return electrical_intensity_calculate_graph_points()
 
 
 @long_term_consumption_bp.route(
     "/electrical_intensity_fo/calculate_graph_points_row", methods=["POST"]
 )
 @login_required
-def electrical_intensity_calculate_graph_points_row():
-    """Рассчитать graph_point для одной строки (без сохранения в БД)."""
-    if not getattr(current_user, "has_admin", False):
-        return jsonify(ok=False, error="Недостаточно прав"), 403
-    if not _csrf_ok():
-        return jsonify(ok=False, error="Ошибка CSRF."), 400
-    rd = _parse_rounding_digits()
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    page_kw.pop("lt_ei_initial_visible_years", None)
-    page_kw.pop("lt_ei_year_seg_state", None)
-    kind = str(request.form.get("territory_kind") or "").strip()
-    terr_raw = str(request.form.get("territory_id") or "").strip()
-    ved_raw = str(request.form.get("ved_id") or "").strip()
-    fd_id: int | None = None
-    if terr_raw:
-        try:
-            fd_id = int(terr_raw)
-        except ValueError:
-            fd_id = None
-    try:
-        result = compute_graph_points_for_row(
-            rounding_digits=page_kw["rounding_digits"],
-            display_years=page_kw["display_years"],
-            territory_kind=kind,
-            territory_id=fd_id,
-            ved_id=ved_raw or None,
-        )
-    except Exception as exc:
-        current_app.logger.exception("Расчёт точек графика для строки")
-        return jsonify(ok=False, error=str(exc)), 500
-    if not (result.get("cells_display") or {}):
-        return (
-            jsonify(
-                ok=False,
-                error=(
-                    "Недостаточно исходных данных для расчёта "
-                    "(выпуск продукции, потребление и инвестиции по выбранной территории и ВЭД)."
-                ),
-            ),
-            422,
-        )
-    return jsonify(ok=True, **result)
+def electrical_intensity_calculate_graph_points_row_legacy():
+    from app.energy_consumption.electrical_intensity.routes.electrical_intensity_fo_routes import (
+        electrical_intensity_calculate_graph_points_row,
+    )
+
+    return electrical_intensity_calculate_graph_points_row()
 
 
 @long_term_consumption_bp.route("/electrical_intensity_fo/logs", methods=["GET"])
 @login_required
-def electrical_intensity_logs():
-    """AJAX: журнал изменений электроёмкости для текущей версии БД."""
-    offset = request.args.get("offset", 0, type=int) or 0
-    limit = request.args.get("limit", 150, type=int)
-    vid = get_current_version()
-    if limit == 0:
-        total = count_electrical_intensity_logs(vid)
-        return jsonify(
-            ok=True,
-            logs=[],
-            offset=0,
-            limit=0,
-            count=0,
-            total=total,
-            has_more=False,
-        )
-    limit = max(1, min(int(limit), 500))
-    rows = load_electrical_intensity_logs_raw(vid, limit=limit, offset=offset)
-    formatted = format_logs_for_display(rows)
-    total = count_electrical_intensity_logs(vid)
-    n = len(formatted)
-    return jsonify(
-        ok=True,
-        logs=formatted,
-        offset=offset,
-        limit=limit,
-        count=n,
-        total=total,
-        has_more=(offset + n) < total,
+def electrical_intensity_logs_legacy():
+    from app.energy_consumption.electrical_intensity.routes.electrical_intensity_fo_routes import (
+        electrical_intensity_logs,
     )
+
+    return electrical_intensity_logs()
 
 
 @long_term_consumption_bp.route("/electrical_intensity_fo/export.xlsx")
 @login_required
-def electrical_intensity_export_xlsx():
-    rd = _parse_rounding_digits()
-    page_kw = parse_electrical_intensity_page_kwargs(rounding_digits=rd)
-    page_kw.pop("data_start_year", None)
-    page_kw.pop("data_end_year", None)
-    page_kw.pop("lt_ei_initial_visible_years", None)
-    page_kw.pop("lt_ei_year_seg_state", None)
-    context = build_electrical_intensity_page_context(**page_kw)
-    stream = build_electrical_intensity_excel_stream(context)
-    return send_file(
-        stream,
-        as_attachment=True,
-        download_name="elektroemkost.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+def electrical_intensity_export_xlsx_legacy():
+    return _redirect_to_electrical_intensity_fo("export.xlsx")
 
 
 @long_term_consumption_bp.route("/electrical_intensity_fo/import.xlsx", methods=["POST"])
 @login_required
-def electrical_intensity_import_xlsx():
-    if not getattr(current_user, "has_admin", False):
-        return jsonify(ok=False, error="Недостаточно прав"), 403
-
-    upload = request.files.get("file")
-    if upload is None or upload.filename is None or str(upload.filename).strip() == "":
-        return jsonify(ok=False, error="Файл не выбран."), 400
-    raw_name = str(upload.filename).strip().lower()
-    if not (raw_name.endswith(".xlsx") or raw_name.endswith(".xlsm")):
-        return jsonify(ok=False, error="Ожидается файл в формате .xlsx или .xlsm."), 400
-    raw = upload.read()
-    if not raw:
-        return jsonify(ok=False, error="Пустой файл."), 400
-
-    try:
-        stats = import_electrical_intensity_from_xlsx_bytes(raw)
-        db.session.commit()
-    except ValueError as exc:
-        db.session.rollback()
-        return jsonify(ok=False, error=str(exc)), 400
-    except Exception:
-        db.session.rollback()
-        current_app.logger.exception("Импорт электроёмкости из Excel")
-        return (
-            jsonify(
-                ok=False,
-                error=(
-                    "Не удалось выполнить импорт (ошибка при обработке файла или записи в БД). "
-                    "Подробности — в журнале сервера приложения."
-                ),
-            ),
-            400,
-        )
-
-    msg = (
-        f"Импорт завершён: территорий {stats.get('territories', 0)}, "
-        f"строк {stats.get('rows_processed', 0)}, "
-        f"записано ячеек {stats.get('cells_written', 0)}."
+def electrical_intensity_import_xlsx_legacy():
+    from app.energy_consumption.electrical_intensity.routes.electrical_intensity_fo_routes import (
+        electrical_intensity_import_xlsx,
     )
-    warnings = stats.get("warnings") or []
-    if warnings:
-        msg += f" Предупреждений: {len(warnings)}."
-    hints = warnings[:20]
-    return jsonify(ok=True, message=msg, hints=hints, **stats)
+
+    return electrical_intensity_import_xlsx()
 
 
-def _render_electrical_intensity_formulas_page():
-    if not getattr(current_user, "has_admin", False):
-        flash("Недостаточно прав для редактирования текстов формул.", "danger")
-        return redirect(url_for("long_term_consumption_bp.electrical_intensity_start"))
-    return render_template(
-        "energy_consumption/long_term_consumption/electrical_intensity_formulas.html",
-        page_title="Тексты формул электроёмкости",
-        formula_rows=list_electrical_intensity_formulas_for_admin(),
-        has_active_summary_filters=False,
+def _redirect_to_electrical_intensity_formulas():
+    return redirect(
+        url_for("electrical_intensity_root_bp.electrical_intensity_formulas", **request.args)
     )
 
 
 @long_term_consumption_bp.route("/electrical_intensity_formulas/")
 @login_required
-def electrical_intensity_formulas():
-    return _render_electrical_intensity_formulas_page()
+def electrical_intensity_formulas_legacy():
+    return _redirect_to_electrical_intensity_formulas()
 
 
 @long_term_consumption_bp.route("/electrical_intensity_formulas/save", methods=["POST"])
 @login_required
-def electrical_intensity_formulas_save():
-    return _electrical_intensity_formulas_api_save()
+def electrical_intensity_formulas_legacy_save():
+    from app.energy_consumption.electrical_intensity.routes.electrical_intensity_formulas_routes import (
+        electrical_intensity_formulas_save,
+    )
+
+    return electrical_intensity_formulas_save()
 
 
 @long_term_consumption_bp.route("/electrical_intensity_formulas/reset", methods=["POST"])
 @login_required
-def electrical_intensity_formulas_reset():
-    return _electrical_intensity_formulas_api_reset()
+def electrical_intensity_formulas_legacy_reset():
+    from app.energy_consumption.electrical_intensity.routes.electrical_intensity_formulas_routes import (
+        electrical_intensity_formulas_reset,
+    )
 
-
-@long_term_consumption_bp.route("/formulas/")
-@login_required
-def electrical_intensity_formulas_page():
-    return _render_electrical_intensity_formulas_page()
-
-
-@long_term_consumption_bp.route("/formulas/save", methods=["POST"])
-@login_required
-def electrical_intensity_formulas_page_save():
-    return _electrical_intensity_formulas_api_save()
-
-
-@long_term_consumption_bp.route("/formulas/reset", methods=["POST"])
-@login_required
-def electrical_intensity_formulas_page_reset():
-    return _electrical_intensity_formulas_api_reset()
-
-
-def _electrical_intensity_formulas_api_save():
-    if not getattr(current_user, "has_admin", False):
-        return jsonify(ok=False, error="Недостаточно прав"), 403
-    data = request.get_json(silent=True) or {}
-    try:
-        save_electrical_intensity_formula_text_override(
-            formula_key=str(data.get("formula_key") or ""),
-            formula_text=str(data.get("formula_text") or ""),
-        )
-        db.session.commit()
-    except ValueError as exc:
-        db.session.rollback()
-        return jsonify(ok=False, error=str(exc)), 400
-    return jsonify(ok=True)
-
-
-def _electrical_intensity_formulas_api_reset():
-    if not getattr(current_user, "has_admin", False):
-        return jsonify(ok=False, error="Недостаточно прав"), 403
-    data = request.get_json(silent=True) or {}
-    key = str(data.get("formula_key") or "").strip()
-    if not key:
-        return jsonify(ok=False, error="Не указан ключ формулы."), 400
-    reset_electrical_intensity_formula_text_override(key)
-    db.session.commit()
-    return jsonify(ok=True)
+    return electrical_intensity_formulas_reset()

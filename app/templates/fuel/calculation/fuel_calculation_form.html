@@ -154,14 +154,12 @@
 </style>
 
 <div class="container-fluid mt-4 px-3">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h2 class="mb-0">Расчетный модуль</h2>
-        <div class="fuel-calc-top-actions d-flex flex-wrap align-items-center justify-content-end gap-2">
-            <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-            <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
-            <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры (основные)</a>
-            <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры (дополнительные)</a>
-        </div>
+    <h2 class="text-center mb-4">Расчет топливных показателей на перспективный период</h2>
+    <div class="fuel-calc-top-actions d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры (основные)</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры (дополнительные)</a>
     </div>
 
     <div class="station-info">

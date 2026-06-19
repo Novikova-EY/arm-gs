@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Справочник текстов формул (иконка «i») для сводок потребления ЭЭ."""
 
 from __future__ import annotations
@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_constants import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
     EI_POP_CALCULATED_FORMULA_TOOLTIP,
     EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
     EI_POP_COEFFICIENT_A_FORMULA_TOOLTIP,
@@ -16,6 +16,7 @@ from app.energy_consumption.long_term_consumption.services.electrical_intensity_
     EI_POP_PER_CAPITA_FORMULA_TOOLTIP,
     EI_POP_REF_ACCUM_MONETARY_INCOME_FORMULA_TOOLTIP,
     EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_POP_REF_HOUSEHOLD_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
     EI_POP_REF_POPULATION_FORMULA_TOOLTIP,
     EI_RF_CONSUMPTION_WITHOUT_GAES_FORMULA_TOOLTIP,
     EI_RF_GAES_FORMULA_TOOLTIP,
@@ -76,7 +77,7 @@ PAGE_LABELS: dict[str, str] = {
     PAGE_FO: "По федеральным округам (/summary/federal_districts/)",
     PAGE_EZ: "По энергозонам (/summary/energy_zones/)",
     PAGE_OES_GAES_CHARGE: "ГАЭС на заряд (/summary/oes/gaes_charge/)",
-    PAGE_ELECTRICAL_INTENSITY: "Электроёмкость по ФО (/energy_consumption/electrical_intensity_fo/)",
+    PAGE_ELECTRICAL_INTENSITY: "Электроёмкость по ФО (/electrical_intensity/electrical_intensity_fo/)",
 }
 
 
@@ -835,22 +836,20 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         aggregation_level="Строка таблицы",
         cell_name="Электроемкость",
         default_text=(
-            "Электроёмкость, кВт·ч/тыс. руб., по каждому году (не позже года "
-            "с признаком «текущий» включительно) = Потребление ээ / Выпуск продукции × 1000 "
-            "(потребление — млн кВт·ч, выпуск — млн руб.)."
+            "Электроёмкость по каждому году (не позже года "
+            "с признаком «текущий» включительно) = Потребление ЭЭ / Выпуск продукции × 1000 "
         ),
     ),
     _def(
         "ei_graph_point",
         pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
         aggregation_level="Строка таблицы",
-        cell_name="Характерные точки графика",
+        cell_name="Коэффициент эластичности электроемкости по накопленным инвестициям",
         default_text=(
-            "Характерные точки графика по каждому году (не позже года с признаком «текущий» "
-            "включительно) = LOG(Электроёмкость_Y / Электроёмкость_{Y−1}; "
+            "Коэффициент эластичности электроемкости по накопленным инвестициям по каждому году "
+            "(не позже года с признаком «текущий» включительно) = "
+            "LOG(Электроёмкость_Y / Электроёмкость_{Y−1}; "
             "Накопленные инвестиции_Y / Накопленные инвестиции_{Y−1}) "
-            "(электроёмкость — кВт·ч/тыс. руб. из потребления и выпуска; "
-            "накопленные инвестиции — млн руб.)."
         ),
     ),
     _def(
@@ -862,7 +861,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
             "Электроёмкость (расчётная), кВт·ч/тыс. руб., по каждому году (не позже года "
             "с признаком «текущий» включительно) = коэффициент A × "
             "(Инвестиции в основной капитал)^коэффициент X "
-            "(инвестиции — млн руб.)."
+            "Если коэффициент A не указан вручную, используется значение «Арасч»."
         ),
     ),
     _def(
@@ -872,8 +871,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         cell_name="Δ для электроемкости",
         default_text=(
             "Δ для электроёмкости по каждому году (не позже года с признаком «текущий» "
-            "включительно) = Электроёмкость − Электроёмкость (расчётная), "
-            "кВт·ч/тыс. руб."
+            "включительно) = Электроёмкость − Электроёмкость (расчётная)"
         ),
     ),
     _def(
@@ -882,22 +880,21 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         aggregation_level="Коэффициент",
         cell_name="Коэффициент A",
         default_text=(
-            "Коэффициент A вводится вручную; используется для строки «Электроёмкость (расчётная)» "
-            "и линии «Расчётная» на графике."
+            "Коэффициент A — коэффициент нормировки расчётной электроёмкости; вводится вручную; "
+            "используется для строки «Электроёмкость (расчётная)» "
+            "и линии «Расчётная» на графике. Если не указан, подставляется «Арасч»."
         ),
     ),
     _def(
         "ei_coefficient_a_computed",
         pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
         aggregation_level="Коэффициент",
-        cell_name="Коэффициент Арасч.",
+        cell_name="Коэффициент Арасч",
         default_text=(
-            "«Арасч.» = EXP(СРЗНАЧ( LN(Yi) − X × LN(Ii) ) ), "
+            "«Арасч» = EXP(СРЗНАЧ( LN(Yi) − X × LN(Ii) ) ), "
             "где Yi — фактическая электроёмкость, Ii — накопленные инвестиции по годам "
             "2010…N (N — год с признаком «текущий»), X — коэффициент X; "
-            "LN и EXP — натуральный логарифм и экспонента (как в Excel); "
-            "годы с неполными или неположительными Yi, Ii в среднее не входят — "
-            "только подсказка, в расчёт строки не входит."
+            "Используется в расчётах, если коэффициент A не указан вручную."
         ),
     ),
     _def(
@@ -906,7 +903,8 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         aggregation_level="Коэффициент",
         cell_name="Коэффициент X",
         default_text=(
-            "Коэффициент X = среднее арифметическое значений строки «Характерные точки графика» "
+            "Коэффициент X = среднее арифметическое значений строки "
+            "«Коэффициент эластичности электроемкости по накопленным инвестициям» "
             "по годам 2010…N включительно (N — год с признаком «текущий»; "
             "пустые ячейки в среднее не входят)."
         ),
@@ -919,18 +917,30 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         default_text=(
             "Выпуск продукции = Обрабатывающие производства + Добывающие производства + "
             "Производство и распределение электроэнергии, газа и воды "
-            "(сумма строк «Выпуск продукции» по указанным ВЭД), млн руб."
+            "(сумма строк «Выпуск продукции» по указанным ВЭД)"
         ),
     ),
     _def(
         "ei_industrial_consumption",
         pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
         aggregation_level="Промышленное производство (ФО)",
-        cell_name="Потребление ээ",
+        cell_name="Потребление ЭЭ",
         default_text=(
-            "Потребление ээ = Обрабатывающие производства + Добывающие производства + "
+            "Потребление ЭЭ = Обрабатывающие производства + Добывающие производства + "
             "Производство и распределение электроэнергии, газа и воды "
-            "(сумма строк «Потребление ээ» по указанным ВЭД), млн кВт·ч."
+            "(сумма строк «Потребление ЭЭ» по указанным ВЭД)"
+            "Для годов «план» — сумма значений «Выпуск продукции × Электроёмкость (расчётная) / 1000» "
+            "по каждому из указанных ВЭД."
+        ),
+    ),
+    _def(
+        "ei_ved_consumption_plan",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Строка ВЭД",
+        cell_name="Потребление ЭЭ",
+        default_text=(
+            "Потребление ЭЭ для годов «план» = Выпуск продукции × Электроёмкость (расчётная) / 1000"
+            "Для остальных лет — значение со страницы «Потребление ЭЭ по ВЭД»."
         ),
     ),
     _def(
@@ -942,7 +952,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
             "Накопленные инвестиции в основной капитал = Обрабатывающие производства + "
             "Добывающие производства + Производство и распределение электроэнергии, "
             "газа и воды (сумма строк «Накопленные инвестиции в основной капитал» "
-            "по указанным ВЭД), млн руб."
+            "по указанным ВЭД)"
         ),
     ),
     _def(
@@ -951,27 +961,28 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         aggregation_level="Всего (ФО)",
         cell_name="ВРП",
         default_text=(
-            "ВРП = сумма строк «Выпуск продукции» по всем ВЭД федерального округа, млн руб."
+            "ВРП = сумма строк «Выпуск продукции» по всем ВЭД федерального округа"
         ),
     ),
     _def(
         "ei_fd_total_consumption",
         pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
         aggregation_level="Всего (ФО)",
-        cell_name="Потребление ээ",
+        cell_name="Потребление ЭЭ",
         default_text=(
-            "Потребление ээ = Потребление ээ ВЭД + Потери в сетях + С.н. электростанций "
-            "(сумма соответствующих строк блока «Всего»), млрд кВт·ч."
+            "Потребление ЭЭ = Потребление ЭЭ ВЭД + Потери в сетях + С.н. электростанций "
+            "(сумма соответствующих строк блока «Всего»)"
         ),
     ),
     _def(
         "ei_fd_total_ved_consumption",
         pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
         aggregation_level="Всего (ФО)",
-        cell_name="Потребление ээ ВЭД",
+        cell_name="Потребление ЭЭ ВЭД",
         default_text=(
-            "Потребление ээ ВЭД = сумма строк «Потребление ээ» по всем ВЭД федерального "
-            "округа / 1000, млрд кВт·ч."
+            "Потребление ЭЭ ВЭД = сумма строк «Потребление ЭЭ» по секциям ВЭД федерального "
+            "округа и строки «Потребление ЭЭ в домашних хозяйствах» блока «Население» "
+            "/ 1000"
         ),
     ),
     _def(
@@ -981,7 +992,18 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         cell_name="Потери в сетях",
         default_text=(
             "Потери в сетях = значение строки «Потери в сетях» со страницы «Потребление ЭЭ по ВЭД» "
-            "для соответствующего федерального округа / 1000, млрд кВт·ч."
+            "для соответствующего федерального округа / 1000"
+        ),
+    ),
+    _def(
+        "ei_fd_total_network_losses_plan",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="Потери в сетях",
+        default_text=(
+            "Потери в сетях для годов «план» = Потребление ЭЭ ВЭД × k"
+            "Для остальных лет — значение строки «Потери в сетях» со страницы «Потребление ЭЭ по ВЭД» "
+            "для соответствующего федерального округа / 1000"
         ),
     ),
     _def(
@@ -991,8 +1013,18 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         cell_name="С.н. электростанций",
         default_text=(
             "С.н. электростанций = значение строки «С.н. электростанций» со страницы "
-            "«Потребление ЭЭ по ВЭД» для соответствующего федерального округа / 1000, "
-            "млрд кВт·ч."
+            "«Потребление ЭЭ по ВЭД» для соответствующего федерального округа / 1000"
+        ),
+    ),
+    _def(
+        "ei_fd_total_power_station_plan",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Всего (ФО)",
+        cell_name="С.н. электростанций",
+        default_text=(
+            "С.н. электростанций для годов «план» = Потребление ЭЭ ВЭД × k"
+            "Для остальных лет — значение строки «С.н. электростанций» со страницы "
+            "«Потребление ЭЭ по ВЭД» для соответствующего федерального округа / 1000"
         ),
     ),
     _def(
@@ -1003,7 +1035,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         default_text=(
             "Накопленные инвестиции в основной капитал = сумма строк "
             "«Накопленные инвестиции в основной капитал» по всем ВЭД федерального "
-            "округа, млн руб."
+            "округа"
         ),
     ),
     _def(
@@ -1112,6 +1144,13 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         default_text=EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
     ),
     _def(
+        "ei_pop_ref_household_consumption_plan",
+        pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
+        aggregation_level="Население (ФО)",
+        cell_name=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        default_text=EI_POP_REF_HOUSEHOLD_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
+    ),
+    _def(
         "ei_pop_ref_accum_monetary_income",
         pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
         aggregation_level="Население (ФО)",
@@ -1157,7 +1196,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         "ei_pop_coefficient_a_computed",
         pages=frozenset({PAGE_ELECTRICAL_INTENSITY}),
         aggregation_level="Население (ФО)",
-        cell_name="Коэффициент Арасч.",
+        cell_name="Коэффициент Арасч",
         default_text=EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
     ),
     _def(
@@ -1176,8 +1215,14 @@ def get_formula_def(formula_key: str) -> EcSummaryFormulaDef | None:
     return _REGISTRY_BY_KEY.get(formula_key)
 
 
-def iter_formula_defs(*, page: str | None = None) -> Iterable[EcSummaryFormulaDef]:
+def iter_formula_defs(
+    *,
+    page: str | None = None,
+    exclude_page: str | None = None,
+) -> Iterable[EcSummaryFormulaDef]:
     for item in EC_SUMMARY_FORMULA_REGISTRY:
+        if exclude_page and exclude_page in item.pages:
+            continue
         if page is None or page in item.pages:
             yield item
 

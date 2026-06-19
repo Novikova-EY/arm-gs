@@ -56,10 +56,16 @@ def _normalize_label(text: str | None) -> str:
     return " ".join(str(text or "").split()).strip().lower()
 
 
-def _ved_display_name(ved: EconomicActivityType) -> str | None:
-    """Подпись строки ВЭД на странице выпуска продукции (поле name_2 справочника /refdata/ved)."""
-    name_2 = (getattr(ved, "name_2", None) or "").strip()
-    return name_2 or None
+def _ved_row_label(ved: EconomicActivityType) -> str | None:
+    """Подпись ВЭД на страницах «Экономики» (полное наименование, /refdata/ved)."""
+    label = (ved.name or "").strip()
+    return label or None
+
+
+def _ved_short_label(ved: EconomicActivityType) -> str | None:
+    """Краткое наименование ВЭД (для сопоставления при импорте)."""
+    label = (getattr(ved, "name_2", None) or "").strip()
+    return label or None
 
 
 def _federal_district_name_key(name: str | None) -> str:
@@ -175,6 +181,17 @@ def _load_values_map(
     model: type,
     territory_filter: Any | None = None,
 ) -> dict[tuple[int, int], Decimal | None]:
+    from app.common.services.economics_fd_data_cache import get_fd_ved_year_values
+
+    if model is FederalDistrictProductOutputParameter:
+        return get_fd_ved_year_values(
+            "product_output",
+            version_id=version_id,
+            model=model,
+            value_attr="accumulated_product_output_mln_rub",
+            territory_filter=territory_filter,
+        )
+
     q = model.query
     if version_id is not None:
         q = q.filter(model.database_version_id == version_id)
@@ -199,6 +216,7 @@ def build_product_output_page_context(
     filter_year_list: list[int],
     coeff_base_year: int,
     summary_include_medium_years: bool,
+    summary_include_long_years: bool,
     fd_filter_ids: frozenset[int],
     ved_filter_ids: frozenset[int],
     has_active_filters: bool,
@@ -257,7 +275,7 @@ def build_product_output_page_context(
     economic_activity_type_list = [
         {"id": v.id, "name": display_name}
         for v in _po_types_for_version(version_id)
-        if (display_name := _ved_display_name(v))
+        if (display_name := _ved_row_label(v))
     ]
 
     return {
@@ -270,6 +288,7 @@ def build_product_output_page_context(
         "end_year": end_year,
         "coeff_base_year": coeff_base_year,
         "summary_include_medium_years": summary_include_medium_years,
+        "summary_include_long_years": summary_include_long_years,
         "lt_ved_year_segments": True,
         "territory_blocks": territory_blocks,
         "federal_district_list": federal_district_list,
@@ -386,13 +405,14 @@ def _find_ved_by_target(
     best: EconomicActivityType | None = None
     best_len = -1
     for ved in ved_types:
-        if not ved.name:
-            continue
-        name_n = _normalize_label(ved.name)
-        if name_n == target_n or name_n.startswith(target_n) or target_n.startswith(name_n):
-            if len(name_n) > best_len:
-                best = ved
-                best_len = len(name_n)
+        for candidate in (ved.name, _ved_short_label(ved)):
+            if not candidate:
+                continue
+            name_n = _normalize_label(candidate)
+            if name_n == target_n or name_n.startswith(target_n) or target_n.startswith(name_n):
+                if len(name_n) > best_len:
+                    best = ved
+                    best_len = len(name_n)
     return best
 
 
@@ -408,7 +428,7 @@ def _ved_row(
         cells[year] = values_by_ved_year.get((ved.id, year))
     row = {
         "ved_id": ved.id,
-        "ved_name": _ved_display_name(ved) or ved.name,
+        "ved_name": _ved_row_label(ved),
         "is_total": _normalize_label(ved.name) == _normalize_label(TOTAL_PRODUCT_OUTPUT_NAME),
         "is_industrial_group": False,
         "is_industrial_component": False,
@@ -442,7 +462,7 @@ def _rows_in_ved_order(
     return [
         row_by_id[ved.id]
         for ved in ved_types
-        if _ved_display_name(ved) and ved.id in row_by_id
+        if _ved_row_label(ved) and ved.id in row_by_id
     ]
 
 
@@ -522,7 +542,7 @@ def _build_territory_rows(
             continue
         row = row_by_id[ved.id]
         all_component_rows.append(row)
-        if not _ved_display_name(ved):
+        if not _ved_row_label(ved):
             continue
         row["is_industrial_component"] = True
         component_rows.append(row)
@@ -546,7 +566,7 @@ def _build_territory_rows(
 
     other_rows: list[dict[str, Any]] = []
     for ved in ved_types:
-        if not _ved_display_name(ved) or ved.id not in row_by_id:
+        if not _ved_row_label(ved) or ved.id not in row_by_id:
             continue
         if ved.id in component_ids or _is_parent_industrial_ved_name(ved.name):
             continue
@@ -709,6 +729,13 @@ def save_product_output_from_post(form_data: Any) -> tuple[int, int]:
             ved_cache=ved_cache,
         )
         updated += 1
+
+    if updated:
+        from app.common.services.economics_fd_data_cache import (
+            invalidate_economics_fd_data_cache,
+        )
+
+        invalidate_economics_fd_data_cache(version_id, "product_output")
 
     return updated, skipped
 

@@ -2,6 +2,8 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, TextAreaField, HiddenField, SelectMultipleField
 from wtforms.validators import DataRequired, Length, Optional, NumberRange
 
+from app.generation.models.station.station_constants import STATION_SIGN_CHOICES
+
 class StationFilterForm(FlaskForm):
     csrf_token = HiddenField()
 
@@ -80,6 +82,12 @@ class StationFilterForm(FlaskForm):
         coerce=lambda x: None if x is None or x == '' else (int(x) if x != '0' else 0),
         choices=[],
         validators=[Optional()]
+    )
+
+    station_sign = SelectField(
+        'Признак электростанции',
+        choices=STATION_SIGN_CHOICES,
+        validators=[Optional()],
     )
 
     # Список видов топлива

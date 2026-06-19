@@ -19,8 +19,27 @@
         return Number.isFinite(n) ? n : null;
     }
 
-    function parsePeakDatetime(val) {
-        var s = String(val || "").trim();
+    function normalizePeakDatetimeText(val) {
+        var text = String(val == null ? "" : val)
+            .replace(/\u00a0/g, " ")
+            .replace(/\u202f/g, " ");
+        var lines = text.split(/\r?\n/);
+        var parts = [];
+        for (var li = 0; li < lines.length; li++) {
+            var t = lines[li].trim();
+            if (t) {
+                parts.push(t);
+            }
+        }
+        var s = parts.length ? parts.join(" ") : text.trim();
+        s = s.replace(/\s+/g, " ").trim();
+        if (s.length >= 2 && s.charAt(0) === s.charAt(s.length - 1) && "\"'«»".indexOf(s.charAt(0)) >= 0) {
+            s = s.slice(1, -1).trim();
+        }
+        return s;
+    }
+
+    function parsePeakDatetimeParts(s) {
         if (!s) return null;
         if (/^\d{4}$/.test(s)) {
             var yy = parseInt(s, 10);
@@ -29,7 +48,29 @@
             }
             return null;
         }
-        var m = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})$/.exec(s);
+        var m = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+        if (!m) {
+            m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(s);
+            if (!m) {
+                var dateM = /(\d{2}\.\d{2}\.\d{4})/.exec(s);
+                if (!dateM) return null;
+                var timeM = /(\d{1,2}:\d{2}(?::\d{2})?)/.exec(s);
+                if (timeM) {
+                    var timePart = timeM[1];
+                    if (/^\d:\d{2}(?::\d{2})?$/.test(timePart)) {
+                        timePart = "0" + timePart;
+                    }
+                    s = dateM[1] + " " + timePart;
+                    m = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+                } else {
+                    m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(dateM[1]);
+                    if (!m) return null;
+                    m = [m[0], m[1], m[2], m[3], "0", "0", "0"];
+                }
+            } else {
+                m = [m[0], m[1], m[2], m[3], "0", "0", "0"];
+            }
+        }
         if (!m) return null;
         var d = parseInt(m[1], 10);
         var mo = parseInt(m[2], 10) - 1;
@@ -47,6 +88,10 @@
             return null;
         }
         return dt;
+    }
+
+    function parsePeakDatetime(val) {
+        return parsePeakDatetimeParts(normalizePeakDatetimeText(val));
     }
 
     function parseSliceYear(raw) {

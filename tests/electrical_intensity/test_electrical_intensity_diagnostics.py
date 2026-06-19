@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Тесты диагностики строки «Электроёмкость»."""
 
 from decimal import Decimal
 
-from app.energy_consumption.long_term_consumption.services.electrical_intensity_diagnostic_services import (
+from app.energy_consumption.electrical_intensity.services.electrical_intensity_diagnostic_services import (
     ABS_LOCAL_X_LIMIT,
     EXCLUDE_Z_THRESHOLD,
     MIN_INVESTMENT_SHARE,

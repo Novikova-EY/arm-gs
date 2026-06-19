@@ -1,0 +1,28 @@
+﻿
+=== 14 chart1 ===
+noFill 2
+solidFill 4
+dispUnits 0
+roundedCorners 0
+plotVisOnly 1
+schemeClr 2
+srgbClr 0
+  ser fragment 1: <idx val="0" /><order val="0" /><tx><v>╘ръЄшўхёър </v></tx><spPr><a:ln w="19050"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr><marker><symbol val="circle" /><size val="5" /><spPr><a:solidFill><a:schemeClr val="accent5" /></a:solidFill><a:ln><a:noFill /><a:prstDash val="solid" /></a:ln></spPr></marker><xVal><numRef><f>'_ei_chart_data'!$A$1:$A$16</f></numRef></xVal><yVal><numRef><f>'_ei_chart_data'!$B$1:$B$16</f></numRef></yVal>
+  ser fragment 2: 
+
+=== 14 drawing snippet ===
+<wsDr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"><oneCellAnchor><from><col>37</col><colOff>0</colOff><row>13</row><rowOff>0</rowOff></from><ext cx="5400000" cy="2700000" /><graphicFrame><nvGraphicFramePr><cNvPr id="1" name="Chart 1" /><cNvGraphicFramePr /></nvGraphicFramePr><xfrm /><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart r:id="rId1" /></a:graphicData></a:graphic></graphicFrame><clientData /></oneCellAnchor><oneCellAnchor><from><col>37</col><colOff>0</colOff><row>19</row><rowOff>0</rowOff></from><ext
+
+=== 15 chart1 ===
+noFill 2
+solidFill 4
+dispUnits 2
+roundedCorners 1
+plotVisOnly 1
+schemeClr 2
+srgbClr 0
+  ser fragment 1: <idx val="0" /><order val="0" /><tx><v>╘ръЄшўхёър </v></tx><spPr><a:ln w="19050"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr><marker><symbol val="circle" /><size val="5" /><spPr><a:solidFill><a:schemeClr val="accent5" /></a:solidFill><a:ln w="9525"><a:noFill /><a:prstDash val="solid" /></a:ln></spPr></marker><xVal><numRef><f>'_ei_chart_data'!$A$1:$A$16</f></numRef></xVal><yVal><numRef><f>'_ei_chart_data'!$B$1:$B$16</f></numRef></yVal>
+  ser fragment 2: 
+
+=== 15 drawing snippet ===
+<wsDr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"><oneCellAnchor><from><col>37</col><colOff>0</colOff><row>13</row><rowOff>0</rowOff></from><ext cx="5400000" cy="2700000" /><graphicFrame><nvGraphicFramePr><cNvPr id="1" name="Chart 1" /><cNvGraphicFramePr /></nvGraphicFramePr><xfrm /><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart r:id="rId1" /></a:graphicData></a:graphic></graphicFrame><clientData /></oneCellAnchor><oneCellAnchor><from><col>37</col><colOff>0</colOff><row>19</row><rowOff>0</rowOff></from><ext

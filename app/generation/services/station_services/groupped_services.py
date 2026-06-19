@@ -26,6 +26,11 @@ from app.generation.services.station_services.filters_services import (
 
 def is_current_version(entity) -> bool:
     """Checks if entity matches current DB version or is common (NULL)."""
+    from flask import g, has_app_context
+
+    if has_app_context() and getattr(g, "include_all_db_versions", False):
+        return True
+
     current_version_id = get_current_db_version_id()
     if entity is None:
         return False
@@ -256,18 +261,53 @@ def fetch_machines_with_rowspans(
         return (entity.database_version_id is None) or (entity.database_version_id == current_version_id)
     # Базовые агрегаты с фильтром по версии
     machine_query = Machine.query
-    machine_query = filter_by_db_version(machine_query, Machine)
-    machine_query = machine_query.options(
-        joinedload(Machine.tes_machine_type),
-        joinedload(Machine.machine_station).joinedload(Station.station_type),
-        joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
-        selectinload(Machine.machine_powers),
-        selectinload(Machine.machine_fuels)
-            .selectinload(MachineFuel.fuel)
-            .selectinload(Fuel.fuel_type),
-        joinedload(Machine.machine_fuel_param),
-        joinedload(Machine.equipment_group),
-    ).filter(Machine.id_station.in_(station_ids))
+    all_db_versions = bool((filters or {}).get("all_db_versions"))
+    representative_station_ids_by_code: dict[str, int] = {}
+    station_ids_for_query = station_ids
+
+    if all_db_versions:
+        representative_station_ids_by_code = {}
+        rep_rows = (
+            db.session.query(Station.external_code, Station.id)
+            .filter(Station.id.in_(station_ids))
+            .all()
+        )
+        for external_code, station_id in rep_rows:
+            code = (external_code or "").strip()
+            if code:
+                representative_station_ids_by_code[code] = station_id
+
+        if representative_station_ids_by_code:
+            station_ids_for_query = [
+                row[0]
+                for row in db.session.query(Station.id)
+                .filter(Station.external_code.in_(representative_station_ids_by_code.keys()))
+                .all()
+            ]
+        machine_query = machine_query.options(
+            joinedload(Machine.tes_machine_type),
+            joinedload(Machine.machine_station).joinedload(Station.station_type),
+            joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
+            selectinload(Machine.machine_powers),
+            selectinload(Machine.machine_fuels)
+                .selectinload(MachineFuel.fuel)
+                .selectinload(Fuel.fuel_type),
+            joinedload(Machine.machine_fuel_param),
+            joinedload(Machine.equipment_group),
+        ).filter(Machine.id_station.in_(station_ids_for_query or station_ids))
+    else:
+        machine_query = filter_by_db_version(machine_query, Machine)
+        machine_query = machine_query.options(
+            joinedload(Machine.tes_machine_type),
+            joinedload(Machine.machine_station).joinedload(Station.station_type),
+            joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
+            selectinload(Machine.machine_powers),
+            selectinload(Machine.machine_fuels)
+                .selectinload(MachineFuel.fuel)
+                .selectinload(Fuel.fuel_type),
+            joinedload(Machine.machine_fuel_param),
+            joinedload(Machine.equipment_group),
+        ).filter(Machine.id_station.in_(station_ids))
 
     # При фильтрах по датам: показывать Machine, если он сам или его PGUMachine-потомки совпадают
     date_filters_present = (
@@ -326,8 +366,17 @@ def fetch_machines_with_rowspans(
 
     machines = machine_query.all()
 
+    if all_db_versions:
+        from app.generation.services.station_services.external_code_check_services import (
+            dedupe_machines_by_external_code,
+        )
+
+        machines = dedupe_machines_by_external_code(machines, get_current_db_version_id())
+
     # Сначала фильтруем внутренние коллекции по версии БД (важно для primary_fuel_type)
     for m in machines:
+        if all_db_versions:
+            continue
         if hasattr(m, 'machine_powers') and m.machine_powers:
             m.machine_powers = [mp for mp in m.machine_powers if _is_current_version(mp)]
         if hasattr(m, 'machine_fuels') and m.machine_fuels:
@@ -440,9 +489,20 @@ def fetch_machines_with_rowspans(
     station_totals = {}
 
     note_filter_sub = ((filters or {}).get("note_filter") or "").strip()
+    station_external_code_by_id: dict[int, str] = {}
+
+    if all_db_versions and machines:
+        station_ids_for_codes = {m.id_station for m in machines if m.id_station}
+        if station_ids_for_codes:
+            station_external_code_by_id = {
+                row[0]: (row[1] or "").strip()
+                for row in db.session.query(Station.id, Station.external_code)
+                .filter(Station.id.in_(station_ids_for_codes))
+                .all()
+            }
 
     for m in machines:
-        m.pgu_machines = [p for p in pgu_map.get(m.id, []) if _is_current_version(p)]
+        m.pgu_machines = [p for p in pgu_map.get(m.id, []) if all_db_versions or _is_current_version(p)]
         if note_filter_sub:
             mach_note = (getattr(m, "note", None) or "")
             if note_filter_sub.casefold() not in mach_note.casefold():
@@ -453,7 +513,11 @@ def fetch_machines_with_rowspans(
                     if (getattr(p, "note", None) or "")
                     and nf in (p.note or "").casefold()
                 ]
-        station_machine_map[m.id_station].append(m)
+        target_station_id = m.id_station
+        if all_db_versions:
+            station_code = station_external_code_by_id.get(m.id_station, "")
+            target_station_id = representative_station_ids_by_code.get(station_code, m.id_station)
+        station_machine_map[target_station_id].append(m)
 
     for station_id, machine_list in station_machine_map.items():
         def machine_number_key(value):

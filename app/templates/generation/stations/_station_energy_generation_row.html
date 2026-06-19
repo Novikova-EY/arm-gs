@@ -1,7 +1,7 @@
 {# Одна строка таблицы выработки электроэнергии (обновляется при смене округления). #}
 <tr>
     <td class="text-start align-middle fw-semibold" style="min-width: 260px; vertical-align: middle; white-space: normal;">
-        Выработка<br>электроэнергии,<br>млн кВт·ч
+        Выработка<br>электроэнергии,<br>млн кВт·ч<br><span class="text-muted fw-normal" style="font-size: 0.85em;">(год)</span>
     </td>
     {% for year in range(start_year, end_year + 1) %}
     {% set v = station.station_energy_by_year.get(year) %}

@@ -1,0 +1,174 @@
+<!-- Тип электростанции -->
+<th style="width: 80px; text-align: center;">
+    <div class="d-flex align-items-center justify-content-center gap-1">
+        <div class="dropdown">
+            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                <strong>Тип <br>электро-<br>станции</strong>
+                {% if request.args.getlist('station_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+            </button>
+            <ul class="dropdown-menu w-100">
+                {% for station_type in station_type_name if station_type.name|lower == 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="station_type_filter"
+                                value="{{ station_type.id }}"
+                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}>
+                            {{ station_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+                {% for station_type in station_type_name if station_type.name|lower != 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="station_type_filter"
+                                value="{{ station_type.id }}"
+                                {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}>
+                            {{ station_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if request.args.getlist('station_type_filter') %}
+        <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                type="button"
+                data-filter-name="station_type_filter"
+                title="Сбросить фильтр"
+                style="padding: 2px 6px; line-height: 1;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        {% endif %}
+    </div>
+</th>
+
+<!-- Тип ТЭС -->
+<th style="width: 80px; text-align: center;">
+    <div class="d-flex align-items-center justify-content-center gap-1">
+        <div class="dropdown">
+            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                <strong>Тип <br>ТЭС</strong>
+                {% if request.args.getlist('tes_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+            </button>
+            <ul class="dropdown-menu w-100">
+                {% for tes_type in tes_type_names if tes_type.name|lower == 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="tes_type_filter"
+                                value="{{ tes_type.id }}"
+                                {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
+                            {{ tes_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+                {% for tes_type in tes_type_names if tes_type.name|lower != 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="tes_type_filter"
+                                value="{{ tes_type.id }}"
+                                {% if tes_type.id|string in tes_type_filter|map('string') %}checked{% endif %}>
+                            {{ tes_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if request.args.getlist('tes_type_filter') %}
+        <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                type="button"
+                data-filter-name="tes_type_filter"
+                title="Сбросить фильтр"
+                style="padding: 2px 6px; line-height: 1;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        {% endif %}
+    </div>
+</th>
+
+<!-- Тип агрегата ТЭС -->
+<th style="width: 80px; text-align: center;">
+    <div class="d-flex align-items-center justify-content-center gap-1">
+        <div class="dropdown">
+            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                <strong>Тип <br>агрегата <br>ТЭС</strong>
+                {% if request.args.getlist('tes_machine_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+            </button>
+            <ul class="dropdown-menu w-100">
+                {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower == 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="tes_machine_type_filter"
+                                value="{{ tes_machine_type.id }}"
+                                {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
+                            {{ tes_machine_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+                {% for tes_machine_type in tes_machine_type_names if tes_machine_type.name|lower != 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="tes_machine_type_filter"
+                                value="{{ tes_machine_type.id }}"
+                                {% if tes_machine_type.id|string in tes_machine_type_filter|map('string') %}checked{% endif %}>
+                            {{ tes_machine_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if request.args.getlist('tes_machine_type_filter') %}
+        <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                type="button"
+                data-filter-name="tes_machine_type_filter"
+                title="Сбросить фильтр"
+                style="padding: 2px 6px; line-height: 1;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        {% endif %}
+    </div>
+</th>
+
+<!-- Основное топливо -->
+<th style="width: 50px; text-align: center;">
+    <div class="d-flex align-items-center justify-content-center gap-1">
+        <div class="dropdown">
+            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                <strong>Основное <br> топливо</strong>
+                {% if request.args.getlist('fuel_type_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+            </button>
+            <ul class="dropdown-menu w-100">
+                {% for fuel_type in fuel_type_names if fuel_type.name|lower == 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="fuel_type_filter"
+                                value="{{ fuel_type.id }}"
+                                {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
+                            {{ fuel_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+                {% for fuel_type in fuel_type_names if fuel_type.name|lower != 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="fuel_type_filter"
+                                value="{{ fuel_type.id }}"
+                                {% if fuel_type.id|string in fuel_type_filter|map('string') %}checked{% endif %}>
+                            {{ fuel_type.name }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if request.args.getlist('fuel_type_filter') %}
+        <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                type="button"
+                data-filter-name="fuel_type_filter"
+                title="Сбросить фильтр"
+                style="padding: 2px 6px; line-height: 1;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        {% endif %}
+    </div>
+</th>
+
+<!-- Топливо (по СО ЕЭС) — без фильтра, как на station_list -->
+<th style="width: 100px;">Топливо <br> (по СО ЕЭС)</th>
