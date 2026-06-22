@@ -1,0 +1,23 @@
+{% macro external_code_cell(entity_type, version, code, record_id, mismatch, rowspan=1) %}
+    {% set record_id_val = record_id if record_id is not none else '' %}
+    {% set code_val = code if code else '' %}
+    <td class="text-center align-middle small external-code-cell {% if mismatch %}table-warning{% endif %}"
+        {% if rowspan and rowspan > 1 %}rowspan="{{ rowspan }}"{% endif %}
+        style="word-break: break-all;">
+        {% if record_id_val %}
+            <input type="text"
+                   class="form-control form-control-sm external-code-input text-center"
+                   value="{{ code_val }}"
+                   data-entity-type="{{ entity_type }}"
+                   data-record-id="{{ record_id_val }}"
+                   data-version-id="{{ version.id }}"
+                   data-original-value="{{ code_val }}"
+                   maxlength="36"
+                   spellcheck="false"
+                   autocomplete="off"
+                   title="external_code, версия {{ version.version_number }}">
+        {% else %}
+            <span class="text-muted">—</span>
+        {% endif %}
+    </td>
+{% endmacro %}

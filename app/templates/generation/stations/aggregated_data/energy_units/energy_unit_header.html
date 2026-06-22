@@ -1,7 +1,7 @@
 {% set eu_header_name = energy_unit_names.get(current_eu_id) %}
 {% if eu_header_name %}
 <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
-    <td colspan="{{ table_total_colspan | default(17 + 2 * (end_year - start_year)) }}">
+    <td colspan="{{ table_total_colspan | default(18 + 2 * (end_year - start_year)) }}">
         {{ eu_header_name }}
     </td>
 </tr>

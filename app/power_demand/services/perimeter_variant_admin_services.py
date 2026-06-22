@@ -11,12 +11,18 @@ from app.common.perimeter_variant.db_loader import invalidate_perimeter_catalog_
 from app.common.perimeter_variant.registry import ENTITY_KIND_CHOICES, perimeter_catalog_source
 from app.extensions import db
 from app.common.models.perimeter_variant import EntityPerimeterBinding, PerimeterVariant
+from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
 
 
 def _username() -> str:
     from flask import session
 
     return session.get("username", "Неизвестный пользователь")
+
+
+def _invalidate_perimeter_variant_dependent_caches() -> None:
+    invalidate_perimeter_catalog_cache()
+    clear_pd_summary_page_cache()
 
 
 def list_variants_for_admin() -> list[PerimeterVariant]:
@@ -191,7 +197,7 @@ def save_variants_from_form(form_data) -> tuple[int, int]:
     except IntegrityError as exc:
         db.session.rollback()
         raise ValueError("Дубликат кода варианта.") from exc
-    invalidate_perimeter_catalog_cache()
+    _invalidate_perimeter_variant_dependent_caches()
     return saved, deleted
 
 
@@ -243,7 +249,7 @@ def add_binding_from_form(form_data) -> None:
     except IntegrityError as exc:
         db.session.rollback()
         raise ValueError("Не удалось создать привязку.") from exc
-    invalidate_perimeter_catalog_cache()
+    _invalidate_perimeter_variant_dependent_caches()
 
 
 def delete_bindings(binding_ids: list[int]) -> int:
@@ -269,7 +275,7 @@ def delete_bindings(binding_ids: list[int]) -> int:
             db.session.delete(delete_row)
             n += 1
     db.session.commit()
-    invalidate_perimeter_catalog_cache()
+    _invalidate_perimeter_variant_dependent_caches()
     return n
 
 

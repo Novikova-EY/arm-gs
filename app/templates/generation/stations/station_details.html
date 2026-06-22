@@ -249,6 +249,26 @@
 {% set can_edit = can_edit if can_edit is defined else (current_user.role_names | select('in', edit_roles) | list | length > 0) %}
 {% set can_edit_fuel = can_edit_fuel if can_edit_fuel is defined else (current_user.role_names | select('in', fuel_edit_roles) | list | length > 0) %}
 {% set can_edit_any = can_edit or can_edit_fuel %}
+{% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
+
+<style>
+/* Заголовок карточки станции */
+.generation-details-header-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.generation-details-header-title {
+    margin: 0;
+    line-height: 1.2;
+    flex: 0 0 auto;
+}
+.generation-details-header-spacer {
+    flex: 1 1 auto;
+    min-width: 1rem;
+}
+</style>
 
 <!-- Стили для режима чтения -->
 <style>
@@ -363,19 +383,19 @@
         <input type="hidden" name="{{ param }}" value="{{ request.args.get(param, '') }}">
         {% endfor %}
 
-        <div class="station-header-tep d-flex align-items-center justify-content-between flex-wrap gap-3 mt-4 mb-4">
-            <h2 class="mb-0 ms-3 d-flex align-items-center gap-3 flex-grow-1 min-w-0">Информация об  электростанции
-                {% if can_edit_any %}
-                    <span class="edit-indicator ms-3">Режим редактирования</span>
-                {% else %}
-                    <span class="readonly-indicator ms-3">Режим просмотра</span>
-                {% endif %}
-            </h2>
+        <div class="station-header-tep generation-details-header-row mt-4 mb-4 ms-3 me-3">
+            <h2 class="generation-details-header-title">Информация об  электростанции</h2>
+            {% if can_edit_any %}
+                <span class="edit-indicator">Режим редактирования</span>
+            {% else %}
+                <span class="readonly-indicator">Режим просмотра</span>
+            {% endif %}
+            <div class="generation-details-header-spacer" aria-hidden="true"></div>
             {% if station_prospective_place_tep_links %}
                 {% if station_prospective_place_tep_links|length == 1 %}
-                <a href="{{ station_prospective_place_tep_links[0].url }}" class="btn station-tep-btn fs-5 text-nowrap me-3 d-inline-flex align-items-center gap-2 flex-shrink-0"><i class="bi bi-clipboard-data" aria-hidden="true"></i><span>ТЭП электростанции</span></a>
+                <a href="{{ station_prospective_place_tep_links[0].url }}" class="btn station-tep-btn fs-5 text-nowrap d-inline-flex align-items-center gap-2 flex-shrink-0"><i class="bi bi-clipboard-data" aria-hidden="true"></i><span>ТЭП электростанции</span></a>
                 {% else %}
-                <div class="btn-group me-3 flex-shrink-0">
+                <div class="btn-group flex-shrink-0">
                     <button type="button" class="btn station-tep-btn fs-5 dropdown-toggle text-nowrap d-inline-flex align-items-center gap-2" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-clipboard-data" aria-hidden="true"></i><span>ТЭП электростанции</span>
                     </button>
@@ -454,7 +474,7 @@
                                     {% endif %}
                                 </div>
                             </div>
-                            <div class="row g-2 align-items-center mb-0">
+                            <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Примечание:</div>
                                 <div class="col-7 text-start">
                                     {% if can_edit %}
@@ -463,6 +483,16 @@
                                         </span>
                                     {% else %}
                                         <span>{{ form.note.data.label if form.note.data.label else '—' }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-0">
+                                <div class="col-5 text-start fw-semibold">external_code:</div>
+                                <div class="col-7 text-start">
+                                    {% if can_edit_external_code %}
+                                        {{ form.external_code(class="form-control", maxlength="36", spellcheck="false", autocomplete="off") }}
+                                    {% else %}
+                                        {{ station.external_code if station.external_code else '—' }}
                                     {% endif %}
                                 </div>
                             </div>

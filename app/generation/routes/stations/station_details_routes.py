@@ -70,8 +70,12 @@ def _save_station_meta_from_form(
     can_edit_fuel: bool,
 ):
     """Сохраняет поля карточки станции с учётом раздельных прав (генерация / топливо)."""
+    can_edit_external_code = current_user.is_authenticated and getattr(current_user, "is_admin", False)
+
     if can_edit_fuel and not can_edit:
-        if "station_sign" not in request.form:
+        if "station_sign" not in request.form and not (
+            can_edit_external_code and "external_code" in request.form
+        ):
             return []
         form.process(formdata=request.form)
         return update_station_from_form_service(
@@ -679,6 +683,7 @@ def station_details(station_id):
             "location",
             "note",
             "station_sign",
+            "external_code",
         }
     )
     # Признаки формы агрегатов: удаление/поля агрегатов/примечание агрегата/собственник агрегата
@@ -841,6 +846,7 @@ def station_details(station_id):
             "location",
             "note",
             "station_sign",
+            "external_code",
         }
 
         # Единая отправка: карточка станции + агрегаты + выработка (+ потребление ГАЭС) одной кнопкой / Enter
@@ -1057,6 +1063,7 @@ def station_details(station_id):
                                 "id_regional_district",
                                 "location",
                                 "note",
+                                "external_code",
                             }
                         ):
                             # Привязываем POST-данные к форме электростанции и валидируем

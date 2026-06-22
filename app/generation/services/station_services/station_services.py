@@ -28,6 +28,7 @@ from app.common.services.database_version_filter import (
 
 # Модели
 from app.generation.models.station.station_model import Station
+from flask_login import current_user
 from app.generation.models.station.station_constants import (
     STATION_SIGN_ESPP,
     STATION_SIGN_UNSPECIFIED,
@@ -369,142 +370,133 @@ def get_stations_list(
         filters["fuel_type_filter"] = filters.get("station_fuel_type_filter")
 
     current_year = get_current_year()
+    external_code_check = bool(filters.get("external_code_check"))
 
-    # 1. Фильтрация агрегатов
-    machine_query = db.session.query(Machine.id, Machine.id_station)
-    
-    # Фильтрация по версии БД
-    machine_query = filter_by_db_version(machine_query, Machine)
+    if external_code_check:
+        station_ids_query = db.session.query(Station.id)
+    else:
+        # 1. Фильтрация агрегатов
+        machine_query = db.session.query(Machine.id, Machine.id_station)
+        
+        # Фильтрация по версии БД
+        machine_query = filter_by_db_version(machine_query, Machine)
 
-    if filters.get("tes_type_filter"):
-        machine_query = machine_query.filter(
-            Machine.machine_tes_types.any(
-                and_(
-                    MachineTesType.year_number == current_year,
-                    MachineTesType.id_tes_type.in_(filters["tes_type_filter"])
+        if filters.get("tes_type_filter"):
+            machine_query = machine_query.filter(
+                Machine.machine_tes_types.any(
+                    and_(
+                        MachineTesType.year_number == current_year,
+                        MachineTesType.id_tes_type.in_(filters["tes_type_filter"])
+                    )
                 )
             )
-        )
 
-    if filters.get("tes_machine_type_filter"):
-        machine_query = machine_query.filter(
-            Machine.id_tes_machine_type.in_(filters["tes_machine_type_filter"])
-        )
-
-    if filters.get("fuel_type_filter"):
-        machine_query = machine_query.join(Machine.machine_fuels).join(MachineFuel.fuel).filter(
-            Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
-        )
-
-    # Проверка топлива: показываем "проблемные" агрегаты:
-    # - fuel_so (по СО ЕЭС) не заполнено, но есть топливо по годам, ИЛИ
-    # - fuel_so заполнено, но не совпадает с типом топлива(ами) по годам в выбранном диапазоне лет.
-    if filters.get("fuel_check"):
-        from sqlalchemy import func
-        from app.refdata.models.fuels.fuel_type_model import FuelType
-        from app.common.services.database_version_filter import get_current_db_version_id
-        from app.common.services.get_services.years.years_get_services import (
-            get_filter_start_year,
-            get_filter_end_year,
-        )
-        from config import Config
-
-        current_version_id = get_current_db_version_id()
-        if current_version_id is not None:
-            mf_version_cond = MachineFuel.database_version_id == current_version_id
-        else:
-            mf_version_cond = MachineFuel.database_version_id.is_(None)
-
-        # Границы лет берем из параметров страницы (то, что показано в таблице)
-        sy = int(start_year if start_year is not None else get_filter_start_year())
-        ey = int(end_year if end_year is not None else get_filter_end_year())
-
-        # Есть ли указанное топливо по годам в диапазоне (игнорируем "не указано")
-        has_year_fuel = Machine.machine_fuels.any(
-            and_(
-                mf_version_cond,
-                MachineFuel.year_number >= sy,
-                MachineFuel.year_number <= ey,
-                MachineFuel.fuel.has(
-                    Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
-                ),
+        if filters.get("tes_machine_type_filter"):
+            machine_query = machine_query.filter(
+                Machine.id_tes_machine_type.in_(filters["tes_machine_type_filter"])
             )
-        )
 
-        fuel_so_missing = or_(
-            Machine.fuel_so.is_(None),
-            func.trim(Machine.fuel_so) == "",
-            func.lower(func.trim(Machine.fuel_so)) == "не указано",
-        )
+        if filters.get("fuel_type_filter"):
+            machine_query = machine_query.join(Machine.machine_fuels).join(MachineFuel.fuel).filter(
+                Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
+            )
 
-        # Совпадение считаем "мягко": fuel_so может содержать несколько топлив через запятую/и т.п.,
-        # поэтому проверяем, что название FuelType встречается как подстрока в fuel_so.
-        has_match_with_year_fuel = Machine.machine_fuels.any(
-            and_(
-                mf_version_cond,
-                MachineFuel.year_number >= sy,
-                MachineFuel.year_number <= ey,
-                MachineFuel.fuel.has(
-                    Fuel.fuel_type.has(
-                        and_(
-                            func.lower(FuelType.name) != "не указано",
-                            func.strpos(
-                                func.lower(func.coalesce(Machine.fuel_so, "")),
-                                func.lower(FuelType.name),
-                            ) > 0,
+        # Проверка топлива: показываем "проблемные" агрегаты:
+        if filters.get("fuel_check"):
+            from sqlalchemy import func
+            from app.refdata.models.fuels.fuel_type_model import FuelType
+            from app.common.services.database_version_filter import get_current_db_version_id
+            from app.common.services.get_services.years.years_get_services import (
+                get_filter_start_year,
+                get_filter_end_year,
+            )
+
+            current_version_id = get_current_db_version_id()
+            if current_version_id is not None:
+                mf_version_cond = MachineFuel.database_version_id == current_version_id
+            else:
+                mf_version_cond = MachineFuel.database_version_id.is_(None)
+
+            sy = int(start_year if start_year is not None else get_filter_start_year())
+            ey = int(end_year if end_year is not None else get_filter_end_year())
+
+            has_year_fuel = Machine.machine_fuels.any(
+                and_(
+                    mf_version_cond,
+                    MachineFuel.year_number >= sy,
+                    MachineFuel.year_number <= ey,
+                    MachineFuel.fuel.has(
+                        Fuel.fuel_type.has(func.lower(FuelType.name) != "не указано")
+                    ),
+                )
+            )
+
+            fuel_so_missing = or_(
+                Machine.fuel_so.is_(None),
+                func.trim(Machine.fuel_so) == "",
+                func.lower(func.trim(Machine.fuel_so)) == "не указано",
+            )
+
+            has_match_with_year_fuel = Machine.machine_fuels.any(
+                and_(
+                    mf_version_cond,
+                    MachineFuel.year_number >= sy,
+                    MachineFuel.year_number <= ey,
+                    MachineFuel.fuel.has(
+                        Fuel.fuel_type.has(
+                            and_(
+                                func.lower(FuelType.name) != "не указано",
+                                func.strpos(
+                                    func.lower(func.coalesce(Machine.fuel_so, "")),
+                                    func.lower(FuelType.name),
+                                ) > 0,
+                            )
                         )
-                    )
-                ),
+                    ),
+                )
             )
-        )
 
-        # "Проблемный" агрегат: есть топливо по годам в диапазоне и при этом fuel_so пустое
-        # или не содержит ни одного из топлив по годам.
-        machine_query = machine_query.filter(
-            and_(
-                has_year_fuel,
-                or_(fuel_so_missing, ~has_match_with_year_fuel),
+            machine_query = machine_query.filter(
+                and_(
+                    has_year_fuel,
+                    or_(fuel_so_missing, ~has_match_with_year_fuel),
+                )
             )
+
+        from app.generation.services.station_services.filters_services import (
+            build_date_commission_filter,
+            build_date_exploitation_filter,
+            build_date_decompressing_filter,
+            build_date_modernization_filter,
+            build_date_modernization_no_power_filter,
+            build_relabing_outcome_filter,
+            build_machine_note_search_condition,
         )
+        for build_fn in (
+            build_date_commission_filter,
+            build_date_exploitation_filter,
+            build_date_decompressing_filter,
+            build_date_modernization_filter,
+            build_date_modernization_no_power_filter,
+            build_relabing_outcome_filter,
+        ):
+            cond = build_fn(Machine, filters)
+            if cond is not None:
+                machine_query = machine_query.filter(cond)
 
-    from app.generation.services.station_services.filters_services import (
-        build_date_commission_filter,
-        build_date_exploitation_filter,
-        build_date_decompressing_filter,
-        build_date_modernization_filter,
-        build_date_modernization_no_power_filter,
-        build_relabing_outcome_filter,
-        build_machine_note_search_condition,
-    )
-    for build_fn in (
-        build_date_commission_filter,
-        build_date_exploitation_filter,
-        build_date_decompressing_filter,
-        build_date_modernization_filter,
-        build_date_modernization_no_power_filter,
-        build_relabing_outcome_filter,
-    ):
-        cond = build_fn(Machine, filters)
-        if cond is not None:
-            machine_query = machine_query.filter(cond)
+        if filters.get("machines_without_equipment_group"):
+            machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
 
-    # Фильтр: только агрегаты без группы оборудования (Machine.id_equipment_group IS NULL)
-    if filters.get("machines_without_equipment_group"):
-        machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
+        note_machine_cond = build_machine_note_search_condition(
+            Machine, PGUMachine, filters.get("note_filter")
+        )
+        if note_machine_cond is not None:
+            machine_query = machine_query.filter(note_machine_cond)
 
-    note_machine_cond = build_machine_note_search_condition(
-        Machine, PGUMachine, filters.get("note_filter")
-    )
-    if note_machine_cond is not None:
-        machine_query = machine_query.filter(note_machine_cond)
-
-    # 2. Subquery с подходящими агрегатами
-    machine_subquery = machine_query.subquery()
-    station_ids_query = db.session.query(machine_subquery.c.id_station).distinct()
-    station_ids_query = station_ids_query.join(Station, Station.id == machine_subquery.c.id_station)
-    
-    # Фильтрация станций по версии БД
-    station_ids_query = filter_by_db_version(station_ids_query, Station)
+        machine_subquery = machine_query.subquery()
+        station_ids_query = db.session.query(machine_subquery.c.id_station).distinct()
+        station_ids_query = station_ids_query.join(Station, Station.id == machine_subquery.c.id_station)
+        station_ids_query = filter_by_db_version(station_ids_query, Station)
 
     # 3. Фильтры по электростанции
 
@@ -576,8 +568,38 @@ def get_stations_list(
         )
 
     # 4. Подсчет и пагинация (сортировка не нужна, т.к. будет в Python)
-    # Получаем уникальные ID станций (важно для случаев с multiple regional_energy_systems)
-    raw_station_ids = [row[0] for row in station_ids_query.all()]
+    if external_code_check:
+        from app.generation.services.station_services.external_code_check_services import (
+            dedupe_station_ids_from_rows,
+        )
+        from app.common.services.database_version_filter import get_current_db_version_id
+
+        station_rows = station_ids_query.with_entities(
+            Station.id,
+            Station.external_code,
+            Station.database_version_id,
+            Station.id_regional_district,
+            Station.id_regional_energy_system,
+        ).all()
+        station_ids_in_rows = list({row[0] for row in station_rows})
+        machine_counts = {}
+        if station_ids_in_rows:
+            from sqlalchemy import func
+
+            machine_counts = dict(
+                db.session.query(Machine.id_station, func.count(Machine.id))
+                .filter(Machine.id_station.in_(station_ids_in_rows))
+                .group_by(Machine.id_station)
+                .all()
+            )
+        all_station_ids = dedupe_station_ids_from_rows(
+            station_rows,
+            get_current_db_version_id(),
+            machine_counts=machine_counts,
+        )
+        raw_station_ids = all_station_ids
+    else:
+        raw_station_ids = [row[0] for row in station_ids_query.all()]
 
     # 4a. При наличии фильтров по датам — добавляем электростанции, где PGUMachine совпадает по датам
     date_filters_present = any([
@@ -587,7 +609,7 @@ def get_stations_list(
         filters.get("date_modernization_expected_filter"),
         filters.get("date_modernization_no_power_expected_filter"),
     ])
-    if date_filters_present:
+    if date_filters_present and not external_code_check:
         from app.generation.services.station_services.filters_services import (
             build_date_filters_for_pgu,
         )
@@ -684,7 +706,11 @@ def get_stations_list(
         ]
     )
     extra_station_ids = []
-    if (filters.get("station_name_filter") or filters.get("note_filter")) and not machine_filters_present:
+    if (
+        not external_code_check
+        and (filters.get("station_name_filter") or filters.get("note_filter"))
+        and not machine_filters_present
+    ):
         station_query = filter_by_db_version(Station.query, Station)
         if filters.get("station_name_filter"):
             station_query = station_query.filter(
@@ -736,7 +762,7 @@ def get_stations_list(
 
     all_station_ids = list(set(raw_station_ids).union(set(extra_station_ids)))
 
-    if filters.get("all_db_versions"):
+    if filters.get("all_db_versions") and not external_code_check:
         from app.generation.services.station_services.external_code_check_services import (
             dedupe_station_ids_by_external_code,
         )
@@ -772,13 +798,13 @@ def get_stations_list(
         get_cached_page_position, cache_page_position
     )
     
-    cached_sorted_ids = get_cached_sorted_stations(filters)
+    cached_sorted_ids = None if external_code_check else get_cached_sorted_stations(filters)
     sorted_station_ids = None
     effective_total_pages = None
     rd_name_map = None  # Ленивая инициализация справочника субъектов для пагинации
     
     # Получаем кэшированную позицию и информацию о предыдущей странице
-    if page > 1:
+    if page > 1 and not external_code_check:
         cached_start_position, prev_page_last_station_info = get_cached_page_position(filters, page)
         print(f"[CACHE CHECK] Page {page}: cached_start_position={cached_start_position}, prev_info={prev_page_last_station_info}")
     else:
@@ -806,18 +832,32 @@ def get_stations_list(
             station_ids_for_page = cached_sorted_ids
         
         # Загружаем только электростанции для этой страницы
-        stations = Station.query.options(
-            selectinload(Station.regional_district).selectinload(RegionalDistrict.regional_energy_systems).joinedload(RegionalEnergySystem.union_energy_system).joinedload(UnionEnergySystem.energy_system_type),
-            selectinload(Station.regional_district).joinedload(RegionalDistrict.federal_district),
-            joinedload(Station.energy_unit),
-            selectinload(Station.machines)
-                .selectinload(Machine.machine_powers),
-            selectinload(Station.machines)
-                .selectinload(Machine.machine_fuels),
-            selectinload(Station.machines)
-                .selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
-            selectinload(Station.machines).joinedload(Machine.equipment_group),
-        ).filter(Station.id.in_(station_ids_for_page)).all()
+        if external_code_check:
+            stations = Station.query.options(
+                selectinload(Station.regional_district)
+                    .selectinload(RegionalDistrict.regional_energy_systems)
+                    .joinedload(RegionalEnergySystem.union_energy_system)
+                    .joinedload(UnionEnergySystem.energy_system_type),
+                selectinload(Station.regional_district).joinedload(RegionalDistrict.federal_district),
+                joinedload(Station.energy_unit),
+                joinedload(Station.regional_energy_system_obj)
+                    .joinedload(RegionalEnergySystem.union_energy_system)
+                    .joinedload(UnionEnergySystem.energy_system_type),
+                joinedload(Station.station_type),
+            ).filter(Station.id.in_(station_ids_for_page)).all()
+        else:
+            stations = Station.query.options(
+                selectinload(Station.regional_district).selectinload(RegionalDistrict.regional_energy_systems).joinedload(RegionalEnergySystem.union_energy_system).joinedload(UnionEnergySystem.energy_system_type),
+                selectinload(Station.regional_district).joinedload(RegionalDistrict.federal_district),
+                joinedload(Station.energy_unit),
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_powers),
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_fuels),
+                selectinload(Station.machines)
+                    .selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
+                selectinload(Station.machines).joinedload(Machine.equipment_group),
+            ).filter(Station.id.in_(station_ids_for_page)).all()
         
         # Сортируем этот небольшой набор
         # (порядок в SQL может отличаться от кэшированного)
@@ -838,17 +878,26 @@ def get_stations_list(
             return {"stations": [], "total_count": 0}
         
         # ⚡ ОПТИМИЗАЦИЯ: Загружаем только минимум данных для сортировки
-        # Не загружаем machine_powers, machine_fuels, machine_tes_types - они не нужны для сортировки!
-        # Это значительно ускоряет первую загрузку без кэша
-        stations = Station.query.options(
+        sort_options = [
             selectinload(Station.regional_district)
                 .selectinload(RegionalDistrict.regional_energy_systems)
                 .joinedload(RegionalEnergySystem.union_energy_system)
                 .joinedload(UnionEnergySystem.energy_system_type),
             joinedload(Station.energy_unit),
             joinedload(Station.station_type),
-            selectinload(Station.machines).joinedload(Machine.equipment_group),
-        ).filter(Station.id.in_(station_ids)).all()
+        ]
+        if external_code_check:
+            sort_options.extend([
+                selectinload(Station.regional_district).joinedload(RegionalDistrict.federal_district),
+                joinedload(Station.regional_energy_system_obj)
+                    .joinedload(RegionalEnergySystem.union_energy_system)
+                    .joinedload(UnionEnergySystem.energy_system_type),
+            ])
+        else:
+            sort_options.append(
+                selectinload(Station.machines).joinedload(Machine.equipment_group)
+            )
+        stations = Station.query.options(*sort_options).filter(Station.id.in_(station_ids)).all()
         
         use_cached_sort = False
     
@@ -928,7 +977,12 @@ def get_stations_list(
         # Нижний уровень: по алфавиту названия электростанции
         station_name = (station.name or "").strip().lower()
 
-        return (
+        sort_prefix = ()
+        if external_code_check:
+            has_territory = bool(station.regional_district or station.id_regional_energy_system)
+            sort_prefix = ((0 if has_territory else 1),)
+
+        return sort_prefix + (
             energy_system_type_id,
             union_energy_system_order,
             regional_energy_system_id,
@@ -957,93 +1011,142 @@ def get_stations_list(
         
         # Сохраняем отсортированный список ID в кэш
         sorted_station_ids = [s.id for s in stations]
-        cache_sorted_stations(filters, sorted_station_ids)
+        if not external_code_check:
+            cache_sorted_stations(filters, sorted_station_ids)
     else:
         # Кэш уже использован, stations уже отсортированы по кэшированному порядку
         pass
 
     if per_page_int is not None and sorted_station_ids:
-        try:
-            effective_total_pages = compute_effective_total_pages(sorted_station_ids, per_page_int)
-        except Exception as exc:
-            print(f"[PAGINATION] Failed to compute effective_total_pages: {exc}")
-            effective_total_pages = None
+        if external_code_check:
+            try:
+                effective_total_pages = compute_effective_total_pages(sorted_station_ids, per_page_int)
+            except Exception as exc:
+                print(f"[PAGINATION] external_code_check effective_total_pages failed: {exc}")
+                effective_total_pages = max(1, (len(sorted_station_ids) + per_page_int - 1) // per_page_int)
+        else:
+            try:
+                effective_total_pages = compute_effective_total_pages(sorted_station_ids, per_page_int)
+            except Exception as exc:
+                print(f"[PAGINATION] Failed to compute effective_total_pages: {exc}")
+                effective_total_pages = None
     
     # Сохраняем информацию о следующей электростанции ДО применения пагинации
     next_station_info = None
-    
+    prev_page_last_info = None
+
     # Применяем пагинацию с учетом границ субъектов РФ
     if per_page_int is not None and not use_cached_sort:
-        # Для НЕ кэшированного списка (все электростанции загружены)
-        # Используем реальную позицию из кэша (если есть) или стандартный offset
-        if cached_start_position is not None:
-            start_idx = cached_start_position
-            print(f"[PAGE POSITION CACHE] Используется закэшированная позиция: {start_idx}")
-        else:
+        if external_code_check:
             if rd_name_map is None and sorted_station_ids:
                 rd_name_map = _build_rd_name_map(sorted_station_ids)
-            start_idx = compute_page_start_index(sorted_station_ids or [s.id for s in stations], per_page_int, page, rd_name_map)
-        
-        end_idx = min(start_idx + per_page_int, len(stations))
-        
-        # НЕ корректируем начало! Это создает перекрытия страниц
-        # Только корректируем конец: двигаемся вперед до конца субъекта
-        if end_idx < len(stations):
-            current_rd_name = (stations[end_idx - 1].regional_district.name or "").lower() if stations[end_idx - 1].regional_district else ""
-            while end_idx < len(stations):
-                next_rd_name = (stations[end_idx].regional_district.name or "").lower() if stations[end_idx].regional_district else ""
-                if next_rd_name == current_rd_name:
-                    end_idx += 1
-                else:
-                    break
-        
-        # Получаем информацию о следующей электростанции (если она есть)
-        if end_idx < len(stations):
-            next_station = stations[end_idx]
-            next_station_info = {
-                'energy_unit_id': next_station.id_energy_unit,
-                'regional_district_id': next_station.id_regional_district,
-                'regional_energy_system_id': None,
-                'union_energy_system_id': None,
-                'energy_system_type_id': None
-            }
-            if next_station.regional_district and next_station.regional_district.regional_energy_systems:
-                res = next_station.regional_district.regional_energy_systems[0]
-                if res:
-                    next_station_info['regional_energy_system_id'] = res.id
-                    if res.union_energy_system:
-                        next_station_info['union_energy_system_id'] = res.union_energy_system.id
-                        if res.union_energy_system.energy_system_type:
-                            next_station_info['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
-        
-        stations = stations[start_idx:end_idx]
-        
-        # Получаем информацию о последней электростанции страницы для кэша
-        if stations:
-            last_station = stations[-1]
-            last_station_info_for_cache = {
-                'energy_unit_id': last_station.id_energy_unit,
-                'regional_district_id': last_station.id_regional_district,
-                'regional_energy_system_id': None,
-                'union_energy_system_id': None,
-                'energy_system_type_id': None
-            }
-            if last_station.regional_district and last_station.regional_district.regional_energy_systems:
-                res = last_station.regional_district.regional_energy_systems[0]
-                if res:
-                    last_station_info_for_cache['regional_energy_system_id'] = res.id
-                    if res.union_energy_system:
-                        last_station_info_for_cache['union_energy_system_id'] = res.union_energy_system.id
-                        if res.union_energy_system.energy_system_type:
-                            last_station_info_for_cache['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
+            start_idx = compute_page_start_index(
+                sorted_station_ids or [s.id for s in stations],
+                per_page_int,
+                page,
+                rd_name_map,
+            )
+            end_idx = min(start_idx + per_page_int, len(stations))
+
+            if end_idx < len(stations):
+                current_rd_name = (
+                    (stations[end_idx - 1].regional_district.name or "").lower()
+                    if stations[end_idx - 1].regional_district
+                    else ""
+                )
+                while end_idx < len(stations):
+                    next_rd_name = (
+                        (stations[end_idx].regional_district.name or "").lower()
+                        if stations[end_idx].regional_district
+                        else ""
+                    )
+                    if next_rd_name == current_rd_name:
+                        end_idx += 1
+                    else:
+                        break
+
+            if page > 1 and start_idx > 0:
+                from app.generation.services.station_services.external_code_check_services import (
+                    station_to_hierarchy_info,
+                )
+                prev_page_last_info = station_to_hierarchy_info(stations[start_idx - 1])
+
+            stations = stations[start_idx:end_idx]
+            print(
+                f"[PAGINATION] external_code_check Page {page}: "
+                f"range [{start_idx}:{end_idx}], showing {len(stations)} stations"
+            )
         else:
-            last_station_info_for_cache = None
-        
-        # Сохраняем реальную конечную позицию этой страницы в кэш
-        cache_page_position(filters, page, end_idx, last_station_info_for_cache)
-        
-        print(f"[PAGINATION] Page {page}: start={start_idx}, per_page={per_page_int}, range [{start_idx}:{end_idx}], showing {len(stations)} stations, next_station: {next_station_info}")
-    elif per_page_int is not None and use_cached_sort:
+            # Для НЕ кэшированного списка (все электростанции загружены)
+            # Используем реальную позицию из кэша (если есть) или стандартный offset
+            if cached_start_position is not None:
+                start_idx = cached_start_position
+                print(f"[PAGE POSITION CACHE] Используется закэшированная позиция: {start_idx}")
+            else:
+                if rd_name_map is None and sorted_station_ids:
+                    rd_name_map = _build_rd_name_map(sorted_station_ids)
+                start_idx = compute_page_start_index(sorted_station_ids or [s.id for s in stations], per_page_int, page, rd_name_map)
+            
+            end_idx = min(start_idx + per_page_int, len(stations))
+            
+            # НЕ корректируем начало! Это создает перекрытия страниц
+            # Только корректируем конец: двигаемся вперед до конца субъекта
+            if end_idx < len(stations):
+                current_rd_name = (stations[end_idx - 1].regional_district.name or "").lower() if stations[end_idx - 1].regional_district else ""
+                while end_idx < len(stations):
+                    next_rd_name = (stations[end_idx].regional_district.name or "").lower() if stations[end_idx].regional_district else ""
+                    if next_rd_name == current_rd_name:
+                        end_idx += 1
+                    else:
+                        break
+            
+            # Получаем информацию о следующей электростанции (если она есть)
+            if end_idx < len(stations):
+                next_station = stations[end_idx]
+                next_station_info = {
+                    'energy_unit_id': next_station.id_energy_unit,
+                    'regional_district_id': next_station.id_regional_district,
+                    'regional_energy_system_id': None,
+                    'union_energy_system_id': None,
+                    'energy_system_type_id': None
+                }
+                if next_station.regional_district and next_station.regional_district.regional_energy_systems:
+                    res = next_station.regional_district.regional_energy_systems[0]
+                    if res:
+                        next_station_info['regional_energy_system_id'] = res.id
+                        if res.union_energy_system:
+                            next_station_info['union_energy_system_id'] = res.union_energy_system.id
+                            if res.union_energy_system.energy_system_type:
+                                next_station_info['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
+            
+            stations = stations[start_idx:end_idx]
+            
+            # Получаем информацию о последней электростанции страницы для кэша
+            if stations:
+                last_station = stations[-1]
+                last_station_info_for_cache = {
+                    'energy_unit_id': last_station.id_energy_unit,
+                    'regional_district_id': last_station.id_regional_district,
+                    'regional_energy_system_id': None,
+                    'union_energy_system_id': None,
+                    'energy_system_type_id': None
+                }
+                if last_station.regional_district and last_station.regional_district.regional_energy_systems:
+                    res = last_station.regional_district.regional_energy_systems[0]
+                    if res:
+                        last_station_info_for_cache['regional_energy_system_id'] = res.id
+                        if res.union_energy_system:
+                            last_station_info_for_cache['union_energy_system_id'] = res.union_energy_system.id
+                            if res.union_energy_system.energy_system_type:
+                                last_station_info_for_cache['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
+            else:
+                last_station_info_for_cache = None
+            
+            # Сохраняем реальную конечную позицию этой страницы в кэш
+            cache_page_position(filters, page, end_idx, last_station_info_for_cache)
+            
+            print(f"[PAGINATION] Page {page}: start={start_idx}, per_page={per_page_int}, range [{start_idx}:{end_idx}], showing {len(stations)} stations, next_station: {next_station_info}")
+    elif per_page_int is not None and use_cached_sort and not external_code_check:
         # Для кэшированного списка (загружены только электростанции страницы)
         # Берем с начала буфера
         start_idx = 0  
@@ -1110,101 +1213,103 @@ def get_stations_list(
         print(f"[PAGINATION CACHED] Page {page}: offset_in_sorted_list={offset_in_sorted_list}, per_page={per_page_int}, range [{start_idx}:{end_idx}], showing {len(stations)} stations, next_station: {next_station_info}, real_end_pos: {real_end_position}")
 
     # 7. Загрузка отфильтрованных агрегатов (только для финального списка станций)
-    final_station_ids = [s.id for s in stations]
-    base_filtered_machine_ids = db.session.query(machine_subquery.c.id).filter(
-        machine_subquery.c.id_station.in_(final_station_ids)
-    )
-
-    filtered_machines_query = Machine.query.options(
-        selectinload(Machine.machine_fuels),
-        selectinload(Machine.machine_powers),
-        selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
-        joinedload(Machine.equipment_group),
-    ).filter(Machine.id.in_(base_filtered_machine_ids))
-
-    # Если станция попала в выборку только за счет совпадения дочернего PGUMachine по датам,
-    # подгружаем и родительскую Machine, чтобы строка ПГУ отрисовалась в station_list.
-    if any(
-        [
-            filters.get("date_commission_filter"),
-            filters.get("date_exploitation_filter"),
-            filters.get("date_decompressing_expected_filter"),
-            filters.get("date_modernization_expected_filter"),
-            filters.get("date_modernization_no_power_expected_filter"),
-            filters.get("relabing_outcome_filter"),
-        ]
-    ):
-        from app.generation.services.station_services.filters_services import (
-            build_date_commission_filter,
-            build_date_exploitation_filter,
-            build_date_decompressing_filter,
-            build_date_modernization_filter,
-            build_date_modernization_no_power_filter,
-            build_relabing_outcome_filter,
-            get_pgu_date_cond_for_filter,
+    if not external_code_check:
+        final_station_ids = [s.id for s in stations]
+        base_filtered_machine_ids = db.session.query(machine_subquery.c.id).filter(
+            machine_subquery.c.id_station.in_(final_station_ids)
         )
 
-        date_filter_pairs = [
-            (build_date_commission_filter, "date_commission_filter"),
-            (build_date_exploitation_filter, "date_exploitation_filter"),
-            (build_date_decompressing_filter, "date_decompressing_expected_filter"),
-            (build_date_modernization_filter, "date_modernization_expected_filter"),
-            (build_date_modernization_no_power_filter, "date_modernization_no_power_expected_filter"),
-        ]
-        date_and_parts = []
-        for build_fn, key in date_filter_pairs:
-            if not filters.get(key):
-                continue
-            machine_cond = build_fn(Machine, filters)
-            pgu_cond = get_pgu_date_cond_for_filter(PGUMachine, filters, key)
-            if machine_cond is not None and pgu_cond is not None:
-                date_and_parts.append(or_(machine_cond, Machine.pgu_submachines.any(pgu_cond)))
-            elif machine_cond is not None:
-                date_and_parts.append(machine_cond)
-            elif pgu_cond is not None:
-                date_and_parts.append(Machine.pgu_submachines.any(pgu_cond))
+        filtered_machines_query = Machine.query.options(
+            selectinload(Machine.machine_fuels),
+            selectinload(Machine.machine_powers),
+            selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
+            joinedload(Machine.equipment_group),
+        ).filter(Machine.id.in_(base_filtered_machine_ids))
 
-        rel_cond = build_relabing_outcome_filter(Machine, filters)
-        if rel_cond is not None:
-            date_and_parts.append(rel_cond)
-
-        if date_and_parts:
-            extra_pgu_parent_machine_ids = (
-                db.session.query(Machine.id)
-                .filter(Machine.id_station.in_(final_station_ids))
-                .filter(and_(*date_and_parts))
+        # Если станция попала в выборку только за счет совпадения дочернего PGUMachine по датам,
+        # подгружаем и родительскую Machine, чтобы строка ПГУ отрисовалась в station_list.
+        if any(
+            [
+                filters.get("date_commission_filter"),
+                filters.get("date_exploitation_filter"),
+                filters.get("date_decompressing_expected_filter"),
+                filters.get("date_modernization_expected_filter"),
+                filters.get("date_modernization_no_power_expected_filter"),
+                filters.get("relabing_outcome_filter"),
+            ]
+        ):
+            from app.generation.services.station_services.filters_services import (
+                build_date_commission_filter,
+                build_date_exploitation_filter,
+                build_date_decompressing_filter,
+                build_date_modernization_filter,
+                build_date_modernization_no_power_filter,
+                build_relabing_outcome_filter,
+                get_pgu_date_cond_for_filter,
             )
-            filtered_machines_query = Machine.query.options(
-                selectinload(Machine.machine_fuels),
-                selectinload(Machine.machine_powers),
-                selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
-                joinedload(Machine.equipment_group),
-            ).filter(
-                or_(
-                    Machine.id.in_(base_filtered_machine_ids),
-                    Machine.id.in_(extra_pgu_parent_machine_ids),
+
+            date_filter_pairs = [
+                (build_date_commission_filter, "date_commission_filter"),
+                (build_date_exploitation_filter, "date_exploitation_filter"),
+                (build_date_decompressing_filter, "date_decompressing_expected_filter"),
+                (build_date_modernization_filter, "date_modernization_expected_filter"),
+                (build_date_modernization_no_power_filter, "date_modernization_no_power_expected_filter"),
+            ]
+            date_and_parts = []
+            for build_fn, key in date_filter_pairs:
+                if not filters.get(key):
+                    continue
+                machine_cond = build_fn(Machine, filters)
+                pgu_cond = get_pgu_date_cond_for_filter(PGUMachine, filters, key)
+                if machine_cond is not None and pgu_cond is not None:
+                    date_and_parts.append(or_(machine_cond, Machine.pgu_submachines.any(pgu_cond)))
+                elif machine_cond is not None:
+                    date_and_parts.append(machine_cond)
+                elif pgu_cond is not None:
+                    date_and_parts.append(Machine.pgu_submachines.any(pgu_cond))
+
+            rel_cond = build_relabing_outcome_filter(Machine, filters)
+            if rel_cond is not None:
+                date_and_parts.append(rel_cond)
+
+            if date_and_parts:
+                extra_pgu_parent_machine_ids = (
+                    db.session.query(Machine.id)
+                    .filter(Machine.id_station.in_(final_station_ids))
+                    .filter(and_(*date_and_parts))
                 )
-            )
+                filtered_machines_query = Machine.query.options(
+                    selectinload(Machine.machine_fuels),
+                    selectinload(Machine.machine_powers),
+                    selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
+                    joinedload(Machine.equipment_group),
+                ).filter(
+                    or_(
+                        Machine.id.in_(base_filtered_machine_ids),
+                        Machine.id.in_(extra_pgu_parent_machine_ids),
+                    )
+                )
 
-    filtered_machines = filtered_machines_query.all()
+        filtered_machines = filtered_machines_query.all()
 
-    # Применяем логику отображаемого названия агрегата (как в карточке агрегата)
-    _apply_machine_display_names(filtered_machines)
+        # Применяем логику отображаемого названия агрегата (как в карточке агрегата)
+        _apply_machine_display_names(filtered_machines)
 
-    # 8. Привязка агрегатов к станциям
-    from collections import defaultdict
-    station_machines_map = defaultdict(list)
-    for m in filtered_machines:
-        station_machines_map[m.id_station].append(m)
+        # 8. Привязка агрегатов к станциям
+        from collections import defaultdict
+        station_machines_map = defaultdict(list)
+        for m in filtered_machines:
+            station_machines_map[m.id_station].append(m)
 
-    for station in stations:
-        station.machines = station_machines_map.get(station.id, [])
+        for station in stations:
+            station.machines = station_machines_map.get(station.id, [])
 
     return {
         "stations": stations,
         "total_count": total_count,
         "next_station_info": next_station_info,
         "effective_total_pages": effective_total_pages,
+        "prev_page_last_info": prev_page_last_info,
     }
 
 
@@ -2568,7 +2673,67 @@ def get_station_list_data(
 
     # Получаем агрегаты с рассчитанными rowspan (только если не per_page=all для ускорения)
     station_ids = [s.id for s in stations]
-    
+    is_external_code_check = bool(filters.get("external_code_check"))
+
+    if is_external_code_check:
+        from app.generation.services.station_services.external_code_check_services import (
+            attach_machines_for_external_code_check,
+            build_external_code_check_display_order,
+            build_external_code_check_hierarchy,
+            determine_external_code_check_headers,
+        )
+
+        from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
+            get_union_energy_system_list_full,
+        )
+
+        station_totals = attach_machines_for_external_code_check(stations)
+        hierarchy_data = build_external_code_check_hierarchy(stations, include_names=True)
+        prev_page_last_info = station_data.get("prev_page_last_info")
+        regional_districts_count_per_res = get_regional_districts_count_per_res()
+        grouped_stations = hierarchy_data.get("grouped_stations", {})
+        res_names = hierarchy_data.get("regional_energy_system_name", {})
+        rd_names = hierarchy_data.get("regional_district_name", {})
+        ues_order_index = {
+            ues.id: idx for idx, ues in enumerate(get_union_energy_system_list_full())
+        }
+        grouped_display_order = build_external_code_check_display_order(
+            grouped_stations,
+            ues_order_index,
+            res_names,
+            rd_names,
+        )
+
+        return {
+            "stations": stations,
+            "stations_grouped": grouped_stations,
+            "station_ids": station_ids,
+            "total_count": total_count,
+            "total_pages": total_pages,
+            "station_totals": station_totals,
+            "show_p_ogr": show_p_ogr,
+            "show_p_rasp": show_p_rasp,
+            "page": page,
+            "per_page": per_page,
+            "should_show_totals": {
+                "energy_units": {},
+                "regional_districts": {},
+                "regional_energy_systems": {},
+                "union_energy_systems": {},
+                "energy_system_types": {},
+                "total": False,
+            },
+            "show_headers": determine_external_code_check_headers(
+                stations,
+                prev_page_last_info,
+                regional_districts_count_per_res,
+            ),
+            "hierarchy_data": hierarchy_data,
+            "grouped_display_order": grouped_display_order,
+            "regional_districts_count_per_res": regional_districts_count_per_res,
+            "station_equipment_group_name_map": {},
+        }
+
     if not show_all:
         machines, station_totals = fetch_machines_with_rowspans(
             station_ids,
@@ -2880,7 +3045,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     ]
     
     for func in cache_functions:
-        if hasattr(func, 'cache_clear'):
+        if hasattr(func, 'cache_clear') and not filters.get("external_code_check"):
             func.cache_clear()
     
     current_version = get_current_version()
@@ -3072,6 +3237,9 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
     context = {
             "form": form,
+            "stations": data.get("stations", []),
+            "show_headers": data.get("show_headers"),
+            "show_all": show_all,
             "stations_grouped": data["stations_grouped"],
             "station_ids": data["station_ids"],
             "total_count": data["total_count"],
@@ -3148,6 +3316,8 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "machine_tes_types_map": machine_tes_types_map,
             "energy_unit_names": energy_unit_names,
             "sorted_energy_system_type_ids": sorted_energy_system_type_ids,
+            "grouped_display_order": data.get("grouped_display_order", {}),
+            "regional_districts_count_per_res": data.get("regional_districts_count_per_res", {}),
             "station_equipment_group_name_map": data.get("station_equipment_group_name_map", {}),
     }
     
@@ -3911,6 +4081,19 @@ def _is_excluded_district(district_id: int | None, database_version_id: int | No
     return False
 
 
+def _station_external_code_conflict_id(station: Station, new_code: str) -> int | None:
+    query = db.session.query(Station.id).filter(
+        Station.external_code == new_code,
+        Station.id != station.id,
+    )
+    version_id = getattr(station, "database_version_id", None)
+    if version_id is None:
+        query = query.filter(Station.database_version_id.is_(None))
+    else:
+        query = query.filter(Station.database_version_id == version_id)
+    return query.scalar()
+
+
 def update_station_from_form_service(
     user,
     station: Station,
@@ -3955,6 +4138,21 @@ def update_station_from_form_service(
 
         if not can_edit_generation and not can_edit_fuel:
             return changes
+
+        if current_user.is_authenticated and getattr(current_user, "is_admin", False):
+            old_code = (getattr(station, "external_code", None) or "").strip()
+            new_code = (getattr(form, "external_code", None).data or "").strip()
+            if not new_code:
+                raise ValueError("external_code не может быть пустым.")
+            if old_code != new_code:
+                conflict_id = _station_external_code_conflict_id(station, new_code)
+                if conflict_id is not None:
+                    raise ValueError(
+                        f"Код {new_code!r} уже используется электростанцией id={conflict_id} "
+                        f"в версии БД {getattr(station, 'database_version_id', None)}"
+                    )
+                changes.append(f"external_code: {old_code or 'не указано'} → {new_code}")
+                station.external_code = new_code
 
         # Название + субъект РФ: проверка уникальности до присваивания
         new_name = _normalize_angle_quotes(form.name.data) if can_edit_generation else station.name

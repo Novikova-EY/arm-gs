@@ -6,6 +6,7 @@
 {% if current_user.is_authenticated %}
 {% set _list_endpoint = station_list_endpoint | default('station_bp.station_list') %}
 {% set station_list_meta_colspan = 15 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 %}
+{% set table_total_colspan = station_list_meta_colspan + 4 + 2 * (end_year - start_year) %}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 

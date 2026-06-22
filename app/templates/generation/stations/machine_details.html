@@ -17,6 +17,25 @@
 {% set can_edit_fuel = current_user.role_names | select('in', fuel_edit_roles) | list | length > 0 %}
 {% set can_edit_generation = current_user.role_names | select('in', generation_edit_roles) | list | length > 0 %}
 {% set can_edit_any = can_edit_fuel or can_edit_generation %}
+{% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
+
+<style>
+.generation-details-header-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.generation-details-header-title {
+    margin: 0;
+    line-height: 1.2;
+    flex: 0 0 auto;
+}
+.generation-details-header-spacer {
+    flex: 1 1 auto;
+    min-width: 1rem;
+}
+</style>
 {% set can_save_machine_all_versions = can_save_machine_all_versions | default(false) %}
 {% set hide_pgu_parent_date_fields = (machine and machine.tes_machine_type and machine.tes_machine_type.name and (machine.tes_machine_type.name|lower) == 'пгу' and pgu_machines is defined and pgu_machines|length > 0) %}
 
@@ -34,14 +53,13 @@
     {% endfor %}
 
     <div class="container-fluid">
-        <div class="d-flex align-items-center mb-4">
-            <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Информация об агрегате  электростанции
-                {% if can_edit_any %}
-                    <span class="edit-indicator ms-3">Режим редактирования</span>
-                {% else %}
-                    <span class="readonly-indicator ms-3">Режим просмотра</span>
-                {% endif %}
-            </h2>
+        <div class="generation-details-header-row mb-4">
+            <h2 class="generation-details-header-title">Информация об агрегате  электростанции</h2>
+            {% if can_edit_any %}
+                <span class="edit-indicator">Режим редактирования</span>
+            {% else %}
+                <span class="readonly-indicator">Режим просмотра</span>
+            {% endif %}
         </div>
 
         <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">
@@ -146,6 +164,16 @@
                                             {{ main_form.note(class="form-control") }}
                                         {% else %}
                                             {{ main_form.note.data if main_form.note.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">external_code:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit_external_code %}
+                                            {{ main_form.external_code(class="form-control", maxlength="36", spellcheck="false", autocomplete="off") }}
+                                        {% else %}
+                                            {{ machine.external_code if machine and machine.external_code else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>

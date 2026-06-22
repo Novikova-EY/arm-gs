@@ -82,6 +82,19 @@ def _machine_post_role_flags() -> dict[str, bool]:
     }
 
 
+def _machine_external_code_conflict_id(machine, new_code: str) -> int | None:
+    query = db.session.query(Machine.id).filter(
+        Machine.external_code == new_code,
+        Machine.id != machine.id,
+    )
+    version_id = getattr(machine, "database_version_id", None)
+    if version_id is None:
+        query = query.filter(Machine.database_version_id.is_(None))
+    else:
+        query = query.filter(Machine.database_version_id == version_id)
+    return query.scalar()
+
+
 @no_autoflush
 def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_digits):
     perf_start = time.perf_counter()
@@ -608,6 +621,7 @@ def persist_machine_details_from_validated_forms(
     is_pgu_action: bool,
     year_features,
     skip_pgu: bool = False,
+    was_new: bool = False,
 ) -> tuple[list, list]:
     """Apply validated machine_details forms to one machine (no commit)."""
     from sqlalchemy.orm.attributes import flag_modified
@@ -643,6 +657,22 @@ def persist_machine_details_from_validated_forms(
         "relabing_outcome": lambda x: x or "не указано",
         "machine_group": str,
     }
+
+    if current_user.is_authenticated and getattr(current_user, "is_admin", False):
+        old_code = (getattr(machine, "external_code", None) or "").strip()
+        new_code = (main_form.external_code.data or "").strip()
+        if not new_code:
+            if not was_new:
+                raise ValueError("external_code не может быть пустым.")
+        elif old_code != new_code:
+            conflict_id = _machine_external_code_conflict_id(machine, new_code)
+            if conflict_id is not None:
+                raise ValueError(
+                    f"Код {new_code!r} уже используется агрегатом id={conflict_id} "
+                    f"в версии БД {getattr(machine, 'database_version_id', None)}"
+                )
+            changes.append(f"external_code: {old_code or 'не указано'} → {new_code}")
+            machine.external_code = new_code
 
     # Список полей, которые являются внешними ключами и должны конвертировать 0 в None
     fk_fields = {
@@ -1592,6 +1622,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             can_edit_generation=can_edit_generation,
             is_pgu_action=is_pgu_action,
             year_features=year_features,
+            was_new=is_new,
         )
 
         recalculate_station_power(station, start_year, end_year)

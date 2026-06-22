@@ -127,6 +127,11 @@ class StationFilterForm(FlaskForm):
         'Примечание',
         validators=[Optional(), Length(max=1000)]
     )
+
+    external_code = StringField(
+        'external_code',
+        validators=[Optional(), Length(max=36)]
+    )
     
     # Фильтры
     condition_type_filter = StringField(

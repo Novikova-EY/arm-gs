@@ -1,372 +1,165 @@
 {% extends 'base.html' %}
 
-
-
 {% block title %}АРМ Генеральная схема{% endblock %}
 
-
-
 {% block content %}
-
 {% if current_user.is_authenticated %}
-
-<div class="text-center mb-5">
-
-    <h1 class="display-4"></h1>
-
-</div>
-
-
-
 <div class="container-fluid mt-2">
 
-
-
 <div class="container content-start-container">
-
     <div class="container-fluid">
+        <h2 class="text-center align-middle mb-4">АРМ «Генеральная схема»</h2>
 
         <div class="row g-4 justify-content-center">
-
-
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-primary fs-4 w-100 py-4">
-
                             Генерация
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
 
-
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">
-
                             Балансы ЭЭ и ЭМ
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
 
-
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-primary fs-4 w-100 py-4">
-
                             Топливо
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
 
-
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">
-
                             Экология
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
-
-
-
         </div>
 
-        <div class="row">
-
-            <div class="col-12">
-
-                <hr class="my-5 border border-secondary opacity-50">
-
-            </div>
-
-        </div>
-
-
+        <hr class="my-4 border-secondary border-2 opacity-50">
 
         <div class="row g-4 justify-content-center">
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('power_demand_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">
-
                             Нагрузки
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
 
-        </div>
-
-        <div class="row g-4 justify-content-center">
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('energy_consumption_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">
-
                             Спрос
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
 
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('economics_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">Экономика</a>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
 
-        <div class="row">
-
-            <div class="col-12">
-
-                <hr class="my-5 border border-secondary opacity-50">
-
-            </div>
-
-        </div>
-
-
+        <hr class="my-4 border-secondary border-2 opacity-50">
 
         <div class="row g-4 justify-content-center">
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Рациональная структура</a>
-
                     </div>
-
                 </div>
-
             </div>
 
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('long_term_consumption_bp.electrical_intensity_start') }}" class="btn btn-primary fs-4 w-100 py-4">Долгосрочный прогноз потребления</a>
-
                     </div>
-
                 </div>
-
             </div>
 
-        </div>
-
-        <div class="row g-4 justify-content-center">
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('territories_bp.territories_start') }}" class="btn btn-primary fs-4 w-100 py-4">Характеристики территорий</a>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
 
-        <div class="row">
+        <hr class="my-4 border-secondary border-2 opacity-50">
 
-            <div class="col-12">
-
-                <hr class="my-5 border border-secondary opacity-50">
-
-            </div>
-
-        </div>
-
-
-
-        <div class="row g-4 justify-content-center">
-
+        <div class="row g-4 justify-content-center{% if not current_user.is_admin %} pb-4{% endif %}">
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-primary fs-4 w-100 py-4">Справочники</a>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
 
-    </div>
+        {% if current_user.is_admin %}
+        <hr class="my-4 border-secondary border-2 opacity-50">
 
-</div>
-
-
-
-    {% if current_user.is_admin %}
-
-<div class="container content-start-container">
-
-    <div class="container-fluid">
-
-        <div class="row">
-
-            <div class="col-12">
-
-                <hr class="my-5 border border-secondary opacity-50">
-
-            </div>
-
-        </div>
-
-        <div class="row g-4 justify-content-center">
-
+        <div class="row g-4 justify-content-center pb-4">
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('users_bp.list_users') }}" class="btn btn-primary fs-4 w-100 py-4">
-
                             Пользователи и роли
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
 
-
-
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('perimeter_variant_bp.perimeter_variants_admin') }}" class="btn btn-primary fs-4 w-100 py-4">
-
                             Варианты сценариев расчета
-
                         </a>
-
                     </div>
-
                 </div>
-
             </div>
-
-
 
             <div class="col-12 col-md-6">
-
                 <div class="card shadow-sm w-100">
-
                     <div class="card-body text-center">
-
                         <a href="{{ url_for('station_bp.database_versions') }}" class="btn btn-success fs-4 w-100 py-4">Управление версиями базы данных</a>
-
                     </div>
-
                 </div>
-
             </div>
-
         </div>
-
+        {% endif %}
     </div>
-
 </div>
 
-    {% endif %}
-
-
-
 </div>
-
-
-
 {% endif %}
-
 {% endblock %}
-

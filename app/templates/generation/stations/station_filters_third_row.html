@@ -90,7 +90,9 @@
                                 <option value="25" {% if per_page|default('10') == '25' %}selected{% endif %}>25 станций</option>
                                 <option value="50" {% if per_page|default('10') == '50' %}selected{% endif %}>50 станций</option>
                                 <option value="100" {% if per_page|default('10') == '100' %}selected{% endif %}>100 станций</option>
+                                {% if not external_code_check_mode %}
                                 <option value="all" {% if per_page|default('10') == 'all' %}selected{% endif %}>Все электростанции</option>
+                                {% endif %}
                             </select>
                         </div>
                     </div>

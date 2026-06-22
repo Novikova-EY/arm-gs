@@ -26,6 +26,11 @@ class MachineFilterForm(FlaskForm):
 
     id_machine = HiddenField("ID")
 
+    external_code = StringField(
+        'external_code',
+        validators=[Optional(), Length(max=36)]
+    )
+
     id_condition_type = SelectField(
         'Состояние агрегата электростанции',
         coerce=int,

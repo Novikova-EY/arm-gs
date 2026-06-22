@@ -1,0 +1,27 @@
+{% macro external_code_inline(entity_type, entity_id, external_code, can_edit_external_code) %}
+    {% set code_val = (external_code or '') | trim %}
+    <div class="external-code-header-widget">
+        <span class="fw-semibold text-nowrap">external_code:</span>
+        {% if can_edit_external_code and entity_id %}
+            <input type="text"
+                   class="form-control external-code-details-input"
+                   value="{{ code_val }}"
+                   data-entity-type="{{ entity_type }}"
+                   data-record-id="{{ entity_id }}"
+                   data-original-value="{{ code_val }}"
+                   maxlength="36"
+                   spellcheck="false"
+                   autocomplete="off"
+                   title="external_code"
+                   style="width: 14rem; min-width: 10rem;">
+            <button type="button"
+                    class="btn btn-primary external-code-details-save-btn text-nowrap"
+                    disabled
+                    title="Сохранить external_code">
+                Сохранить
+            </button>
+        {% else %}
+            <span class="external-code-details-readonly text-break">{{ code_val if code_val else '—' }}</span>
+        {% endif %}
+    </div>
+{% endmacro %}

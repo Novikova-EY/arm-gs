@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ page_title | default('Проверка external_code') }}{% endblock %}
+{% block title %}{{ page_title | default('Проверка взаимосвязей электростанций и агрегатов во всех версиях баз данных') }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -9,15 +9,15 @@
         <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
             <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
             <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-            <a href="{{ url_for('station_bp.external_code_check') }}" class="btn btn-secondary fs-5">Проверка external_code</a>
+            <a href="{{ url_for('station_bp.external_code_check') }}" class="btn btn-secondary fs-5">Проверка взаимосвязей электростанций и агрегатов во всех версиях баз данных</a>
         </div>
 
         <div class="col-12 mb-2">
-            <h2 class="text-center mb-4">Проверка external_code</h2>
+            <h2 class="text-center mb-4">Проверка взаимосвязей электростанций и агрегатов во всех версиях баз данных</h2>
             <p class="text-center text-muted mb-0">
                 Сравнение external_code станций и агрегатов по всем версиям базы данных
                 (выборка объединяет записи из всех версий, текущая версия в сессии используется только для отображения названий).
-                Ячейки с расхождениями подсвечены.
+                Ячейки с расхождениями подсвечены. Код можно изменить прямо в таблице и сохранить.
             </p>
         </div>
 
@@ -30,10 +30,18 @@
         .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
             overflow: visible !important;
         }
+        #externalCodeCheckTable {
+            table-layout: fixed;
+            width: 100%;
+        }
+        #externalCodeCheckTable .external-code-station-tbody td,
+        #externalCodeCheckTable thead th {
+            overflow-wrap: anywhere;
+        }
         </style>
 
         <div class="table-responsive" id="externalCodeTableContainer">
-            <table class="table table-hover table-striped table-bordered table-responsive">
+            <table class="table table-hover table-striped table-bordered table-responsive" id="externalCodeCheckTable">
                 <thead class="table-success">
                     <tr class="text-center align-middle">
                         <th colspan="3">Агрегат</th>
@@ -48,64 +56,73 @@
                         {% endfor %}
                     </tr>
                 </thead>
-                <tbody>
                     {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
                         {% for es_type_id in sorted_energy_system_type_ids %}
                             {% set es_type_group = stations_grouped[es_type_id] %}
 
                             {% if per_page == 'all' or (show_headers and es_type_id in show_headers.get('energy_system_types', [])) %}
+                            <tbody class="external-code-header-tbody">
                                 {% include 'generation/stations/aggregated_data/energy_system_types/energy_system_type_header.html' %}
+                            </tbody>
                             {% endif %}
 
-                            {% for ues in union_energy_system_list %}
-                                {% set ues_id = ues.id %}
-                                {% set ues_group = es_type_group.get(ues_id) %}
-                                {% if ues_group %}
-                                    {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
-                                        {% include 'generation/stations/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
-                                    {% endif %}
+                            {% set ues_ids = grouped_display_order.get(es_type_id, {}).keys()|list if grouped_display_order.get(es_type_id) else es_type_group.keys()|list|sort %}
+                            {% for ues_id in ues_ids %}
+                                {% set ues_group = es_type_group[ues_id] %}
+                                {% if per_page == 'all' or (show_headers and ues_id in show_headers.get('union_energy_systems', [])) %}
+                                <tbody class="external-code-header-tbody">
+                                    {% include 'generation/stations/aggregated_data/union_energy_systems/union_energy_system_header.html' %}
+                                </tbody>
+                                {% endif %}
 
-                                    {% for res_id, res_group in ues_group.items() %}
+                                {% set res_ids = grouped_display_order.get(es_type_id, {}).get(ues_id, {}).keys()|list if grouped_display_order.get(es_type_id, {}).get(ues_id) else ues_group.keys()|list|sort %}
+                                {% for res_id in res_ids %}
+                                        {% set res_group = ues_group[res_id] %}
                                         {% if per_page == 'all' or (show_headers and res_id in show_headers.get('regional_energy_systems', [])) %}
+                                        <tbody class="external-code-header-tbody">
                                             {% include 'generation/stations/aggregated_data/regional_energy_systems/regional_energy_system_header.html' %}
+                                        </tbody>
                                         {% endif %}
 
-                                        {% for rd_id, rd_group in res_group.items() %}
-                                            {% set rd_name = regional_district_names.get(rd_id, '') %}
-                                            {% if rd_name|lower != 'не указано' %}
-                                                {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
-                                                    {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
-                                                {% endif %}
-
-                                                {% for eu_id, eu_group in rd_group.items() %}
-                                                    {% set eu_name = energy_unit_names.get(eu_id) %}
-                                                    {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
-                                                    {% if not skip_eu %}
-                                                        {% if eu_name|lower != 'не указано' %}
-                                                            {% if per_page == 'all' or (show_headers and eu_id in show_headers.get('energy_units', [])) %}
-                                                                {% set current_eu_id = eu_id %}
-                                                                {% include 'generation/stations/aggregated_data/energy_units/energy_unit_header.html' %}
-                                                            {% endif %}
-                                                        {% endif %}
+                                        {% set show_subjects = regional_districts_count_per_res.get(res_id, 0) > 2 %}
+                                        {% set rd_ids = grouped_display_order.get(es_type_id, {}).get(ues_id, {}).get(res_id, res_group.keys()|list|sort) %}
+                                        {% for rd_id in rd_ids %}
+                                            {% set rd_group = res_group[rd_id] %}
+                                            {% if show_subjects %}
+                                                {% set rd_name = regional_district_names.get(rd_id, '') %}
+                                                {% if rd_name|lower != 'не указано' %}
+                                                    {% if per_page == 'all' or (show_headers and rd_id in show_headers.get('regional_districts', [])) %}
+                                                    <tbody class="external-code-header-tbody">
+                                                        {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
+                                                    </tbody>
                                                     {% endif %}
-
-                                                    {% for station in eu_group %}
-                                                        {% include 'generation/stations/external_code_station_rows.html' %}
-                                                    {% endfor %}
-                                                {% endfor %}
+                                                {% endif %}
                                             {% endif %}
+
+                                            {% for station in rd_group %}
+                                            <tbody class="external-code-station-tbody">
+                                                {% include 'generation/stations/external_code_station_rows.html' %}
+                                            </tbody>
+                                            {% endfor %}
                                         {% endfor %}
                                     {% endfor %}
-                                {% endif %}
                             {% endfor %}
                         {% endfor %}
                     {% else %}
                         {% for station in stations %}
+                        <tbody class="external-code-station-tbody">
                             {% include 'generation/stations/external_code_station_rows.html' %}
+                        </tbody>
                         {% endfor %}
                     {% endif %}
-                </tbody>
             </table>
+        </div>
+
+        <div class="d-flex justify-content-end align-items-center gap-2 mt-2 mb-2" id="externalCodeSaveBar">
+            <span class="text-muted small d-none" id="externalCodeChangedHint"></span>
+            <button type="button" class="btn btn-primary" id="externalCodeSaveBtn" disabled>
+                Сохранить изменения
+            </button>
         </div>
 
         <div class="mt-2">
@@ -118,7 +135,9 @@
 
 <script id="initial-state-json" type="application/json">
     {
-        "hasActiveFilters": {{ has_active_filters | tojson }}
+        "hasActiveFilters": {{ has_active_filters | tojson }},
+        "externalCodeUpdateUrl": {{ url_for('station_bp.external_code_check_update') | tojson }},
+        "csrfToken": {{ csrf_token | tojson }}
     }
 </script>
 
@@ -168,5 +187,6 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 <script src="{{ url_for('static', filename='js/generation/stations/station_page_logic.js') }}"></script>
+<script src="{{ url_for('static', filename='js/generation/stations/external_code_check.js') }}"></script>
 {% endif %}
 {% endblock %}
