@@ -16,9 +16,6 @@ from app.common.services.help_services import (
     apply_thousand_grouping_to_display,
     format_decimal_trim_for_display,
 )
-from app.power_demand.models.energy_systems.ees_demand_parameter_model import (
-    EesDemandParameter,
-)
 from app.power_demand.models.energy_systems.centralized_zone_demand_parameter_model import (
     CentralizedZoneDemandParameter,
 )
@@ -39,12 +36,17 @@ from app.power_demand.models.energy_systems.synchronous_area_demand_parameter_mo
 )
 from app.common.perimeter_variant.constants import (
     CODE_TERRITORIAL_BOUNDARIES,
+    CODE_WITHOUT_NT_WITHOUT_GAES,
+    CENTRALIZED_ZONE_AGGREGATE_NAME,
+    CENTRALIZED_ZONE_AGGREGATE_NAME_CF,
+    ENTITY_KIND_CENTRALIZED_ZONE,
     ENTITY_KIND_EES_RUSSIA,
     ENTITY_KIND_ENERGY_SYSTEM_TYPE,
     ENTITY_KIND_RUSSIA_FEDERATION,
     EES_RUSSIA_AGGREGATE_NAME,
     EES_UNIFIED_REF_NAME,
     RUSSIA_FEDERATION_AGGREGATE_NAME,
+    legacy_nt_group_for_perimeter_code,
     perimeter_variant_codes_in_legacy_nt_group,
 )
 from app.common.perimeter_variant.registry import (
@@ -52,12 +54,11 @@ from app.common.perimeter_variant.registry import (
     CODE_WITHOUT_NT,
     entity_perimeter_bindings,
     is_o1_perimeter_variant_code,
-    ordered_tree_variants_for_display,
     perimeter_entity_context_for_model,
-    perimeter_variant_definitions,
     perimeter_variant_display_label_for_entity,
     perimeter_variant_options_for_entity,
     perimeter_variant_year_bounds_for_code,
+    ordered_tree_variants_for_display,
     resolve_entity_perimeter_binding,
     resolve_entity_perimeter_variants,
     variant_label_for_entity,
@@ -142,6 +143,45 @@ _FIRST_SYNC_AREA_BASE_LABEL_CF = "первая синхронная зона"
 _SECOND_SYNC_AREA_BASE_LABEL_CF = "вторая синхронная зона"
 _KALININGRAD_SYNC_AREA_LABEL_TOKEN_CF = "калининград"
 _KALININGRAD_ES_NAME_CF = "эс калининградской области"
+_UES_EAST_NAME_CF = "оэс востока"
+# Показатель строки «Вторая синхронная зона» → показатель «ОЭС Востока».
+_SECOND_SA_FROM_UES_EAST_SOURCE_PARAM: dict[str, str] = {
+    "max_power": "max_power",
+    "calculated_max_power_mw": "calculated_max_power_mw",
+    "peak_datetime": "peak_datetime",
+    "avg_temp": "avg_temp",
+    "combined_on_ees": "combined_on_ees",
+    "calculated_max_sa_mw": "calculated_combined_on_ees_mw",
+    "peak_max_power_usage_hours": "peak_max_power_usage_hours",
+}
+_SECOND_SA_FROM_UES_EAST_FORMULA_KEY: dict[str, str] = {
+    "max_power": "sa_second_max_power_from_ues_east",
+    "calculated_max_power_mw": "sa_second_calc_max_power_mw",
+    "peak_datetime": "sa_second_peak_datetime_from_ues_east",
+    "avg_temp": "sa_second_avg_temp_from_ues_east",
+    "combined_on_ees": "sa_second_combined_on_ees_from_ues_east",
+    "calculated_max_sa_mw": "sa_second_calc_max_sa_mw",
+    "peak_max_power_usage_hours": "sa_second_chi_from_ues_east",
+}
+# Показатель строки «Синхронная зона Калининградской области» → показатель «ЭС Калининградской области».
+_KALININGRAD_SA_FROM_ES_SOURCE_PARAM: dict[str, str] = {
+    "max_power": "max_power",
+    "calculated_max_power_mw": "max_power",
+    "peak_datetime": "peak_datetime",
+    "avg_temp": "avg_temp",
+    "combined_on_ees": "combined_on_ees",
+    "calculated_max_sa_mw": "combined_on_ees",
+    "peak_max_power_usage_hours": "peak_max_power_usage_hours",
+}
+_KALININGRAD_SA_FROM_ES_FORMULA_KEY: dict[str, str] = {
+    "max_power": "sa_kaliningrad_max_power_from_es",
+    "calculated_max_power_mw": "sa_kaliningrad_calc_max_power_mw",
+    "peak_datetime": "sa_kaliningrad_peak_datetime_from_es",
+    "avg_temp": "sa_kaliningrad_avg_temp_from_es",
+    "combined_on_ees": "sa_kaliningrad_combined_on_ees_from_es",
+    "calculated_max_sa_mw": "sa_kaliningrad_calc_max_sa_mw",
+    "peak_max_power_usage_hours": "sa_kaliningrad_chi_from_es",
+}
 
 
 def _federal_district_excluded_from_summary(fd: FederalDistrict) -> bool:
@@ -195,13 +235,13 @@ _NUMERIC_ROUNDING_TOOLTIP_KEYS = frozenset(
 )
 
 BASE_PARAMETERS: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
 )
 # Блок «ТИТЭС и децентрализованная зона» на сводке по ОЭС — только базовые показатели.
 PARAMETERS_TITES_OES_SUMMARY: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
 )
@@ -209,14 +249,14 @@ PARAMETERS_TITES_OES_SUMMARY: tuple[tuple[str, str], ...] = (
 OES_SUMMARY_HIST_PARAMETER_KEYS: frozenset[str] = frozenset(pk for pk, _ in BASE_PARAMETERS)
 # Строка объединённой энергосистемы (ОЭС) в сводке «по энергосистемам».
 PARAMETERS_UES_OES: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
-    ("calculated_max_power_mw", "Расчетный максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
+    ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
-    ("combined_on_ees", "Совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
     (
         "calculated_combined_on_ees_mw",
-        "Расчетный совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт",
+        "Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт",
     ),
 )
 # Тип энергосистемы ОЭС для расчёта «Расчетный максимум потребления мощности ЕЭС (через ОЭС)».
@@ -224,32 +264,34 @@ EES_RUSSIA_ENERGY_SYSTEM_TYPE_NAME = "ЕЭС России"
 
 # Агрегаты «Россия с/без НТ» на сводке по ОЭС (без «Среднесуточная ТНВ»).
 PARAMETERS_RUSSIA_OES_SUMMARY: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
 )
 # Агрегаты «ЭЭС России с/без НТ» на сводке по ОЭС (без «Среднесуточная ТНВ»).
 PARAMETERS_EES_AGGREGATE_OES_SUMMARY: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
     (
         "calculated_max_power_consumption_mw",
-        "Расчетный максимум потребления мощности, МВт",
+        "Расчетное максимальное потребление мощности, МВт",
     ),
     ("peak_datetime", "Дата и время, мск"),
 )
 # Агрегаты «ЕЭС России с/без НТ» на сводке по ОЭС.
 PARAMETERS_EES_RUSSIA_OES_SUMMARY: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
-    ("calculated_max_ees_russia_mw", "Расчетный максимум потребления мощности, МВт"),
-    ("calculated_max_ees_via_oes_mw", "Расчетный максимум потребления мощности (через ОЭС), МВт"),
-    ("calculated_max_ees_via_es_mw", "Расчетный максимум потребления мощности (через РЭС), МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
+    ("calculated_max_ees_russia_mw", "Расчетное максимальное потребление мощности, МВт"),
+    ("calculated_max_ees_via_oes_mw", "Расчетное максимальное потребление мощности (через ОЭС), МВт"),
+    ("calculated_max_ees_via_es_mw", "Расчетное максимальное потребление мощности (через РЭС), МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
 )
-_EES_RUSSIA_AGGREGATE_DM_NAME = EesRussiaDemandParameter.__name__
+_EES_UNIFIED_DEMAND_MODEL_NAME = EnergySystemTypeDemandParameter.__name__
+_EES_AGGREGATE_DEMAND_MODEL_NAME = EesRussiaDemandParameter.__name__
+_EES_RUSSIA_AGGREGATE_DM_NAME = _EES_UNIFIED_DEMAND_MODEL_NAME
 PARAMETERS_WITH_OES_AND_EES: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
-    ("combined_on_oes", "Совмещенный максимум потребления мощности РЭС на ОЭС, МВт"),
-    ("combined_on_ees", "Совмещенный максимум потребления мощности РЭС на ЕЭС, МВт"),
+    ("combined_on_oes", "Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 # Энергорайон на сводке по ОЭС (и в поддереве РЭС на прочих сводках).
 PARAMETERS_ENERGY_UNIT_OES_SUMMARY: tuple[tuple[str, str], ...] = (
@@ -262,20 +304,38 @@ PARAMETERS_WITH_OES_EES_AND_ES: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
     (
         "combined_on_es",
-        "Совмещенный максимум потребления мощности субъекта РФ на РЭС, МВт",
+        "Совмещенное потребление мощности на час прохождения максимума РЭС, МВт",
     ),
     (
         "combined_on_oes",
-        "Совмещенный максимум потребления мощности субъекта РФ на ОЭС, МВт",
+        "Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт",
     ),
     (
         "combined_on_ees",
-        "Совмещенный максимум потребления мощности субъекта РФ на ЕЭС, МВт",
+        "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт",
     ),
 )
 # Федеральный округ
 PARAMETERS_FEDERAL_DISTRICT: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
+    ("calculated_max_fo_mw", "Расчетный максимум ФО, МВт"),
+    ("combined_on_cz", "Совмещенный ФО на ЦЗ России, МВт"),
+    (
+        "calculated_combined_on_cz_mw",
+        "Расчетный совмещенный на ЦЗ России, МВт",
+    ),
+)
+# Федеральный округ на сводке «Максимумы по ФО» (как ОЭС на /summary/oes/ + показатели ФО).
+PARAMETERS_FEDERAL_DISTRICT_MAX: tuple[tuple[str, str], ...] = (
+    ("max_power", "Максимальное потребление мощности, МВт"),
+    ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
+    ("peak_datetime", "Дата и время, мск"),
+    ("avg_temp", "Среднесуточная ТНВ, °C"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
+    (
+        "calculated_combined_on_ees_mw",
+        "Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт",
+    ),
     ("calculated_max_fo_mw", "Расчетный максимум ФО, МВт"),
     ("combined_on_cz", "Совмещенный ФО на ЦЗ России, МВт"),
     (
@@ -299,30 +359,37 @@ PARAMETERS_RES_FO_COEFF: tuple[tuple[str, str], ...] = (
     ("combined_on_fo", "Совмещенный на ФО, МВт"),
     ("combined_on_cz", "Совмещенный на ЦЗ России, МВт"),
 )
+# РЭС на сводке «Максимумы по ФО» (дерево ФО→РЭС): + совмещённый на ЕЭС.
+PARAMETERS_RES_FO_MAX: tuple[tuple[str, str], ...] = (
+    *BASE_PARAMETERS,
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
+    ("combined_on_fo", "Совмещенный на ФО, МВт"),
+    ("combined_on_cz", "Совмещенный на ЦЗ России, МВт"),
+)
 # Энергозона (в модели только базовые показатели + совмещённый на ЕЭС)
 PARAMETERS_ENERGY_ZONE: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
     ("calculated_max_ez_mw", "Расчетный максимум энергозоны, МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
     ("combined_on_ees", "Совмещенный максимум потребления мощности ЕЭС, МВт"),
 )
-# Синхронная зона на сводке по ОЭС: расчётный совмещённый максимум = сумма «Совмещенный максимум потребления мощности РЭС на ЕЭС, МВт» по РЭС зоны.
+# Синхронная зона на сводке по ОЭС: расчётный совмещённый максимум = сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» по РЭС зоны.
 PARAMETERS_SYNCHRONOUS_AREA: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
-    ("calculated_max_power_mw", "Расчетный максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
+    ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
-    ("combined_on_ees", "Совмещенный максимум потребления мощности СЗ на ЕЭС, МВт"),
-    ("calculated_max_sa_mw", "Расчетный совмещенный максимум потребления мощности СЗ на ЕЭС, МВт"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
+    ("calculated_max_sa_mw", "Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 # «Первая синхронная зона с/без НТ» на сводке по ОЭС (без «Среднесуточная ТНВ»).
 PARAMETERS_FIRST_SYNCHRONOUS_AREA_OES_SUMMARY: tuple[tuple[str, str], ...] = (
-    ("max_power", "Максимум потребления мощности, МВт"),
-    ("calculated_max_power_mw", "Расчетный максимум потребления мощности, МВт"),
+    ("max_power", "Максимальное потребление мощности, МВт"),
+    ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
-    ("combined_on_ees", "Совмещенный максимум потребления мощности СЗ на ЕЭС, МВт"),
-    ("calculated_max_sa_mw", "Расчетный совмещенный максимум потребления мощности СЗ на ЕЭС, МВт"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
+    ("calculated_max_sa_mw", "Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 
 
@@ -349,6 +416,8 @@ class SummaryEntity:
     id_synchronous_area: int | None = None
     # Вариант периметра ОЭС Юга (with_nt / without_nt / without_crimea_sev); для прочих ОЭС — None.
     perimeter_variant_code: str | None = None
+    # Строка уже развёрнута по варианту периметра (включая code=None → «не указано»).
+    summary_perimeter_variant_row: bool = False
     # Субъекты этого ФО, с которыми связана РЭС (для фильтров ds_rd на сводке ФО→РЭС).
     fo_res_linked_regional_district_ids: frozenset[int] | None = None
     # Энергорайон децентрализованной зоны (РЭС «не указано» в справочнике).
@@ -379,6 +448,18 @@ def _resolve_kaliningrad_synchronous_area_id() -> int | None:
             continue
         if _is_kaliningrad_synchronous_area_name(sa.name):
             return int(sa.id)
+    return None
+
+
+def _resolve_union_energy_system_id_by_name_cf(name_cf: str) -> int | None:
+    target = (name_cf or "").strip().casefold()
+    if not target:
+        return None
+    query = UnionEnergySystem.query
+    query = dps.filter_parents_by_version(query, UnionEnergySystem)
+    for ues in query.all():
+        if (getattr(ues, "name", None) or "").strip().casefold() == target:
+            return int(ues.id)
     return None
 
 
@@ -441,18 +522,425 @@ def _resolve_synchronous_area_id_by_name_prefix_cf(prefix_cf: str) -> int | None
     return None
 
 
-def _pd_nt_perimeter_variant_defs(
+def _demand_rows_by_stored_perimeter_variant(
+    model: Any,
+    parent_fk_column: str | None,
+    parent_id: int | None,
+    *,
+    binding: Any = None,
+) -> list[tuple[str | None, list[Any]]]:
+    """Группы строк параметров по фактически сохраненному варианту периметра."""
+    if parent_fk_column is not None and parent_id is None:
+        return []
+    q = model.query
+    q = dps.filter_demand_by_version(q, model)
+    if parent_fk_column is not None:
+        q = q.filter(getattr(model, parent_fk_column) == parent_id)
+    rows = q.order_by(
+        model.is_historical_maximum.desc(),
+        model.year_number.asc().nullsfirst(),
+    ).all()
+    if not rows:
+        return []
+
+    grouped: dict[str | None, list[Any]] = {}
+    for row in rows:
+        code = (
+            getattr(row, "perimeter_variant_code", None)
+            if model_supports_perimeter_variant(model)
+            else None
+        )
+        grouped.setdefault(code, []).append(row)
+
+    catalog_order = [
+        str(v.code)
+        for v in getattr(binding, "variants", ())
+        if getattr(v, "code", None)
+    ]
+    order_index = {code: idx for idx, code in enumerate(catalog_order)}
+
+    def _key(item: tuple[str | None, list[Any]]) -> tuple[int, int, str]:
+        code = item[0]
+        if code in order_index:
+            return (0, order_index[str(code)], str(code))
+        if code is None:
+            return (1, 0, "")
+        return (2, 0, str(code))
+
+    out: list[tuple[str | None, list[Any]]] = []
+    for code, group_rows in sorted(grouped.items(), key=_key):
+        out.append((code, group_rows))
+    return out
+
+
+def _territorial_children_base_variant_code(binding: Any) -> str | None:
+    """Код варианта периметра, к которому привязано поддерево РЭС/субъектов (базовый «без НТ»)."""
+    display_codes = _oes_perimeter_variant_codes_for_summary(binding)
+    if CODE_WITHOUT_NT in display_codes:
+        return CODE_WITHOUT_NT
+    without_nt_codes = [
+        str(v.code)
+        for v in getattr(binding, "variants", ())
+        if legacy_nt_group_for_perimeter_code(getattr(v, "code", None)) == CODE_WITHOUT_NT
+    ]
+    for preferred in (
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+        CODE_WITHOUT_NT,
+    ):
+        if preferred in without_nt_codes:
+            return preferred
+    for code in without_nt_codes:
+        if not _oes_summary_excludes_perimeter_variant_code(code):
+            return code
+    return without_nt_codes[0] if without_nt_codes else None
+
+
+def _oes_summary_excludes_perimeter_variant_code(code: str | None) -> bool:
+    """Варианты с зарядом ГАЭС не отображаются в сводках максимумов."""
+    from app.common.perimeter_variant.registry import (
+        summary_excludes_gaes_perimeter_variant_code,
+    )
+
+    return summary_excludes_gaes_perimeter_variant_code(code)
+
+
+def _oes_perimeter_variant_codes_for_summary(binding: Any) -> tuple[str | None, ...]:
+    """Коды вариантов периметра для сводки ОЭС: как в /perimeter_variants/, без «с зарядом ГАЭС»."""
+    if binding is None or not getattr(binding, "variants", ()):
+        return ()
+    codes = tuple(
+        getattr(v, "code", None)
+        for v in binding.variants
+        if not _oes_summary_excludes_perimeter_variant_code(getattr(v, "code", None))
+    )
+    if codes:
+        return codes
+    return tuple(
+        v.code
+        for v in ordered_tree_variants_for_display(binding)
+        if not _oes_summary_excludes_perimeter_variant_code(v.code)
+    )
+
+
+def _oes_perimeter_variant_russian_label(
+    code: str,
+    *,
     binding: Any,
+    entity_kind: str | None,
+    entity_name: str | None,
+) -> str:
+    """Подпись варианта для select на /summary/oes/ (без «с/без заряда ГАЭС»)."""
+    if binding is not None:
+        for vdef in getattr(binding, "variants", ()) or ():
+            if getattr(vdef, "code", None) == code:
+                return _pd_strip_gaes_text_from_label_fragment(
+                    str(getattr(vdef, "label_suffix", "") or code)
+                )
+    label = perimeter_variant_display_label_for_entity(code, entity_kind, entity_name)
+    return _pd_strip_gaes_text_from_label_fragment(label if label else str(code))
+
+
+def _perimeter_variant_options_for_summary(
+    entity_kind: str | None,
+    entity_name: str | None,
+) -> list[dict[str, str]]:
+    return [
+        opt
+        for opt in perimeter_variant_options_for_entity(entity_kind, entity_name)
+        if not _oes_summary_excludes_perimeter_variant_code(opt.get("code"))
+    ]
+
+
+def _perimeter_variant_options_for_oes_summary(
+    entity_kind: str | None,
+    entity_name: str | None,
+) -> list[dict[str, str]]:
+    """Опции select в столбце «Варианты периметра» на /summary/oes/ (русский текст, без «с зарядом ГАЭС»)."""
+    binding = resolve_entity_perimeter_binding(entity_kind, entity_name)
+    codes = _oes_perimeter_variant_codes_for_summary(binding)
+    if not codes:
+        binding = resolve_entity_perimeter_binding(entity_kind, entity_name)
+        if binding is not None and getattr(binding, "variants", ()):
+            codes = tuple(
+                str(getattr(v, "code", "") or "")
+                for v in binding.variants
+                if getattr(v, "code", None)
+                and not _oes_summary_excludes_perimeter_variant_code(getattr(v, "code", None))
+            )
+        if not codes:
+            return [
+                {
+                    "code": str(o["code"]),
+                    "label": _oes_perimeter_variant_russian_label(
+                        str(o["code"]),
+                        binding=binding,
+                        entity_kind=entity_kind,
+                        entity_name=entity_name,
+                    ),
+                }
+                for o in _perimeter_variant_options_for_summary(entity_kind, entity_name)
+            ]
+    return [
+        {
+            "code": str(code),
+            "label": _oes_perimeter_variant_russian_label(
+                str(code),
+                binding=binding,
+                entity_kind=entity_kind,
+                entity_name=entity_name,
+            ),
+        }
+        for code in codes
+        if code
+    ]
+
+
+def _demand_rows_for_perimeter_variant_entity(
+    model: Any,
+    parent_fk_column: str | None,
+    parent_id: int | None,
+    variant_code: str | None,
 ) -> list[Any]:
-    """Варианты with_nt / without_nt для кнопки «+ НТ» на сводке нагрузок."""
-    defs = perimeter_variant_definitions()
-    want = (CODE_WITH_NT, CODE_WITHOUT_NT)
-    if binding is not None and binding.variants:
-        by_code = {v.code: v for v in binding.variants}
-        picked = [by_code[c] for c in want if c in by_code]
-        if picked:
-            return picked
-    return [defs[CODE_WITH_NT], defs[CODE_WITHOUT_NT]]
+    """Строки параметров для строки сводки по коду варианта (включая legacy with_nt/without_nt)."""
+    if parent_fk_column is not None and parent_id is None:
+        return []
+    if variant_code in (None, CODE_WITH_NT, CODE_WITHOUT_NT):
+        return dps.get_demand_rows_for_summary_block(
+            model,
+            parent_fk_column,
+            parent_id,
+            display_perimeter_variant_code=variant_code,
+        )
+    rows = dps.get_demand_rows(
+        model,
+        parent_fk_column,
+        parent_id,
+        perimeter_variant_code=variant_code,
+    )
+    if rows:
+        return rows
+    legacy = legacy_nt_group_for_perimeter_code(variant_code)
+    if legacy in (CODE_WITH_NT, CODE_WITHOUT_NT) and "without_gaes" in str(variant_code or ""):
+        return dps.get_demand_rows_for_summary_block(
+            model,
+            parent_fk_column,
+            parent_id,
+            display_perimeter_variant_code=legacy,
+        )
+    return rows
+
+
+def _demand_row_groups_for_all_binding_variants(
+    model: Any,
+    parent_fk_column: str | None,
+    parent_id: int | None,
+    *,
+    binding: Any,
+) -> list[tuple[str | None, list[Any]]]:
+    """``не указано`` + все варианты из привязки /perimeter_variants/ — даже без строк в БД."""
+    if binding is None or not getattr(binding, "variants", ()):
+        stored = _demand_rows_by_stored_perimeter_variant(
+            model,
+            parent_fk_column,
+            parent_id,
+            binding=binding,
+        )
+        filtered = [
+            (code, rows)
+            for code, rows in stored
+            if not _oes_summary_excludes_perimeter_variant_code(code)
+        ]
+        if not any(code is None for code, _rows in filtered):
+            filtered.insert(
+                0,
+                (
+                    None,
+                    _demand_rows_for_perimeter_variant_entity(
+                        model,
+                        parent_fk_column,
+                        parent_id,
+                        None,
+                    ),
+                ),
+            )
+        return filtered
+    codes = _oes_perimeter_variant_codes_for_summary(binding)
+    if not codes:
+        codes = tuple(
+            getattr(v, "code", None)
+            for v in binding.variants
+            if not _oes_summary_excludes_perimeter_variant_code(getattr(v, "code", None))
+        )
+    null_rows = _demand_rows_for_perimeter_variant_entity(
+        model,
+        parent_fk_column,
+        parent_id,
+        None,
+    )
+    out: list[tuple[str | None, list[Any]]] = []
+    # «Не указано» — только если в БД есть строки без варианта или в привязке нет вариантов.
+    if null_rows or not codes:
+        out.append((None, null_rows))
+    for code in codes:
+        out.append(
+            (
+                code,
+                _demand_rows_for_perimeter_variant_entity(
+                    model,
+                    parent_fk_column,
+                    parent_id,
+                    code,
+                ),
+            )
+        )
+    return out
+
+
+def _drop_null_perimeter_variant_group_when_nt_pairs_exist(
+    groups: list[tuple[str | None, list[Any]]],
+) -> list[tuple[str | None, list[Any]]]:
+    """Не дублировать строку «не указано», если в привязке есть и «с НТ», и «без НТ»."""
+    codes = [code for code, _rows in groups if code is not None and str(code).strip()]
+    has_with_nt = any(
+        legacy_nt_group_for_perimeter_code(code) == CODE_WITH_NT for code in codes
+    )
+    has_without_nt = any(
+        legacy_nt_group_for_perimeter_code(code) == CODE_WITHOUT_NT for code in codes
+    )
+    if has_with_nt and has_without_nt:
+        return [(code, rows) for code, rows in groups if code is not None]
+    return groups
+
+
+def _demand_row_groups_for_oes_top_aggregate(
+    model: Any,
+    parent_fk_column: str | None,
+    parent_id: int | None,
+    *,
+    binding: Any,
+) -> list[tuple[str | None, list[Any]]]:
+    """Варианты периметра для «Россия» / «ЭЭС России» / «ЕЭС России» на /summary/oes/: без «не указано»."""
+    return [
+        (code, rows)
+        for code, rows in _demand_row_groups_for_all_binding_variants(
+            model,
+            parent_fk_column,
+            parent_id,
+            binding=binding,
+        )
+        if code is not None and str(code).strip() != ""
+    ]
+
+
+def _summary_variant_entity_label(
+    binding: Any,
+    base_label: str,
+    code: str | None,
+    entity_kind: str | None,
+    entity_name: str | None,
+) -> str:
+    if code is None:
+        return base_label.strip()
+    if binding is not None:
+        for vdef in getattr(binding, "variants", ()):
+            if getattr(vdef, "code", None) == code:
+                return variant_label_for_entity(binding, vdef)
+    suffix = perimeter_variant_display_label_for_entity(code, entity_kind, entity_name)
+    return f"{base_label} {suffix}".strip() if suffix else base_label
+
+
+def _summary_entity_is_already_variant_expanded(entity: SummaryEntity) -> bool:
+    if entity.summary_perimeter_variant_row:
+        return True
+    return entity.perimeter_variant_code is not None
+
+
+def _perimeter_binding_for_summary_entity(entity: SummaryEntity) -> tuple[str, str, Any] | None:
+    if not entity.demand_model_name:
+        return None
+    try:
+        model_cls = dps._summary_demand_model_class(entity.demand_model_name)
+    except ValueError:
+        return None
+    if not model_supports_perimeter_variant(model_cls):
+        return None
+    ctx = perimeter_entity_context_for_model(
+        entity.demand_model_name,
+        parent_fk_column=entity.parent_fk_column,
+        parent_id=entity.parent_id,
+    )
+    if ctx is None:
+        return None
+    pe_kind, pe_name = ctx
+    binding = resolve_entity_perimeter_binding(pe_kind, pe_name)
+    if binding is None or not getattr(binding, "variants", ()):
+        return None
+    return pe_kind, pe_name, binding
+
+
+def _expand_summary_entity_perimeter_variants(entity: SummaryEntity) -> list[SummaryEntity]:
+    expanded_children: list[SummaryEntity] = []
+    for child in entity.children:
+        expanded_children.extend(_expand_summary_entity_perimeter_variants(child))
+
+    base_entity = replace(entity, children=expanded_children)
+    if _summary_entity_is_already_variant_expanded(base_entity):
+        return [base_entity]
+
+    binding_ctx = _perimeter_binding_for_summary_entity(base_entity)
+    if binding_ctx is None:
+        return [base_entity]
+    pe_kind, pe_name, binding = binding_ctx
+
+    try:
+        model_cls = dps._summary_demand_model_class(str(base_entity.demand_model_name))
+    except ValueError:
+        return [base_entity]
+
+    groups = _demand_row_groups_for_all_binding_variants(
+        model_cls,
+        base_entity.parent_fk_column,
+        base_entity.parent_id,
+        binding=binding,
+    )
+    groups = _drop_null_perimeter_variant_group_when_nt_pairs_exist(groups)
+    if not groups:
+        return [base_entity]
+
+    children_variant_code = _territorial_children_base_variant_code(binding)
+    out: list[SummaryEntity] = []
+    for code, demand_rows in groups:
+        out.append(
+            replace(
+                base_entity,
+                label=_summary_variant_entity_label(
+                    binding,
+                    base_entity.label,
+                    code,
+                    pe_kind,
+                    pe_name,
+                ),
+                demand_rows=demand_rows,
+                children=expanded_children if code == children_variant_code else [],
+                entity_kind=(
+                    "perimeter_variant"
+                    if base_entity.entity_kind in ("group", "child", "default")
+                    else base_entity.entity_kind
+                ),
+                perimeter_variant_code=code,
+                summary_perimeter_variant_row=True,
+            )
+        )
+    return out
+
+
+def _expand_summary_entities_perimeter_variants(
+    entities: list[SummaryEntity],
+) -> list[SummaryEntity]:
+    out: list[SummaryEntity] = []
+    for entity in entities:
+        out.extend(_expand_summary_entity_perimeter_variants(entity))
+    return out
 
 
 def _shift_summary_entity_depth(e: SummaryEntity, delta: int) -> SummaryEntity:
@@ -462,53 +950,50 @@ def _shift_summary_entity_depth(e: SummaryEntity, delta: int) -> SummaryEntity:
     return replace(e, depth=new_d, children=new_children)
 
 
-def _is_ees_russia_without_nt_entity(e: SummaryEntity) -> bool:
-    """Агрегат «ЕЭС России без НТ» — group-root с деревом ОЭС/РЭС."""
-    if e.demand_model_name != _EES_RUSSIA_AGGREGATE_DM_NAME:
-        return False
-    if e.perimeter_variant_code == CODE_WITHOUT_NT and e.entity_kind == "group-root":
-        return True
-    return e.entity_kind == "group-root" and (e.label or "").strip() == "ЕЭС России без НТ"
+def _is_ues_oes_top_level_tree(e: SummaryEntity) -> bool:
+    """Верхнеуровневый узел ОЭС на сводке /summary/oes/ (с поддеревом РЭС и ниже)."""
+    return (
+        e.demand_model_name == UnionEnergySystemDemandParameter.__name__
+        and e.id_union_energy_system is not None
+        and e.entity_kind in ("group", "perimeter_variant")
+    )
+
+
+def _oes_promote_to_top_level_depth(e: SummaryEntity) -> SummaryEntity:
+    d = int(e.depth) if e.depth is not None else 0
+    return _shift_summary_entity_depth(e, -d)
 
 
 def _oes_promote_subjects_only_under_ees_russia(
     entities: list[SummaryEntity],
     f_rd: frozenset[int],
 ) -> list[SummaryEntity]:
-    """При фильтре по субъекту — под «ЕЭС России без НТ» только субъекты (без уровней ОЭС и РЭС)."""
+    """При фильтре по субъекту — только субъекты РФ (без уровней ОЭС и РЭС)."""
     if not f_rd:
         return entities
-    ues_dn = UnionEnergySystemDemandParameter.__name__
     rd_dn = RegionalDistrictDemandParameter.__name__
     out: list[SummaryEntity] = []
+    promoted: list[SummaryEntity] = []
     for e in entities:
-        if not _is_ees_russia_without_nt_entity(e):
+        if not _is_ues_oes_top_level_tree(e):
             out.append(e)
             continue
-        promoted: list[SummaryEntity] = []
-        for child in e.children:
-            if child.entity_kind == "synchronous_area":
-                continue
-            if child.demand_model_name != ues_dn:
-                promoted.append(child)
-                continue
-            for res in child.children:
-                for sub in res.children:
-                    if sub.demand_model_name != rd_dn:
-                        continue
-                    rid = sub.id_regional_district
-                    if rid is None or rid not in f_rd:
-                        continue
-                    promoted.append(_shift_summary_entity_depth(sub, -2))
-        out.append(replace(e, children=promoted))
-    return out
+        for res in e.children:
+            for sub in res.children:
+                if sub.demand_model_name != rd_dn:
+                    continue
+                rid = sub.id_regional_district
+                if rid is None or rid not in f_rd:
+                    continue
+                promoted.append(_oes_promote_to_top_level_depth(sub))
+    return out + promoted
 
 
 def _oes_promote_energy_units_only_under_ees_russia(
     entities: list[SummaryEntity],
     f_eu: frozenset[int],
 ) -> list[SummaryEntity]:
-    """При фильтре по энергоузлу — под «ЕЭС России без НТ» только энергоузлы (без ОЭС, РЭС, субъекта)."""
+    """При фильтре по энергоузлу — только энергоузлы (без ОЭС, РЭС, субъекта)."""
     if not f_eu:
         return entities
     eu_dn = EnergyUnitDemandParameter.__name__
@@ -517,25 +1002,19 @@ def _oes_promote_energy_units_only_under_ees_russia(
         if node.demand_model_name == eu_dn:
             euid = node.id_energy_unit
             if euid is not None and euid in f_eu:
-                d = int(node.depth) if node.depth is not None else 0
-                delta = -(d - 1) if d > 1 else 0
-                promoted.append(_shift_summary_entity_depth(node, delta))
+                promoted.append(_oes_promote_to_top_level_depth(node))
                 return
         for c in node.children:
             walk_collect(c, promoted)
 
     out: list[SummaryEntity] = []
+    promoted: list[SummaryEntity] = []
     for e in entities:
-        if not _is_ees_russia_without_nt_entity(e):
+        if not _is_ues_oes_top_level_tree(e):
             out.append(e)
             continue
-        promoted: list[SummaryEntity] = []
-        for child in e.children:
-            if child.entity_kind == "synchronous_area":
-                continue
-            walk_collect(child, promoted)
-        out.append(replace(e, children=promoted))
-    return out
+        walk_collect(e, promoted)
+    return out + promoted
 
 
 def _oes_promote_res_only_under_ees_russia(
@@ -545,41 +1024,40 @@ def _oes_promote_res_only_under_ees_russia(
     """При фильтре по РЭС — только строки РЭС (без ОЭС, субъектов и энергоузлов)."""
     if not f_res:
         return entities
-    ues_dn = UnionEnergySystemDemandParameter.__name__
     res_dn = RegionalEnergySystemDemandParameter.__name__
     out: list[SummaryEntity] = []
+    promoted: list[SummaryEntity] = []
     for e in entities:
-        if not _is_ees_russia_without_nt_entity(e):
+        if not _is_ues_oes_top_level_tree(e):
             out.append(e)
             continue
-        promoted: list[SummaryEntity] = []
-        for child in e.children:
-            if child.entity_kind == "synchronous_area":
+        for res in e.children:
+            if res.demand_model_name != res_dn:
                 continue
-            if child.demand_model_name != ues_dn:
+            rid = res.id_regional_energy_system
+            if rid is None or rid not in f_res:
                 continue
-            for res in child.children:
-                if res.demand_model_name != res_dn:
-                    continue
-                rid = res.id_regional_energy_system
-                if rid is None or rid not in f_res:
-                    continue
-                d = int(res.depth) if res.depth is not None else 0
-                delta = -(d - 1) if d > 1 else 0
-                promoted.append(replace(_shift_summary_entity_depth(res, delta), children=[]))
-        out.append(replace(e, children=promoted))
-    return out
+            promoted.append(
+                replace(_oes_promote_to_top_level_depth(res), children=[])
+            )
+    return out + promoted
 
 
 def _build_oes_raw_entities(
     *,
     always_show_subject_row_under_res: bool = False,
 ) -> list[SummaryEntity]:
-    """Полное дерево сводки по ОЭС без территориальных фильтров (для объединения выборов и «без фильтра»)."""
+    """Полное дерево сводки по ОЭС без территориальных фильтров (для объединения выборов и «без фильтра»).
+
+    Верхний порядок уровней: Россия → ЭЭС России → тип энергосистемы «ЕЭС России» → синхронные зоны
+    → ОЭС (с РЭС / субъектами / энергорайонами) → ТИТЭС и ДЗ.
+    """
     entities: list[SummaryEntity] = (
         _build_russia_perimeter_entities()
         + _build_ees_perimeter_entities()
-        + _build_ees_russia_perimeter_entities(
+        + _build_ees_russia_perimeter_entities()
+        + _build_synchronous_area_entities(depth=0)
+        + _build_oes_union_energy_system_entities(
             always_show_subject_row_under_res=always_show_subject_row_under_res,
         )
     )
@@ -590,24 +1068,26 @@ def _build_oes_raw_entities(
     return entities
 
 
+def _build_oes_union_energy_system_entities(
+    *,
+    always_show_subject_row_under_res: bool = False,
+) -> list[SummaryEntity]:
+    """ОЭС ветки ЕЭС России: варианты периметра и поддерево РЭС → субъект → энергорайон."""
+    ues_list = _build_ues_entities_filtered(
+        _is_ees_branch,
+        always_show_subject_row_under_res=always_show_subject_row_under_res,
+        ues_depth=0,
+    )
+    return _inject_perimeter_variant_entities(
+        ues_list,
+        entity_kind="union_energy_system",
+        ues_depth=0,
+    )
+
+
 def _strip_oes_ees_russia_nt_parent_aggregate(entities: list[SummaryEntity]) -> list[SummaryEntity]:
-    """Убирает строки-показатели у агрегата «ЕЭС России без НТ» при территориальном фильтре."""
-    out: list[SummaryEntity] = []
-    for e in entities:
-        if _is_ees_russia_without_nt_entity(e):
-            out.append(
-                replace(
-                    e,
-                    parameters=tuple(),
-                    demand_rows=[],
-                    demand_model_name=None,
-                    parent_fk_column=None,
-                    parent_id=None,
-                )
-            )
-        else:
-            out.append(e)
-    return out
+    """Сохранено для совместимости вызовов при территориальном фильтре (плоское дерево — без изменений)."""
+    return list(entities)
 
 
 def _effective_data_year_bounds(
@@ -632,6 +1112,174 @@ def _prepare_summary_demand_bulk_load() -> None:
     preload_power_demand_rows_for_summary()
 
 
+def _summary_data_segments_requested(
+    data_segments: frozenset[str] | None,
+    segment: str,
+) -> bool:
+    from app.power_demand.services.pd_summary_data_segments import needs_full_summary_build
+
+    return needs_full_summary_build(data_segments) or segment in (data_segments or frozenset())
+
+
+def _tag_common_power_demand_summary_rows(
+    rows: list[dict[str, Any]],
+    *,
+    oes_summary: bool = False,
+) -> None:
+    tag_power_demand_summary_rows_for_nt_toggle(rows)
+    tag_power_demand_summary_rows_for_territory_compact(rows)
+    tag_power_demand_summary_rows_perimeter_variant_labels(
+        rows,
+        oes_summary=oes_summary,
+    )
+
+
+def _filter_power_demand_summary_context_segments(
+    ctx: dict[str, Any],
+    data_segments: frozenset[str] | None,
+    *,
+    scope: str,
+) -> None:
+    if data_segments is None:
+        return
+    from app.power_demand.services.pd_summary_data_segments import (
+        filter_summary_rows_for_data_segments,
+    )
+
+    ctx["summary_rows"] = filter_summary_rows_for_data_segments(
+        ctx["summary_rows"],
+        data_segments,
+        scope=scope,
+    )
+
+
+def _finalize_oes_summary_context(
+    ctx: dict[str, Any],
+    rounding_digits: int,
+    data_segments: frozenset[str] | None,
+) -> None:
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CALC_MAX,
+        PD_SUMMARY_SEGMENT_CHI,
+        PD_SUMMARY_SEGMENT_VERIFY,
+    )
+
+    rows = ctx["summary_rows"]
+    _inject_south_ues_nt_rows_after_res(
+        rows,
+        years=list(ctx["years"]),
+        rounding_digits=rounding_digits,
+        avg_temp_uses_global_rounding=bool(
+            ctx.get("avg_temp_uses_global_rounding")
+        ),
+    )
+    _tag_common_power_demand_summary_rows(rows, oes_summary=True)
+
+    years = list(ctx["years"])
+    need_calc_max_enrichment = _summary_data_segments_requested(
+        data_segments, PD_SUMMARY_SEGMENT_CALC_MAX
+    ) or _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_VERIFY)
+    if need_calc_max_enrichment:
+        _inject_chukotka_rd_calculated_max_rows(rows, years, rounding_digits)
+        _propagate_pd_territory_compact_hide_flags(rows)
+        _enrich_oes_summary_calculated_max_from_res(ctx, rounding_digits)
+    apply_second_sa_from_ues_east_formula(rows, years, rounding_digits)
+    apply_kaliningrad_sa_from_kaliningrad_es_formula(rows, years, rounding_digits)
+    if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_VERIFY):
+        _inject_oes_summary_verification_rows(rows, years)
+        tag_power_demand_summary_rows_for_territory_compact(rows)
+        _clear_south_ues_with_nt_formula_years_before(rows, years)
+    if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_CHI):
+        _inject_oes_peak_usage_hours_rows(ctx, rounding_digits)
+        tag_power_demand_summary_rows_for_territory_compact(rows)
+        # ЧЧИ 2-й СЗ и СЗ Калининграда: числитель из ОЭС Востока / ЭС Калининграда (как max_power).
+        apply_second_sa_from_ues_east_formula(rows, years, rounding_digits)
+        apply_kaliningrad_sa_from_kaliningrad_es_formula(rows, years, rounding_digits)
+    if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_VERIFY):
+        _attach_oes_summary_live_calc_context(ctx)
+
+    mask_power_demand_summary_rows_perimeter_variant_year_display(rows, years)
+
+    _filter_power_demand_summary_context_segments(ctx, data_segments, scope="oes")
+
+
+def _finalize_fo_summary_context(
+    ctx: dict[str, Any],
+    rounding_digits: int,
+    data_segments: frozenset[str] | None,
+) -> None:
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CALC_MAX,
+        PD_SUMMARY_SEGMENT_CHI,
+        PD_SUMMARY_SEGMENT_VERIFY,
+    )
+
+    rows = ctx["summary_rows"]
+    years = list(ctx["years"])
+    reorder_centralized_zone_russia_variant_blocks_in_summary_rows(rows)
+    fo_max = bool(ctx.get("fo_max_extended_parameters"))
+    if fo_max:
+        enrich_fo_summary_combined_on_ees_from_res(rows, years, rounding_digits)
+    need_calc_max = _summary_data_segments_requested(
+        data_segments, PD_SUMMARY_SEGMENT_CALC_MAX
+    )
+    need_verify = _summary_data_segments_requested(
+        data_segments, PD_SUMMARY_SEGMENT_VERIFY
+    )
+    if need_calc_max or need_verify:
+        _enrich_fo_summary_calculated_max_from_res(ctx, rounding_digits)
+    if need_calc_max:
+        _inject_fo_max_cz_russia_calculated_max_row(
+            rows, years, int(ctx["rounding_digits"])
+        )
+    _tag_common_power_demand_summary_rows(rows, oes_summary=fo_max)
+    if need_verify:
+        _inject_oes_summary_verification_rows(rows, years)
+        tag_power_demand_summary_rows_for_territory_compact(rows)
+    if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_CHI):
+        from app.power_demand.services.pd_peak_usage_hours_services import (
+            inject_peak_usage_hours_rows,
+        )
+
+        inject_peak_usage_hours_rows(rows, years, rounding_digits)
+        tag_power_demand_summary_rows_for_territory_compact(rows)
+
+    mask_power_demand_summary_rows_perimeter_variant_year_display(rows, years)
+
+    _filter_power_demand_summary_context_segments(ctx, data_segments, scope="fo")
+
+
+def _finalize_ez_summary_context(
+    ctx: dict[str, Any],
+    rounding_digits: int,
+    data_segments: frozenset[str] | None,
+) -> None:
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CALC_MAX,
+        PD_SUMMARY_SEGMENT_CHI,
+    )
+
+    rows = ctx["summary_rows"]
+    years = list(ctx["years"])
+    if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_CALC_MAX):
+        _enrich_ez_summary_calculated_max_from_res(ctx, rounding_digits)
+    _tag_common_power_demand_summary_rows(rows)
+    tag_power_demand_ez_summary_group_rows_skip_empty_hide(rows)
+    if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_CHI):
+        from app.power_demand.services.pd_peak_usage_hours_services import (
+            inject_peak_usage_hours_rows,
+        )
+
+        inject_peak_usage_hours_rows(rows, years, rounding_digits)
+        tag_power_demand_summary_rows_for_territory_compact(rows)
+
+    mask_power_demand_summary_rows_perimeter_variant_year_display(
+        rows, list(ctx["years"])
+    )
+
+    _filter_power_demand_summary_context_segments(ctx, data_segments, scope="ez")
+
+
 def build_oes_summary_context(
     rounding_digits: int,
     *,
@@ -643,6 +1291,7 @@ def build_oes_summary_context(
     oes_territory_ordered: tuple[list[int], list[int], list[int], list[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
     for_client_render_shell: bool = False,
+    data_segments: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Сводка по ОЭС (GET ds_ues, ds_res, ds_rd, ds_eu).
 
@@ -705,6 +1354,7 @@ def build_oes_summary_context(
                 ent = _oes_promote_subjects_only_under_ees_russia(ent, f_rd)
             elif res_l:
                 ent = _oes_promote_res_only_under_ees_russia(ent, f_res)
+        ent = _expand_summary_entities_perimeter_variants(ent)
         summary_rows = _flatten_entities(
             ent, years, rounding_digits, avg_temp_uses_global_rounding=avg_temp_uses_global_rounding
         )
@@ -721,19 +1371,12 @@ def build_oes_summary_context(
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
         ctx["summary_rows"] = summary_rows
-        tag_power_demand_summary_rows_for_nt_toggle(ctx["summary_rows"])
-        tag_power_demand_summary_rows_for_territory_compact(ctx["summary_rows"])
-        tag_power_demand_summary_rows_perimeter_variant_labels(ctx["summary_rows"])
-        _inject_chukotka_rd_calculated_max_rows(
-            ctx["summary_rows"], list(ctx["years"]), rounding_digits
-        )
-        _enrich_oes_summary_calculated_max_from_res(ctx, rounding_digits)
-        _inject_oes_summary_verification_rows(ctx["summary_rows"], list(ctx["years"]))
-        _inject_oes_peak_usage_hours_rows(ctx, rounding_digits)
-        _attach_oes_summary_live_calc_context(ctx)
+        _finalize_oes_summary_context(ctx, rounding_digits, data_segments)
         return ctx
 
-    entities = _build_oes_raw_entities(always_show_subject_row_under_res=False)
+    entities = _expand_summary_entities_perimeter_variants(
+        _build_oes_raw_entities(always_show_subject_row_under_res=False)
+    )
     ctx = _build_summary_context(
         entities=entities,
         page_title="Максимумы потребления мощности по энергосистемам",
@@ -746,16 +1389,7 @@ def build_oes_summary_context(
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
-    tag_power_demand_summary_rows_for_nt_toggle(ctx["summary_rows"])
-    tag_power_demand_summary_rows_for_territory_compact(ctx["summary_rows"])
-    tag_power_demand_summary_rows_perimeter_variant_labels(ctx["summary_rows"])
-    _inject_chukotka_rd_calculated_max_rows(
-        ctx["summary_rows"], list(ctx["years"]), rounding_digits
-    )
-    _enrich_oes_summary_calculated_max_from_res(ctx, rounding_digits)
-    _inject_oes_summary_verification_rows(ctx["summary_rows"], list(ctx["years"]))
-    _inject_oes_peak_usage_hours_rows(ctx, rounding_digits)
-    _attach_oes_summary_live_calc_context(ctx)
+    _finalize_oes_summary_context(ctx, rounding_digits, data_segments)
     return ctx
 
 
@@ -780,31 +1414,31 @@ _OES_VERIFY_AFTER_CALC_MAX_POWER_CONSUMPTION_SPECS: tuple[
     (
         "calculated_max_power_consumption_mw",
         "verify_for_calculated_max_power_consumption_mw",
-        "Проверка максимума потребления мощности, МВт",
+        "Проверка максимального потребления мощности, МВт",
         ("calculated_max_power_consumption_mw", "max_power"),
     ),
     (
         "calculated_max_ees_russia_mw",
         "verify_for_calculated_max_ees_russia_mw",
-        "Проверка максимума потребления мощности, МВт",
+        "Проверка максимального потребления мощности, МВт",
         ("calculated_max_ees_russia_mw", "max_power"),
     ),
     (
         "calculated_max_ees_via_oes_mw",
         "verify_for_calculated_max_ees_via_oes_mw",
-        "Проверка максимума потребления мощности (через ОЭС), МВт",
+        "Проверка максимального потребления мощности (через ОЭС), МВт",
         ("calculated_max_ees_via_oes_mw", "max_power"),
     ),
     (
         "calculated_max_ees_via_es_mw",
         "verify_for_calculated_max_ees_via_es_mw",
-        "Проверка максимума потребления мощности (через ЭС), МВт",
+        "Проверка максимального потребления мощности (через ЭС), МВт",
         ("calculated_max_ees_via_es_mw", "max_power"),
     ),
     (
         "calculated_max_sa_mw",
         "verify_for_calculated_max_sa_mw",
-        "Проверка расчетного совмещенного максимума потребления мощности СЗ на ЕЭС, МВт",
+        "Проверка расчетного совмещенного потребления мощности на час прохождения максимума ЕЭС, МВт",
         ("calculated_max_sa_mw", "combined_on_ees"),
     ),
 )
@@ -851,17 +1485,25 @@ def _attach_oes_summary_live_calc_context(ctx: dict[str, Any]) -> None:
         "first_sync_area_id": _resolve_synchronous_area_id_by_name_prefix_cf(
             _FIRST_SYNC_AREA_BASE_LABEL_CF
         ),
-        "default_perimeter_variant": CODE_WITHOUT_NT,
+        "default_perimeter_variant": None,
         "res_to_sa_ids": {
             str(res_id): sorted(sa_ids) for res_id, sa_ids in res_to_sa.items()
         },
         "second_sync_area_id": second_sa_id,
         "kaliningrad_sync_area_id": kaliningrad_sa_id,
         "kaliningrad_es_id": kaliningrad_es_id,
+        "ues_east_id": _resolve_union_energy_system_id_by_name_cf(_UES_EAST_NAME_CF),
         "south_ues_ids": south_ues_ids,
         "south_ues_id": south_ues_ids[0] if south_ues_ids else None,
         "nt_regional_district_ids": sorted(_new_territories_regional_district_ids()),
     }
+    from app.power_demand.services.perimeter_variant_tree_rules import (
+        NEW_TERRITORIES_FROM_YEAR,
+    )
+
+    ctx["pd_oes_live_calc_js"]["new_territories_from_year"] = int(
+        NEW_TERRITORIES_FROM_YEAR
+    )
 
 
 def _inject_oes_summary_verification_rows(
@@ -872,10 +1514,10 @@ def _inject_oes_summary_verification_rows(
     Сводка «Максимумы» по ОЭС: добавить скрытые строки «Проверка для …» в каждом блоке сущности.
 
     Формулы (значения по годам — целое число; в title при наведении — до 3 знаков после запятой):
-    - «Проверка максимума потребления мощности , МВт» =
-        «Расчетный максимум потребления мощности, МВт» − «Максимум потребления мощности, МВт»
-    - «Проверка совмещенного максимума потребления мощности ОЭС на ЕЭС, МВт» =
-        «Расчетный совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт» − «Совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт»
+    - «Проверка максимального потребления мощности , МВт» =
+        «Расчетное максимальное потребление мощности, МВт» − «Максимальное потребление мощности, МВт»
+    - «Проверка расчетного совмещенного потребления мощности на час прохождения максимума ЕЭС, МВт» =
+        «Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» − «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
     - После каждой строки «Расчетный максимум потребления мощности …» — своя «Проверка для …»
       (для части показателей формула будет добавлена позже).
     """
@@ -952,9 +1594,14 @@ def _inject_oes_summary_verification_rows(
             "show_entity_cell": False,
             "parameter_key": new_parameter_key,
             "parameter_label": new_parameter_label,
-            "demand_model_name": None,
+            # Якорь блока для клиентского merge по fingerprint (demand_summary_client_render.js).
+            "demand_model_name": block0.get("demand_model_name"),
             "parent_fk_column": block0.get("parent_fk_column"),
             "parent_id": block0.get("parent_id"),
+            "id_regional_energy_system": block0.get("id_regional_energy_system"),
+            "id_regional_district": block0.get("id_regional_district"),
+            "id_energy_unit": block0.get("id_energy_unit"),
+            "id_synchronous_area": block0.get("id_synchronous_area"),
             "hist_row_id": None,
             "year_row_ids": [None] * n_y,
             "hist_value": "",
@@ -968,6 +1615,10 @@ def _inject_oes_summary_verification_rows(
             "show_entity_note_cell": False,
             "pd_pd_verify_for_row": True,
             "pd_pd_nt_extra_row": block0.get("pd_pd_nt_extra_row"),
+            "pd_pd_territory_compact_hide_row": block0.get(
+                "pd_pd_territory_compact_hide_row"
+            ),
+            "pd_pd_territory_detail_row": block0.get("pd_pd_territory_detail_row"),
             "pd_pd_entity_label_compact_nt": block0.get(
                 "pd_pd_entity_label_compact_nt"
             ),
@@ -999,7 +1650,7 @@ def _inject_oes_summary_verification_rows(
                 block_size=span,
                 insert_after_parameter_key="calculated_max_power_mw",
                 new_parameter_key="verify_for_calculated_max_power_mw",
-                new_parameter_label="Проверка максимума потребления мощности, МВт",
+                new_parameter_label="Проверка максимального потребления мощности, МВт",
                 a_parameter_key="calculated_max_power_mw",
                 b_parameter_key="max_power",
             )
@@ -1014,7 +1665,7 @@ def _inject_oes_summary_verification_rows(
                 block_size=span,
                 insert_after_parameter_key="calculated_combined_on_ees_mw",
                 new_parameter_key="verify_for_calculated_combined_on_ees_mw",
-                new_parameter_label="Проверка совмещенного максимума потребления мощности ОЭС на ЕЭС, МВт",
+                new_parameter_label="Проверка расчетного совмещенного потребления мощности на час прохождения максимума ЕЭС, МВт",
                 a_parameter_key="calculated_combined_on_ees_mw",
                 b_parameter_key="combined_on_ees",
             )
@@ -1064,7 +1715,9 @@ def build_federal_district_summary_context(
     fo_filter_sets: tuple[frozenset[int], frozenset[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
     fo_aggregate_by_res: bool = False,
+    fo_max_extended_parameters: bool = False,
     for_client_render_shell: bool = False,
+    data_segments: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Сводка по ФО и РЭС (GET ds_fd, ds_res).
 
@@ -1102,16 +1755,23 @@ def build_federal_district_summary_context(
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
     _prepare_summary_demand_bulk_load()
-    entities: list[SummaryEntity] = [
-        _standalone_entity(
-            "ЦЗ России",
-            CentralizedZoneDemandParameter,
-            BASE_PARAMETERS,
-            entity_kind="centralized_zone",
-        ),
-    ]
+    fd_parameters = (
+        PARAMETERS_FEDERAL_DISTRICT_MAX
+        if fo_max_extended_parameters
+        else PARAMETERS_FEDERAL_DISTRICT
+    )
+    res_parameters = (
+        PARAMETERS_RES_FO_MAX if fo_max_extended_parameters else PARAMETERS_RES_FO_COEFF
+    )
+    entities: list[SummaryEntity] = []
+    if fo_max_extended_parameters:
+        entities.extend(_build_russia_perimeter_entities())
+    entities.extend(_build_centralized_zone_perimeter_entities())
     entities.extend(
-        _build_federal_district_entities_by_res()
+        _build_federal_district_entities_by_res(
+            fd_parameters=fd_parameters,
+            res_parameters=res_parameters,
+        )
         if fo_aggregate_by_res
         else _build_federal_district_entities()
     )
@@ -1121,6 +1781,7 @@ def build_federal_district_summary_context(
         if f_fd or f_res:
             entities = prune_summary_entities_fo(entities, f_fd, f_res)
 
+    entities = _expand_summary_entities_perimeter_variants(entities)
     ctx = _build_summary_context(
         entities=entities,
         page_title="Максимумы потребления мощности по ФО",
@@ -1133,15 +1794,8 @@ def build_federal_district_summary_context(
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
-    _enrich_fo_summary_calculated_max_from_res(ctx, rounding_digits)
-    _inject_fo_max_cz_russia_calculated_max_row(
-        ctx["summary_rows"],
-        list(ctx["years"]),
-        int(ctx["rounding_digits"]),
-    )
-    tag_power_demand_summary_rows_for_nt_toggle(ctx["summary_rows"])
-    tag_power_demand_summary_rows_for_territory_compact(ctx["summary_rows"])
-    tag_power_demand_summary_rows_perimeter_variant_labels(ctx["summary_rows"])
+    ctx["fo_max_extended_parameters"] = fo_max_extended_parameters
+    _finalize_fo_summary_context(ctx, rounding_digits, data_segments)
     return ctx
 
 
@@ -1244,6 +1898,8 @@ def _inject_fo_max_cz_russia_calculated_max_row(
 
 
 def _build_ez_raw_entities() -> list[SummaryEntity]:
+    est = _get_energy_system_type_by_name(EES_RUSSIA_ENERGY_SYSTEM_TYPE_NAME)
+    est_id = int(est.id) if est is not None else None
     entities: list[SummaryEntity] = [
         SummaryEntity(
             label=EES_RUSSIA_ENERGY_SYSTEM_TYPE_NAME,
@@ -1252,17 +1908,21 @@ def _build_ez_raw_entities() -> list[SummaryEntity]:
                 *BASE_PARAMETERS,
                 ("calculated_max_ees_russia_mw", "Расчетный максимум потребления мощности ЕЭС России, МВт"),
             ),
-            demand_rows=dps.get_demand_rows_for_summary_block(
-                EesRussiaDemandParameter,
-                None,
-                None,
-                display_perimeter_variant_code=CODE_WITHOUT_NT,
+            demand_rows=(
+                dps.get_demand_rows(
+                    EnergySystemTypeDemandParameter,
+                    "id_energy_system_type",
+                    est_id,
+                    perimeter_variant_code=None,
+                )
+                if est_id is not None
+                else []
             ),
             entity_kind="ees_russia",
-            demand_model_name=EesRussiaDemandParameter.__name__,
-            parent_fk_column=None,
-            parent_id=None,
-            perimeter_variant_code=CODE_WITHOUT_NT,
+            demand_model_name=EnergySystemTypeDemandParameter.__name__,
+            parent_fk_column="id_energy_system_type",
+            parent_id=est_id,
+            perimeter_variant_code=None,
         ),
     ]
     entities.extend(_build_energy_zone_entities())
@@ -1280,6 +1940,7 @@ def build_energy_zones_summary_context(
     ez_territory_ordered: tuple[list[int], list[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
     for_client_render_shell: bool = False,
+    data_segments: frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Сводка по энергозонам (GET ds_ez, ds_res).
 
@@ -1327,6 +1988,7 @@ def build_energy_zones_summary_context(
         ent = prune_summary_entities_ez(base_entities, f_ez, f_res)
         if _ez_res_only_flat_mode(f_ez, f_res):
             ent = _flatten_energy_zone_parents_when_res_filtered(ent)
+        ent = _expand_summary_entities_perimeter_variants(ent)
         summary_rows = _flatten_entities(
             ent, years, rounding_digits, avg_temp_uses_global_rounding=avg_temp_uses_global_rounding
         )
@@ -1343,13 +2005,10 @@ def build_energy_zones_summary_context(
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
         ctx["summary_rows"] = summary_rows
-        _enrich_ez_summary_calculated_max_from_res(ctx, rounding_digits)
-        tag_power_demand_summary_rows_for_nt_toggle(ctx["summary_rows"])
-        tag_power_demand_summary_rows_for_territory_compact(ctx["summary_rows"])
-        tag_power_demand_summary_rows_perimeter_variant_labels(ctx["summary_rows"])
+        _finalize_ez_summary_context(ctx, rounding_digits, data_segments)
         return ctx
 
-    entities = _build_ez_raw_entities()
+    entities = _expand_summary_entities_perimeter_variants(_build_ez_raw_entities())
     ctx = _build_summary_context(
         entities=entities,
         page_title="Максимумы потребления мощности по энергозонам",
@@ -1362,10 +2021,7 @@ def build_energy_zones_summary_context(
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
-    _enrich_ez_summary_calculated_max_from_res(ctx, rounding_digits)
-    tag_power_demand_summary_rows_for_nt_toggle(ctx["summary_rows"])
-    tag_power_demand_summary_rows_for_territory_compact(ctx["summary_rows"])
-    tag_power_demand_summary_rows_perimeter_variant_labels(ctx["summary_rows"])
+    _finalize_ez_summary_context(ctx, rounding_digits, data_segments)
     return ctx
 
 
@@ -1483,12 +2139,12 @@ def _inject_fo_coeff_cz_total_rows(
     y3, t3, id3 = _fmt_vals(imb, imb_any)
 
     tt = (
-        "Сумма значений «Максимум потребления мощности, МВт» по строкам федеральных округов "
+        "Сумма значений «Максимальное потребление мощности, МВт» по строкам федеральных округов "
         "и по строкам региональных энергосистем, отображаемым в таблице (без строки «ЦЗ России»). "
         "Учитываются максимумы и на уровне ФО, и на уровне РЭС под округами.",
         "Сумма значений «Совмещенный на ЦЗ России, МВт» по всем строкам региональных энергосистем, "
         "показанным в таблице под соответствующими федеральными округами.",
-        "Разность между «Максимум потребления мощности, МВт» для сущности «ЦЗ России» "
+        "Разность между «Максимальное потребление мощности, МВт» для сущности «ЦЗ России» "
         "и суммой совмещённых на ЦЗ России максимумов региональных энергосистем (предыдущая строка блока).",
     )
     new_specs: tuple[tuple[str, str, list[str], list[str], list[int | None], str, str], ...] = (
@@ -1672,8 +2328,14 @@ FO_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
         "combined_on_cz",
         "cz_calculated_max_cz_russia_mw",
         "calculated_max_fo_mw",
+        "calculated_max_power_mw",
         "calculated_combined_on_cz_mw",
+        "calculated_combined_on_ees_mw",
+        "combined_on_ees",
         "combined_on_fo",
+        "peak_max_power_usage_hours",
+        "verify_for_calculated_max_power_mw",
+        "verify_for_calculated_combined_on_ees_mw",
     }
 )
 # Экран «Коэффициенты по ФО»: под ФО — РЭС (на ФО, на ЦЗ России), без субъектов.
@@ -1718,6 +2380,7 @@ _PD_OES_NT_EXTRA_ENTITY_LABELS = frozenset(
         "ЕЭС России с НТ",
         "Первая синхронная зона с НТ",
         "ОЭС Юга с НТ",
+        f"{CENTRALIZED_ZONE_AGGREGATE_NAME} с НТ",
     }
 )
 _PD_OES_NT_COMPACT_ENTITY_LABELS: dict[str, str] = {
@@ -1726,10 +2389,261 @@ _PD_OES_NT_COMPACT_ENTITY_LABELS: dict[str, str] = {
     "ЕЭС России без НТ": "ЕЭС России",
     "Первая синхронная зона без НТ": "Первая синхронная зона",
     "ОЭС Юга без НТ": "ОЭС Юга",
+    f"{CENTRALIZED_ZONE_AGGREGATE_NAME} без НТ": CENTRALIZED_ZONE_AGGREGATE_NAME,
 }
-_EES_DEMAND_MODEL_NAME = EesDemandParameter.__name__
-_EES_RUSSIA_DEMAND_MODEL_NAME = EesRussiaDemandParameter.__name__
+_PD_NT_LABEL_SUFFIX_WITH = " с НТ"
+_PD_NT_LABEL_SUFFIX_WITHOUT = " без НТ"
+_PD_GAES_LABEL_SUFFIX_WITH = " с зарядом ГАЭС"
+_PD_GAES_LABEL_SUFFIX_WITHOUT = " без заряда ГАЭС"
+_PD_KALININGRAD_LABEL_SUFFIX_WITH = " с ЭС Калининградской области"
+_PD_KALININGRAD_LABEL_SUFFIX_WITHOUT = " без ЭС Калининградской области"
+_PD_VARIANT_LABEL_STRIP_SUFFIXES = (
+    _PD_GAES_LABEL_SUFFIX_WITH,
+    _PD_GAES_LABEL_SUFFIX_WITHOUT,
+    _PD_NT_LABEL_SUFFIX_WITH,
+    _PD_NT_LABEL_SUFFIX_WITHOUT,
+    _PD_KALININGRAD_LABEL_SUFFIX_WITH,
+    _PD_KALININGRAD_LABEL_SUFFIX_WITHOUT,
+)
+_EES_DEMAND_MODEL_NAME = _EES_AGGREGATE_DEMAND_MODEL_NAME
+_EES_RUSSIA_DEMAND_MODEL_NAME = _EES_UNIFIED_DEMAND_MODEL_NAME
 _UES_DEMAND_MODEL_NAME = UnionEnergySystemDemandParameter.__name__
+
+
+def _pd_split_kaliningrad_suffix_from_label(label: str) -> tuple[str, str | None]:
+    s = str(label or "").strip()
+    for suffix in (
+        _PD_KALININGRAD_LABEL_SUFFIX_WITH,
+        _PD_KALININGRAD_LABEL_SUFFIX_WITHOUT,
+    ):
+        parenthesized = f"({suffix.strip()})"
+        if s.endswith(parenthesized):
+            base = s[: -len(parenthesized)].strip()
+            return (base if base else s), suffix.strip()
+        if s.endswith(suffix):
+            base = s[: -len(suffix)].strip()
+            return (base if base else s), suffix.strip()
+    return s, None
+
+
+def _pd_strip_variant_suffixes_from_label(label: str) -> tuple[str, str | None]:
+    base, kal_suffix = _pd_split_kaliningrad_suffix_from_label(label)
+    changed = True
+    while changed:
+        changed = False
+        for suffix in _PD_VARIANT_LABEL_STRIP_SUFFIXES:
+            if base.endswith(suffix):
+                base = base[: -len(suffix)].strip()
+                changed = True
+                break
+    return (base if base else str(label or "").strip()), kal_suffix
+
+
+def _pd_normalize_perimeter_variant_code(code: str) -> str:
+    return str(code or "").strip().casefold().replace("о1", "o1")
+
+
+def _pd_nt_group_for_variant_code(code: str) -> str:
+    """Группа НТ для кода варианта (включая o1_with_nt / o1_without_nt)."""
+    normalized = _pd_normalize_perimeter_variant_code(code)
+    if "without_nt" in normalized:
+        return "without_nt"
+    if "with_nt" in normalized:
+        return "with_nt"
+    return "other"
+
+
+def _pd_nt_label_suffix_for_variant_code(code: str) -> str:
+    s = str(code or "").strip()
+    if s == CODE_WITH_NT or s.startswith(f"{CODE_WITH_NT}_"):
+        return _PD_NT_LABEL_SUFFIX_WITH
+    if s == CODE_WITHOUT_NT or s.startswith(f"{CODE_WITHOUT_NT}_"):
+        return _PD_NT_LABEL_SUFFIX_WITHOUT
+    nt_group = _pd_nt_group_for_variant_code(code)
+    if nt_group == "with_nt":
+        return _PD_NT_LABEL_SUFFIX_WITH
+    if nt_group == "without_nt":
+        return _PD_NT_LABEL_SUFFIX_WITHOUT
+    nt_group = legacy_nt_group_for_perimeter_code(code)
+    if nt_group == CODE_WITH_NT:
+        return _PD_NT_LABEL_SUFFIX_WITH
+    if nt_group == CODE_WITHOUT_NT:
+        return _PD_NT_LABEL_SUFFIX_WITHOUT
+    return ""
+
+
+def _is_pd_centralized_zone_russia_summary_row(row: dict[str, Any]) -> bool:
+    if row.get("entity_kind") == ENTITY_KIND_CENTRALIZED_ZONE:
+        return True
+    if row.get("demand_model_name") != CentralizedZoneDemandParameter.__name__:
+        return False
+    label_cf = str(row.get("entity_label") or "").strip().casefold()
+    return label_cf.startswith(CENTRALIZED_ZONE_AGGREGATE_NAME_CF)
+
+
+def _is_pd_centralized_zone_russia_o1_summary_row(row: dict[str, Any]) -> bool:
+    if not _is_pd_centralized_zone_russia_summary_row(row):
+        return False
+    code = row.get("perimeter_variant_code")
+    return bool(code) and is_o1_perimeter_variant_code(code)
+
+
+def _pd_centralized_zone_o1_entity_display_label(full_label: str) -> str:
+    """Подпись «ЦЗ России O-1» без «с/без НТ» (различие — в столбце варианта периметра)."""
+    base, _kal = _pd_strip_variant_suffixes_from_label(full_label)
+    base_cf = base.casefold()
+    if "o-1" in base_cf or "o1" in base_cf.replace(" ", ""):
+        return base
+    o1_label = f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1"
+    if _kal:
+        return f"{o1_label} ({_kal})"
+    return o1_label
+
+
+def _centralized_zone_russia_variant_block_sort_key(
+    block: list[dict[str, Any]],
+) -> tuple[int, int]:
+    code = str((block[0] if block else {}).get("perimeter_variant_code") or "")
+    nt_group = _pd_nt_group_for_variant_code(code)
+    nt_order = {"with_nt": 0, "without_nt": 1}.get(nt_group, 2)
+    return (nt_order, 1 if is_o1_perimeter_variant_code(code) else 0)
+
+
+def reorder_centralized_zone_russia_variant_blocks_in_summary_rows(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """С НТ → с НТ O-1 → без НТ → без НТ O-1 для подряд идущих блоков «ЦЗ России» (depth=0)."""
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if not _is_pd_centralized_zone_russia_summary_row(row):
+            i += 1
+            continue
+        if int(row.get("entity_depth") or 0) != 0:
+            i += 1
+            continue
+        start = i
+        segment_end = start
+        while segment_end < n:
+            segment_row = summary_rows[segment_end]
+            if not _is_pd_centralized_zone_russia_summary_row(segment_row):
+                break
+            if int(segment_row.get("entity_depth") or 0) != 0:
+                break
+            segment_end += 1
+        blocks: list[list[dict[str, Any]]] = []
+        j = start
+        while j < segment_end:
+            block_row = summary_rows[j]
+            if block_row.get("show_entity_cell"):
+                block_size = max(int(block_row.get("entity_rowspan") or 1), 1)
+                blocks.append(summary_rows[j : j + block_size])
+                j += block_size
+            else:
+                j += 1
+        if len(blocks) >= 2:
+            blocks.sort(key=_centralized_zone_russia_variant_block_sort_key)
+            reordered: list[dict[str, Any]] = []
+            for block in blocks:
+                reordered.extend(block)
+            summary_rows[start:segment_end] = reordered
+        i = segment_end
+
+
+def _pd_strip_gaes_text_from_label_fragment(text: str) -> str:
+    """Убрать «с/без заряда ГАЭС» из подписи (на сводке нагрузок ГАЭС не используется)."""
+    s = str(text or "").strip()
+    for suffix in (_PD_GAES_LABEL_SUFFIX_WITH, _PD_GAES_LABEL_SUFFIX_WITHOUT):
+        while suffix in s:
+            s = s.replace(suffix, "")
+    return " ".join(s.split())
+
+
+def _pd_kaliningrad_label_suffix_for_variant_code(code: str) -> str | None:
+    if "_with_kaliningrad" in code:
+        return _PD_KALININGRAD_LABEL_SUFFIX_WITH.strip()
+    if "_without_kaliningrad" in code:
+        return _PD_KALININGRAD_LABEL_SUFFIX_WITHOUT.strip()
+    return None
+
+
+def _pd_format_oes_entity_label_for_toggle_state(
+    full_label: str,
+    code: str,
+    *,
+    nt_detail_on: bool,
+) -> str:
+    """Подпись «Энергосистема»: с/без НТ и (с/без ЭС Калининградской области), без ГАЭС."""
+    base, kal_suffix = _pd_strip_variant_suffixes_from_label(full_label)
+    base = _pd_strip_gaes_text_from_label_fragment(base)
+    kal_suffix = _pd_kaliningrad_label_suffix_for_variant_code(code) or kal_suffix
+    nt_suffix = _pd_nt_label_suffix_for_variant_code(code) if nt_detail_on else ""
+    label = f"{base}{nt_suffix}".strip()
+    if kal_suffix:
+        return f"{label} ({kal_suffix})"
+    return label
+
+
+def _pd_oes_entity_label_for_nt_detail_on(full_label: str, code: str) -> str:
+    """Подпись в столбце «Энергосистема» при включённой кнопке «+ НТ»: с/без НТ, без ГАЭС."""
+    return _pd_format_oes_entity_label_for_toggle_state(
+        full_label, code, nt_detail_on=True
+    )
+
+
+def _pd_oes_entity_label_compact_nt_off(full_label: str, code: str) -> str:
+    """Подпись в столбце «Энергосистема» при выключенной кнопке «+ НТ»: без с/без НТ и ГАЭС."""
+    return _pd_format_oes_entity_label_for_toggle_state(
+        full_label, code, nt_detail_on=False
+    )
+
+
+def _pd_perimeter_variant_code_for_entity_label_toggle(row: dict[str, Any]) -> str | None:
+    """Код варианта для подписи «с/без НТ», в т.ч. если в строке только текст из справочника."""
+    code = row.get("perimeter_variant_code")
+    if code:
+        return str(code)
+    label = str(row.get("entity_label") or "").strip()
+    if label in _PD_OES_NT_EXTRA_ENTITY_LABELS:
+        return CODE_WITH_NT
+    if label in _PD_OES_NT_COMPACT_ENTITY_LABELS:
+        return CODE_WITHOUT_NT
+    return None
+
+
+def _pd_oes_apply_entity_label_toggle_variants(row: dict[str, Any]) -> None:
+    if not row.get("show_entity_cell"):
+        return
+    code_s = _pd_perimeter_variant_code_for_entity_label_toggle(row)
+    if not code_s:
+        return
+    full = str(row.get("entity_label") or "").strip()
+    if not full:
+        return
+    row["pd_pd_entity_label_nt_detail"] = _pd_oes_entity_label_for_nt_detail_on(
+        full, code_s
+    )
+    row["pd_pd_entity_label_compact_nt"] = _pd_oes_entity_label_compact_nt_off(
+        full, code_s
+    )
+    row["entity_label"] = row["pd_pd_entity_label_nt_detail"]
+
+def _entity_row_is_nt_subtree_root(entity: SummaryEntity) -> bool:
+    """Скрывать поддерево по «+ НТ» только у веток «с НТ» с территориальными потомками."""
+    if not entity.children:
+        return False
+    if legacy_nt_group_for_perimeter_code(
+        getattr(entity, "perimeter_variant_code", None)
+    ) == CODE_WITH_NT:
+        return True
+    label = str(entity.label or "")
+    if _NEW_TERRITORIES_NAME in label:
+        return True
+    if entity.entity_kind == "group-root" and _NEW_TERRITORIES_NAME in label:
+        return True
+    return False
+
 
 def tag_power_demand_summary_rows_for_nt_toggle(
     summary_rows: list[dict[str, Any]],
@@ -1744,46 +2658,60 @@ def tag_power_demand_summary_rows_for_nt_toggle(
         d = int(row.get("entity_depth", 0) or 0)
 
         pvc_row = row.get("perimeter_variant_code")
+        pvc_nt_group = legacy_nt_group_for_perimeter_code(pvc_row)
 
         if row.get("show_entity_cell"):
             while stack and d <= stack[-1]:
                 stack.pop()
-            if (
-                _NEW_TERRITORIES_NAME in label
-                or (ek == "group-root" and _NEW_TERRITORIES_NAME in label)
-                or pvc_row == CODE_WITH_NT
-                or (
-                    ek == "perimeter_variant"
-                    and CODE_WITH_NT in label.casefold()
-                )
-            ):
+            if row.get("pd_pd_nt_subtree_root"):
                 stack.append(d)
 
         in_nt_tree = bool(stack)
 
-        if pvc_row == CODE_WITH_NT:
+        if pvc_nt_group == CODE_WITH_NT:
             row["pd_pd_nt_extra_row"] = True
         elif (
-            pvc_row == CODE_WITHOUT_NT
+            pvc_nt_group == CODE_WITHOUT_NT
             and row.get("demand_model_name") == _EES_DEMAND_MODEL_NAME
         ):
             row["pd_pd_nt_extra_row"] = False
             row["pd_pd_entity_label_compact_nt"] = EES_RUSSIA_AGGREGATE_NAME
         elif (
-            pvc_row == CODE_WITHOUT_NT
+            pvc_nt_group == CODE_WITHOUT_NT
             and row.get("demand_model_name") == _EES_RUSSIA_DEMAND_MODEL_NAME
             and ek in ("oes_top_aggregate", "group-root")
         ):
             row["pd_pd_nt_extra_row"] = False
             row["pd_pd_entity_label_compact_nt"] = EES_UNIFIED_REF_NAME
-        elif pvc_row == CODE_WITHOUT_NT and label.startswith("Россия"):
+        elif pvc_nt_group == CODE_WITHOUT_NT and label.startswith("Россия"):
             row["pd_pd_nt_extra_row"] = False
             row["pd_pd_entity_label_compact_nt"] = "Россия"
-        elif pvc_row == CODE_WITHOUT_NT and label.startswith("ЕЭС России"):
+        elif (
+            pvc_nt_group == CODE_WITHOUT_NT
+            and row.get("demand_model_name") == CentralizedZoneDemandParameter.__name__
+            and ek == "centralized_zone"
+            and not is_o1_perimeter_variant_code(pvc_row)
+        ):
+            row["pd_pd_nt_extra_row"] = False
+            row["pd_pd_entity_label_compact_nt"] = CENTRALIZED_ZONE_AGGREGATE_NAME
+        elif (
+            row.get("demand_model_name") == CentralizedZoneDemandParameter.__name__
+            and ek == "centralized_zone"
+            and is_o1_perimeter_variant_code(pvc_row)
+        ):
+            nt_group = _pd_nt_group_for_variant_code(str(pvc_row or ""))
+            row["pd_pd_nt_extra_row"] = nt_group == "with_nt"
+            o1_label = _pd_centralized_zone_o1_entity_display_label(label)
+            row["pd_pd_entity_label_compact_nt"] = o1_label
+            row["pd_pd_entity_label_nt_detail"] = o1_label
+            row["entity_label"] = o1_label
+            if nt_group == "without_nt":
+                row["pd_pd_skip_empty_hide_row"] = True
+        elif pvc_nt_group == CODE_WITHOUT_NT and label.startswith("ЕЭС России"):
             row["pd_pd_nt_extra_row"] = False
             row["pd_pd_entity_label_compact_nt"] = "ЕЭС России"
         elif (
-            pvc_row == CODE_WITHOUT_NT
+            pvc_nt_group == CODE_WITHOUT_NT
             and row.get("demand_model_name") == _UES_DEMAND_MODEL_NAME
             and ek == "perimeter_variant"
         ):
@@ -1797,8 +2725,20 @@ def tag_power_demand_summary_rows_for_nt_toggle(
         else:
             row["pd_pd_nt_extra_row"] = in_nt_tree
 
-        if row.get("pd_pd_entity_label_compact_nt"):
-            row["pd_pd_skip_empty_hide_row"] = True
+        if row.get("show_entity_cell"):
+            if not _is_pd_centralized_zone_russia_o1_summary_row(row):
+                _pd_oes_apply_entity_label_toggle_variants(row)
+
+        # Строки по привязке /perimeter_variants/ всегда в core: пустые блоки для ввода данных.
+        if row.get("pd_pd_summary_perimeter_variant_row"):
+            if _is_pd_centralized_zone_russia_o1_summary_row(row):
+                pass
+            elif _pd_nt_group_for_variant_code(str(pvc_row or "")) == "with_nt":
+                row["pd_pd_nt_extra_row"] = True
+            elif _pd_nt_group_for_variant_code(str(pvc_row or "")) == "without_nt":
+                row["pd_pd_nt_extra_row"] = False
+            elif pvc_nt_group != CODE_WITH_NT:
+                row["pd_pd_nt_extra_row"] = False
 
 
 def tag_power_demand_oes_summary_rows_for_nt_toggle(
@@ -1808,35 +2748,27 @@ def tag_power_demand_oes_summary_rows_for_nt_toggle(
     tag_power_demand_summary_rows_for_nt_toggle(summary_rows)
 
 
-_PD_SUMMARY_NO_PERIMETER_VARIANT_SELECT_MODELS = frozenset(
-    {
-        "EnergyZoneDemandParameter",
-        "EnergySystemTypeDemandParameter",
-    }
-)
-
-
 def _pd_summary_row_allows_perimeter_variant_select(row: dict[str, Any]) -> bool:
     """Строка блока сущности, для которой в сводке можно менять perimeter_variant_code."""
     if not row.get("show_entity_cell"):
         return False
     dm_name = str(row.get("demand_model_name") or "").strip()
-    if not dm_name or dm_name in _PD_SUMMARY_NO_PERIMETER_VARIANT_SELECT_MODELS:
+    if not dm_name:
         return False
     if row.get("pd_pd_verify_for_row"):
         return False
     if row.get("pd_pd_aggregation_level_row"):
         return False
-    from app.power_demand.services import demand_parameter_services as dps
-
     try:
         model_cls = dps._summary_demand_model_class(dm_name)
     except ValueError:
         return False
     if not model_supports_perimeter_variant(model_cls):
         return False
-    has_code = bool(str(row.get("perimeter_variant_code") or "").strip())
     options = row.get("perimeter_variant_options") or []
+    if len(options) >= 2:
+        return True
+    has_code = bool(str(row.get("perimeter_variant_code") or "").strip())
     if has_code or len(options) >= 1:
         return True
     return bool(row.get("pd_ec_perimeter_entity_kind"))
@@ -1844,6 +2776,8 @@ def _pd_summary_row_allows_perimeter_variant_select(row: dict[str, Any]) -> bool
 
 def tag_power_demand_summary_rows_perimeter_variant_labels(
     summary_rows: list[dict[str, Any]],
+    *,
+    oes_summary: bool = False,
 ) -> None:
     """Подпись и привязка варианта периметра для столбца сводки нагрузок."""
     from app.power_demand.services import demand_parameter_services as dps
@@ -1855,14 +2789,8 @@ def tag_power_demand_summary_rows_perimeter_variant_labels(
         if row.get("show_entity_cell") and dm:
             try:
                 model_cls = dps._summary_demand_model_class(dm)
-                code = dps.resolve_stored_perimeter_variant_for_summary_block(
-                    model_cls,
-                    parent_fk_column=row.get("parent_fk_column"),
-                    parent_id=row.get("parent_id"),
-                    display_perimeter_variant_code=code,
-                )
-                if code:
-                    row["perimeter_variant_code"] = code
+                if not model_supports_perimeter_variant(model_cls):
+                    code = None
             except ValueError:
                 pass
         pe_kind = row.get("pd_ec_perimeter_entity_kind")
@@ -1884,9 +2812,34 @@ def tag_power_demand_summary_rows_perimeter_variant_labels(
                 pe_kind, pe_name = ctx
                 row["pd_ec_perimeter_entity_kind"] = pe_kind
                 row["pd_ec_perimeter_entity_name"] = pe_name
-        row["perimeter_variant_label"] = (
-            perimeter_variant_display_label_for_entity(code, pe_kind, pe_name) if code else ""
-        )
+        if row.get("show_entity_cell") and pe_kind:
+            if oes_summary:
+                row["perimeter_variant_options"] = _perimeter_variant_options_for_oes_summary(
+                    pe_kind, pe_name
+                )
+            else:
+                row["perimeter_variant_options"] = _perimeter_variant_options_for_summary(
+                    pe_kind, pe_name
+                )
+        elif row.get("show_entity_cell"):
+            row["perimeter_variant_options"] = []
+        if oes_summary and code:
+            row["perimeter_variant_label"] = _oes_perimeter_variant_russian_label(
+                str(code),
+                binding=resolve_entity_perimeter_binding(pe_kind, pe_name),
+                entity_kind=pe_kind,
+                entity_name=pe_name,
+            )
+            for opt in row.get("perimeter_variant_options") or []:
+                if opt.get("code") == code:
+                    row["perimeter_variant_label"] = opt.get("label") or row["perimeter_variant_label"]
+                    break
+        else:
+            row["perimeter_variant_label"] = (
+                perimeter_variant_display_label_for_entity(code, pe_kind, pe_name)
+                if code
+                else ""
+            )
         if code:
             fy, ty = perimeter_variant_year_bounds_for_code(str(code))
             row["perimeter_variant_from_year"] = fy
@@ -1898,24 +2851,86 @@ def tag_power_demand_summary_rows_perimeter_variant_labels(
             row["pd_ec_o1_form_row"] = True
         else:
             row.pop("pd_ec_o1_form_row", None)
-        if row.get("show_entity_cell") and pe_kind:
-            row["perimeter_variant_options"] = perimeter_variant_options_for_entity(
-                pe_kind, pe_name
-            )
-            allowed_codes = {
-                str(opt.get("code") or "").strip()
-                for opt in row["perimeter_variant_options"]
-                if opt.get("code")
-            }
-            if code and allowed_codes and str(code) not in allowed_codes:
-                if str(code) in (CODE_WITH_NT, CODE_WITHOUT_NT):
-                    code = None
-                    row["perimeter_variant_code"] = None
-        elif row.get("show_entity_cell"):
-            row["perimeter_variant_options"] = []
         row["show_perimeter_variant_select"] = _pd_summary_row_allows_perimeter_variant_select(
             row
         )
+
+
+def _pd_summary_row_skips_perimeter_variant_year_bounds(row: dict[str, Any]) -> bool:
+    return bool(row.get("pd_pd_skip_perimeter_variant_year_bounds"))
+
+
+def _year_applies_to_pd_summary_row_perimeter_variant(row: dict[str, Any], year: int) -> bool:
+    if _pd_summary_row_skips_perimeter_variant_year_bounds(row):
+        return True
+    code = row.get("perimeter_variant_code")
+    if not code:
+        return True
+    fy, ty = perimeter_variant_year_bounds_for_code(str(code))
+    if fy is not None and int(year) < int(fy):
+        return False
+    if ty is not None and int(year) > int(ty):
+        return False
+    return True
+
+
+def mask_power_demand_summary_rows_perimeter_variant_year_display(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+) -> None:
+    """Скрыть значения и id строк вне периода «Год с» / «Год по» варианта периметра."""
+    if not years:
+        return
+    n = len(years)
+    for row in summary_rows:
+        if _pd_summary_row_skips_perimeter_variant_year_bounds(row):
+            row.pop("perimeter_variant_from_year", None)
+            row.pop("perimeter_variant_to_year", None)
+            continue
+        code = row.get("perimeter_variant_code")
+        if not code:
+            continue
+        fy, ty = perimeter_variant_year_bounds_for_code(str(code))
+        if fy is None and ty is None:
+            continue
+        row["perimeter_variant_from_year"] = fy
+        row["perimeter_variant_to_year"] = ty
+        yv = list(row.get("year_values") or [])
+        tt = list(row.get("year_numeric_tooltips") or [])
+        rids = list(row.get("year_row_ids") or [])
+        while len(yv) < n:
+            yv.append("—")
+        while len(tt) < n:
+            tt.append("")
+        while len(rids) < n:
+            rids.append(None)
+        for ix, yr in enumerate(years):
+            if _year_applies_to_pd_summary_row_perimeter_variant(row, int(yr)):
+                continue
+            yv[ix] = "—"
+            tt[ix] = ""
+            rids[ix] = None
+        row["year_values"] = yv
+        row["year_numeric_tooltips"] = tt
+        row["year_row_ids"] = rids
+
+
+def _propagate_pd_territory_compact_hide_flags(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """Все строки блока сущности наследуют pd_pd_territory_compact_hide_row от заголовка."""
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if not row.get("show_entity_cell"):
+            i += 1
+            continue
+        block_size = max(int(row.get("entity_rowspan") or 1), 1)
+        if row.get("pd_pd_territory_compact_hide_row"):
+            for j in range(i, min(i + block_size, n)):
+                summary_rows[j]["pd_pd_territory_compact_hide_row"] = True
+        i += block_size
 
 
 def tag_power_demand_summary_rows_for_territory_compact(
@@ -1926,11 +2941,59 @@ def tag_power_demand_summary_rows_for_territory_compact(
     rd_mn = RegionalDistrictDemandParameter.__name__
     eu_mn = EnergyUnitDemandParameter.__name__
     for row in summary_rows:
+        row.pop("pd_pd_territory_compact_hide_row", None)
+        ek = str(row.get("entity_kind") or "")
+        label = str(row.get("entity_label") or "").strip()
+        if (
+            ek == "chukotka_territorial_boundaries"
+            or label == _CHUKOTKA_TERRITORIAL_BOUNDARIES_LABEL
+        ):
+            row["pd_pd_territory_compact_hide_row"] = True
         if row.get("pd_pd_nt_extra_row"):
+            row["pd_pd_territory_compact_hide_row"] = True
             row["pd_pd_territory_detail_row"] = False
             continue
         dm_l = str(row.get("demand_model_name") or "").strip()
-        row["pd_pd_territory_detail_row"] = dm_l in (res_mn, rd_mn, eu_mn)
+        is_territory_detail = dm_l in (res_mn, rd_mn, eu_mn)
+        row["pd_pd_territory_detail_row"] = is_territory_detail
+        if row.get("pd_pd_chi_row") and is_territory_detail:
+            row["pd_pd_territory_compact_hide_row"] = True
+        if row.get("pd_pd_verify_for_row") and (
+            is_territory_detail
+            or ek == "chukotka_territorial_boundaries"
+            or label == _CHUKOTKA_TERRITORIAL_BOUNDARIES_LABEL
+        ):
+            row["pd_pd_territory_compact_hide_row"] = True
+    _propagate_pd_territory_compact_hide_flags(summary_rows)
+
+
+def tag_power_demand_ez_summary_group_rows_skip_empty_hide(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """Не скрывать заголовки энергозон кнопкой «Пустые строки».
+
+    На сводке по энергозонам значения часто заполнены только на уровне РЭС; без метки
+    блоки энергозон (и строка «ЕЭС России») исчезают при скрытии пустых строк.
+    """
+    if not summary_rows:
+        return
+    ez_dm = EnergyZoneDemandParameter.__name__
+    est_dm = EnergySystemTypeDemandParameter.__name__
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if not row.get("show_entity_cell"):
+            i += 1
+            continue
+        block_size = max(int(row.get("entity_rowspan") or 1), 1)
+        dm = row.get("demand_model_name")
+        ek = str(row.get("entity_kind") or "")
+        if (dm == ez_dm and ek == "group") or (dm == est_dm and ek == "ees_russia"):
+            for j in range(block_size):
+                if i + j < n:
+                    summary_rows[i + j]["pd_pd_skip_empty_hide_row"] = True
+        i += block_size
 
 
 def apply_power_demand_summary_territory_compact_export_ui(
@@ -1941,7 +3004,12 @@ def apply_power_demand_summary_territory_compact_export_ui(
     """Выгрузка Excel: те же строки, что на экране при включённой «Сводная таблица»."""
     if not territory_compact_on:
         return list(summary_rows)
-    return [row for row in summary_rows if not row.get("pd_pd_territory_detail_row")]
+    return [
+        row
+        for row in summary_rows
+        if not row.get("pd_pd_territory_detail_row")
+        and not row.get("pd_pd_territory_compact_hide_row")
+    ]
 
 
 def apply_power_demand_summary_nt_export_ui(
@@ -1949,17 +3017,20 @@ def apply_power_demand_summary_nt_export_ui(
     *,
     nt_detail_on: bool,
 ) -> list[dict[str, Any]]:
-    """Выгрузка Excel: те же строки и подписи, что на экране при выключенной кнопке «+ НТ»."""
-    if nt_detail_on:
-        return list(summary_rows)
+    """Выгрузка Excel: те же строки и подписи, что на экране для выбранного режима «+ НТ»."""
     out: list[dict[str, Any]] = []
     for row in summary_rows:
-        if row.get("pd_pd_nt_extra_row"):
+        if not nt_detail_on and row.get("pd_pd_nt_extra_row"):
             continue
         rc = dict(row)
-        compact = row.get("pd_pd_entity_label_compact_nt")
-        if compact:
-            rc["entity_label"] = compact
+        if nt_detail_on:
+            nt_detail = row.get("pd_pd_entity_label_nt_detail")
+            if nt_detail:
+                rc["entity_label"] = nt_detail
+        else:
+            compact = row.get("pd_pd_entity_label_compact_nt")
+            if compact:
+                rc["entity_label"] = compact
         out.append(rc)
     return out
 
@@ -2103,22 +3174,105 @@ def _ues_row_uses_standard_oes_aggregation(row: dict[str, Any]) -> bool:
     return str(code) == CODE_WITHOUT_NT
 
 
+def _perimeter_variant_codes_match_nt_target(
+    row_code: str | None,
+    target_code: str | None,
+) -> bool:
+    """Совпадение кодов варианта периметра с целевым (legacy-группа с/без НТ или точное совпадение)."""
+    if target_code is None:
+        return row_code is None
+    if row_code is None:
+        return False
+    target_s = str(target_code)
+    row_s = str(row_code)
+    target_group = legacy_nt_group_for_perimeter_code(target_s)
+    row_group = legacy_nt_group_for_perimeter_code(row_s)
+    if target_group is not None and row_group is not None:
+        return target_group == row_group
+    if target_group == CODE_WITH_NT and row_s.startswith("with_nt"):
+        return True
+    if target_group == CODE_WITHOUT_NT and row_s.startswith("without_nt"):
+        return True
+    if row_group == CODE_WITH_NT and target_s.startswith("with_nt"):
+        return True
+    if row_group == CODE_WITHOUT_NT and target_s.startswith("without_nt"):
+        return True
+    return row_s == target_s
+
+
+def _ues_ids_with_explicit_nt_variant_in_summary(
+    summary_rows: list[dict[str, Any]],
+    nt_group: str,
+) -> frozenset[int]:
+    """ОЭС, у которых в сводке есть строка с явным вариантом периметра из legacy-группы nt_group."""
+    ues_dm = UnionEnergySystemDemandParameter.__name__
+    out: set[int] = set()
+    for r in summary_rows:
+        if r.get("demand_model_name") != ues_dm:
+            continue
+        row_code = r.get("perimeter_variant_code")
+        if row_code is None:
+            continue
+        if not _perimeter_variant_codes_match_nt_target(str(row_code), nt_group):
+            continue
+        uid = _union_energy_system_id_from_flat_row(r)
+        if uid is not None:
+            out.add(int(uid))
+    return frozenset(out)
+
+
+def _make_ues_perimeter_filter_for_ees_russia_aggregate(
+    summary_rows: list[dict[str, Any]],
+    ees_russia_perimeter_variant: str | None,
+) -> Callable[[dict[str, Any]], bool]:
+    """Фильтр ОЭС для агрегата «ЕЭС России»: явный вариант или базовая строка без варианта."""
+    target = ees_russia_perimeter_variant
+    target_s = str(target) if target else None
+    explicit: frozenset[int] = frozenset()
+    target_group = legacy_nt_group_for_perimeter_code(target_s) if target_s else None
+    if target_group == CODE_WITH_NT:
+        explicit = _ues_ids_with_explicit_nt_variant_in_summary(
+            summary_rows, CODE_WITH_NT
+        )
+    elif target_group == CODE_WITHOUT_NT:
+        explicit = _ues_ids_with_explicit_nt_variant_in_summary(
+            summary_rows, CODE_WITHOUT_NT
+        )
+
+    def _filter(row: dict[str, Any]) -> bool:
+        return _ues_row_included_for_ees_russia_aggregate_variant(
+            row,
+            ees_russia_perimeter_variant,
+            ues_ids_with_explicit_nt_variant=explicit,
+        )
+
+    return _filter
+
+
 def _ues_row_included_for_ees_russia_aggregate_variant(
     row: dict[str, Any],
     ees_russia_perimeter_variant: str | None,
+    *,
+    ues_ids_with_explicit_nt_variant: frozenset[int] | None = None,
 ) -> bool:
     """Строка ОЭС для «Расчетный максимум потребления мощности ЕЭС России»: вариант ОЭС согласован с агрегатом с/без НТ."""
     row_code = row.get("perimeter_variant_code")
-    if row_code is None:
+    target = ees_russia_perimeter_variant
+    if not target:
+        return row_code is None
+    if _perimeter_variant_codes_match_nt_target(row_code, target):
         return True
-    target = ees_russia_perimeter_variant or CODE_WITHOUT_NT
-    target_s = str(target)
-    row_s = str(row_code)
-    if target_s in perimeter_variant_codes_in_legacy_nt_group(CODE_WITH_NT):
-        return row_s in perimeter_variant_codes_in_legacy_nt_group(CODE_WITH_NT)
-    if target_s in perimeter_variant_codes_in_legacy_nt_group(CODE_WITHOUT_NT):
-        return row_s in perimeter_variant_codes_in_legacy_nt_group(CODE_WITHOUT_NT)
-    return row_s == target_s
+    if row_code is not None:
+        return False
+    target_group = legacy_nt_group_for_perimeter_code(str(target))
+    if target_group not in (CODE_WITH_NT, CODE_WITHOUT_NT):
+        return False
+    uid = _union_energy_system_id_from_flat_row(row)
+    if uid is None:
+        return True
+    if ues_ids_with_explicit_nt_variant is not None:
+        return int(uid) not in ues_ids_with_explicit_nt_variant
+    return False
 
 
 def _union_energy_system_id_from_flat_row(row: dict[str, Any]) -> int | None:
@@ -2448,7 +3602,7 @@ def _aggregate_nt_subjects_combined_on_es_mw_sum_for_south_ues(
     south_ues_id: int,
     year_included: Callable[[int], bool] | None = None,
 ) -> list[float | None]:
-    """Сумма «Совмещенный максимум потребления мощности субъекта РФ на РЭС» по ФО «Новые территории»."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума РЭС» по ФО «Новые территории»."""
     return _aggregate_nt_subjects_parameter_mw_sum_for_south_ues(
         summary_rows,
         years,
@@ -2465,7 +3619,7 @@ def _aggregate_nt_subjects_combined_on_ees_mw_sum_for_south_ues(
     south_ues_id: int,
     year_included: Callable[[int], bool] | None = None,
 ) -> list[float | None]:
-    """Сумма «Совмещенный максимум потребления мощности субъекта РФ на ЕЭС» по ФО «Новые территории»."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС» по ФО «Новые территории»."""
     return _aggregate_nt_subjects_parameter_mw_sum_for_south_ues(
         summary_rows,
         years,
@@ -2521,7 +3675,9 @@ def _south_ues_ids_for_nt_enrichment(
     """id ОЭС Юга по строкам «… с НТ» на сводке (на случай нескольких версий справочника)."""
     out: set[int] = set()
     for r in summary_rows:
-        if r.get("perimeter_variant_code") != CODE_WITH_NT:
+        if not _perimeter_variant_codes_match_nt_target(
+            r.get("perimeter_variant_code"), CODE_WITH_NT
+        ):
             continue
         label_cf = str(r.get("entity_label") or "").strip().casefold()
         if "юга" not in label_cf:
@@ -2535,6 +3691,164 @@ def _south_ues_ids_for_nt_enrichment(
     if south is not None:
         return frozenset({int(south.id)})
     return frozenset()
+
+
+def _south_ues_perimeter_variant_row(
+    row: dict[str, Any],
+    south_ids: frozenset[int],
+    nt_group: str,
+) -> bool:
+    label_cf = str(row.get("entity_label") or "").strip().casefold()
+    if "юга" not in label_cf:
+        return False
+    uid = _union_energy_system_id_from_flat_row(row)
+    if uid is None or int(uid) not in south_ids:
+        return False
+    return _perimeter_variant_codes_match_nt_target(
+        row.get("perimeter_variant_code"), nt_group
+    )
+
+
+def _compose_year_included_filters(
+    base: Callable[[int], bool] | None,
+    extra: Callable[[int], bool],
+) -> Callable[[int], bool]:
+    def _composed(y: int) -> bool:
+        if not extra(y):
+            return False
+        if base is not None and not base(y):
+            return False
+        return True
+
+    return _composed
+
+
+def _south_ues_with_nt_formula_year_included(
+    base: Callable[[int], bool] | None = None,
+) -> Callable[[int], bool]:
+    """ОЭС Юга с НТ: расчётные строки и проверки только с года появления НТ в формулах."""
+    from app.power_demand.services.perimeter_variant_tree_rules import (
+        NEW_TERRITORIES_FROM_YEAR,
+    )
+
+    return _compose_year_included_filters(
+        base, lambda y: int(y) >= int(NEW_TERRITORIES_FROM_YEAR)
+    )
+
+
+def _clear_south_ues_with_nt_formula_years_before(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+) -> None:
+    """ОЭС Юга с НТ: расчётные показатели до NEW_TERRITORIES_FROM_YEAR — пустые ячейки."""
+    from app.power_demand.services.perimeter_variant_tree_rules import (
+        NEW_TERRITORIES_FROM_YEAR,
+    )
+
+    if not summary_rows or not years:
+        return
+    south_ids: set[int] = set()
+    for r in summary_rows:
+        if not _perimeter_variant_codes_match_nt_target(
+            r.get("perimeter_variant_code"), CODE_WITH_NT
+        ):
+            continue
+        label_cf = str(r.get("entity_label") or "").strip().casefold()
+        if "юга" not in label_cf:
+            continue
+        uid = _union_energy_system_id_from_flat_row(r)
+        if uid is not None:
+            south_ids.add(int(uid))
+    if not south_ids:
+        return
+    south_ids_frozen = frozenset(south_ids)
+    keys = frozenset(
+        {
+            "calculated_max_power_mw",
+            "calculated_combined_on_ees_mw",
+            "verify_for_calculated_max_power_mw",
+            "verify_for_calculated_combined_on_ees_mw",
+        }
+    )
+    n_y = len(years)
+    for r in summary_rows:
+        pk = str(r.get("parameter_key") or "")
+        if pk not in keys:
+            continue
+        if not _south_ues_perimeter_variant_row(r, south_ids_frozen, CODE_WITH_NT):
+            continue
+        yv = list(r.get("year_values") or [])
+        ynt = list(r.get("year_numeric_tooltips") or [])
+        while len(yv) < n_y:
+            yv.append("—")
+        while len(ynt) < n_y:
+            ynt.append("")
+        for j, y in enumerate(years):
+            if int(y) >= int(NEW_TERRITORIES_FROM_YEAR):
+                continue
+            yv[j] = "—"
+            ynt[j] = ""
+        r["year_values"] = yv
+        r["year_numeric_tooltips"] = ynt
+
+
+def enrich_south_ues_perimeter_calculated_combined_on_ees_from_res(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> None:
+    """«Расчетное совмещенное … на ЕЭС» для ОЭС Юга с/без НТ (как расчётный максимум ОЭС)."""
+    if not summary_rows or not years:
+        return
+    south_ids = _south_ues_ids_for_nt_enrichment(summary_rows)
+    if not south_ids:
+        return
+    res_sums_by_union = _aggregate_res_combined_on_ees_mw_sum_by_union(
+        summary_rows, years, year_included=year_included
+    )
+    n_y = len(years)
+    south_with_nt_year_included = _south_ues_with_nt_formula_year_included(year_included)
+    combined_with_nt_by_union: dict[int, list[float | None]] = {}
+    for south_id in south_ids:
+        nt_year_sums = _aggregate_nt_subjects_combined_on_ees_mw_sum_for_south_ues(
+            summary_rows,
+            years,
+            south_ues_id=south_id,
+            year_included=south_with_nt_year_included,
+        )
+        res_mids = res_sums_by_union.get(south_id) or [None] * n_y
+        combined_with_nt_by_union[south_id] = [
+            _sum_optional_floats(
+                res_mids[j] if j < len(res_mids) else None,
+                nt_year_sums[j] if j < len(nt_year_sums) else None,
+            )
+            for j in range(n_y)
+        ]
+
+    _apply_ues_calculated_mw_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        ues_parameter_key="calculated_combined_on_ees_mw",
+        sums_by_union=res_sums_by_union,
+        year_included=year_included,
+        row_include_predicate=lambda r, ids=south_ids: _south_ues_perimeter_variant_row(
+            r, ids, CODE_WITHOUT_NT
+        ),
+    )
+    _apply_ues_calculated_mw_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        ues_parameter_key="calculated_combined_on_ees_mw",
+        sums_by_union=combined_with_nt_by_union,
+        year_included=south_with_nt_year_included,
+        row_include_predicate=lambda r, ids=south_ids: _south_ues_perimeter_variant_row(
+            r, ids, CODE_WITH_NT
+        ),
+    )
 
 
 def enrich_south_ues_with_nt_calculated_max_power_from_res_and_nt_subjects(
@@ -2554,10 +3868,14 @@ def enrich_south_ues_with_nt_calculated_max_power_from_res_and_nt_subjects(
         summary_rows, years, year_included=year_included
     )
     n_y = len(years)
+    south_with_nt_year_included = _south_ues_with_nt_formula_year_included(year_included)
     combined_by_union: dict[int, list[float | None]] = {}
     for south_id in south_ids:
         nt_year_sums = _aggregate_nt_subjects_combined_on_es_mw_sum_for_south_ues(
-            summary_rows, years, south_ues_id=south_id, year_included=year_included
+            summary_rows,
+            years,
+            south_ues_id=south_id,
+            year_included=south_with_nt_year_included,
         )
         res_mids = res_sums_by_union.get(south_id) or [None] * n_y
         combined_by_union[south_id] = [
@@ -2569,21 +3887,26 @@ def enrich_south_ues_with_nt_calculated_max_power_from_res_and_nt_subjects(
         ]
 
     def _south_with_nt_row(row: dict[str, Any]) -> bool:
-        if row.get("perimeter_variant_code") != CODE_WITH_NT:
-            return False
-        label_cf = str(row.get("entity_label") or "").strip().casefold()
-        if "юга" not in label_cf:
-            return False
-        uid = _union_energy_system_id_from_flat_row(row)
-        return uid is not None and int(uid) in south_ids
+        return _south_ues_perimeter_variant_row(row, south_ids, CODE_WITH_NT)
 
     _apply_ues_calculated_mw_from_res_sums(
         summary_rows,
         years,
         rounding_digits,
         ues_parameter_key="calculated_max_power_mw",
-        sums_by_union=combined_by_union,
+        sums_by_union=res_sums_by_union,
         year_included=year_included,
+        row_include_predicate=lambda r, ids=south_ids: _south_ues_perimeter_variant_row(
+            r, ids, CODE_WITHOUT_NT
+        ),
+    )
+    _apply_ues_calculated_mw_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        ues_parameter_key="calculated_max_power_mw",
+        sums_by_union=combined_by_union,
+        year_included=south_with_nt_year_included,
         row_include_predicate=_south_with_nt_row,
     )
 
@@ -2717,6 +4040,166 @@ def _aggregate_res_combined_on_cz_mw_sum_by_federal_district(
             else:
                 row_tot[j] = float(row_tot[j]) + float(add)
     return out
+
+
+def _aggregate_res_combined_on_ees_mw_sum_by_federal_district(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> dict[int, list[float | None]]:
+    """Сумма «Совмещенное … на ЕЭС, МВт» по строкам РЭС внутри каждого ФО."""
+    n_y = len(years)
+    out: dict[int, list[float | None]] = {}
+
+    def _tot(fid: int) -> list[float | None]:
+        if fid not in out:
+            out[fid] = [None] * n_y
+        return out[fid]
+
+    for r in _iter_res_level_aggregation_source_rows(summary_rows, "combined_on_ees"):
+        raw_fid = r.get("id_federal_district")
+        if raw_fid is None:
+            continue
+        try:
+            fid = int(raw_fid)
+        except (TypeError, ValueError):
+            continue
+
+        row_tot = _tot(fid)
+        yvals = r.get("year_values") or []
+        for j in range(n_y):
+            y = years[j]
+            if year_included is not None and not year_included(y):
+                continue
+            add = _parse_summary_cell_float(yvals[j] if j < len(yvals) else None)
+            if add is None:
+                continue
+            if row_tot[j] is None:
+                row_tot[j] = float(add)
+            else:
+                row_tot[j] = float(row_tot[j]) + float(add)
+    return out
+
+
+def _apply_fd_parameter_from_res_sums(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    fd_parameter_key: str,
+    sums_by_federal_district: dict[int, list[float | None]],
+    year_included: Callable[[int], bool] | None = None,
+    use_calculated_mw_format: bool = False,
+) -> None:
+    """Подставляет в строку ФО суммы по РЭС (годовые столбцы; исторический столбец очищается)."""
+    n_y = len(years)
+    dm_fd = FederalDistrictDemandParameter.__name__
+    for r in summary_rows:
+        if r.get("demand_model_name") != dm_fd:
+            continue
+        if r.get("parameter_key") != fd_parameter_key:
+            continue
+        raw_fid = r.get("id_federal_district")
+        if raw_fid is None:
+            continue
+        try:
+            fid = int(raw_fid)
+        except (TypeError, ValueError):
+            continue
+        mids = sums_by_federal_district.get(fid)
+        if mids is None:
+            mids = [None] * n_y
+        yv_p = list(r.get("year_values") or [])
+        ynt_p = list(r.get("year_numeric_tooltips") or [])
+        while len(yv_p) < n_y:
+            yv_p.append("—")
+        while len(ynt_p) < n_y:
+            ynt_p.append("")
+        for j in range(n_y):
+            if year_included is not None and not year_included(years[j]):
+                continue
+            s = mids[j] if j < len(mids) else None
+            if s is not None:
+                if use_calculated_mw_format:
+                    yv_p[j] = _format_calculated_max_mw(s)
+                    ynt_p[j] = _format_calculated_max_mw(s)
+                else:
+                    yv_p[j] = _format_numeric(s, rounding_digits)
+                    ynt_p[j] = _format_full_numeric_tooltip(s)
+            else:
+                yv_p[j] = "—"
+                ynt_p[j] = ""
+        r["year_values"] = yv_p
+        r["year_numeric_tooltips"] = ynt_p
+        r["hist_value"] = ""
+        r["hist_numeric_tooltip"] = ""
+
+
+def enrich_fo_summary_combined_on_ees_from_res(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> None:
+    """«Совмещенное … на ЕЭС, МВт» по ФО = сумма «Совмещенное … на ЕЭС, МВт» по РЭС данного ФО."""
+    sums = _aggregate_res_combined_on_ees_mw_sum_by_federal_district(
+        summary_rows, years, year_included=year_included
+    )
+    _apply_fd_parameter_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        fd_parameter_key="combined_on_ees",
+        sums_by_federal_district=sums,
+        year_included=year_included,
+        use_calculated_mw_format=False,
+    )
+
+
+def enrich_fo_summary_calculated_max_power_from_res_combined_on_fo(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> None:
+    """«Расчетное максимальное потребление мощности, МВт» по ФО = сумма «Совмещенный на ФО, МВт» по РЭС."""
+    sums = _aggregate_res_combined_on_fo_mw_sum_by_federal_district(
+        summary_rows, years, year_included=year_included
+    )
+    _apply_fd_parameter_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        fd_parameter_key="calculated_max_power_mw",
+        sums_by_federal_district=sums,
+        year_included=year_included,
+        use_calculated_mw_format=True,
+    )
+
+
+def enrich_fo_summary_calculated_combined_on_ees_from_res(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> None:
+    """«Расчетное совмещенное … на ЕЭС, МВт» по ФО = сумма «Совмещенное … на ЕЭС, МВт» по РЭС."""
+    sums = _aggregate_res_combined_on_ees_mw_sum_by_federal_district(
+        summary_rows, years, year_included=year_included
+    )
+    _apply_fd_parameter_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        fd_parameter_key="calculated_combined_on_ees_mw",
+        sums_by_federal_district=sums,
+        year_included=year_included,
+        use_calculated_mw_format=True,
+    )
 
 
 def enrich_fo_summary_calculated_max_from_res_combined_on_fo(
@@ -2868,7 +4351,7 @@ def _aggregate_res_combined_on_ees_mw_sum_by_synchronous_area(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> dict[int, list[float | None]]:
-    """Сумма «Совмещенный максимум потребления мощности РЭС на ЕЭС, МВт» по РЭС внутри каждой синхронной зоны."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» по РЭС внутри каждой синхронной зоны."""
     n_y = len(years)
     out: dict[int, list[float | None]] = {}
     subject_fallback = _subject_parameter_sums_by_res_year_index(
@@ -2912,7 +4395,7 @@ def _aggregate_res_combined_on_oes_mw_sum_by_synchronous_area(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> dict[int, list[float | None]]:
-    """Сумма «Совмещенный максимум потребления мощности РЭС на ОЭС, МВт» по РЭС внутри каждой синхронной зоны."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт» по РЭС внутри каждой синхронной зоны."""
     n_y = len(years)
     out: dict[int, list[float | None]] = {}
     subject_fallback = _subject_parameter_sums_by_res_year_index(
@@ -2956,7 +4439,7 @@ def _aggregate_res_max_power_mw_sum_by_synchronous_area(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> dict[int, list[float | None]]:
-    """Сумма «Максимум потребления мощности, МВт» по РЭС внутри каждой синхронной зоны."""
+    """Сумма «Максимальное потребление мощности, МВт» по РЭС внутри каждой синхронной зоны."""
     n_y = len(years)
     out: dict[int, list[float | None]] = {}
 
@@ -2989,6 +4472,138 @@ def _aggregate_res_max_power_mw_sum_by_synchronous_area(
     return out
 
 
+def _find_ues_summary_row(
+    summary_rows: list[dict[str, Any]],
+    *,
+    ues_id: int,
+    parameter_key: str,
+) -> dict[str, Any] | None:
+    dm_ues = UnionEnergySystemDemandParameter.__name__
+    for row in summary_rows:
+        if row.get("demand_model_name") != dm_ues:
+            continue
+        if row.get("parameter_key") != parameter_key:
+            continue
+        if _union_energy_system_id_from_flat_row(row) == ues_id:
+            return row
+    return None
+
+
+def _find_res_summary_row(
+    summary_rows: list[dict[str, Any]],
+    *,
+    res_id: int,
+    parameter_key: str,
+) -> dict[str, Any] | None:
+    dm_res = RegionalEnergySystemDemandParameter.__name__
+    for row in summary_rows:
+        if row.get("demand_model_name") != dm_res:
+            continue
+        if row.get("parameter_key") != parameter_key:
+            continue
+        if _regional_energy_system_id_from_flat_row(row) == res_id:
+            return row
+    return None
+
+
+def _copy_pd_summary_row_display_from_reference(
+    target_row: dict[str, Any],
+    reference_row: dict[str, Any],
+    years: list[int],
+) -> None:
+    n_y = len(years)
+    source_values = list(reference_row.get("year_values") or [])
+    source_tooltips = list(reference_row.get("year_numeric_tooltips") or [])
+    while len(source_values) < n_y:
+        source_values.append("—")
+    while len(source_tooltips) < n_y:
+        source_tooltips.append("")
+    target_row["year_values"] = source_values[:n_y]
+    target_row["year_numeric_tooltips"] = source_tooltips[:n_y]
+    pk = str(target_row.get("parameter_key") or "")
+    if pk in OES_SUMMARY_HIST_PARAMETER_KEYS:
+        target_row["hist_value"] = reference_row.get("hist_value", "")
+        target_row["hist_numeric_tooltip"] = reference_row.get("hist_numeric_tooltip", "")
+
+
+def apply_second_sa_from_ues_east_formula(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    _rounding_digits: int,
+) -> None:
+    """Вторая синхронная зона на сводке по ОЭС = показатели ОЭС Востока (только отображение)."""
+    if not summary_rows or not years:
+        return
+
+    second_sa_id = _resolve_synchronous_area_id_by_name_prefix_cf(
+        _SECOND_SYNC_AREA_BASE_LABEL_CF
+    )
+    ues_east_id = _resolve_union_energy_system_id_by_name_cf(_UES_EAST_NAME_CF)
+    if second_sa_id is None or ues_east_id is None:
+        return
+
+    dm_sa = SynchronousAreaDemandParameter.__name__
+    for target_row in summary_rows:
+        if target_row.get("demand_model_name") != dm_sa:
+            continue
+        if _synchronous_area_id_from_flat_row(target_row) != second_sa_id:
+            continue
+        target_pk = str(target_row.get("parameter_key") or "")
+        source_pk = _SECOND_SA_FROM_UES_EAST_SOURCE_PARAM.get(target_pk)
+        if not source_pk:
+            continue
+        source_row = _find_ues_summary_row(
+            summary_rows,
+            ues_id=ues_east_id,
+            parameter_key=source_pk,
+        )
+        if source_row is None:
+            continue
+        _copy_pd_summary_row_display_from_reference(target_row, source_row, years)
+        target_row["pd_pd_formula_derived_row"] = True
+        formula_key = _SECOND_SA_FROM_UES_EAST_FORMULA_KEY.get(target_pk)
+        if formula_key:
+            target_row["pd_formula_text_key"] = formula_key
+
+
+def apply_kaliningrad_sa_from_kaliningrad_es_formula(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    _rounding_digits: int,
+) -> None:
+    """Синхронная зона Калининградской области на сводке по ОЭС = ЭС Калининградской области (только отображение)."""
+    if not summary_rows or not years:
+        return
+
+    kaliningrad_sa_id = _resolve_kaliningrad_synchronous_area_id()
+    kaliningrad_es_id = _resolve_regional_energy_system_id_by_name_cf(_KALININGRAD_ES_NAME_CF)
+    if kaliningrad_sa_id is None or kaliningrad_es_id is None:
+        return
+
+    dm_sa = SynchronousAreaDemandParameter.__name__
+    for target_row in summary_rows:
+        if target_row.get("demand_model_name") != dm_sa:
+            continue
+        if _synchronous_area_id_from_flat_row(target_row) != kaliningrad_sa_id:
+            continue
+        target_pk = str(target_row.get("parameter_key") or "")
+        source_pk = _KALININGRAD_SA_FROM_ES_SOURCE_PARAM.get(target_pk)
+        if not source_pk:
+            continue
+        source_row = _find_res_summary_row(
+            summary_rows,
+            res_id=kaliningrad_es_id,
+            parameter_key=source_pk,
+        )
+        if source_row is None:
+            continue
+        _copy_pd_summary_row_display_from_reference(target_row, source_row, years)
+        target_row["pd_pd_formula_derived_row"] = True
+        formula_key = _KALININGRAD_SA_FROM_ES_FORMULA_KEY.get(target_pk)
+        if formula_key:
+            target_row["pd_formula_text_key"] = formula_key
+
+
 def enrich_oes_summary_calculated_max_power_sa_from_res_max_power(
     summary_rows: list[dict[str, Any]],
     years: list[int],
@@ -2996,11 +4611,11 @@ def enrich_oes_summary_calculated_max_power_sa_from_res_max_power(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный максимум потребления мощности, МВт» по синхронной зоне.
+    """«Расчетное максимальное потребление мощности, МВт» по синхронной зоне.
 
-    Для «Вторая синхронная зона» — сумма «Совмещенный максимум потребления мощности РЭС на ОЭС, МВт»;
-    для «Синхронная зона Калининградской области» — «Максимум потребления мощности, МВт» ЭС Калининградской области;
-    для первой синхронной зоны — сумма «Максимум потребления мощности, МВт» по РЭС зоны.
+    Для «Вторая синхронная зона» — сумма «Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт»;
+    для «Синхронная зона Калининградской области» — «Максимальное потребление мощности, МВт» ЭС Калининградской области;
+    для первой синхронной зоны — сумма «Максимальное потребление мощности, МВт» по РЭС зоны.
     """
     res_to_sa_ids = _build_res_to_synchronous_area_ids_map()
     sums_max = _aggregate_res_max_power_mw_sum_by_synchronous_area(
@@ -3076,9 +4691,9 @@ def enrich_oes_summary_calculated_max_sa_from_res_combined_on_ees(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный совмещенный максимум потребления мощности СЗ на ЕЭС, МВт».
+    """«Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт».
 
-    Для первой и второй синхронной зоны — сумма «Совмещенный максимум потребления мощности РЭС на ЕЭС, МВт»
+    Для первой и второй синхронной зоны — сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
     по РЭС зоны; для Калининграда — значение ЭС Калининградской области.
     """
     res_to_sa_ids = _build_res_to_synchronous_area_ids_map()
@@ -3245,7 +4860,7 @@ def enrich_oes_summary_calculated_max_power_from_res_combined(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный максимум потребления мощности, МВт» = сумма «Совмещенный максимум потребления мощности ОЭС, МВт» по РЭС того же ОЭС."""
+    """«Расчетное максимальное потребление мощности, МВт» = сумма «Совмещенный максимум потребления мощности ОЭС, МВт» по РЭС того же ОЭС."""
     sums = _aggregate_res_combined_on_oes_mw_sum_by_union(
         summary_rows, years, year_included=year_included
     )
@@ -3305,7 +4920,7 @@ def enrich_oes_summary_calculated_combined_on_ees_from_res_combined(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт» = сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по РЭС того же ОЭС."""
+    """«Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» = сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по РЭС того же ОЭС."""
     sums = _aggregate_res_combined_on_ees_mw_sum_by_union(
         summary_rows, years, year_included=year_included
     )
@@ -3338,15 +4953,16 @@ def _union_energy_system_ids_for_energy_system_type(type_name: str) -> frozenset
     )
 
 
-def _sum_ues_combined_on_ees_in_summary_rows(
+def _sum_ues_parameter_in_summary_rows(
     summary_rows: list[dict[str, Any]],
     years: list[int],
+    parameter_key: str,
     *,
     allowed_ues_ids: frozenset[int] | None = None,
     year_included: Callable[[int], bool] | None = None,
     ues_perimeter_filter: Callable[[dict[str, Any]], bool] | None = None,
 ) -> tuple[list[float | None], float | None]:
-    """Сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по строкам ОЭС в flat-таблице сводки."""
+    """Сумма значений показателя УЭС по строкам ОЭС в flat-таблице сводки."""
     n_y = len(years)
     year_tot: list[float | None] = [None] * n_y
     hist_tot: float | None = None
@@ -3354,7 +4970,7 @@ def _sum_ues_combined_on_ees_in_summary_rows(
     for r in summary_rows:
         if r.get("demand_model_name") != ues_dm:
             continue
-        if r.get("parameter_key") != "combined_on_ees":
+        if r.get("parameter_key") != parameter_key:
             continue
         if ues_perimeter_filter is not None:
             if not ues_perimeter_filter(r):
@@ -3386,6 +5002,25 @@ def _sum_ues_combined_on_ees_in_summary_rows(
                 else:
                     hist_tot = float(hist_tot) + float(add_h)
     return year_tot, hist_tot
+
+
+def _sum_ues_combined_on_ees_in_summary_rows(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    *,
+    allowed_ues_ids: frozenset[int] | None = None,
+    year_included: Callable[[int], bool] | None = None,
+    ues_perimeter_filter: Callable[[dict[str, Any]], bool] | None = None,
+) -> tuple[list[float | None], float | None]:
+    """Сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по строкам ОЭС в flat-таблице сводки."""
+    return _sum_ues_parameter_in_summary_rows(
+        summary_rows,
+        years,
+        "combined_on_ees",
+        allowed_ues_ids=allowed_ues_ids,
+        year_included=year_included,
+        ues_perimeter_filter=ues_perimeter_filter,
+    )
 
 
 def _sum_res_combined_on_ees_in_summary_rows(
@@ -3564,8 +5199,8 @@ def enrich_oes_ees_russia_calculated_max_via_oes(
             years,
             allowed_ues_ids=ues_ids,
             year_included=year_included,
-            ues_perimeter_filter=lambda r, v=block_variant: (
-                _ues_row_included_for_ees_russia_aggregate_variant(r, v)
+            ues_perimeter_filter=_make_ues_perimeter_filter_for_ees_russia_aggregate(
+                summary_rows, block_variant
             ),
         )
         year_sums = _ees_russia_year_sums_with_nt_addon(
@@ -3708,7 +5343,7 @@ def _ees_russia_max_power_without_nt_year_sums(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> list[float | None]:
-    """«Максимум потребления мощности, МВт» агрегата «ЕЭС России без НТ» по годам."""
+    """«Максимальное потребление мощности, МВт» агрегата «ЕЭС России без НТ» по годам."""
     n_y = len(years)
     out: list[float | None] = [None] * n_y
     for r in summary_rows:
@@ -3716,7 +5351,9 @@ def _ees_russia_max_power_without_nt_year_sums(
             continue
         if r.get("demand_model_name") != _EES_RUSSIA_AGGREGATE_DM_NAME:
             continue
-        if r.get("perimeter_variant_code") != CODE_WITHOUT_NT:
+        if not _perimeter_variant_codes_match_nt_target(
+            r.get("perimeter_variant_code"), CODE_WITHOUT_NT
+        ):
             continue
         if r.get("parameter_key") != "max_power":
             continue
@@ -3783,7 +5420,7 @@ def _sum_tites_branch_max_power_in_summary_rows(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> list[float | None]:
-    """Сумма «Максимум потребления мощности, МВт» по всей ветке «ТИТЭС и децентрализованная зона»."""
+    """Сумма «Максимальное потребление мощности, МВт» по всей ветке «ТИТЭС и децентрализованная зона»."""
     n_y = len(years)
     tites_ids = _tites_union_energy_system_ids()
     if not tites_ids:
@@ -3816,7 +5453,7 @@ def _first_sync_calculated_max_power_by_variant(
     years: list[int],
     perimeter_variant_code: str | None,
 ) -> list[float | None]:
-    """«Расчетный максимум потребления мощности, МВт» первой синхронной зоны (по варианту НТ)."""
+    """«Расчетное максимальное потребление мощности, МВт» первой синхронной зоны (по варианту НТ)."""
     n_y = len(years)
     sa_dm = SynchronousAreaDemandParameter.__name__
     for r in summary_rows:
@@ -3826,7 +5463,9 @@ def _first_sync_calculated_max_power_by_variant(
             continue
         if not _is_first_synchronous_area_name(r.get("entity_label")):
             continue
-        if r.get("perimeter_variant_code") != perimeter_variant_code:
+        if not _perimeter_variant_codes_match_nt_target(
+            r.get("perimeter_variant_code"), perimeter_variant_code
+        ):
             continue
         yvals = r.get("year_values") or []
         return [
@@ -3852,7 +5491,7 @@ def _sum_ees_aggregate_formula_tites_energy_units_max_power(
     year_included: Callable[[int], bool] | None = None,
     legacy_adjustments: bool = True,
 ) -> list[float | None]:
-    """Сумма «Максимум потребления мощности, МВт» по энергорайонам формулы ЭЭС России."""
+    """Сумма «Максимальное потребление мощности, МВт» по энергорайонам формулы ЭЭС России."""
     n_y = len(years)
     eu_ids = _ees_aggregate_formula_tites_energy_unit_ids()
     if not eu_ids:
@@ -3947,7 +5586,7 @@ def enrich_oes_ees_calculated_max_power_consumption(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный максимум потребления мощности, МВт» (ЭЭС России).
+    """«Расчетное максимальное потребление мощности, МВт» (ЭЭС России).
 
     Без НТ: первая СЗ − ТИТЭС + энергорайоны формулы.
     С НТ: то же, что без НТ, + сумма combined_on_es субъектов «Новые территории» (как ОЭС Юга с НТ).
@@ -3969,7 +5608,8 @@ def enrich_oes_ees_calculated_max_power_consumption(
         block_variant = row.get("perimeter_variant_code")
         year_sums = (
             with_nt_sums
-            if block_variant == CODE_WITH_NT
+            if block_variant is not None
+            and legacy_nt_group_for_perimeter_code(str(block_variant)) == CODE_WITH_NT
             else without_nt_sums
         )
         _apply_ees_russia_calculated_mw_to_entity_block(
@@ -3992,9 +5632,9 @@ def enrich_oes_ees_russia_calculated_max_russia_mw(
     filter_year_list: list[int],
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный максимум потребления мощности ЕЭС России, МВт» = сумма «Совмещенный максимум потребления мощности ЕЭС» по ОЭС типа «ЕЭС России».
+    """«Расчетный максимум потребления мощности ЕЭС России, МВт» = сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» по ОЭС типа «ЕЭС России».
 
-    Для агрегата «ЕЭС России с/без НТ» берётся соответствующий вариант ОЭС Юга.
+    Для агрегата «ЕЭС России с/без НТ» у ОЭС Юга берётся соответствующий вариант периметра.
     """
     _ = filter_year_list
     if not summary_rows or not years:
@@ -4014,8 +5654,8 @@ def enrich_oes_ees_russia_calculated_max_russia_mw(
             years,
             allowed_ues_ids=ues_ids,
             year_included=year_included,
-            ues_perimeter_filter=lambda r, v=block_variant: (
-                _ues_row_included_for_ees_russia_aggregate_variant(r, v)
+            ues_perimeter_filter=_make_ues_perimeter_filter_for_ees_russia_aggregate(
+                summary_rows, block_variant
             ),
         )
         year_sums = _ees_russia_year_sums_with_nt_addon(
@@ -4051,6 +5691,9 @@ def _enrich_oes_summary_calculated_max_from_res(
     enrich_oes_summary_calculated_combined_on_ees_from_res_combined(
         rows, years, rounding_digits
     )
+    enrich_south_ues_perimeter_calculated_combined_on_ees_from_res(
+        rows, years, rounding_digits
+    )
     enrich_oes_ees_russia_calculated_max_russia_mw(
         rows,
         years,
@@ -4067,6 +5710,7 @@ def _enrich_oes_summary_calculated_max_from_res(
     )
     enrich_oes_ees_calculated_max_power_consumption(rows, years, rounding_digits)
     _clear_oes_summary_hist_non_base_parameters(rows)
+    _clear_south_ues_with_nt_formula_years_before(rows, years)
 
 
 def _enrich_fo_summary_calculated_max_from_res(
@@ -4080,6 +5724,13 @@ def _enrich_fo_summary_calculated_max_from_res(
     enrich_fo_summary_calculated_combined_on_cz_from_res_combined(
         rows, years, rounding_digits
     )
+    if context.get("fo_max_extended_parameters"):
+        enrich_fo_summary_calculated_max_power_from_res_combined_on_fo(
+            rows, years, rounding_digits
+        )
+        enrich_fo_summary_calculated_combined_on_ees_from_res(
+            rows, years, rounding_digits
+        )
 
 
 def _aggregate_res_combined_on_oes_mw_sum_by_union_for_medium_years(
@@ -4089,7 +5740,7 @@ def _aggregate_res_combined_on_oes_mw_sum_by_union_for_medium_years(
 ) -> dict[int, list[float | None]]:
     """Сумма «Совмещенный максимум потребления мощности ОЭС, МВт» по строкам РЭС (отчётный N−9…N и среднесрочный N+1…N+6).
 
-    На УЭС для «Расчетный максимум потребления мощности, МВт» эти годы задаются этой суммой.
+    На УЭС для «Расчетное максимальное потребление мощности, МВт» эти годы задаются этой суммой.
     """
     return _aggregate_res_combined_on_oes_mw_sum_by_union(
         summary_rows,
@@ -4105,7 +5756,7 @@ def _aggregate_res_combined_on_ees_mw_sum_by_union_for_medium_years(
 ) -> dict[int, list[float | None]]:
     """Сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по строкам РЭС (отчётный N−9…N и среднесрочный N+1…N+6).
 
-    На УЭС для «Расчетный совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт» эти годы задаются этой суммой.
+    На УЭС для «Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» эти годы задаются этой суммой.
     """
     return _aggregate_res_combined_on_ees_mw_sum_by_union(
         summary_rows,
@@ -4488,6 +6139,9 @@ def _aggregation_level_header_row(
         "id_energy_zone": getattr(entity, "id_energy_zone", None),
         "id_synchronous_area": getattr(entity, "id_synchronous_area", None),
         "perimeter_variant_code": getattr(entity, "perimeter_variant_code", None),
+        "pd_pd_summary_perimeter_variant_row": bool(
+            getattr(entity, "summary_perimeter_variant_row", False)
+        ),
         "year_coeff_k_stored": [],
         "entity_note_text": "",
         "entity_note_row_id": None,
@@ -4495,6 +6149,7 @@ def _aggregation_level_header_row(
         "pd_pd_aggregation_level_row": True,
         "pd_pd_aggregation_level_full_row": True,
         "pd_pd_skip_empty_hide_row": True,
+        "pd_pd_nt_subtree_root": _entity_row_is_nt_subtree_root(entity),
     }
 
 
@@ -4575,6 +6230,9 @@ def _flatten_entity(
                 "id_synchronous_area": getattr(entity, "id_synchronous_area", None),
                 "id_energy_unit": getattr(entity, "id_energy_unit", None),
                 "perimeter_variant_code": getattr(entity, "perimeter_variant_code", None),
+                "pd_pd_summary_perimeter_variant_row": bool(
+                    getattr(entity, "summary_perimeter_variant_row", False)
+                ),
                 "year_coeff_k_stored": _year_coeff_k_stored_for_flat(
                     parameter_key=parameter_key,
                     demand_model_name=dm_name,
@@ -4585,6 +6243,7 @@ def _flatten_entity(
                 "entity_note_text": entity_note_text,
                 "entity_note_row_id": entity_note_rid,
                 "show_entity_note_cell": index == 0,
+                "pd_pd_nt_subtree_root": index == 0 and _entity_row_is_nt_subtree_root(entity),
             }
         )
         if entity.is_decentralized_zone_energy_unit:
@@ -5013,13 +6672,95 @@ def _build_nt_subject_entities_for_under_south(
     return out
 
 
+def _south_ues_base_res_subtree_insert_index(
+    summary_rows: list[dict[str, Any]],
+    south_ues_id: int,
+) -> int | None:
+    """Индекс вставки блока «Новые территории»: сразу после последней РЭС «ОЭС Юга без НТ»."""
+    insert_at: int | None = None
+    in_base_south = False
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if not in_base_south:
+            if (
+                row.get("show_entity_cell")
+                and row.get("entity_kind") == "perimeter_variant"
+                and row.get("id_union_energy_system") == south_ues_id
+                and legacy_nt_group_for_perimeter_code(row.get("perimeter_variant_code"))
+                == CODE_WITHOUT_NT
+            ):
+                in_base_south = True
+                block = max(int(row.get("entity_rowspan") or 1), 1)
+                insert_at = i + block
+                i = insert_at
+                continue
+            i += 1
+            continue
+        if row.get("show_entity_cell"):
+            if row.get("id_union_energy_system") != south_ues_id:
+                return insert_at
+            if row.get("pd_pd_aggregation_level_row"):
+                return None
+            block = max(int(row.get("entity_rowspan") or 1), 1)
+            insert_at = i + block
+            i = insert_at
+            continue
+        i += 1
+    return insert_at
+
+
+def _inject_south_ues_nt_rows_after_res(
+    summary_rows: list[dict[str, Any]],
+    *,
+    years: list[int],
+    rounding_digits: int,
+    avg_temp_uses_global_rounding: bool = False,
+) -> None:
+    """После всех РЭС «ОЭС Юга без НТ» — блок «Новые территории» (скрыт до кнопки «+ НТ»)."""
+    if not summary_rows or not years:
+        return
+    south = _find_union_energy_system_by_name("оэс юга")
+    if south is None:
+        return
+    south_ues_id = int(south.id)
+    if any(
+        row.get("pd_pd_aggregation_level_row")
+        and row.get("id_union_energy_system") == south_ues_id
+        and str(row.get("entity_label") or "").strip() == _NEW_TERRITORIES_NAME
+        for row in summary_rows
+    ):
+        return
+    nt_entity = _build_nt_under_south_res_level_entity_oes(
+        south_ues_id,
+        _get_federal_district_by_name(_NEW_TERRITORIES_NAME),
+    )
+    if nt_entity is None:
+        return
+    nt_rows = _flatten_entity(
+        nt_entity,
+        years,
+        rounding_digits,
+        avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
+    )
+    if not nt_rows:
+        return
+    insert_at = _south_ues_base_res_subtree_insert_index(summary_rows, south_ues_id)
+    if insert_at is None:
+        return
+    summary_rows[insert_at:insert_at] = nt_rows
+
+
 def _build_nt_under_south_res_level_entity_oes(
     south_ues_id: int,
     nt_fd: FederalDistrict | None,
+    *,
+    ues_depth: int = 0,
 ) -> SummaryEntity | None:
     children = _build_nt_subject_entities_for_under_south(
         south_ues_id=south_ues_id,
-        rd_depth=3,
+        rd_depth=ues_depth + 2,
         subject_parameters=PARAMETERS_WITH_OES_EES_AND_ES,
     )
     if not children:
@@ -5028,7 +6769,7 @@ def _build_nt_under_south_res_level_entity_oes(
         nt_fd = _get_federal_district_by_name(_NEW_TERRITORIES_NAME)
     return SummaryEntity(
         label=getattr(nt_fd, "name", None) or _NEW_TERRITORIES_NAME,
-        depth=2,
+        depth=ues_depth + 1,
         parameters=tuple(),
         demand_rows=[],
         entity_kind="aggregation_level",
@@ -5040,19 +6781,24 @@ def _build_nt_under_south_res_level_entity_oes(
     )
 
 
-def _build_south_ues_base_group_entity(south: UnionEnergySystem) -> SummaryEntity:
+def _build_south_ues_base_group_entity(
+    south: UnionEnergySystem,
+    *,
+    ues_depth: int = 0,
+) -> SummaryEntity:
     """Дерево РЭС/субъектов ОЭС Юга (без строки параметров на уровне ОЭС)."""
     child_entities = [
         _build_regional_energy_system_entity(
             res,
             ues_id=south.id,
+            ues_depth=ues_depth,
         )
         for res in sorted(south.regional_energy_systems, key=_sort_by_name)
         if _is_valid_named_item(res)
     ]
     return SummaryEntity(
         label=south.name or "",
-        depth=1,
+        depth=ues_depth,
         parameters=PARAMETERS_UES_OES,
         demand_rows=[],
         entity_kind="group",
@@ -5067,196 +6813,225 @@ def _build_south_ues_base_group_entity(south: UnionEnergySystem) -> SummaryEntit
 
 def _build_russia_perimeter_entities() -> list[SummaryEntity]:
     """Строки «Россия» по привязке entity_kind=russia_federation (каталог /perimeter_variants/)."""
-    binding = resolve_entity_perimeter_binding(
+    binding = resolve_entity_perimeter_variants(
         ENTITY_KIND_RUSSIA_FEDERATION,
         RUSSIA_FEDERATION_AGGREGATE_NAME,
     )
-    if binding is None or not binding.variants:
-        return [
-            SummaryEntity(
-                label="Россия с НТ",
-                depth=0,
-                parameters=PARAMETERS_RUSSIA_OES_SUMMARY,
-                demand_rows=dps.get_demand_rows_for_summary_block(
-                    RussiaFederationDemandParameter,
-                    None,
-                    None,
-                    display_perimeter_variant_code=CODE_WITH_NT,
-                ),
-                entity_kind="oes_top_aggregate",
-                demand_model_name=RussiaFederationDemandParameter.__name__,
-                parent_fk_column=None,
-                parent_id=None,
-                perimeter_variant_code=CODE_WITH_NT,
-            ),
-            SummaryEntity(
-                label="Россия без НТ",
-                depth=0,
-                parameters=PARAMETERS_RUSSIA_OES_SUMMARY,
-                demand_rows=dps.get_demand_rows_for_summary_block(
-                    RussiaFederationDemandParameter,
-                    None,
-                    None,
-                    display_perimeter_variant_code=CODE_WITHOUT_NT,
-                ),
-                entity_kind="oes_top_aggregate",
-                demand_model_name=RussiaFederationDemandParameter.__name__,
-                parent_fk_column=None,
-                parent_id=None,
-                perimeter_variant_code=CODE_WITHOUT_NT,
-            ),
-        ]
-
     model = RussiaFederationDemandParameter
     mn = model.__name__
     out: list[SummaryEntity] = []
-    for vdef in binding.variants:
+    for code, demand_rows in _demand_row_groups_for_oes_top_aggregate(
+        model,
+        None,
+        None,
+        binding=binding,
+    ):
+        label = _summary_variant_entity_label(
+            binding,
+            RUSSIA_FEDERATION_AGGREGATE_NAME,
+            code,
+            ENTITY_KIND_RUSSIA_FEDERATION,
+            RUSSIA_FEDERATION_AGGREGATE_NAME,
+        )
         out.append(
             SummaryEntity(
-                label=variant_label_for_entity(binding, vdef),
+                label=label,
                 depth=0,
                 parameters=PARAMETERS_RUSSIA_OES_SUMMARY,
-                demand_rows=dps.get_demand_rows(
-                    model,
-                    None,
-                    None,
-                    perimeter_variant_code=vdef.code,
-                ),
+                demand_rows=demand_rows,
                 entity_kind="oes_top_aggregate",
                 demand_model_name=mn,
                 parent_fk_column=None,
                 parent_id=None,
-                perimeter_variant_code=vdef.code,
+                perimeter_variant_code=code,
+                summary_perimeter_variant_row=True,
             )
         )
     return out
 
 
-def _build_ees_perimeter_entities() -> list[SummaryEntity]:
-    """Строки «ЭЭС России» (EesDemandParameter) по привязке entity_kind=ees_russia."""
-    binding = resolve_entity_perimeter_binding(
-        ENTITY_KIND_EES_RUSSIA,
-        EES_RUSSIA_AGGREGATE_NAME,
+def _build_centralized_zone_perimeter_entities() -> list[SummaryEntity]:
+    """Строки «ЦЗ России» по привязке centralized_zone (с/без НТ на сводке по ФО)."""
+    binding = resolve_entity_perimeter_variants(
+        ENTITY_KIND_CENTRALIZED_ZONE,
+        CENTRALIZED_ZONE_AGGREGATE_NAME,
     )
-    model = EesDemandParameter
+    model = CentralizedZoneDemandParameter
     mn = model.__name__
-
-    def _entity(vcode: str, label: str) -> SummaryEntity:
-        return SummaryEntity(
-            label=label,
-            depth=0,
-            parameters=PARAMETERS_EES_AGGREGATE_OES_SUMMARY,
-            demand_rows=dps.get_demand_rows_for_summary_block(
-                model,
-                None,
-                None,
-                display_perimeter_variant_code=vcode,
-            ),
-            entity_kind="oes_top_aggregate",
-            demand_model_name=mn,
-            parent_fk_column=None,
-            parent_id=None,
-            perimeter_variant_code=vcode,
+    out: list[SummaryEntity] = []
+    groups = _demand_row_groups_for_oes_top_aggregate(
+        model,
+        None,
+        None,
+        binding=binding,
+    )
+    group_codes = [code for code, _rows in groups if code]
+    if any(is_o1_perimeter_variant_code(code) for code in group_codes):
+        groups = [
+            (code, demand_rows)
+            for code, demand_rows in groups
+            if code and is_o1_perimeter_variant_code(code)
+        ]
+    for code, demand_rows in groups:
+        label = _summary_variant_entity_label(
+            binding,
+            CENTRALIZED_ZONE_AGGREGATE_NAME,
+            code,
+            ENTITY_KIND_CENTRALIZED_ZONE,
+            CENTRALIZED_ZONE_AGGREGATE_NAME,
         )
-
-    if binding is None or not binding.variants:
-        return [
-            _entity(CODE_WITH_NT, "ЭЭС России с НТ"),
-            _entity(CODE_WITHOUT_NT, "ЭЭС России без НТ"),
-        ]
-
-    variants = ordered_tree_variants_for_display(binding)
-    if not variants:
-        return [
-            _entity(CODE_WITH_NT, "ЭЭС России с НТ"),
-            _entity(CODE_WITHOUT_NT, "ЭЭС России без НТ"),
-        ]
-
+        out.append(
+            SummaryEntity(
+                label=label,
+                depth=0,
+                parameters=BASE_PARAMETERS,
+                demand_rows=demand_rows,
+                entity_kind="centralized_zone",
+                demand_model_name=mn,
+                parent_fk_column=None,
+                parent_id=None,
+                perimeter_variant_code=code,
+                summary_perimeter_variant_row=True,
+            )
+        )
+    if out:
+        return out
     return [
-        _entity(
-            vdef.code,
-            variant_label_for_entity(binding, vdef),
+        _standalone_entity(
+            CENTRALIZED_ZONE_AGGREGATE_NAME,
+            model,
+            BASE_PARAMETERS,
+            entity_kind="centralized_zone",
         )
-        for vdef in variants
     ]
 
 
-def _build_ees_russia_perimeter_entities(
-    *,
-    always_show_subject_row_under_res: bool = False,
-) -> list[SummaryEntity]:
-    """ЕЭС России (ЕЭС): with_nt — верхний агрегат; without_nt — group-root с ОЭС/СЗ."""
-    binding = resolve_entity_perimeter_binding(
-        ENTITY_KIND_ENERGY_SYSTEM_TYPE,
-        EES_UNIFIED_REF_NAME,
+def _build_ees_perimeter_entities() -> list[SummaryEntity]:
+    """Строки «ЭЭС России» (EesRussiaDemandParameter) по привязке entity_kind=ees_russia."""
+    binding = resolve_entity_perimeter_variants(
+        ENTITY_KIND_EES_RUSSIA,
+        EES_RUSSIA_AGGREGATE_NAME,
     )
     model = EesRussiaDemandParameter
     mn = model.__name__
 
-    def _without_nt_group(label: str) -> SummaryEntity:
-        ues_list = _build_ues_entities_filtered(
-            _is_ees_branch,
-            always_show_subject_row_under_res=always_show_subject_row_under_res,
-        )
-        ues_list = _inject_perimeter_variant_entities(
-            ues_list, entity_kind="union_energy_system"
-        )
+    def _entity(vcode: str | None, label: str, demand_rows: list[Any] | None = None) -> SummaryEntity:
         return SummaryEntity(
             label=label,
             depth=0,
-            parameters=PARAMETERS_EES_RUSSIA_OES_SUMMARY,
-            demand_rows=dps.get_demand_rows_for_summary_block(
-                model,
-                None,
-                None,
-                display_perimeter_variant_code=CODE_WITHOUT_NT,
-            ),
-            entity_kind="group-root",
-            children=_build_synchronous_area_entities(depth=1) + ues_list,
-            demand_model_name=mn,
-            parent_fk_column=None,
-            parent_id=None,
-            perimeter_variant_code=CODE_WITHOUT_NT,
-        )
-
-    def _with_nt_top(label: str, vcode: str) -> SummaryEntity:
-        return SummaryEntity(
-            label=label,
-            depth=0,
-            parameters=PARAMETERS_EES_RUSSIA_OES_SUMMARY,
-            demand_rows=dps.get_demand_rows_for_summary_block(
-                model,
-                None,
-                None,
-                display_perimeter_variant_code=vcode,
+            parameters=PARAMETERS_EES_AGGREGATE_OES_SUMMARY,
+            demand_rows=(
+                demand_rows
+                if demand_rows is not None
+                else dps.get_demand_rows(
+                    model,
+                    None,
+                    None,
+                    perimeter_variant_code=vcode,
+                )
             ),
             entity_kind="oes_top_aggregate",
             demand_model_name=mn,
             parent_fk_column=None,
             parent_id=None,
             perimeter_variant_code=vcode,
+            summary_perimeter_variant_row=True,
         )
 
-    variants = _pd_nt_perimeter_variant_defs(binding)
-    out: list[SummaryEntity] = []
-    for vdef in variants:
-        if binding is not None:
-            lbl = variant_label_for_entity(binding, vdef)
-        elif vdef.code == CODE_WITH_NT:
-            lbl = f"{EES_UNIFIED_REF_NAME} с НТ"
-        else:
-            lbl = f"{EES_UNIFIED_REF_NAME} без НТ"
-        if vdef.code == CODE_WITHOUT_NT:
-            out.append(_without_nt_group(lbl))
-        else:
-            out.append(_with_nt_top(lbl, vdef.code))
-    return out
+    variants = _demand_row_groups_for_oes_top_aggregate(
+        model,
+        None,
+        None,
+        binding=binding,
+    )
+    if not variants:
+        return []
+
+    return [
+        _entity(
+            code,
+            _summary_variant_entity_label(
+                binding,
+                EES_RUSSIA_AGGREGATE_NAME,
+                code,
+                ENTITY_KIND_EES_RUSSIA,
+                EES_RUSSIA_AGGREGATE_NAME,
+            ),
+            demand_rows,
+        )
+        for code, demand_rows in variants
+    ]
+
+
+def _build_ees_russia_perimeter_entities() -> list[SummaryEntity]:
+    """Тип энергосистемы «ЕЭС России» (EnergySystemType): строки вариантов периметра без вложенного дерева."""
+    est = _get_energy_system_type_by_name(EES_UNIFIED_REF_NAME)
+    model = EnergySystemTypeDemandParameter
+    mn = model.__name__
+    est_id = int(est.id) if est is not None else None
+    fk_col = "id_energy_system_type"
+
+    def _demand_rows(vcode: str | None) -> list[Any]:
+        if est_id is None:
+            return []
+        return _demand_rows_for_perimeter_variant_entity(
+            model,
+            fk_col,
+            est_id,
+            vcode,
+        )
+
+    def _variant_entity(
+        label: str,
+        vcode: str | None,
+        demand_rows: list[Any] | None = None,
+    ) -> SummaryEntity:
+        return SummaryEntity(
+            label=label,
+            depth=0,
+            parameters=PARAMETERS_EES_RUSSIA_OES_SUMMARY,
+            demand_rows=demand_rows if demand_rows is not None else _demand_rows(vcode),
+            entity_kind="oes_top_aggregate",
+            demand_model_name=mn,
+            parent_fk_column=fk_col,
+            parent_id=est_id,
+            perimeter_variant_code=vcode,
+            summary_perimeter_variant_row=True,
+        )
+
+    binding = resolve_entity_perimeter_variants(
+        ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+        EES_UNIFIED_REF_NAME,
+    )
+    variants = _demand_row_groups_for_oes_top_aggregate(
+        model,
+        fk_col,
+        est_id,
+        binding=binding,
+    )
+    if not variants:
+        return []
+    return [
+        _variant_entity(
+            _summary_variant_entity_label(
+                binding,
+                EES_UNIFIED_REF_NAME,
+                vcode,
+                ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+                EES_UNIFIED_REF_NAME,
+            ),
+            vcode,
+            demand_rows,
+        )
+        for vcode, demand_rows in variants
+    ]
 
 
 def _inject_perimeter_variant_entities(
     entities: list[SummaryEntity],
     *,
     entity_kind: str,
+    ues_depth: int = 0,
 ) -> list[SummaryEntity]:
     """Строки вариантов периметра по привязкам из справочника.
 
@@ -5275,52 +7050,48 @@ def _inject_perimeter_variant_entities(
             if parent is None:
                 continue
             parent_id = int(parent.id)
-            is_south = binding.entity_name_cf == "оэс юга"
-            base = _build_south_ues_base_group_entity(parent)
+            base = _build_south_ues_base_group_entity(parent, ues_depth=ues_depth)
             res_children = list(base.children)
             territorial_children = list(res_children)
-            if is_south:
-                nt_fd = _get_federal_district_by_name(_NEW_TERRITORIES_NAME)
-                nt_entity = _build_nt_under_south_res_level_entity_oes(
-                    parent_id, nt_fd
-                )
-                if nt_entity is not None:
-                    territorial_children.append(nt_entity)
-            variant_defs = (
-                _pd_nt_perimeter_variant_defs(binding)
-                if is_south
-                else tuple(binding.variants)
+            variant_defs = _demand_row_groups_for_all_binding_variants(
+                UnionEnergySystemDemandParameter,
+                "id_union_energy_system",
+                parent_id,
+                binding=binding,
             )
-            base_code = (
-                CODE_WITHOUT_NT
-                if is_south
-                else (variant_defs[0].code if variant_defs else None)
-            )
+            base_code = _territorial_children_base_variant_code(binding)
+            if base_code is None and variant_defs:
+                base_code = variant_defs[0][0]
             variant_entities: list[SummaryEntity] = []
-            for vdef in variant_defs:
+            for vcode, demand_rows in variant_defs:
                 children: list[SummaryEntity] = []
-                if vdef.code == base_code:
+                if vcode == base_code:
                     children = list(territorial_children)
+                label = _summary_variant_entity_label(
+                    binding,
+                    getattr(parent, "name", None) or "",
+                    vcode,
+                    binding.entity_kind,
+                    binding.entity_name,
+                )
                 variant_entities.append(
                     SummaryEntity(
-                        label=variant_label_for_entity(binding, vdef),
-                        depth=1,
+                        label=label,
+                        depth=ues_depth,
                         parameters=PARAMETERS_UES_OES,
-                        demand_rows=dps.get_demand_rows(
-                            UnionEnergySystemDemandParameter,
-                            "id_union_energy_system",
-                            parent_id,
-                            perimeter_variant_code=vdef.code,
-                        ),
+                        demand_rows=demand_rows,
                         entity_kind="perimeter_variant",
                         children=children,
                         demand_model_name=ues_mn,
                         parent_fk_column="id_union_energy_system",
                         parent_id=parent_id,
                         id_union_energy_system=parent_id,
-                        perimeter_variant_code=vdef.code,
+                        perimeter_variant_code=vcode,
+                        summary_perimeter_variant_row=True,
                     )
                 )
+            if not variant_entities:
+                continue
             replacements[parent_id] = (_ues_summary_sort_key(parent), variant_entities)
 
     if not replacements:
@@ -5476,6 +7247,7 @@ def _build_ues_entities_filtered(
     ues_predicate: Callable[[UnionEnergySystem], bool],
     *,
     always_show_subject_row_under_res: bool = False,
+    ues_depth: int = 0,
 ) -> list[SummaryEntity]:
     query = UnionEnergySystem.query.options(
         selectinload(UnionEnergySystem.regional_energy_systems).selectinload(
@@ -5507,6 +7279,7 @@ def _build_ues_entities_filtered(
                 res,
                 ues_id=ues.id,
                 always_show_subject_row_under_res=always_show_subject_row_under_res,
+                ues_depth=ues_depth,
             )
             for res in sorted(ues.regional_energy_systems, key=_sort_by_name)
             if _is_valid_named_item(res)
@@ -5516,7 +7289,7 @@ def _build_ues_entities_filtered(
         entities.append(
             SummaryEntity(
                 label=ues.name,
-                depth=1,
+                depth=ues_depth,
                 parameters=PARAMETERS_UES_OES,
                 demand_rows=dps.get_demand_rows(
                     UnionEnergySystemDemandParameter,
@@ -5540,7 +7313,11 @@ def _build_regional_energy_system_entity(
     *,
     ues_id: int,
     always_show_subject_row_under_res: bool = False,
+    ues_depth: int = 0,
 ) -> SummaryEntity:
+    res_depth = ues_depth + 1
+    rd_depth = ues_depth + 2
+    eu_depth = ues_depth + 2
     regional_districts = [
         regional_district
         for regional_district in sorted(res.regional_districts, key=_sort_by_name)
@@ -5552,12 +7329,12 @@ def _build_regional_energy_system_entity(
 
     subject_children: list[SummaryEntity]
     if len(regional_districts) > 1:
-        # Совмещенный максимум потребления мощности субъекта РФ на РЭС — пока в РЭС несколько субъектов (эта ветка — уже ≥2 после фильтра имени).
+        # Строки субъектов внутри РЭС — при двух и более субъектах (как на сводке потребления ЭЭ).
         # Сводка по ОЭС: для субъектов РФ не показываем «на ФО» и «на централизованную зону»
         subject_children = [
             _build_regional_district_entity(
                 regional_district,
-                depth=3,
+                depth=rd_depth,
                 energy_units=_filter_energy_units_for_res(
                     regional_district.energy_units,
                     res.id,
@@ -5576,7 +7353,7 @@ def _build_regional_energy_system_entity(
         subject_children = [
             _build_regional_district_entity(
                 rd0,
-                depth=3,
+                depth=rd_depth,
                 energy_units=_filter_energy_units_for_res(
                     rd0.energy_units,
                     res.id,
@@ -5589,7 +7366,7 @@ def _build_regional_energy_system_entity(
     else:
         subject_children = _build_energy_unit_entities(
             _filter_valid_items(res.energy_units),
-            depth=3,
+            depth=eu_depth,
             id_union_energy_system=ues_id,
             id_regional_energy_system=res.id,
             id_regional_district=single_rd_id,
@@ -5597,7 +7374,7 @@ def _build_regional_energy_system_entity(
 
     return SummaryEntity(
         label=res.name,
-        depth=2,
+        depth=res_depth,
         parameters=PARAMETERS_WITH_OES_AND_EES,
         demand_rows=dps.get_demand_rows(
             RegionalEnergySystemDemandParameter,
@@ -5757,13 +7534,11 @@ def _build_energy_zone_entities() -> list[SummaryEntity]:
 
 
 def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
-    """Строки сводки по ОЭС: одна сущность на каждую синхронную зону (как энергозона по показателям).
+    """Строки сводки по ОЭС: одна сущность на каждую синхронную зону.
 
     «Первая синхронная зона» — варианты периметра with_nt / without_nt (как у «Россия»).
 
     Порядок — по ``SynchronousArea.display_order`` (как в справочнике), затем имя и id.
-
-    В сводке по ОЭС вложены под «ЕЭС России без НТ» — depth=1, чтобы шли после агрегата и перед ОЭС.
     """
     query = SynchronousArea.query
     query = dps.filter_parents_by_version(query, SynchronousArea)
@@ -5779,34 +7554,38 @@ def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
     for sa in sa_list:
         base_label = _synchronous_area_display_label(sa)
         if _is_first_synchronous_area_name(sa.name):
-            binding = resolve_entity_perimeter_binding("synchronous_area", sa.name)
-            for vdef in _pd_nt_perimeter_variant_defs(binding):
-                if binding is not None:
-                    lbl = variant_label_for_entity(binding, vdef)
-                elif vdef.code == CODE_WITH_NT:
-                    lbl = f"{base_label} с НТ"
-                else:
-                    lbl = f"{base_label} без НТ"
-                entities.append(
-                    SummaryEntity(
-                        label=lbl,
-                        depth=depth,
-                        parameters=PARAMETERS_FIRST_SYNCHRONOUS_AREA_OES_SUMMARY,
-                        demand_rows=dps.get_demand_rows(
-                            SynchronousAreaDemandParameter,
-                            "id_synchronous_area",
-                            sa.id,
-                            perimeter_variant_code=vdef.code,
-                        ),
-                        entity_kind="synchronous_area",
-                        demand_model_name=mn,
-                        parent_fk_column="id_synchronous_area",
-                        parent_id=sa.id,
-                        id_synchronous_area=sa.id,
-                        perimeter_variant_code=vdef.code,
+            binding = resolve_entity_perimeter_variants("synchronous_area", sa.name)
+            variants = _demand_row_groups_for_all_binding_variants(
+                SynchronousAreaDemandParameter,
+                "id_synchronous_area",
+                sa.id,
+                binding=binding,
+            )
+            if variants:
+                for vcode, demand_rows in variants:
+                    lbl = _summary_variant_entity_label(
+                        binding,
+                        base_label,
+                        vcode,
+                        "synchronous_area",
+                        sa.name,
                     )
-                )
-            continue
+                    entities.append(
+                        SummaryEntity(
+                            label=lbl,
+                            depth=depth,
+                            parameters=PARAMETERS_FIRST_SYNCHRONOUS_AREA_OES_SUMMARY,
+                            demand_rows=demand_rows,
+                            entity_kind="synchronous_area",
+                            demand_model_name=mn,
+                            parent_fk_column="id_synchronous_area",
+                            parent_id=sa.id,
+                            id_synchronous_area=sa.id,
+                            perimeter_variant_code=vcode,
+                            summary_perimeter_variant_row=True,
+                        )
+                    )
+                continue
         entities.append(
             SummaryEntity(
                 label=base_label,
@@ -5816,14 +7595,14 @@ def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
                     SynchronousAreaDemandParameter,
                     "id_synchronous_area",
                     sa.id,
-                    perimeter_variant_code=CODE_WITHOUT_NT,
+                    perimeter_variant_code=None,
                 ),
                 entity_kind="synchronous_area",
                 demand_model_name=mn,
                 parent_fk_column="id_synchronous_area",
                 parent_id=sa.id,
                 id_synchronous_area=sa.id,
-                perimeter_variant_code=CODE_WITHOUT_NT,
+                perimeter_variant_code=None,
             )
         )
     return entities
@@ -5879,7 +7658,7 @@ def _chukotka_energy_units_max_power_sums(
     summary_rows: list[dict[str, Any]],
     years: list[int],
 ) -> list[float | None]:
-    """Сумма «Максимум потребления мощности, МВт» по энергорайонам ЭС Чукотского АО."""
+    """Сумма «Максимальное потребление мощности, МВт» по энергорайонам ЭС Чукотского АО."""
     chukotka_res_id: int | None = None
     for row in summary_rows:
         if not row.get("show_entity_cell"):
@@ -6011,7 +7790,7 @@ def _inject_chukotka_rd_calculated_max_rows(
                     "entity_kind": block0.get("entity_kind"),
                     "show_entity_cell": False,
                     "parameter_key": "calculated_max_power_mw",
-                    "parameter_label": "Расчетный максимум потребления мощности, МВт",
+                    "parameter_label": "Расчетное максимальное потребление мощности, МВт",
                     "demand_model_name": None,
                     "parent_fk_column": block0.get("parent_fk_column"),
                     "parent_id": block0.get("parent_id"),
@@ -6452,7 +8231,11 @@ def _build_federal_district_entities() -> list[SummaryEntity]:
     return entities
 
 
-def _build_federal_district_entities_by_res() -> list[SummaryEntity]:
+def _build_federal_district_entities_by_res(
+    *,
+    fd_parameters: tuple[tuple[str, str], ...] = PARAMETERS_FEDERAL_DISTRICT,
+    res_parameters: tuple[tuple[str, str], ...] = PARAMETERS_RES_FO_COEFF,
+) -> list[SummaryEntity]:
     """Дерево ФО → РЭС; при >1 субъекте РЭС в ФО — строки субъектов (без энергоузлов)."""
     query = FederalDistrict.query.options(
         selectinload(FederalDistrict.regional_districts).selectinload(
@@ -6526,7 +8309,7 @@ def _build_federal_district_entities_by_res() -> list[SummaryEntity]:
                 SummaryEntity(
                     label=res.name,
                     depth=1,
-                    parameters=PARAMETERS_RES_FO_COEFF,
+                    parameters=res_parameters,
                     demand_rows=dps.get_demand_rows(
                         RegionalEnergySystemDemandParameter,
                         "id_regional_energy_system",
@@ -6555,7 +8338,7 @@ def _build_federal_district_entities_by_res() -> list[SummaryEntity]:
                 south_attach_fd,
                 south_ues_id,
                 nt_fd_attach,
-                res_parameters=PARAMETERS_RES_FO_COEFF,
+                res_parameters=res_parameters,
                 subject_parameters=PARAMETERS_SUBJECT_FD_SUMMARY,
             )
             if nt_under is not None:
@@ -6569,7 +8352,7 @@ def _build_federal_district_entities_by_res() -> list[SummaryEntity]:
             SummaryEntity(
                 label=federal_district.name,
                 depth=0,
-                parameters=PARAMETERS_FEDERAL_DISTRICT,
+                parameters=fd_parameters,
                 demand_rows=dps.get_demand_rows(
                     FederalDistrictDemandParameter,
                     "id_federal_district",
@@ -6714,7 +8497,7 @@ def _oes_leaf_matches_filters(
 
 def _oes_is_union_energy_system_group(e: SummaryEntity) -> bool:
     return (
-        e.entity_kind == "group"
+        e.entity_kind in ("group", "perimeter_variant")
         and e.demand_model_name == UnionEnergySystemDemandParameter.__name__
         and e.id_union_energy_system is not None
     )
@@ -6926,7 +8709,7 @@ def _fo_res_scope_for_fd_subtree(
 
 def _prune_one_fo(e: SummaryEntity, f_fd: frozenset[int], f_res: frozenset[int]) -> SummaryEntity | None:
     filters_on = bool(f_fd or f_res)
-    if e.entity_kind == "centralized_zone":
+    if e.entity_kind in ("centralized_zone", "oes_top_aggregate"):
         return None if filters_on else e
     res_for_children = f_res
     if f_fd and e.entity_kind == "group" and e.id_federal_district is not None and e.children:

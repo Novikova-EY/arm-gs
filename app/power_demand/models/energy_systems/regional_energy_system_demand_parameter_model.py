@@ -7,10 +7,11 @@ from sqlalchemy.sql import func
 
 from app.extensions import db
 from app.common.models.audit_mixin import AuditMixin
+from app.common.models.perimeter_variant_mixin import PerimeterVariantColumnMixin
 from config import SCHEMA_POWER_DEMAND, SCHEMA_REFDATA
 
 
-class RegionalEnergySystemDemandParameter(db.Model, AuditMixin):
+class RegionalEnergySystemDemandParameter(db.Model, AuditMixin, PerimeterVariantColumnMixin):
     """
     - is_historical_maximum=True: одна строка на (РЭС, версия БД); year_number NULL.
     - is_historical_maximum=False: строки по календарным годам.
@@ -103,5 +104,6 @@ class RegionalEnergySystemDemandParameter(db.Model, AuditMixin):
         return (
             f"<RegionalEnergySystemDemandParameter id={self.id} "
             f"res_id={self.id_regional_energy_system} "
+            f"perimeter_variant={self.perimeter_variant_code} "
             f"hist={self.is_historical_maximum} year={self.year_number}>"
         )

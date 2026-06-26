@@ -9,6 +9,8 @@ from typing import Any
 
 from flask import jsonify
 
+from app.power_demand.services.pd_summary_data_segments import build_client_segment_config
+
 PD_READONLY_PARAMETER_KEYS_MAX: frozenset[str] = frozenset(
     {
         "calculated_max_power_mw",
@@ -133,9 +135,29 @@ def enrich_row_formula_tooltip_gaps(
     elif dm == "FederalDistrictDemandParameter":
         if pk == "calculated_max_fo_mw":
             row["pd_parameter_formula_tooltip"] = formula_texts.get("fo_calc_max_mw", "")
+        elif pk == "calculated_max_power_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "fo_calc_max_power_mw", ""
+            )
         elif pk == "calculated_combined_on_cz_mw":
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
                 "fo_calc_combined_on_cz_mw", ""
+            )
+        elif pk == "calculated_combined_on_ees_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "fo_calc_combined_on_ees_mw", ""
+            )
+        elif pk == "verify_for_calculated_max_power_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "fo_verify_calc_max_mw_without_nt", ""
+            )
+        elif pk == "verify_for_calculated_combined_on_ees_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "fo_verify_combined_ees_mw_without_nt", ""
+            )
+        elif pk == "peak_max_power_usage_hours":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "fo_chi_federal_district", ""
             )
     elif dm == "EnergyZoneDemandParameter" and pk == "calculated_max_ez_mw":
         row["pd_parameter_formula_tooltip"] = formula_texts.get("ez_calc_max_mw", "")
@@ -169,6 +191,7 @@ def build_client_render_config(
         "scope": scope,
         "data_path": data_path,
         "pd_readonly_parameter_keys": sorted(PD_READONLY_PARAMETER_KEYS_MAX),
+        "segments": build_client_segment_config(scope),
     }
 
 

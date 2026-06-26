@@ -26,7 +26,7 @@ _LEGACY_EI_MIGRATED_DONE = False
 
 
 def migrate_legacy_electrical_intensity_formula_texts() -> None:
-    """Перенос переопределений из gs_ec_electrical_intensity_formula_texts."""
+    """Перенос переопределений из gs_ei_electrical_intensity_formula_texts."""
     global _LEGACY_EI_MIGRATED_DONE
     if has_request_context():
         if getattr(g, _LEGACY_EI_MIGRATED_KEY, False):
@@ -35,7 +35,7 @@ def migrate_legacy_electrical_intensity_formula_texts() -> None:
     elif _LEGACY_EI_MIGRATED_DONE:
         return
     try:
-        from app.energy_consumption.electrical_intensity.models.formula_text.electrical_intensity_formula_text_model import (
+        from app.electrical_intensity.models.formula_text.electrical_intensity_formula_text_model import (
             ElectricalIntensityFormulaText,
         )
 

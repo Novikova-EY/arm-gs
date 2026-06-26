@@ -12,6 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.common.perimeter_variant.constants import (
     CENTRALIZED_ZONE_AGGREGATE_NAME,
+    legacy_nt_group_for_perimeter_code,
     CODE_WITHOUT_NT_WITHOUT_GAES,
     CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES,
     CODE_WITHOUT_NT_WITH_GAES,
@@ -40,7 +41,8 @@ from app.common.perimeter_variant.registry import (
     perimeter_entity_context_for_model,
     perimeter_variant_display_label_for_entity,
     perimeter_variant_options_for_entity,
-    perimeter_catalog_source,
+    perimeter_variant_options_for_ees_unified_summary_nt_group,
+    is_ees_unified_energy_system_type_entity,
     resolve_entity_perimeter_binding,
     resolve_entity_perimeter_variants,
     resolve_catalog_o1_perimeter_variant_code,
@@ -602,31 +604,6 @@ def _build_perimeter_aggregate_entities(
         )
 
     if binding is None or not binding.variants:
-        if perimeter_catalog_source() != "database":
-            out = [
-                _top_entity(CODE_WITH_NT),
-                _top_entity(CODE_WITHOUT_NT),
-            ]
-            if perimeter_variant_codes is not None:
-                allowed_order = {
-                    str(code): idx for idx, code in enumerate(perimeter_variant_codes)
-                }
-                out = [
-                    entity
-                    for entity in out
-                    if str(entity.perimeter_variant_code or "") in allowed_order
-                ]
-                out.sort(
-                    key=lambda entity: allowed_order[
-                        str(entity.perimeter_variant_code or "")
-                    ]
-                )
-            if not out:
-                return []
-            return _order_variants_with_gaes_charge_rows(
-                out,
-                _gaes_charge_marker_entity(out[0]),
-            )
         return []
     out = [
         _top_entity(vdef.code)
@@ -800,9 +777,37 @@ def _filter_ees_unified_summary_variants(
 
 
 def _ees_unified_gaes_variant_uses_ees_russia_aggregate(variant_code: str) -> bool:
-    """Строки «ЕЭС России … с/без зарядом ГАЭС» в Excel и БД — агрегат ``EesRussia*``, не ``EnergySystemType*``."""
-    code = str(variant_code or "")
-    return "with_gaes" in code or "without_gaes" in code
+    """Варианты ГАЭС для «ЕЭС России» хранятся в ``EnergySystemType*``, не в ``EesRussia*``."""
+    del variant_code
+    return False
+
+
+def _binding_has_gaes_perimeter_variants(
+    binding: EntityPerimeterBinding | None,
+) -> bool:
+    if binding is None or not binding.variants:
+        return False
+    return any(
+        "with_gaes" in v.code or "without_gaes" in v.code for v in binding.variants
+    )
+
+
+def _resolve_ees_unified_summary_perimeter_binding(
+    *,
+    energy_system_type_binding: EntityPerimeterBinding | None,
+    ees_russia_binding: EntityPerimeterBinding | None,
+    use_ees_russia_gaes_variants: bool,
+) -> EntityPerimeterBinding | None:
+    """Привязки вариантов для строки «ЕЭС России» (тип энергосистемы) в сводке."""
+    if use_ees_russia_gaes_variants:
+        if _binding_has_gaes_perimeter_variants(energy_system_type_binding):
+            return energy_system_type_binding
+        if _binding_has_gaes_perimeter_variants(ees_russia_binding):
+            return ees_russia_binding
+        return energy_system_type_binding
+    if energy_system_type_binding is not None:
+        return energy_system_type_binding
+    return ees_russia_binding
 
 
 def _gaes_charge_marker_entity(entity: SummaryEntity) -> SummaryEntity:
@@ -1002,24 +1007,21 @@ def _expand_summary_entity_perimeter_variants(
         binding_entity_name or entity.label,
     )
     ees_russia_binding = None
-    if _is_ees_unified_energy_system_type(
+    ees_unified_type = _is_ees_unified_energy_system_type(
         binding_entity_kind,
         binding_entity_name,
         entity,
-    ):
+    )
+    if ees_unified_type:
         ees_russia_binding = resolve_entity_perimeter_binding(
             ENTITY_KIND_EES_RUSSIA,
             EES_RUSSIA_AGGREGATE_NAME,
         )
-    if use_ees_russia_gaes_variants and ees_russia_binding is not None and ees_russia_binding.variants:
-        binding = ees_russia_binding
-    elif (
-        binding is None
-        and ees_russia_binding is not None
-        and ees_russia_binding.variants
-    ):
-        # «ЕЭС России» (EnergySystemType): в БД привязки только у агрегата «ЭЭС России».
-        binding = ees_russia_binding
+        binding = _resolve_ees_unified_summary_perimeter_binding(
+            energy_system_type_binding=binding,
+            ees_russia_binding=ees_russia_binding,
+            use_ees_russia_gaes_variants=use_ees_russia_gaes_variants,
+        )
     if binding is None:
         return [entity]
     variants = _perimeter_variants_for_entity_binding(
@@ -3524,7 +3526,6 @@ def mask_summary_rows_perimeter_variant_year_display(
 _SUMMARY_NO_PERIMETER_VARIANT_SELECT_MODELS = frozenset(
     {
         "EnergyZoneEnergyConsumptionParameter",
-        "EnergySystemTypeEnergyConsumptionParameter",
     }
 )
 
@@ -3552,9 +3553,11 @@ def _summary_row_allows_perimeter_variant_select(row: dict[str, Any]) -> bool:
         return False
     if not model_supports_perimeter_variant(model_cls):
         return False
+    options = row.get("perimeter_variant_options") or []
+    if len(options) >= 2:
+        return True
     is_gaes_charge = str(row.get("parameter_key") or "") == GAES_CHARGE_PARAMETER_KEY
     has_code = bool(str(row.get("perimeter_variant_code") or "").strip())
-    options = row.get("perimeter_variant_options") or []
     if is_gaes_charge or has_code or len(options) >= 1:
         return True
     return bool(row.get("pd_ec_perimeter_entity_kind"))
@@ -3596,9 +3599,28 @@ def tag_energy_consumption_summary_rows_perimeter_variant_labels(
         else:
             row.pop("pd_ec_o1_form_row", None)
         if row.get("show_entity_cell") and pe_kind:
-            row["perimeter_variant_options"] = perimeter_variant_options_for_entity(
-                pe_kind, pe_name
-            )
+            if is_ees_unified_energy_system_type_entity(pe_kind, pe_name):
+                nt_group = legacy_nt_group_for_perimeter_code(code)
+                row["perimeter_variant_options"] = (
+                    perimeter_variant_options_for_ees_unified_summary_nt_group(nt_group)
+                )
+            else:
+                row["perimeter_variant_options"] = perimeter_variant_options_for_entity(
+                    pe_kind, pe_name
+                )
+            allowed_codes = {
+                str(opt.get("code") or "").strip()
+                for opt in row["perimeter_variant_options"]
+                if opt.get("code")
+            }
+            if (
+                code
+                and allowed_codes
+                and str(code) not in allowed_codes
+                and str(code) in (CODE_WITH_NT, CODE_WITHOUT_NT)
+            ):
+                code = None
+                row["perimeter_variant_code"] = None
         elif row.get("show_entity_cell"):
             row["perimeter_variant_options"] = []
         row["show_perimeter_variant_select"] = _summary_row_allows_perimeter_variant_select(

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import sys
 from pathlib import Path
 
@@ -8,7 +8,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 from run import app
 from app.common.services.database_version_services import get_current_version
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_services import (
+from app.electrical_intensity.services.electrical_intensity_services import (
     _refdata_ved_types_for_version,
     _ved_section_display_name,
     _federal_districts_for_page,
@@ -22,7 +22,7 @@ from app.energy_consumption.electrical_intensity.services.electrical_intensity_s
     _refdata_ved_ids,
     build_electrical_intensity_page_context,
 )
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_page_services import (
+from app.electrical_intensity.services.electrical_intensity_page_services import (
     parse_electrical_intensity_page_kwargs,
 )
 from app.economics.models.federal_district_product_output_parameter_model import (
@@ -35,7 +35,7 @@ from app.economics.models.federal_district_accum_fixed_capital_parameter_model i
     FederalDistrictAccumFixedCapitalParameter,
 )
 
-url = "/energy_consumption/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
+url = "/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
 with app.app_context():
     with app.test_request_context(url):
         vid = get_current_version()

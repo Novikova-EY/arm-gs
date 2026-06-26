@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Сравнение графиков электроёмкости по всем ФО: Excel vs страница (БД v20)."""
 from __future__ import annotations
 
@@ -142,17 +142,17 @@ def compare_section(name: str, section: dict, ex: dict) -> list[str]:
 def main():
     from flask import g, session
     from run import app
-    from app.energy_consumption.electrical_intensity.services.electrical_intensity_page_services import (
+    from app.electrical_intensity.services.electrical_intensity_page_services import (
         parse_electrical_intensity_page_kwargs,
     )
-    from app.energy_consumption.electrical_intensity.services.electrical_intensity_services import (
+    from app.electrical_intensity.services.electrical_intensity_services import (
         build_electrical_intensity_page_context,
     )
 
     ws = openpyxl.load_workbook(EXCEL, data_only=True).active
     excel = {fd: parse_fd_excel(ws, lo, hi) for fd, (lo, hi) in FD_RANGES.items()}
 
-    url = "/energy_consumption/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
+    url = "/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
     with app.app_context():
         with app.test_request_context(url):
             session["current_db_version"] = 20

@@ -1,0 +1,169 @@
+# -*- coding: utf-8 -*-
+"""Фоновые задания импорта сводки потребления из Excel (долгий проход по всем версиям БД)."""
+
+from __future__ import annotations
+
+import json
+import threading
+import uuid
+from copy import deepcopy
+from typing import Any, Callable
+
+from flask import Flask, copy_current_request_context
+
+from app.energy_consumption.services.energy_consumption_summary_import_services import (
+    import_energy_consumption_summary_from_xlsx_bytes,
+)
+from app.generation.services.station_services.aggregation_cache import get_redis_client
+
+_lock = threading.Lock()
+_jobs: dict[str, dict[str, Any]] = {}
+
+_JOB_KEY_PREFIX = "ec_summary_import_job:"
+_JOB_TTL_SECONDS = 24 * 60 * 60
+
+
+def _job_redis_key(job_id: str) -> str:
+    return f"{_JOB_KEY_PREFIX}{job_id}"
+
+
+def _read_job(job_id: str) -> dict[str, Any] | None:
+    client = get_redis_client()
+    if client is not None:
+        raw = client.get(_job_redis_key(job_id))
+        if raw is None:
+            return None
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8")
+        return json.loads(raw)
+    with _lock:
+        job = _jobs.get(job_id)
+        return deepcopy(job) if job is not None else None
+
+
+def _write_job(job_id: str, job: dict[str, Any]) -> None:
+    client = get_redis_client()
+    if client is not None:
+        client.setex(
+            _job_redis_key(job_id),
+            _JOB_TTL_SECONDS,
+            json.dumps(job, ensure_ascii=False),
+        )
+        return
+    with _lock:
+        _jobs[job_id] = deepcopy(job)
+
+
+def _patch_job(job_id: str, **fields: Any) -> None:
+    client = get_redis_client()
+    if client is not None:
+        key = _job_redis_key(job_id)
+        raw = client.get(key)
+        if raw is None:
+            return
+        if isinstance(raw, bytes):
+            raw = raw.decode("utf-8")
+        job = json.loads(raw)
+        job.update(fields)
+        client.setex(key, _JOB_TTL_SECONDS, json.dumps(job, ensure_ascii=False))
+        return
+    with _lock:
+        job = _jobs.get(job_id)
+        if job is None:
+            return
+        job.update(fields)
+
+
+def _progress_updater(job_id: str) -> Callable[[int, int], None]:
+    def _on_version_done(done: int, total: int) -> None:
+        _patch_job(
+            job_id,
+            versions_done=int(done),
+            versions_total=int(total),
+        )
+
+    return _on_version_done
+
+
+def start_energy_consumption_summary_import_job(
+    app: Flask,
+    raw: bytes,
+    *,
+    username: str | None = None,
+) -> str:
+    """Запускает импорт в фоновом потоке; возвращает идентификатор задания."""
+    job_id = str(uuid.uuid4())
+    _write_job(
+        job_id,
+        {
+            "status": "running",
+            "versions_done": 0,
+            "versions_total": 0,
+            "stats": None,
+            "error": None,
+        },
+    )
+
+    @copy_current_request_context
+    def _run() -> None:
+        with app.app_context():
+            try:
+                stats = import_energy_consumption_summary_from_xlsx_bytes(
+                    raw,
+                    user=username,
+                    on_version_progress=_progress_updater(job_id),
+                )
+                job = _read_job(job_id)
+                if job is None:
+                    return
+                versions_processed = stats.get("database_versions_processed") or job.get(
+                    "versions_done", 0
+                )
+                _write_job(
+                    job_id,
+                    {
+                        **job,
+                        "status": "done",
+                        "stats": stats,
+                        "versions_done": versions_processed,
+                        "versions_total": versions_processed,
+                        "error": None,
+                    },
+                )
+            except ValueError as exc:
+                job = _read_job(job_id)
+                if job is None:
+                    return
+                _write_job(
+                    job_id,
+                    {**job, "status": "error", "error": str(exc)},
+                )
+            except Exception:
+                app.logger.exception(
+                    "Фоновый импорт сводки потребления из Excel (job_id=%s)", job_id
+                )
+                job = _read_job(job_id)
+                if job is None:
+                    return
+                _write_job(
+                    job_id,
+                    {
+                        **job,
+                        "status": "error",
+                        "error": (
+                            "Не удалось выполнить импорт (ошибка при обработке файла или записи в БД). "
+                            "Подробности — в журнале сервера приложения."
+                        ),
+                    },
+                )
+
+    threading.Thread(
+        target=_run,
+        name=f"ec-summary-import-{job_id[:8]}",
+        daemon=True,
+    ).start()
+    return job_id
+
+
+def get_energy_consumption_summary_import_job(job_id: str) -> dict[str, Any] | None:
+    return _read_job(job_id)

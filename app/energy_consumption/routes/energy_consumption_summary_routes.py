@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import current_app, jsonify, render_template, request, send_file
+from flask import current_app, jsonify, render_template, request, send_file, session
 from flask_login import current_user, login_required
 from app.common.services.get_services.years.years_get_services import (
     get_filter_end_year,
@@ -15,8 +15,11 @@ from app.energy_consumption.services.energy_consumption_summary_export_services 
     build_demand_summary_excel_stream,
 )
 from app.energy_consumption.services.energy_consumption_summary_import_services import (
-    import_energy_consumption_summary_from_xlsx_bytes,
     persist_all_energy_consumption_summary_computed_rows,
+)
+from app.energy_consumption.services.energy_consumption_summary_import_jobs import (
+    get_energy_consumption_summary_import_job,
+    start_energy_consumption_summary_import_job,
 )
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
 from app.energy_consumption.services.energy_consumption_summary_logging import (
@@ -509,41 +512,7 @@ def demand_summary_oes_gaes_charge_export():
     )
 
 
-@energy_consumption_bp.route("/summary/fo_ez/import.xlsx", methods=["POST"])
-@login_required
-def demand_summary_fo_ez_import_xlsx():
-    """Импорт показателей потребления по ОЭС/РЭС/субъект РФ/ФО — для страниц сводки по ОЭС, ФО и энергозонам.
-
-    По умолчанию данные записываются только в текущую выбранную версию БД; запись во все версии —
-    переменная окружения EC_SUMMARY_IMPORT_ALL_DB_VERSIONS (см. модуль импорта сводки).
-    """
-    if not getattr(current_user, "has_admin", False):
-        return jsonify(ok=False, error="Недостаточно прав"), 403
-    upload = request.files.get("file")
-    if upload is None or upload.filename is None or str(upload.filename).strip() == "":
-        return jsonify(ok=False, error="Файл не выбран."), 400
-    raw_name = str(upload.filename).strip().lower()
-    if not (raw_name.endswith(".xlsx") or raw_name.endswith(".xlsm")):
-        return jsonify(ok=False, error="Ожидается файл в формате .xlsx или .xlsm."), 400
-    raw = upload.read()
-    if not raw:
-        return jsonify(ok=False, error="Пустой файл."), 400
-    try:
-        stats = import_energy_consumption_summary_from_xlsx_bytes(raw)
-    except ValueError as e:
-        return jsonify(ok=False, error=str(e)), 400
-    except Exception:
-        current_app.logger.exception("Импорт сводки потребления из Excel (не ValueError)")
-        return (
-            jsonify(
-                ok=False,
-                error=(
-                    "Не удалось выполнить импорт (ошибка при обработке файла или записи в БД). "
-                    "Подробности — в журнале сервера приложения."
-                ),
-            ),
-            400,
-        )
+def _build_ec_summary_import_payload(stats: dict) -> dict:
     msg = (
         "Импорт выполнен по версиям БД: "
         f"{stats['database_versions_processed']}. Лист «млн. кВт.ч»: записано ячеек — "
@@ -573,7 +542,63 @@ def demand_summary_fo_ez_import_xlsx():
             + "; ".join(us[:12])
             + (" …" if len(us) > 12 else "")
         )
-    return jsonify(ok=True, message=msg, hints=extras, **stats)
+    return {"ok": True, "message": msg, "hints": extras, **stats}
+
+
+@energy_consumption_bp.route("/summary/fo_ez/import.xlsx", methods=["POST"])
+@login_required
+def demand_summary_fo_ez_import_xlsx():
+    """Импорт показателей потребления по ОЭС/РЭС/субъект РФ/ФО — для страниц сводки по ОЭС, ФО и энергозонам.
+
+    Данные записываются во все зарегистрированные версии БД.
+    """
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    upload = request.files.get("file")
+    if upload is None or upload.filename is None or str(upload.filename).strip() == "":
+        return jsonify(ok=False, error="Файл не выбран."), 400
+    raw_name = str(upload.filename).strip().lower()
+    if not (raw_name.endswith(".xlsx") or raw_name.endswith(".xlsm")):
+        return jsonify(ok=False, error="Ожидается файл в формате .xlsx или .xlsm."), 400
+    raw = upload.read()
+    if not raw:
+        return jsonify(ok=False, error="Пустой файл."), 400
+    job_id = start_energy_consumption_summary_import_job(
+        current_app._get_current_object(),
+        raw,
+        username=session.get("username"),
+    )
+    return jsonify(
+        ok=True,
+        job_id=job_id,
+        message=(
+            "Импорт запущен. Данные будут записаны во все версии БД; "
+            "обработка может занять несколько минут."
+        ),
+    )
+
+
+@energy_consumption_bp.route("/summary/fo_ez/import.xlsx/status/<job_id>", methods=["GET"])
+@login_required
+def demand_summary_fo_ez_import_status(job_id: str):
+    if not getattr(current_user, "has_admin", False):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    job = get_energy_consumption_summary_import_job(job_id)
+    if job is None:
+        return jsonify(ok=False, error="Задание импорта не найдено."), 404
+    if job.get("status") == "running":
+        return jsonify(
+            ok=True,
+            status="running",
+            versions_done=job.get("versions_done") or 0,
+            versions_total=job.get("versions_total") or 0,
+        )
+    if job.get("status") == "error":
+        return jsonify(ok=False, status="error", error=job.get("error") or "Ошибка импорта."), 400
+    stats = job.get("stats") or {}
+    payload = _build_ec_summary_import_payload(stats)
+    payload["status"] = "done"
+    return jsonify(payload)
 
 
 @energy_consumption_bp.route("/summary/cell", methods=["POST"])
@@ -729,6 +754,17 @@ def demand_summary_save_perimeter_variant():
         )
     if "to_variant_code" in data:
         to_variant = dps._parse_reassign_variant_code_payload(data.get("to_variant_code"))
+    elif "to_variant_code" not in data and "perimeter_variant_code" in data:
+        to_variant = dps._parse_reassign_variant_code_payload(
+            data.get("perimeter_variant_code")
+        )
+
+    summary_log_scope: str | None = None
+    sls_raw = data.get("summary_log_scope")
+    if sls_raw not in (None, ""):
+        s = str(sls_raw).strip().lower()
+        if s in ("oes", "fo", "ez"):
+            summary_log_scope = s
 
     try:
         updated = dps.reassign_summary_entity_perimeter_variant(
@@ -737,6 +773,7 @@ def demand_summary_save_perimeter_variant():
             parent_id=parent_id,
             from_variant_code=from_variant,
             to_variant_code=to_variant,
+            summary_log_scope=summary_log_scope,
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
@@ -773,6 +810,13 @@ def demand_summary_save_block_variant():
         str(block_scope_raw).strip() if block_scope_raw not in (None, "") else None
     )
 
+    summary_log_scope: str | None = None
+    sls_raw = data.get("summary_log_scope")
+    if sls_raw not in (None, ""):
+        s = str(sls_raw).strip().lower()
+        if s in ("oes", "fo", "ez"):
+            summary_log_scope = s
+
     try:
         dps.set_summary_block_variant_code(
             demand_model_name,
@@ -782,6 +826,7 @@ def demand_summary_save_block_variant():
             perimeter_variant_code=data.get("perimeter_variant_code", dps._UNSET),
             block_scope=block_scope,
             from_variant_code=data.get("from_variant_code", dps._UNSET),
+            summary_log_scope=summary_log_scope,
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400

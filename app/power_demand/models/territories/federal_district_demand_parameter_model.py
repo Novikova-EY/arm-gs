@@ -5,10 +5,11 @@ from sqlalchemy.sql import func
 
 from app.extensions import db
 from app.common.models.audit_mixin import AuditMixin
+from app.common.models.perimeter_variant_mixin import PerimeterVariantColumnMixin
 from config import SCHEMA_POWER_DEMAND, SCHEMA_REFDATA
 
 
-class FederalDistrictDemandParameter(db.Model, AuditMixin):
+class FederalDistrictDemandParameter(db.Model, AuditMixin, PerimeterVariantColumnMixin):
     __tablename__ = "gs_pd_federal_district_demand_params"
     __table_args__ = (
         CheckConstraint(

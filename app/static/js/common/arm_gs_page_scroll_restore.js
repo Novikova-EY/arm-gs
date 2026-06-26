@@ -7,6 +7,7 @@
 
     var PREFIX = "armGsScrollRestore_";
     var LOAD_RETRY_MS = [0, 60, 280, 450];
+    var FINAL_CONSUME_MS = 8000;
     var scheduledScopes = Object.create(null);
     var lastFocusedEditable = null;
 
@@ -125,6 +126,30 @@
                 + rk.value;
         }
 
+        var coefTk = tr.querySelector('input[name="coef_territory_kind[]"]');
+        if (coefTk) {
+            var coefTi = tr.querySelector('input[name="coef_territory_id[]"]');
+            var coefVi = tr.querySelector('input[name="coef_ved_id[]"]');
+            return "coef|"
+                + coefTk.value
+                + "|"
+                + (coefTi ? coefTi.value : "")
+                + "|"
+                + (coefVi ? coefVi.value : "");
+        }
+
+        var fdTotalK = tr.querySelector('input[name="fd_total_k_row_kind[]"]');
+        if (fdTotalK) {
+            var fdTk = tr.querySelector('input[name="fd_total_k_territory_kind[]"]');
+            var fdTi = tr.querySelector('input[name="fd_total_k_territory_id[]"]');
+            return "fd_k|"
+                + (fdTk ? fdTk.value : "")
+                + "|"
+                + (fdTi ? fdTi.value : "")
+                + "|"
+                + fdTotalK.value;
+        }
+
         var rowKey = tr.getAttribute("data-formula-key");
         if (rowKey) {
             return "formula:" + rowKey;
@@ -198,6 +223,22 @@
             for (var m = 0; m < rows4.length; m++) {
                 if (buildGenericRowAnchor(rows4[m]) === anchor) {
                     return rows4[m];
+                }
+            }
+        }
+        if (anchor.indexOf("coef|") === 0) {
+            var rows5 = root.querySelectorAll("tbody tr");
+            for (var n = 0; n < rows5.length; n++) {
+                if (buildGenericRowAnchor(rows5[n]) === anchor) {
+                    return rows5[n];
+                }
+            }
+        }
+        if (anchor.indexOf("fd_k|") === 0) {
+            var rows6 = root.querySelectorAll("tbody tr");
+            for (var p = 0; p < rows6.length; p++) {
+                if (buildGenericRowAnchor(rows6[p]) === anchor) {
+                    return rows6[p];
                 }
             }
         }
@@ -283,63 +324,80 @@
         return scope;
     }
 
-    function restore(scope, opts) {
-        opts = opts || {};
-        var consume = opts.consume !== false;
-        var key = storageKey(scope);
-        var raw = trySession(key);
-        if (!raw) {
-            return false;
-        }
-        var state;
-        try {
-            state = JSON.parse(raw);
-        } catch (e) {
-            if (consume) {
-                removeSession(key);
-            }
-            return false;
-        }
+    function applyRestoreState(state, opts) {
         var table = getTableEl(opts);
         if (!table && state.tableSelector) {
             table = document.querySelector(state.tableSelector);
         }
         var scrollWrap = document.querySelector(".page-table-scroll");
         var hScroll = getHScrollEl(opts);
+        var root = table || document;
+        var rowFound = false;
 
-        function apply() {
-            var restored = false;
-            var root = table || document;
-            if (state.rowAnchor) {
-                var row = findRowByAnchor(root, state.rowAnchor);
-                if (row) {
-                    row.scrollIntoView({ block: "center", inline: "nearest" });
-                    restored = true;
-                }
-            }
-            if (!restored && typeof state.scrollTop === "number") {
-                if (scrollWrap) {
-                    scrollWrap.scrollTop = state.scrollTop;
-                } else {
-                    window.scrollTo(0, state.scrollTop);
-                }
-            }
-            if (typeof state.scrollLeft === "number" && hScroll) {
-                hScroll.scrollLeft = state.scrollLeft;
-            }
-            if (typeof window.refreshPowerDemandSummaryLayout === "function") {
-                window.refreshPowerDemandSummaryLayout();
+        if (state.rowAnchor) {
+            var row = findRowByAnchor(root, state.rowAnchor);
+            if (row) {
+                row.scrollIntoView({ block: "center", inline: "nearest" });
+                rowFound = true;
             }
         }
+        var scrollApplied = false;
+        if (!rowFound && typeof state.scrollTop === "number") {
+            if (scrollWrap) {
+                scrollWrap.scrollTop = state.scrollTop;
+                scrollApplied = true;
+            } else if (!state.rowAnchor) {
+                window.scrollTo(0, state.scrollTop);
+                scrollApplied = true;
+            }
+        }
+        if (typeof state.scrollLeft === "number" && hScroll) {
+            hScroll.scrollLeft = state.scrollLeft;
+        }
+        if (typeof window.refreshPowerDemandSummaryLayout === "function") {
+            window.refreshPowerDemandSummaryLayout();
+        }
+        return {
+            rowFound: rowFound,
+            scrollApplied: scrollApplied,
+            success: rowFound || scrollApplied
+        };
+    }
 
-        apply();
+    function restore(scope, opts) {
+        opts = opts || {};
+        var consume = opts.consume === true;
+        var forceConsume = opts.forceConsume === true;
+        var key = storageKey(scope);
+        var raw = trySession(key);
+        if (!raw) {
+            return { hadState: false, success: false };
+        }
+        var state;
+        try {
+            state = JSON.parse(raw);
+        } catch (e) {
+            if (consume || forceConsume) {
+                removeSession(key);
+            }
+            return { hadState: false, success: false };
+        }
+
+        var result = applyRestoreState(state, opts);
         window.requestAnimationFrame(function () {
-            apply();
+            var again = applyRestoreState(state, opts);
+            if (again.success) {
+                result.success = true;
+                result.rowFound = result.rowFound || again.rowFound;
+                result.scrollApplied = result.scrollApplied || again.scrollApplied;
+            }
         });
-        if (consume) {
+
+        if ((consume && result.success) || forceConsume) {
             removeSession(key);
         }
-        return true;
+        result.hadState = true;
+        return result;
     }
 
     function scheduleRestore(scope, opts) {
@@ -350,21 +408,66 @@
             return;
         }
         scheduledScopes[scope] = true;
+        opts = opts || {};
 
-        function attempt(consume) {
+        function clearSchedule() {
+            scheduledScopes[scope] = false;
+        }
+
+        function tryRestore(consumeOnSuccess, forceConsume) {
+            if (!trySession(storageKey(scope))) {
+                clearSchedule();
+                return false;
+            }
+            var result = restore(scope, {
+                table: opts.table,
+                hScrollEl: opts.hScrollEl,
+                consume: !!consumeOnSuccess,
+                forceConsume: !!forceConsume
+            });
+            if (consumeOnSuccess && result.success) {
+                clearSchedule();
+            }
+            if (forceConsume) {
+                clearSchedule();
+            }
+            return result.success;
+        }
+
+        function afterDeferredContent() {
             if (!trySession(storageKey(scope))) {
                 return;
             }
-            restore(scope, Object.assign({}, opts || {}, { consume: consume }));
+            if (tryRestore(true, false)) {
+                return;
+            }
+            window.requestAnimationFrame(function () {
+                tryRestore(true, false);
+            });
         }
 
         function onLoad() {
-            attempt(false);
+            tryRestore(false, false);
             LOAD_RETRY_MS.forEach(function (ms) {
                 setTimeout(function () {
-                    attempt(ms === 450);
+                    tryRestore(true, false);
                 }, ms);
             });
+
+            document.addEventListener("pd-summary-rows-rendered", afterDeferredContent);
+
+            if (window.__pdSummaryRowsReady && typeof window.__pdSummaryRowsReady.then === "function") {
+                window.__pdSummaryRowsReady.then(afterDeferredContent, function () {
+                    removeSession(storageKey(scope));
+                    clearSchedule();
+                });
+            }
+
+            setTimeout(function () {
+                if (trySession(storageKey(scope))) {
+                    tryRestore(false, true);
+                }
+            }, FINAL_CONSUME_MS);
         }
 
         if (document.readyState === "complete") {

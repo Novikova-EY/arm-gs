@@ -3,7 +3,7 @@
 
 from decimal import Decimal
 
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_diagnostic_services import (
+from app.electrical_intensity.services.electrical_intensity_diagnostic_services import (
     ABS_LOCAL_X_LIMIT,
     EXCLUDE_Z_THRESHOLD,
     MIN_INVESTMENT_SHARE,

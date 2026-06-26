@@ -4,6 +4,7 @@
 from flask import jsonify, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
 
+from app.auth.routes.decorators import has_admin_required
 from app.extensions import db
 
 from app.generation.forms.station_forms import StationFilterForm
@@ -81,6 +82,7 @@ def _handle_external_code_update(*, require_admin: bool = False):
 
 @station_bp.route("/external_code_check/update", methods=["POST"])
 @login_required
+@has_admin_required
 def external_code_check_update():
     """Сохранение external_code с страницы проверки."""
     return _handle_external_code_update(require_admin=False)
@@ -95,6 +97,7 @@ def external_code_details_update():
 
 @station_bp.route("/external_code_check", methods=["GET", "POST"])
 @login_required
+@has_admin_required
 def external_code_check():
     """Список станций с external_code по всем версиям БД."""
     form = StationFilterForm()

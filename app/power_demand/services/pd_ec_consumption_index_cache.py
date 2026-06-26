@@ -10,10 +10,11 @@ from flask import g, has_request_context
 
 from app.common.services.database_version_services import get_current_version
 from app.extensions import cache
-from app.energy_consumption.services import energy_consumption_parameter_services as ecps
 
 CACHE_PREFIX = "pd_ec_consumption_index"
 CACHE_TIMEOUT = 86400
+# v2: _load_full_ec_consumption_index учитывает переданный version_id при фильтрации строк.
+_CACHE_SCHEMA_VERSION = 2
 
 EcIndex = dict[tuple[str, int, str | None, Any], float]
 SerializedEcIndex = dict[str, float]
@@ -24,7 +25,7 @@ def _version_token(version_id: int | None) -> str:
 
 
 def _cache_key(version_id: int | None) -> str:
-    return f"{CACHE_PREFIX}:v{_version_token(version_id)}"
+    return f"{CACHE_PREFIX}:s{_CACHE_SCHEMA_VERSION}:v{_version_token(version_id)}"
 
 
 def _request_store() -> dict[int | None, EcIndex]:
@@ -53,16 +54,19 @@ def _deserialize_index(data: SerializedEcIndex) -> EcIndex:
 
 
 def _load_full_ec_consumption_index(version_id: int | None) -> EcIndex:
+    from app.common.services.database_version_services import get_current_version
     from app.power_demand.services.pd_peak_usage_hours_services import (
         _AGGREGATE_EC_PARENT_ID,
         _PD_TO_EC,
         _slice_key_from_ec_row,
     )
 
+    vid = version_id if version_id is not None else get_current_version()
     index: EcIndex = {}
     for ec_model, fk_column in _PD_TO_EC.values():
         q = ec_model.query
-        q = ecps.filter_demand_by_version(q, ec_model)
+        if vid is not None and hasattr(ec_model, "database_version_id"):
+            q = q.filter(ec_model.database_version_id == vid)
         for row in q.all():
             if fk_column is None:
                 parent_id = _AGGREGATE_EC_PARENT_ID

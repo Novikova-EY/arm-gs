@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Параметры нагрузки для ЕЭС России без НТ."""
+"""Параметры нагрузки для агрегата «ЭЭС России» (с/без НТ, варианты периметра)."""
 from sqlalchemy import CheckConstraint, Numeric, text
 from sqlalchemy.sql import func
 

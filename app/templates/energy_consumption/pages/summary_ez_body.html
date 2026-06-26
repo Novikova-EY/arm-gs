@@ -300,7 +300,8 @@
                 <div id="pdEcFoEzSummaryImportWrap"
                      class="d-inline-flex align-items-center gap-2 ms-auto flex-shrink-0"
                      data-import-url="{{ url_for('energy_consumption_bp.demand_summary_fo_ez_import_xlsx') }}"
-                     data-csrf-token="{{ csrf_token }}">
+                     data-csrf-token="{{ csrf_token }}"
+                     data-import-status-url="{{ url_for('energy_consumption_bp.demand_summary_fo_ez_import_status', job_id='JOB_ID') }}">
                     <input type="file"
                            id="pdEcFoEzSummaryImportFile"
                            class="d-none"
@@ -3747,6 +3748,7 @@ if (summaryTable) {
 
 {% if pd_ec_max_year_segments %}
 <script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_year_period_mode.js') }}"></script>
+<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_excel_import.js') }}"></script>
 {% endif %}
 
 <script>
@@ -5347,77 +5349,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 .finally(function () {
                     button.innerHTML = originalHtml;
                     button.disabled = false;
-                });
-        });
-    })();
-
-    (function () {
-        var wrap = document.getElementById("pdEcFoEzSummaryImportWrap");
-        if (!wrap) {
-            return;
-        }
-        var inp = document.getElementById("pdEcFoEzSummaryImportFile");
-        var btn = document.getElementById("pdEcFoEzSummaryImportBtn");
-        var url = wrap.dataset.importUrl || "";
-        var csrf = wrap.dataset.csrfToken || "";
-        if (!inp || !btn || !url) {
-            return;
-        }
-        btn.addEventListener("click", function () {
-            inp.click();
-        });
-        inp.addEventListener("change", function () {
-            if (!inp.files || inp.files.length === 0) {
-                return;
-            }
-            var fd = new FormData();
-            fd.append("file", inp.files[0]);
-            fd.append("csrf_token", csrf);
-            var prevHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Импорт…';
-            fetch(url, {
-                method: "POST",
-                body: fd,
-                credentials: "same-origin",
-                headers: { "X-Requested-With": "XMLHttpRequest" }
-            })
-                .then(function (resp) {
-                    return resp.json().catch(function () { return null; }).then(function (j) {
-                        return { resp: resp, data: j };
-                    });
-                })
-                .then(function (pack) {
-                    btn.disabled = false;
-                    btn.innerHTML = prevHtml;
-                    inp.value = "";
-                    var data = pack.data;
-                    if (!pack.resp.ok || !data || !data.ok) {
-                        alert((data && data.error) ? data.error : "Не удалось выполнить импорт.");
-                        return;
-                    }
-                    var msg = data.message || "Готово.";
-                    var hints = data.hints || [];
-                    if (hints.length) {
-                        msg += "\n\n" + hints.join("\n\n");
-                    }
-                    alert(msg);
-                    window.location.reload();
-                })
-                .catch(function (err) {
-                    btn.disabled = false;
-                    btn.innerHTML = prevHtml;
-                    inp.value = "";
-                    var suffix = "";
-                    if (err && err.message) {
-                        suffix = "\nТехника: " + err.message + ".";
-                    }
-                    alert(
-                        "Не удалось получить ответ сервера при импорте (соединение оборвалось или сервер занят)." +
-                            suffix +
-                            "\nЧастые причины: слишком долгая обработка большого файла, перезапуск приложения или таймаут прокси." +
-                            "\nПроверьте вкладку «Сеть» в инструментах разработчика (F12) и журнал сервера."
-                    );
                 });
         });
     })();

@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
+from app.electrical_intensity.services.electrical_intensity_constants import (
     EI_POP_CALCULATED_FORMULA_TOOLTIP,
     EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
     EI_POP_COEFFICIENT_A_FORMULA_TOOLTIP,

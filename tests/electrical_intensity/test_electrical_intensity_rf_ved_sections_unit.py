@@ -6,10 +6,10 @@ from __future__ import annotations
 from decimal import Decimal
 from unittest.mock import patch
 
-from app.energy_consumption.electrical_intensity.services import (
+from app.electrical_intensity.services import (
     electrical_intensity_services as eis,
 )
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
+from app.electrical_intensity.services.electrical_intensity_constants import (
     INDUSTRIAL_GROUP_SECTION_LABEL,
     REF_ROW_CONSUMPTION,
     REF_ROW_PRODUCT_OUTPUT,

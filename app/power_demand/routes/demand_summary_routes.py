@@ -19,6 +19,8 @@ from app.common.services.database_version_services import get_current_version
 from app.logs.services.log_display_utils import format_logs_for_display
 from app.power_demand.services import demand_parameter_services as dps
 from app.power_demand.services.demand_summary_logging import (
+    PD_SUMMARY_LOGS_INITIAL_LIMIT,
+    PD_SUMMARY_LOGS_LOAD_MORE_LIMIT,
     count_pd_summary_logs,
     load_formatted_pd_summary_logs,
     load_pd_summary_logs_raw,
@@ -34,6 +36,7 @@ from app.power_demand.services.demand_summary_client_render_services import (
     build_client_render_config,
     build_summary_data_json_response,
 )
+from app.power_demand.services.pd_summary_data_segments import parse_pd_data_segments
 from app.power_demand.services.pd_summary_page_cache import (
     cached_load_pd_summary_data,
     clear_pd_summary_page_cache,
@@ -73,8 +76,10 @@ def _attach_pd_summary_logs(context: dict) -> None:
         return
     vid = get_current_version()
     context["pd_summary_logs_formatted"] = load_formatted_pd_summary_logs(
-        str(scope), vid, limit=50
+        str(scope), vid, limit=PD_SUMMARY_LOGS_INITIAL_LIMIT
     )
+    context["pd_summary_logs_initial_limit"] = PD_SUMMARY_LOGS_INITIAL_LIMIT
+    context["pd_summary_logs_load_more_limit"] = PD_SUMMARY_LOGS_LOAD_MORE_LIMIT
 
 
 def _attach_pd_summary_formula_texts(context: dict) -> None:
@@ -93,9 +98,13 @@ def _attach_pd_summary_client_render(context: dict, *, scope: str, data_path: st
 
 
 def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
+    data_segments = parse_pd_data_segments(scope)
+
     def loader() -> dict:
-        context = context_builder(for_shell=False)
-        return build_summary_data_json_response(context).get_json()
+        context = context_builder(for_shell=False, data_segments=data_segments)
+        payload = build_summary_data_json_response(context).get_json()
+        payload["loaded_segments"] = sorted(data_segments)
+        return payload
 
     return jsonify(cached_load_pd_summary_data(scope, loader))
 
@@ -123,7 +132,7 @@ def _parse_oes_max_summary_args() -> dict:
     }
 
 
-def _build_oes_max_summary_context(*, for_shell: bool) -> dict:
+def _build_oes_max_summary_context(*, for_shell: bool, data_segments=None) -> dict:
     args = _parse_oes_max_summary_args()
     context = build_oes_summary_context(
         _parse_rounding_digits(),
@@ -134,6 +143,7 @@ def _build_oes_max_summary_context(*, for_shell: bool) -> dict:
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=args["oes_ordered"],
         for_client_render_shell=for_shell,
+        data_segments=data_segments,
     )
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
@@ -148,6 +158,8 @@ def _build_oes_max_summary_context(*, for_shell: bool) -> dict:
     _attach_pd_summary_formula_texts(context)
     if for_shell:
         context["pd_summary_logs_lazy"] = True
+        context["pd_summary_logs_initial_limit"] = PD_SUMMARY_LOGS_INITIAL_LIMIT
+        context["pd_summary_logs_load_more_limit"] = PD_SUMMARY_LOGS_LOAD_MORE_LIMIT
     return context
 
 
@@ -172,7 +184,7 @@ def _parse_fo_max_summary_args() -> dict:
     }
 
 
-def _build_fo_max_summary_context(*, for_shell: bool) -> dict:
+def _build_fo_max_summary_context(*, for_shell: bool, data_segments=None) -> dict:
     args = _parse_fo_max_summary_args()
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
@@ -183,7 +195,9 @@ def _build_fo_max_summary_context(*, for_shell: bool) -> dict:
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=args["fo_sets"],
         fo_aggregate_by_res=True,
+        fo_max_extended_parameters=True,
         for_client_render_shell=for_shell,
+        data_segments=data_segments,
     )
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
@@ -196,6 +210,8 @@ def _build_fo_max_summary_context(*, for_shell: bool) -> dict:
     _attach_pd_summary_formula_texts(context)
     if for_shell:
         context["pd_summary_logs_lazy"] = True
+        context["pd_summary_logs_initial_limit"] = PD_SUMMARY_LOGS_INITIAL_LIMIT
+        context["pd_summary_logs_load_more_limit"] = PD_SUMMARY_LOGS_LOAD_MORE_LIMIT
     return context
 
 
@@ -220,7 +236,7 @@ def _parse_ez_max_summary_args() -> dict:
     }
 
 
-def _build_ez_max_summary_context(*, for_shell: bool) -> dict:
+def _build_ez_max_summary_context(*, for_shell: bool, data_segments=None) -> dict:
     args = _parse_ez_max_summary_args()
     context = build_energy_zones_summary_context(
         _parse_rounding_digits(),
@@ -231,6 +247,7 @@ def _build_ez_max_summary_context(*, for_shell: bool) -> dict:
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=args["ez_ordered"],
         for_client_render_shell=for_shell,
+        data_segments=data_segments,
     )
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
@@ -243,6 +260,8 @@ def _build_ez_max_summary_context(*, for_shell: bool) -> dict:
     _attach_pd_summary_formula_texts(context)
     if for_shell:
         context["pd_summary_logs_lazy"] = True
+        context["pd_summary_logs_initial_limit"] = PD_SUMMARY_LOGS_INITIAL_LIMIT
+        context["pd_summary_logs_load_more_limit"] = PD_SUMMARY_LOGS_LOAD_MORE_LIMIT
     return context
 
 
@@ -941,7 +960,7 @@ def demand_summary_scope_logs(scope: str):
     if scope not in ("oes", "fo", "ez"):
         return jsonify(ok=False, error="Неверная область журнала."), 400
     offset = request.args.get("offset", 0, type=int) or 0
-    limit = request.args.get("limit", 150, type=int)
+    limit = request.args.get("limit", PD_SUMMARY_LOGS_INITIAL_LIMIT, type=int)
     vid = get_current_version()
     if limit == 0:
         total = count_pd_summary_logs(scope, vid)
@@ -955,7 +974,7 @@ def demand_summary_scope_logs(scope: str):
             has_more=False,
         )
     if limit is None:
-        limit = 150
+        limit = PD_SUMMARY_LOGS_INITIAL_LIMIT
     limit = max(1, min(int(limit), 500))
     rows = load_pd_summary_logs_raw(scope, vid, limit=limit, offset=offset)
     formatted = format_logs_for_display(rows)

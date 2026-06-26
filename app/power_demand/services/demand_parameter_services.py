@@ -42,15 +42,20 @@ from app.common.services.help_services import (
 from app.common.perimeter_variant.constants import (
     CODE_WITHOUT_NT,
     CODE_WITH_NT,
+    legacy_nt_group_for_perimeter_code,
     perimeter_variant_codes_in_legacy_nt_group,
+    perimeter_variant_codes_prefer_without_gaes,
 )
 from app.common.perimeter_variant.registry import (
     filter_query_by_perimeter_variant,
+    is_ees_unified_energy_system_type_entity,
     model_supports_perimeter_variant,
     normalize_perimeter_variant_code,
     perimeter_entity_context_for_model,
     perimeter_variant_display_label_for_entity,
+    validate_ees_unified_summary_perimeter_variant_code,
     validate_perimeter_variant_for_entity,
+    validate_perimeter_variant_for_summary_entity,
 )
 
 _UNSET = object()
@@ -457,19 +462,8 @@ def get_demand_rows_for_summary_block(
         )
 
     by_slice: dict[tuple[bool, int | None], Any] = {}
-    _merge_summary_demand_rows_by_slice(
-        by_slice,
-        get_demand_rows(
-            demand_model,
-            fk_column_name,
-            parent_id,
-            perimeter_variant_code=display,
-        ),
-        prefer=True,
-    )
-    for pvc in perimeter_variant_codes_in_legacy_nt_group(display):
-        if pvc == display:
-            continue
+    ordered = perimeter_variant_codes_prefer_without_gaes(display)
+    for i, pvc in enumerate(ordered):
         _merge_summary_demand_rows_by_slice(
             by_slice,
             get_demand_rows(
@@ -478,7 +472,7 @@ def get_demand_rows_for_summary_block(
                 parent_id,
                 perimeter_variant_code=pvc,
             ),
-            prefer=False,
+            prefer=(i == 0),
         )
     _merge_summary_demand_rows_by_slice(
         by_slice,
@@ -652,7 +646,7 @@ def validate_demand_post_complete(
 
         if _field_nonempty(es_s) and parse_decimal(es_s) is None:
             issues.append(
-                f"{row_label}: некорректное число в «Совмещенный максимум потребления мощности субъекта РФ на РЭС, МВт»."
+                f"{row_label}: некорректное число в «Совмещенное потребление мощности на час прохождения максимума РЭС, МВт»."
             )
 
         if require_combined_oe_ees:
@@ -1009,6 +1003,121 @@ def find_demand_row_for_summary_slice(
     return q.first()
 
 
+def _list_demand_rows_for_summary_slice(
+    model: Type[Any],
+    *,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    is_hist: bool,
+    year_n: Optional[int],
+    database_version_id: Optional[int],
+) -> list[Any]:
+    """Все строки среза для версии БД (без фильтра по perimeter_variant_code)."""
+    q = model.query
+    if hasattr(model, "database_version_id"):
+        q = q.filter(model.database_version_id == int(database_version_id))
+    if parent_fk_column is not None:
+        if parent_id is None:
+            return []
+        q = q.filter(getattr(model, parent_fk_column) == parent_id)
+    q = q.filter(model.is_historical_maximum == is_hist)
+    if is_hist:
+        q = q.filter(model.year_number.is_(None))
+    else:
+        if year_n is None:
+            return []
+        q = q.filter(model.year_number == year_n)
+    return q.all()
+
+
+def _summary_block_pvc_can_upgrade_marker(
+    from_pvc: str | None, to_pvc: str | None
+) -> bool:
+    """Можно ли обновить pvc единственного hist-маркера без смены НТ-группы (с/без НТ)."""
+    if not from_pvc or not to_pvc:
+        return False
+    from_group = legacy_nt_group_for_perimeter_code(from_pvc)
+    to_group = legacy_nt_group_for_perimeter_code(to_pvc)
+    if from_group is not None and to_group is not None:
+        return from_group == to_group
+    if from_pvc.startswith("with_nt") and to_pvc.startswith("with_nt"):
+        return True
+    if from_pvc.startswith("without_nt") and to_pvc.startswith("without_nt"):
+        return True
+    return False
+
+
+def find_demand_row_for_summary_slice_resolving_pvc(
+    model: Type[Any],
+    *,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    is_hist: bool,
+    year_n: Optional[int],
+    database_version_id: Optional[int] = None,
+    perimeter_variant_code: Any = _UNSET,
+) -> Any:
+    """Поиск строки среза; legacy-строка без pvc может быть назначена целевому варианту.
+
+    Не переносит данные между вариантами «с НТ» / «без НТ»: чужая строка среза
+    никогда не переиспользуется, только неприсвоенная (perimeter_variant_code IS NULL).
+    """
+    if perimeter_variant_code is _UNSET or not model_supports_perimeter_variant(model):
+        return find_demand_row_for_summary_slice(
+            model,
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id,
+            is_hist=is_hist,
+            year_n=year_n,
+            database_version_id=database_version_id,
+            perimeter_variant_code=perimeter_variant_code,
+        )
+    target_pvc = perimeter_variant_code
+    row = find_demand_row_for_summary_slice(
+        model,
+        parent_fk_column=parent_fk_column,
+        parent_id=parent_id,
+        is_hist=is_hist,
+        year_n=year_n,
+        database_version_id=database_version_id,
+        perimeter_variant_code=target_pvc,
+    )
+    if row is not None:
+        return row
+    for alt_pvc in perimeter_variant_codes_in_legacy_nt_group(
+        str(target_pvc) if target_pvc is not None else ""
+    ):
+        if alt_pvc == target_pvc:
+            continue
+        row = find_demand_row_for_summary_slice(
+            model,
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id,
+            is_hist=is_hist,
+            year_n=year_n,
+            database_version_id=database_version_id,
+            perimeter_variant_code=alt_pvc,
+        )
+        if row is not None:
+            if getattr(row, "perimeter_variant_code", None) != target_pvc:
+                row.perimeter_variant_code = target_pvc
+            return row
+    unassigned = find_demand_row_for_summary_slice(
+        model,
+        parent_fk_column=parent_fk_column,
+        parent_id=parent_id,
+        is_hist=is_hist,
+        year_n=year_n,
+        database_version_id=database_version_id,
+        perimeter_variant_code=None,
+    )
+    if unassigned is not None and getattr(unassigned, "perimeter_variant_code", None) is None:
+        if target_pvc is not None:
+            unassigned.perimeter_variant_code = target_pvc
+        return unassigned
+    return None
+
+
 def create_demand_row_for_summary_slice(
     model: Type[Any],
     *,
@@ -1116,7 +1225,7 @@ def _apply_summary_field_to_row(
         if s and parse_decimal(s) is None:
             if row.__tablename__ == "gs_pd_regional_district_demand_params":
                 raise ValueError(
-                    "Некорректное число в поле «Совмещенный максимум потребления мощности субъекта РФ на РЭС, МВт»."
+                    "Некорректное число в поле «Совмещенное потребление мощности на час прохождения максимума РЭС, МВт»."
                 )
             raise ValueError(
                 "Некорректное число в поле «Совмещенный максимум потребления мощности ЭР на РЭС, МВт»."
@@ -1196,12 +1305,12 @@ def _apply_summary_field_to_row(
 
 
 _PD_SUMMARY_PARAM_LABELS: dict[str, str] = {
-    "max_power": "Максимум потребления мощности, МВт",
+    "max_power": "Максимальное потребление мощности, МВт",
     "peak_datetime": "Дата и время, мск",
     "avg_temp": "Среднесуточная ТНВ, °C",
     "combined_on_oes": "Совмещенный максимум потребления мощности ОЭС, МВт",
     "combined_on_ees": "Совмещенный максимум потребления мощности ЕЭС, МВт",
-    "combined_on_es": "Совмещенный максимум потребления мощности субъекта РФ на РЭС, МВт",
+    "combined_on_es": "Совмещенное потребление мощности на час прохождения максимума РЭС, МВт",
     "combined_on_ez": "Совмещенный на энергозону, МВт",
     "combined_on_fo": "Совмещенный на ФО, МВт",
     "combined_on_cz": "Совмещенный на централизованную зону, МВт",
@@ -1210,9 +1319,9 @@ _PD_SUMMARY_PARAM_LABELS: dict[str, str] = {
 
 _PD_DEMAND_MODEL_RU_NAMES: dict[str, str] = {
     "RussiaFederationDemandParameter": "Россия",
-    "EesRussiaDemandParameter": "ЕЭС России",
-    "EesDemandParameter": "ЕЭС",
-    "EnergySystemTypeDemandParameter": "Тип энергосистемы",
+    "EesRussiaDemandParameter": "ЭЭС России",
+    "EesDemandParameter": "ЭЭС",
+    "EnergySystemTypeDemandParameter": "ЕЭС России",
     "UnionEnergySystemDemandParameter": "ОЭС",
     "RegionalEnergySystemDemandParameter": "РЭС",
     "RegionalDistrictDemandParameter": "Субъект РФ",
@@ -1494,7 +1603,7 @@ def _assert_plan_year_only_max_power_editable(
             return
         raise ValueError(
             "Для годов с признаком «План» редактируется только показатель "
-            "«Максимум потребления мощности, МВт»."
+            "«Максимальное потребление мощности, МВт»."
         )
 
 
@@ -1594,7 +1703,7 @@ def save_demand_summary_cell(
                 parent_id_v = _resolve_summary_parent_id_for_version(
                     parent_fk_column, anchor_parent_id, vid
                 )
-            erow = find_demand_row_for_summary_slice(
+            erow = find_demand_row_for_summary_slice_resolving_pvc(
                 model,
                 parent_fk_column=parent_fk_column,
                 parent_id=parent_id_v,
@@ -1714,7 +1823,7 @@ def save_demand_summary_cell(
             parent_id_v = _resolve_summary_parent_id_for_version(
                 parent_fk_column, anchor_parent_id, vid
             )
-        row = find_demand_row_for_summary_slice(
+        row = find_demand_row_for_summary_slice_resolving_pvc(
             model,
             parent_fk_column=parent_fk_column,
             parent_id=parent_id_v,
@@ -1808,7 +1917,9 @@ def _resolve_perimeter_variant_for_context(
         )
         if ctx is not None:
             entity_kind, entity_name = ctx
-            validate_perimeter_variant_for_entity(entity_kind, entity_name, code)
+            if is_ees_unified_energy_system_type_entity(entity_kind, entity_name):
+                return validate_ees_unified_summary_perimeter_variant_code(raw)
+            validate_perimeter_variant_for_summary_entity(entity_kind, entity_name, code or raw)
     return code
 
 
@@ -1846,7 +1957,9 @@ def resolve_stored_perimeter_variant_for_summary_block(
     """Фактический код варианта в БД для блока сводки (учитывает GAES-варианты той же НТ-группы)."""
     if not model_supports_perimeter_variant(model):
         return display_perimeter_variant_code
-    for pvc in perimeter_variant_codes_in_legacy_nt_group(display_perimeter_variant_code):
+    for pvc in perimeter_variant_codes_prefer_without_gaes(
+        display_perimeter_variant_code
+    ):
         rows = get_demand_rows(
             model,
             parent_fk_column,
@@ -1911,6 +2024,240 @@ def _summary_entity_demand_rows(
     )
 
 
+def _list_summary_entity_demand_rows_for_version(
+    model: Type[Any],
+    *,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    database_version_id: int,
+    perimeter_variant_code: Any = _UNSET,
+) -> list[Any]:
+    """Строки блока сводки для одной версии БД (без фильтра текущей версии)."""
+    q = model.query
+    if hasattr(model, "database_version_id"):
+        q = q.filter(model.database_version_id == int(database_version_id))
+    if parent_fk_column is not None:
+        if parent_id is None:
+            return []
+        q = q.filter(getattr(model, parent_fk_column) == parent_id)
+    if perimeter_variant_code is not _UNSET:
+        q = filter_query_by_perimeter_variant(q, model, perimeter_variant_code)
+    elif model_supports_perimeter_variant(model):
+        q = filter_query_by_perimeter_variant(q, model, None)
+    return q.order_by(
+        model.is_historical_maximum.desc(),
+        model.year_number.asc().nullsfirst(),
+    ).all()
+
+
+def _find_source_rows_for_reassign_in_version(
+    model: Type[Any],
+    *,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    database_version_id: int,
+    from_pvc: str | None | Any,
+) -> list[Any]:
+    rows = _list_summary_entity_demand_rows_for_version(
+        model,
+        parent_fk_column=parent_fk_column,
+        parent_id=parent_id,
+        database_version_id=database_version_id,
+        perimeter_variant_code=from_pvc,
+    )
+    if rows:
+        return rows
+    seed = from_pvc
+    if seed in (None, "", _UNSET):
+        return []
+    for pvc in perimeter_variant_codes_in_legacy_nt_group(str(seed)):
+        if pvc == from_pvc:
+            continue
+        rows = _list_summary_entity_demand_rows_for_version(
+            model,
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id,
+            database_version_id=database_version_id,
+            perimeter_variant_code=pvc,
+        )
+        if rows:
+            return rows
+    return []
+
+
+def _resolve_summary_parent_id_for_all_versions(
+    demand_model_name: str,
+    parent_fk_column: Optional[str],
+    anchor_parent_id: Optional[int],
+    database_version_id: int,
+) -> Optional[int]:
+    if demand_model_name in _SUMMARY_STANDALONE_DEMAND_MODELS:
+        return None
+    if parent_fk_column is None or anchor_parent_id is None:
+        return None
+    return _resolve_summary_parent_id_for_version(
+        parent_fk_column, anchor_parent_id, database_version_id
+    )
+
+
+def _list_summary_hist_markers_for_version(
+    model: Type[Any],
+    *,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    database_version_id: int,
+) -> list[Any]:
+    """Все строки исторического максимума блока для одной версии БД (любой вариант периметра)."""
+    q = model.query
+    if hasattr(model, "database_version_id"):
+        q = q.filter(model.database_version_id == int(database_version_id))
+    if parent_fk_column is not None:
+        if parent_id is None:
+            return []
+        q = q.filter(getattr(model, parent_fk_column) == parent_id)
+    q = q.filter(model.is_historical_maximum.is_(True))
+    q = q.filter(model.year_number.is_(None))
+    return q.all()
+
+
+def _ensure_summary_block_variant_marker_row(
+    model: Type[Any],
+    *,
+    parent_fk_column: Optional[str],
+    parent_id: Optional[int],
+    database_version_id: int,
+    perimeter_variant_code: str | None,
+) -> bool:
+    """Строка исторического максимума с выбранным вариантом (одна версия БД)."""
+    user = _username()
+    row = find_demand_row_for_summary_slice(
+        model,
+        parent_fk_column=parent_fk_column,
+        parent_id=parent_id,
+        is_hist=True,
+        year_n=None,
+        database_version_id=database_version_id,
+        perimeter_variant_code=perimeter_variant_code,
+    )
+    changed = False
+    if row is None:
+        hist_markers = _list_summary_hist_markers_for_version(
+            model,
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id,
+            database_version_id=database_version_id,
+        )
+        unassigned = [
+            m
+            for m in hist_markers
+            if getattr(m, "perimeter_variant_code", None) is None
+        ]
+        if len(unassigned) == 1:
+            row = unassigned[0]
+            if getattr(row, "perimeter_variant_code", None) != perimeter_variant_code:
+                row.perimeter_variant_code = perimeter_variant_code
+                changed = True
+        elif (
+            perimeter_variant_code
+            and len(hist_markers) == 1
+            and getattr(hist_markers[0], "perimeter_variant_code", None) is not None
+        ):
+            only = hist_markers[0]
+            only_pvc = getattr(only, "perimeter_variant_code", None)
+            if _summary_block_pvc_can_upgrade_marker(only_pvc, perimeter_variant_code):
+                row = only
+                if row.perimeter_variant_code != perimeter_variant_code:
+                    row.perimeter_variant_code = perimeter_variant_code
+                    changed = True
+        if row is None:
+            if not hist_markers:
+                row = create_demand_row_for_summary_slice(
+                    model,
+                    parent_fk_column=parent_fk_column,
+                    parent_id=parent_id,
+                    is_hist=True,
+                    year_n=None,
+                    database_version_id=database_version_id,
+                    perimeter_variant_code=perimeter_variant_code,
+                )
+                changed = True
+            else:
+                row = create_demand_row_for_summary_slice(
+                    model,
+                    parent_fk_column=parent_fk_column,
+                    parent_id=parent_id,
+                    is_hist=True,
+                    year_n=None,
+                    database_version_id=database_version_id,
+                    perimeter_variant_code=perimeter_variant_code,
+                )
+                changed = True
+    elif getattr(row, "perimeter_variant_code", None) != perimeter_variant_code:
+        row.perimeter_variant_code = perimeter_variant_code
+        changed = True
+    if changed:
+        row.modified_by = user
+    return changed
+
+
+def _reassign_summary_entity_perimeter_variant_all_versions(
+    model: Type[Any],
+    demand_model_name: str,
+    *,
+    parent_fk_column: Optional[str],
+    anchor_parent_id: Optional[int],
+    from_pvc: str | None | Any,
+    to_pvc: str | None,
+) -> int:
+    """Перенос perimeter_variant_code на все строки блока во всех версиях БД."""
+    version_ids = all_database_version_ids_for_refdata()
+    if not version_ids:
+        raise ValueError(
+            "В системе нет зарегистрированных версий БД — сохранение варианта периметра невозможно."
+        )
+    user = _username()
+    updated = 0
+    for vid in version_ids:
+        parent_id_v = _resolve_summary_parent_id_for_all_versions(
+            demand_model_name,
+            parent_fk_column,
+            anchor_parent_id,
+            vid,
+        )
+        source_rows = _find_source_rows_for_reassign_in_version(
+            model,
+            parent_fk_column=parent_fk_column,
+            parent_id=parent_id_v,
+            database_version_id=vid,
+            from_pvc=from_pvc,
+        )
+        if source_rows:
+            for row in source_rows:
+                if getattr(row, "perimeter_variant_code", None) == to_pvc:
+                    continue
+                _assert_summary_perimeter_variant_reassign_allowed(
+                    model,
+                    row,
+                    parent_fk_column=parent_fk_column,
+                    parent_id=parent_id_v,
+                    to_variant_code=to_pvc,
+                    database_version_id=vid,
+                )
+                row.perimeter_variant_code = to_pvc
+                row.modified_by = user
+                updated += 1
+        else:
+            if _ensure_summary_block_variant_marker_row(
+                model,
+                parent_fk_column=parent_fk_column,
+                parent_id=parent_id_v,
+                database_version_id=vid,
+                perimeter_variant_code=to_pvc,
+            ):
+                updated += 1
+    return updated
+
+
 def _maybe_log_pd_summary_perimeter_variant_change(
     summary_log_scope: Optional[str],
     *,
@@ -1969,25 +2316,23 @@ def _seed_summary_block_variant_marker_rows(
         raise ValueError(
             "В системе нет зарегистрированных версий БД — сохранение варианта периметра невозможно."
         )
-    user = _username()
+    model_name = getattr(model, "__name__", "")
     created: list[Any] = []
     for vid in version_ids:
-        parent_id_v: Optional[int] = parent_id
-        if parent_fk_column and parent_id is not None:
-            parent_id_v = _resolve_summary_parent_id_for_version(
-                parent_fk_column, parent_id, vid
-            )
-        row = find_demand_row_for_summary_slice(
+        parent_id_v = _resolve_summary_parent_id_for_all_versions(
+            model_name,
+            parent_fk_column,
+            parent_id,
+            vid,
+        )
+        if _ensure_summary_block_variant_marker_row(
             model,
             parent_fk_column=parent_fk_column,
             parent_id=parent_id_v,
-            is_hist=True,
-            year_n=None,
             database_version_id=vid,
             perimeter_variant_code=perimeter_variant_code,
-        )
-        if row is None:
-            row = create_demand_row_for_summary_slice(
+        ):
+            row = find_demand_row_for_summary_slice(
                 model,
                 parent_fk_column=parent_fk_column,
                 parent_id=parent_id_v,
@@ -1996,10 +2341,8 @@ def _seed_summary_block_variant_marker_rows(
                 database_version_id=vid,
                 perimeter_variant_code=perimeter_variant_code,
             )
-        elif getattr(row, "perimeter_variant_code", None) != perimeter_variant_code:
-            row.perimeter_variant_code = perimeter_variant_code
-        row.modified_by = user
-        created.append(row)
+            if row is not None:
+                created.append(row)
     return created
 
 
@@ -2051,75 +2394,18 @@ def set_summary_block_variant_code(
             parent_id,
         )
         if from_variant_code is not _UNSET
-        else _UNSET
+        else None
     )
 
-    rows = _summary_entity_demand_rows(
+    updated = _reassign_summary_entity_perimeter_variant_all_versions(
         model,
+        demand_model_name,
         parent_fk_column=parent_fk_column,
-        parent_id=parent_id,
-        perimeter_variant_code=from_pvc,
+        anchor_parent_id=parent_id,
+        from_pvc=from_pvc,
+        to_pvc=new_pvc,
     )
-    if not rows:
-        seed = from_pvc if from_pvc not in (_UNSET, None, "") else new_pvc
-        if seed not in (_UNSET, None, ""):
-            for pvc in perimeter_variant_codes_in_legacy_nt_group(str(seed)):
-                if pvc == from_pvc:
-                    continue
-                rows = _summary_entity_demand_rows(
-                    model,
-                    parent_fk_column=parent_fk_column,
-                    parent_id=parent_id,
-                    perimeter_variant_code=pvc,
-                )
-                if rows:
-                    break
-    if not rows:
-        if new_pvc in (None, ""):
-            return
-        _seed_summary_block_variant_marker_rows(
-            model,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
-            perimeter_variant_code=new_pvc,
-        )
-        _commit_summary_perimeter_variant_change()
-        from_raw = (
-            None
-            if from_variant_code is _UNSET
-            else (
-                None
-                if from_variant_code in (None, "")
-                else str(from_variant_code)
-            )
-        )
-        _maybe_log_pd_summary_perimeter_variant_change(
-            summary_log_scope,
-            demand_model_name=demand_model_name,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
-            from_variant_code=from_raw,
-            to_variant_code=str(new_pvc) if new_pvc else None,
-        )
-        return
-
-    user = _username()
-    changed = False
-    for row in rows:
-        if getattr(row, "perimeter_variant_code", None) == new_pvc:
-            continue
-        _assert_summary_perimeter_variant_reassign_allowed(
-            model,
-            row,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
-            to_variant_code=new_pvc,
-        )
-        row.perimeter_variant_code = new_pvc
-        row.modified_by = user
-        changed = True
-
-    if not changed:
+    if not updated:
         return
     _commit_summary_perimeter_variant_change()
     from_raw = (
@@ -2144,16 +2430,21 @@ def _assert_summary_perimeter_variant_reassign_allowed(
     parent_fk_column: Optional[str],
     parent_id: Optional[int],
     to_variant_code: str | None,
+    database_version_id: Optional[int] = None,
 ) -> None:
     year_n = getattr(row, "year_number", None)
     if year_n is None:
         return
+    vid = database_version_id
+    if vid is None:
+        vid = getattr(row, "database_version_id", None)
     conflict = find_demand_row_for_summary_slice(
         model,
         parent_fk_column=parent_fk_column,
         parent_id=parent_id,
         is_hist=False,
         year_n=int(year_n),
+        database_version_id=vid,
         perimeter_variant_code=to_variant_code,
     )
     if conflict is not None and getattr(conflict, "id", None) != getattr(row, "id", None):
@@ -2197,69 +2488,38 @@ def reassign_summary_entity_perimeter_variant(
     if to_variant_code is _UNSET or to_pvc is _UNSET:
         raise ValueError("Не указан целевой вариант периметра.")
 
-    source_rows = _summary_entity_demand_rows(
-        model,
+    ctx = perimeter_entity_context_for_model(
+        demand_model_name,
         parent_fk_column=parent_fk_column,
         parent_id=parent_id,
-        perimeter_variant_code=from_pvc,
     )
-    if not source_rows:
-        seed = from_pvc if from_pvc not in (None, "") else to_pvc
-        for pvc in perimeter_variant_codes_in_legacy_nt_group(seed):
-            if pvc == from_pvc:
-                continue
-            source_rows = _summary_entity_demand_rows(
-                model,
-                parent_fk_column=parent_fk_column,
-                parent_id=parent_id,
-                perimeter_variant_code=pvc,
+    if ctx is not None and is_ees_unified_energy_system_type_entity(ctx[0], ctx[1]):
+        from_group = legacy_nt_group_for_perimeter_code(
+            str(from_pvc) if from_pvc not in (None, "", _UNSET) else None
+        )
+        to_group = legacy_nt_group_for_perimeter_code(
+            str(to_pvc) if to_pvc not in (None, "", _UNSET) else None
+        )
+        if from_group and to_group and from_group != to_group:
+            raise ValueError(
+                "Нельзя перенести данные между блоками «с НТ» и «без НТ» — "
+                "выберите вариант в той же НТ-группе."
             )
-            if source_rows:
-                break
+
     from_raw = (
         None
         if from_variant_code is _UNSET
         else (None if from_variant_code in (None, "") else str(from_pvc or from_variant_code))
     )
 
-    if not source_rows:
-        if to_pvc in (None, ""):
-            return 0
-        created = _seed_summary_block_variant_marker_rows(
-            model,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
-            perimeter_variant_code=to_pvc,
-        )
-        if not created:
-            return 0
-        _commit_summary_perimeter_variant_change()
-        _maybe_log_pd_summary_perimeter_variant_change(
-            summary_log_scope,
-            demand_model_name=demand_model_name,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
-            from_variant_code=from_raw,
-            to_variant_code=str(to_pvc),
-        )
-        return len(created)
-
-    user = _username()
-    updated = 0
-    for row in source_rows:
-        if getattr(row, "perimeter_variant_code", None) == to_pvc:
-            continue
-        _assert_summary_perimeter_variant_reassign_allowed(
-            model,
-            row,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id,
-            to_variant_code=to_pvc,
-        )
-        row.perimeter_variant_code = to_pvc
-        row.modified_by = user
-        updated += 1
-
+    updated = _reassign_summary_entity_perimeter_variant_all_versions(
+        model,
+        demand_model_name,
+        parent_fk_column=parent_fk_column,
+        anchor_parent_id=parent_id,
+        from_pvc=from_pvc,
+        to_pvc=to_pvc,
+    )
     if not updated:
         return 0
     _commit_summary_perimeter_variant_change()

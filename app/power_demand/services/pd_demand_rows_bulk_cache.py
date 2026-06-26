@@ -206,7 +206,9 @@ def get_demand_rows_for_summary_block_from_bulk(
     from app.power_demand.services.demand_parameter_services import (
         _LEGACY_NT_TREE_DISPLAY_CODES,
         _merge_summary_demand_rows_by_slice,
-        perimeter_variant_codes_in_legacy_nt_group,
+    )
+    from app.common.perimeter_variant.constants import (
+        perimeter_variant_codes_prefer_without_gaes,
     )
 
     display = (
@@ -223,10 +225,7 @@ def get_demand_rows_for_summary_block_from_bulk(
         )
 
     by_slice: dict[tuple[bool, int | None], Any] = {}
-    pvc_order: list[Any] = [display]
-    for pvc in perimeter_variant_codes_in_legacy_nt_group(display):
-        if pvc not in pvc_order:
-            pvc_order.append(pvc)
+    pvc_order: list[Any] = list(perimeter_variant_codes_prefer_without_gaes(display))
     if None not in pvc_order:
         pvc_order.append(None)
 

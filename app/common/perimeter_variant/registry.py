@@ -20,9 +20,13 @@ from app.common.perimeter_variant.constants import (
     ENTITY_KIND_ENERGY_SYSTEM_TYPE,
     ENTITY_KIND_RUSSIA_FEDERATION,
     EES_RUSSIA_AGGREGATE_NAME,
+    EES_UNIFIED_REF_NAME_CF,
     FALLBACK_ENTITY_PERIMETER_BINDINGS,
     FALLBACK_PERIMETER_VARIANT_BY_CODE,
     RUSSIA_FEDERATION_AGGREGATE_NAME,
+    WITH_NT_EFFECTIVE_FROM_YEAR,
+    legacy_nt_group_for_perimeter_code,
+    perimeter_variant_codes_in_legacy_nt_group,
     is_tree_display_variant_code,
 )
 from app.common.perimeter_variant.db_loader import load_perimeter_catalog
@@ -154,6 +158,104 @@ def perimeter_variant_options_for_entity(
     return opts
 
 
+def is_ees_unified_energy_system_type_entity(
+    entity_kind: str | None,
+    entity_name: str | None,
+) -> bool:
+    if entity_kind != ENTITY_KIND_ENERGY_SYSTEM_TYPE:
+        return False
+    return (entity_name or "").strip().casefold() == EES_UNIFIED_REF_NAME_CF
+
+
+def perimeter_variant_options_for_ees_unified_summary_nt_group(
+    nt_group: str | None,
+) -> list[dict[str, str]]:
+    """Варианты периметра (plain + GAES) для одной НТ-группы блока «ЕЭС России» на сводке."""
+    codes: tuple[str, ...] = ()
+    if nt_group == CODE_WITH_NT:
+        codes = perimeter_variant_codes_in_legacy_nt_group(CODE_WITH_NT)
+    elif nt_group == CODE_WITHOUT_NT:
+        codes = perimeter_variant_codes_in_legacy_nt_group(CODE_WITHOUT_NT)
+    defs = _catalog().variants_by_code
+    return [
+        {
+            "code": code,
+            "label": defs[code].label_suffix if code in defs else code,
+        }
+        for code in codes
+    ]
+
+
+def validate_ees_unified_summary_perimeter_variant_code(raw: object) -> str | None:
+    """Разрешённые коды для «ЕЭС России» на сводке: все варианты с/без заряда ГАЭС в НТ-группе."""
+    pvc = normalize_perimeter_variant_code(raw, known_only=True) if raw not in (None, "") else None
+    if pvc is None:
+        return None
+    allowed = frozenset(
+        perimeter_variant_codes_in_legacy_nt_group(CODE_WITH_NT)
+        + perimeter_variant_codes_in_legacy_nt_group(CODE_WITHOUT_NT)
+    )
+    if pvc in allowed:
+        return pvc
+    labels = ", ".join(sorted(allowed))
+    raise ValueError(
+        f"Вариант периметра {pvc} не разрешён для «ЕЭС России». "
+        f"Разрешены: {labels}."
+    )
+
+
+def summary_excludes_gaes_perimeter_variant_code(code: str | None) -> bool:
+    """На сводках нагрузок варианты «с зарядом ГАЭС» не отображаются и не выбираются."""
+    return "_with_gaes" in str(code or "")
+
+
+def perimeter_variant_codes_for_summary_entity(
+    entity_kind: str | None,
+    entity_name: str | None,
+) -> tuple[str, ...]:
+    """Коды вариантов, доступные на сводках (как в select), с fallback-привязками."""
+    binding = resolve_entity_perimeter_binding(entity_kind, entity_name)
+    if binding is None or not getattr(binding, "variants", ()):
+        return ()
+
+    def _filtered(variants: tuple) -> tuple[str, ...]:
+        return tuple(
+            str(getattr(v, "code", "") or "")
+            for v in variants
+            if getattr(v, "code", None)
+            and not summary_excludes_gaes_perimeter_variant_code(getattr(v, "code", None))
+        )
+
+    codes = _filtered(binding.variants)
+    if codes:
+        return codes
+    return _filtered(ordered_tree_variants_for_display(binding))
+
+
+def validate_perimeter_variant_for_summary_entity(
+    entity_kind: str | None,
+    entity_name: str | None,
+    raw: object,
+) -> str | None:
+    """Проверка кода варианта при сохранении сводки нагрузок (совпадает с опциями select)."""
+    if raw in (None, ""):
+        return None
+    pvc = normalize_perimeter_variant_code(raw, known_only=True)
+    allowed = set(perimeter_variant_codes_for_summary_entity(entity_kind, entity_name))
+    if pvc in allowed:
+        return pvc
+    label = entity_name or "выбранной сущности"
+    if not allowed:
+        raise ValueError(
+            f"Для «{label}» варианты периметра не настроены. "
+            "Настройте привязку на странице вариантов периметра."
+        )
+    raise ValueError(
+        f"Вариант периметра {pvc} не разрешён для «{label}». "
+        f"Разрешены: {', '.join(sorted(allowed))}."
+    )
+
+
 def validate_perimeter_variant_for_entity(
     entity_kind: str | None,
     entity_name: str | None,
@@ -255,13 +357,26 @@ def perimeter_variant_year_bounds_for_code(
     fb = FALLBACK_PERIMETER_VARIANT_BY_CODE.get(s)
     if vdef is None:
         if fb is None:
-            return None, None
-        return fb.effective_from_year, fb.effective_to_year
-    from_year = vdef.effective_from_year
-    to_year = vdef.effective_to_year
-    if from_year is None and to_year is None and fb is not None:
+            legacy = legacy_nt_group_for_perimeter_code(s)
+            fb = FALLBACK_PERIMETER_VARIANT_BY_CODE.get(legacy or "")
+            if fb is None:
+                return None, None
         from_year = fb.effective_from_year
         to_year = fb.effective_to_year
+    else:
+        from_year = vdef.effective_from_year
+        to_year = vdef.effective_to_year
+        if from_year is None and to_year is None and fb is not None:
+            from_year = fb.effective_from_year
+            to_year = fb.effective_to_year
+        elif from_year is None and to_year is None:
+            legacy = legacy_nt_group_for_perimeter_code(s)
+            fb_legacy = FALLBACK_PERIMETER_VARIANT_BY_CODE.get(legacy or "")
+            if fb_legacy is not None:
+                from_year = fb_legacy.effective_from_year
+                to_year = fb_legacy.effective_to_year
+    if legacy_nt_group_for_perimeter_code(s) == CODE_WITH_NT:
+        from_year = WITH_NT_EFFECTIVE_FROM_YEAR
     return from_year, to_year
 
 

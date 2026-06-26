@@ -21,6 +21,10 @@ ACTION_TITLE_BY_SCOPE = {
     "ez": "сводка нагрузок по энергозонам",
 }
 
+# Журнал на сводках: первая порция и шаг «Показать ещё».
+PD_SUMMARY_LOGS_INITIAL_LIMIT = 10
+PD_SUMMARY_LOGS_LOAD_MORE_LIMIT = 20
+
 
 def entity_type_for_scope(scope: str) -> str:
     return ENTITY_TYPE_BY_SCOPE[scope]
@@ -46,8 +50,10 @@ def load_pd_summary_logs_raw(
 
 
 def load_formatted_pd_summary_logs(
-    scope: str, database_version_id: Optional[int], *, limit: int = 50
+    scope: str, database_version_id: Optional[int], *, limit: int | None = None
 ) -> list[dict]:
+    if limit is None:
+        limit = PD_SUMMARY_LOGS_INITIAL_LIMIT
     logs = load_pd_summary_logs_raw(scope, database_version_id, limit=limit, offset=0)
     return format_logs_for_display(logs)
 

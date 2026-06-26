@@ -32,13 +32,3 @@ from app.economics.models import (  # noqa: F401 — таблицы «Эконо
     product_output_formula_text_model,
     federal_district_population_parameter_model,
 )
-from app.energy_consumption.electrical_intensity.models import (  # noqa: F401 — электроёмкость
-    federal_district_electrical_intensity_year_parameter_model,
-    russia_federation_electrical_intensity_year_parameter_model,
-    federal_district_electrical_intensity_coefficient_model,
-    russia_federation_electrical_intensity_coefficient_model,
-    federal_district_population_consumption_coefficient_model,
-    federal_district_population_consumption_year_parameter_model,
-    federal_district_fd_total_consumption_coefficient_model,
-    electrical_intensity_formula_text_model,
-)

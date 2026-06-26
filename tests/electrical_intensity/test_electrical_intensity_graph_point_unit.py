@@ -5,16 +5,16 @@ from decimal import Decimal
 
 from werkzeug.datastructures import ImmutableMultiDict
 
-from app.energy_consumption.electrical_intensity.services import (
+from app.electrical_intensity.services import (
     electrical_intensity_services as eis,
 )
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
+from app.electrical_intensity.services.electrical_intensity_constants import (
     POPULATION_SECTION_MARKER,
     REF_ROW_HOUSEHOLD_CONSUMPTION,
     ROW_KIND_CALCULATED,
     ROW_KIND_GRAPH_POINT,
 )
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_services import (
+from app.electrical_intensity.services.electrical_intensity_services import (
     _compute_ei_graph_point,
     _compute_household_from_population_and_per_capita,
     _compute_pop_per_capita_consumption,
@@ -58,7 +58,7 @@ def test_household_from_population_and_per_capita_is_inverse():
 
 def test_enrich_population_household_plan_years_sets_formula_and_cells(app, monkeypatch):
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services.get_year_feature_dict",
+        "app.electrical_intensity.services.electrical_intensity_services.get_year_feature_dict",
         lambda: {2025: "план"},
     )
     reference_rows = [
@@ -94,19 +94,19 @@ def test_enrich_population_household_plan_years_sets_formula_and_cells(app, monk
 def test_compute_graph_points_for_row_accepts_population_marker(app, monkeypatch):
     """Маркер блока «Население» не должен приводиться к int в маршруте AJAX."""
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services.get_current_version",
+        "app.electrical_intensity.services.electrical_intensity_services.get_current_version",
         lambda: 1,
     )
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services._ei_current_year_number",
+        "app.electrical_intensity.services.electrical_intensity_services._ei_current_year_number",
         lambda: 2020,
     )
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services._load_ved_consumption_values_map",
+        "app.electrical_intensity.services.electrical_intensity_services._load_ved_consumption_values_map",
         lambda **kwargs: {(1, 2017): Decimal("100"), (1, 2016): Decimal("90")},
     )
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services._refdata_ved_types_for_version",
+        "app.electrical_intensity.services.electrical_intensity_services._refdata_ved_types_for_version",
         lambda version_id: [],
     )
 
@@ -114,22 +114,22 @@ def test_compute_graph_points_for_row_accepts_population_marker(app, monkeypatch
         id = 1
 
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services._find_ved_by_target",
+        "app.electrical_intensity.services.electrical_intensity_services._find_ved_by_target",
         lambda ved_types, target: _HouseholdVed(),
     )
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services._load_population_by_fd_year",
+        "app.electrical_intensity.services.electrical_intensity_services._load_population_by_fd_year",
         lambda **kwargs: {2017: Decimal("100"), 2016: Decimal("100")},
     )
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services._load_accum_monetary_income_by_fd_year",
+        "app.electrical_intensity.services.electrical_intensity_services._load_accum_monetary_income_by_fd_year",
         lambda **kwargs: {
             2017: Decimal("75789.64413603014"),
             2016: Decimal("66208.82892879898"),
         },
     )
     monkeypatch.setattr(
-        "app.energy_consumption.electrical_intensity.services.electrical_intensity_services._load_population_year_values_map",
+        "app.electrical_intensity.services.electrical_intensity_services._load_population_year_values_map",
         lambda **kwargs: {},
     )
 

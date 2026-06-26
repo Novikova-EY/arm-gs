@@ -1,4 +1,8 @@
 packaging/
 .env.deploy
-
-
+.env
+backups/
+__pycache__/
+*.py[cod]
+.cursor/
+.pytest_cache/

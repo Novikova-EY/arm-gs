@@ -47,7 +47,11 @@ from app.power_demand.models.territories.federal_district_demand_parameter_model
 from app.power_demand.models.territories.regional_district_demand_parameter_model import (
     RegionalDistrictDemandParameter,
 )
-from app.common.perimeter_variant.registry import CODE_WITH_NT, CODE_WITHOUT_NT
+from app.common.perimeter_variant.constants import (
+    CODE_WITH_NT,
+    CODE_WITHOUT_NT,
+    EES_UNIFIED_REF_NAME,
+)
 from app.power_demand.models.territories.russia_federation_demand_parameter_model import (
     RussiaFederationDemandParameter,
 )
@@ -273,95 +277,51 @@ def russia_with_nt_demand():
     )
 
 
+def _ees_unified_energy_system_type() -> EnergySystemType | None:
+    q = EnergySystemType.query.filter(EnergySystemType.name == EES_UNIFIED_REF_NAME)
+    q = dps.filter_parents_by_version(q, EnergySystemType)
+    return q.order_by(EnergySystemType.id.asc()).first()
+
+
+def _redirect_ees_unified_energy_system_type_demand(
+    endpoint_name: str,
+    *,
+    perimeter_variant_code: str | None = None,
+):
+    est = _ees_unified_energy_system_type()
+    if est is None:
+        flash(f'В справочнике не найден тип энергосистемы «{EES_UNIFIED_REF_NAME}».', "danger")
+        return redirect(url_for("power_demand_bp.hub"))
+    url_kwargs: dict[str, Any] = {
+        "parent_id": int(est.id),
+        "rounding_digits": _parse_power_demand_rounding_digits(),
+    }
+    if perimeter_variant_code:
+        url_kwargs["perimeter_variant"] = perimeter_variant_code
+    return redirect(url_for("power_demand_bp.energy_system_type_demand", **url_kwargs))
+
+
 @power_demand_bp.route("/ees_russia/", methods=["GET", "POST"])
 @login_required
 def ees_russia_demand():
-    """ЕЭС России без НТ — отдельная таблица параметров нагрузки."""
-    form = _csrf()
-    if request.method == "POST":
-        if not form.validate_on_submit():
-            flash("Ошибка CSRF.", "danger")
-            return redirect(request.url)
-        try:
-            dps.save_demand_rows_from_post(
-                EesRussiaDemandParameter,
-                None,
-                None,
-                request.form,
-                require_combined_oe_ees=False,
-                perimeter_variant_code=CODE_WITHOUT_NT,
-            )
-            flash("Данные сохранены.", "success")
-        except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
-        return _redirect_preserving_rounding("power_demand_bp.ees_russia_demand")
+    """Редирект на ведение «ЕЭС России» (EnergySystemType)."""
+    from app.common.perimeter_variant.constants import CODE_WITHOUT_NT_WITHOUT_GAES
 
-    rows = dps.get_demand_rows(
-        EesRussiaDemandParameter,
-        None,
-        None,
-        perimeter_variant_code=CODE_WITHOUT_NT,
-    )
-    rd = _parse_power_demand_rounding_digits()
-    return render_template(
-        "power_demand/power_demand_edit.html",
-        form=form,
-        page_title="Нагрузки: ЕЭС России без НТ",
-        parent_label="ЕЭС России без НТ",
-        back_url=url_for("power_demand_bp.hub"),
-        rows=rows,
-        fk_column=None,
-        parent_id=None,
-        format_dt=dps.format_peak_datetime,
-        year_options=dps.year_dropdown_numbers(rows),
-        show_combined_oess_eess=False,
-        rounding_digits=rd,
+    return _redirect_ees_unified_energy_system_type_demand(
+        "power_demand_bp.ees_russia_demand",
+        perimeter_variant_code=CODE_WITHOUT_NT_WITHOUT_GAES,
     )
 
 
 @power_demand_bp.route("/ees_russia_with_nt/", methods=["GET", "POST"])
 @login_required
 def ees_russia_with_nt_demand():
-    """ЕЭС России с НТ — отдельная таблица."""
-    form = _csrf()
-    if request.method == "POST":
-        if not form.validate_on_submit():
-            flash("Ошибка CSRF.", "danger")
-            return redirect(request.url)
-        try:
-            dps.save_demand_rows_from_post(
-                EesRussiaDemandParameter,
-                None,
-                None,
-                request.form,
-                require_combined_oe_ees=False,
-                perimeter_variant_code=CODE_WITH_NT,
-            )
-            flash("Данные сохранены.", "success")
-        except Exception as e:
-            flash(f"Ошибка сохранения: {e}", "danger")
-        return _redirect_preserving_rounding("power_demand_bp.ees_russia_with_nt_demand")
+    """Редирект на ведение «ЕЭС России» (EnergySystemType)."""
+    from app.common.perimeter_variant.constants import CODE_WITH_NT_WITHOUT_GAES
 
-    rows = dps.get_demand_rows(
-        EesRussiaDemandParameter,
-        None,
-        None,
-        perimeter_variant_code=CODE_WITH_NT,
-    )
-    rd = _parse_power_demand_rounding_digits()
-    return render_template(
-        "power_demand/power_demand_edit.html",
-        form=form,
-        page_title="Нагрузки: ЕЭС России (с НТ)",
-        parent_label="ЕЭС России (с НТ)",
-        back_url=url_for("power_demand_bp.hub"),
-        rows=rows,
-        fk_column=None,
-        parent_id=None,
-        format_dt=dps.format_peak_datetime,
-        year_options=dps.year_dropdown_numbers(rows),
-        show_combined_oess_eess=False,
-        rounding_digits=rd,
+    return _redirect_ees_unified_energy_system_type_demand(
+        "power_demand_bp.ees_russia_with_nt_demand",
+        perimeter_variant_code=CODE_WITH_NT_WITHOUT_GAES,
     )
 
 
@@ -376,7 +336,7 @@ def ees_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                EesDemandParameter,
+                EesRussiaDemandParameter,
                 None,
                 None,
                 request.form,
@@ -389,7 +349,7 @@ def ees_demand():
         return _redirect_preserving_rounding("power_demand_bp.ees_demand")
 
     rows = dps.get_demand_rows(
-        EesDemandParameter,
+        EesRussiaDemandParameter,
         None,
         None,
         perimeter_variant_code=CODE_WITHOUT_NT,
@@ -422,7 +382,7 @@ def ees_with_nt_demand():
             return redirect(request.url)
         try:
             dps.save_demand_rows_from_post(
-                EesDemandParameter,
+                EesRussiaDemandParameter,
                 None,
                 None,
                 request.form,
@@ -435,7 +395,7 @@ def ees_with_nt_demand():
         return _redirect_preserving_rounding("power_demand_bp.ees_with_nt_demand")
 
     rows = dps.get_demand_rows(
-        EesDemandParameter,
+        EesRussiaDemandParameter,
         None,
         None,
         perimeter_variant_code=CODE_WITH_NT,
@@ -901,6 +861,7 @@ def energy_system_type_list():
 @login_required
 def energy_system_type_demand(parent_id: int):
     p = EnergySystemType.query.get_or_404(parent_id)
+    pvc = (request.args.get("perimeter_variant") or "").strip() or None
     return _demand_detail(
         EnergySystemTypeDemandParameter,
         "id_energy_system_type",
@@ -909,4 +870,5 @@ def energy_system_type_demand(parent_id: int):
         f"Нагрузки: {p.name}",
         p.name,
         "power_demand_bp.energy_system_type_list",
+        perimeter_variant_code=pvc,
     )

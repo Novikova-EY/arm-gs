@@ -709,7 +709,7 @@ def test_expand_ees_unified_energy_system_type_uses_ees_russia_binding(monkeypat
     assert gaes_variant_rows
     assert all(e.label == EES_UNIFIED_REF_NAME for e in gaes_variant_rows)
     assert all(
-        e.demand_model_name == "EesRussiaEnergyConsumptionParameter"
+        e.demand_model_name == "EnergySystemTypeEnergyConsumptionParameter"
         for e in gaes_variant_rows
     )
 

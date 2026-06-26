@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Сравнение scatter-графиков электроёмкости: Excel vs страница."""
 from __future__ import annotations
 
@@ -140,14 +140,14 @@ def _diff(a, b, tol=0.05):
 
 def get_page_charts():
     from run import app
-    from app.energy_consumption.electrical_intensity.services.electrical_intensity_page_services import (
+    from app.electrical_intensity.services.electrical_intensity_page_services import (
         parse_electrical_intensity_page_kwargs,
     )
-    from app.energy_consumption.electrical_intensity.services.electrical_intensity_services import (
+    from app.electrical_intensity.services.electrical_intensity_services import (
         build_electrical_intensity_page_context,
     )
 
-    url = "/energy_consumption/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
+    url = "/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
     with app.app_context():
         with app.test_request_context(url):
             from flask import g, session

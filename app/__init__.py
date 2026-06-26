@@ -303,6 +303,7 @@ def create_app():
         from app.fuel.models import external_mapping
         importlib.import_module("app.power_demand.models")  # noqa: F401 — без «import app.…», иначе затрём Flask app
         importlib.import_module("app.economics.models")  # noqa: F401 — таблицы «Экономика» (gs_ekp)
+        importlib.import_module("app.electrical_intensity.models")  # noqa: F401 — электроёмкость (gs_ei)
         importlib.import_module("app.energy_consumption.models")  # noqa: F401 — таблицы gs_ec
         importlib.import_module("app.energy_balance.models")  # noqa: F401 — таблицы gs_bem
         importlib.import_module("app.territories.models")  # noqa: F401 — таблицы gs_ter
@@ -727,8 +728,8 @@ def create_app():
     from app.power_demand.routes import power_demand_bp
     from app.energy_consumption.routes import energy_consumption_bp
     from app.economics.routes import economics_bp
-    from app.energy_consumption.electrical_intensity.routes import long_term_consumption_bp
-    from app.energy_consumption.electrical_intensity.routes import electrical_intensity_root_bp
+    from app.electrical_intensity.routes import long_term_consumption_bp
+    from app.electrical_intensity.routes import electrical_intensity_root_bp
     from app.territories.routes import territories_bp
     from app.energy_balance.routes import energy_balance_bp
     from app.common.perimeter_variant.admin_routes import perimeter_variant_bp

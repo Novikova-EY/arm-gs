@@ -8,6 +8,8 @@ from app.common.perimeter_variant.registry_types import (
 )
 
 CODE_WITH_NT = "with_nt"
+# Варианты «с НТ» на сводках: данные с 2023 года (новые территории).
+WITH_NT_EFFECTIVE_FROM_YEAR = 2023
 CODE_WITHOUT_NT = "without_nt"
 CODE_WITHOUT_CRIMEA_SEV = "without_crimea_sev"
 CODE_WITHOUT_NT_WITH_KALININGRAD_ES = "without_nt_with_kaliningrad_es"
@@ -50,6 +52,37 @@ def perimeter_variant_codes_in_legacy_nt_group(code: str | None) -> tuple[str, .
     return (s,)
 
 
+def legacy_nt_group_for_perimeter_code(code: str | None) -> str | None:
+    """``with_nt`` или ``without_nt`` для любого кода из той же legacy-группы (включая GAES)."""
+    if not code:
+        return None
+    s = str(code).strip()
+    if not s:
+        return None
+    if s in perimeter_variant_codes_in_legacy_nt_group(CODE_WITH_NT):
+        return CODE_WITH_NT
+    if s in perimeter_variant_codes_in_legacy_nt_group(CODE_WITHOUT_NT):
+        return CODE_WITHOUT_NT
+    return None
+
+
+def perimeter_variant_codes_prefer_without_gaes(code: str | None) -> tuple[str, ...]:
+    """Порядок поиска строк в БД: сначала «без заряда ГАЭС», затем с зарядом, затем plain."""
+    group = perimeter_variant_codes_in_legacy_nt_group(code)
+    if not group:
+        s = str(code or "").strip()
+        return (s,) if s else ()
+
+    def rank(variant_code: str) -> tuple[int, int]:
+        if "without_gaes" in variant_code:
+            return (0, 0)
+        if "with_gaes" in variant_code:
+            return (1, 0)
+        return (2, 0)
+
+    return tuple(sorted(group, key=rank))
+
+
 def is_tree_display_variant_code(code: str | None) -> bool:
     """Исключает варианты блоков «с/без заряда ГАЭС» — они не строки дерева сводки."""
     if not code:
@@ -83,7 +116,7 @@ CENTRALIZED_ZONE_AGGREGATE_NAME_CF = "цз россии"
 
 FALLBACK_PERIMETER_VARIANT_BY_CODE: dict[str, PerimeterVariantDefinition] = {
     CODE_WITH_NT: PerimeterVariantDefinition(
-        CODE_WITH_NT, "с НТ", effective_from_year=2024
+        CODE_WITH_NT, "с НТ", effective_from_year=WITH_NT_EFFECTIVE_FROM_YEAR
     ),
     CODE_WITHOUT_NT: PerimeterVariantDefinition(
         CODE_WITHOUT_NT, "без НТ"

@@ -62,22 +62,51 @@ def test_aggregate_sheet_labels_russia_with_nt_column_writes_without_nt_variant(
         ("ЕЭС России безНТ с зарядом ГАЭС", service.CODE_WITHOUT_NT_WITH_GAES),
     ],
 )
-def test_resolve_aggregate_binding_accepts_compact_ees_russia_labels(
+def test_resolve_ees_unified_binding_uses_energy_system_type_model(
     monkeypatch,
     label,
     variant_code,
 ):
+    class _FakeEnergySystemType:
+        id = 72
+        name = "ЕЭС России"
+
     monkeypatch.setattr(service, "_aggregate_model_requires_perimeter_variant", lambda _model: True)
 
-    bind = service._resolve_aggregate_energy_consumption_binding(
+    bind = service._resolve_row_binding(
         label,
+        {
+            "ues": [],
+            "res": [],
+            "rd": [],
+            "fd": [],
+            "sync_area": [],
+            "energy_unit": [],
+            "energy_system_type": [(_FakeEnergySystemType(), "ЕЭС России")],
+        },
         perimeter_variant_code=variant_code,
         variant_column_mode=True,
     )
 
     assert bind is not None
-    assert bind.demand_model is service.EesRussiaEnergyConsumptionParameter
+    assert bind.demand_model is service.EnergySystemTypeEnergyConsumptionParameter
+    assert bind.fk_column == "id_energy_system_type"
+    assert bind.parent_id == 72
     assert bind.perimeter_variant_code == variant_code
+
+
+def test_resolve_ees_russia_aggregate_binding_uses_ees_russia_model(monkeypatch):
+    monkeypatch.setattr(service, "_aggregate_model_requires_perimeter_variant", lambda _model: True)
+
+    bind = service._resolve_aggregate_energy_consumption_binding(
+        "ЭЭС России",
+        perimeter_variant_code=service.CODE_WITH_NT_WITH_GAES,
+        variant_column_mode=True,
+    )
+
+    assert bind is not None
+    assert bind.demand_model is service.EesRussiaEnergyConsumptionParameter
+    assert bind.perimeter_variant_code == service.CODE_WITH_NT_WITH_GAES
 
 
 def test_aggregate_sheet_labels_skips_kaliningrad_sync_zone_in_variant_column_mode():

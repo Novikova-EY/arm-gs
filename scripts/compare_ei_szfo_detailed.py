@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """Детальное сравнение графиков СЗФО: Excel vs страница (версия БД 20)."""
 from __future__ import annotations
 
@@ -109,17 +109,17 @@ def match_excel_block(name: str, blocks: dict[str, dict]) -> tuple[str, dict] | 
 def main():
     from flask import g, session
     from run import app
-    from app.energy_consumption.electrical_intensity.services.electrical_intensity_page_services import (
+    from app.electrical_intensity.services.electrical_intensity_page_services import (
         parse_electrical_intensity_page_kwargs,
     )
-    from app.energy_consumption.electrical_intensity.services.electrical_intensity_services import (
+    from app.electrical_intensity.services.electrical_intensity_services import (
         build_electrical_intensity_page_context,
     )
 
     ws = openpyxl.load_workbook(EXCEL, data_only=True).active
     excel_blocks = parse_excel_szfo(ws)
 
-    url = "/energy_consumption/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
+    url = "/electrical_intensity_fo/?rounding_digits=1&start_year=2010&end_year=2042"
     with app.app_context():
         with app.test_request_context(url):
             session["current_db_version"] = 20

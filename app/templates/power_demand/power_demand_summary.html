@@ -317,7 +317,7 @@
                     {% if active_summary == 'oes' %}
                     title="Показать строки «Россия с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «ОЭС Юга с НТ» и «Первая синхронная зона с НТ»; при выключении — короткие подписи по данным строк без НТ"
                     {% elif active_summary == 'fo' %}
-                    title="Показать строки «Россия с НТ»; при выключении — «Россия» по данным строки без НТ"
+                    title="Показать строки «ЦЗ России с НТ», «Южный ФО с НТ» и блок «Новые территории»; при выключении — короткие подписи по данным строк без НТ"
                     {% else %}
                     title="Показать строки «ЕЭС России с НТ»; при выключении — «ЕЭС России» по данным строки без НТ"
                     {% endif %}>
@@ -327,17 +327,17 @@
             {% if active_summary in ('oes', 'fo', 'ez') and summary_route_variant != 'coeff' %}
             <button type="button"
                     id="pdPdSummaryHideEmptyToggle"
-                    class="btn btn-primary text-wrap flex-shrink-0"
-                    aria-pressed="true"
-                    title="Скрыть энергосистемы, у которых все показатели пусты или равны нулю">
+                    class="btn btn-outline-primary text-wrap flex-shrink-0"
+                    aria-pressed="false"
+                    title="Показать энергосистемы, у которых все показатели пусты или равны нулю">
                 Пустые строки
             </button>
-            {% if active_summary == 'oes' %}
+            {% if active_summary in ('oes', 'fo') %}
             <button type="button"
                     id="pdPdSummaryChiToggle"
                     class="btn btn-outline-warning text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки «Число часов использования максимального потребления мощности» для России, ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов (оранжевый фон)">
+                    title="Показать строки «Число часов использования максимального потребления мощности»{% if active_summary == 'oes' %} для России, ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов{% else %} для федеральных округов и РЭС{% endif %} (оранжевый фон)">
                 ЧЧИ
             </button>
             <button type="button"
@@ -381,9 +381,9 @@
             {% if active_summary in ('oes', 'fo', 'ez') %}
             <button type="button"
                     id="pdPdSummaryHideEmptyToggle"
-                    class="btn btn-primary text-wrap flex-shrink-0"
-                    aria-pressed="true"
-                    title="Скрыть энергосистемы, у которых все показатели пусты или равны нулю">
+                    class="btn btn-outline-primary text-wrap flex-shrink-0"
+                    aria-pressed="false"
+                    title="Показать энергосистемы, у которых все показатели пусты или равны нулю">
                 Пустые строки
             </button>
             {% endif %}
@@ -496,15 +496,15 @@
                     <div class="list-group">
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_max_power" data-pd-row-key="max_power" checked>
-                            <span>Максимум потребления мощности, МВт</span>
+                            <span>Максимальное потребление мощности, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_peak_datetime" data-pd-row-key="peak_datetime" checked>
                             <span>Дата и время, мск</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_power_consumption_mw" data-pd-row-key="calculated_max_power_consumption_mw" checked>
-                            <span>Расчетный максимум потребления мощности, МВт</span>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_power_consumption_mw" data-pd-row-key="calculated_max_power_consumption_mw">
+                            <span>Расчетное максимальное потребление мощности, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_avg_temp" data-pd-row-key="avg_temp" checked>
@@ -512,45 +512,45 @@
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_es" data-pd-row-key="combined_on_es" checked>
-                            <span>Совмещенный максимум потребления мощности субъекта РФ на РЭС, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума РЭС, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_oes" data-pd-row-key="combined_on_oes" checked>
-                            <span>Совмещенный максимум потребления мощности РЭС на ОЭС, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_ees" data-pd-row-key="combined_on_ees" checked>
-                            <span>Совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_sa_mw" data-pd-row-key="calculated_max_sa_mw" checked>
-                            <span>Расчетный совмещенный максимум потребления мощности СЗ на ЕЭС, МВт</span>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_sa_mw" data-pd-row-key="calculated_max_sa_mw">
+                            <span>Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_power_mw" data-pd-row-key="calculated_max_power_mw" checked>
-                            <span>Расчетный максимум потребления мощности, МВт</span>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_power_mw" data-pd-row-key="calculated_max_power_mw">
+                            <span>Расчетное максимальное потребление мощности, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_combined_on_ees_mw" data-pd-row-key="calculated_combined_on_ees_mw" checked>
-                            <span>Расчетный совмещенный максимум потребления мощности ОЭС на ЕЭС, МВт</span>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_combined_on_ees_mw" data-pd-row-key="calculated_combined_on_ees_mw">
+                            <span>Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_ees_via_oes_mw" data-pd-row-key="calculated_max_ees_via_oes_mw" checked>
-                            <span>Расчетный максимум потребления мощности (через ОЭС), МВт</span>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_ees_via_oes_mw" data-pd-row-key="calculated_max_ees_via_oes_mw">
+                            <span>Расчетное максимальное потребление мощности (через ОЭС), МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_ees_russia_mw" data-pd-row-key="calculated_max_ees_russia_mw" checked>
-                            <span>Расчетный максимум потребления мощности, МВт</span>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_ees_russia_mw" data-pd-row-key="calculated_max_ees_russia_mw">
+                            <span>Расчетное максимальное потребление мощности, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_ees_via_es_mw" data-pd-row-key="calculated_max_ees_via_es_mw" checked>
-                            <span>Расчетный максимум потребления мощности (через РЭС), МВт</span>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_ees_via_es_mw" data-pd-row-key="calculated_max_ees_via_es_mw">
+                            <span>Расчетное максимальное потребление мощности (через РЭС), МВт</span>
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" id="powerDemandOesRowsApply">Применить</button>
+                <div class="modal-footer power-demand-rows-modal-footer">
+                    <button type="button" class="btn btn-outline-danger fs-5 power-demand-rows-modal-btn" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary fs-5 power-demand-rows-modal-btn" id="powerDemandOesRowsApply">Применить</button>
                 </div>
             </div>
         </div>
@@ -570,8 +570,14 @@
                     <div class="list-group">
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="max_power" checked>
-                            <span>Максимум потребления мощности, МВт</span>
+                            <span>Максимальное потребление мощности, МВт</span>
                         </label>
+                        {% if summary_route_variant != 'coeff' %}
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_power_mw">
+                            <span>Расчетное максимальное потребление мощности, МВт</span>
+                        </label>
+                        {% endif %}
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="peak_datetime" checked>
                             <span>Дата и время, мск</span>
@@ -580,8 +586,22 @@
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="avg_temp" checked>
                             <span>Среднесуточная ТНВ, °C</span>
                         </label>
+                        {% if summary_route_variant != 'coeff' %}
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_fo_mw" checked>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ees" checked>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_combined_on_ees_mw">
+                            <span>Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
+                        </label>
+                        {% endif %}
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_combined_on_cz_mw">
+                            <span>Расчетный совмещенный на ЦЗ России, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_fo_mw">
                             <span>Расчетный максимум ФО, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
@@ -598,9 +618,9 @@
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" id="powerDemandFoRowsApply">Применить</button>
+                <div class="modal-footer power-demand-rows-modal-footer">
+                    <button type="button" class="btn btn-outline-danger fs-5 power-demand-rows-modal-btn" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary fs-5 power-demand-rows-modal-btn" id="powerDemandFoRowsApply">Применить</button>
                 </div>
             </div>
         </div>
@@ -620,7 +640,7 @@
                     <div class="list-group">
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="max_power" checked>
-                            <span>Максимум потребления мощности, МВт</span>
+                            <span>Максимальное потребление мощности, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="peak_datetime" checked>
@@ -631,7 +651,7 @@
                             <span>Среднесуточная ТНВ, °C</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_ez_mw" checked>
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_ez_mw">
                             <span>Расчетный максимум энергозоны, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
@@ -644,9 +664,9 @@
                         </label>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-danger fs-5" data-bs-dismiss="modal">Отмена</button>
-                    <button type="button" class="btn btn-primary" id="powerDemandEzRowsApply">Применить</button>
+                <div class="modal-footer power-demand-rows-modal-footer">
+                    <button type="button" class="btn btn-outline-danger fs-5 power-demand-rows-modal-btn" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary fs-5 power-demand-rows-modal-btn" id="powerDemandEzRowsApply">Применить</button>
                 </div>
             </div>
         </div>
@@ -759,6 +779,18 @@
             <div class="text-center">
                 <div class="loader loader-dual-ring" aria-hidden="true"></div>
                 <span class="visually-hidden">Загрузка...</span>
+            </div>
+        </div>
+        <div id="powerDemandSummarySegmentLoadingOverlay"
+             class="power-demand-summary-segment-loader-overlay"
+             aria-live="polite"
+             aria-hidden="true"
+             hidden
+             style="--loader-size: 3.5rem;">
+            <div class="text-center">
+                <div class="loader loader-dual-ring" aria-hidden="true"></div>
+                <div class="mt-2 small text-muted">Загрузка данных…</div>
+                <span class="visually-hidden">Загрузка данных</span>
             </div>
         </div>
         <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll{% if summary_route_variant == 'coeff' %} pd-coeff-summary-scroll-wrap{% endif %}" style="visibility: hidden;">
@@ -1002,7 +1034,7 @@
                     {% endif %}
                     {% set _pd_row_stripe = 'pd-entity-block-stripe-alt' if (_pd_block_idx.n % 2 == 0) else 'pd-entity-block-stripe-base' %}
                 {% endif %}
-                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary == 'oes' and summary_route_variant != 'coeff' and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if summary_route_variant == 'coeff' %} {{ _pd_row_stripe }}{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
+                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary in ('oes', 'fo') and summary_route_variant != 'coeff' and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if summary_route_variant == 'coeff' %} {{ _pd_row_stripe }}{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
                     data-parameter-key="{{ row.parameter_key }}"
                     {% if row.demand_model_name %}data-demand-model-name="{{ row.demand_model_name|e }}"{% endif %}
                     {% if row.id_union_energy_system is not none %}data-id-union-energy-system="{{ row.id_union_energy_system }}"{% endif %}
@@ -1019,14 +1051,21 @@
                     {% if row.get('pd_pd_aggregation_level_row') %}data-pd-pd-aggregation-level="1"{% endif %}
                     {% if row.get('pd_pd_skip_empty_hide_row') %}data-pd-pd-skip-empty-hide="1"{% endif %}
                     {% if row.get('pd_pd_territory_detail_row') %}data-pd-pd-territory-detail="1"{% endif %}
+                    {% if row.get('pd_pd_territory_compact_hide_row') %}data-pd-pd-territory-compact-hide="1"{% endif %}
                     {% if row.get('pd_pd_chi_row') %}data-pd-pd-chi-row="1"{% endif %}
+                    {% if row.get('pd_pd_formula_derived_row') %}data-pd-pd-formula-derived="1"{% endif %}
                     {% if row.get('pd_pd_verify_a_parameter_key') %}data-pd-pd-verify-a="{{ row.pd_pd_verify_a_parameter_key }}" data-pd-pd-verify-b="{{ row.pd_pd_verify_b_parameter_key }}"{% endif %}
                     data-entity-block-size="{{ row.entity_rowspan }}"
                     {% if summary_route_variant == 'coeff' %}style="--pd-row-stack: {{ loop.index }}"{% endif %}
                     {% if row.show_entity_cell %}data-is-block-start="1"{% endif %}
-                    {% if row.show_entity_cell and row.get('pd_pd_entity_label_compact_nt') %}
+                    {% if row.show_entity_cell and (row.get('pd_pd_entity_label_compact_nt') or row.get('pd_pd_entity_label_nt_detail')) %}
                     data-pd-pd-entity-label-full="{{ row.entity_label|e }}"
+                    {% if row.get('pd_pd_entity_label_compact_nt') %}
                     data-pd-pd-entity-label-compact-nt="{{ row.pd_pd_entity_label_compact_nt|e }}"
+                    {% endif %}
+                    {% if row.get('pd_pd_entity_label_nt_detail') %}
+                    data-pd-pd-entity-label-nt-detail="{{ row.pd_pd_entity_label_nt_detail|e }}"
+                    {% endif %}
                     {% endif %}>
                     {% if row.get('pd_pd_aggregation_level_full_row') %}
                     <td colspan="{% if summary_route_variant == 'coeff' %}{{ 9 + (years|length) }}{% else %}{{ (2 if not show_hist_col else 3) + (years|length) + 1 + (1 if show_perimeter_variant_column else 0) }}{% endif %}"
@@ -1086,16 +1125,20 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif summary_route_variant != 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'oes' and row.demand_model_name in ('EesRussiaDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_oes_mw' %}
+                        {% elif active_summary == 'oes' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_oes_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary in ('oes', 'ez') and row.demand_model_name in ('EesRussiaDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_russia_mw' %}
+                        {% elif active_summary in ('oes', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_russia_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'oes' and row.demand_model_name in ('EesRussiaDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
+                        {% elif active_summary == 'oes' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_fo_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_cz_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_max_ez_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
@@ -1127,8 +1170,12 @@
                         {% endif %}
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_sa_mw' %}
                         {% if row.entity_kind == 'synchronous_area' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
@@ -1186,7 +1233,7 @@
                     {% endif %}
                     {% endif %}
                     {% set _can_edit_slice = row.demand_model_name and (row.parent_fk_column is none or row.parent_id is not none) %}
-                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) %}
+                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) and not row.get('pd_pd_formula_derived_row') %}
                     {% set _can_edit_hist_cell = _can_edit_cell and not (active_summary == 'oes' and row.parameter_key not in ('max_power', 'peak_datetime', 'avg_temp')) %}
                     {% set _ues_readonly_coeff_display = summary_route_variant == 'coeff' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') %}
                     {% if show_hist_col %}
@@ -1252,6 +1299,15 @@
                     {% set _ues_combined_ees_medium_only = summary_route_variant == 'coeff' and _is_medium_year and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'combined_on_ees' %}
                     {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not _cz_fo_tot %}
                     {% set _yr_tt = (row.year_numeric_tooltips|default([]))[ix] if (row.year_numeric_tooltips|default([]))|length > ix else '' %}
+                    {% set _pv_variant_year_out_of_range = false %}
+                    {% if not row.get('pd_pd_skip_perimeter_variant_year_bounds') %}
+                    {% set _pv_from = row.get('perimeter_variant_from_year') %}
+                    {% set _pv_to = row.get('perimeter_variant_to_year') %}
+                    {% set _pv_variant_year_out_of_range = _pv_from is not none and _yr < _pv_from %}
+                    {% set _pv_variant_year_out_of_range = _pv_variant_year_out_of_range or (_pv_to is not none and _yr > _pv_to) %}
+                    {% endif %}
+                    {% if _pv_variant_year_out_of_range %}{% set value = '—' %}{% endif %}
+                    {% set _can_edit_year_cell = _can_edit_cell and not _pv_variant_year_out_of_range %}
                     <td class="text-center summary-year-cell{% if summary_route_variant == 'coeff' %} summary-year-mw-cell{% endif %}{% if _plan_hide %} summary-plan-empty{% endif %}"
                         {% if pd_pd_max_year_segments and summary_route_variant != 'coeff' %}data-ec-summary-col-year="{{ _yr }}"{% endif %}
                         {% if summary_route_variant == 'coeff' %}data-summary-year="{{ _yr }}"{% endif %}
@@ -1264,7 +1320,7 @@
                         title="{{ _yr_tt|e }}"
                         {% endif %}>
                         {% if _plan_hide %}
-                        {% elif _can_edit_cell %}
+                        {% elif _can_edit_year_cell %}
                         {% set _yv = value if value != '—' else '' %}
                         {% if row.parameter_key == 'peak_datetime' %}
                         <textarea rows="2"
@@ -1321,7 +1377,7 @@
                     {% set _note_rs_with_k = row.entity_rowspan * 2 %}
                     {% set _note_rs = _note_rs_params %}
                     {% set _nev = row.entity_note_text if row.entity_note_text is defined else '' %}
-                    {% set _can_note = can_edit_summary_cells and row.demand_model_name and (row.parent_fk_column is none or row.parent_id is not none) %}
+                    {% set _can_note = can_edit_summary_cells and row.demand_model_name and (row.parent_fk_column is none or row.parent_id is not none) and not row.get('pd_pd_formula_derived_row') %}
                     <td rowspan="{{ _note_rs if _note_rs > 0 else 1 }}"
                         data-original-note-rowspan="{{ _note_rs_params }}"
                         {% if summary_route_variant == 'coeff' %}data-original-note-rowspan-with-k="{{ _note_rs_with_k }}"{% endif %}
@@ -1362,6 +1418,7 @@
                     {% if row.get('pd_pd_aggregation_level_row') %}data-pd-pd-aggregation-level="1"{% endif %}
                     {% if row.get('pd_pd_skip_empty_hide_row') %}data-pd-pd-skip-empty-hide="1"{% endif %}
                     {% if row.get('pd_pd_territory_detail_row') %}data-pd-pd-territory-detail="1"{% endif %}
+                    {% if row.get('pd_pd_territory_compact_hide_row') %}data-pd-pd-territory-compact-hide="1"{% endif %}
                     {% if _pd_coeff_mixin_ui %}data-pd-coeff-ui-key="{{ (row.demand_model_name or '') }}|{{ row.parent_id if row.parent_id is not none else '' }}|{{ row.parameter_key }}"{% endif %}>
                     <td class="summary-parameter-cell summary-coeff-k-label-cell">
                         {% set _pd_coeff_k_tooltip = '' %}
@@ -1511,6 +1568,8 @@
     </div>
 
 {% if active_summary in ('oes', 'fo', 'ez') and (pd_summary_logs_formatted is defined or pd_summary_logs_lazy | default(false)) %}
+{% set pd_logs_initial_limit = pd_summary_logs_initial_limit | default(10) %}
+{% set pd_logs_load_more_limit = pd_summary_logs_load_more_limit | default(20) %}
 <h3 class="mb-0 ms-3 mt-4">Журнал изменений</h3>
 <div class="mt-3">
     <div class="card">
@@ -1518,6 +1577,8 @@
             <div class="table-responsive">
             <table class="table table-hover table-striped table-bordered" id="pd-summary-logs-table"
                    data-pd-logs-base-url="{{ url_for('power_demand_bp.demand_summary_scope_logs', scope=active_summary) }}"
+                   data-pd-logs-initial-limit="{{ pd_logs_initial_limit }}"
+                   data-pd-logs-load-more-limit="{{ pd_logs_load_more_limit }}"
                    {% if pd_summary_logs_lazy | default(false) %}data-pd-logs-lazy="1"{% endif %}>
                 <thead class="table-light">
                     <tr>
@@ -1565,7 +1626,7 @@
                     data-offset="{% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted %}{{ pd_summary_logs_formatted|length }}{% else %}0{% endif %}"
                     style="display: none;">
                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
-                Загрузить еще
+                Показать ещё
             </button>
         </div>
         {% endif %}
@@ -1586,6 +1647,14 @@
     var shownEl = document.getElementById("pd-summary-logs-shown");
     var totalEl = document.getElementById("pd-summary-logs-total");
     var lazyLogs = tbl.getAttribute("data-pd-logs-lazy") === "1";
+    var initialLimit = parseInt(tbl.getAttribute("data-pd-logs-initial-limit") || "10", 10);
+    var loadMoreLimit = parseInt(tbl.getAttribute("data-pd-logs-load-more-limit") || "20", 10);
+    if (initialLimit < 1) {
+        initialLimit = 10;
+    }
+    if (loadMoreLimit < 1) {
+        loadMoreLimit = 20;
+    }
     function rowFromLog(log) {
         var tr = document.createElement("tr");
         tr.innerHTML =
@@ -1652,50 +1721,44 @@
                 return data;
             });
     }
-    fetch(base + "?offset=0&limit=0", { credentials: "same-origin" })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            if (!data || !data.ok || !totalEl) return;
-            totalEl.textContent = data.total;
-            if (lazyLogs) {
-                if (data.total > 0) {
-                    loadLogsPage(0, 50, true).catch(function () {
-                        var tb = tbl.tBodies[0];
-                        tb.replaceChildren();
-                        var tr = document.createElement("tr");
-                        var td = document.createElement("td");
-                        td.colSpan = 6;
-                        td.className = "text-center text-danger p-3";
-                        td.textContent = "Не удалось загрузить журнал";
-                        tr.appendChild(td);
-                        tb.appendChild(tr);
-                    });
-                } else {
-                    var tb = tbl.tBodies[0];
-                    tb.replaceChildren();
-                    var tr = document.createElement("tr");
-                    var td = document.createElement("td");
-                    td.colSpan = 6;
-                    td.className = "text-center text-muted p-3";
-                    td.textContent = "Нет записей";
-                    tr.appendChild(td);
-                    tb.appendChild(tr);
-                    updateLogsPaging(0, 0, false);
+    if (lazyLogs) {
+        function startLazyLogsLoad() {
+            loadLogsPage(0, initialLimit, true).catch(function () {
+                var tb = tbl.tBodies[0];
+                tb.replaceChildren();
+                var tr = document.createElement("tr");
+                var td = document.createElement("td");
+                td.colSpan = 6;
+                td.className = "text-center text-danger p-3";
+                td.textContent = "Не удалось загрузить журнал";
+                tr.appendChild(td);
+                tb.appendChild(tr);
+            });
+        }
+        if (window.__pdSummaryRowsReady && typeof window.__pdSummaryRowsReady.then === "function") {
+            window.__pdSummaryRowsReady.then(startLazyLogsLoad, startLazyLogsLoad);
+        } else {
+            startLazyLogsLoad();
+        }
+    } else {
+        fetch(base + "?offset=0&limit=0", { credentials: "same-origin" })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data || !data.ok || !totalEl) return;
+                totalEl.textContent = data.total;
+                if (moreBtn && shownEl && data.total > parseInt(shownEl.textContent || "0", 10)) {
+                    moreBtn.style.display = "";
                 }
-                return;
-            }
-            if (moreBtn && shownEl && data.total > parseInt(shownEl.textContent || "0", 10)) {
-                moreBtn.style.display = "";
-            }
-        })
-        .catch(function () { /* */ });
+            })
+            .catch(function () { /* */ });
+    }
     if (moreBtn) {
         moreBtn.addEventListener("click", function () {
             var off = parseInt(moreBtn.getAttribute("data-offset") || "0", 10);
             var sp = moreBtn.querySelector(".spinner-border");
             if (sp) sp.style.display = "";
             moreBtn.disabled = true;
-            loadLogsPage(off, 150, false)
+            loadLogsPage(off, loadMoreLimit, false)
                 .catch(function () { /* */ })
                 .finally(function () {
                     if (sp) sp.style.display = "none";
@@ -1770,11 +1833,11 @@ function finishPowerDemandSummaryInitialRender() {
     if (!powerDemandSummaryLoaderShell || powerDemandSummaryLoaderShell.dataset.ready === "1") {
         return;
     }
+    if (_pdSummaryFinishScheduled) {
+        return;
+    }
+    _pdSummaryFinishScheduled = true;
     if (window.__pdSummaryRowsReady && typeof window.__pdSummaryRowsReady.then === "function") {
-        if (_pdSummaryFinishScheduled) {
-            return;
-        }
-        _pdSummaryFinishScheduled = true;
         window.__pdSummaryRowsReady.then(
             function () {
                 finishPowerDemandSummaryInitialRenderNow();
@@ -1791,6 +1854,9 @@ function finishPowerDemandSummaryInitialRender() {
 window.__pdPdSummaryFinishInitialRender = finishPowerDemandSummaryInitialRender;
 
 (async function () {
+    if (typeof window.__pdPdSummaryFinishInitialRender === "function") {
+        window.__pdPdSummaryFinishInitialRender();
+    }
     if (window.__pdSummaryRowsReady && typeof window.__pdSummaryRowsReady.then === "function") {
         try {
             await window.__pdSummaryRowsReady;
@@ -1847,6 +1913,39 @@ if (summaryTable) {
         window.__pdPdSummaryTerritoryCompactMode = false;
     }
 
+    function pdSummaryCollectSegmentsForKeyMap(keyMap, rowKeys) {
+        var segs = {};
+        rowKeys.forEach(function (k) {
+            if (keyMap[k] === false) {
+                return;
+            }
+            if (typeof window.__pdSummarySegmentForParameterKey === "function") {
+                var seg = window.__pdSummarySegmentForParameterKey(k);
+                if (seg) {
+                    segs[seg] = true;
+                }
+            }
+        });
+        return Object.keys(segs);
+    }
+
+    function pdSummaryFindEntityLabelWrap(startTr) {
+        var wrap = startTr.querySelector("td.summary-entity-cell div");
+        if (wrap) {
+            return wrap;
+        }
+        if (typeof pdSummaryCollectEntityBlockRows === "function") {
+            var blockRows = pdSummaryCollectEntityBlockRows(startTr);
+            for (var i = 0; i < blockRows.length; i++) {
+                wrap = blockRows[i].querySelector("td.summary-entity-cell div");
+                if (wrap) {
+                    return wrap;
+                }
+            }
+        }
+        return null;
+    }
+
     function syncPdPdNtAdjustedEntityLabels() {
         var ntDetailBtnPresent = document.getElementById("pdPdSummaryNtDetailToggle");
         var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
@@ -1855,14 +1954,25 @@ if (summaryTable) {
             return;
         }
         tbody.querySelectorAll("tr[data-pd-pd-entity-label-full]").forEach(function (tr) {
-            var wrap = tr.querySelector("td.summary-entity-cell div");
+            var wrap = pdSummaryFindEntityLabelWrap(tr);
             if (!wrap) {
                 return;
             }
             var fullL = tr.getAttribute("data-pd-pd-entity-label-full");
             var cn = tr.getAttribute("data-pd-pd-entity-label-compact-nt");
-            var text = ntDetailOn || cn === null || cn === "" ? fullL : cn;
-            wrap.textContent = text;
+            var ntDet = tr.getAttribute("data-pd-pd-entity-label-nt-detail");
+            var text;
+            if (ntDetailOn) {
+                text = ntDet || fullL;
+            } else {
+                text = cn || fullL;
+            }
+            var dzMark = wrap.querySelector(".pd-pd-dz-mark");
+            wrap.textContent = text || "";
+            if (dzMark) {
+                wrap.appendChild(document.createTextNode(" "));
+                wrap.appendChild(dzMark);
+            }
         });
     }
 
@@ -1899,11 +2009,68 @@ if (summaryTable) {
         var tr = startTr;
         while (blockRows.length < blockSize && tr) {
             if (tr.classList.contains("summary-row-param")) {
+                if (
+                    blockRows.length > 0 &&
+                    tr.getAttribute("data-is-block-start") === "1"
+                ) {
+                    break;
+                }
                 blockRows.push(tr);
             }
             tr = tr.nextElementSibling;
         }
         return blockRows;
+    }
+
+    function pdSummaryApplyOptionalRowLayers() {
+        if (summaryView !== "oes" && summaryView !== "fo") {
+            return;
+        }
+        var chiBtn = document.getElementById("pdPdSummaryChiToggle");
+        if (chiBtn) {
+            var chiOn = window.__pdPdSummaryChiMode === true;
+            var ntDetailBtnPresent = document.getElementById("pdPdSummaryNtDetailToggle");
+            var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
+            summaryTable
+                .querySelectorAll('tbody tr[data-pd-pd-chi-row="1"], tbody tr.pd-pd-chi-row')
+                .forEach(function (tr) {
+                    var hide =
+                        !chiOn ||
+                        (tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
+                            (!ntDetailOn ||
+                                window.__pdPdSummaryTerritoryCompactMode === true)) ||
+                        (window.__pdPdSummaryTerritoryCompactMode === true &&
+                            (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1" ||
+                                tr.getAttribute("data-pd-pd-territory-detail") === "1"));
+                    tr.classList.toggle("summary-row-hidden", hide);
+                });
+        }
+        var verificationBtn = document.getElementById("pdPdSummaryVerificationToggle");
+        if (verificationBtn) {
+            var verOn = window.__pdPdSummaryVerificationMode === true;
+            var ntBtnPresent2 = document.getElementById("pdPdSummaryNtDetailToggle");
+            var ntOn2 = !ntBtnPresent2 || window.__pdPdSummaryNtDetailMode === true;
+            summaryTable.querySelectorAll("tbody tr.summary-row-param").forEach(function (tr) {
+                var isVer =
+                    tr.classList.contains("pd-pd-verification-row") ||
+                    tr.classList.contains("pd-pd-verify-for-row");
+                if (!isVer) {
+                    return;
+                }
+                var hide =
+                    !verOn ||
+                    (tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
+                        (!ntOn2 || window.__pdPdSummaryTerritoryCompactMode === true)) ||
+                    (window.__pdPdSummaryTerritoryCompactMode === true &&
+                        (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1" ||
+                            tr.getAttribute("data-pd-pd-territory-detail") === "1"));
+                tr.classList.toggle("summary-row-hidden", hide);
+                var kRow = pdSummaryCoeffKRowForMwTr(tr);
+                if (kRow) {
+                    kRow.classList.toggle("summary-row-hidden", hide);
+                }
+            });
+        }
     }
 
     /** Строки блока для rowspan: при видимых k — каждая пара (показатель + строка k). */
@@ -1985,9 +2152,7 @@ if (summaryTable) {
     }
 
     function applyPdSummaryHideEmptyEntityBlocks() {
-        var hideOn = window.__pdPdSummaryHideEmptyMode === true;
-        var ntDetailBtnPresent = document.getElementById("pdPdSummaryNtDetailToggle");
-        var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
+        var showEmptyOn = window.__pdPdSummaryShowEmptyMode === true;
         var tbody = summaryTable.querySelector("tbody");
         if (!tbody) {
             return;
@@ -1998,15 +2163,9 @@ if (summaryTable) {
             var skipEmptyHide = blockRows.some(function (tr) {
                 return tr.getAttribute("data-pd-pd-skip-empty-hide") === "1";
             });
-            var blockHasNtExtra = blockRows.some(function (tr) {
-                return tr.getAttribute("data-pd-pd-nt-extra") === "1";
-            });
+            var keepDespiteEmpty = skipEmptyHide;
             blockRows.forEach(function (tr) {
-                var hideBlock =
-                    hideOn &&
-                    isEmpty &&
-                    !skipEmptyHide &&
-                    !(ntDetailOn && blockHasNtExtra);
+                var hideBlock = !showEmptyOn && isEmpty && !keepDespiteEmpty;
                 if (hideBlock) {
                     tr.classList.add("summary-row-empty-block-hidden");
                 } else {
@@ -2034,35 +2193,35 @@ if (summaryTable) {
     var pdPdHideEmptyBtn = document.getElementById("pdPdSummaryHideEmptyToggle");
     if (pdPdHideEmptyBtn) {
         var pdPdHideEmptyStorageKey =
-            "pdPdSummaryHideEmpty_" +
+            "pdPdSummaryShowEmpty_" +
             (summaryTable.getAttribute("data-summary-view") || "oes") +
             "_" +
             (summaryTable.getAttribute("data-summary-route-variant") || "max");
         function syncPdPdHideEmptyToggleUi() {
-            var on = window.__pdPdSummaryHideEmptyMode === true;
+            var on = window.__pdPdSummaryShowEmptyMode === true;
             pdPdHideEmptyBtn.setAttribute("aria-pressed", on ? "true" : "false");
             pdPdHideEmptyBtn.classList.toggle("btn-primary", on);
             pdPdHideEmptyBtn.classList.toggle("btn-outline-primary", !on);
         }
         try {
             var storedHideEmpty = sessionStorage.getItem(pdPdHideEmptyStorageKey);
-            window.__pdPdSummaryHideEmptyMode =
-                storedHideEmpty === null ? true : storedHideEmpty === "1";
+            window.__pdPdSummaryShowEmptyMode =
+                storedHideEmpty === null ? false : storedHideEmpty === "1";
         } catch (eHideEmptyInit) {
-            window.__pdPdSummaryHideEmptyMode = true;
+            window.__pdPdSummaryShowEmptyMode = false;
         }
         syncPdPdHideEmptyToggleUi();
         pdPdHideEmptyBtn.addEventListener("click", function () {
-            window.__pdPdSummaryHideEmptyMode = !window.__pdPdSummaryHideEmptyMode;
+            window.__pdPdSummaryShowEmptyMode = !window.__pdPdSummaryShowEmptyMode;
             try {
                 sessionStorage.setItem(
                     pdPdHideEmptyStorageKey,
-                    window.__pdPdSummaryHideEmptyMode ? "1" : "0"
+                    window.__pdPdSummaryShowEmptyMode ? "1" : "0"
                 );
             } catch (eHideEmptySt) { /* */ }
             syncPdPdHideEmptyToggleUi();
-            if (typeof window.__pdPdSummaryApplyChiVisibility === "function") {
-                window.__pdPdSummaryApplyChiVisibility();
+            if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                window.__pdPdSummaryReapplyRowVisibility();
             } else if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
                 window.__pdPdSummaryRefreshLayoutAfterVisibility();
             }
@@ -2104,18 +2263,7 @@ if (summaryTable) {
                 'tr.summary-row-param[data-is-block-start="1"]'
             );
             Array.prototype.forEach.call(startRows, function (startTr) {
-                var blockSize = parseInt(startTr.getAttribute("data-entity-block-size") || "1", 10);
-                if (blockSize < 1) {
-                    blockSize = 1;
-                }
-                var blockRows = [];
-                var tr = startTr;
-                while (blockRows.length < blockSize && tr) {
-                    if (tr.classList.contains("summary-row-param")) {
-                        blockRows.push(tr);
-                    }
-                    tr = tr.nextElementSibling;
-                }
+                var blockRows = pdSummaryCollectEntityBlockRows(startTr);
                 if (blockRows.length === 0) {
                     return;
                 }
@@ -2229,6 +2377,88 @@ if (summaryTable) {
             });
         }
 
+        function buildModalKeyMapFromDom(keyMap) {
+            var map = {};
+            ROW_KEYS.forEach(function (k) {
+                var rows = summaryTable.querySelectorAll(
+                    'tbody tr.summary-row-param[data-parameter-key="' + k + '"]'
+                );
+                if (!rows.length) {
+                    map[k] = keyMap[k] !== false;
+                    return;
+                }
+                var visible = false;
+                Array.prototype.forEach.call(rows, function (tr) {
+                    if (pdSummaryRowIsDomVisible(tr)) {
+                        visible = true;
+                    }
+                });
+                map[k] = visible;
+            });
+            return map;
+        }
+
+        function syncCalcMaxModeFromKeyMap(keyMap) {
+            if (
+                (summaryView !== "oes" && summaryView !== "fo") ||
+                routeVariant === "coeff"
+            ) {
+                return;
+            }
+            var calcKeys = pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant);
+            var anyOn = calcKeys.some(function (k) {
+                return keyMap[k] !== false;
+            });
+            window.__pdPdSummaryCalcMaxMode = anyOn;
+            try {
+                sessionStorage.setItem(
+                    "pdPdSummaryCalcMax_" + summaryView + "_" + routeVariant,
+                    anyOn ? "1" : "0"
+                );
+            } catch (eCalcMaxSync) { /* */ }
+            var calcMaxBtn = document.getElementById("pdPdSummaryCalcMaxToggle");
+            if (calcMaxBtn) {
+                calcMaxBtn.setAttribute("aria-pressed", anyOn ? "true" : "false");
+                calcMaxBtn.classList.toggle("btn-success", anyOn);
+                calcMaxBtn.classList.toggle("btn-outline-success", !anyOn);
+            }
+        }
+
+        function applyCalcMaxRowKeysVisible(visible) {
+            var calcKeys = pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant);
+            calcKeys.forEach(function (k) {
+                if (ROW_KEYS.indexOf(k) >= 0) {
+                    lastApplied[k] = !!visible;
+                }
+            });
+            applyVisibilityFromKeys(lastApplied);
+            try {
+                sessionStorage.setItem(
+                    storageKey,
+                    JSON.stringify(serializeKeys(lastApplied))
+                );
+            } catch (eCalcMaxKeysSt) { /* */ }
+        }
+
+        window.__pdPdSummarySetCalcMaxRowKeysVisible = applyCalcMaxRowKeysVisible;
+
+        function migrateCalcMaxKeysInKeyMap(keyMap) {
+            if (routeVariant === "coeff") {
+                return keyMap;
+            }
+            var calcKeys = pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant);
+            if (!calcKeys.length) {
+                return keyMap;
+            }
+            var calcOn = window.__pdPdSummaryCalcMaxMode === true;
+            calcKeys.forEach(function (k) {
+                if (Object.prototype.hasOwnProperty.call(keyMap, k)) {
+                    keyMap[k] = calcOn;
+                }
+            });
+            return keyMap;
+        }
+
         function readKeysFromCheckboxes() {
             var set = {};
             ROW_KEYS.forEach(function (k) {
@@ -2259,22 +2489,30 @@ if (summaryTable) {
             var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
             function applyRowVisibilityOne(tr) {
                 if (tr.getAttribute("data-pd-pd-aggregation-level") === "1") {
-                    if (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn) {
-                        tr.classList.add("summary-row-hidden");
-                    } else {
-                        tr.classList.remove("summary-row-hidden");
+                    var hideAgg = false;
+                    if (
+                        tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
+                        (!ntDetailOn || window.__pdPdSummaryTerritoryCompactMode === true)
+                    ) {
+                        hideAgg = true;
                     }
+                    if (
+                        window.__pdPdSummaryTerritoryCompactMode === true &&
+                        tr.getAttribute("data-pd-pd-territory-compact-hide") === "1"
+                    ) {
+                        hideAgg = true;
+                    }
+                    tr.classList.toggle("summary-row-hidden", hideAgg);
                     return;
                 }
                 if (tr.classList.contains("pd-pd-verify-for-row")) {
                     return;
                 }
                 if (
-                    summaryView === "oes" &&
+                    (summaryView === "oes" || summaryView === "fo") &&
                     routeVariant !== "coeff" &&
                     (tr.getAttribute("data-pd-pd-chi-row") === "1" ||
-                        tr.classList.contains("pd-pd-chi-row") ||
-                        tr.classList.contains("pd-pd-calc-max-row"))
+                        tr.classList.contains("pd-pd-chi-row"))
                 ) {
                     return;
                 }
@@ -2284,14 +2522,24 @@ if (summaryTable) {
                     return;
                 }
                 var show = keyMap[pk] !== false;
-                if (show && tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn) {
+                if (
+                    show &&
+                    tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
+                    (!ntDetailOn || window.__pdPdSummaryTerritoryCompactMode === true)
+                ) {
                     show = false;
                 }
                 if (
                     show &&
                     window.__pdPdSummaryTerritoryCompactMode === true &&
-                    tr.getAttribute("data-pd-pd-territory-detail") === "1" &&
-                    !(ntDetailOn && tr.getAttribute("data-pd-pd-nt-extra") === "1")
+                    tr.getAttribute("data-pd-pd-territory-compact-hide") === "1"
+                ) {
+                    show = false;
+                }
+                if (
+                    show &&
+                    window.__pdPdSummaryTerritoryCompactMode === true &&
+                    tr.getAttribute("data-pd-pd-territory-detail") === "1"
                 ) {
                     show = false;
                 }
@@ -2303,6 +2551,7 @@ if (summaryTable) {
             }
             summaryTable.querySelectorAll("tbody tr.summary-row-param").forEach(applyRowVisibilityOne);
             summaryTable.querySelectorAll("tbody tr.summary-row-coeff-k").forEach(applyRowVisibilityOne);
+            pdSummaryApplyOptionalRowLayers();
             applyPdSummaryHideEmptyEntityBlocks();
             repositionEntityCellsAndRowspans();
             syncPdPdNtAdjustedEntityLabels();
@@ -2312,9 +2561,6 @@ if (summaryTable) {
             ) {
                 window.refreshPowerDemandCoeffMixins();
             }
-            if (typeof window.__pdPdSummaryApplyChiVisibility === "function") {
-                window.__pdPdSummaryApplyChiVisibility();
-            }
         }
 
         window.__pdPdSummaryRepositionEntityCells = repositionEntityCellsAndRowspans;
@@ -2322,6 +2568,10 @@ if (summaryTable) {
 
         window.__pdPdSummaryReapplyRowVisibility = function () {
             applyVisibilityFromKeys(lastApplied);
+        };
+
+        window.__pdPdSummarySegmentsForVisibleRows = function () {
+            return pdSummaryCollectSegmentsForKeyMap(lastApplied, ROW_KEYS);
         };
 
         function parseFromStorage(raw) {
@@ -2374,6 +2624,8 @@ if (summaryTable) {
             lastApplied = parseFromStorage(null);
         }
 
+        lastApplied = migrateCalcMaxKeysInKeyMap(lastApplied);
+
         syncCheckboxesFromKeys(lastApplied);
         applyVisibilityFromKeys(lastApplied);
         try {
@@ -2383,29 +2635,84 @@ if (summaryTable) {
         var modalEl = document.getElementById(modalId);
         if (modalEl) {
             modalEl.addEventListener("show.bs.modal", function () {
-                syncCheckboxesFromKeys(lastApplied);
+                syncCheckboxesFromKeys(buildModalKeyMapFromDom(lastApplied));
             });
         }
         var applyBtn = document.getElementById(applyBtnId);
         if (applyBtn && modalEl) {
             applyBtn.addEventListener("click", function () {
                 var keyMap = readKeysFromCheckboxes();
-                lastApplied = keyMap;
-                applyVisibilityFromKeys(keyMap);
-                try {
-                    sessionStorage.setItem(storageKey, JSON.stringify(serializeKeys(keyMap)));
-                } catch (e3) { /* */ }
-                var inst = bootstrap.Modal.getInstance(modalEl);
-                if (inst) {
-                    inst.hide();
+                syncCalcMaxModeFromKeyMap(keyMap);
+                var segList = pdSummaryCollectSegmentsForKeyMap(keyMap, ROW_KEYS);
+                var applyRowKeys = function () {
+                    lastApplied = keyMap;
+                    applyVisibilityFromKeys(keyMap);
+                    try {
+                        sessionStorage.setItem(
+                            storageKey,
+                            JSON.stringify(serializeKeys(keyMap))
+                        );
+                    } catch (e3) { /* */ }
+                    var inst = bootstrap.Modal.getInstance(modalEl);
+                    if (inst) {
+                        inst.hide();
+                    }
+                };
+                if (
+                    segList.length &&
+                    typeof window.__pdSummaryEnsureSegments === "function"
+                ) {
+                    window.__pdSummaryEnsureSegments(segList).then(
+                        applyRowKeys,
+                        applyRowKeys
+                    );
+                } else {
+                    applyRowKeys();
                 }
             });
         }
     }
 
+    function pdSummaryCalcMaxPickerKeysForView(view, routeVar) {
+        if (routeVar === "coeff") {
+            return [];
+        }
+        if (view === "oes") {
+            return [
+                "calculated_max_power_mw",
+                "calculated_max_power_consumption_mw",
+                "calculated_max_sa_mw",
+                "calculated_combined_on_ees_mw",
+                "calculated_max_ees_via_oes_mw",
+                "calculated_max_ees_russia_mw",
+                "calculated_max_ees_via_es_mw",
+            ];
+        }
+        if (view === "fo") {
+            return [
+                "calculated_max_fo_mw",
+                "calculated_max_power_mw",
+                "calculated_combined_on_cz_mw",
+                "calculated_combined_on_ees_mw",
+            ];
+        }
+        if (view === "ez") {
+            return ["calculated_max_ez_mw"];
+        }
+        return [];
+    }
+
     var summaryView = summaryTable.getAttribute("data-summary-view");
     var routeVariant = summaryTable.getAttribute("data-summary-route-variant") || "max";
     var coeffDefaultHidden = routeVariant === "coeff" ? ["peak_datetime", "avg_temp"] : [];
+    var rowPickerDefaultHidden = coeffDefaultHidden.slice();
+    if (routeVariant !== "coeff") {
+        pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant).forEach(function (k) {
+            if (rowPickerDefaultHidden.indexOf(k) < 0) {
+                rowPickerDefaultHidden.push(k);
+            }
+        });
+    }
 
     // Кнопка «ЧЧИ» (/summary/oes/, не coeff) — до initPdSummaryRowPicker, чтобы видимость
     // пересчитывалась вместе с фильтром строк и «Скрыть пустые».
@@ -2420,6 +2727,27 @@ if (summaryTable) {
     } catch (ePdPdChiInit) {
         window.__pdPdSummaryChiMode = false;
     }
+    function enableNtDetailForChiVariants() {
+        if (
+            (summaryView !== "oes" && summaryView !== "fo") ||
+            window.__pdPdSummaryChiMode !== true
+        ) {
+            return;
+        }
+        window.__pdPdSummaryNtDetailMode = true;
+        try {
+            sessionStorage.setItem(pdPdNtStorageKey, "1");
+        } catch (eChiNt) { /* */ }
+        var ntBtn = document.getElementById("pdPdSummaryNtDetailToggle");
+        if (ntBtn) {
+            ntBtn.setAttribute("aria-pressed", "true");
+            ntBtn.classList.add("btn-primary");
+            ntBtn.classList.remove("btn-outline-secondary");
+        }
+    }
+    if (window.__pdPdSummaryChiMode) {
+        enableNtDetailForChiVariants();
+    }
     function syncPdPdChiToggleUi() {
         if (!pdPdChiBtn) {
             return;
@@ -2430,32 +2758,7 @@ if (summaryTable) {
         pdPdChiBtn.classList.toggle("btn-outline-warning", !on);
     }
     function applyPdPdChiVisibility() {
-        var on = window.__pdPdSummaryChiMode === true;
-        var ntDetailBtnPresent = document.getElementById("pdPdSummaryNtDetailToggle");
-        var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
-        summaryTable
-            .querySelectorAll('tbody tr[data-pd-pd-chi-row="1"], tbody tr.pd-pd-chi-row')
-            .forEach(function (tr) {
-                var hide =
-                    !on ||
-                    (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn);
-                tr.classList.toggle("summary-row-hidden", hide);
-                if (!hide) {
-                    var blockStart = tr;
-                    while (
-                        blockStart &&
-                        blockStart.getAttribute("data-is-block-start") !== "1"
-                    ) {
-                        blockStart = blockStart.previousElementSibling;
-                    }
-                    if (
-                        blockStart &&
-                        !blockStart.classList.contains("summary-row-empty-block-hidden")
-                    ) {
-                        tr.classList.remove("summary-row-empty-block-hidden");
-                    }
-                }
-            });
+        pdSummaryApplyOptionalRowLayers();
         if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
             window.__pdPdSummaryRefreshLayoutAfterVisibility();
         }
@@ -2471,83 +2774,32 @@ if (summaryTable) {
                     window.__pdPdSummaryChiMode ? "1" : "0"
                 );
             } catch (ePdPdChiSt) { /* */ }
-            syncPdPdChiToggleUi();
-            applyPdPdChiVisibility();
-        });
-    }
-
-    if (summaryView === "oes") {
-        initPdSummaryRowPicker({
-            rowKeys: ["max_power", "calculated_max_power_mw", "peak_datetime", "calculated_max_power_consumption_mw", "avg_temp", "combined_on_oes", "combined_on_ees", "calculated_max_sa_mw", "calculated_combined_on_ees_mw", "calculated_max_ees_via_oes_mw", "calculated_max_ees_russia_mw", "calculated_max_ees_via_es_mw", "combined_on_es"],
-            defaultHiddenKeys: coeffDefaultHidden,
-            storageKey: routeVariant === "coeff" ? "powerDemandSummaryOesCoeffVisibleRowKeysV2" : "powerDemandSummaryOesVisibleRowKeysV2",
-            modalId: "powerDemandOesRowsModal",
-            applyBtnId: "powerDemandOesRowsApply"
-        });
-    } else if (summaryView === "fo") {
-        var foRowKeys = ["max_power", "peak_datetime", "avg_temp", "calculated_max_fo_mw", "combined_on_cz", "combined_on_fo"];
-        initPdSummaryRowPicker({
-            rowKeys: foRowKeys,
-            defaultHiddenKeys: coeffDefaultHidden,
-            storageKey: routeVariant === "coeff" ? "powerDemandSummaryFoCoeffVisibleRowKeysV3" : "powerDemandSummaryFoVisibleRowKeys",
-            modalId: "powerDemandFoRowsModal",
-            applyBtnId: "powerDemandFoRowsApply"
-        });
-    } else if (summaryView === "ez") {
-        initPdSummaryRowPicker({
-            rowKeys: ["max_power", "peak_datetime", "avg_temp", "calculated_max_ez_mw", "combined_on_ez", "combined_on_ees"],
-            defaultHiddenKeys: coeffDefaultHidden,
-            storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeys" : "powerDemandSummaryEzVisibleRowKeys",
-            modalId: "powerDemandEzRowsModal",
-            applyBtnId: "powerDemandEzRowsApply"
-        });
-    }
-
-    var ntDetailBtn = document.getElementById("pdPdSummaryNtDetailToggle");
-    if (ntDetailBtn) {
-        function syncPdPdNtDetailToggleUi() {
-            var on = window.__pdPdSummaryNtDetailMode === true;
-            ntDetailBtn.setAttribute("aria-pressed", on ? "true" : "false");
-            ntDetailBtn.classList.toggle("btn-primary", on);
-            ntDetailBtn.classList.toggle("btn-outline-secondary", !on);
-        }
-        syncPdPdNtDetailToggleUi();
-        ntDetailBtn.addEventListener("click", function () {
-            window.__pdPdSummaryNtDetailMode = !window.__pdPdSummaryNtDetailMode;
-            try {
-                sessionStorage.setItem(pdPdNtStorageKey, window.__pdPdSummaryNtDetailMode ? "1" : "0");
-            } catch (eNtSt) { /* */ }
-            syncPdPdNtDetailToggleUi();
-            if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
-                window.__pdPdSummaryReapplyRowVisibility();
+            if (window.__pdPdSummaryChiMode) {
+                enableNtDetailForChiVariants();
+            }
+            var applyChi = function () {
+                syncPdPdChiToggleUi();
+                if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                    window.__pdPdSummaryReapplyRowVisibility();
+                } else {
+                    applyPdPdChiVisibility();
+                }
+            };
+            if (
+                window.__pdPdSummaryChiMode &&
+                typeof window.__pdSummaryEnsureSegments === "function"
+            ) {
+                var chiSegments =
+                    summaryView === "oes" || summaryView === "fo"
+                        ? ["nt_extra", "chi"]
+                        : ["chi"];
+                window.__pdSummaryEnsureSegments(chiSegments).then(applyChi, applyChi);
             } else {
-                syncPdPdNtAdjustedEntityLabels();
-            }
-            if (typeof window.__pdPdSummaryApplyVerificationVisibility === "function") {
-                window.__pdPdSummaryApplyVerificationVisibility();
-            }
-            if (typeof window.__pdPdSummaryApplyCalcMaxVisibility === "function") {
-                window.__pdPdSummaryApplyCalcMaxVisibility();
-            }
-            if (typeof window.__pdPdSummaryApplyChiVisibility === "function") {
-                window.__pdPdSummaryApplyChiVisibility();
+                applyChi();
             }
         });
     }
 
-    if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
-        window.__pdPdSummaryRefreshLayoutAfterVisibility();
-    }
-    if (typeof window.__pdPdSummaryFinishInitialRender === "function") {
-        window.__pdPdSummaryFinishInitialRender();
-    }
-
-    if (pdPdChiBtn) {
-        applyPdPdChiVisibility();
-    }
-
-    // Кнопка «Расчетные максимумы» (/summary/oes/, не coeff)
-    var pdPdCalcMaxBtn = document.getElementById("pdPdSummaryCalcMaxToggle");
     var pdPdCalcMaxStorageKey =
         "pdPdSummaryCalcMax_" +
         (summaryTable.getAttribute("data-summary-view") || "oes") +
@@ -2556,9 +2808,172 @@ if (summaryTable) {
     try {
         window.__pdPdSummaryCalcMaxMode =
             sessionStorage.getItem(pdPdCalcMaxStorageKey) === "1";
-    } catch (ePdPdCalcMaxInit) {
+    } catch (ePdPdCalcMaxInitEarly) {
         window.__pdPdSummaryCalcMaxMode = false;
     }
+    var pdPdVerificationStorageKey =
+        "pdPdSummaryVerification_" +
+        (summaryTable.getAttribute("data-summary-view") || "oes") +
+        "_" +
+        (summaryTable.getAttribute("data-summary-route-variant") || "max");
+    try {
+        window.__pdPdSummaryVerificationMode =
+            sessionStorage.getItem(pdPdVerificationStorageKey) === "1";
+    } catch (ePdPdVerInitEarly) {
+        window.__pdPdSummaryVerificationMode = false;
+    }
+
+    function pdSummaryStoredOptionalSegmentsFromSession() {
+        var segs = [];
+        if (window.__pdPdSummaryNtDetailMode === true) {
+            segs.push("nt_extra");
+        }
+        if (window.__pdPdSummaryCalcMaxMode === true) {
+            segs.push("calc_max");
+        }
+        if (window.__pdPdSummaryChiMode === true) {
+            if (
+                (summaryView === "oes" || summaryView === "fo") &&
+                segs.indexOf("nt_extra") < 0
+            ) {
+                segs.push("nt_extra");
+            }
+            segs.push("chi");
+        }
+        if (window.__pdPdSummaryVerificationMode === true) {
+            segs.push("verify");
+            if (segs.indexOf("calc_max") < 0) {
+                segs.push("calc_max");
+            }
+        }
+        return segs;
+    }
+
+    function pdSummaryMergeSegmentNames(baseSegs, extraSegs) {
+        var out = (baseSegs || []).slice();
+        (extraSegs || []).forEach(function (seg) {
+            if (seg && out.indexOf(seg) < 0) {
+                out.push(seg);
+            }
+        });
+        return out;
+    }
+
+    if (typeof window.__pdSummaryEnsureSegments === "function") {
+        try {
+            window.__pdPdSummaryDeferSegmentVisibility = true;
+            var sessionOptionalSegments = pdSummaryStoredOptionalSegmentsFromSession();
+            if (sessionOptionalSegments.length) {
+                await window.__pdSummaryEnsureSegments(sessionOptionalSegments);
+            }
+        } catch (eEarlyOptionalSeg) { /* */ }
+    }
+
+    if (summaryView === "oes") {
+        initPdSummaryRowPicker({
+            rowKeys: ["max_power", "calculated_max_power_mw", "peak_datetime", "calculated_max_power_consumption_mw", "avg_temp", "combined_on_oes", "combined_on_ees", "calculated_max_sa_mw", "calculated_combined_on_ees_mw", "calculated_max_ees_via_oes_mw", "calculated_max_ees_russia_mw", "calculated_max_ees_via_es_mw", "combined_on_es"],
+            defaultHiddenKeys: rowPickerDefaultHidden,
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryOesCoeffVisibleRowKeysV2" : "powerDemandSummaryOesVisibleRowKeysV2",
+            modalId: "powerDemandOesRowsModal",
+            applyBtnId: "powerDemandOesRowsApply"
+        });
+    } else if (summaryView === "fo") {
+        var foRowKeys = [
+            "max_power",
+            "calculated_max_power_mw",
+            "peak_datetime",
+            "avg_temp",
+            "combined_on_ees",
+            "calculated_combined_on_ees_mw",
+            "calculated_max_fo_mw",
+            "combined_on_cz",
+            "calculated_combined_on_cz_mw",
+            "combined_on_fo",
+        ];
+        initPdSummaryRowPicker({
+            rowKeys: foRowKeys,
+            defaultHiddenKeys: rowPickerDefaultHidden,
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryFoCoeffVisibleRowKeysV3" : "powerDemandSummaryFoVisibleRowKeys",
+            modalId: "powerDemandFoRowsModal",
+            applyBtnId: "powerDemandFoRowsApply"
+        });
+    } else if (summaryView === "ez") {
+        initPdSummaryRowPicker({
+            rowKeys: ["max_power", "peak_datetime", "avg_temp", "calculated_max_ez_mw", "combined_on_ez", "combined_on_ees"],
+            defaultHiddenKeys: rowPickerDefaultHidden,
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeys" : "powerDemandSummaryEzVisibleRowKeys",
+            modalId: "powerDemandEzRowsModal",
+            applyBtnId: "powerDemandEzRowsApply"
+        });
+    }
+
+    var ntDetailBtn = document.getElementById("pdPdSummaryNtDetailToggle");
+    if (ntDetailBtn) {
+        function pdPdNtDetailUiIsOn() {
+            return (
+                window.__pdPdSummaryNtDetailMode === true ||
+                ntDetailBtn.getAttribute("aria-pressed") === "true" ||
+                ntDetailBtn.classList.contains("btn-primary")
+            );
+        }
+        function syncPdPdNtDetailToggleUi() {
+            var on = window.__pdPdSummaryNtDetailMode === true;
+            ntDetailBtn.setAttribute("aria-pressed", on ? "true" : "false");
+            ntDetailBtn.classList.toggle("btn-primary", on);
+            ntDetailBtn.classList.toggle("btn-outline-secondary", !on);
+        }
+        function reapplyPdPdNtDetailVisibility() {
+            if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                window.__pdPdSummaryReapplyRowVisibility();
+            } else {
+                syncPdPdNtAdjustedEntityLabels();
+            }
+        }
+        function reapplyPdPdNtDetailVisibilitySoon() {
+            reapplyPdPdNtDetailVisibility();
+            if (typeof window.requestAnimationFrame === "function") {
+                window.requestAnimationFrame(reapplyPdPdNtDetailVisibility);
+            }
+            window.setTimeout(reapplyPdPdNtDetailVisibility, 50);
+        }
+        function ensurePdPdNtDetailRowsVisible() {
+            if (pdPdNtDetailUiIsOn()) {
+                window.__pdPdSummaryNtDetailMode = true;
+                try {
+                    sessionStorage.setItem(pdPdNtStorageKey, "1");
+                } catch (eNtSyncSt) { /* */ }
+            }
+            syncPdPdNtDetailToggleUi();
+            if (
+                window.__pdPdSummaryNtDetailMode &&
+                typeof window.__pdSummaryEnsureSegments === "function"
+            ) {
+                window.__pdSummaryEnsureSegments(["nt_extra"]).then(
+                    reapplyPdPdNtDetailVisibilitySoon,
+                    reapplyPdPdNtDetailVisibilitySoon
+                );
+            } else {
+                reapplyPdPdNtDetailVisibilitySoon();
+            }
+        }
+        if (pdPdNtDetailUiIsOn()) {
+            window.__pdPdSummaryNtDetailMode = true;
+        }
+        syncPdPdNtDetailToggleUi();
+        ntDetailBtn.addEventListener("click", function () {
+            window.__pdPdSummaryNtDetailMode = !window.__pdPdSummaryNtDetailMode;
+            try {
+                sessionStorage.setItem(pdPdNtStorageKey, window.__pdPdSummaryNtDetailMode ? "1" : "0");
+            } catch (eNtSt) { /* */ }
+            syncPdPdNtDetailToggleUi();
+            ensurePdPdNtDetailRowsVisible();
+        });
+        document.addEventListener("pd-summary-rows-rendered", ensurePdPdNtDetailRowsVisible);
+        ensurePdPdNtDetailRowsVisible();
+    }
+
+    // Кнопка «Расчетные максимумы» (/summary/oes/, не coeff)
+    var pdPdCalcMaxBtn = document.getElementById("pdPdSummaryCalcMaxToggle");
     function syncPdPdCalcMaxToggleUi() {
         if (!pdPdCalcMaxBtn) {
             return;
@@ -2569,15 +2984,7 @@ if (summaryTable) {
         pdPdCalcMaxBtn.classList.toggle("btn-outline-success", !on);
     }
     function applyPdPdCalcMaxVisibility() {
-        var on = window.__pdPdSummaryCalcMaxMode === true;
-        var ntDetailBtnPresent = document.getElementById("pdPdSummaryNtDetailToggle");
-        var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
-        summaryTable.querySelectorAll("tbody tr.pd-pd-calc-max-row").forEach(function (tr) {
-            var hide =
-                !on ||
-                (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn);
-            tr.classList.toggle("summary-row-hidden", hide);
-        });
+        pdSummaryApplyOptionalRowLayers();
         if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
             window.__pdPdSummaryRefreshLayoutAfterVisibility();
         }
@@ -2585,7 +2992,6 @@ if (summaryTable) {
     window.__pdPdSummaryApplyCalcMaxVisibility = applyPdPdCalcMaxVisibility;
     if (pdPdCalcMaxBtn) {
         syncPdPdCalcMaxToggleUi();
-        applyPdPdCalcMaxVisibility();
         pdPdCalcMaxBtn.addEventListener("click", function () {
             window.__pdPdSummaryCalcMaxMode = !window.__pdPdSummaryCalcMaxMode;
             try {
@@ -2594,24 +3000,34 @@ if (summaryTable) {
                     window.__pdPdSummaryCalcMaxMode ? "1" : "0"
                 );
             } catch (ePdPdCalcMaxSt) { /* */ }
-            syncPdPdCalcMaxToggleUi();
-            applyPdPdCalcMaxVisibility();
+            var applyCalcMax = function () {
+                syncPdPdCalcMaxToggleUi();
+                if (typeof window.__pdPdSummarySetCalcMaxRowKeysVisible === "function") {
+                    window.__pdPdSummarySetCalcMaxRowKeysVisible(
+                        window.__pdPdSummaryCalcMaxMode === true
+                    );
+                } else if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                    window.__pdPdSummaryReapplyRowVisibility();
+                } else {
+                    applyPdPdCalcMaxVisibility();
+                }
+            };
+            if (
+                window.__pdPdSummaryCalcMaxMode &&
+                typeof window.__pdSummaryEnsureSegments === "function"
+            ) {
+                window.__pdSummaryEnsureSegments(["calc_max"]).then(
+                    applyCalcMax,
+                    applyCalcMax
+                );
+            } else {
+                applyCalcMax();
+            }
         });
     }
 
     // Кнопка «Проверка» (по аналогии с energy_consumption/summary/oes)
     var pdPdVerificationBtn = document.getElementById("pdPdSummaryVerificationToggle");
-    var pdPdVerificationStorageKey =
-        "pdPdSummaryVerification_" +
-        (summaryTable.getAttribute("data-summary-view") || "oes") +
-        "_" +
-        (summaryTable.getAttribute("data-summary-route-variant") || "max");
-    try {
-        window.__pdPdSummaryVerificationMode =
-            sessionStorage.getItem(pdPdVerificationStorageKey) === "1";
-    } catch (ePdPdVerInit) {
-        window.__pdPdSummaryVerificationMode = false;
-    }
     function syncPdPdVerificationToggleUi() {
         if (!pdPdVerificationBtn) {
             return;
@@ -2622,25 +3038,7 @@ if (summaryTable) {
         pdPdVerificationBtn.classList.toggle("btn-outline-info", !on);
     }
     function applyPdPdVerificationVisibility() {
-        var on = window.__pdPdSummaryVerificationMode === true;
-        var ntDetailBtnPresent = document.getElementById("pdPdSummaryNtDetailToggle");
-        var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
-        summaryTable.querySelectorAll("tbody tr.summary-row-param").forEach(function (tr) {
-            var isVer =
-                tr.classList.contains("pd-pd-verification-row") ||
-                tr.classList.contains("pd-pd-verify-for-row");
-            if (!isVer) {
-                return;
-            }
-            var hide =
-                !on ||
-                (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn);
-            tr.classList.toggle("summary-row-hidden", hide);
-            var kRow = pdSummaryCoeffKRowForMwTr(tr);
-            if (kRow) {
-                kRow.classList.toggle("summary-row-hidden", hide);
-            }
-        });
+        pdSummaryApplyOptionalRowLayers();
         if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
             window.__pdPdSummaryRefreshLayoutAfterVisibility();
         }
@@ -2648,7 +3046,6 @@ if (summaryTable) {
     window.__pdPdSummaryApplyVerificationVisibility = applyPdPdVerificationVisibility;
     if (pdPdVerificationBtn) {
         syncPdPdVerificationToggleUi();
-        applyPdPdVerificationVisibility();
         pdPdVerificationBtn.addEventListener("click", function () {
             window.__pdPdSummaryVerificationMode = !window.__pdPdSummaryVerificationMode;
             try {
@@ -2657,10 +3054,62 @@ if (summaryTable) {
                     window.__pdPdSummaryVerificationMode ? "1" : "0"
                 );
             } catch (ePdPdVerSt) { /* */ }
-            syncPdPdVerificationToggleUi();
-            applyPdPdVerificationVisibility();
+            var applyVerify = function () {
+                syncPdPdVerificationToggleUi();
+                if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                    window.__pdPdSummaryReapplyRowVisibility();
+                } else {
+                    applyPdPdVerificationVisibility();
+                }
+                if (
+                    window.__pdPdSummaryVerificationMode &&
+                    typeof window.__pdPdOesMaxRefreshVerification === "function"
+                ) {
+                    window.__pdPdOesMaxRefreshVerification();
+                }
+            };
+            if (
+                window.__pdPdSummaryVerificationMode &&
+                typeof window.__pdSummaryEnsureSegments === "function"
+            ) {
+                window.__pdSummaryEnsureSegments(["calc_max", "verify"]).then(
+                    applyVerify,
+                    applyVerify
+                );
+            } else {
+                applyVerify();
+            }
         });
     }
+
+    if (typeof window.__pdSummaryEnsureSegments === "function") {
+        try {
+            var rowPickerOptionalSegments = [];
+            if (typeof window.__pdPdSummarySegmentsForVisibleRows === "function") {
+                window.__pdPdSummarySegmentsForVisibleRows().forEach(function (seg) {
+                    if (rowPickerOptionalSegments.indexOf(seg) < 0) {
+                        rowPickerOptionalSegments.push(seg);
+                    }
+                });
+            }
+            rowPickerOptionalSegments = pdSummaryMergeSegmentNames(
+                [],
+                rowPickerOptionalSegments
+            ).filter(function (seg) {
+                return (
+                    pdSummaryStoredOptionalSegmentsFromSession().indexOf(seg) < 0
+                );
+            });
+            if (rowPickerOptionalSegments.length) {
+                await window.__pdSummaryEnsureSegments(rowPickerOptionalSegments);
+            }
+        } catch (eRowPickerSeg) { /* */ }
+    }
+    window.__pdPdSummaryDeferSegmentVisibility = false;
+    if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+        window.__pdPdSummaryReapplyRowVisibility();
+    }
+
 }
 })();
 </script>
@@ -2679,21 +3128,21 @@ if (summaryTable) {
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-verify-for-row:hover > td {
     background-color: #d5e3f2 !important;
 }
-/* Строки «Расчетный максимум …» на /summary/oes/: зеленоватый фон по всей строке. */
+/* Строки «Расчетный максимум …» на /summary/oes/ и /summary/federal_districts/: зеленоватый фон. */
 #powerDemandSummaryTable tbody tr.pd-pd-calc-max-row > td {
-    background-color: var(--bs-success-bg-subtle, #d1e7dd) !important;
+    background-color: #e3efe8 !important;
 }
 #powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-calc-max-row:hover > td,
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-calc-max-row:hover > td {
-    background-color: #c2e0d0 !important;
+    background-color: #d8e8df !important;
 }
-/* Строки ЧЧИ на /summary/oes/: оранжевый фон по всей строке. */
+/* Строки ЧЧИ на /summary/oes/ и /summary/federal_districts/: оранжевый фон. */
 #powerDemandSummaryTable tbody tr.pd-pd-chi-row > td {
-    background-color: #ffe4cc !important;
+    background-color: #f5e8dc !important;
 }
 #powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-chi-row:hover > td,
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-chi-row:hover > td {
-    background-color: #ffd4ad !important;
+    background-color: #ecdece !important;
 }
 </style>
 
@@ -2703,6 +3152,20 @@ if (summaryTable) {
     }
     .power-demand-summary-loader-overlay {
         transition: opacity 0.12s ease;
+    }
+    .power-demand-summary-segment-loader-overlay {
+        /* fixed + высокий z-index: спиннер в центре экрана, не в середине 40k+ px таблицы */
+        position: fixed;
+        inset: 0;
+        z-index: 1053;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.78);
+        cursor: wait;
+    }
+    .power-demand-summary-loader-shell[aria-busy="true"] .power-demand-summary-scroll {
+        cursor: wait;
     }
     .power-demand-summary-scroll {
         width: 100%;
@@ -2820,6 +3283,16 @@ if (summaryTable) {
         color: #212529;
         border-color: #6c757d;
         background: #f8f9fa;
+    }
+    .power-demand-rows-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    .power-demand-rows-modal-footer .power-demand-rows-modal-btn {
+        min-width: 9.5rem;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
     }
     .summary-hist-col {
         width: {{ summary_hist_col_w }};
@@ -5282,10 +5755,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
-    if (typeof window.__pdPdSummaryFinishInitialRender === "function") {
-        window.__pdPdSummaryFinishInitialRender();
-    }
-
     const table = document.querySelector(".power-demand-summary-table[data-save-cell-url]");
     const saveBtn = document.getElementById("demandSummarySaveBtn");
     if (!table || !saveBtn) {
@@ -5499,6 +5968,52 @@ document.addEventListener("DOMContentLoaded", function () {
         return normForCompare(initial) !== normForCompare(current);
     }
 
+    function summaryBlockHasPersistedDemandRows(startTr) {
+        if (!startTr) {
+            return false;
+        }
+        var blockRows = collectSummaryBlockRows(startTr);
+        for (var i = 0; i < blockRows.length; i++) {
+            var inps = blockRows[i].querySelectorAll(
+                ".fuel-param-input[data-row-id], input.pd-coeff-medium-k-input[data-row-id]"
+            );
+            for (var j = 0; j < inps.length; j++) {
+                var rid = inps[j].getAttribute("data-row-id");
+                if (rid !== null && rid !== "") {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    function summaryBlockPersistKey(startTr) {
+        if (!startTr) {
+            return "";
+        }
+        return [
+            startTr.getAttribute("data-demand-model-name") || "",
+            startTr.getAttribute("data-parent-fk-column") ||
+                startTr.getAttribute("data-parent-fk") ||
+                "",
+            startTr.getAttribute("data-parent-id") || "",
+            startTr.getAttribute("data-perimeter-variant-code") || "",
+            startTr.getAttribute("data-id-union-energy-system") || "",
+            startTr.getAttribute("data-id-regional-energy-system") || "",
+            startTr.getAttribute("data-id-regional-district") || "",
+            startTr.getAttribute("data-id-synchronous-area") || "",
+            startTr.getAttribute("data-id-energy-unit") || "",
+        ].join("|");
+    }
+
+    function variantSelectNeedsSave(sel) {
+        if (isPdEcPerimeterVariantSelectChanged(sel)) {
+            return true;
+        }
+        var startTr = findSummaryBlockStartTr(sel.closest("tr"));
+        return !!startTr && !summaryBlockHasPersistedDemandRows(startTr);
+    }
+
     function findSummaryBlockStartTr(fromTr) {
         var tr = fromTr;
         while (tr) {
@@ -5550,6 +6065,78 @@ document.addEventListener("DOMContentLoaded", function () {
         return null;
     }
 
+    function buildPerimeterVariantSaveRequest(sel) {
+        const variantUrl = table.dataset.savePerimeterVariantUrl || "";
+        const blockVariantUrl = table.dataset.saveBlockVariantUrl || "";
+        const saveVariantUrl = blockVariantUrl || variantUrl;
+        if (!saveVariantUrl) {
+            return { error: "Не настроен URL сохранения варианта периметра." };
+        }
+        const toVariant = String(sel.value || "").trim();
+        const vPayload = {
+            demand_model_name: sel.getAttribute("data-demand-model-name") || "",
+            block_kind: sel.getAttribute("data-block-kind") || "base"
+        };
+        if (blockVariantUrl) {
+            vPayload.perimeter_variant_code = toVariant || null;
+            vPayload.from_variant_code = perimeterVariantFromCode(sel) || null;
+        } else {
+            vPayload.from_variant_code = perimeterVariantFromCode(sel) || null;
+            vPayload.to_variant_code = toVariant || null;
+        }
+        const vPfk = sel.getAttribute("data-parent-fk");
+        if (vPfk) {
+            vPayload.parent_fk_column = vPfk;
+        }
+        const vPid = sel.getAttribute("data-parent-id");
+        if (vPid !== null && vPid !== "") {
+            vPayload.parent_id = parseInt(vPid, 10);
+        }
+        const logScope = table.getAttribute("data-summary-log-scope");
+        if (logScope) {
+            vPayload.summary_log_scope = logScope;
+        }
+        if (!vPayload.demand_model_name) {
+            return { skip: true };
+        }
+        return { url: saveVariantUrl, payload: vPayload };
+    }
+
+    async function savePerimeterVariantSelect(sel) {
+        const req = buildPerimeterVariantSaveRequest(sel);
+        if (req.skip) {
+            return true;
+        }
+        if (req.error) {
+            alert(req.error);
+            return false;
+        }
+        const vResp = await fetch(req.url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: headers,
+            body: JSON.stringify(req.payload)
+        });
+        const vData = await vResp.json().catch(function () { return null; });
+        if (!vResp.ok || !vData || !vData.ok) {
+            const vMsg = (vData && vData.error) ? vData.error : "Не удалось сохранить вариант периметра.";
+            alert(vMsg);
+            return false;
+        }
+        sel.setAttribute("data-initial", sel.value || "");
+        const startTr = findSummaryBlockStartTr(sel.closest("tr"));
+        if (startTr) {
+            collectSummaryBlockRows(startTr).forEach(function (tr) {
+                if (sel.value) {
+                    tr.setAttribute("data-perimeter-variant-code", sel.value);
+                } else {
+                    tr.removeAttribute("data-perimeter-variant-code");
+                }
+            });
+        }
+        return true;
+    }
+
     syncAllPdEcPerimeterVariantSelectInitials(table);
     syncPdEcPerimeterVariantSelectLabels(table);
 
@@ -5568,14 +6155,22 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
         syncAllPdEcPerimeterVariantSelectInitials(table);
-        const variantUrl = table.dataset.savePerimeterVariantUrl || "";
-        const blockVariantUrl = table.dataset.saveBlockVariantUrl || "";
         const variantSelects = table.querySelectorAll(".pd-ec-perimeter-variant-select");
         const changedVariants = [];
+        const seenVariantBlocks = {};
         variantSelects.forEach(function (sel) {
-            if (isPdEcPerimeterVariantSelectChanged(sel)) {
-                changedVariants.push(sel);
+            if (!variantSelectNeedsSave(sel)) {
+                return;
             }
+            var startTr = findSummaryBlockStartTr(sel.closest("tr"));
+            var blockKey = summaryBlockPersistKey(startTr);
+            if (blockKey && seenVariantBlocks[blockKey]) {
+                return;
+            }
+            if (blockKey) {
+                seenVariantBlocks[blockKey] = true;
+            }
+            changedVariants.push(sel);
         });
         const inputs = table.querySelectorAll(
             ".fuel-param-input[data-model][data-slice], input.pd-coeff-medium-k-input[data-model][data-slice][data-parameter-key^=\"coeff_k_\"]"
@@ -5609,60 +6204,11 @@ document.addEventListener("DOMContentLoaded", function () {
         try {
             for (let vi = 0; vi < changedVariants.length; vi++) {
                 const sel = changedVariants[vi];
-                const blockKind = sel.getAttribute("data-block-kind") || "base";
-                const saveVariantUrl = blockVariantUrl || variantUrl;
-                if (!saveVariantUrl) {
-                    alert("Не настроен URL сохранения варианта периметра.");
+                if (!(await savePerimeterVariantSelect(sel))) {
                     saveBtn.innerHTML = originalHtml;
                     saveBtn.disabled = false;
                     return;
                 }
-                const toVariant = String(sel.value || "").trim();
-                if (!toVariant) {
-                    sel.setAttribute("data-initial", "");
-                    continue;
-                }
-                const vPayload = {
-                    demand_model_name: sel.getAttribute("data-demand-model-name") || "",
-                    block_kind: blockKind
-                };
-                if (blockVariantUrl) {
-                    vPayload.perimeter_variant_code = toVariant;
-                    vPayload.from_variant_code = perimeterVariantFromCode(sel);
-                } else {
-                    vPayload.from_variant_code = perimeterVariantFromCode(sel);
-                    vPayload.to_variant_code = toVariant;
-                }
-                const vPfk = sel.getAttribute("data-parent-fk");
-                if (vPfk) {
-                    vPayload.parent_fk_column = vPfk;
-                }
-                const vPid = sel.getAttribute("data-parent-id");
-                if (vPid !== null && vPid !== "") {
-                    vPayload.parent_id = parseInt(vPid, 10);
-                }
-                const logScope = table.getAttribute("data-summary-log-scope");
-                if (logScope) {
-                    vPayload.summary_log_scope = logScope;
-                }
-                if (!vPayload.demand_model_name) {
-                    continue;
-                }
-                const vResp = await fetch(saveVariantUrl, {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: headers,
-                    body: JSON.stringify(vPayload)
-                });
-                const vData = await vResp.json().catch(function () { return null; });
-                if (!vResp.ok || !vData || !vData.ok) {
-                    const vMsg = (vData && vData.error) ? vData.error : "Не удалось сохранить вариант периметра.";
-                    alert(vMsg);
-                    saveBtn.innerHTML = originalHtml;
-                    saveBtn.disabled = false;
-                    return;
-                }
-                sel.setAttribute("data-initial", sel.value || "");
             }
             for (let i = 0; i < changed.length; i++) {
                 const inp = changed[i];
@@ -5776,9 +6322,6 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
         runDemandSummarySave();
     });
-    if (typeof window.__pdPdSummaryFinishInitialRender === "function") {
-        window.__pdPdSummaryFinishInitialRender();
-    }
 });
 
 window.addEventListener("load", function () {
@@ -5794,6 +6337,9 @@ window.addEventListener("load", function () {
     }
 });
 </script>
+{% if active_summary in ('oes', 'fo', 'ez') %}
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_cascade_common.js') }}"></script>
+{% endif %}
 {% if active_summary == 'oes' and pd_oes_filters_cascade is defined %}
 <script type="application/json" id="pd-oes-filters-data">{{ pd_oes_filters_cascade | tojson | safe }}</script>
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_oes_cascade.js') }}"></script>

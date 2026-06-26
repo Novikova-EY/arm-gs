@@ -1,0 +1,393 @@
+﻿# -*- coding: utf-8 -*-
+"""Реестр формул для страницы электроёмкости."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Iterator
+
+from app.electrical_intensity.services.electrical_intensity_constants import (
+    EI_CALCULATED_FORMULA_TOOLTIP,
+    EI_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
+    EI_COEFFICIENT_A_FORMULA_TOOLTIP,
+    EI_COEFFICIENT_X_FORMULA_TOOLTIP,
+    EI_DELTA_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_NETWORK_LOSSES_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_NETWORK_LOSSES_PLAN_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_POWER_STATION_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_POWER_STATION_PLAN_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_VED_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_FD_TOTAL_VRP_FORMULA_TOOLTIP,
+    EI_GRAPH_POINT_FORMULA_TOOLTIP,
+    EI_INDUSTRIAL_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
+    EI_INDUSTRIAL_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_INDUSTRIAL_PRODUCT_OUTPUT_FORMULA_TOOLTIP,
+    EI_VED_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
+    EI_INTENSITY_FORMULA_TOOLTIP,
+    EI_POP_CALCULATED_FORMULA_TOOLTIP,
+    EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
+    EI_POP_COEFFICIENT_A_FORMULA_TOOLTIP,
+    EI_POP_COEFFICIENT_X_FORMULA_TOOLTIP,
+    EI_POP_DELTA_FORMULA_TOOLTIP,
+    EI_POP_GRAPH_POINT_FORMULA_TOOLTIP,
+    EI_POP_PER_CAPITA_FORMULA_TOOLTIP,
+    EI_POP_REF_ACCUM_MONETARY_INCOME_FORMULA_TOOLTIP,
+    EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_POP_REF_HOUSEHOLD_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
+    EI_POP_REF_POPULATION_FORMULA_TOOLTIP,
+    EI_RF_CONSUMPTION_WITHOUT_GAES_FORMULA_TOOLTIP,
+    EI_RF_GAES_FORMULA_TOOLTIP,
+    EI_RF_GDP_FORMULA_TOOLTIP,
+    EI_RF_GDP_INTENSITY_FORMULA_TOOLTIP,
+    EI_RF_GROWTH_RATE_FORMULA_TOOLTIP,
+    EI_RF_NETWORK_LOSSES_FORMULA_TOOLTIP,
+    EI_RF_POWER_STATION_FORMULA_TOOLTIP,
+    EI_RF_TOTAL_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_RF_POP_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_RF_POP_PER_CAPITA_FORMULA_TOOLTIP,
+    EI_RF_POP_POPULATION_FORMULA_TOOLTIP,
+    EI_RF_SUMMARY_VED_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_RF_VED_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
+    EI_RF_VED_CONSUMPTION_FORMULA_TOOLTIP,
+    EI_RF_VED_INTENSITY_FORMULA_TOOLTIP,
+    EI_RF_VED_PRODUCT_OUTPUT_FORMULA_TOOLTIP,
+    POP_REF_ROW_LABEL_BY_KIND,
+    POP_REF_ROW_FORMULA_KEY_BY_KIND,
+    POP_REF_ROW_PLAN_FORMULA_KEY_BY_KIND,
+    REF_ROW_POPULATION,
+    REF_ROW_HOUSEHOLD_CONSUMPTION,
+    REF_ROW_ACCUM_MONETARY_INCOME,
+    POP_ROW_FORMULA_KEY_BY_KIND,
+    POP_ROW_LABEL_BY_KIND,
+    REF_ROW_FD_LABEL_BY_KIND,
+    REF_ROW_FD_ACCUM_FIXED_CAPITAL,
+    REF_ROW_FD_NETWORK_LOSSES,
+    REF_ROW_FD_POWER_STATION,
+    REF_ROW_FD_TOTAL_CONSUMPTION,
+    REF_ROW_FD_VED_CONSUMPTION,
+    REF_ROW_FD_VRP,
+    REF_ROW_RF_GDP,
+    REF_ROW_RF_GDP_INTENSITY,
+    REF_ROW_RF_GAES,
+    REF_ROW_RF_CONSUMPTION_WITHOUT_GAES,
+    REF_ROW_RF_GROWTH_RATE,
+    REF_ROW_RF_LABEL_BY_KIND,
+    REF_ROW_RF_NETWORK_LOSSES,
+    REF_ROW_RF_POWER_STATION,
+    REF_ROW_RF_TOTAL_CONSUMPTION,
+    REF_ROW_RF_VED_CONSUMPTION,
+    RF_VED_INTENSITY_ROW_LABEL,
+    REF_ROW_LABEL_BY_KIND,
+    REF_ROW_ACCUM_FIXED_CAPITAL,
+    REF_ROW_CONSUMPTION,
+    REF_ROW_PRODUCT_OUTPUT,
+    ROW_FORMULA_KEY_BY_KIND,
+    ROW_KIND_CALCULATED,
+    ROW_KIND_DELTA,
+    ROW_KIND_GRAPH_POINT,
+    ROW_KIND_INTENSITY,
+    ROW_LABEL_BY_KIND,
+)
+
+
+@dataclass(frozen=True)
+class ElectricalIntensityFormulaDef:
+    key: str
+    page: str
+    row_label: str
+    default_text: str
+
+
+_PAGE = "Электроемкость"
+
+ELECTRICAL_INTENSITY_FORMULA_REGISTRY: tuple[ElectricalIntensityFormulaDef, ...] = (
+    ElectricalIntensityFormulaDef(
+        key=ROW_FORMULA_KEY_BY_KIND[ROW_KIND_INTENSITY],
+        page=_PAGE,
+        row_label=ROW_LABEL_BY_KIND[ROW_KIND_INTENSITY],
+        default_text=EI_INTENSITY_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=ROW_FORMULA_KEY_BY_KIND[ROW_KIND_GRAPH_POINT],
+        page=_PAGE,
+        row_label=ROW_LABEL_BY_KIND[ROW_KIND_GRAPH_POINT],
+        default_text=EI_GRAPH_POINT_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=ROW_FORMULA_KEY_BY_KIND[ROW_KIND_CALCULATED],
+        page=_PAGE,
+        row_label=ROW_LABEL_BY_KIND[ROW_KIND_CALCULATED],
+        default_text=EI_CALCULATED_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=ROW_FORMULA_KEY_BY_KIND[ROW_KIND_DELTA],
+        page=_PAGE,
+        row_label=ROW_LABEL_BY_KIND[ROW_KIND_DELTA],
+        default_text=EI_DELTA_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_coefficient_a",
+        page=_PAGE,
+        row_label="Коэффициент A",
+        default_text=EI_COEFFICIENT_A_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_coefficient_a_computed",
+        page=_PAGE,
+        row_label="Коэффициент Арасч",
+        default_text=EI_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_coefficient_x",
+        page=_PAGE,
+        row_label="Коэффициент X",
+        default_text=EI_COEFFICIENT_X_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_industrial_product_output",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_PRODUCT_OUTPUT],
+        default_text=EI_INDUSTRIAL_PRODUCT_OUTPUT_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_industrial_consumption",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_CONSUMPTION],
+        default_text=EI_INDUSTRIAL_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_ved_consumption_plan",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_CONSUMPTION],
+        default_text=EI_VED_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_industrial_accum_fixed_capital",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_ACCUM_FIXED_CAPITAL],
+        default_text=EI_INDUSTRIAL_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_vrp",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_VRP],
+        default_text=EI_FD_TOTAL_VRP_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_consumption",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_TOTAL_CONSUMPTION],
+        default_text=EI_FD_TOTAL_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_ved_consumption",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_VED_CONSUMPTION],
+        default_text=EI_FD_TOTAL_VED_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_network_losses",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_NETWORK_LOSSES],
+        default_text=EI_FD_TOTAL_NETWORK_LOSSES_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_network_losses_plan",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_NETWORK_LOSSES],
+        default_text=EI_FD_TOTAL_NETWORK_LOSSES_PLAN_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_power_station",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_POWER_STATION],
+        default_text=EI_FD_TOTAL_POWER_STATION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_power_station_plan",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_POWER_STATION],
+        default_text=EI_FD_TOTAL_POWER_STATION_PLAN_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_fd_total_accum_fixed_capital",
+        page=_PAGE,
+        row_label=REF_ROW_FD_LABEL_BY_KIND[REF_ROW_FD_ACCUM_FIXED_CAPITAL],
+        default_text=EI_FD_TOTAL_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_total_consumption",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_TOTAL_CONSUMPTION],
+        default_text=EI_RF_TOTAL_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_growth_rate",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_GROWTH_RATE],
+        default_text=EI_RF_GROWTH_RATE_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_summary_ved_consumption",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_VED_CONSUMPTION],
+        default_text=EI_RF_SUMMARY_VED_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_ved_consumption",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_CONSUMPTION],
+        default_text=EI_RF_VED_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_pop_household_consumption",
+        page=_PAGE,
+        row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        default_text=EI_RF_POP_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_pop_population",
+        page=_PAGE,
+        row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_POPULATION],
+        default_text=EI_RF_POP_POPULATION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_pop_per_capita",
+        page=_PAGE,
+        row_label=POP_ROW_LABEL_BY_KIND[ROW_KIND_INTENSITY],
+        default_text=EI_RF_POP_PER_CAPITA_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_ved_product_output",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_PRODUCT_OUTPUT],
+        default_text=EI_RF_VED_PRODUCT_OUTPUT_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_ved_accum_fixed_capital",
+        page=_PAGE,
+        row_label=REF_ROW_LABEL_BY_KIND[REF_ROW_ACCUM_FIXED_CAPITAL],
+        default_text=EI_RF_VED_ACCUM_FIXED_CAPITAL_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_ved_intensity",
+        page=_PAGE,
+        row_label=RF_VED_INTENSITY_ROW_LABEL,
+        default_text=EI_RF_VED_INTENSITY_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_gaes",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_GAES],
+        default_text=EI_RF_GAES_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_consumption_without_gaes",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_CONSUMPTION_WITHOUT_GAES],
+        default_text=EI_RF_CONSUMPTION_WITHOUT_GAES_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_network_losses",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_NETWORK_LOSSES],
+        default_text=EI_RF_NETWORK_LOSSES_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_power_station",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_POWER_STATION],
+        default_text=EI_RF_POWER_STATION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_gdp",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_GDP],
+        default_text=EI_RF_GDP_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_rf_gdp_intensity",
+        page=_PAGE,
+        row_label=REF_ROW_RF_LABEL_BY_KIND[REF_ROW_RF_GDP_INTENSITY],
+        default_text=EI_RF_GDP_INTENSITY_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_REF_ROW_FORMULA_KEY_BY_KIND[REF_ROW_POPULATION],
+        page=_PAGE,
+        row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_POPULATION],
+        default_text=EI_POP_REF_POPULATION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_REF_ROW_FORMULA_KEY_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        page=_PAGE,
+        row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        default_text=EI_POP_REF_HOUSEHOLD_CONSUMPTION_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_REF_ROW_PLAN_FORMULA_KEY_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        page=_PAGE,
+        row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_HOUSEHOLD_CONSUMPTION],
+        default_text=EI_POP_REF_HOUSEHOLD_CONSUMPTION_PLAN_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_REF_ROW_FORMULA_KEY_BY_KIND[REF_ROW_ACCUM_MONETARY_INCOME],
+        page=_PAGE,
+        row_label=POP_REF_ROW_LABEL_BY_KIND[REF_ROW_ACCUM_MONETARY_INCOME],
+        default_text=EI_POP_REF_ACCUM_MONETARY_INCOME_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_ROW_FORMULA_KEY_BY_KIND[ROW_KIND_INTENSITY],
+        page=_PAGE,
+        row_label=POP_ROW_LABEL_BY_KIND[ROW_KIND_INTENSITY],
+        default_text=EI_POP_PER_CAPITA_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_ROW_FORMULA_KEY_BY_KIND[ROW_KIND_GRAPH_POINT],
+        page=_PAGE,
+        row_label=POP_ROW_LABEL_BY_KIND[ROW_KIND_GRAPH_POINT],
+        default_text=EI_POP_GRAPH_POINT_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_ROW_FORMULA_KEY_BY_KIND[ROW_KIND_CALCULATED],
+        page=_PAGE,
+        row_label=POP_ROW_LABEL_BY_KIND[ROW_KIND_CALCULATED],
+        default_text=EI_POP_CALCULATED_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key=POP_ROW_FORMULA_KEY_BY_KIND[ROW_KIND_DELTA],
+        page=_PAGE,
+        row_label=POP_ROW_LABEL_BY_KIND[ROW_KIND_DELTA],
+        default_text=EI_POP_DELTA_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_pop_coefficient_a",
+        page=_PAGE,
+        row_label="Коэффициент A",
+        default_text=EI_POP_COEFFICIENT_A_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_pop_coefficient_a_computed",
+        page=_PAGE,
+        row_label="Коэффициент Арасч",
+        default_text=EI_POP_COEFFICIENT_A_COMPUTED_FORMULA_TOOLTIP,
+    ),
+    ElectricalIntensityFormulaDef(
+        key="ei_pop_coefficient_x",
+        page=_PAGE,
+        row_label="Коэффициент X",
+        default_text=EI_POP_COEFFICIENT_X_FORMULA_TOOLTIP,
+    ),
+)
+
+
+def iter_formula_defs() -> Iterator[ElectricalIntensityFormulaDef]:
+    yield from ELECTRICAL_INTENSITY_FORMULA_REGISTRY
+
+
+def get_formula_def(key: str) -> ElectricalIntensityFormulaDef | None:
+    for item in ELECTRICAL_INTENSITY_FORMULA_REGISTRY:
+        if item.key == key:
+            return item
+    return None

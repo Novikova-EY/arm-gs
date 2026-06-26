@@ -55,6 +55,8 @@ _LEGACY_FORMULA_KEY_FALLBACKS: dict[str, str] = {
     "sa_first_verify_combined_ees_without_nt": "sa_first_verify_combined_ees",
     "oes_verify_calc_max_mw_without_nt": "oes_verify_calc_max_mw",
     "oes_verify_combined_ees_mw_without_nt": "oes_verify_combined_ees_mw",
+    "fo_verify_calc_max_mw_without_nt": "fo_verify_calc_max_mw",
+    "fo_verify_combined_ees_mw_without_nt": "fo_verify_combined_ees_mw",
     "coeff_k_ues_calc_max_oes_without_nt": "coeff_k_ues_calc_max_oes",
     "coeff_k_ues_combined_ees_without_nt": "coeff_k_ues_combined_ees",
     "coeff_k_ues_calc_combined_ees_without_nt": "coeff_k_ues_calc_combined_ees",

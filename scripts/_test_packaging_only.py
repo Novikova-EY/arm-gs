@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import sys
 from io import BytesIO
 
 sys.path.insert(0, r"c:\arm_gs")
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_export_services import (
+from app.electrical_intensity.services.electrical_intensity_export_services import (
     _apply_ei_chart_excel_packaging,
 )
 

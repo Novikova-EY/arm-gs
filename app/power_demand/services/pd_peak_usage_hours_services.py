@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""ЧЧИ (число часов использования максимального потребления мощности) на сводке /summary/oes/."""
+"""ЧЧИ (число часов использования максимального потребления мощности) на сводках /summary/."""
 
 from __future__ import annotations
 
@@ -7,24 +7,26 @@ from typing import Any
 
 from app.common.perimeter_variant.constants import (
     CODE_WITHOUT_NT,
-    CODE_WITHOUT_NT_WITHOUT_GAES,
     CODE_WITH_NT,
-)
-from app.common.perimeter_variant.registry import resolve_catalog_o1_perimeter_variant_code
-from app.power_demand.models.energy_systems.ees_demand_parameter_model import (
-    EesDemandParameter,
+    perimeter_variant_codes_prefer_without_gaes,
 )
 from app.power_demand.models.energy_systems.ees_russia_demand_parameter_model import (
     EesRussiaDemandParameter,
 )
-from app.energy_consumption.models.energy_systems.ees_energy_consumption_parameter_model import (
-    EesEnergyConsumptionParameter,
+from app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model import (
+    EnergySystemTypeDemandParameter,
 )
 from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
     EesRussiaEnergyConsumptionParameter,
 )
+from app.energy_consumption.models.energy_systems.energy_system_type_energy_consumption_parameter_model import (
+    EnergySystemTypeEnergyConsumptionParameter,
+)
 from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
     EnergyUnitEnergyConsumptionParameter,
+)
+from app.energy_consumption.models.energy_systems.energy_zone_energy_consumption_parameter_model import (
+    EnergyZoneEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.energy_systems.synchronous_area_energy_consumption_parameter_model import (
     SynchronousAreaEnergyConsumptionParameter,
@@ -44,6 +46,9 @@ from app.energy_consumption.models.territories.regional_district_energy_consumpt
 from app.power_demand.models.energy_systems.energy_unit_demand_parameter_model import (
     EnergyUnitDemandParameter,
 )
+from app.power_demand.models.energy_systems.energy_zone_demand_parameter_model import (
+    EnergyZoneDemandParameter,
+)
 from app.power_demand.models.energy_systems.regional_energy_system_demand_parameter_model import (
     RegionalEnergySystemDemandParameter,
 )
@@ -56,8 +61,14 @@ from app.power_demand.models.energy_systems.union_energy_system_demand_parameter
 from app.power_demand.models.territories.russia_federation_demand_parameter_model import (
     RussiaFederationDemandParameter,
 )
+from app.power_demand.models.territories.federal_district_demand_parameter_model import (
+    FederalDistrictDemandParameter,
+)
 from app.power_demand.models.territories.regional_district_demand_parameter_model import (
     RegionalDistrictDemandParameter,
+)
+from app.energy_consumption.models.territories.federal_district_energy_consumption_parameter_model import (
+    FederalDistrictEnergyConsumptionParameter,
 )
 from app.power_demand.services.demand_summary_services import (
     _format_full_numeric_tooltip,
@@ -77,8 +88,11 @@ _PD_TO_EC: dict[str, tuple[type, str | None]] = {
         RussiaFederationEnergyConsumptionParameter,
         None,
     ),
-    EesDemandParameter.__name__: (EesEnergyConsumptionParameter, None),
     EesRussiaDemandParameter.__name__: (EesRussiaEnergyConsumptionParameter, None),
+    EnergySystemTypeDemandParameter.__name__: (
+        EnergySystemTypeEnergyConsumptionParameter,
+        "id_energy_system_type",
+    ),
     SynchronousAreaDemandParameter.__name__: (
         SynchronousAreaEnergyConsumptionParameter,
         "id_synchronous_area",
@@ -91,6 +105,10 @@ _PD_TO_EC: dict[str, tuple[type, str | None]] = {
         RegionalEnergySystemEnergyConsumptionParameter,
         "id_regional_energy_system",
     ),
+    FederalDistrictDemandParameter.__name__: (
+        FederalDistrictEnergyConsumptionParameter,
+        "id_federal_district",
+    ),
     RegionalDistrictDemandParameter.__name__: (
         RegionalDistrictEnergyConsumptionParameter,
         "id_regional_district",
@@ -99,19 +117,24 @@ _PD_TO_EC: dict[str, tuple[type, str | None]] = {
         EnergyUnitEnergyConsumptionParameter,
         "id_energy_unit",
     ),
+    EnergyZoneDemandParameter.__name__: (
+        EnergyZoneEnergyConsumptionParameter,
+        "id_energy_zone",
+    ),
 }
 
 _OES_CHI_PD_MODELS = frozenset(_PD_TO_EC.keys())
+# Потребление РФ в RussiaFederationEnergyConsumptionParameter хранится в млрд кВт·ч.
+_RUSSIA_FEDERATION_EC_CHI_NUMERATOR_SCALE = 1000.0
+# Итоговое ЧЧИ на сводках ОЭС / ФО / ЭЗ: (потребление, млн кВт·ч) / (мощность, МВт) × 1000.
+_CHI_RESULT_DISPLAY_SCALE = 1000.0
+_CHI_ROUNDING_DIGITS = 0
 
-# Числитель ЧЧИ: вариант потребления ЭЭ (может отличаться от варианта max_power в блоке).
-_CHI_EC_CONSUMPTION_PVC_BY_PD_MODEL: dict[str, dict[str, str]] = {
-    EesDemandParameter.__name__: {
-        CODE_WITHOUT_NT: CODE_WITHOUT_NT_WITHOUT_GAES,
-    },
-    EesRussiaDemandParameter.__name__: {
-        CODE_WITHOUT_NT: CODE_WITHOUT_NT_WITHOUT_GAES,
-    },
-}
+
+def _chi_ec_consumption_scale_for_pd_model(pd_model_name: str) -> float:
+    if pd_model_name == RussiaFederationDemandParameter.__name__:
+        return _RUSSIA_FEDERATION_EC_CHI_NUMERATOR_SCALE
+    return 1.0
 
 
 def _legacy_nt_display_code_for_chi_anchor(anchor: dict[str, Any]) -> str | None:
@@ -133,15 +156,8 @@ def _pd_perimeter_variant_code_for_chi_anchor(anchor: dict[str, Any]) -> str | N
 
 
 def _chi_ec_consumption_pvc_for_anchor(anchor: dict[str, Any]) -> str | None:
-    """Код варианта потребления ЭЭ для числителя ЧЧИ."""
-    pd_pvc = _pd_perimeter_variant_code_for_chi_anchor(anchor)
-    if not pd_pvc:
-        return None
-    dm_name = str(anchor.get("demand_model_name") or "")
-    mapped = _CHI_EC_CONSUMPTION_PVC_BY_PD_MODEL.get(dm_name, {}).get(pd_pvc)
-    if mapped:
-        return mapped
-    return pd_pvc
+    """Код варианта потребления ЭЭ для числителя ЧЧИ (тот же, что у max_power в блоке)."""
+    return _pd_perimeter_variant_code_for_chi_anchor(anchor)
 
 
 def _ec_parent_id_for_chi(
@@ -156,12 +172,62 @@ def _ec_parent_id_for_chi(
     return int(parent_id)
 
 
+def _resolve_ec_parent_id_for_chi_block(
+    anchor: dict[str, Any],
+    *,
+    ec_model_name: str,
+    anchor_parent_id: int | None,
+    fk_column: str | None,
+    years: list[int],
+    ec_index: dict[tuple[str, int, str | None, Any], float],
+) -> int | None:
+    """FK для числителя ЧЧИ: из строки сводки или единственный id из индекса потребления ЭЭ."""
+    base_parent_id = _ec_parent_id_for_chi(
+        str(anchor.get("demand_model_name") or ""),
+        anchor_parent_id,
+    )
+    if base_parent_id is None or fk_column is None:
+        return base_parent_id
+
+    pvc_candidates = _ec_consumption_pvc_candidates_for_chi(anchor)
+    slice_keys: list[Any] = ["hist", *[int(y) for y in years]]
+    for slice_key in slice_keys:
+        for pvc in pvc_candidates:
+            if (
+                _lookup_ec_consumption_direct(
+                    ec_model_name,
+                    int(base_parent_id),
+                    pvc,
+                    slice_key,
+                    ec_index=ec_index,
+                )
+                is not None
+            ):
+                return int(base_parent_id)
+
+    pvc_keys = {str(pvc) if pvc not in (None, "") else None for pvc in pvc_candidates}
+    slice_key_set = set(slice_keys)
+    matching_parent_ids: set[int] = set()
+    for model_name, parent_id, pvc_key, slice_key in ec_index:
+        if model_name != ec_model_name:
+            continue
+        if pvc_key not in pvc_keys:
+            continue
+        if slice_key not in slice_key_set:
+            continue
+        matching_parent_ids.add(int(parent_id))
+    if len(matching_parent_ids) == 1:
+        return next(iter(matching_parent_ids))
+    return int(base_parent_id)
+
+
 def _ec_consumption_pvc_candidates_for_chi(anchor: dict[str, Any]) -> list[str | None]:
-    """Потребление ЭЭ для ЧЧИ — вариант периметра для числителя (см. реестр формул oes_chi_*)."""
+    """Потребление ЭЭ для ЧЧИ — вариант периметра строки (с тем же порядком поиска, что у max_power)."""
     pvc = _chi_ec_consumption_pvc_for_anchor(anchor)
     if not pvc:
         return [None]
-    return [pvc]
+    candidates = list(perimeter_variant_codes_prefer_without_gaes(pvc))
+    return candidates if candidates else [pvc]
 
 
 def _lookup_ec_consumption_direct(
@@ -212,17 +278,6 @@ def _build_ec_consumption_index(
     return get_ec_consumption_index_for_years(years)
 
 
-def _lookup_ec_o1_direct(
-    ec_model_name: str,
-    parent_id: int,
-    slice_key: Any,
-    *,
-    ec_index: dict[tuple[str, int, str | None, Any], float],
-) -> float | None:
-    o1_code = resolve_catalog_o1_perimeter_variant_code()
-    return ec_index.get((ec_model_name, int(parent_id), o1_code, slice_key))
-
-
 def _chi_ec_consumption_mln_for_anchor(
     anchor: dict[str, Any],
     slice_key: Any,
@@ -233,19 +288,7 @@ def _chi_ec_consumption_mln_for_anchor(
     fk_column: str | None,
     years: list[int],
 ) -> float | None:
-    if anchor.get("pd_pd_decentralized_zone_mark"):
-        eu_id = anchor.get("id_energy_unit")
-        if eu_id is not None:
-            hit = _lookup_ec_o1_direct(
-                EnergyUnitEnergyConsumptionParameter.__name__,
-                int(eu_id),
-                slice_key,
-                ec_index=ec_index,
-            )
-            if hit is not None:
-                return hit
-
-    return _lookup_ec_consumption_for_chi(
+    hit = _lookup_ec_consumption_for_chi(
         ec_model_name,
         ec_parent_id,
         anchor,
@@ -254,6 +297,12 @@ def _chi_ec_consumption_mln_for_anchor(
         parent_fk_column=fk_column,
         years=years,
     )
+    if hit is None:
+        return None
+    scale = _chi_ec_consumption_scale_for_pd_model(
+        str(anchor.get("demand_model_name") or "")
+    )
+    return hit * scale
 
 
 def _divide_hours(ec_mln: float | None, max_mw: float | None) -> float | None:
@@ -261,7 +310,7 @@ def _divide_hours(ec_mln: float | None, max_mw: float | None) -> float | None:
         return None
     if abs(max_mw) < 1e-12:
         return None
-    return ec_mln / max_mw
+    return ec_mln / max_mw * _CHI_RESULT_DISPLAY_SCALE
 
 
 def _find_max_power_row(block: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -286,7 +335,7 @@ def _insert_index_before_peak_datetime(
 def _build_chi_row_for_block(
     block: list[dict[str, Any]],
     years: list[int],
-    rounding_digits: int,
+    _rounding_digits: int,
     *,
     ec_index: dict[tuple[str, int, str | None, Any], float],
 ) -> dict[str, Any] | None:
@@ -295,11 +344,19 @@ def _build_chi_row_for_block(
     if pd_model_name not in _OES_CHI_PD_MODELS:
         return None
     parent_id = anchor.get("parent_id")
-    ec_parent_id = _ec_parent_id_for_chi(pd_model_name, parent_id)
-    if ec_parent_id is None:
-        return None
     ec_model, fk_column = _PD_TO_EC[pd_model_name]
     ec_model_name = ec_model.__name__
+    ec_index_local = ec_index
+    ec_parent_id = _resolve_ec_parent_id_for_chi_block(
+        anchor,
+        ec_model_name=ec_model_name,
+        anchor_parent_id=parent_id,
+        fk_column=fk_column,
+        years=years,
+        ec_index=ec_index_local,
+    )
+    if ec_parent_id is None:
+        return None
     max_power_row = _find_max_power_row(block)
     if max_power_row is None:
         return None
@@ -324,7 +381,7 @@ def _build_chi_row_for_block(
             year_values.append("—")
             year_tooltips.append("")
         else:
-            year_values.append(_format_numeric(hours, rounding_digits))
+            year_values.append(_format_numeric(hours, _CHI_ROUNDING_DIGITS))
             year_tooltips.append(_format_full_numeric_tooltip(hours))
 
     hist_ec = _chi_ec_consumption_mln_for_anchor(
@@ -342,7 +399,7 @@ def _build_chi_row_for_block(
         hist_value = "—"
         hist_tooltip = ""
     else:
-        hist_value = _format_numeric(hist_hours, rounding_digits)
+        hist_value = _format_numeric(hist_hours, _CHI_ROUNDING_DIGITS)
         hist_tooltip = _format_full_numeric_tooltip(hist_hours)
 
     new_row = {
@@ -382,15 +439,18 @@ def _build_chi_row_for_block(
         new_row["pd_pd_nt_extra_row"] = True
     if anchor.get("pd_pd_territory_detail_row"):
         new_row["pd_pd_territory_detail_row"] = True
+        new_row["pd_pd_territory_compact_hide_row"] = True
+    elif anchor.get("pd_pd_territory_compact_hide_row"):
+        new_row["pd_pd_territory_compact_hide_row"] = True
     return new_row
 
 
-def inject_oes_peak_usage_hours_rows(
+def inject_peak_usage_hours_rows(
     summary_rows: list[dict[str, Any]],
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Добавляет строки ЧЧИ перед «Дата и время» для агрегатов, синхронных зон, ОЭС, РЭС, субъектов и энергорайонов."""
+    """Добавляет строки ЧЧИ перед «Дата и время» для поддерживаемых сущностей сводки."""
     if not summary_rows or not years:
         return
 
@@ -434,3 +494,12 @@ def inject_oes_peak_usage_hours_rows(
         new_span = span + 1
         for k in range(start, start + new_span):
             summary_rows[k]["entity_rowspan"] = new_span
+
+
+def inject_oes_peak_usage_hours_rows(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+) -> None:
+    """Сводка /summary/oes/: строки ЧЧИ (обратная совместимость)."""
+    inject_peak_usage_hours_rows(summary_rows, years, rounding_digits)

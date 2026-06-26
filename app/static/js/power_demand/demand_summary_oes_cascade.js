@@ -41,165 +41,19 @@
     const euToUes = filtersData.eu_to_ues_id || {};
 
     let isUpdating = false;
-
-    function getSelectValues(selector) {
-        const el = document.querySelector(selector);
-        if (!el) return [];
-        return Array.from(el.selectedOptions || [])
-            .map(function (o) {
-                return Number(o.value);
-            })
-            .filter(function (v) {
-                return Number.isFinite(v);
-            });
+    const cascade = window.PowerDemandSummaryCascade;
+    if (!cascade) {
+        return;
     }
-
-    /**
-     * null = ограничение по этому измерению не задано (ничего не выбрано в multiselect).
-     * Пустой Set = выбрано, но по справочнику нет ни одного id — список опций должен стать пустым,
-     * а не «все» (иначе энергорайоны и др. выглядят «не привязанными», как до правки).
-     */
-    function getAllowedIds(selectedIds, mapping) {
-        if (!selectedIds || selectedIds.length === 0) return null;
-        const allowed = new Set();
-        selectedIds.forEach(function (id) {
-            const ids = mapping[String(id)] || mapping[Number(id)] || [];
-            if (Array.isArray(ids)) {
-                ids.forEach(function (allowedId) {
-                    allowed.add(Number(allowedId));
-                });
-            } else if (ids !== null && ids !== undefined) {
-                allowed.add(Number(ids));
-            }
-        });
-        return allowed;
-    }
-
-    function getAllowedIdsFromOneToOne(selectedIds, mapping) {
-        if (!selectedIds || selectedIds.length === 0) return null;
-        const allowed = new Set();
-        selectedIds.forEach(function (id) {
-            const mappedId = mapping[String(id)] || mapping[Number(id)];
-            if (mappedId !== null && mappedId !== undefined) {
-                allowed.add(Number(mappedId));
-            }
-        });
-        return allowed;
-    }
-
-    function combineAllowedIds() {
-        const sets = Array.prototype.slice.call(arguments).filter(function (s) {
-            return s !== null && s !== undefined;
-        });
-        if (sets.length === 0) return null;
-        if (sets.length === 1) return sets[0];
-        let result = new Set(sets[0]);
-        for (let i = 1; i < sets.length; i++) {
-            result = new Set(
-                Array.from(result).filter(function (x) {
-                    return sets[i].has(x);
-                })
-            );
-        }
-        return result;
-    }
-
-    /**
-     * На сводке по ОЭС выборы с разных уровней объединяются на сервере (OR), а не пересекаются.
-     * Иначе обратная связь (например РЭС → одна ОЭС) сужает список ОЭС до одной строки, выпадает
-     * вторая выбранная ОЭС и все её РЭС из соседнего multiselect.
-     */
-    function unionAllowedWithCurrentSelection(allowedIds, currentSelectedIds) {
-        if (!currentSelectedIds || currentSelectedIds.length === 0) {
-            return allowedIds;
-        }
-        if (allowedIds == null) {
-            return null;
-        }
-        const s = new Set(allowedIds);
-        currentSelectedIds.forEach(function (id) {
-            const n = Number(id);
-            if (Number.isFinite(n)) {
-                s.add(n);
-            }
-        });
-        return s;
-    }
-
-    function refreshPdDropdown(selector) {
-        const el = document.querySelector(selector);
-        if (el && typeof el._multiDropdownRender === "function") {
-            el._multiDropdownRender();
-        }
-    }
-
-    function setSelectValues(selector, values, silent) {
-        const el = document.querySelector(selector);
-        if (!el) return;
-        const set = new Set((values || []).map(String));
-        Array.from(el.options).forEach(function (opt) {
-            opt.selected = set.has(String(opt.value));
-        });
-        if (typeof window.$ !== "undefined" && window.$(el).data("select2")) {
-            const arr = Array.from(set).filter(function (v) {
-                return v !== "";
-            });
-            window.$(el).val(arr);
-            if (!silent) {
-                window.$(el).trigger("change");
-            }
-        } else {
-            refreshPdDropdown(selector);
-        }
-    }
-
-    function updateSelectOptions(selector, allItems, allowedIds, prevSelected, skipTrigger) {
-        const el = document.querySelector(selector);
-        if (!el) return;
-
-        const prevSelectedSet = new Set((prevSelected || []).map(String));
-        const newSelected = [];
-
-        const frag = document.createDocumentFragment();
-        const items = (allItems || []).slice();
-        const naItems = [];
-        const otherItems = [];
-        items.forEach(function (item) {
-            const name = String(item && item.name ? item.name : "")
-                .trim()
-                .toLowerCase();
-            if (name === "не указано") {
-                naItems.push(item);
-            } else {
-                otherItems.push(item);
-            }
-        });
-        const sortedItems = naItems.concat(otherItems);
-
-        sortedItems.forEach(function (item) {
-            const itemId = Number(item.id);
-            const isAllowed = allowedIds == null || allowedIds.has(itemId);
-            const wasSelected = prevSelectedSet.has(String(itemId));
-            if (!isAllowed) return;
-
-            const opt = document.createElement("option");
-            opt.value = String(itemId);
-            opt.textContent = item.name;
-            opt.selected = wasSelected;
-            frag.appendChild(opt);
-            if (wasSelected) newSelected.push(String(itemId));
-        });
-
-        el.innerHTML = "";
-        el.appendChild(frag);
-        setSelectValues(selector, newSelected, !!skipTrigger);
-
-        if (!skipTrigger) {
-            if (!(typeof window.$ !== "undefined" && window.$(el).data("select2"))) {
-                el.dispatchEvent(new Event("change", { bubbles: true }));
-            }
-        }
-    }
+    const {
+        getSelectValues,
+        getAllowedIds,
+        getAllowedIdsFromOneToOne,
+        combineAllowedIds,
+        unionAllowedWithCurrentSelection,
+        refreshPdDropdown,
+        updateSelectOptions,
+    } = cascade;
 
     function updatePdOesCascadeFilters() {
         if (isUpdating) return;

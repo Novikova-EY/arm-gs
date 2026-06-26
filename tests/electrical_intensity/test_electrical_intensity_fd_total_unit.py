@@ -8,10 +8,10 @@ from unittest.mock import patch
 
 import pytest
 
-from app.energy_consumption.electrical_intensity.services import (
+from app.electrical_intensity.services import (
     electrical_intensity_services as eis,
 )
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_constants import (
+from app.electrical_intensity.services.electrical_intensity_constants import (
     FD_TOTAL_SECTION_LABEL,
     INDUSTRIAL_GROUP_SECTION_LABEL,
     REF_ROW_CONSUMPTION,

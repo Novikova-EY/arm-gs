@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from app.energy_consumption.electrical_intensity.services.electrical_intensity_diagnostic_services import (  # noqa: E402
+from app.electrical_intensity.services.electrical_intensity_diagnostic_services import (  # noqa: E402
     compute_intensity_cell_diagnostics,
 )
 

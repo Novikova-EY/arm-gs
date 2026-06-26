@@ -2,25 +2,24 @@
 """Импорт сводных показателей потребления из Excel (листы «млн. кВт.ч» и/или «СиПР»)."""
 from __future__ import annotations
 
-import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Optional, Type
+from typing import Any, Callable, Optional, Type
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 
 from flask import session
 
+from app.common.models.database_version_model import DatabaseVersion
 from app.common.perimeter_variant.registry import (
     perimeter_entity_context_for_model,
     perimeter_variant_codes_for_entity,
 )
 from app.common.services.database_version_filter import (
     filter_by_explicit_db_version,
-    get_current_db_version_id,
 )
 from app.common.services.database_version_services import get_current_version
 from app.extensions import db
@@ -30,6 +29,7 @@ from app.refdata.models.energy_systems.regional_district_regional_energy_system_
 )
 from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.energy_systems.energy_system_type_model import EnergySystemType
 from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.territories.federal_district_model import FederalDistrict
@@ -38,6 +38,9 @@ from app.refdata.models.years.year_model import Year
 
 from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
     EesRussiaEnergyConsumptionParameter,
+)
+from app.energy_consumption.models.energy_systems.energy_system_type_energy_consumption_parameter_model import (
+    EnergySystemTypeEnergyConsumptionParameter,
 )
 from app.energy_consumption.models.territories.russia_federation_energy_consumption_parameter_model import (
     RussiaFederationEnergyConsumptionParameter,
@@ -53,6 +56,7 @@ from app.common.perimeter_variant.constants import (
     CODE_WITHOUT_NT_WITH_KALININGRAD_ES,
     CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES,
     EES_RUSSIA_AGGREGATE_NAME,
+    EES_UNIFIED_REF_NAME,
 )
 from app.common.perimeter_variant.registry import (
     model_supports_perimeter_variant,
@@ -107,6 +111,7 @@ _MODEL_FK: dict[Type[Any], str] = {
     FederalDistrictEnergyConsumptionParameter: "id_federal_district",
     SynchronousAreaEnergyConsumptionParameter: "id_synchronous_area",
     EnergyUnitEnergyConsumptionParameter: "id_energy_unit",
+    EnergySystemTypeEnergyConsumptionParameter: "id_energy_system_type",
 }
 
 # Маркер строки параметров без FK родителя (одна строка на год в версии БД).
@@ -227,19 +232,7 @@ def _database_version_ids_ordered() -> list[int]:
 
 
 def _database_version_ids_for_energy_consumption_import() -> list[int]:
-    """
-    По умолчанию импортируем только выбранную пользователем текущую версию БД (как на экране).
-    Проход по всем версиям сильно удлиняет запрос и часто приводит к обрыву HTTP-соединения
-    (в браузере это выглядит как «Ошибка сети при импорте»).
-
-    EC_SUMMARY_IMPORT_ALL_DB_VERSIONS=1 (или true/yes/on) — прежнее поведение: все версии с id > 0.
-    """
-    flag = (os.getenv("EC_SUMMARY_IMPORT_ALL_DB_VERSIONS") or "").strip().lower()
-    if flag in ("1", "true", "yes", "on"):
-        return _database_version_ids_ordered()
-    cv = get_current_db_version_id()
-    if cv is not None:
-        return [int(cv)]
+    """Все зарегистрированные версии БД (id > 0) для записи импорта сводки потребления."""
     return _database_version_ids_ordered()
 
 
@@ -432,6 +425,7 @@ def _binding_ctx(version_id: int) -> dict[str, list[tuple[Any, str]]]:
         "fd": _entities_with_names(FederalDistrict, version_id),
         "sync_area": _entities_with_names(SynchronousArea, version_id),
         "energy_unit": _entities_with_names(EnergyUnit, version_id),
+        "energy_system_type": _entities_with_names(EnergySystemType, version_id),
     }
 
 
@@ -467,38 +461,28 @@ def _pick_exact_match(label: str, pairs: list[tuple[Any, str]]) -> Optional[Any]
     return exact[0]
 
 
-# Агрегаты верхнего уровня: базовое наименование → модель (вариант — из столбца perimeter-variants).
-# «ЭЭС России» — расчётная строка сводки, в БД не импортируется.
+# Агрегаты верхнего уровня без FK (РФ, ЭЭС России) — вариант из столбца perimeter-variants.
+# «ЕЭС России» (EnergySystemType) — отдельно, через справочник типов энергосистемы.
 _AGGREGATE_MODEL_BY_BASE_LABEL: dict[str, Type[Any]] = {
-    _norm_entity_label("ЕЭС России"): EesRussiaEnergyConsumptionParameter,
     _norm_entity_label(EES_RUSSIA_AGGREGATE_NAME): EesRussiaEnergyConsumptionParameter,
     _norm_entity_label("Россия"): RussiaFederationEnergyConsumptionParameter,
     _norm_entity_label("Россия без НТ"): RussiaFederationEnergyConsumptionParameter,
     _norm_entity_label("Россия с НТ"): RussiaFederationEnergyConsumptionParameter,
 }
+_EES_UNIFIED_IMPORT_LABEL_CF = _norm_entity_label(EES_UNIFIED_REF_NAME)
 _CALCULATED_EES_RUSSIA_BASE_LABEL_CF = _norm_entity_label(EES_RUSSIA_AGGREGATE_NAME)
-_EES_RUSSIA_AGGREGATE_IMPORT_LABELS_CF = frozenset(
-    {
-        _norm_entity_label("ЕЭС России"),
-        _CALCULATED_EES_RUSSIA_BASE_LABEL_CF,
-    }
-)
 
-# Старый шаблон без столбца вариантов: подпись целиком → (модель, код варианта).
+# Старый шаблон без столбца вариантов: подпись целиком → (модель, код варианта) для агрегатов.
 _AGGREGATE_ENERGY_CONSUMPTION_BY_CANONICAL_LABEL: tuple[tuple[str, Type[Any], str | None], ...] = (
-    (
-        "ЕЭС России с НТ с зарядом ГАЭС",
-        EesRussiaEnergyConsumptionParameter,
-        CODE_WITH_NT_WITH_GAES,
-    ),
-    (
-        "ЕЭС России без НТ с зарядом ГАЭС",
-        EesRussiaEnergyConsumptionParameter,
-        CODE_WITHOUT_NT_WITH_GAES,
-    ),
     ("Россия", RussiaFederationEnergyConsumptionParameter, CODE_WITHOUT_NT),
     ("Россия без НТ", RussiaFederationEnergyConsumptionParameter, CODE_WITHOUT_NT),
     ("Россия с НТ", RussiaFederationEnergyConsumptionParameter, CODE_WITH_NT),
+)
+
+# Старый шаблон: «ЕЭС России» (EnergySystemType) с вариантами ГАЭС в подписи.
+_EES_UNIFIED_ENERGY_CONSUMPTION_BY_CANONICAL_LABEL: tuple[tuple[str, str | None], ...] = (
+    ("ЕЭС России с НТ с зарядом ГАЭС", CODE_WITH_NT_WITH_GAES),
+    ("ЕЭС России без НТ с зарядом ГАЭС", CODE_WITHOUT_NT_WITH_GAES),
 )
 
 _IMPORT_SKIPPED_ROW_LABELS = frozenset(
@@ -514,6 +498,12 @@ _IMPORT_SKIPPED_ROW_LABELS = frozenset(
 )
 
 
+def _is_ees_unified_import_label(label: str) -> bool:
+    """«ЕЭС России» — тип энергосистемы (EnergySystemType), не агрегат ЭЭС России."""
+    base = _strip_import_variant_suffixes_from_label(label)
+    return _norm_entity_label(base) == _EES_UNIFIED_IMPORT_LABEL_CF
+
+
 def _is_calculated_ees_russia_import_label(label: str) -> bool:
     """«ЭЭС России» (электроэнергетические системы) — расчёт, не пишется в БД."""
     base = _strip_import_variant_suffixes_from_label(label)
@@ -521,13 +511,65 @@ def _is_calculated_ees_russia_import_label(label: str) -> bool:
 
 
 def _is_ees_russia_aggregate_import_label(label: str) -> bool:
-    """Агрегат «ЕЭС России» / «ЭЭС России» с вариантом периметра — импортируется."""
+    """Агрегат «ЭЭС России» с вариантом периметра — импортируется в EesRussia*."""
     base = _strip_import_variant_suffixes_from_label(label)
-    return _norm_entity_label(base) in _EES_RUSSIA_AGGREGATE_IMPORT_LABELS_CF
+    return _norm_entity_label(base) == _CALCULATED_EES_RUSSIA_BASE_LABEL_CF
+
+
+def _resolve_ees_unified_energy_system_type_binding(
+    label: str,
+    ctx: dict[str, list[tuple[Any, str]]],
+    *,
+    perimeter_variant_code: str | None = None,
+    variant_column_mode: bool = False,
+) -> Optional[_ImportBind]:
+    """«ЕЭС России» из Excel → ``EnergySystemTypeEnergyConsumptionParameter``."""
+    if not _is_ees_unified_import_label(label):
+        return None
+    est = _pick_exact_match(EES_UNIFIED_REF_NAME, ctx.get("energy_system_type") or [])
+    if est is None:
+        return None
+    pvc = perimeter_variant_code if variant_column_mode else None
+    if not variant_column_mode:
+        for label_n in _aggregate_import_label_candidates(label):
+            for canonical, canonical_pvc in _EES_UNIFIED_ENERGY_CONSUMPTION_BY_CANONICAL_LABEL:
+                if label_n == _norm_entity_label(canonical):
+                    pvc = canonical_pvc
+                    break
+    if (
+        variant_column_mode
+        and pvc is None
+        and _aggregate_model_requires_perimeter_variant(EnergySystemTypeEnergyConsumptionParameter)
+    ):
+        return None
+    return _ImportBind(
+        EnergySystemTypeEnergyConsumptionParameter,
+        _MODEL_FK[EnergySystemTypeEnergyConsumptionParameter],
+        int(est.id),
+        pvc,
+    )
+
+
+def _label_denotes_ees_unified_gaes_aggregate(label: str) -> bool:
+    """Подпись «ЕЭС России … с зарядом ГАЭС» в старом шаблоне без колонки вариантов."""
+    label_n = _norm_entity_label(label)
+    if "without_gaes" in label_n or "без заряда" in label_n:
+        return False
+    if not any(
+        marker in label_n
+        for marker in (
+            _norm_entity_label(_GAES_WITH_CHARGE_LABEL_SUFFIX),
+            " с зарядом гаэс",
+            " с гаэс",
+        )
+    ):
+        return False
+    base = _strip_import_variant_suffixes_from_label(label)
+    return _is_ees_unified_import_label(base)
 
 
 def _label_denotes_ees_russia_gaes_aggregate(label: str) -> bool:
-    """Подпись «ЕЭС России … с зарядом ГАЭС» в старом шаблоне без колонки вариантов."""
+    """Подпись «ЭЭС России … с зарядом ГАЭС» в старом шаблоне без колонки вариантов."""
     label_n = _norm_entity_label(label)
     if "without_gaes" in label_n or "без заряда" in label_n:
         return False
@@ -548,13 +590,13 @@ def _is_ees_russia_gaes_aggregate_import_row(
     label: str,
     perimeter_variant_code: str | None,
 ) -> bool:
-    """Строка агрегата «ЕЭС России … с зарядом ГАЭС» (с/без НТ)."""
+    """Строка «ЕЭС России … с зарядом ГАЭС» (EnergySystemType, с/без НТ)."""
     code = str(perimeter_variant_code or "").strip()
     if code:
         if "with_gaes" not in code or "without_gaes" in code:
             return False
-        return _is_ees_russia_aggregate_import_label(label)
-    return _label_denotes_ees_russia_gaes_aggregate(label)
+        return _is_ees_unified_import_label(label)
+    return _label_denotes_ees_unified_gaes_aggregate(label)
 
 
 def _import_row_year_numeric_pairs(
@@ -639,7 +681,7 @@ def _ees_russia_gaes_import_perimeter_variant_from_excel(
     year_cols: dict[int, int],
 ) -> str | None:
     """В шаблоне «млн. кВт·ч» строка «ЕЭС России … с зарядом ГАЭС» иногда помечена ``without_nt`` / ``with_nt``."""
-    if not _is_ees_russia_aggregate_import_label(
+    if not _is_ees_unified_import_label(
         _strip_import_variant_suffixes_from_label(label)
     ):
         return perimeter_variant_code
@@ -733,7 +775,7 @@ def _resolve_aggregate_energy_consumption_binding(
                 perimeter_variant_code is None
                 and _aggregate_model_requires_perimeter_variant(model_cls)
             ):
-                # Пустая ячейка perimeter-variants: расчётные агрегаты (ЕЭС России и т.п.)
+                # Пустая ячейка perimeter-variants: расчётные агрегаты (ЭЭС России и т.п.)
                 # заполняются постобработкой формул после импорта.
                 return None
             return _ImportBind(
@@ -918,6 +960,15 @@ def _resolve_row_binding(
         if variant_column_mode
         else label
     )
+
+    unified_bind = _resolve_ees_unified_energy_system_type_binding(
+        label,
+        ctx,
+        perimeter_variant_code=perimeter_variant_code,
+        variant_column_mode=variant_column_mode,
+    )
+    if unified_bind is not None:
+        return unified_bind
 
     agg_bind = _resolve_aggregate_energy_consumption_binding(
         label,
@@ -1329,6 +1380,8 @@ def _import_perimeter_variant_without_entity_bindings(
     allowed = perimeter_variant_codes_for_entity(*entity_ctx)
     if not allowed:
         return None
+    if perimeter_variant_code not in allowed:
+        return None
     return perimeter_variant_code
 
 
@@ -1510,17 +1563,24 @@ def _find_existing_parameter_row(
     return q.first()
 
 
+def _import_username(user: str | None = None) -> str:
+    if user:
+        return user
+    return session.get("username", "Неизвестный пользователь")
+
+
 def _apply_accumulator_for_version(
     acc: defaultdict[tuple[Type[Any], str, int, int, str | None], Decimal],
     *,
     field_name: str,
     version_id: int,
     preserve_excel_empty_perimeter_variant: bool = False,
+    user: str | None = None,
 ) -> int:
     from app.common.perimeter_variant.registry import model_supports_perimeter_variant
 
     touched = 0
-    user = session.get("username", "Неизвестный пользователь")
+    import_user = _import_username(user)
     deduped_parents: set[tuple[Any, ...]] = set()
     for (model, fk_column, parent_id, year_n, pvc), total in acc.items():
         # Агрегаты без родителя: один и тот же parent_id (=0) на все годы — включать год в ключ,
@@ -1596,10 +1656,10 @@ def _apply_accumulator_for_version(
             row.year_number = year_n
             if model_supports_perimeter_variant(model):
                 row.perimeter_variant_code = perimeter_variant_code
-            row.created_by = user
+            row.created_by = import_user
             db.session.add(row)
         setattr(row, field_name, total)
-        row.modified_by = user
+        row.modified_by = import_user
         touched += 1
 
     for (model, fk_column, parent_id, year_n, pvc), total in acc.items():
@@ -1670,6 +1730,7 @@ def _persist_formula_summary_rows(
     database_version_id: int,
     years: list[int],
     skip_accumulator_keys_by_field: dict[str, frozenset[tuple[Any, ...]]] | None = None,
+    user: str | None = None,
 ) -> int:
     if not summary_rows or not years:
         return 0
@@ -1691,6 +1752,7 @@ def _persist_formula_summary_rows(
             defaultdict(lambda: Decimal(0), acc),
             field_name=field_name,
             version_id=database_version_id,
+            user=user,
         )
     return touched
 
@@ -1701,6 +1763,7 @@ def persist_all_energy_consumption_summary_computed_rows(
     years: list[int],
     rounding_digits: int = 1,
     skip_accumulator_keys_by_field: dict[str, frozenset[tuple[Any, ...]]] | None = None,
+    user: str | None = None,
 ) -> int:
     """Синхронизация агрегатов ЭЗ/ФО и запись всех расчётных строк сводки в БД."""
     from app.energy_consumption.services.energy_consumption_summary_services import (
@@ -1727,6 +1790,7 @@ def persist_all_energy_consumption_summary_computed_rows(
         database_version_id=database_version_id,
         years=years,
         skip_accumulator_keys_by_field=skip_accumulator_keys_by_field,
+        user=user,
     )
     from app.power_demand.services.pd_ec_consumption_index_cache import (
         invalidate_pd_ec_consumption_index_cache,
@@ -1774,22 +1838,23 @@ def _labels_matched_in_any_version(
     return matched
 
 
-def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
+def import_energy_consumption_summary_from_xlsx_bytes(
+    raw: bytes,
+    *,
+    user: str | None = None,
+    on_version_progress: Callable[[int, int], None] | None = None,
+) -> dict[str, Any]:
     """
     Читает листы «млн. кВт.ч» и/или «СиПР» (какие есть в книге), сопоставляет наименования
     («Россия» / «Россия без НТ» → ``RussiaFederationEnergyConsumptionParameter`` с ``without_nt``,
     даже если в колонке perimeter-variants указан ``with_nt``; «Россия с НТ» → ``with_nt``);
-    «ЕЭС России с НТ с зарядом ГАЭС» → ``EesRussiaEnergyConsumptionParameter`` с ``with_nt_with_gaes``;
-    «ЕЭС России без НТ с зарядом ГАЭС» → ``EesRussiaEnergyConsumptionParameter`` с ``without_nt_with_gaes``;
+    «ЕЭС России» + варианты с ГАЭС → ``EnergySystemTypeEnergyConsumptionParameter``;
+    «ЭЭС России» + варианты → ``EesRussiaEnergyConsumptionParameter``;
     «ОЭС Юга с НТ с ГАЭС» / «… с зарядом ГАЭС» → ``UnionEnergySystemEnergyConsumptionParameter`` с ``with_nt_with_gaes``;
     «ОЭС Юга без НТ с ГАЭС» / «… с зарядом ГАЭС» → ``UnionEnergySystemEnergyConsumptionParameter`` с ``without_nt_with_gaes``;
     «Первая синхронная зона … с зарядом ГАЭС (с ЭС …)» → ``SynchronousAreaEnergyConsumptionParameter``
     с ``without_nt_with_gaes_with_kaliningrad_es``; далее ОЭС → РЭС → субъект РФ → ФО → энергоузел)
-    и записывает числа в параметры в выбранные версии БД.
-
-    По умолчанию — только текущая версия в контексте пользователя (см.
-    `_database_version_ids_for_energy_consumption_import`; импорт по всем версиям — через переменную
-    окружения EC_SUMMARY_IMPORT_ALL_DB_VERSIONS).
+    и записывает числа в параметры во все зарегистрированные версии БД.
 
     Должен присутствовать хотя бы один из двух листов. Отсутствующий лист пропускается.
 
@@ -1806,6 +1871,31 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
     version_ids = _database_version_ids_for_energy_consumption_import()
     if not version_ids:
         raise ValueError("Не найдено ни одной версии базы данных для записи импорта.")
+    import_user = _import_username(user)
+    with ecps.import_actor(import_user):
+        return _import_energy_consumption_summary_from_xlsx_bytes_impl(
+            raw,
+            version_ids=version_ids,
+            import_user=import_user,
+            on_version_progress=on_version_progress,
+        )
+
+
+def _format_unmatched_label(label: str, pvc: str | None) -> str:
+    if pvc:
+        return f"{label} [{pvc}]"
+    return label
+
+
+def _import_energy_consumption_summary_from_xlsx_bytes_impl(
+    raw: bytes,
+    *,
+    version_ids: list[int],
+    import_user: str,
+    on_version_progress: Callable[[int, int], None] | None,
+) -> dict[str, Any]:
+    if on_version_progress is not None:
+        on_version_progress(0, len(version_ids))
 
     wb = _load_summary_workbook_from_bytes(raw)
     screen_export_mln: defaultdict[tuple[str, int, str | None], Decimal] | None = None
@@ -1878,19 +1968,17 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
     )
     matched_any = matched_any_mln | matched_any_sipr
 
-    def _format_unmatched_label(label: str, pvc: str | None) -> str:
-        if pvc:
-            return f"{label} [{pvc}]"
-        return label
-
     try:
         n_mln = 0
         n_sipr = 0
         n_formula = 0
-        for vid in version_ids:
+        versions_total = len(version_ids)
+        for versions_done, vid in enumerate(version_ids, start=1):
             ctx = _binding_ctx(vid)
             years_ok = _year_numbers_for_version(vid)
             if not years_ok:
+                if on_version_progress is not None:
+                    on_version_progress(versions_done, versions_total)
                 continue
             acc_m, explicit_rd_mln = _collapse_labels_to_bind_keys(
                 acc_mln_labels,
@@ -1919,6 +2007,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
                 field_name="energy_consumption_mln_kvt_ch",
                 version_id=vid,
                 preserve_excel_empty_perimeter_variant=variant_column_mode_mln,
+                user=import_user,
             )
             db.session.flush()
             n_sipr += _apply_accumulator_for_version(
@@ -1926,6 +2015,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
                 field_name="energy_consumption_sipr_mln_kvt_ch",
                 version_id=vid,
                 preserve_excel_empty_perimeter_variant=variant_column_mode_sipr,
+                user=import_user,
             )
             db.session.flush()
             n_formula += persist_all_energy_consumption_summary_computed_rows(
@@ -1936,9 +2026,14 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
                     "energy_consumption_mln_kvt_ch": frozenset(acc_m.keys()),
                     "energy_consumption_sipr_mln_kvt_ch": frozenset(acc_s.keys()),
                 },
+                user=import_user,
             )
             db.session.flush()
-        db.session.commit()
+            db.session.commit()
+            if on_version_progress is not None:
+                on_version_progress(versions_done, versions_total)
+        if db.session.is_active:
+            db.session.commit()
     except IntegrityError:
         db.session.rollback()
         raise ValueError("Не удалось сохранить импорт (конфликт целостности данных).") from None
@@ -1979,9 +2074,9 @@ def import_energy_consumption_summary_from_xlsx_bytes(raw: bytes) -> dict[str, A
         )
 
         log_ec_summary_excel_import(
-            session.get("username", "Неизвестный пользователь"),
+            import_user,
             stats_out,
-            database_version_id=get_current_version(),
+            database_version_id=version_ids[0] if version_ids else get_current_version(),
         )
     except Exception:
         pass
