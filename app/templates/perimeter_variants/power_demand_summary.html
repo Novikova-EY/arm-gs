@@ -546,14 +546,14 @@
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_cz" checked>
                             {% if summary_route_variant == 'coeff' %}
-                            <span>Совмещенный на ЦЗ России, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЦЗ России, МВт</span>
                             {% else %}
                             <span>Совмещенный на централизованную зону, МВт</span>
                             {% endif %}
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_fo" checked>
-                            <span>Совмещенный на ФО, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ФО, МВт</span>
                         </label>
                     </div>
                 </div>
@@ -591,7 +591,7 @@
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ez" checked>
-                            <span>Совмещенный на энергозону, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ees" checked>
@@ -720,7 +720,7 @@
             {% set _pd_oes_ues_calc_combined_ees_mw_formula = "Расчетный совмещенный на ЕЭС, МВт = сумма значений «Совмещенный на ЕЭС, МВт» всех РЭС данной ОЭС" %}
             {% set _pd_oes_ees_russia_calc_max_via_oes_formula = "Расчетный максимум ЕЭС (через ОЭС), МВт = сумма значений «Совмещенный на ЕЭС, МВт» по всем ОЭС" %}
             {% set _pd_oes_ees_russia_calc_max_via_es_formula = "Расчетный максимум ЕЭС (через ЭС), МВт = сумма значений «Совмещенный на ЕЭС, МВт» всех РЭС данной ОЭС" %}
-            {% set _pd_fo_calc_max_mw_formula = "Расчетный максимум ФО, МВт = сумма значений «Совмещенный на ФО, МВт» всех РЭС, входящих в данный ФО" %}
+            {% set _pd_fo_calc_max_mw_formula = "Расчетный максимум ФО, МВт = сумма значений «Совмещенное потребление мощности на час прохождения максимума ФО, МВт» всех РЭС, входящих в данный ФО" %}
             {% set _pd_coeff_k_ues_calc_max_oes = "k = Расчетный максимум ОЭС / Максимальное потребление мощности ОЭС" %}
             {% set _pd_coeff_k_ues_calc_combined_ees = "k = Расчетный совмещенный на ЕЭС / Максимальное потребление мощности ОЭС" %}
             {% set _pd_coeff_k_calculated_max_ees_via_oes = "k = Расчетный максимум ЕЭС (через ОЭС) / Максимальное потребление мощности" %}

@@ -246,6 +246,7 @@ def _build_ez_max_summary_context(*, for_shell: bool, data_segments=None) -> dic
         data_end_year=args["eff_ey"],
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=args["ez_ordered"],
+        ez_max_extended_parameters=True,
         for_client_render_shell=for_shell,
         data_segments=data_segments,
     )
@@ -593,6 +594,7 @@ def demand_summary_federal_districts_export():
         filter_year_list=_filter_year_list_for_summary(),
         fo_filter_sets=fo_sets,
         fo_aggregate_by_res=True,
+        fo_max_extended_parameters=True,
     )
     sub_years = _parse_export_years_list(list(context.get("years") or []))
     if sub_years is not None:
@@ -630,6 +632,7 @@ def demand_summary_energy_zones_export():
         data_end_year=eff_ey,
         filter_year_list=_filter_year_list_for_summary(),
         ez_territory_ordered=ez_ordered,
+        ez_max_extended_parameters=True,
     )
     sub_years = _parse_export_years_list(list(context.get("years") or []))
     if sub_years is not None:

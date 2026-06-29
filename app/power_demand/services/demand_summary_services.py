@@ -200,7 +200,6 @@ CALCULATED_MAX_PARAMETER_KEYS = frozenset(
     {
         "calculated_max_power_mw",
         "calculated_max_fo_mw",
-        "calculated_max_ez_mw",
         "calculated_max_sa_mw",
         "calculated_combined_on_cz_mw",
         "calculated_combined_on_ees_mw",
@@ -223,7 +222,6 @@ _NUMERIC_ROUNDING_TOOLTIP_KEYS = frozenset(
         "combined_on_cz",
         "calculated_max_power_mw",
         "calculated_max_fo_mw",
-        "calculated_max_ez_mw",
         "calculated_max_sa_mw",
         "calculated_combined_on_cz_mw",
         "calculated_combined_on_ees_mw",
@@ -304,7 +302,7 @@ PARAMETERS_WITH_OES_EES_AND_ES: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
     (
         "combined_on_es",
-        "Совмещенное потребление мощности на час прохождения максимума РЭС, МВт",
+        "Совмещенное потребление мощности на час прохождения максимума ЭС, МВт",
     ),
     (
         "combined_on_oes",
@@ -331,48 +329,61 @@ PARAMETERS_FEDERAL_DISTRICT_MAX: tuple[tuple[str, str], ...] = (
     ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
-    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
-    (
-        "calculated_combined_on_ees_mw",
-        "Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт",
-    ),
-    ("calculated_max_fo_mw", "Расчетный максимум ФО, МВт"),
-    ("combined_on_cz", "Совмещенный ФО на ЦЗ России, МВт"),
+    ("combined_on_cz", "Совмещенное потребление мощности на час максимума ЦЗ России, МВт"),
     (
         "calculated_combined_on_cz_mw",
-        "Расчетный совмещенный на ЦЗ России, МВт",
+        "Расчетное совмещенное потребление мощности на час максимума ЦЗ России, МВт",
     ),
 )
 # Субъект РФ на сводке по ФО: без ОЭС / ЕЭС / ЭС / ценовой зоны (только базовые + «на ФО»)
 PARAMETERS_SUBJECT_FD_SUMMARY: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
-    ("combined_on_fo", "Совмещенный на ФО, МВт"),
+    ("combined_on_fo", "Совмещенное потребление мощности на час прохождения максимума ФО, МВт"),
 )
 # Региональная энергосистема на сводке по энергозонам: «на энергозону» (ОЭС/ЕЭС — на странице по ОЭС)
 PARAMETERS_RES: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
-    ("combined_on_ez", "Совмещенный на энергозону, МВт"),
+    ("combined_on_ez", "Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт"),
 )
 # РЭС на сводке «коэффициенты по ФО» (дерево ФО→РЭС): на ФО и на ЦЗ России, без «на энергозону»
 PARAMETERS_RES_FO_COEFF: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
-    ("combined_on_fo", "Совмещенный на ФО, МВт"),
-    ("combined_on_cz", "Совмещенный на ЦЗ России, МВт"),
+    ("combined_on_fo", "Совмещенное потребление мощности на час прохождения максимума ФО, МВт"),
+    ("combined_on_cz", "Совмещенное потребление мощности на час прохождения максимума ЦЗ России, МВт"),
 )
 # РЭС на сводке «Максимумы по ФО» (дерево ФО→РЭС): + совмещённый на ЕЭС.
 PARAMETERS_RES_FO_MAX: tuple[tuple[str, str], ...] = (
     *BASE_PARAMETERS,
-    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
-    ("combined_on_fo", "Совмещенный на ФО, МВт"),
-    ("combined_on_cz", "Совмещенный на ЦЗ России, МВт"),
+    ("combined_on_fo", "Совмещенное потребление мощности на час максимума ФО, МВт"),
+    (
+        "combined_on_cz",
+        "Совмещенное потребление мощности на час максимума ЦЗ России, МВт",
+    ),
 )
 # Энергозона (в модели только базовые показатели + совмещённый на ЕЭС)
 PARAMETERS_ENERGY_ZONE: tuple[tuple[str, str], ...] = (
     ("max_power", "Максимальное потребление мощности, МВт"),
-    ("calculated_max_ez_mw", "Расчетный максимум энергозоны, МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
     ("combined_on_ees", "Совмещенный максимум потребления мощности ЕЭС, МВт"),
+)
+# Энергозона на сводке «Максимумы по энергозонам» (как ОЭС на /summary/oes/).
+PARAMETERS_ENERGY_ZONE_MAX: tuple[tuple[str, str], ...] = (
+    ("max_power", "Максимальное потребление мощности, МВт"),
+    ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
+    ("peak_datetime", "Дата и время, мск"),
+    ("avg_temp", "Среднесуточная ТНВ, °C"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
+    (
+        "calculated_combined_on_ees_mw",
+        "Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт",
+    ),
+)
+# РЭС на сводке «Максимумы по энергозонам»: «на энергозону» и «на ЕЭС».
+PARAMETERS_RES_EZ_MAX: tuple[tuple[str, str], ...] = (
+    *BASE_PARAMETERS,
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
+    ("combined_on_ez", "Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт"),
 )
 # Синхронная зона на сводке по ОЭС: расчётный совмещённый максимум = сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» по РЭС зоны.
 PARAMETERS_SYNCHRONOUS_AREA: tuple[tuple[str, str], ...] = (
@@ -418,6 +429,8 @@ class SummaryEntity:
     perimeter_variant_code: str | None = None
     # Строка уже развёрнута по варианту периметра (включая code=None → «не указано»).
     summary_perimeter_variant_row: bool = False
+    # Сводка ФО: «ЦЗ России O-1» по данным with_nt / without_nt (не o1_*).
+    centralized_zone_o1_display_row: bool = False
     # Субъекты этого ФО, с которыми связана РЭС (для фильтров ds_rd на сводке ФО→РЭС).
     fo_res_linked_regional_district_ids: frozenset[int] | None = None
     # Энергорайон децентрализованной зоны (РЭС «не указано» в справочнике).
@@ -1217,9 +1230,8 @@ def _finalize_fo_summary_context(
     rows = ctx["summary_rows"]
     years = list(ctx["years"])
     reorder_centralized_zone_russia_variant_blocks_in_summary_rows(rows)
-    fo_max = bool(ctx.get("fo_max_extended_parameters"))
-    if fo_max:
-        enrich_fo_summary_combined_on_ees_from_res(rows, years, rounding_digits)
+    ctx["summary_rows"] = exclude_o1_perimeter_variant_summary_rows(rows)
+    rows = ctx["summary_rows"]
     need_calc_max = _summary_data_segments_requested(
         data_segments, PD_SUMMARY_SEGMENT_CALC_MAX
     )
@@ -1230,9 +1242,12 @@ def _finalize_fo_summary_context(
         _enrich_fo_summary_calculated_max_from_res(ctx, rounding_digits)
     if need_calc_max:
         _inject_fo_max_cz_russia_calculated_max_row(
-            rows, years, int(ctx["rounding_digits"])
+            rows, years, int(ctx["rounding_digits"]),
+            fo_max_extended_parameters=bool(ctx.get("fo_max_extended_parameters")),
         )
-    _tag_common_power_demand_summary_rows(rows, oes_summary=fo_max)
+    _tag_common_power_demand_summary_rows(
+        rows, oes_summary=bool(ctx.get("fo_max_extended_parameters"))
+    )
     if need_verify:
         _inject_oes_summary_verification_rows(rows, years)
         tag_power_demand_summary_rows_for_territory_compact(rows)
@@ -1257,14 +1272,25 @@ def _finalize_ez_summary_context(
     from app.power_demand.services.pd_summary_data_segments import (
         PD_SUMMARY_SEGMENT_CALC_MAX,
         PD_SUMMARY_SEGMENT_CHI,
+        PD_SUMMARY_SEGMENT_VERIFY,
     )
 
     rows = ctx["summary_rows"]
     years = list(ctx["years"])
-    if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_CALC_MAX):
+    ez_max = bool(ctx.get("ez_max_extended_parameters"))
+    need_calc_max = _summary_data_segments_requested(
+        data_segments, PD_SUMMARY_SEGMENT_CALC_MAX
+    )
+    need_verify = _summary_data_segments_requested(
+        data_segments, PD_SUMMARY_SEGMENT_VERIFY
+    )
+    if need_calc_max or need_verify:
         _enrich_ez_summary_calculated_max_from_res(ctx, rounding_digits)
-    _tag_common_power_demand_summary_rows(rows)
+    _tag_common_power_demand_summary_rows(rows, oes_summary=ez_max)
     tag_power_demand_ez_summary_group_rows_skip_empty_hide(rows)
+    if need_verify:
+        _inject_oes_summary_verification_rows(rows, years)
+        tag_power_demand_summary_rows_for_territory_compact(rows)
     if _summary_data_segments_requested(data_segments, PD_SUMMARY_SEGMENT_CHI):
         from app.power_demand.services.pd_peak_usage_hours_services import (
             inject_peak_usage_hours_rows,
@@ -1518,6 +1544,8 @@ def _inject_oes_summary_verification_rows(
         «Расчетное максимальное потребление мощности, МВт» − «Максимальное потребление мощности, МВт»
     - «Проверка расчетного совмещенного потребления мощности на час прохождения максимума ЕЭС, МВт» =
         «Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» − «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
+    - «Проверка расчетного совмещенного … на ЦЗ России, МВт» (ФО) =
+        «Расчетное/Расчетный совмещенный … на ЦЗ России, МВт» − «Совмещенное/Совмещенный … на ЦЗ России, МВт»
     - После каждой строки «Расчетный максимум потребления мощности …» — своя «Проверка для …»
       (для части показателей формула будет добавлена позже).
     """
@@ -1657,6 +1685,42 @@ def _inject_oes_summary_verification_rows(
             span += 1
             end += 1
             keys_in_block.add("verify_for_calculated_max_power_mw")
+
+        # 1b) ФО: расчётный совмещённый на ЦЗ − совмещённый на ЦЗ (только у федерального округа).
+        if (
+            {"calculated_combined_on_cz_mw", "combined_on_cz"} <= keys_in_block
+            and str(row0.get("demand_model_name") or "")
+            == FederalDistrictDemandParameter.__name__
+            and "verify_for_calculated_combined_on_cz_mw" not in keys_in_block
+        ):
+            calc_cz_label = next(
+                (
+                    str(summary_rows[j].get("parameter_label") or "")
+                    for j in range(i, end)
+                    if str(summary_rows[j].get("parameter_key") or "")
+                    == "calculated_combined_on_cz_mw"
+                ),
+                "",
+            )
+            if "потребления" in calc_cz_label.casefold():
+                verify_cz_label = (
+                    "Проверка расчетного совмещенного потребления мощности "
+                    "на час максимума ЦЗ России, МВт"
+                )
+            else:
+                verify_cz_label = "Проверка расчетного совмещенного на ЦЗ России, МВт"
+            _inject_one(
+                block_start=i,
+                block_size=span,
+                insert_after_parameter_key="calculated_combined_on_cz_mw",
+                new_parameter_key="verify_for_calculated_combined_on_cz_mw",
+                new_parameter_label=verify_cz_label,
+                a_parameter_key="calculated_combined_on_cz_mw",
+                b_parameter_key="combined_on_cz",
+            )
+            span += 1
+            end += 1
+            keys_in_block.add("verify_for_calculated_combined_on_cz_mw")
 
         # 2) ОЭС: расчетный совмещенный на ЕЭС − совмещенный на ЕЭС.
         if {"calculated_combined_on_ees_mw", "combined_on_ees"} <= keys_in_block:
@@ -1803,10 +1867,18 @@ def _inject_fo_max_cz_russia_calculated_max_row(
     summary_rows: list[dict[str, Any]],
     years: list[int],
     rounding_digits: int,
+    *,
+    fo_max_extended_parameters: bool = False,
 ) -> None:
-    """На сводке «Максимумы по ФО»: строка под «ЦЗ России» = сумма «Совмещенный ФО на ЦЗ России, МВт» по всем ФО."""
+    """На сводке «Максимумы по ФО»: строка под «ЦЗ России» = сумма combined_on_cz по всем ФО."""
     if not summary_rows or not years:
         return
+
+    fd_combined_on_cz_label = (
+        "Совмещенное потребление мощности на час максимума ЦЗ России, МВт"
+        if fo_max_extended_parameters
+        else "Совмещенный ФО на ЦЗ России, МВт"
+    )
 
     cz_start: int | None = None
     cz_span = 0
@@ -1890,14 +1962,18 @@ def _inject_fo_max_cz_russia_calculated_max_row(
             "show_entity_note_cell": False,
             "pd_fo_cz_calc_max_tooltip": (
                 "Расчетный максимум ЦЗ России, МВт = "
-                "Σ(«Совмещенный ФО на ЦЗ России, МВт») по всем федеральным округам."
+                f"Σ(«{fd_combined_on_cz_label}») по всем федеральным округам."
             ),
-            "pd_formula_text_key": "fo_cz_calc_max",
+            "pd_formula_text_key": (
+                "fo_cz_calc_max"
+                if fo_max_extended_parameters
+                else "fo_cz_calc_max_coeff"
+            ),
         },
     )
 
 
-def _build_ez_raw_entities() -> list[SummaryEntity]:
+def _build_ez_raw_entities(*, ez_max_extended_parameters: bool = False) -> list[SummaryEntity]:
     est = _get_energy_system_type_by_name(EES_RUSSIA_ENERGY_SYSTEM_TYPE_NAME)
     est_id = int(est.id) if est is not None else None
     entities: list[SummaryEntity] = [
@@ -1925,7 +2001,11 @@ def _build_ez_raw_entities() -> list[SummaryEntity]:
             perimeter_variant_code=None,
         ),
     ]
-    entities.extend(_build_energy_zone_entities())
+    entities.extend(
+        _build_energy_zone_entities(
+            ez_max_extended_parameters=ez_max_extended_parameters,
+        )
+    )
     return entities
 
 
@@ -1939,6 +2019,7 @@ def build_energy_zones_summary_context(
     data_end_year: int | None = None,
     ez_territory_ordered: tuple[list[int], list[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
+    ez_max_extended_parameters: bool = False,
     for_client_render_shell: bool = False,
     data_segments: frozenset[str] | None = None,
 ) -> dict[str, Any]:
@@ -1982,7 +2063,11 @@ def build_energy_zones_summary_context(
         ez_l, res_l = ez_territory_ordered
 
     if ez_l or res_l:
-        base_entities = copy.deepcopy(_build_ez_raw_entities())
+        base_entities = copy.deepcopy(
+            _build_ez_raw_entities(
+                ez_max_extended_parameters=ez_max_extended_parameters,
+            )
+        )
         f_ez = frozenset(ez_l)
         f_res = frozenset(res_l)
         ent = prune_summary_entities_ez(base_entities, f_ez, f_res)
@@ -2005,10 +2090,13 @@ def build_energy_zones_summary_context(
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
         ctx["summary_rows"] = summary_rows
+        ctx["ez_max_extended_parameters"] = ez_max_extended_parameters
         _finalize_ez_summary_context(ctx, rounding_digits, data_segments)
         return ctx
 
-    entities = _expand_summary_entities_perimeter_variants(_build_ez_raw_entities())
+    entities = _expand_summary_entities_perimeter_variants(
+        _build_ez_raw_entities(ez_max_extended_parameters=ez_max_extended_parameters)
+    )
     ctx = _build_summary_context(
         entities=entities,
         page_title="Максимумы потребления мощности по энергозонам",
@@ -2021,6 +2109,7 @@ def build_energy_zones_summary_context(
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
+    ctx["ez_max_extended_parameters"] = ez_max_extended_parameters
     _finalize_ez_summary_context(ctx, rounding_digits, data_segments)
     return ctx
 
@@ -2142,7 +2231,7 @@ def _inject_fo_coeff_cz_total_rows(
         "Сумма значений «Максимальное потребление мощности, МВт» по строкам федеральных округов "
         "и по строкам региональных энергосистем, отображаемым в таблице (без строки «ЦЗ России»). "
         "Учитываются максимумы и на уровне ФО, и на уровне РЭС под округами.",
-        "Сумма значений «Совмещенный на ЦЗ России, МВт» по всем строкам региональных энергосистем, "
+        "Сумма значений «Совмещенное потребление мощности на час прохождения максимума ЦЗ России, МВт» по всем строкам региональных энергосистем, "
         "показанным в таблице под соответствующими федеральными округами.",
         "Разность между «Максимальное потребление мощности, МВт» для сущности «ЦЗ России» "
         "и суммой совмещённых на ЦЗ России максимумов региональных энергосистем (предыдущая строка блока).",
@@ -2327,15 +2416,12 @@ FO_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
         "avg_temp",
         "combined_on_cz",
         "cz_calculated_max_cz_russia_mw",
-        "calculated_max_fo_mw",
         "calculated_max_power_mw",
         "calculated_combined_on_cz_mw",
-        "calculated_combined_on_ees_mw",
-        "combined_on_ees",
         "combined_on_fo",
         "peak_max_power_usage_hours",
         "verify_for_calculated_max_power_mw",
-        "verify_for_calculated_combined_on_ees_mw",
+        "verify_for_calculated_combined_on_cz_mw",
     }
 )
 # Экран «Коэффициенты по ФО»: под ФО — РЭС (на ФО, на ЦЗ России), без субъектов.
@@ -2366,9 +2452,13 @@ EZ_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
         "peak_datetime",
         "avg_temp",
         "calculated_max_ees_russia_mw",
-        "calculated_max_ez_mw",
+        "calculated_max_power_mw",
+        "calculated_combined_on_ees_mw",
         "combined_on_ez",
         "combined_on_ees",
+        "peak_max_power_usage_hours",
+        "verify_for_calculated_max_power_mw",
+        "verify_for_calculated_combined_on_ees_mw",
     }
 )
 
@@ -2488,16 +2578,84 @@ def _is_pd_centralized_zone_russia_o1_summary_row(row: dict[str, Any]) -> bool:
     return bool(code) and is_o1_perimeter_variant_code(code)
 
 
+def exclude_o1_perimeter_variant_summary_rows(
+    summary_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """На сводке по ФО не показывать строки с вариантом периметра O-1 (o1_*)."""
+    if not summary_rows:
+        return []
+    out: list[dict[str, Any]] = []
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if not row.get("show_entity_cell"):
+            out.append(dict(row))
+            i += 1
+            continue
+        block_size = max(int(row.get("entity_rowspan") or 1), 1)
+        block = summary_rows[i : i + block_size]
+        if is_o1_perimeter_variant_code(block[0].get("perimeter_variant_code")):
+            i += block_size
+            continue
+        for j, r in enumerate(block):
+            rc = dict(r)
+            rc["show_entity_cell"] = j == 0
+            rc["entity_rowspan"] = len(block)
+            out.append(rc)
+        i += block_size
+    return out
+
+
+def _pd_strip_o1_from_centralized_zone_label(label: str) -> str:
+    """Убирает «O-1» из подписи «ЦЗ России» (на сводке ФО форма O-1 не используется)."""
+    s = str(label or "").strip()
+    if not s.casefold().startswith(CENTRALIZED_ZONE_AGGREGATE_NAME_CF):
+        return s
+    base, kal_suffix = _pd_split_kaliningrad_suffix_from_label(s)
+    base_cf = base.casefold().replace(" ", "")
+    if "o-1" in base.casefold() or "o1" in base_cf.replace("-", ""):
+        base = base.replace("O-1", "").replace("o-1", "").replace("O‑1", "")
+        base = " ".join(base.split())
+        if not base.casefold().startswith(CENTRALIZED_ZONE_AGGREGATE_NAME_CF):
+            base = CENTRALIZED_ZONE_AGGREGATE_NAME
+    if kal_suffix:
+        return f"{base} ({kal_suffix})"
+    return base if base else CENTRALIZED_ZONE_AGGREGATE_NAME
+
+
 def _pd_centralized_zone_o1_entity_display_label(full_label: str) -> str:
-    """Подпись «ЦЗ России O-1» без «с/без НТ» (различие — в столбце варианта периметра)."""
+    """Подпись «ЦЗ России» без «O-1» и без «с/без НТ» (различие — в столбце варианта периметра)."""
     base, _kal = _pd_strip_variant_suffixes_from_label(full_label)
-    base_cf = base.casefold()
-    if "o-1" in base_cf or "o1" in base_cf.replace(" ", ""):
-        return base
-    o1_label = f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1"
-    if _kal:
-        return f"{o1_label} ({_kal})"
-    return o1_label
+    return _pd_strip_o1_from_centralized_zone_label(base)
+
+
+def _pd_tag_centralized_zone_o1_display_row_for_nt_toggle(
+    row: dict[str, Any],
+    *,
+    label: str,
+    pvc_row: object,
+    entity_kind: str,
+) -> bool:
+    """«ЦЗ России» на сводке ФО: with_nt / without_nt и с/без НТ при «+ НТ» (без метки O-1)."""
+    if row.get("demand_model_name") != CentralizedZoneDemandParameter.__name__:
+        return False
+    if entity_kind != "centralized_zone":
+        return False
+    if not row.get("pd_pd_centralized_zone_o1_display_row"):
+        return False
+    if is_o1_perimeter_variant_code(pvc_row):
+        return False
+    nt_group = _pd_nt_group_for_variant_code(str(pvc_row or ""))
+    row["pd_pd_nt_extra_row"] = nt_group == "with_nt"
+    o1_label = _pd_centralized_zone_o1_entity_display_label(label)
+    row["pd_pd_entity_label_compact_nt"] = o1_label
+    nt_suffix = _pd_nt_label_suffix_for_variant_code(str(pvc_row or ""))
+    row["pd_pd_entity_label_nt_detail"] = f"{o1_label}{nt_suffix}".strip()
+    row["entity_label"] = row["pd_pd_entity_label_nt_detail"]
+    if nt_group == "without_nt":
+        row["pd_pd_skip_empty_hide_row"] = True
+    return True
 
 
 def _centralized_zone_russia_variant_block_sort_key(
@@ -2621,6 +2779,11 @@ def _pd_oes_apply_entity_label_toggle_variants(row: dict[str, Any]) -> None:
     full = str(row.get("entity_label") or "").strip()
     if not full:
         return
+    if (
+        row.get("demand_model_name") == CentralizedZoneDemandParameter.__name__
+        and str(row.get("entity_kind") or "") == "centralized_zone"
+    ):
+        full = _pd_strip_o1_from_centralized_zone_label(full)
     row["pd_pd_entity_label_nt_detail"] = _pd_oes_entity_label_for_nt_detail_on(
         full, code_s
     )
@@ -2668,7 +2831,14 @@ def tag_power_demand_summary_rows_for_nt_toggle(
 
         in_nt_tree = bool(stack)
 
-        if pvc_nt_group == CODE_WITH_NT:
+        if _pd_tag_centralized_zone_o1_display_row_for_nt_toggle(
+            row,
+            label=label,
+            pvc_row=pvc_row,
+            entity_kind=ek,
+        ):
+            pass
+        elif pvc_nt_group == CODE_WITH_NT:
             row["pd_pd_nt_extra_row"] = True
         elif (
             pvc_nt_group == CODE_WITHOUT_NT
@@ -2701,10 +2871,10 @@ def tag_power_demand_summary_rows_for_nt_toggle(
         ):
             nt_group = _pd_nt_group_for_variant_code(str(pvc_row or ""))
             row["pd_pd_nt_extra_row"] = nt_group == "with_nt"
-            o1_label = _pd_centralized_zone_o1_entity_display_label(label)
-            row["pd_pd_entity_label_compact_nt"] = o1_label
-            row["pd_pd_entity_label_nt_detail"] = o1_label
-            row["entity_label"] = o1_label
+            cz_label = _pd_strip_o1_from_centralized_zone_label(label)
+            row["pd_pd_entity_label_compact_nt"] = cz_label
+            row["pd_pd_entity_label_nt_detail"] = cz_label
+            row["entity_label"] = cz_label
             if nt_group == "without_nt":
                 row["pd_pd_skip_empty_hide_row"] = True
         elif pvc_nt_group == CODE_WITHOUT_NT and label.startswith("ЕЭС России"):
@@ -2726,12 +2896,18 @@ def tag_power_demand_summary_rows_for_nt_toggle(
             row["pd_pd_nt_extra_row"] = in_nt_tree
 
         if row.get("show_entity_cell"):
-            if not _is_pd_centralized_zone_russia_o1_summary_row(row):
+            if (
+                not _is_pd_centralized_zone_russia_o1_summary_row(row)
+                and not row.get("pd_pd_centralized_zone_o1_display_row")
+            ):
                 _pd_oes_apply_entity_label_toggle_variants(row)
 
         # Строки по привязке /perimeter_variants/ всегда в core: пустые блоки для ввода данных.
         if row.get("pd_pd_summary_perimeter_variant_row"):
-            if _is_pd_centralized_zone_russia_o1_summary_row(row):
+            if (
+                _is_pd_centralized_zone_russia_o1_summary_row(row)
+                or row.get("pd_pd_centralized_zone_o1_display_row")
+            ):
                 pass
             elif _pd_nt_group_for_variant_code(str(pvc_row or "")) == "with_nt":
                 row["pd_pd_nt_extra_row"] = True
@@ -2949,10 +3125,6 @@ def tag_power_demand_summary_rows_for_territory_compact(
             or label == _CHUKOTKA_TERRITORIAL_BOUNDARIES_LABEL
         ):
             row["pd_pd_territory_compact_hide_row"] = True
-        if row.get("pd_pd_nt_extra_row"):
-            row["pd_pd_territory_compact_hide_row"] = True
-            row["pd_pd_territory_detail_row"] = False
-            continue
         dm_l = str(row.get("demand_model_name") or "").strip()
         is_territory_detail = dm_l in (res_mn, rd_mn, eu_mn)
         row["pd_pd_territory_detail_row"] = is_territory_detail
@@ -3602,7 +3774,7 @@ def _aggregate_nt_subjects_combined_on_es_mw_sum_for_south_ues(
     south_ues_id: int,
     year_included: Callable[[int], bool] | None = None,
 ) -> list[float | None]:
-    """Сумма «Совмещенное потребление мощности на час прохождения максимума РЭС» по ФО «Новые территории»."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ЭС» по ФО «Новые территории»."""
     return _aggregate_nt_subjects_parameter_mw_sum_for_south_ues(
         summary_rows,
         years,
@@ -3968,7 +4140,7 @@ def _aggregate_res_combined_on_fo_mw_sum_by_federal_district(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> dict[int, list[float | None]]:
-    """Сумма «Совмещенный на ФО, МВт» по строкам РЭС внутри каждого ФО."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ФО, МВт» по строкам РЭС внутри каждого ФО."""
     n_y = len(years)
     out: dict[int, list[float | None]] = {}
 
@@ -4008,7 +4180,7 @@ def _aggregate_res_combined_on_cz_mw_sum_by_federal_district(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> dict[int, list[float | None]]:
-    """Сумма «Совмещенный на ЦЗ России, МВт» по строкам РЭС внутри каждого ФО."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ЦЗ России, МВт» по строкам РЭС внутри каждого ФО."""
     n_y = len(years)
     out: dict[int, list[float | None]] = {}
 
@@ -4165,7 +4337,7 @@ def enrich_fo_summary_calculated_max_power_from_res_combined_on_fo(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетное максимальное потребление мощности, МВт» по ФО = сумма «Совмещенный на ФО, МВт» по РЭС."""
+    """«Расчетное максимальное потребление мощности, МВт» по ФО = сумма «Совмещенное потребление мощности на час прохождения максимума ФО, МВт» по РЭС."""
     sums = _aggregate_res_combined_on_fo_mw_sum_by_federal_district(
         summary_rows, years, year_included=year_included
     )
@@ -4209,7 +4381,7 @@ def enrich_fo_summary_calculated_max_from_res_combined_on_fo(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный максимум ФО, МВт» = сумма «Совмещенный на ФО, МВт» по РЭС данного ФО."""
+    """«Расчетный максимум ФО, МВт» = сумма «Совмещенное потребление мощности на час прохождения максимума ФО, МВт» по РЭС данного ФО."""
     sums = _aggregate_res_combined_on_fo_mw_sum_by_federal_district(
         summary_rows, years, year_included=year_included
     )
@@ -4260,7 +4432,7 @@ def enrich_fo_summary_calculated_combined_on_cz_from_res_combined(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> None:
-    """«Расчетный совмещенный на ЦЗ России, МВт» = сумма «Совмещенный на ЦЗ России, МВт» по РЭС данного ФО."""
+    """«Расчетный совмещенный на ЦЗ России, МВт» = сумма «Совмещенное потребление мощности на час прохождения максимума ЦЗ России, МВт» по РЭС данного ФО."""
     sums = _aggregate_res_combined_on_cz_mw_sum_by_federal_district(
         summary_rows, years, year_included=year_included
     )
@@ -4310,7 +4482,7 @@ def _aggregate_res_combined_on_ez_mw_sum_by_energy_zone(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> dict[int, list[float | None]]:
-    """Сумма «Совмещенный на энергозону, МВт» по строкам РЭС внутри каждой энергозоны."""
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт» по строкам РЭС внутри каждой энергозоны."""
     n_y = len(years)
     out: dict[int, list[float | None]] = {}
 
@@ -4755,23 +4927,66 @@ def enrich_oes_summary_calculated_max_sa_from_res_combined_on_ees(
         r["hist_numeric_tooltip"] = ""
 
 
-def enrich_ez_summary_calculated_max_from_res_combined_on_ez(
+def _aggregate_res_combined_on_ees_mw_sum_by_energy_zone(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> dict[int, list[float | None]]:
+    """Сумма «Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт» по РЭС внутри каждой энергозоны."""
+    n_y = len(years)
+    out: dict[int, list[float | None]] = {}
+    subject_fallback = _subject_parameter_sums_by_res_year_index(
+        summary_rows, "combined_on_ees", years, year_included=year_included
+    )
+
+    def _tot(ezid: int) -> list[float | None]:
+        if ezid not in out:
+            out[ezid] = [None] * n_y
+        return out[ezid]
+
+    for r in _iter_res_level_aggregation_source_rows(summary_rows, "combined_on_ees"):
+        raw_ezid = r.get("id_energy_zone")
+        if raw_ezid is None:
+            continue
+        try:
+            ezid = int(raw_ezid)
+        except (TypeError, ValueError):
+            continue
+        row_tot = _tot(ezid)
+        for j in range(n_y):
+            y = years[j]
+            if year_included is not None and not year_included(y):
+                continue
+            add = _res_level_aggregation_year_value(
+                r, j, subject_fallback=subject_fallback
+            )
+            if add is None:
+                continue
+            if row_tot[j] is None:
+                row_tot[j] = float(add)
+            else:
+                row_tot[j] = float(row_tot[j]) + float(add)
+    return out
+
+
+def _apply_ez_parameter_from_res_sums(
     summary_rows: list[dict[str, Any]],
     years: list[int],
     rounding_digits: int,
     *,
+    ez_parameter_key: str,
+    sums_by_energy_zone: dict[int, list[float | None]],
     year_included: Callable[[int], bool] | None = None,
+    use_calculated_mw_format: bool = False,
 ) -> None:
-    """«Расчетный максимум энергозоны, МВт» = сумма «Совмещенный на энергозону, МВт» по РЭС данной энергозоны."""
-    sums = _aggregate_res_combined_on_ez_mw_sum_by_energy_zone(
-        summary_rows, years, year_included=year_included
-    )
+    """Подставляет в строку энергозоны суммы по РЭС (годовые столбцы; исторический столбец очищается)."""
     n_y = len(years)
     dm_ez = EnergyZoneDemandParameter.__name__
     for r in summary_rows:
         if r.get("demand_model_name") != dm_ez:
             continue
-        if r.get("parameter_key") != "calculated_max_ez_mw":
+        if r.get("parameter_key") != ez_parameter_key:
             continue
         raw_ezid = r.get("id_energy_zone")
         if raw_ezid is None:
@@ -4780,7 +4995,7 @@ def enrich_ez_summary_calculated_max_from_res_combined_on_ez(
             ezid = int(raw_ezid)
         except (TypeError, ValueError):
             continue
-        mids = sums.get(ezid)
+        mids = sums_by_energy_zone.get(ezid)
         if mids is None:
             mids = [None] * n_y
         yv_p = list(r.get("year_values") or [])
@@ -4794,16 +5009,63 @@ def enrich_ez_summary_calculated_max_from_res_combined_on_ez(
                 continue
             s = mids[j] if j < len(mids) else None
             if s is not None:
-                yv_p[j] = _format_calculated_max_mw(s)
-                ynt_p[j] = _format_calculated_max_mw(s)
+                if use_calculated_mw_format:
+                    yv_p[j] = _format_calculated_max_mw(s)
+                    ynt_p[j] = _format_calculated_max_mw(s)
+                else:
+                    yv_p[j] = _format_numeric(s, rounding_digits)
+                    ynt_p[j] = _format_full_numeric_tooltip(s)
             else:
                 yv_p[j] = "—"
                 ynt_p[j] = ""
         r["year_values"] = yv_p
         r["year_numeric_tooltips"] = ynt_p
-        # В «max»-сводках исторический максимум для энергозоны — не про эту расчётную строку.
         r["hist_value"] = ""
         r["hist_numeric_tooltip"] = ""
+
+
+def enrich_ez_summary_calculated_max_power_from_res_combined_on_ez(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> None:
+    """«Расчетное максимальное потребление мощности, МВт» = сумма «Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт» по РЭС данной энергозоны."""
+    sums = _aggregate_res_combined_on_ez_mw_sum_by_energy_zone(
+        summary_rows, years, year_included=year_included
+    )
+    _apply_ez_parameter_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        ez_parameter_key="calculated_max_power_mw",
+        sums_by_energy_zone=sums,
+        year_included=year_included,
+        use_calculated_mw_format=True,
+    )
+
+
+def enrich_ez_summary_calculated_combined_on_ees_from_res(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+    *,
+    year_included: Callable[[int], bool] | None = None,
+) -> None:
+    """«Расчетное совмещенное … на ЕЭС, МВт» = сумма «Совмещенное … на ЕЭС, МВт» по РЭС данной энергозоны."""
+    sums = _aggregate_res_combined_on_ees_mw_sum_by_energy_zone(
+        summary_rows, years, year_included=year_included
+    )
+    _apply_ez_parameter_from_res_sums(
+        summary_rows,
+        years,
+        rounding_digits,
+        ez_parameter_key="calculated_combined_on_ees_mw",
+        sums_by_energy_zone=sums,
+        year_included=year_included,
+        use_calculated_mw_format=True,
+    )
 
 
 def _enrich_ez_summary_calculated_max_from_res(
@@ -4811,7 +5073,13 @@ def _enrich_ez_summary_calculated_max_from_res(
 ) -> None:
     rows = context.get("summary_rows") or []
     years = list(context.get("years") or [])
-    enrich_ez_summary_calculated_max_from_res_combined_on_ez(rows, years, rounding_digits)
+    if context.get("ez_max_extended_parameters"):
+        enrich_ez_summary_calculated_max_power_from_res_combined_on_ez(
+            rows, years, rounding_digits
+        )
+        enrich_ez_summary_calculated_combined_on_ees_from_res(
+            rows, years, rounding_digits
+        )
     # «ЕЭС России»: расчетный максимум = сумма «Совмещенный максимум потребления мощности ЕЭС, МВт» по всем энергозонам.
     n_y = len(years)
     if not rows or n_y == 0:
@@ -5718,17 +5986,16 @@ def _enrich_fo_summary_calculated_max_from_res(
 ) -> None:
     rows = context.get("summary_rows") or []
     years = list(context.get("years") or [])
-    enrich_fo_summary_calculated_max_from_res_combined_on_fo(
-        rows, years, rounding_digits
-    )
+    fo_max = bool(context.get("fo_max_extended_parameters"))
+    if not fo_max:
+        enrich_fo_summary_calculated_max_from_res_combined_on_fo(
+            rows, years, rounding_digits
+        )
     enrich_fo_summary_calculated_combined_on_cz_from_res_combined(
         rows, years, rounding_digits
     )
-    if context.get("fo_max_extended_parameters"):
+    if fo_max:
         enrich_fo_summary_calculated_max_power_from_res_combined_on_fo(
-            rows, years, rounding_digits
-        )
-        enrich_fo_summary_calculated_combined_on_ees_from_res(
             rows, years, rounding_digits
         )
 
@@ -6197,6 +6464,11 @@ def _flatten_entity(
     entity_note_rid = getattr(hist_note_row, "id", None) if hist_note_row is not None else None
     raw_note = getattr(hist_note_row, "note", None) if hist_note_row is not None else None
     entity_note_text = "" if raw_note in (None, "") else str(raw_note)
+    entity_display_label = entity.label
+    if entity.entity_kind == "centralized_zone":
+        entity_display_label = _pd_strip_o1_from_centralized_zone_label(
+            entity_display_label
+        )
 
     for index, (parameter_key, parameter_label) in enumerate(entity.parameters):
         values = parameter_maps.get(parameter_key, {})
@@ -6204,7 +6476,7 @@ def _flatten_entity(
         year_row_ids = [slice_ids.get(year) for year in years]
         entity_rows.append(
             {
-                "entity_label": entity.label,
+                "entity_label": entity_display_label,
                 "entity_rowspan": len(entity.parameters),
                 "entity_depth": entity.depth,
                 "entity_kind": entity.entity_kind,
@@ -6232,6 +6504,9 @@ def _flatten_entity(
                 "perimeter_variant_code": getattr(entity, "perimeter_variant_code", None),
                 "pd_pd_summary_perimeter_variant_row": bool(
                     getattr(entity, "summary_perimeter_variant_row", False)
+                ),
+                "pd_pd_centralized_zone_o1_display_row": bool(
+                    getattr(entity, "centralized_zone_o1_display_row", False)
                 ),
                 "year_coeff_k_stored": _year_coeff_k_stored_for_flat(
                     parameter_key=parameter_key,
@@ -6866,11 +7141,14 @@ def _build_centralized_zone_perimeter_entities() -> list[SummaryEntity]:
         binding=binding,
     )
     group_codes = [code for code, _rows in groups if code]
+    # При наличии o1_* в привязке показываем with_nt / without_nt (не o1_*), без метки «O-1».
     if any(is_o1_perimeter_variant_code(code) for code in group_codes):
         groups = [
             (code, demand_rows)
             for code, demand_rows in groups
-            if code and is_o1_perimeter_variant_code(code)
+            if code
+            and not is_o1_perimeter_variant_code(code)
+            and _pd_nt_group_for_variant_code(code) in ("with_nt", "without_nt")
         ]
     for code, demand_rows in groups:
         label = _summary_variant_entity_label(
@@ -7397,6 +7675,7 @@ def _build_regional_energy_system_entity_for_energy_zone(
     regional_districts_in_zone: list[RegionalDistrict],
     *,
     energy_zone_id: int,
+    res_parameters: tuple[tuple[str, str], ...] = PARAMETERS_RES,
 ) -> SummaryEntity:
     """РЭС внутри энергозоны: при одном субъекте в зоне — ЭС под субъектом; при нескольких — только ЭС без строк субъектов."""
     regional_districts = sorted(
@@ -7439,7 +7718,7 @@ def _build_regional_energy_system_entity_for_energy_zone(
     return SummaryEntity(
         label=res.name,
         depth=1,
-        parameters=PARAMETERS_RES,
+        parameters=res_parameters,
         demand_rows=dps.get_demand_rows(
             RegionalEnergySystemDemandParameter,
             "id_regional_energy_system",
@@ -7455,7 +7734,17 @@ def _build_regional_energy_system_entity_for_energy_zone(
     )
 
 
-def _build_energy_zone_entities() -> list[SummaryEntity]:
+def _build_energy_zone_entities(
+    *, ez_max_extended_parameters: bool = False
+) -> list[SummaryEntity]:
+    ez_parameters = (
+        PARAMETERS_ENERGY_ZONE_MAX
+        if ez_max_extended_parameters
+        else PARAMETERS_ENERGY_ZONE
+    )
+    res_parameters = (
+        PARAMETERS_RES_EZ_MAX if ez_max_extended_parameters else PARAMETERS_RES
+    )
     ez_query = EnergyZone.query.options(selectinload(EnergyZone.regional_districts))
     ez_query = dps.filter_parents_by_version(ez_query, EnergyZone)
     zones = sorted(
@@ -7486,7 +7775,10 @@ def _build_energy_zone_entities() -> list[SummaryEntity]:
                 continue
             res_children.append(
                 _build_regional_energy_system_entity_for_energy_zone(
-                    res, rds_in_zone, energy_zone_id=ez.id
+                    res,
+                    rds_in_zone,
+                    energy_zone_id=ez.id,
+                    res_parameters=res_parameters,
                 )
             )
             if int(res.id) in south_res_ids:
@@ -7497,7 +7789,7 @@ def _build_energy_zone_entities() -> list[SummaryEntity]:
             SummaryEntity(
                 label=f"{ez.number} — {ez.name}",
                 depth=0,
-                parameters=PARAMETERS_ENERGY_ZONE,
+                parameters=ez_parameters,
                 demand_rows=dps.get_demand_rows(
                     EnergyZoneDemandParameter,
                     "id_energy_zone",
@@ -8282,7 +8574,7 @@ def _build_federal_district_entities_by_res(
             if not rd_ids_in_fd:
                 continue
             subject_children: list[SummaryEntity] = []
-            if len(rd_in_fd) > 2:
+            if len(rd_in_fd) > 1:
                 ues_id = getattr(res, "id_union_energy_system", None)
                 subject_children = [
                     SummaryEntity(

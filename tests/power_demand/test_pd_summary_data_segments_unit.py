@@ -25,7 +25,7 @@ def _block(*rows: dict) -> list[dict]:
 
 
 def test_segment_for_parameter_key_fo():
-    assert segment_for_parameter_key("combined_on_ees", scope="fo") == PD_SUMMARY_SEGMENT_CORE
+    assert segment_for_parameter_key("combined_on_ees", scope="fo") is None
     assert (
         segment_for_parameter_key("calculated_max_power_mw", scope="fo")
         == PD_SUMMARY_SEGMENT_CALC_MAX

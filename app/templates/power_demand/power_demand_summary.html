@@ -13,7 +13,7 @@
     and coeff_base_year is defined
     and active_summary in ('oes', 'fo', 'ez')
 ) %}
-{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_ez_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours') %}
+{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours') %}
 {% set pd_formula_texts = pd_formula_texts | default({}) %}
 {# _pd_* формулы — в контексте из Python (см. inject_pd_formula_template_variables) #}
 {% set show_hist_col = summary_route_variant != 'coeff' %}
@@ -332,12 +332,12 @@
                     title="Показать энергосистемы, у которых все показатели пусты или равны нулю">
                 Пустые строки
             </button>
-            {% if active_summary in ('oes', 'fo') %}
+            {% if active_summary in ('oes', 'fo', 'ez') %}
             <button type="button"
                     id="pdPdSummaryChiToggle"
                     class="btn btn-outline-warning text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки «Число часов использования максимального потребления мощности»{% if active_summary == 'oes' %} для России, ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов{% else %} для федеральных округов и РЭС{% endif %} (оранжевый фон)">
+                    title="Показать строки «Число часов использования максимального потребления мощности»{% if active_summary == 'oes' %} для России, ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов{% elif active_summary == 'fo' %} для федеральных округов и РЭС{% else %} для энергозон и РЭС{% endif %} (оранжевый фон)">
                 ЧЧИ
             </button>
             <button type="button"
@@ -512,7 +512,7 @@
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_es" data-pd-row-key="combined_on_es" checked>
-                            <span>Совмещенное потребление мощности на час прохождения максимума РЭС, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЭС, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_combined_on_oes" data-pd-row-key="combined_on_oes" checked>
@@ -586,35 +586,35 @@
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="avg_temp" checked>
                             <span>Среднесуточная ТНВ, °C</span>
                         </label>
-                        {% if summary_route_variant != 'coeff' %}
-                        <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ees" checked>
-                            <span>Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
-                        </label>
-                        <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_combined_on_ees_mw">
-                            <span>Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
-                        </label>
-                        {% endif %}
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_combined_on_cz_mw">
+                            {% if summary_route_variant == 'coeff' %}
                             <span>Расчетный совмещенный на ЦЗ России, МВт</span>
+                            {% else %}
+                            <span>Расчетное совмещенное потребление мощности на час максимума ЦЗ России, МВт</span>
+                            {% endif %}
                         </label>
+                        {% if summary_route_variant == 'coeff' %}
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_fo_mw">
                             <span>Расчетный максимум ФО, МВт</span>
                         </label>
+                        {% endif %}
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_cz" checked>
                             {% if summary_route_variant == 'coeff' %}
-                            <span>Совмещенный на ЦЗ России, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЦЗ России, МВт</span>
                             {% else %}
-                            <span>Совмещенный на централизованную зону, МВт</span>
+                            <span>Совмещенное потребление мощности на час максимума централизованную зону, МВт</span>
                             {% endif %}
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_fo" checked>
-                            <span>Совмещенный на ФО, МВт</span>
+                            {% if summary_route_variant == 'coeff' %}
+                            <span>Совмещенное потребление мощности на час прохождения максимума ФО, МВт</span>
+                            {% else %}
+                            <span>Совмещенное потребление мощности на час максимума ФО, МВт</span>
+                            {% endif %}
                         </label>
                     </div>
                 </div>
@@ -643,6 +643,10 @@
                             <span>Максимальное потребление мощности, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_power_mw">
+                            <span>Расчетное максимальное потребление мощности, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="peak_datetime" checked>
                             <span>Дата и время, мск</span>
                         </label>
@@ -651,16 +655,16 @@
                             <span>Среднесуточная ТНВ, °C</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_ez_mw">
-                            <span>Расчетный максимум энергозоны, МВт</span>
-                        </label>
-                        <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ez" checked>
-                            <span>Совмещенный на энергозону, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_ees" checked>
-                            <span>Совмещенный максимум потребления мощности ЕЭС, МВт</span>
+                            <span>Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
+                        </label>
+                        <label class="list-group-item d-flex align-items-center gap-2">
+                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_combined_on_ees_mw">
+                            <span>Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
                         </label>
                     </div>
                 </div>
@@ -1034,7 +1038,7 @@
                     {% endif %}
                     {% set _pd_row_stripe = 'pd-entity-block-stripe-alt' if (_pd_block_idx.n % 2 == 0) else 'pd-entity-block-stripe-base' %}
                 {% endif %}
-                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary in ('oes', 'fo') and summary_route_variant != 'coeff' and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if summary_route_variant == 'coeff' %} {{ _pd_row_stripe }}{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
+                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary in ('oes', 'fo', 'ez') and summary_route_variant != 'coeff' and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if summary_route_variant == 'coeff' %} {{ _pd_row_stripe }}{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
                     data-parameter-key="{{ row.parameter_key }}"
                     {% if row.demand_model_name %}data-demand-model-name="{{ row.demand_model_name|e }}"{% endif %}
                     {% if row.id_union_energy_system is not none %}data-id-union-energy-system="{{ row.id_union_energy_system }}"{% endif %}
@@ -1136,11 +1140,13 @@
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_cz_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (_pd_fo_calc_combined_on_cz_mw_coeff_formula if summary_route_variant == 'coeff' else _pd_fo_calc_combined_on_cz_mw_formula)|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_max_ez_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
@@ -1172,10 +1178,16 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_combined_on_cz_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (_pd_fo_verify_combined_on_cz_mw_coeff_formula if summary_route_variant == 'coeff' else _pd_fo_verify_combined_on_cz_mw_formula)|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'ez' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'ez' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_verify_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_sa_mw' %}
                         {% if row.entity_kind == 'synchronous_area' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
@@ -1278,11 +1290,7 @@
                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
                         {% endif %}
                         {% else %}
-                        {% if active_summary == 'ez' and row.parameter_key == 'calculated_max_ez_mw' and row.hist_value == '—' %}
-                        {# Для расчётной строки энергозоны исторический столбец не заполняется. #}
-                        {% else %}
                         {{ row.hist_value }}
-                        {% endif %}
                         {% endif %}
                     </td>
                     {% endif %}
@@ -1895,6 +1903,12 @@ if (summaryTable) {
         } catch (eTerrSt) {
             window.__pdPdSummaryTerritoryCompactMode = false;
         }
+        if (window.__pdPdSummaryTerritoryCompactMode) {
+            window.__pdPdSummaryNtDetailMode = true;
+            try {
+                sessionStorage.setItem(pdPdNtStorageKey, "1");
+            } catch (eCompactNtInit) { /* */ }
+        }
         syncPdPdTerritoryCompactToggleUi();
         pdPdTerritoryCompactBtn.addEventListener("click", function () {
             window.__pdPdSummaryTerritoryCompactMode = !window.__pdPdSummaryTerritoryCompactMode;
@@ -1904,10 +1918,33 @@ if (summaryTable) {
                     window.__pdPdSummaryTerritoryCompactMode ? "1" : "0"
                 );
             } catch (eTc) { /* */ }
-            syncPdPdTerritoryCompactToggleUi();
-            if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
-                window.__pdPdSummaryReapplyRowVisibility();
+            function reapplyAfterCompactToggle() {
+                syncPdPdTerritoryCompactToggleUi();
+                if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                    window.__pdPdSummaryReapplyRowVisibility();
+                }
+                syncPdPdNtAdjustedEntityLabels();
             }
+            if (window.__pdPdSummaryTerritoryCompactMode) {
+                window.__pdPdSummaryNtDetailMode = true;
+                try {
+                    sessionStorage.setItem(pdPdNtStorageKey, "1");
+                } catch (eCompactNtOn) { /* */ }
+                var ntBtn = document.getElementById("pdPdSummaryNtDetailToggle");
+                if (ntBtn) {
+                    ntBtn.setAttribute("aria-pressed", "true");
+                    ntBtn.classList.add("btn-primary");
+                    ntBtn.classList.remove("btn-outline-secondary");
+                }
+                if (typeof window.__pdSummaryEnsureSegments === "function") {
+                    window.__pdSummaryEnsureSegments(["nt_extra"]).then(
+                        reapplyAfterCompactToggle,
+                        reapplyAfterCompactToggle
+                    );
+                    return;
+                }
+            }
+            reapplyAfterCompactToggle();
         });
     } else {
         window.__pdPdSummaryTerritoryCompactMode = false;
@@ -2023,7 +2060,7 @@ if (summaryTable) {
     }
 
     function pdSummaryApplyOptionalRowLayers() {
-        if (summaryView !== "oes" && summaryView !== "fo") {
+        if (summaryView !== "oes" && summaryView !== "fo" && summaryView !== "ez") {
             return;
         }
         var chiBtn = document.getElementById("pdPdSummaryChiToggle");
@@ -2036,9 +2073,7 @@ if (summaryTable) {
                 .forEach(function (tr) {
                     var hide =
                         !chiOn ||
-                        (tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
-                            (!ntDetailOn ||
-                                window.__pdPdSummaryTerritoryCompactMode === true)) ||
+                        (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn) ||
                         (window.__pdPdSummaryTerritoryCompactMode === true &&
                             (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1" ||
                                 tr.getAttribute("data-pd-pd-territory-detail") === "1"));
@@ -2059,8 +2094,7 @@ if (summaryTable) {
                 }
                 var hide =
                     !verOn ||
-                    (tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
-                        (!ntOn2 || window.__pdPdSummaryTerritoryCompactMode === true)) ||
+                    (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntOn2) ||
                     (window.__pdPdSummaryTerritoryCompactMode === true &&
                         (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1" ||
                             tr.getAttribute("data-pd-pd-territory-detail") === "1"));
@@ -2400,7 +2434,9 @@ if (summaryTable) {
 
         function syncCalcMaxModeFromKeyMap(keyMap) {
             if (
-                (summaryView !== "oes" && summaryView !== "fo") ||
+                (summaryView !== "oes" &&
+                    summaryView !== "fo" &&
+                    summaryView !== "ez") ||
                 routeVariant === "coeff"
             ) {
                 return;
@@ -2492,7 +2528,7 @@ if (summaryTable) {
                     var hideAgg = false;
                     if (
                         tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
-                        (!ntDetailOn || window.__pdPdSummaryTerritoryCompactMode === true)
+                        !ntDetailOn
                     ) {
                         hideAgg = true;
                     }
@@ -2525,7 +2561,7 @@ if (summaryTable) {
                 if (
                     show &&
                     tr.getAttribute("data-pd-pd-nt-extra") === "1" &&
-                    (!ntDetailOn || window.__pdPdSummaryTerritoryCompactMode === true)
+                    !ntDetailOn
                 ) {
                     show = false;
                 }
@@ -2690,14 +2726,15 @@ if (summaryTable) {
         }
         if (view === "fo") {
             return [
-                "calculated_max_fo_mw",
                 "calculated_max_power_mw",
                 "calculated_combined_on_cz_mw",
-                "calculated_combined_on_ees_mw",
             ];
         }
         if (view === "ez") {
-            return ["calculated_max_ez_mw"];
+            return [
+                "calculated_max_power_mw",
+                "calculated_combined_on_ees_mw",
+            ];
         }
         return [];
     }
@@ -2883,9 +2920,7 @@ if (summaryTable) {
             "calculated_max_power_mw",
             "peak_datetime",
             "avg_temp",
-            "combined_on_ees",
-            "calculated_combined_on_ees_mw",
-            "calculated_max_fo_mw",
+            {% if summary_route_variant == 'coeff' %}"calculated_max_fo_mw",{% endif %}
             "combined_on_cz",
             "calculated_combined_on_cz_mw",
             "combined_on_fo",
@@ -2899,7 +2934,15 @@ if (summaryTable) {
         });
     } else if (summaryView === "ez") {
         initPdSummaryRowPicker({
-            rowKeys: ["max_power", "peak_datetime", "avg_temp", "calculated_max_ez_mw", "combined_on_ez", "combined_on_ees"],
+            rowKeys: [
+                "max_power",
+                "calculated_max_power_mw",
+                "peak_datetime",
+                "avg_temp",
+                "combined_on_ez",
+                "combined_on_ees",
+                "calculated_combined_on_ees_mw",
+            ],
             defaultHiddenKeys: rowPickerDefaultHidden,
             storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeys" : "powerDemandSummaryEzVisibleRowKeys",
             modalId: "powerDemandEzRowsModal",
@@ -3128,7 +3171,7 @@ if (summaryTable) {
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-verify-for-row:hover > td {
     background-color: #d5e3f2 !important;
 }
-/* Строки «Расчетный максимум …» на /summary/oes/ и /summary/federal_districts/: зеленоватый фон. */
+/* Строки «Расчетный максимум …» на /summary/oes/, /summary/federal_districts/ и /summary/energy_zones/: зеленоватый фон. */
 #powerDemandSummaryTable tbody tr.pd-pd-calc-max-row > td {
     background-color: #e3efe8 !important;
 }
@@ -3136,7 +3179,7 @@ if (summaryTable) {
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-calc-max-row:hover > td {
     background-color: #d8e8df !important;
 }
-/* Строки ЧЧИ на /summary/oes/ и /summary/federal_districts/: оранжевый фон. */
+/* Строки ЧЧИ на /summary/oes/, /summary/federal_districts/ и /summary/energy_zones/: оранжевый фон. */
 #powerDemandSummaryTable tbody tr.pd-pd-chi-row > td {
     background-color: #f5e8dc !important;
 }

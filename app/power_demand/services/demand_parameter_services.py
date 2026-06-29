@@ -646,7 +646,7 @@ def validate_demand_post_complete(
 
         if _field_nonempty(es_s) and parse_decimal(es_s) is None:
             issues.append(
-                f"{row_label}: некорректное число в «Совмещенное потребление мощности на час прохождения максимума РЭС, МВт»."
+                f"{row_label}: некорректное число в «Совмещенное потребление мощности на час прохождения максимума ЭС, МВт»."
             )
 
         if require_combined_oe_ees:
@@ -1225,7 +1225,7 @@ def _apply_summary_field_to_row(
         if s and parse_decimal(s) is None:
             if row.__tablename__ == "gs_pd_regional_district_demand_params":
                 raise ValueError(
-                    "Некорректное число в поле «Совмещенное потребление мощности на час прохождения максимума РЭС, МВт»."
+                    "Некорректное число в поле «Совмещенное потребление мощности на час прохождения максимума ЭС, МВт»."
                 )
             raise ValueError(
                 "Некорректное число в поле «Совмещенный максимум потребления мощности ЭР на РЭС, МВт»."
@@ -1243,7 +1243,7 @@ def _apply_summary_field_to_row(
             raise ValueError("Это поле не относится к данной строке параметров.")
         s = str(raw_value or "").strip()
         if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на энергозону».")
+            raise ValueError("Некорректное число в поле «Совмещенное потребление мощности на час прохождения максимума ЭЗ».")
         old_shown = (
             format_decimal_trim_for_display(row.combined_on_ez, digits=rounding_digits)
             if row.combined_on_ez is not None
@@ -1257,7 +1257,7 @@ def _apply_summary_field_to_row(
             raise ValueError("Это поле не относится к данной строке параметров.")
         s = str(raw_value or "").strip()
         if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Совмещенный на ФО».")
+            raise ValueError("Некорректное число в поле «Совмещенное потребление мощности на час прохождения максимума ФО».")
         old_shown = (
             format_decimal_trim_for_display(row.combined_on_fo, digits=rounding_digits)
             if row.combined_on_fo is not None
@@ -1310,9 +1310,9 @@ _PD_SUMMARY_PARAM_LABELS: dict[str, str] = {
     "avg_temp": "Среднесуточная ТНВ, °C",
     "combined_on_oes": "Совмещенный максимум потребления мощности ОЭС, МВт",
     "combined_on_ees": "Совмещенный максимум потребления мощности ЕЭС, МВт",
-    "combined_on_es": "Совмещенное потребление мощности на час прохождения максимума РЭС, МВт",
-    "combined_on_ez": "Совмещенный на энергозону, МВт",
-    "combined_on_fo": "Совмещенный на ФО, МВт",
+    "combined_on_es": "Совмещенное потребление мощности на час прохождения максимума ЭС, МВт",
+    "combined_on_ez": "Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт",
+    "combined_on_fo": "Совмещенное потребление мощности на час прохождения максимума ФО, МВт",
     "combined_on_cz": "Совмещенный на централизованную зону, МВт",
     "entity_note": "Примечание",
 }

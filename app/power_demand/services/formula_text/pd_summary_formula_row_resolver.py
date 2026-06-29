@@ -78,10 +78,15 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
             return "fo_calc_combined_on_ees_mw"
         if pk == "verify_for_calculated_max_power_mw":
             return "fo_verify_calc_max_mw"
+        if pk == "verify_for_calculated_combined_on_cz_mw":
+            return "fo_verify_combined_on_cz_mw"
         if pk == "verify_for_calculated_combined_on_ees_mw":
             return "fo_verify_combined_ees_mw"
         if pk == "peak_max_power_usage_hours":
             return "fo_chi_federal_district"
+
+    if dm == "CentralizedZoneDemandParameter" and pk == "peak_max_power_usage_hours":
+        return "fo_chi_centralized_zone"
 
     if dm in ("EnergySystemTypeDemandParameter", "EesRussiaWithNtDemandParameter"):
         if pk == "calculated_max_ees_via_oes_mw":
@@ -162,6 +167,11 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
         if dm == "FederalDistrictDemandParameter":
             return "fo_verify_combined_ees_mw"
         return "oes_verify_combined_ees_mw"
+
+    if pk == "verify_for_calculated_combined_on_cz_mw":
+        if dm == "FederalDistrictDemandParameter":
+            return "fo_verify_combined_on_cz_mw"
+        return None
 
     if pk == "verify_for_calculated_max_sa_mw":
         return "sa_first_verify_combined_ees"

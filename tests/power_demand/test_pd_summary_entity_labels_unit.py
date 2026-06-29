@@ -304,6 +304,43 @@ def test_pd_summary_row_allows_perimeter_variant_select_ues_with_options():
     assert service._pd_summary_row_allows_perimeter_variant_select(row) is True
 
 
+def test_pd_summary_row_allows_perimeter_variant_select_energy_zone_with_context():
+    row = {
+        "show_entity_cell": True,
+        "demand_model_name": "EnergyZoneDemandParameter",
+        "perimeter_variant_options": [],
+        "pd_ec_perimeter_entity_kind": "energy_zone",
+    }
+    assert service._pd_summary_row_allows_perimeter_variant_select(row) is True
+
+
+def test_pd_summary_row_allows_perimeter_variant_select_energy_unit_with_context():
+    row = {
+        "show_entity_cell": True,
+        "demand_model_name": "EnergyUnitDemandParameter",
+        "perimeter_variant_options": [],
+        "pd_ec_perimeter_entity_kind": "energy_unit",
+    }
+    assert service._pd_summary_row_allows_perimeter_variant_select(row) is True
+
+
+def test_centralized_zone_with_nt_compact_label_for_fo_summary():
+    row = {
+        "show_entity_cell": True,
+        "entity_label": f"{CENTRALIZED_ZONE_AGGREGATE_NAME} с НТ",
+        "demand_model_name": CentralizedZoneDemandParameter.__name__,
+        "parameter_key": "max_power",
+        "perimeter_variant_code": CODE_WITH_NT,
+        "entity_kind": "centralized_zone",
+        "entity_depth": 0,
+    }
+    service.tag_power_demand_summary_rows_for_nt_toggle([row])
+
+    assert row["pd_pd_entity_label_compact_nt"] == CENTRALIZED_ZONE_AGGREGATE_NAME
+    assert row["pd_pd_entity_label_nt_detail"] == f"{CENTRALIZED_ZONE_AGGREGATE_NAME} с НТ"
+    assert row["pd_pd_nt_extra_row"] is True
+
+
 def test_centralized_zone_without_nt_compact_label_for_fo_summary():
     row = {
         "show_entity_cell": True,
@@ -321,44 +358,7 @@ def test_centralized_zone_without_nt_compact_label_for_fo_summary():
     assert row["pd_pd_nt_extra_row"] is False
 
 
-def test_centralized_zone_o1_with_nt_hidden_until_nt_detail_on():
-    row = {
-        "show_entity_cell": True,
-        "entity_label": f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1 с НТ",
-        "demand_model_name": CentralizedZoneDemandParameter.__name__,
-        "parameter_key": "max_power",
-        "perimeter_variant_code": "o1_with_nt",
-        "entity_kind": "centralized_zone",
-        "entity_depth": 0,
-        "pd_pd_summary_perimeter_variant_row": True,
-    }
-    service.tag_power_demand_summary_rows_for_nt_toggle([row])
-
-    assert row["pd_pd_nt_extra_row"] is True
-    assert row["entity_label"] == f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1"
-    assert row["pd_pd_entity_label_compact_nt"] == f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1"
-    assert row["pd_pd_entity_label_nt_detail"] == f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1"
-
-
-def test_centralized_zone_o1_without_nt_visible_with_o1_label():
-    row = {
-        "show_entity_cell": True,
-        "entity_label": f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1 без НТ",
-        "demand_model_name": CentralizedZoneDemandParameter.__name__,
-        "parameter_key": "max_power",
-        "perimeter_variant_code": "o1_without_nt",
-        "entity_kind": "centralized_zone",
-        "entity_depth": 0,
-        "pd_pd_summary_perimeter_variant_row": True,
-    }
-    service.tag_power_demand_summary_rows_for_nt_toggle([row])
-
-    assert row["pd_pd_nt_extra_row"] is False
-    assert row["pd_pd_skip_empty_hide_row"] is True
-    assert row["entity_label"] == f"{CENTRALIZED_ZONE_AGGREGATE_NAME} O-1"
-
-
-def test_build_centralized_zone_entities_prefers_o1_when_bound(app):
+def test_build_centralized_zone_entities_prefers_non_o1_when_bound(app):
     with app.app_context():
         binding = resolve_entity_perimeter_variants(
             ENTITY_KIND_CENTRALIZED_ZONE,
@@ -371,9 +371,12 @@ def test_build_centralized_zone_entities_prefers_o1_when_bound(app):
             return
         entities = service._build_centralized_zone_perimeter_entities()
     entity_codes = [e.perimeter_variant_code for e in entities]
-    assert all(is_o1_perimeter_variant_code(c) for c in entity_codes if c)
-    assert "with_nt" not in entity_codes
-    assert "without_nt" not in entity_codes
+    assert all(not is_o1_perimeter_variant_code(c) for c in entity_codes if c)
+    assert "with_nt" in entity_codes or "without_nt" in entity_codes
+    assert all(
+        not getattr(e, "centralized_zone_o1_display_row", False) for e in entities
+    )
+    assert all("O-1" not in e.label for e in entities)
 
 
 def test_south_federal_district_without_nt_compact_label_for_fo_summary():
@@ -401,4 +404,46 @@ def test_drop_null_perimeter_variant_group_when_nt_pairs_exist():
     ]
     filtered = service._drop_null_perimeter_variant_group_when_nt_pairs_exist(groups)
     assert [code for code, _rows in filtered] == [CODE_WITH_NT, CODE_WITHOUT_NT]
+
+
+def test_exclude_o1_perimeter_variant_summary_rows():
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 2,
+            "perimeter_variant_code": "with_nt",
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": False,
+            "entity_rowspan": 2,
+            "perimeter_variant_code": "with_nt",
+            "parameter_key": "peak_datetime",
+        },
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "perimeter_variant_code": "o1_with_nt",
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "perimeter_variant_code": "without_nt",
+            "parameter_key": "max_power",
+        },
+    ]
+
+    filtered = service.exclude_o1_perimeter_variant_summary_rows(rows)
+
+    assert len(filtered) == 3
+    assert [r.get("perimeter_variant_code") for r in filtered] == [
+        "with_nt",
+        "with_nt",
+        "without_nt",
+    ]
+    assert filtered[0]["show_entity_cell"] is True
+    assert filtered[0]["entity_rowspan"] == 2
+    assert filtered[1]["show_entity_cell"] is False
+    assert filtered[2]["show_entity_cell"] is True
 

@@ -23,14 +23,23 @@ from app.power_demand.models.energy_systems.synchronous_area_demand_parameter_mo
 from app.power_demand.models.energy_systems.union_energy_system_demand_parameter_model import (
     UnionEnergySystemDemandParameter,
 )
+from app.power_demand.models.energy_systems.centralized_zone_demand_parameter_model import (
+    CentralizedZoneDemandParameter,
+)
+from app.power_demand.models.territories.federal_district_demand_parameter_model import (
+    FederalDistrictDemandParameter,
+)
 from app.power_demand.services.pd_peak_usage_hours_services import (
+    PEAK_MAX_POWER_USAGE_HOURS_KEY,
     _chi_ec_consumption_mln_for_anchor,
+    _chi_ec_consumption_mln_for_south_fd_with_nt,
     _chi_ec_consumption_pvc_for_anchor,
     _chi_ec_consumption_scale_for_pd_model,
     _divide_hours,
     _ec_consumption_pvc_candidates_for_chi,
     _lookup_ec_consumption_for_chi,
     _resolve_ec_parent_id_for_chi_block,
+    inject_peak_usage_hours_rows,
 )
 
 
@@ -71,6 +80,7 @@ def test_first_sa_chi_uses_same_perimeter_variant_as_max_power():
         CODE_WITHOUT_NT_WITHOUT_GAES,
         CODE_WITHOUT_NT_WITH_GAES,
         CODE_WITHOUT_NT,
+        None,
     ]
 
 
@@ -84,6 +94,7 @@ def test_ees_chi_uses_resolved_stored_variant_code():
         CODE_WITHOUT_NT_WITHOUT_GAES,
         CODE_WITHOUT_NT_WITH_GAES,
         CODE_WITHOUT_NT,
+        None,
     ]
 
 
@@ -121,6 +132,7 @@ def test_ees_unified_chi_resolves_none_pvc_from_entity_label():
         CODE_WITHOUT_NT_WITHOUT_GAES,
         CODE_WITHOUT_NT_WITH_GAES,
         CODE_WITHOUT_NT,
+        None,
     ]
 
 
@@ -213,10 +225,18 @@ def test_divide_hours_multiplies_result_by_1000():
     assert _divide_hours(100.0, None) is None
 
 
-def test_chi_rounding_digits_is_zero():
+def test_chi_rounding_digits_is_integer():
     from app.power_demand.services.pd_peak_usage_hours_services import _CHI_ROUNDING_DIGITS
 
-    assert _CHI_ROUNDING_DIGITS == 0
+    assert _CHI_ROUNDING_DIGITS == -1
+
+
+def test_chi_hours_formatted_as_integer():
+    from app.power_demand.services.demand_summary_services import _format_numeric
+    from app.power_demand.services.pd_peak_usage_hours_services import _CHI_ROUNDING_DIGITS
+
+    assert _format_numeric(6123.7, _CHI_ROUNDING_DIGITS) == "6 124"
+    assert _format_numeric(500.4, _CHI_ROUNDING_DIGITS) == "500"
 
 
 def test_russia_federation_chi_scales_ec_consumption_by_1000():
@@ -244,3 +264,281 @@ def test_russia_federation_chi_scales_ec_consumption_by_1000():
         years=[2025],
     )
     assert hit == 1500.0
+
+
+def test_centralized_zone_chi_uses_same_perimeter_variant():
+    anchor = {
+        "demand_model_name": CentralizedZoneDemandParameter.__name__,
+        "entity_kind": "centralized_zone",
+        "perimeter_variant_code": CODE_WITH_NT,
+    }
+    assert _ec_consumption_pvc_candidates_for_chi(anchor) == [
+        CODE_WITH_NT_WITHOUT_GAES,
+        CODE_WITH_NT_WITH_GAES,
+        CODE_WITH_NT,
+    ]
+
+
+def test_inject_peak_usage_hours_rows_for_centralized_zone_without_nt():
+    years = [2025]
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 3,
+            "entity_label": "ЦЗ России без НТ",
+            "entity_kind": "centralized_zone",
+            "entity_depth": 0,
+            "demand_model_name": CentralizedZoneDemandParameter.__name__,
+            "perimeter_variant_code": CODE_WITHOUT_NT,
+            "parameter_key": "max_power",
+            "hist_value": "10",
+            "year_values": ["10"],
+        },
+        {
+            "parameter_key": "peak_datetime",
+            "year_values": ["—"],
+        },
+        {
+            "parameter_key": "avg_temp",
+            "year_values": ["—"],
+        },
+    ]
+    ec_index = {
+        (
+            "CentralizedZoneEnergyConsumptionParameter",
+            0,
+            CODE_WITHOUT_NT,
+            2025,
+        ): 50.0,
+    }
+    cz_hub_index = {
+        (CODE_WITHOUT_NT, 2025): 100.0,
+    }
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    original = chi_svc._build_ec_consumption_index
+    original_hub = chi_svc._build_centralized_zone_hub_ec_chi_index
+    chi_svc._build_ec_consumption_index = lambda _years: ec_index
+    chi_svc._build_centralized_zone_hub_ec_chi_index = lambda _years, _rd: cz_hub_index
+    try:
+        inject_peak_usage_hours_rows(rows, years, 0)
+    finally:
+        chi_svc._build_ec_consumption_index = original
+        chi_svc._build_centralized_zone_hub_ec_chi_index = original_hub
+
+    chi_rows = [r for r in rows if r.get("parameter_key") == PEAK_MAX_POWER_USAGE_HOURS_KEY]
+    assert len(chi_rows) == 1
+    assert chi_rows[0]["pd_pd_chi_row"] is True
+    # Числитель из сводной таблицы (100), не из БД (50).
+    assert chi_rows[0]["year_values"] == ["10 000"]
+
+
+def test_ec_consumption_pvc_candidates_for_without_nt_include_null_fallback():
+    anchor = {
+        "perimeter_variant_code": CODE_WITHOUT_NT_WITHOUT_GAES,
+    }
+    assert _ec_consumption_pvc_candidates_for_chi(anchor) == [
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+        CODE_WITHOUT_NT_WITH_GAES,
+        CODE_WITHOUT_NT,
+        None,
+    ]
+
+
+def test_lookup_chi_falls_back_to_null_perimeter_variant_for_without_nt():
+    ec_index = {
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            125,
+            None,
+            2018,
+        ): 76487.0,
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            125,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            2024,
+        ): 86150.0,
+    }
+    anchor = {
+        "perimeter_variant_code": CODE_WITHOUT_NT_WITHOUT_GAES,
+    }
+    assert (
+        _lookup_ec_consumption_for_chi(
+            "FederalDistrictEnergyConsumptionParameter",
+            125,
+            anchor,
+            2018,
+            ec_index=ec_index,
+            parent_fk_column="id_federal_district",
+            years=[2018, 2024],
+        )
+        == 76487.0
+    )
+
+
+def test_lookup_chi_does_not_fallback_to_null_perimeter_variant_for_with_nt():
+    ec_index = {
+        ("FederalDistrictEnergyConsumptionParameter", 125, None, 2024): 86150.0,
+    }
+    anchor = {
+        "perimeter_variant_code": CODE_WITH_NT,
+    }
+    assert (
+        _lookup_ec_consumption_for_chi(
+            "FederalDistrictEnergyConsumptionParameter",
+            125,
+            anchor,
+            2024,
+            ec_index=ec_index,
+            parent_fk_column="id_federal_district",
+            years=[2024],
+        )
+        is None
+    )
+
+
+def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_from_2023():
+    south_fd_id = 125
+    years = [2022, 2023, 2024]
+    ec_index = {
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            2022,
+        ): 80.0,
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            2023,
+        ): 100.0,
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            2024,
+        ): 120.0,
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITH_NT_WITHOUT_GAES,
+            2024,
+        ): 999.0,
+        ("RegionalDistrictEnergyConsumptionParameter", 916, None, 2023): 5.0,
+        ("RegionalDistrictEnergyConsumptionParameter", 916, None, 2024): 20.0,
+    }
+    anchor = {
+        "demand_model_name": FederalDistrictDemandParameter.__name__,
+        "entity_label": "Южный ФО с НТ",
+        "perimeter_variant_code": CODE_WITH_NT_WITHOUT_GAES,
+    }
+
+    from unittest.mock import patch
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    chi_svc._south_federal_district_id_for_chi.cache_clear()
+    try:
+        with patch.object(
+            chi_svc,
+            "_south_federal_district_id_for_chi",
+            return_value=south_fd_id,
+        ), patch.object(
+            chi_svc,
+            "_sum_nt_subjects_ec_mln_for_chi",
+            side_effect=lambda slice_key, **kwargs: {
+                2023: 5.0,
+                2024: 20.0,
+            }.get(slice_key),
+        ):
+            assert (
+                _chi_ec_consumption_mln_for_south_fd_with_nt(
+                    anchor,
+                    2022,
+                    ec_index=ec_index,
+                    ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                    ec_parent_id=south_fd_id,
+                    fk_column="id_federal_district",
+                    years=years,
+                )
+                is None
+            )
+            assert (
+                _chi_ec_consumption_mln_for_anchor(
+                    anchor,
+                    2023,
+                    ec_index=ec_index,
+                    ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                    ec_parent_id=south_fd_id,
+                    fk_column="id_federal_district",
+                    years=years,
+                )
+                == 105.0
+            )
+            assert (
+                _chi_ec_consumption_mln_for_anchor(
+                    anchor,
+                    2024,
+                    ec_index=ec_index,
+                    ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                    ec_parent_id=south_fd_id,
+                    fk_column="id_federal_district",
+                    years=years,
+                )
+                == 140.0
+            )
+    finally:
+        chi_svc._south_federal_district_id_for_chi.cache_clear()
+
+
+def test_south_fd_without_nt_chi_uses_direct_lookup_for_all_years():
+    south_fd_id = 125
+    years = [2022, 2023]
+    ec_index = {
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            2022,
+        ): 80.0,
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            2023,
+        ): 100.0,
+    }
+    anchor = {
+        "demand_model_name": FederalDistrictDemandParameter.__name__,
+        "entity_label": "Южный ФО без НТ",
+        "perimeter_variant_code": CODE_WITHOUT_NT_WITHOUT_GAES,
+    }
+
+    from unittest.mock import patch
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    chi_svc._south_federal_district_id_for_chi.cache_clear()
+    try:
+        with patch.object(
+            chi_svc,
+            "_south_federal_district_id_for_chi",
+            return_value=south_fd_id,
+        ):
+            assert (
+                _chi_ec_consumption_mln_for_anchor(
+                    anchor,
+                    2022,
+                    ec_index=ec_index,
+                    ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                    ec_parent_id=south_fd_id,
+                    fk_column="id_federal_district",
+                    years=years,
+                )
+                == 80.0
+            )
+    finally:
+        chi_svc._south_federal_district_id_for_chi.cache_clear()

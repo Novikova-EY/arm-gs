@@ -43,7 +43,6 @@ _FO_CORE_PARAMETER_KEYS: frozenset[str] = frozenset(
         "avg_temp",
         "combined_on_cz",
         "combined_on_fo",
-        "combined_on_ees",
     }
 )
 
@@ -83,7 +82,12 @@ _SCOPE_OPTIONAL_SEGMENTS: dict[str, frozenset[str]] = {
         }
     ),
     "ez": frozenset(
-        {PD_SUMMARY_SEGMENT_CALC_MAX, PD_SUMMARY_SEGMENT_CHI, PD_SUMMARY_SEGMENT_NT_EXTRA}
+        {
+            PD_SUMMARY_SEGMENT_CALC_MAX,
+            PD_SUMMARY_SEGMENT_CHI,
+            PD_SUMMARY_SEGMENT_VERIFY,
+            PD_SUMMARY_SEGMENT_NT_EXTRA,
+        }
     ),
 }
 

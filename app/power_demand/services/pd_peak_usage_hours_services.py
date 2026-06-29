@@ -3,12 +3,21 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any
 
 from app.common.perimeter_variant.constants import (
     CODE_WITHOUT_NT,
+    CODE_WITHOUT_NT_WITH_GAES,
+    CODE_WITHOUT_NT_WITHOUT_GAES,
     CODE_WITH_NT,
+    CODE_WITH_NT_WITH_GAES,
+    CODE_WITH_NT_WITHOUT_GAES,
     perimeter_variant_codes_prefer_without_gaes,
+)
+from app.common.perimeter_variant.registry import (
+    is_o1_perimeter_variant_code,
+    legacy_nt_group_for_perimeter_code,
 )
 from app.power_demand.models.energy_systems.ees_russia_demand_parameter_model import (
     EesRussiaDemandParameter,
@@ -42,6 +51,12 @@ from app.energy_consumption.models.energy_systems.union_energy_system_energy_con
 )
 from app.energy_consumption.models.territories.regional_district_energy_consumption_parameter_model import (
     RegionalDistrictEnergyConsumptionParameter,
+)
+from app.power_demand.models.energy_systems.centralized_zone_demand_parameter_model import (
+    CentralizedZoneDemandParameter,
+)
+from app.energy_consumption.models.energy_systems.centralized_zone_energy_consumption_parameter_model import (
+    CentralizedZoneEnergyConsumptionParameter,
 )
 from app.power_demand.models.energy_systems.energy_unit_demand_parameter_model import (
     EnergyUnitDemandParameter,
@@ -121,6 +136,10 @@ _PD_TO_EC: dict[str, tuple[type, str | None]] = {
         EnergyZoneEnergyConsumptionParameter,
         "id_energy_zone",
     ),
+    CentralizedZoneDemandParameter.__name__: (
+        CentralizedZoneEnergyConsumptionParameter,
+        None,
+    ),
 }
 
 _OES_CHI_PD_MODELS = frozenset(_PD_TO_EC.keys())
@@ -128,7 +147,66 @@ _OES_CHI_PD_MODELS = frozenset(_PD_TO_EC.keys())
 _RUSSIA_FEDERATION_EC_CHI_NUMERATOR_SCALE = 1000.0
 # Итоговое ЧЧИ на сводках ОЭС / ФО / ЭЗ: (потребление, млн кВт·ч) / (мощность, МВт) × 1000.
 _CHI_RESULT_DISPLAY_SCALE = 1000.0
-_CHI_ROUNDING_DIGITS = 0
+# digits=-1 в format_decimal_for_display: округление до целого (0 = без округления).
+_CHI_ROUNDING_DIGITS = -1
+
+CzHubEcIndex = dict[tuple[str | None, Any], float]
+
+
+def _build_centralized_zone_hub_ec_chi_index(
+    years: list[int],
+    rounding_digits: int,
+) -> CzHubEcIndex:
+    """Потребление «ЦЗ России» как на /energy_consumption/summary_table/ (формулы с/без НТ)."""
+    if not years:
+        return {}
+    from app.energy_consumption.services.energy_consumption_summary_services import (
+        _raw_year_values_from_summary_row,
+        build_summary_table_hub_centralized_zone_reference_summary_rows,
+    )
+
+    reference_rows = build_summary_table_hub_centralized_zone_reference_summary_rows(
+        rounding_digits,
+        start_year=int(years[0]),
+        end_year=int(years[-1]),
+        filter_year_list=[],
+    )
+    ec_model_name = CentralizedZoneEnergyConsumptionParameter.__name__
+    index: CzHubEcIndex = {}
+    for row in reference_rows:
+        if row.get("demand_model_name") != ec_model_name:
+            continue
+        if str(row.get("parameter_key") or "") != "energy_consumption_mln_kvt_ch":
+            continue
+        pvc_raw = str(row.get("perimeter_variant_code") or "").strip()
+        if pvc_raw and is_o1_perimeter_variant_code(pvc_raw):
+            continue
+        pvc_key = pvc_raw if pvc_raw else None
+        raw_by_year = _raw_year_values_from_summary_row(row, years)
+        for year in years:
+            raw = raw_by_year.get(int(year))
+            if raw is not None:
+                index[(pvc_key, int(year))] = float(raw)
+        hist_raw = _parse_summary_cell_float(row.get("hist_value"))
+        if hist_raw is not None:
+            index[(pvc_key, "hist")] = float(hist_raw)
+    return index
+
+
+def _lookup_centralized_zone_hub_consumption(
+    anchor: dict[str, Any],
+    slice_key: Any,
+    *,
+    cz_hub_index: CzHubEcIndex | None,
+) -> float | None:
+    if not cz_hub_index:
+        return None
+    for pvc in _ec_consumption_pvc_candidates_for_chi(anchor):
+        pvc_key = str(pvc) if pvc not in (None, "") else None
+        hit = cz_hub_index.get((pvc_key, slice_key))
+        if hit is not None:
+            return hit
+    return None
 
 
 def _chi_ec_consumption_scale_for_pd_model(pd_model_name: str) -> float:
@@ -222,12 +300,20 @@ def _resolve_ec_parent_id_for_chi_block(
 
 
 def _ec_consumption_pvc_candidates_for_chi(anchor: dict[str, Any]) -> list[str | None]:
-    """Потребление ЭЭ для ЧЧИ — вариант периметра строки (с тем же порядком поиска, что у max_power)."""
+    """Потребление ЭЭ для ЧЧИ — вариант периметра строки (с тем же порядком поиска, что у max_power).
+
+    Для группы «без НТ» в конце добавляется None: в БД старые годы часто лежат
+    с perimeter_variant_code IS NULL до явной привязки варианта блока.
+    """
     pvc = _chi_ec_consumption_pvc_for_anchor(anchor)
     if not pvc:
         return [None]
-    candidates = list(perimeter_variant_codes_prefer_without_gaes(pvc))
-    return candidates if candidates else [pvc]
+    candidates: list[str | None] = list(perimeter_variant_codes_prefer_without_gaes(pvc))
+    if not candidates:
+        candidates = [pvc]
+    if legacy_nt_group_for_perimeter_code(pvc) == CODE_WITHOUT_NT and None not in candidates:
+        candidates.append(None)
+    return candidates
 
 
 def _lookup_ec_consumption_direct(
@@ -261,6 +347,118 @@ def _lookup_ec_consumption_for_chi(
     return None
 
 
+def _sum_optional_ec_mln_parts(
+    a: float | None,
+    b: float | None,
+) -> float | None:
+    if a is None and b is None:
+        return None
+    return float(a or 0.0) + float(b or 0.0)
+
+
+def _anchor_with_paired_without_nt_pvc(anchor: dict[str, Any]) -> dict[str, Any]:
+    pvc = str(anchor.get("perimeter_variant_code") or "").strip()
+    without = {
+        CODE_WITH_NT: CODE_WITHOUT_NT,
+        CODE_WITH_NT_WITHOUT_GAES: CODE_WITHOUT_NT_WITHOUT_GAES,
+        CODE_WITH_NT_WITH_GAES: CODE_WITHOUT_NT_WITH_GAES,
+    }.get(pvc)
+    if without is None:
+        without = CODE_WITHOUT_NT
+    return {**anchor, "perimeter_variant_code": without}
+
+
+@lru_cache(maxsize=1)
+def _south_federal_district_id_for_chi() -> int | None:
+    from app.power_demand.services.demand_summary_services import (
+        _south_federal_district_for_nt_attachment,
+    )
+
+    south_fd, _ = _south_federal_district_for_nt_attachment()
+    if south_fd is None:
+        return None
+    return int(south_fd.id)
+
+
+def _is_south_federal_district_with_nt_chi_anchor(
+    anchor: dict[str, Any],
+    ec_parent_id: int,
+) -> bool:
+    if str(anchor.get("demand_model_name") or "") != FederalDistrictDemandParameter.__name__:
+        return False
+    south_fd_id = _south_federal_district_id_for_chi()
+    if south_fd_id is None or int(ec_parent_id) != int(south_fd_id):
+        return False
+    pvc = _chi_ec_consumption_pvc_for_anchor(anchor)
+    return legacy_nt_group_for_perimeter_code(pvc) == CODE_WITH_NT
+
+
+def _sum_nt_subjects_ec_mln_for_chi(
+    slice_key: Any,
+    *,
+    ec_index: dict[tuple[str, int, str | None, Any], float],
+) -> float | None:
+    from app.power_demand.services.demand_summary_services import (
+        _new_territories_regional_district_ids,
+    )
+
+    ec_model_name = RegionalDistrictEnergyConsumptionParameter.__name__
+    total: float | None = None
+    for rd_id in _new_territories_regional_district_ids():
+        hit = _lookup_ec_consumption_direct(
+            ec_model_name,
+            int(rd_id),
+            None,
+            slice_key,
+            ec_index=ec_index,
+        )
+        if hit is None:
+            continue
+        total = hit if total is None else total + hit
+    return total
+
+
+def _chi_ec_consumption_mln_for_south_fd_with_nt(
+    anchor: dict[str, Any],
+    slice_key: Any,
+    *,
+    ec_index: dict[tuple[str, int, str | None, Any], float],
+    ec_model_name: str,
+    ec_parent_id: int,
+    fk_column: str | None,
+    years: list[int],
+) -> float | None:
+    """Южный ФО с НТ: потребление без НТ + субъекты НТ (как на сводке потребления), с 2023 года."""
+    from app.power_demand.services.perimeter_variant_tree_rules import (
+        NEW_TERRITORIES_FROM_YEAR,
+    )
+
+    if slice_key != "hist":
+        try:
+            if int(slice_key) < int(NEW_TERRITORIES_FROM_YEAR):
+                return None
+        except (TypeError, ValueError):
+            return None
+    without_anchor = _anchor_with_paired_without_nt_pvc(anchor)
+    base_hit = _lookup_ec_consumption_for_chi(
+        ec_model_name,
+        ec_parent_id,
+        without_anchor,
+        slice_key,
+        ec_index=ec_index,
+        parent_fk_column=fk_column,
+        years=years,
+    )
+    nt_hit = _sum_nt_subjects_ec_mln_for_chi(slice_key, ec_index=ec_index)
+    combined = _sum_optional_ec_mln_parts(base_hit, nt_hit)
+    if combined is None:
+        return None
+    scale = _chi_ec_consumption_scale_for_pd_model(
+        str(anchor.get("demand_model_name") or "")
+    )
+    return combined * scale
+
+
 def _slice_key_from_ec_row(row: Any) -> Any:
     if getattr(row, "is_historical_maximum", False):
         return "hist"
@@ -287,7 +485,26 @@ def _chi_ec_consumption_mln_for_anchor(
     ec_parent_id: int,
     fk_column: str | None,
     years: list[int],
+    cz_hub_index: CzHubEcIndex | None = None,
 ) -> float | None:
+    if str(anchor.get("demand_model_name") or "") == CentralizedZoneDemandParameter.__name__:
+        hub_hit = _lookup_centralized_zone_hub_consumption(
+            anchor,
+            slice_key,
+            cz_hub_index=cz_hub_index,
+        )
+        if hub_hit is not None:
+            return hub_hit
+    if _is_south_federal_district_with_nt_chi_anchor(anchor, ec_parent_id):
+        return _chi_ec_consumption_mln_for_south_fd_with_nt(
+            anchor,
+            slice_key,
+            ec_index=ec_index,
+            ec_model_name=ec_model_name,
+            ec_parent_id=ec_parent_id,
+            fk_column=fk_column,
+            years=years,
+        )
     hit = _lookup_ec_consumption_for_chi(
         ec_model_name,
         ec_parent_id,
@@ -338,6 +555,7 @@ def _build_chi_row_for_block(
     _rounding_digits: int,
     *,
     ec_index: dict[tuple[str, int, str | None, Any], float],
+    cz_hub_index: CzHubEcIndex | None = None,
 ) -> dict[str, Any] | None:
     anchor = block[0]
     pd_model_name = str(anchor.get("demand_model_name") or "")
@@ -372,6 +590,7 @@ def _build_chi_row_for_block(
             ec_parent_id=ec_parent_id,
             fk_column=fk_column,
             years=years,
+            cz_hub_index=cz_hub_index,
         )
         mw_val = _parse_summary_cell_float(
             (max_power_row.get("year_values") or [None] * len(years))[ix]
@@ -392,6 +611,7 @@ def _build_chi_row_for_block(
         ec_parent_id=ec_parent_id,
         fk_column=fk_column,
         years=years,
+        cz_hub_index=cz_hub_index,
     )
     hist_mw = _parse_summary_cell_float(max_power_row.get("hist_value"))
     hist_hours = _divide_hours(hist_ec, hist_mw)
@@ -476,6 +696,16 @@ def inject_peak_usage_hours_rows(
         return
 
     ec_index = _build_ec_consumption_index(years)
+    has_centralized_zone = any(
+        str(block[0].get("demand_model_name") or "")
+        == CentralizedZoneDemandParameter.__name__
+        for _start, _span, block in blocks
+    )
+    cz_hub_index = (
+        _build_centralized_zone_hub_ec_chi_index(years, rounding_digits)
+        if has_centralized_zone
+        else None
+    )
     insertions: list[tuple[int, dict[str, Any], int, int]] = []
     for start, span, block in blocks:
         new_row = _build_chi_row_for_block(
@@ -483,6 +713,7 @@ def inject_peak_usage_hours_rows(
             years,
             rounding_digits,
             ec_index=ec_index,
+            cz_hub_index=cz_hub_index,
         )
         if new_row is None:
             continue

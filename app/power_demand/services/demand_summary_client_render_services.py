@@ -15,7 +15,6 @@ PD_READONLY_PARAMETER_KEYS_MAX: frozenset[str] = frozenset(
     {
         "calculated_max_power_mw",
         "calculated_max_fo_mw",
-        "calculated_max_ez_mw",
         "calculated_max_sa_mw",
         "calculated_combined_on_cz_mw",
         "calculated_combined_on_ees_mw",
@@ -51,6 +50,8 @@ def _json_safe(value: Any) -> Any:
 def enrich_row_formula_tooltip_gaps(
     row: dict[str, Any],
     formula_texts: dict[str, str],
+    *,
+    summary_route_variant: str = "max",
 ) -> None:
     """Дополняет pd_parameter_formula_tooltip для случаев, которые в шаблоне заданы явно."""
     if row.get("pd_parameter_formula_tooltip"):
@@ -140,9 +141,12 @@ def enrich_row_formula_tooltip_gaps(
                 "fo_calc_max_power_mw", ""
             )
         elif pk == "calculated_combined_on_cz_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "fo_calc_combined_on_cz_mw", ""
+            cz_formula_key = (
+                "fo_calc_combined_on_cz_mw_coeff"
+                if summary_route_variant == "coeff"
+                else "fo_calc_combined_on_cz_mw"
             )
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(cz_formula_key, "")
         elif pk == "calculated_combined_on_ees_mw":
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
                 "fo_calc_combined_on_ees_mw", ""
@@ -151,6 +155,13 @@ def enrich_row_formula_tooltip_gaps(
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
                 "fo_verify_calc_max_mw_without_nt", ""
             )
+        elif pk == "verify_for_calculated_combined_on_cz_mw":
+            cz_verify_key = (
+                "fo_verify_combined_on_cz_mw_coeff_without_nt"
+                if summary_route_variant == "coeff"
+                else "fo_verify_combined_on_cz_mw_without_nt"
+            )
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(cz_verify_key, "")
         elif pk == "verify_for_calculated_combined_on_ees_mw":
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
                 "fo_verify_combined_ees_mw_without_nt", ""
@@ -159,8 +170,31 @@ def enrich_row_formula_tooltip_gaps(
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
                 "fo_chi_federal_district", ""
             )
-    elif dm == "EnergyZoneDemandParameter" and pk == "calculated_max_ez_mw":
-        row["pd_parameter_formula_tooltip"] = formula_texts.get("ez_calc_max_mw", "")
+    elif dm == "CentralizedZoneDemandParameter" and pk == "peak_max_power_usage_hours":
+        row["pd_parameter_formula_tooltip"] = formula_texts.get(
+            "fo_chi_centralized_zone", ""
+        )
+    elif dm == "EnergyZoneDemandParameter":
+        if pk == "calculated_max_power_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "ez_calc_max_power_mw", ""
+            )
+        elif pk == "calculated_combined_on_ees_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "ez_calc_combined_on_ees_mw", ""
+            )
+        elif pk == "verify_for_calculated_max_power_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "ez_verify_calc_max_mw_without_nt", ""
+            )
+        elif pk == "verify_for_calculated_combined_on_ees_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "ez_verify_combined_ees_mw_without_nt", ""
+            )
+        elif pk == "peak_max_power_usage_hours":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "ez_chi_energy_zone", ""
+            )
     elif ek == "centralized_zone" and pk == "cz_calculated_max_cz_russia_mw":
         row["pd_parameter_formula_tooltip"] = str(
             row.get("pd_fo_cz_calc_max_tooltip") or ""
@@ -171,13 +205,16 @@ def prepare_summary_rows_for_client(
     summary_rows: list[dict[str, Any]] | None,
     *,
     formula_texts: dict[str, str],
+    summary_route_variant: str = "max",
 ) -> list[dict[str, Any]]:
     if not summary_rows:
         return []
     out: list[dict[str, Any]] = []
     for row in summary_rows:
         item = dict(row)
-        enrich_row_formula_tooltip_gaps(item, formula_texts)
+        enrich_row_formula_tooltip_gaps(
+            item, formula_texts, summary_route_variant=summary_route_variant
+        )
         out.append(_json_safe(item))
     return out
 
@@ -207,6 +244,9 @@ def build_summary_data_json_response(context: dict[str, Any]) -> Any:
         "summary_rows": prepare_summary_rows_for_client(
             context.get("summary_rows"),
             formula_texts=formula_texts,
+            summary_route_variant=str(
+                context.get("summary_route_variant") or "max"
+            ),
         ),
         "years": years,
         "year_is_plan": year_is_plan,

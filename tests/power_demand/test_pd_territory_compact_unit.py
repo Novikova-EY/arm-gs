@@ -44,8 +44,10 @@ def test_territory_compact_hides_nt_block_and_chukotka_territorial_rows():
 
     service.tag_power_demand_summary_rows_for_territory_compact(rows)
 
-    assert rows[0]["pd_pd_territory_compact_hide_row"] is True
-    assert rows[1]["pd_pd_territory_compact_hide_row"] is True
+    assert rows[0].get("pd_pd_territory_compact_hide_row") is not True
+    assert rows[0].get("pd_pd_territory_detail_row") is not True
+    assert rows[1].get("pd_pd_territory_compact_hide_row") is not True
+    assert rows[1]["pd_pd_territory_detail_row"] is True
     assert rows[2]["pd_pd_territory_compact_hide_row"] is True
     assert rows[3]["pd_pd_territory_compact_hide_row"] is True
     assert rows[4].get("pd_pd_territory_compact_hide_row") is not True
@@ -55,7 +57,7 @@ def test_territory_compact_hides_nt_block_and_chukotka_territorial_rows():
         rows,
         territory_compact_on=True,
     )
-    assert len(exported) == 0
+    assert [r["entity_label"] for r in exported] == ["Новые территории"]
 
 
 def test_territory_compact_hides_chi_and_verify_at_territory_detail_levels():
@@ -115,6 +117,36 @@ def test_territory_compact_hides_chi_and_verify_at_territory_detail_levels():
     )
     assert [r.get("parameter_key") for r in exported] == ["peak_max_power_usage_hours"]
     assert exported[0]["entity_label"] == "ОЭС Сибири"
+
+
+def test_territory_compact_keeps_top_level_nt_aggregate_rows():
+    rows = [
+        {
+            "entity_label": "Россия",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "pd_pd_nt_extra_row": True,
+            "demand_model_name": "RussiaFederationDemandParameter",
+        },
+        {
+            "entity_label": "ЭЭС России",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "pd_pd_nt_extra_row": True,
+            "demand_model_name": "EesRussiaDemandParameter",
+        },
+    ]
+    service.tag_power_demand_summary_rows_for_territory_compact(rows)
+
+    assert rows[0].get("pd_pd_territory_compact_hide_row") is not True
+    assert rows[0].get("pd_pd_territory_detail_row") is not True
+    assert rows[1].get("pd_pd_territory_compact_hide_row") is not True
+
+    exported = service.apply_power_demand_summary_territory_compact_export_ui(
+        rows,
+        territory_compact_on=True,
+    )
+    assert [r["entity_label"] for r in exported] == ["Россия", "ЭЭС России"]
 
 
 def test_territory_compact_export_keeps_top_level_rows():

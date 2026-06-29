@@ -58,7 +58,7 @@
         if (row.pd_pd_chi_row) {
             classes.push("pd-pd-chi-row", "summary-row-hidden");
         } else if (
-            (active === "oes" || active === "fo") &&
+            (active === "oes" || active === "fo" || active === "ez") &&
             (cfg.summary_route_variant || "max") !== "coeff" &&
             pk &&
             READONLY_KEYS[pk]
@@ -171,12 +171,6 @@
                 inp.setAttribute("data-parent-id", String(row.parent_id));
             }
             td.appendChild(inp);
-        } else if (
-            cfg.active_summary === "ez" &&
-            pk === "calculated_max_ez_mw" &&
-            row.hist_value === "—"
-        ) {
-            /* пусто */
         } else {
             td.textContent = row.hist_value != null ? String(row.hist_value) : "";
         }
@@ -658,8 +652,8 @@
         calculated_max_sa_mw: "combined_on_ees",
         calculated_max_fo_mw: "max_power",
         calculated_combined_on_cz_mw: "combined_on_cz",
-        calculated_max_ez_mw: "max_power",
         verify_for_calculated_max_power_mw: "calculated_max_power_mw",
+        verify_for_calculated_combined_on_cz_mw: "calculated_combined_on_cz_mw",
         verify_for_calculated_combined_on_ees_mw: "calculated_combined_on_ees_mw",
         verify_for_calculated_max_power_consumption_mw: "calculated_max_power_consumption_mw",
         verify_for_calculated_max_ees_russia_mw: "calculated_max_ees_russia_mw",
