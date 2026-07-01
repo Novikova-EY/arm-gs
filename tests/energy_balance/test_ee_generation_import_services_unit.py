@@ -6,11 +6,14 @@ from __future__ import annotations
 from io import BytesIO
 from pathlib import Path
 
+from decimal import Decimal
+
 import pytest
 from openpyxl import Workbook
 
 from app.energy_balance.services.ee_generation_import_services import (
     _detect_column_layout,
+    _detect_multi_year_column_layout,
     _extract_external_code,
     _is_espp_row,
     _resolve_espp_res_name,
@@ -30,6 +33,127 @@ def _build_workbook_bytes(rows: list[list]) -> bytes:
     buffer = BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
+
+
+def test_detect_multi_year_column_layout():
+    rows = [
+        ("Выработка электроэнергии", None, None, None),
+        ("Наименование", "external_code", "2019 г.", "2020 г.", "2021 г."),
+        ("ГТЭС тест", STATION_UUID, 10.5, 11.2, 12.0),
+    ]
+    layout = _detect_multi_year_column_layout([tuple(row) for row in rows])
+    assert layout is not None
+    assert layout.external_code_col == 1
+    assert layout.name_col == 0
+    assert layout.year_cols == {2: 2019, 3: 2020, 4: 2021}
+
+
+def test_parse_multi_year_workbook():
+    file_bytes = _build_workbook_bytes(
+        [
+            ["Выработка электроэнергии электростанциями", None, None, None],
+            ["Наименование", "external_code", "2023 г.", "2024 г."],
+            ["ГТЭС тест", STATION_UUID, 100.5, 101.2],
+            ['ИТОГО ПАО "Сургутнефтегаз"', None, 100.5, 101.2],
+        ]
+    )
+    parsed = parse_ee_generation_workbook(
+        file_bytes,
+        filename="Выработка электроэнергии станциями ПАО Сургутнефтегаз.xlsx",
+    )
+    assert parsed.is_multi_year
+    assert len(parsed.multi_year_stations) == 1
+    assert parsed.multi_year_stations[0].external_code == STATION_UUID
+    assert parsed.multi_year_stations[0].values_by_year[2023] == Decimal("100.5")
+    assert parsed.multi_year_stations[0].values_by_year[2024] == Decimal("101.2")
+
+
+def test_parse_surgutneftegaz_workbook_if_available():
+    path = Path(
+        r"z:\НИО-10\АРМ ГС\Шаблоны для АРМ ГС\2. Балансы электроэнергии и мощности"
+        r"\Баланс ЭЭ\Выработка электроэнергии станциями ПАО Сургутнефтегаз.xlsx"
+    )
+    if not path.is_file():
+        pytest.skip("sample workbook is not available")
+
+    parsed = parse_ee_generation_workbook(path.read_bytes(), filename=path.name)
+    assert parsed.is_multi_year
+    assert len(parsed.multi_year_stations) > 0
+    assert all(row.external_code for row in parsed.multi_year_stations)
+    years = {year for row in parsed.multi_year_stations for year in row.values_by_year}
+    assert 2019 in years
+    assert 2025 in years
+
+
+def test_parse_kpo_external_code_workbook_if_available():
+    path = Path(
+        r"z:\НИО-10\АРМ ГС\Шаблоны для АРМ ГС\2. Балансы электроэнергии и мощности"
+        r"\Баланс ЭЭ\Информация по фактическому производству электрической энергии+КПО+external_code.xlsx"
+    )
+    if not path.is_file():
+        pytest.skip("sample workbook is not available")
+
+    parsed = parse_ee_generation_workbook(path.read_bytes(), filename=path.name)
+    assert parsed.is_multi_year
+    assert len(parsed.multi_year_stations) > 0
+
+    row_with_prom = next(
+        (row for row in parsed.multi_year_stations if row.station_sign == "true"),
+        None,
+    )
+    assert row_with_prom is not None
+    assert row_with_prom.kto
+
+    row_without_prom = next(
+        (row for row in parsed.multi_year_stations if row.station_sign == "false"),
+        None,
+    )
+    assert row_without_prom is not None
+
+    years = {year for row in parsed.multi_year_stations for year in row.values_by_year}
+    assert 2019 in years
+    assert 2025 in years
+
+
+def test_detect_multi_year_kpo_columns():
+    rows = [
+        ("Заголовок", None, None, None, None, None, None, None, None, None, None),
+        (
+            "Код КПО",
+            "external_code",
+            "external_code",
+            "Наименование",
+            "ОЭС",
+            "Энергосистемы",
+            "Объекты",
+            "Тип электростанции",
+            "Станции пром предприятий",
+            "Основное топливо",
+            2019,
+            2020,
+        ),
+        (310326, STATION_UUID, STATION_UUID, "Тест", "ОЭС", "РЭС", "Станция", "ГРЭС", "Да", "Газ", 100.5, 101.2),
+    ]
+    layout = _detect_multi_year_column_layout([tuple(row) for row in rows])
+    assert layout is not None
+    assert layout.kto_col == 0
+    assert layout.prom_sign_col == 8
+    assert layout.year_cols == {10: 2019, 11: 2020}
+
+    parsed = parse_ee_generation_workbook(
+        _build_workbook_bytes(
+            [
+                list(rows[0]),
+                list(rows[1]),
+                list(rows[2]),
+            ]
+        ),
+        filename="kpo_test.xlsx",
+    )
+    assert len(parsed.multi_year_stations) == 1
+    assert parsed.multi_year_stations[0].kto == "310326"
+    assert parsed.multi_year_stations[0].station_sign == "true"
+    assert parsed.multi_year_stations[0].values_by_year[2019] == Decimal("100.5")
 
 
 def test_is_espp_row_accepts_sign_or_name_column():

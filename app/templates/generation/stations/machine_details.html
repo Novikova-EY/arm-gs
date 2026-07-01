@@ -14,8 +14,9 @@
 ] %}
 {% set fuel_edit_roles = ['admin', 'fuel-admin', 'fuel-editor'] %}
 {% set generation_edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set can_create_machine = can_create_machine | default(false) %}
 {% set can_edit_fuel = current_user.role_names | select('in', fuel_edit_roles) | list | length > 0 %}
-{% set can_edit_generation = current_user.role_names | select('in', generation_edit_roles) | list | length > 0 %}
+{% set can_edit_generation = (current_user.role_names | select('in', generation_edit_roles) | list | length > 0) or can_create_machine %}
 {% set can_edit_any = can_edit_fuel or can_edit_generation %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
 

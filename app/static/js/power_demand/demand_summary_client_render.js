@@ -93,14 +93,55 @@
         );
     }
 
+    function isHistParameterAllowed(row, cfg) {
+        var summary = cfg.active_summary || "";
+        if (summary !== "oes" && summary !== "fo" && summary !== "ez") {
+            return true;
+        }
+        return ["max_power", "peak_datetime", "avg_temp"].indexOf(row.parameter_key || "") >= 0;
+    }
+
+    function markHistCellDisabled(td) {
+        if (!td) {
+            return;
+        }
+        td.classList.add("summary-hist-cell-disabled");
+        td.setAttribute("aria-disabled", "true");
+        td.tabIndex = -1;
+    }
+
+    function clearHistCellDisabled(td) {
+        if (!td) {
+            return;
+        }
+        td.classList.remove("summary-hist-cell-disabled");
+        td.removeAttribute("aria-disabled");
+        td.removeAttribute("tabindex");
+    }
+
+    function syncHistCellInteractivity(histTd, row, cfg) {
+        if (!histTd) {
+            return;
+        }
+        var allowed = isHistParameterAllowed(row, cfg);
+        var histInp = histTd.querySelector("input.fuel-param-input, textarea.fuel-param-input");
+        if (!allowed) {
+            if (histInp) {
+                histInp.remove();
+            }
+            histTd.textContent = "";
+            histTd.removeAttribute("title");
+            markHistCellDisabled(histTd);
+            return;
+        }
+        clearHistCellDisabled(histTd);
+    }
+
     function canEditHistCell(row, cfg) {
         if (!canEditCell(row, cfg)) {
             return false;
         }
-        if (cfg.active_summary === "oes") {
-            return ["max_power", "peak_datetime", "avg_temp"].indexOf(row.parameter_key) >= 0;
-        }
-        return true;
+        return isHistParameterAllowed(row, cfg);
     }
 
     function planHideYearCell(row, year, yearIsPlan) {
@@ -125,18 +166,24 @@
     function buildHistCell(row, cfg) {
         var td = document.createElement("td");
         td.className = "text-center summary-hist-cell";
+        if (!isHistParameterAllowed(row, cfg)) {
+            markHistCellDisabled(td);
+        }
         var pk = row.parameter_key || "";
         var tooltip = row.hist_numeric_tooltip || "";
-        if (pk === "peak_datetime") {
-            var peakTitle =
-                (tooltip ? escapeAttr(tooltip) + " — " : "") +
-                "Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ";
-            td.setAttribute("title", peakTitle.replace(/&#39;/g, "'"));
-        } else if (tooltip) {
-            td.setAttribute("title", tooltip);
+        if (isHistParameterAllowed(row, cfg)) {
+            if (pk === "peak_datetime") {
+                var peakTitle =
+                    (tooltip ? escapeAttr(tooltip) + " — " : "") +
+                    "Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ";
+                td.setAttribute("title", peakTitle.replace(/&#39;/g, "'"));
+            } else if (tooltip) {
+                td.setAttribute("title", tooltip);
+            }
         }
 
         if (canEditHistCell(row, cfg)) {
+            clearHistCellDisabled(td);
             var hv = row.hist_value && row.hist_value !== "—" ? String(row.hist_value) : "";
             var inp = document.createElement("input");
             inp.type = "text";
@@ -171,8 +218,11 @@
                 inp.setAttribute("data-parent-id", String(row.parent_id));
             }
             td.appendChild(inp);
-        } else {
+        } else if (isHistParameterAllowed(row, cfg)) {
+            clearHistCellDisabled(td);
             td.textContent = row.hist_value != null ? String(row.hist_value) : "";
+        } else {
+            markHistCellDisabled(td);
         }
         return td;
     }
@@ -1026,7 +1076,8 @@
         if (showHistCol) {
             var histTd = tr.querySelector("td.summary-hist-cell");
             if (histTd) {
-                var histInp = histTd.querySelector("input.fuel-param-input");
+                syncHistCellInteractivity(histTd, row, cfg);
+                var histInp = histTd.querySelector("input.fuel-param-input, textarea.fuel-param-input");
                 var histValue = row.hist_value != null ? String(row.hist_value) : "";
                 var histTt = row.hist_numeric_tooltip || "";
                 if (histInp) {
@@ -1036,7 +1087,7 @@
                     } else {
                         histInp.removeAttribute("data-db-full");
                     }
-                } else if (!canEditHistCell(row, cfg)) {
+                } else if (isHistParameterAllowed(row, cfg)) {
                     histTd.textContent = histValue;
                     if (histTt) {
                         histTd.setAttribute("title", histTt);

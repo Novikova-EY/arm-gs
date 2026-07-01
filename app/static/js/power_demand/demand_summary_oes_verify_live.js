@@ -872,7 +872,7 @@
         });
         var sourceHist = sourceTr.querySelector("td.summary-hist-cell");
         var targetHist = targetTr.querySelector("td.summary-hist-cell");
-        if (sourceHist && targetHist) {
+        if (sourceHist && targetHist && !targetHist.classList.contains("summary-hist-cell-disabled")) {
             var histInp = sourceHist.querySelector("input, textarea");
             var histText = histInp
                 ? String(histInp.value || "").trim()

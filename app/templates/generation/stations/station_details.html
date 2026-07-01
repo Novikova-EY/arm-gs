@@ -248,7 +248,12 @@
 {% set fuel_edit_roles = ['admin', 'fuel-admin', 'fuel-editor'] %}
 {% set can_edit = can_edit if can_edit is defined else (current_user.role_names | select('in', edit_roles) | list | length > 0) %}
 {% set can_edit_fuel = can_edit_fuel if can_edit_fuel is defined else (current_user.role_names | select('in', fuel_edit_roles) | list | length > 0) %}
-{% set can_edit_any = can_edit or can_edit_fuel %}
+{% set can_edit_fuel_dz = can_edit_fuel_dz | default(false) %}
+{% set can_edit_station_meta = can_edit or can_edit_fuel_dz %}
+{% set can_edit_station_energy = can_edit_station_energy | default(can_edit or can_edit_fuel_dz) %}
+{% set can_add_machine = can_add_machine | default(false) %}
+{% set is_station_decentralized_zone = is_station_decentralized_zone | default(false) %}
+{% set can_edit_any = can_edit or can_edit_fuel or can_edit_fuel_dz %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
 
 <style>
@@ -421,7 +426,7 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Название:</div>
                                 <div class="col-7 text-start">
-                                    {% if can_edit %}
+                                    {% if can_edit_station_meta %}
                                         <input type="text" name="name" class="form-control station-name" value="{{ form.name.data or '' }}">
                                     {% else %}
                                         <span class="station-name">{{ form.name.data or '' }}</span>
@@ -431,7 +436,7 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Группа электростанций:</div>
                                 <div class="col-7 text-start">
-                                    {% if can_edit %}
+                                    {% if can_edit_station_meta %}
                                         <span id="id_station_group_span">
                                             {{ form.id_station_group(class="form-select") }}
                                         </span>
@@ -443,7 +448,7 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Состояние:</div>
                                 <div class="col-7 text-start" id="id_condition_type_span">
-                                    {% if can_edit %}
+                                    {% if can_edit_station_meta %}
                                         {{ form.id_condition_type(class="form-select") }}
                                     {% else %}
                                         {{ (form.id_condition_type.choices | selectattr('0','equalto', form.id_condition_type.data) | map(attribute=1) | list | first) or '—' }}
@@ -477,7 +482,7 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Примечание:</div>
                                 <div class="col-7 text-start">
-                                    {% if can_edit %}
+                                    {% if can_edit_station_meta %}
                                         <span id="note">
                                             {{ form.note(class="form-control") }}
                                         </span>
@@ -504,8 +509,12 @@
                                     <h4 class="card-title text-decoration-underline mb-3"><strong>Местоположение</strong></h4>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Часть энергосистемы России:</div>
-                                <div class="col-7 text-start" id="energy_system_type">
-                                    {{ station.energy_system_type or 'Нет данных' }}
+                                <div class="col-7 text-start" id="energy_system_type"{% if is_station_decentralized_zone %} data-decentralized-zone-fixed="1"{% endif %}>
+                                    {% if is_station_decentralized_zone %}
+                                        {{ decentralized_zone_energy_system_type_name }}
+                                    {% else %}
+                                        {{ station.energy_system_type or 'Нет данных' }}
+                                    {% endif %}
                                 </div>
                             </div>
                             <div class="row g-2 align-items-center mb-2">
@@ -549,7 +558,7 @@
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Субъект РФ:</div>
                                 <div class="col-7 text-start">
-                                    {% if can_edit %}
+                                    {% if can_edit_station_meta %}
                                         <span id="id_regional_district_span">
                                             {{ form.id_regional_district(class="form-select", id="id_regional_district") }}
                                         </span>
@@ -561,7 +570,7 @@
                             <div class="row g-2 align-items-center mb-0">
                                 <div class="col-5 text-start fw-semibold">Местоположение:</div>
                                 <div class="col-7 text-start">
-                                    {% if can_edit %}
+                                    {% if can_edit_station_meta %}
                                         <span id="location_span">
                                             {{ form.location(class="form-control") }}
                                         </span>
@@ -713,7 +722,7 @@
                 <div class="col-12 min-w-0">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3 class="mb-0 ms-3">Агрегаты  электростанции</h3>
-                        {% if can_edit %}
+                        {% if can_edit or can_add_machine %}
                             <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=0, **request.args) }}" class="btn btn-outline-success text-dark">
                                 ➕ Добавить агрегат
                             </a>
@@ -1574,6 +1583,8 @@
         }
         
         function updateEnergySystemFields(data) {
+            const estElement = document.getElementById("energy_system_type");
+            const estIsFixed = estElement && estElement.dataset.decentralizedZoneFixed === "1";
             // Согласно новой логике:
             // - Федеральный округ определяется по субъекту РФ
             // - Региональная энергосистема / ОЭС / Часть энергосистемы:
@@ -1616,7 +1627,7 @@
                     }, 1000);
                 }
 
-                if (estElement) {
+                if (estElement && !estIsFixed) {
                     estElement.innerText = estText;
                     estElement.style.transition = "background-color 0.3s ease";
                     estElement.style.backgroundColor = "#d4edda";
@@ -1662,6 +1673,7 @@
         function updateEnergySystemFromRes() {
             const uesElement = document.getElementById("union_energy_system");
             const estElement = document.getElementById("energy_system_type");
+            const estIsFixed = estElement && estElement.dataset.decentralizedZoneFixed === "1";
             if (!uesElement || !estElement || !resSelect) {
                 return;
             }
@@ -1673,10 +1685,12 @@
             const estValue = info && info.energy_system_type ? info.energy_system_type : "Нет данных";
 
             uesElement.innerText = uesValue;
-            estElement.innerText = estValue;
+            if (!estIsFixed) {
+                estElement.innerText = estValue;
+            }
 
             // Подсветка обновленных значений зеленым, как у федерального округа
-            [uesElement, estElement].forEach((el) => {
+            [uesElement, estIsFixed ? null : estElement].filter(Boolean).forEach((el) => {
                 if (!el) return;
                 el.style.transition = "background-color 0.3s ease";
                 el.style.backgroundColor = "#d4edda";

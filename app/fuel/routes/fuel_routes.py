@@ -146,6 +146,18 @@ from app.fuel.services.fuel_exports.export_stations_equipment_group_specific_fue
 from app.fuel.services.fuel_imports.import_equipment_group_specific_fuel_cost_services import (
     import_equipment_group_specific_fuel_cost_from_excel,
 )
+from app.fuel.services.equipment_groups.equipment_group_electricity_production_cost_services import (
+    get_equipment_groups_with_electricity_production_cost_data,
+    build_equipment_group_electricity_production_cost_hierarchy,
+    build_cost_code_name_map,
+    ELECTRICITY_PRODUCTION_COST_COLUMNS,
+)
+from app.fuel.services.fuel_exports.export_stations_equipment_group_electricity_production_cost_services import (
+    export_stations_equipment_group_electricity_production_cost_to_excel,
+)
+from app.fuel.services.fuel_imports.import_equipment_group_electricity_production_cost_services import (
+    import_equipment_group_electricity_production_cost_from_excel,
+)
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_services import (
     get_equipment_groups_with_specific_fuel_price_data,
     build_equipment_group_specific_fuel_price_hierarchy,
@@ -160,6 +172,9 @@ from app.fuel.services.fuel_imports.import_equipment_group_specific_fuel_price_s
 )
 
 _SPECIFIC_FUEL_COST_SUMMARY_ATTRS = [a for a, _l, n in SPECIFIC_FUEL_COST_COLUMNS if n]
+_ELECTRICITY_PRODUCTION_COST_SUMMARY_ATTRS = [
+    a for a, _l, n in ELECTRICITY_PRODUCTION_COST_COLUMNS if n
+]
 _SPECIFIC_FUEL_PRICE_SUMMARY_ATTRS = [a for a, _l, n in SPECIFIC_FUEL_PRICE_COLUMNS if n]
 
 from app.fuel.services.stations.stations_equipment_groups_services import (
@@ -2606,6 +2621,14 @@ def stations_equipment_groups():
     )
 
 
+def _parse_fuel_params_rounding_digits(default=1):
+    try:
+        rounding_digits = int(request.args.get("rounding_digits", default))
+    except (ValueError, TypeError):
+        return default
+    return rounding_digits if rounding_digits in {-1, 0, 1, 2, 3} else default
+
+
 @fuel_bp.route("/stations_equipment_group_fuel_params", methods=["GET", "POST"])
 @login_required
 def stations_equipment_group_fuel_params():
@@ -2630,13 +2653,7 @@ def stations_equipment_group_fuel_params():
     start_year = selected_year
     end_year = selected_year
 
-    try:
-        rounding_digits = int(request.args.get("rounding_digits"))
-    except (ValueError, TypeError):
-        rounding_digits = 1
-
-    if rounding_digits is None or rounding_digits < 0:
-        rounding_digits = 1
+    rounding_digits = _parse_fuel_params_rounding_digits()
 
     fuel_data = get_equipment_groups_with_fuel_params_data(
         filters=filters,
@@ -3176,6 +3193,133 @@ def stations_equipment_group_specific_fuel_cost():
         equipment_group_specific_fuel_cost_hierarchy=equipment_group_specific_fuel_cost_hierarchy,
         specific_fuel_cost_columns=specific_fuel_cost_columns_display,
         fuel_nazvl_to_name=fuel_nazvl_to_name,
+        **context,
+    )
+
+
+@fuel_bp.route("/stations_equipment_group_electricity_production_cost", methods=["GET", "POST"])
+@login_required
+def stations_equipment_group_electricity_production_cost():
+    form = StationFilterForm()
+
+    if request.method == "POST":
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_electricity_production_cost",
+                **extract_filters_from_form(request.form),
+            )
+        )
+
+    filters = extract_filters_from_args(request.args)
+    page = request.args.get("page", 1, type=int)
+    filters.pop("page", None)
+    per_page_param = request.args.get("per_page", "10")
+    show_all = str(per_page_param).lower() == "all"
+    per_page = "all" if show_all else int(per_page_param) if str(per_page_param).isdigit() else 10
+    selected_year, filter_year_list = _get_single_year_filter_options()
+    start_year = selected_year
+    end_year = selected_year
+
+    try:
+        rounding_digits = int(request.args.get("rounding_digits"))
+    except (ValueError, TypeError):
+        rounding_digits = 1
+
+    if rounding_digits is None or rounding_digits < 0:
+        rounding_digits = 1
+
+    cost_data = get_equipment_groups_with_electricity_production_cost_data(
+        filters=filters,
+        per_page=per_page,
+        page=page,
+        start_year=start_year,
+        end_year=end_year,
+        show_all=show_all,
+    )
+
+    rows = cost_data.get("rows") or []
+    hierarchy_full = build_equipment_group_electricity_production_cost_hierarchy(rows)
+    total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
+    if show_all:
+        equipment_group_electricity_production_cost_hierarchy = hierarchy_full
+        total_pages = 1
+        current_page = 1
+    else:
+        (
+            equipment_group_electricity_production_cost_hierarchy,
+            total_eg_count,
+            total_pages,
+            current_page,
+        ) = paginate_fuel_eg_station_hierarchy(
+            hierarchy_full,
+            page,
+            per_page,
+            _ELECTRICITY_PRODUCTION_COST_SUMMARY_ATTRS,
+        )
+
+    if (
+        not fuel_eg_station_hierarchy_nonempty(equipment_group_electricity_production_cost_hierarchy)
+        and total_eg_count > 0
+        and page > 1
+    ):
+        target_page = max(1, current_page - 1)
+        args_multi = request.args.to_dict(flat=False)
+        args_multi["page"] = [str(target_page)]
+        redirect_args = {}
+        for key, values in args_multi.items():
+            if not values:
+                continue
+            if len(values) == 1:
+                redirect_args[key] = values[0]
+            else:
+                redirect_args[key] = values
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_electricity_production_cost",
+                **redirect_args,
+            )
+        )
+
+    data = {
+        "stations": [],
+        "stations_grouped": {},
+        "station_ids": [],
+        "total_count": total_eg_count,
+        "total_pages": total_pages,
+        "page": current_page,
+        "per_page": per_page,
+        "show_headers": {},
+        "station_totals": {},
+        "show_p_ogr": False,
+        "show_p_rasp": False,
+    }
+
+    context = get_station_list_template_context(
+        form,
+        data,
+        rounding_digits,
+        {**filters, "start_year": start_year, "end_year": end_year},
+        show_all=show_all,
+        hierarchy_data=None,
+    )
+    context["filter_year_list"] = filter_year_list
+
+    has_active_filters = has_any_filters(request.args)
+
+    hidden_columns = {"year_number"}
+    display_columns = [
+        c for c in ELECTRICITY_PRODUCTION_COST_COLUMNS if c[0] not in hidden_columns
+    ]
+    cost_code_name_map = build_cost_code_name_map()
+
+    return render_template(
+        "fuel/electricity_production_cost/stations_equipment_group_electricity_production_cost.html",
+        has_active_filters=has_active_filters,
+        selected_year=selected_year,
+        equipment_group_electricity_production_cost_rows=rows,
+        equipment_group_electricity_production_cost_hierarchy=equipment_group_electricity_production_cost_hierarchy,
+        electricity_production_cost_columns=display_columns,
+        cost_code_name_map=cost_code_name_map,
         **context,
     )
 
@@ -4756,6 +4900,100 @@ def import_equipment_group_specific_fuel_cost():
     return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_cost", **redirect_args))
 
 
+@fuel_bp.route("/stations_equipment_group_electricity_production_cost/import", methods=["POST"])
+@login_required
+def import_equipment_group_electricity_production_cost():
+    """Загрузка данных EquipmentGroupElectricityProductionCost."""
+    user = session.get("username", "Неизвестный пользователь")
+    log_to_db(user, "Начата загрузка затрат ТЭС на производство ЭЭ и ТЭ")
+    current_app.logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_ELECTRICITY_PRODUCTION_COST] start user=%s filename=%s mimetype=%s remote_addr=%s",
+        user,
+        getattr(request.files.get("file"), "filename", None),
+        getattr(request.files.get("file"), "mimetype", None),
+        request.remote_addr,
+    )
+
+    redirect_args = {
+        k: v for k, v in request.form.items() if k not in ("file", "csrf_token")
+    }
+
+    if "file" not in request.files:
+        flash("Файл не найден.", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_electricity_production_cost",
+                **redirect_args,
+            )
+        )
+
+    file = request.files["file"]
+    if file.mimetype not in [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_electricity_production_cost",
+                **redirect_args,
+            )
+        )
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        flash("Неверный формат файла.", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_electricity_production_cost",
+                **redirect_args,
+            )
+        )
+
+    year = request.form.get("year", None)
+    try:
+        year = int(year) if year is not None else get_filter_start_year()
+    except (TypeError, ValueError):
+        year = get_filter_start_year()
+
+    try:
+        result = import_equipment_group_electricity_production_cost_from_excel(
+            file, user, year=year
+        )
+        flash(result["message"], "success")
+        clear_station_aggregation_cache(
+            "после импорта затрат ТЭС на производство ЭЭ и ТЭ"
+        )
+        current_app.logger.info(
+            "[IMPORT_EQUIPMENT_GROUP_ELECTRICITY_PRODUCTION_COST] done user=%s filename=%s created=%s updated=%s skipped=%s",
+            user,
+            getattr(file, "filename", None),
+            result.get("created"),
+            result.get("updated"),
+            result.get("skipped"),
+        )
+    except ValueError as e:
+        current_app.logger.warning(
+            "[IMPORT_EQUIPMENT_GROUP_ELECTRICITY_PRODUCTION_COST] validation error user=%s filename=%s: %s",
+            user,
+            getattr(file, "filename", None),
+            str(e),
+            exc_info=True,
+        )
+        flash(str(e), "danger")
+    except Exception as e:
+        current_app.logger.exception(
+            "[IMPORT_EQUIPMENT_GROUP_ELECTRICITY_PRODUCTION_COST] import failed"
+        )
+        flash(f"Ошибка загрузки данных: {str(e)}", "danger")
+
+    return redirect(
+        url_for(
+            "fuel_bp.stations_equipment_group_electricity_production_cost",
+            **redirect_args,
+        )
+    )
+
+
 @fuel_bp.route("/stations_equipment_group_specific_fuel_price/import", methods=["POST"])
 @login_required
 def import_equipment_group_specific_fuel_price():
@@ -4863,10 +5101,7 @@ def export_stations_equipment_group_fuel_params():
 
         start_year, end_year = _export_year_range_for_station_fuel_lists()
 
-        try:
-            rounding_digits = int(request.args.get("rounding_digits", 1))
-        except (ValueError, TypeError):
-            rounding_digits = 1
+        rounding_digits = _parse_fuel_params_rounding_digits()
 
         # Выгрузка в Excel всегда по полному набору данных (как per_page=all на странице)
         excel_file = export_stations_equipment_group_fuel_params_to_excel(
@@ -5041,6 +5276,64 @@ def export_stations_equipment_group_specific_fuel_cost():
         current_app.logger.error(traceback.format_exc())
         flash(f"Ошибка экспорта данных: {str(e)}", "danger")
         return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_cost", **request.args.to_dict()))
+
+
+@fuel_bp.route("/stations_equipment_group_electricity_production_cost/export", methods=["GET"])
+@login_required
+def export_stations_equipment_group_electricity_production_cost():
+    """Экспорт затрат ТЭС на производство ЭЭ и ТЭ в Excel с учетом фильтров."""
+    try:
+        filters = extract_filters_from_args(request.args)
+        filters.pop("page", None)
+
+        start_year, end_year = _export_year_range_for_station_fuel_lists()
+
+        try:
+            rounding_digits = int(request.args.get("rounding_digits", 1))
+        except (ValueError, TypeError):
+            rounding_digits = 1
+
+        excel_file = export_stations_equipment_group_electricity_production_cost_to_excel(
+            filters,
+            start_year,
+            end_year,
+            per_page="all",
+            page=1,
+            show_all=True,
+            rounding_digits=rounding_digits,
+        )
+        if excel_file is None:
+            flash("Нет данных для экспорта.", "warning")
+            return redirect(
+                url_for(
+                    "fuel_bp.stations_equipment_group_electricity_production_cost",
+                    **request.args.to_dict(),
+                )
+            )
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"Затраты_ТЭС_на_производство_ЭЭ_и_ТЭ_{timestamp}.xlsx"
+
+        excel_file.seek(0)
+        return send_file(
+            excel_file,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        current_app.logger.error(
+            f"Ошибка экспорта затрат ТЭС на производство ЭЭ и ТЭ: {e}"
+        )
+        import traceback
+        current_app.logger.error(traceback.format_exc())
+        flash(f"Ошибка экспорта данных: {str(e)}", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_electricity_production_cost",
+                **request.args.to_dict(),
+            )
+        )
 
 
 @fuel_bp.route("/stations_equipment_group_specific_fuel_price/export", methods=["GET"])

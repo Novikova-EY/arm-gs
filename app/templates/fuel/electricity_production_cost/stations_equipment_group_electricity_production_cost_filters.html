@@ -1,0 +1,14 @@
+{# Фильтры для страницы «Сведения о затратах ТЭС на производство ЭЭ и ТЭ» #}
+{% set filters_action = url_for('fuel_bp.stations_equipment_group_electricity_production_cost') %}
+{% set use_equipment_group_filter = true %}
+{% set total_count_label = 'групп оборудования' %}
+{% set per_page_count_label = 'групп оборудования' %}
+{% set per_page_all_label = 'группы оборудования' %}
+{% set import_redirect_endpoint = 'fuel_bp.stations_equipment_group_electricity_production_cost' %}
+{% set use_single_year = true %}
+{% set show_electricity_production_cost_import = true %}
+{% set show_electricity_production_cost_export = true %}
+{% set import_electricity_production_cost_action = url_for('fuel_bp.import_equipment_group_electricity_production_cost') %}
+{% set selected_year = selected_year|default(start_year)|default(end_year) %}
+{% set center_top_pagination = true %}
+{% include 'fuel/_shared/station_filters.html' %}

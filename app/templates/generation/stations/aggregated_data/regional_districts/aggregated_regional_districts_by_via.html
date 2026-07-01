@@ -4,7 +4,7 @@
     or regional_districts_by_station_types_yearly_p_ust.get(current_rd_id, {}).get(ns.ses_id)
 ) %}
 <!-- Первая строка: p_ust -->
-    <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
+    <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center total-power-row" style="vertical-align: middle;">
         <td class="total-row-cell" rowspan="3" colspan="{{ station_list_meta_colspan }}" style="font-weight: bold;">
             ВИЭ
         </td>
@@ -26,7 +26,7 @@
     </tr>
 
     <!-- Вторая строка: p_ogr -->
-    <tr class="table-secondary text-center p-ogr-row">
+    <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center p-ogr-row">
         <td class="fw-bold">Рогр</td>
         {% for y in range(start_year, end_year + 1) %}
             {% set v1 = regional_districts_by_station_types_yearly_p_ogr.get(current_rd_id, {}).get(ns.ves_id, {}).get(y) %}
@@ -45,7 +45,7 @@
     </tr>
 
     <!-- Третья строка: p_rasp -->
-    <tr class="table-secondary text-center p-rasp-row">
+    <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center p-rasp-row">
         <td class="fw-bold">Ррасп</td>
         {% for y in range(start_year, end_year + 1) %}
             {% set v1 = regional_districts_by_station_types_yearly_p_rasp.get(current_rd_id, {}).get(ns.ves_id, {}).get(y) %}
@@ -72,7 +72,7 @@
 
         {% if has_data %}
             <!-- Первая строка: p_ust -->
-            <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
+            <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center total-power-row" style="vertical-align: middle;">
                 <td class="total-row-cell" rowspan="3" colspan="{{ station_list_meta_colspan }}" style="font-weight: bold; padding-left: 6cm;">
                     {{ station_type_list.get(station_type_id, 'Неизвестный тип') }}
                 </td>
@@ -92,7 +92,7 @@
             </tr>
 
             <!-- Вторая строка: p_ogr -->
-            <tr class="table-secondary text-center p-ogr-row">
+            <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center p-ogr-row">
                 <td class="fw-bold">Рогр</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column">
@@ -109,7 +109,7 @@
             </tr>
 
             <!-- Третья строка: p_rasp -->
-            <tr class="table-secondary text-center p-rasp-row">
+            <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center p-rasp-row">
                 <td class="fw-bold">Ррасп</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column">

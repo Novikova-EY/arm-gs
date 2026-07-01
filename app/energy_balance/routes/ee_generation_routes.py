@@ -75,9 +75,9 @@ def ee_generation():
     filters.pop("ee_period_mode", None)
     filters.pop("show_totals", None)
 
-    per_page_param = request.args.get("per_page", "10")
+    per_page_param = request.args.get("per_page", "50")
     show_all = str(per_page_param).lower() == "all"
-    per_page = "all" if show_all else int(per_page_param) if str(per_page_param).isdigit() else 10
+    per_page = "all" if show_all else int(per_page_param) if str(per_page_param).isdigit() else 50
     show_totals = request.args.get("show_totals", "0") == "1"
 
     try:
@@ -118,7 +118,7 @@ def ee_generation():
         "total_pages": page_data["total_pages"],
         "page": page_data["page"],
         "per_page": page_data["per_page"],
-        "show_headers": {},
+        "show_headers": page_data.get("show_headers"),
         "station_totals": {},
         "show_p_ogr": False,
         "show_p_rasp": False,

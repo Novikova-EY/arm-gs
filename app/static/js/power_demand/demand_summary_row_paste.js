@@ -109,7 +109,7 @@
         }
         var targets = [];
         var histTd = tr.querySelector("td.summary-hist-cell");
-        if (histTd) {
+        if (histTd && !histTd.classList.contains("summary-hist-cell-disabled")) {
             var histInp = histTd.querySelector("input.fuel-param-input, textarea.fuel-param-input");
             if (isPasteableInput(histInp)) {
                 targets.push(histInp);

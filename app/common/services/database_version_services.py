@@ -1036,6 +1036,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         (ref_schema, 'gs_sys_pgu_tes_machine_types'),
         (ref_schema, 'gs_sys_condition_types'),
         (ref_schema, 'gs_sys_technology_types'),
+        (ref_schema, 'gs_sys_electricity_production_cost_types'),
         (ref_schema, 'gs_sys_economic_activity_types'),
         (ref_schema, 'gs_sys_technology_availabilities'),
         (ref_schema, 'gs_sys_energy_system_types'),
@@ -1763,6 +1764,7 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
     independent_refdata_tables = [
         'station_types', 'machine_types', 'tes_types', 'tes_machine_types',
         'pgu_tes_machine_types', 'condition_types', 'technology_types',
+        'electricity_production_cost_types',
         'technology_availabilities', 'equipment_groups', 'energy_system_types',
         'union_energy_systems', 'synchronous_areas', 'energy_zones', 
         'federal_districts', 'gs_sys_companies', 'fuel_categories', 'fuel_types', 'fuels'
@@ -2289,6 +2291,7 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
         'pgu_tes_machine_types',
         'condition_types',
         'technology_types',
+        'electricity_production_cost_types',
         'technology_availabilities',
         'equipment_groups',
         # Энергосистемы
@@ -3551,6 +3554,7 @@ def _delete_version_data_staged(version_id, user):
         (SCHEMA_REFDATA, 'gs_sys_pgu_tes_machine_types'),
         (SCHEMA_REFDATA, 'gs_sys_condition_types'),
         (SCHEMA_REFDATA, 'gs_sys_technology_types'),
+        (SCHEMA_REFDATA, 'gs_sys_electricity_production_cost_types'),
         (SCHEMA_REFDATA, 'gs_sys_economic_activity_types'),
         (SCHEMA_REFDATA, 'gs_sys_technology_availabilities'),
         (SCHEMA_REFDATA, 'gs_sys_equipment_groups'),
@@ -3818,6 +3822,7 @@ def _delete_version_data(version_id, user):
         'pgu_tes_machine_types',
         'condition_types',
         'technology_types',
+        'electricity_production_cost_types',
         'technology_availabilities',
         'equipment_groups',
         # Энергосистемы

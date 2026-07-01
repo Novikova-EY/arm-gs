@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Создание новой  электростанции{% endblock %}
+{% block title %}{{ station_add_title | default('Создание новой  электростанции') }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -19,7 +19,7 @@
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
 
-    <h2 class="mb-4">Создание новой  электростанции</h2>
+    <h2 class="mb-4">{{ station_add_title | default('Создание новой  электростанции') }}</h2>
     
     <form method="POST" id="addStationForm">
         {{ form.hidden_tag() }}

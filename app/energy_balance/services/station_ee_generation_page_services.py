@@ -53,7 +53,9 @@ from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.machine.machine_fuel_model import MachineFuel
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.generation.services.station_services.groupped_services import is_current_version
+from app.generation.services.station_services.aggregation_cache import get_cached_page_position
 from app.generation.services.station_services.station_services import (
+    determine_first_headers,
     determine_totals_to_show,
     get_next_station_info,
     get_regional_districts_count_per_res,
@@ -111,18 +113,14 @@ def _resolve_station_sign(station: Station) -> str:
 
 def _build_sign_groups_for_stations(
     station_rows: list[dict[str, Any]],
-    res_id: int,
-    espp_by_res: dict[int, dict[int, Decimal | None]],
-    period_columns: list[tuple[int, str]],
 ) -> list[dict[str, Any]]:
-    """Группы станций по признаку: сначала «не указано», затем «ЭСПП»."""
+    """Группы станций по признаку: сначала «не указано», затем «ЭСПП» (только порядок вывода)."""
     by_sign: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in station_rows or []:
         sign = row.get("station_sign") or STATION_SIGN_UNSPECIFIED
         by_sign[sign].append(row)
 
     groups: list[dict[str, Any]] = []
-    espp_periods = espp_by_res.get(res_id, {})
     for sign in STATION_SIGN_GROUP_ORDER:
         rows = by_sign.get(sign) or []
         if not rows:
@@ -131,21 +129,7 @@ def _build_sign_groups_for_stations(
             rows = sorted(rows, key=_station_name_sort_key)
         else:
             rows = sorted(rows, key=_unspecified_station_sort_key)
-        periods = None
-        if sign == STATION_SIGN_ESPP:
-            periods = {
-                period_key: espp_periods.get(period_key)
-                for period_key, _label in period_columns
-            }
-        groups.append(
-            {
-                "sign": sign,
-                "stations": rows,
-                "rowspan": len(rows),
-                "periods": periods,
-                "merge_station_names": sign == STATION_SIGN_ESPP,
-            }
-        )
+        groups.append({"stations": rows})
     return groups
 
 
@@ -678,7 +662,6 @@ def build_station_ee_generation_hierarchy(
     stations: list[Station],
     values_by_station: dict[int, dict[int, Decimal | None]],
     period_columns: list[tuple[int, str]],
-    espp_by_res: dict[int, dict[int, Decimal | None]] | None = None,
 ) -> list[dict[str, Any]]:
     """Иерархия ЕЭС → ОЭС → РЭС → субъект РФ → энергоузел → строки электростанций."""
     est_names = dict(get_energy_system_type_map())
@@ -721,7 +704,9 @@ def build_station_ee_generation_hierarchy(
             {
                 "station_id": station.id,
                 "station_name": station.name or "—",
+                "kto_display": station.kto or "—",
                 "station_sign": _resolve_station_sign(station),
+                "station_sign_display": station.station_sign or "—",
                 "station_type_display_order": station_type_display_order,
                 "periods": periods,
                 **attrs,
@@ -757,12 +742,7 @@ def build_station_ee_generation_hierarchy(
                         key=_sort_key_eu,
                     ):
                         station_rows = hierarchy[est_id][ues_id][res_id][rd_id][eu_id]
-                        sign_groups = _build_sign_groups_for_stations(
-                            station_rows,
-                            res_id,
-                            espp_by_res or {},
-                            period_columns,
-                        )
+                        sign_groups = _build_sign_groups_for_stations(station_rows)
                         eu_list.append(
                             {
                                 "eu_id": eu_id,
@@ -820,7 +800,7 @@ def get_station_ee_generation_page_data(
     selected_year: int | None = None,
     start_year: int | None = None,
     end_year: int | None = None,
-    per_page: int | str = 10,
+    per_page: int | str = 50,
     show_totals: bool = False,
 ) -> dict[str, Any]:
     show_all = isinstance(per_page, str) and str(per_page).lower() == "all"
@@ -847,9 +827,9 @@ def get_station_ee_generation_page_data(
     try:
         per_page_int = int(per_page)
     except (TypeError, ValueError):
-        per_page_int = 10
+        per_page_int = 50
     if per_page_int <= 0:
-        per_page_int = 10
+        per_page_int = 50
 
     need_all_stations = show_all or show_totals
     all_stations: list[Station] = []
@@ -924,9 +904,18 @@ def get_station_ee_generation_page_data(
         page_stations,
         values_by_station,
         period_columns,
-        espp_by_res=espp_values_by_res,
     )
     visible_res_ids = collect_res_ids_from_hierarchy(hierarchy)
+
+    if show_all:
+        show_headers = None
+    else:
+        _, prev_page_last_info = (
+            get_cached_page_position(list_filters, current_page)
+            if current_page > 1
+            else (None, None)
+        )
+        show_headers = determine_first_headers(page_stations, prev_page_last_info)
 
     should_show_totals = {
         "energy_units": {},
@@ -982,25 +971,6 @@ def get_station_ee_generation_page_data(
                 }
             )
             if period_mode == EE_PERIOD_MODE_MONTHS:
-                agg_espp_for_hierarchy = load_monthly_espp_generation_by_res(
-                    agg_res_ids,
-                    selected_year,
-                )
-            else:
-                agg_espp_for_hierarchy = load_annual_espp_generation_by_res(
-                    agg_res_ids,
-                    start_year,
-                    end_year,
-                )
-            agg_res_ids = collect_res_ids_from_hierarchy(
-                build_station_ee_generation_hierarchy(
-                    list(agg_station_map.values()),
-                    agg_values_by_station,
-                    period_columns,
-                    espp_by_res=agg_espp_for_hierarchy,
-                )
-            )
-            if period_mode == EE_PERIOD_MODE_MONTHS:
                 agg_espp_values = load_monthly_espp_generation_by_res(agg_res_ids, selected_year)
                 agg_res_control = load_monthly_res_control_generation_by_res(
                     agg_res_ids,
@@ -1050,6 +1020,7 @@ def get_station_ee_generation_page_data(
         "start_year": list_start_year,
         "end_year": list_end_year,
         "should_show_totals": should_show_totals,
+        "show_headers": show_headers,
         "generation_aggregates": generation_aggregates,
         "res_show_rd_level_map": build_res_show_rd_level_map(list_filters),
         "res_control_by_res": res_control_by_res,

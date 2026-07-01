@@ -1607,6 +1607,26 @@ def _assert_plan_year_only_max_power_editable(
         )
 
 
+def _assert_summary_hist_only_base_parameters_editable(
+    is_hist: bool,
+    parameter_key: str,
+    *,
+    summary_log_scope: Optional[str],
+) -> None:
+    """Сводки ОЭС/ФО/ЭЗ: исторический столбец только у базовых показателей."""
+    if not is_hist or parameter_key == "entity_note":
+        return
+    if summary_log_scope not in ("oes", "fo", "ez"):
+        return
+    if parameter_key in ("max_power", "peak_datetime", "avg_temp"):
+        return
+    raise ValueError(
+        "В столбце «Исторический собственный максимум» редактируются только "
+        "«Максимальное потребление мощности, МВт», «Дата и время, мск» "
+        "и «Среднесуточная ТНВ, °C»."
+    )
+
+
 def _resolve_perimeter_variant_for_save(raw: Any) -> Any:
     if raw in (None, "", _UNSET):
         return _UNSET
@@ -1800,10 +1820,20 @@ def save_demand_summary_cell(
             parameter_key,
             demand_model_name=demand_model_name,
         )
+        _assert_summary_hist_only_base_parameters_editable(
+            is_hist,
+            parameter_key,
+            summary_log_scope=summary_log_scope,
+        )
     else:
         is_hist, year_n = parse_summary_slice_key(slice_key)
         _assert_plan_year_only_max_power_editable(
             year_n, is_hist, parameter_key, demand_model_name=demand_model_name
+        )
+        _assert_summary_hist_only_base_parameters_editable(
+            is_hist,
+            parameter_key,
+            summary_log_scope=summary_log_scope,
         )
         if (
             pvc is _UNSET

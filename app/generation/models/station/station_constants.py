@@ -8,3 +8,6 @@ STATION_SIGN_CHOICES = (
     (STATION_SIGN_UNSPECIFIED, STATION_SIGN_UNSPECIFIED),
     (STATION_SIGN_ESPP, STATION_SIGN_ESPP),
 )
+
+# Значение checkbox фильтра «не указано» на страницах со списком станций / выработки ЭЭ
+STATION_SIGN_FILTER_UNSPECIFIED = "__unspecified__"

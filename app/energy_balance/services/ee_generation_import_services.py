@@ -67,6 +67,14 @@ class ParsedStationRow:
 
 
 @dataclass
+class ParsedMultiYearStationRow:
+    external_code: str
+    values_by_year: dict[int, Decimal | None]
+    kto: str | None = None
+    station_sign: str | None = None
+
+
+@dataclass
 class ParsedResRow:
     res_name: str | None
     values: ParsedPeriodValues
@@ -77,9 +85,21 @@ class ParsedResRow:
 class ParsedWorkbook:
     year_number: int
     stations: list[ParsedStationRow] = field(default_factory=list)
+    multi_year_stations: list[ParsedMultiYearStationRow] = field(default_factory=list)
     espp_rows: list[ParsedResRow] = field(default_factory=list)
     control_rows: list[ParsedResRow] = field(default_factory=list)
     skipped_rows: int = 0
+    is_multi_year: bool = False
+
+
+@dataclass
+class MultiYearColumnLayout:
+    header_row_idx: int
+    external_code_col: int
+    name_col: int | None
+    year_cols: dict[int, int]
+    kto_col: int | None = None
+    prom_sign_col: int | None = None
 
 
 @dataclass
@@ -147,6 +167,18 @@ def _is_external_code_header(header_norm: str) -> bool:
     return compact == "external_code"
 
 
+def _extract_year_from_header(header_norm: str) -> int | None:
+    match = YEAR_RE.search(header_norm)
+    if not match:
+        return None
+    return int(match.group(1))
+
+
+def _is_total_row_name(name: str) -> bool:
+    norm = _normalize_name(name)
+    return norm.startswith("итого")
+
+
 def _is_annual_header(header_norm: str) -> bool:
     if "накоплен" in header_norm:
         return True
@@ -171,6 +203,30 @@ def _match_month_number(header_norm: str) -> int | None:
 
 def _is_sign_header(header_norm: str) -> bool:
     return "признак" in header_norm
+
+
+def _is_kto_header(header_norm: str) -> bool:
+    return "код кпо" in header_norm or header_norm == "кпо"
+
+
+def _is_prom_sign_header(header_norm: str) -> bool:
+    return "пром" in header_norm and "предприят" in header_norm
+
+
+def _normalize_kto(value) -> str | None:
+    if value is None:
+        return None
+    text = _normalize_text(value)
+    return text or None
+
+
+def _parse_prom_sign_value(value) -> str | None:
+    norm = _normalize_name(value)
+    if norm == "да":
+        return "true"
+    if norm == "нет":
+        return "false"
+    return None
 
 
 def _is_name_header(header_norm: str) -> bool:
@@ -230,6 +286,54 @@ def _infer_name_col(
         if candidate in used_cols:
             continue
         return candidate
+    return None
+
+
+def _detect_multi_year_column_layout(rows: Sequence[tuple]) -> MultiYearColumnLayout | None:
+    """Шаблон с годами в заголовках столбцов (напр. выработка ПАО Сургутнефтегаз)."""
+    for row_idx, row_vals in enumerate(rows[:40]):
+        headers = [_normalize_name(cell) for cell in row_vals]
+        external_code_cols = [idx for idx, header in enumerate(headers) if _is_external_code_header(header)]
+        if not external_code_cols:
+            continue
+
+        year_cols: dict[int, int] = {}
+        for idx, header in enumerate(headers):
+            if _is_external_code_header(header):
+                continue
+            year_number = _extract_year_from_header(header)
+            if year_number is not None and _match_month_number(header) is None:
+                year_cols[idx] = year_number
+
+        if not year_cols:
+            continue
+
+        has_month_cols = any(_match_month_number(header) is not None for header in headers)
+        has_annual_col = any(_is_annual_header(header) for header in headers)
+        if has_month_cols or has_annual_col:
+            continue
+
+        name_col: int | None = None
+        kto_col: int | None = None
+        prom_sign_col: int | None = None
+        for idx, header in enumerate(headers):
+            if kto_col is None and _is_kto_header(header):
+                kto_col = idx
+            if prom_sign_col is None and _is_prom_sign_header(header):
+                prom_sign_col = idx
+            if name_col is None and _is_name_header(header):
+                name_col = idx
+        if name_col is None and external_code_cols[0] > 0:
+            name_col = external_code_cols[0] - 1
+
+        return MultiYearColumnLayout(
+            header_row_idx=row_idx,
+            external_code_col=external_code_cols[0],
+            name_col=name_col,
+            year_cols=year_cols,
+            kto_col=kto_col,
+            prom_sign_col=prom_sign_col,
+        )
     return None
 
 
@@ -442,8 +546,51 @@ def _load_sheet_rows(file_bytes: bytes, filename: str | None) -> tuple[str, list
         workbook.close()
 
 
+def _parse_multi_year_workbook(rows: Sequence[tuple], layout: MultiYearColumnLayout) -> ParsedWorkbook:
+    all_years: set[int] = set()
+    parsed = ParsedWorkbook(year_number=0, is_multi_year=True)
+
+    for row_vals in rows[layout.header_row_idx + 1 :]:
+        name = _normalize_text(_cell(row_vals, layout.name_col))
+        if _is_total_row_name(name):
+            continue
+
+        external_code = _normalize_text(_cell(row_vals, layout.external_code_col))
+        if not _is_uuid(external_code):
+            continue
+
+        values_by_year: dict[int, Decimal | None] = {}
+        for col_idx, year_number in layout.year_cols.items():
+            value = _to_decimal_or_none(_cell(row_vals, col_idx))
+            if value is not None:
+                values_by_year[year_number] = value
+                all_years.add(year_number)
+
+        if not values_by_year:
+            parsed.skipped_rows += 1
+            continue
+
+        parsed.multi_year_stations.append(
+            ParsedMultiYearStationRow(
+                external_code=external_code,
+                values_by_year=values_by_year,
+                kto=_normalize_kto(_cell(row_vals, layout.kto_col)),
+                station_sign=_parse_prom_sign_value(_cell(row_vals, layout.prom_sign_col)),
+            )
+        )
+
+    if not parsed.multi_year_stations:
+        raise ValueError("В файле не найдено строк для импорта выработки ЭЭ.")
+    parsed.year_number = min(all_years)
+    return parsed
+
+
 def parse_ee_generation_workbook(file_bytes: bytes, filename: str | None = None) -> ParsedWorkbook:
     sheet_name, rows = _load_sheet_rows(file_bytes, filename)
+    multi_year_layout = _detect_multi_year_column_layout(rows)
+    if multi_year_layout is not None:
+        return _parse_multi_year_workbook(rows, multi_year_layout)
+
     year_number = _extract_year_number(filename, sheet_name)
     layout = _detect_column_layout(rows)
 
@@ -625,7 +772,140 @@ def _resolve_espp_res_id(
     return None
 
 
+def _clear_kto_conflicts_in_version(
+    kto_value: str,
+    version_id: int | None,
+    keep_station_id: int,
+    kto_registry: dict[str, int],
+) -> None:
+    """Снимает kto с других станций той же версии (БД + текущий импорт)."""
+    prev_station_id = kto_registry.get(kto_value)
+    if prev_station_id and prev_station_id != keep_station_id:
+        prev_station = db.session.get(Station, prev_station_id)
+        if prev_station is not None and prev_station.kto == kto_value:
+            prev_station.kto = None
+            db.session.add(prev_station)
+
+    conflict_query = Station.query.filter(
+        Station.kto == kto_value,
+        Station.id != keep_station_id,
+    )
+    conflict_query = filter_by_explicit_db_version(conflict_query, Station, version_id)
+    conflict_query.update({Station.kto: None}, synchronize_session=False)
+
+
+def _apply_station_kto(
+    target: Station,
+    kto_value: str,
+    version_id: int | None,
+    kto_registry: dict[str, int],
+) -> bool:
+    """Записывает КПО в пределах версии БД, снимая дубликат с других станций."""
+    if target.kto == kto_value:
+        kto_registry[kto_value] = target.id
+        return False
+
+    _clear_kto_conflicts_in_version(
+        kto_value,
+        version_id,
+        target.id,
+        kto_registry,
+    )
+    target.kto = kto_value
+    kto_registry[kto_value] = target.id
+    db.session.add(target)
+    db.session.flush()
+    return True
+
+
+def _import_multi_year_parsed_workbook(
+    parsed: ParsedWorkbook,
+    version_id: int | None,
+) -> tuple[dict[str, int], list[str]]:
+    stats: dict[str, int] = defaultdict(int)
+    errors: list[str] = []
+
+    external_codes = {row.external_code for row in parsed.multi_year_stations}
+    station_map = _build_stations_by_external_code_map(version_id, external_codes)
+    station_ids = {station.id for stations in station_map.values() for station in stations}
+
+    all_years = sorted(
+        {
+            year_number
+            for row in parsed.multi_year_stations
+            for year_number in row.values_by_year
+        }
+    )
+    station_gen_maps: dict[int, dict[tuple[int, int], Any]] = {}
+    for year_number in all_years:
+        station_gen_maps[year_number] = _load_generation_map(
+            StationEnergyGeneration,
+            version_id,
+            year_number,
+            "id_station",
+            station_ids,
+        )
+
+    kto_registry: dict[str, int] = {}
+
+    with db.session.no_autoflush:
+        for station_row in parsed.multi_year_stations:
+            targets = station_map.get(station_row.external_code, [])
+            if not targets:
+                stats["stations_missing"] += 1
+                if len(errors) < 30:
+                    errors.append(
+                        f"Станция external_code={station_row.external_code} не найдена "
+                        f"(версия БД {version_id or 'без версии'})."
+                    )
+                continue
+
+            for year_number, annual_value in station_row.values_by_year.items():
+                if annual_value is None:
+                    continue
+                values = ParsedPeriodValues(annual=annual_value)
+                for target in targets:
+                    stats["station_rows_updated"] += _apply_period_values(
+                        model_cls=StationEnergyGeneration,
+                        lookup_field="id_station",
+                        lookup_id=target.id,
+                        lookup={"id_station": target.id},
+                        values=values,
+                        year_number=year_number,
+                        version_id=version_id,
+                        existing_map=station_gen_maps[year_number],
+                    )
+
+            for target in targets:
+                station_changed = False
+                if station_row.kto is not None:
+                    if _apply_station_kto(
+                        target,
+                        station_row.kto,
+                        version_id,
+                        kto_registry,
+                    ):
+                        station_changed = True
+                        stats["station_kto_updated"] += 1
+                if (
+                    station_row.station_sign is not None
+                    and target.station_sign != station_row.station_sign
+                ):
+                    target.station_sign = station_row.station_sign
+                    station_changed = True
+                    stats["station_sign_updated"] += 1
+                if station_changed:
+                    db.session.add(target)
+
+    db.session.flush()
+
+    return dict(stats), errors
+
+
 def _import_parsed_workbook(parsed: ParsedWorkbook, version_id: int | None) -> tuple[dict[str, int], list[str]]:
+    if parsed.is_multi_year:
+        return _import_multi_year_parsed_workbook(parsed, version_id)
+
     stats: dict[str, int] = defaultdict(int)
     errors: list[str] = []
 
@@ -777,14 +1057,38 @@ def import_ee_generation_from_excel(file, user: str) -> dict[str, Any]:
         + stats["espp_rows_updated"]
         + stats["control_rows_updated"]
     )
-    message = (
-        f"Импорт выработки ЭЭ за {parsed.year_number} г. завершён. "
-        f"Обновлено записей: {total_updated} "
-        f"(станции: {stats['station_rows_updated']}, "
-        f"ЭСПП: {stats['espp_rows_updated']}, "
-        f"контроль: {stats['control_rows_updated']}). "
-        f"Версий БД: {len(version_ids)}."
-    )
+    if parsed.is_multi_year:
+        years = sorted(
+            {
+                year_number
+                for row in parsed.multi_year_stations
+                for year_number in row.values_by_year
+            }
+        )
+        if len(years) == 1:
+            years_label = f"{years[0]} г."
+        else:
+            years_label = f"{years[0]}–{years[-1]} гг."
+        kto_updated = stats.get("station_kto_updated", 0)
+        sign_updated = stats.get("station_sign_updated", 0)
+        message = (
+            f"Импорт выработки ЭЭ за {years_label} завершён. "
+            f"Обновлено записей: {total_updated} "
+            f"(станции: {stats['station_rows_updated']}"
+            f"{f', КПО: {kto_updated}' if kto_updated else ''}"
+            f"{f', признак эл.ст.: {sign_updated}' if sign_updated else ''}). "
+            f"Строк в файле: {len(parsed.multi_year_stations)}. "
+            f"Версий БД: {len(version_ids)}."
+        )
+    else:
+        message = (
+            f"Импорт выработки ЭЭ за {parsed.year_number} г. завершён. "
+            f"Обновлено записей: {total_updated} "
+            f"(станции: {stats['station_rows_updated']}, "
+            f"ЭСПП: {stats['espp_rows_updated']}, "
+            f"контроль: {stats['control_rows_updated']}). "
+            f"Версий БД: {len(version_ids)}."
+        )
     log_to_db(
         user,
         "Импорт выработки ЭЭ из Excel",

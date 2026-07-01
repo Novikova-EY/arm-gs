@@ -1,0 +1,87 @@
+{# Станции децентрализованной зоны — после итога «Россия, всего» #}
+{% if decentralized_zone_est_id and stations_grouped.get(decentralized_zone_est_id) %}
+    {% set es_type_id = decentralized_zone_est_id %}
+    {% set es_type_group = stations_grouped[decentralized_zone_est_id] %}
+    {% set dz_ues_group = es_type_group.get(decentralized_zone_synthetic_ues_id, {}) %}
+    {% set dz_res_group = dz_ues_group.get(decentralized_zone_synthetic_res_id, {}) %}
+
+    {% if per_page == 'all' or (show_headers and decentralized_zone_est_id in show_headers.get('energy_system_types', [])) %}
+        {% include 'generation/stations/aggregated_data/energy_system_types/energy_system_type_header.html' %}
+    {% endif %}
+
+    {% for fd in federal_district_list %}
+        {% set fd_id = fd.id %}
+        {% set ns = namespace(has_fd_rows=false) %}
+        {% for rd_id, rd_group in dz_res_group.items() %}
+            {% if rd_to_fd_mapping_one.get(rd_id) == fd_id %}
+                {% set ns.has_fd_rows = true %}
+            {% endif %}
+        {% endfor %}
+
+        {% if ns.has_fd_rows %}
+            <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                <td colspan="{{ table_total_colspan | default(18 + 2 * (end_year - start_year)) }}">
+                    {{ fd.name }}
+                </td>
+            </tr>
+
+            {% for rd_id, rd_group in dz_res_group.items() %}
+                {% if rd_to_fd_mapping_one.get(rd_id) == fd_id %}
+                    {% set rd_name = regional_district_names.get(rd_id, '') %}
+
+                    {% if rd_name|lower != 'не указано' %}
+                        {% set regional_district_header_class = 'table-light' %}
+                        {% include 'generation/stations/aggregated_data/regional_districts/regional_district_header.html' %}
+                    {% endif %}
+
+                    {% for eu_id, eu_group in rd_group.items() %}
+                        {% set eu_name = energy_unit_names.get(eu_id) %}
+                        {% set skip_eu = (per_page == 'all' and eu_name and eu_name|lower == 'не указано') %}
+                        {% if not skip_eu and eu_name and eu_name|lower != 'не указано' %}
+                            {% set current_eu_id = eu_id %}
+                            {% include 'generation/stations/aggregated_data/energy_units/energy_unit_header.html' %}
+                        {% endif %}
+
+                        {% for station in eu_group %}
+                            {% include 'generation/stations/station_rows.html' %}
+                            {% include 'generation/stations/aggregated_data/aggregated_station.html' %}
+                        {% endfor %}
+                    {% endfor %}
+
+                    {% set dz_total_label = (rd_name ~ ', всего по децентрализованной зоне') %}
+                    {% set dz_total_class = 'table-light' %}
+                    {% set dz_total_p_ust = (decentralized_zone_by_regional_districts_yearly_p_ust|default({})).get(rd_id, {}) %}
+                    {% set dz_total_p_ogr = (decentralized_zone_by_regional_districts_yearly_p_ogr|default({})).get(rd_id, {}) %}
+                    {% set dz_total_p_rasp = (decentralized_zone_by_regional_districts_yearly_p_rasp|default({})).get(rd_id, {}) %}
+                    {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_total_rows.html' %}
+                    {% set dz_breakdown_scope = 'regional_district' %}
+                    {% set dz_breakdown_id = rd_id %}
+                    {% set dz_breakdown_class = 'table-light' %}
+                    {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_breakdowns.html' %}
+                {% endif %}
+            {% endfor %}
+
+            {% set dz_total_label = (fd.name ~ ', всего по децентрализованной зоне') %}
+            {% set dz_total_class = 'table-primary' %}
+            {% set dz_total_p_ust = (decentralized_zone_by_federal_districts_yearly_p_ust|default({})).get(fd_id, {}) %}
+            {% set dz_total_p_ogr = (decentralized_zone_by_federal_districts_yearly_p_ogr|default({})).get(fd_id, {}) %}
+            {% set dz_total_p_rasp = (decentralized_zone_by_federal_districts_yearly_p_rasp|default({})).get(fd_id, {}) %}
+            {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_total_rows.html' %}
+            {% set dz_breakdown_scope = 'federal_district' %}
+            {% set dz_breakdown_id = fd_id %}
+            {% set dz_breakdown_class = 'table-primary' %}
+            {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_breakdowns.html' %}
+        {% endif %}
+    {% endfor %}
+
+    {% set dz_total_label = 'Децентрализованная зона, всего' %}
+    {% set dz_total_class = 'table-warning' %}
+    {% set dz_total_p_ust = decentralized_zone_yearly_p_ust|default({}) %}
+    {% set dz_total_p_ogr = decentralized_zone_yearly_p_ogr|default({}) %}
+    {% set dz_total_p_rasp = decentralized_zone_yearly_p_rasp|default({}) %}
+    {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_total_rows.html' %}
+    {% set dz_breakdown_scope = 'total' %}
+    {% set dz_breakdown_id = 0 %}
+    {% set dz_breakdown_class = 'table-warning' %}
+    {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_breakdowns.html' %}
+{% endif %}

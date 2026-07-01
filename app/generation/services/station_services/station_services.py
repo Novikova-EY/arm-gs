@@ -174,6 +174,60 @@ from app.generation.services.station_services.aggregation_station_services.aggre
     aggregate_total_energy_system_types_by_tes_machine_types,
     aggregate_total_energy_system_types_by_tes_machine_types_with_fuel,
 )
+from app.generation.services.station_services.station_access_services import (
+    DECENTRALIZED_ZONE_SYNTHETIC_RES_ID,
+    DECENTRALIZED_ZONE_SYNTHETIC_UES_ID,
+    get_decentralized_zone_energy_system_type_id,
+    get_decentralized_zone_res_ids,
+    get_station_list_group_info,
+    is_decentralized_zone_station,
+)
+
+
+def _pagination_station_group_info(station):
+    """Словарь групп для пагинации и кэша позиций страницы."""
+    gi = get_station_list_group_info(station)
+    return {
+        "sort_tier": gi["sort_tier"],
+        "energy_unit_id": gi["energy_unit_id"],
+        "regional_district_id": gi["regional_district_id"],
+        "regional_energy_system_id": gi["regional_energy_system_id"],
+        "union_energy_system_id": gi["union_energy_system_id"],
+        "energy_system_type_id": gi["energy_system_type_id"],
+        "is_decentralized_zone": gi["is_decentralized_zone"],
+    }
+
+
+def _station_energy_system_type_sql_filter(energy_system_type_ids):
+    """Фильтр типа энергосистемы с отдельной трактовкой «Децентрализованной зоны»."""
+    ids = {int(x) for x in (energy_system_type_ids or []) if x is not None}
+    if not ids:
+        return None
+
+    dz_est_id = get_decentralized_zone_energy_system_type_id()
+    regular_ids = set(ids)
+    conditions = []
+
+    if dz_est_id is not None and dz_est_id in regular_ids:
+        regular_ids.remove(dz_est_id)
+        dz_res_ids = list(get_decentralized_zone_res_ids())
+        if dz_res_ids:
+            conditions.append(Station.id_regional_energy_system.in_(dz_res_ids))
+
+    if regular_ids:
+        conditions.append(
+            Station.regional_energy_system_obj.has(
+                RegionalEnergySystem.union_energy_system.has(
+                    UnionEnergySystem.energy_system_type.has(
+                        EnergySystemType.id.in_(regular_ids)
+                    )
+                )
+            )
+        )
+
+    if not conditions:
+        return False
+    return or_(*conditions)
 
 
 def _apply_machine_display_names(machines, year_features=None, use_machine_name_only=False):
@@ -506,6 +560,9 @@ def get_stations_list(
             Station.id_station_type.in_(filters["station_type_filter"])
         )
 
+    from app.generation.services.station_services.filters_services import apply_station_sign_sql_filter
+    station_ids_query = apply_station_sign_sql_filter(station_ids_query, filters)
+
     if filters.get("station_name_filter"):
         station_ids_query = station_ids_query.filter(
             Station.name.ilike(f"%{filters['station_name_filter']}%")
@@ -557,15 +614,8 @@ def get_stations_list(
         )
 
     if filters.get("energy_system_type_filter"):
-        station_ids_query = station_ids_query.filter(
-            Station.regional_energy_system_obj.has(
-                RegionalEnergySystem.union_energy_system.has(
-                    UnionEnergySystem.energy_system_type.has(
-                        EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                    )
-                )
-            )
-        )
+        condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+        station_ids_query = station_ids_query.filter(condition)
 
     # 4. Подсчет и пагинация (сортировка не нужна, т.к. будет в Python)
     if external_code_check:
@@ -631,6 +681,7 @@ def get_stations_list(
             pgu_station_query = pgu_station_query.filter(
                 Station.id_station_type.in_(filters["station_type_filter"])
             )
+        pgu_station_query = apply_station_sign_sql_filter(pgu_station_query, filters)
         if filters.get("station_name_filter"):
             pgu_station_query = pgu_station_query.filter(
                 Station.name.ilike(f"%{filters['station_name_filter']}%")
@@ -674,15 +725,8 @@ def get_stations_list(
                 )
             )
         if filters.get("energy_system_type_filter"):
-            pgu_station_query = pgu_station_query.filter(
-                Station.regional_energy_system_obj.has(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                        )
-                    )
-                )
-            )
+            condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+            pgu_station_query = pgu_station_query.filter(condition)
         pgu_station_ids = [row[0] for row in pgu_station_query.distinct().all()]
         raw_station_ids = list(set(raw_station_ids) | set(pgu_station_ids))
 
@@ -724,6 +768,7 @@ def get_stations_list(
             station_query = station_query.filter(
                 Station.id_station_type.in_(filters["station_type_filter"])
             )
+        station_query = apply_station_sign_sql_filter(station_query, filters)
         if filters.get("regional_district_filter"):
             station_query = station_query.filter(
                 Station.id_regional_district.in_(filters["regional_district_filter"])
@@ -749,15 +794,8 @@ def get_stations_list(
                 )
             )
         if filters.get("energy_system_type_filter"):
-            station_query = station_query.filter(
-                Station.regional_energy_system_obj.has(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                        )
-                    )
-                )
-            )
+            condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+            station_query = station_query.filter(condition)
         extra_station_ids = [row[0] for row in station_query.with_entities(Station.id).all()]
 
     all_station_ids = list(set(raw_station_ids).union(set(extra_station_ids)))
@@ -933,6 +971,26 @@ def get_stations_list(
 
         station_type_rank = _station_type_rank(station_type_name)
 
+        gi = get_station_list_group_info(station)
+        if gi["is_decentralized_zone"]:
+            regional_district_name = (station.regional_district.name or "").lower() if station.regional_district else ""
+            station_name = (station.name or "").strip().lower()
+            sort_prefix = ()
+            if external_code_check:
+                has_territory = bool(station.regional_district or station.id_regional_energy_system)
+                sort_prefix = ((0 if has_territory else 1),)
+            return sort_prefix + (
+                1,
+                gi["energy_system_type_id"] or 10**9,
+                0,
+                gi["regional_energy_system_id"] or 0,
+                regional_district_name,
+                station.id_energy_unit or 0,
+                station_type_rank,
+                station_name,
+                station.id,
+            )
+
         # Получаем иерархию через связи (как было)
         energy_system_type_id = 0
         # Для корректной сортировки по ОЭС используем display_order; None уходит в конец
@@ -983,6 +1041,7 @@ def get_stations_list(
             sort_prefix = ((0 if has_territory else 1),)
 
         return sort_prefix + (
+            0,
             energy_system_type_id,
             union_energy_system_order,
             regional_energy_system_id,
@@ -1092,8 +1151,12 @@ def get_stations_list(
             # НЕ корректируем начало! Это создает перекрытия страниц
             # Только корректируем конец: двигаемся вперед до конца субъекта
             if end_idx < len(stations):
-                current_rd_name = (stations[end_idx - 1].regional_district.name or "").lower() if stations[end_idx - 1].regional_district else ""
                 while end_idx < len(stations):
+                    prev_tier = get_station_list_group_info(stations[end_idx - 1])["sort_tier"]
+                    next_tier = get_station_list_group_info(stations[end_idx])["sort_tier"]
+                    if next_tier != prev_tier:
+                        break
+                    current_rd_name = (stations[end_idx - 1].regional_district.name or "").lower() if stations[end_idx - 1].regional_district else ""
                     next_rd_name = (stations[end_idx].regional_district.name or "").lower() if stations[end_idx].regional_district else ""
                     if next_rd_name == current_rd_name:
                         end_idx += 1
@@ -1102,43 +1165,13 @@ def get_stations_list(
             
             # Получаем информацию о следующей электростанции (если она есть)
             if end_idx < len(stations):
-                next_station = stations[end_idx]
-                next_station_info = {
-                    'energy_unit_id': next_station.id_energy_unit,
-                    'regional_district_id': next_station.id_regional_district,
-                    'regional_energy_system_id': None,
-                    'union_energy_system_id': None,
-                    'energy_system_type_id': None
-                }
-                if next_station.regional_district and next_station.regional_district.regional_energy_systems:
-                    res = next_station.regional_district.regional_energy_systems[0]
-                    if res:
-                        next_station_info['regional_energy_system_id'] = res.id
-                        if res.union_energy_system:
-                            next_station_info['union_energy_system_id'] = res.union_energy_system.id
-                            if res.union_energy_system.energy_system_type:
-                                next_station_info['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
+                next_station_info = _pagination_station_group_info(stations[end_idx])
             
             stations = stations[start_idx:end_idx]
             
             # Получаем информацию о последней электростанции страницы для кэша
             if stations:
-                last_station = stations[-1]
-                last_station_info_for_cache = {
-                    'energy_unit_id': last_station.id_energy_unit,
-                    'regional_district_id': last_station.id_regional_district,
-                    'regional_energy_system_id': None,
-                    'union_energy_system_id': None,
-                    'energy_system_type_id': None
-                }
-                if last_station.regional_district and last_station.regional_district.regional_energy_systems:
-                    res = last_station.regional_district.regional_energy_systems[0]
-                    if res:
-                        last_station_info_for_cache['regional_energy_system_id'] = res.id
-                        if res.union_energy_system:
-                            last_station_info_for_cache['union_energy_system_id'] = res.union_energy_system.id
-                            if res.union_energy_system.energy_system_type:
-                                last_station_info_for_cache['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
+                last_station_info_for_cache = _pagination_station_group_info(stations[-1])
             else:
                 last_station_info_for_cache = None
             
@@ -1153,10 +1186,14 @@ def get_stations_list(
         # Определяем, сколько станций уже было показано (из кэша позиций)
         end_idx = min(per_page_int, len(stations))
         
-        # Корректируем конец: двигаемся вперед до конца субъекта
+        # Корректируем конец: двигаемся вперед до конца субъекта (в пределах одного tier)
         if end_idx < len(stations):
-            current_rd_name = (stations[end_idx - 1].regional_district.name or "").lower() if stations[end_idx - 1].regional_district else ""
             while end_idx < len(stations):
+                prev_tier = get_station_list_group_info(stations[end_idx - 1])["sort_tier"]
+                next_tier = get_station_list_group_info(stations[end_idx])["sort_tier"]
+                if next_tier != prev_tier:
+                    break
+                current_rd_name = (stations[end_idx - 1].regional_district.name or "").lower() if stations[end_idx - 1].regional_district else ""
                 next_rd_name = (stations[end_idx].regional_district.name or "").lower() if stations[end_idx].regional_district else ""
                 if next_rd_name == current_rd_name:
                     end_idx += 1
@@ -1165,43 +1202,13 @@ def get_stations_list(
         
         # Получаем информацию о следующей электростанции (если она есть)
         if end_idx < len(stations):
-            next_station = stations[end_idx]
-            next_station_info = {
-                'energy_unit_id': next_station.id_energy_unit,
-                'regional_district_id': next_station.id_regional_district,
-                'regional_energy_system_id': None,
-                'union_energy_system_id': None,
-                'energy_system_type_id': None
-            }
-            if next_station.regional_district and next_station.regional_district.regional_energy_systems:
-                res = next_station.regional_district.regional_energy_systems[0]
-                if res:
-                    next_station_info['regional_energy_system_id'] = res.id
-                    if res.union_energy_system:
-                        next_station_info['union_energy_system_id'] = res.union_energy_system.id
-                        if res.union_energy_system.energy_system_type:
-                            next_station_info['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
+            next_station_info = _pagination_station_group_info(stations[end_idx])
         
         stations = stations[start_idx:end_idx]
         
         # Получаем информацию о последней электростанции страницы для кэша
         if stations:
-            last_station = stations[-1]
-            last_station_info_for_cache = {
-                'energy_unit_id': last_station.id_energy_unit,
-                'regional_district_id': last_station.id_regional_district,
-                'regional_energy_system_id': None,
-                'union_energy_system_id': None,
-                'energy_system_type_id': None
-            }
-            if last_station.regional_district and last_station.regional_district.regional_energy_systems:
-                res = last_station.regional_district.regional_energy_systems[0]
-                if res:
-                    last_station_info_for_cache['regional_energy_system_id'] = res.id
-                    if res.union_energy_system:
-                        last_station_info_for_cache['union_energy_system_id'] = res.union_energy_system.id
-                        if res.union_energy_system.energy_system_type:
-                            last_station_info_for_cache['energy_system_type_id'] = res.union_energy_system.energy_system_type.id
+            last_station_info_for_cache = _pagination_station_group_info(stations[-1])
         else:
             last_station_info_for_cache = None
         
@@ -1452,16 +1459,8 @@ def get_stations_list_with_pgu_machines(
         )
 
     if filters.get("energy_system_type_filter"):
-        station_query = station_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"]))
-                    )
-                )
-            )
-        )
+        condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+        station_query = station_query.filter(condition)
 
     # Загружаем электростанции без сортировки (сортировка будет в Python)
     # Используем selectinload для regional_district, чтобы избежать дублирования станций
@@ -1602,28 +1601,21 @@ def determine_first_headers(stations_on_page, prev_page_last_station_info=None):
         'energy_units': set(),
     }
     
-    # Получаем иерархию первой электростанции
-    est_id = ues_id = res_id = rd_id = eu_id = None
-    
-    if first_station.regional_district and first_station.regional_district.regional_energy_systems:
-        res = first_station.regional_district.regional_energy_systems[0]
-        if res:
-            res_id = res.id
-            rd_id = first_station.id_regional_district
-            eu_id = first_station.id_energy_unit or 0
-            
-            if res.union_energy_system:
-                ues_id = res.union_energy_system.id
-                if res.union_energy_system.energy_system_type:
-                    est_id = res.union_energy_system.energy_system_type.id
+    first_gi = get_station_list_group_info(first_station)
+    est_id = first_gi.get("energy_system_type_id")
+    ues_id = first_gi.get("union_energy_system_id")
+    res_id = first_gi.get("regional_energy_system_id")
+    rd_id = first_gi.get("regional_district_id")
+    eu_id = first_gi.get("energy_unit_id") or 0
+    first_is_dz = first_gi.get("is_decentralized_zone")
     
     # Если нет информации о предыдущей странице - показываем все заголовки
     if prev_page_last_station_info is None:
         if est_id is not None:
             show_headers['energy_system_types'].add(est_id)
-        if ues_id is not None:
+        if not first_is_dz and ues_id is not None:
             show_headers['union_energy_systems'].add(ues_id)
-        if res_id is not None:
+        if not first_is_dz and res_id is not None:
             show_headers['regional_energy_systems'].add(res_id)
         if rd_id is not None:
             show_headers['regional_districts'].add(rd_id)
@@ -1639,9 +1631,9 @@ def determine_first_headers(stations_on_page, prev_page_last_station_info=None):
         
         if est_id != prev_est and est_id is not None:
             show_headers['energy_system_types'].add(est_id)
-        if ues_id != prev_ues and ues_id is not None:
+        if not first_is_dz and ues_id != prev_ues and ues_id is not None:
             show_headers['union_energy_systems'].add(ues_id)
-        if res_id != prev_res and res_id is not None:
+        if not first_is_dz and res_id != prev_res and res_id is not None:
             show_headers['regional_energy_systems'].add(res_id)
         if rd_id != prev_rd and rd_id is not None:
             show_headers['regional_districts'].add(rd_id)
@@ -1656,31 +1648,30 @@ def determine_first_headers(stations_on_page, prev_page_last_station_info=None):
     prev_eu = eu_id
     
     for station in stations_on_page[1:]:
-        if station.regional_district and station.regional_district.regional_energy_systems:
-            res = station.regional_district.regional_energy_systems[0]
-            if res:
-                curr_res_id = res.id
-                curr_rd_id = station.id_regional_district
-                curr_eu_id = station.id_energy_unit or 0
-                curr_ues_id = res.union_energy_system.id if res.union_energy_system else None
-                curr_est_id = res.union_energy_system.energy_system_type.id if res.union_energy_system and res.union_energy_system.energy_system_type else None
-                
-                if curr_est_id != prev_est and curr_est_id is not None:
-                    show_headers['energy_system_types'].add(curr_est_id)
-                if curr_ues_id != prev_ues and curr_ues_id is not None:
-                    show_headers['union_energy_systems'].add(curr_ues_id)
-                if curr_res_id != prev_res and curr_res_id is not None:
-                    show_headers['regional_energy_systems'].add(curr_res_id)
-                if curr_rd_id != prev_rd and curr_rd_id is not None:
-                    show_headers['regional_districts'].add(curr_rd_id)
-                if curr_eu_id != prev_eu and curr_eu_id is not None and curr_eu_id != 0:
-                    show_headers['energy_units'].add(curr_eu_id)
-                
-                prev_est = curr_est_id
-                prev_ues = curr_ues_id
-                prev_res = curr_res_id
-                prev_rd = curr_rd_id
-                prev_eu = curr_eu_id
+        gi = get_station_list_group_info(station)
+        curr_est_id = gi.get("energy_system_type_id")
+        curr_ues_id = gi.get("union_energy_system_id")
+        curr_res_id = gi.get("regional_energy_system_id")
+        curr_rd_id = gi.get("regional_district_id")
+        curr_eu_id = gi.get("energy_unit_id") or 0
+        curr_is_dz = gi.get("is_decentralized_zone")
+
+        if curr_est_id != prev_est and curr_est_id is not None:
+            show_headers['energy_system_types'].add(curr_est_id)
+        if not curr_is_dz and curr_ues_id != prev_ues and curr_ues_id is not None:
+            show_headers['union_energy_systems'].add(curr_ues_id)
+        if not curr_is_dz and curr_res_id != prev_res and curr_res_id is not None:
+            show_headers['regional_energy_systems'].add(curr_res_id)
+        if curr_rd_id != prev_rd and curr_rd_id is not None:
+            show_headers['regional_districts'].add(curr_rd_id)
+        if curr_eu_id != prev_eu and curr_eu_id is not None and curr_eu_id != 0:
+            show_headers['energy_units'].add(curr_eu_id)
+
+        prev_est = curr_est_id
+        prev_ues = curr_ues_id
+        prev_res = curr_res_id
+        prev_rd = curr_rd_id
+        prev_eu = curr_eu_id
     
     return show_headers
 
@@ -1745,15 +1736,8 @@ def get_regional_districts_with_stations_per_res(filters=None):
             )
         
         if filters.get("energy_system_type_filter"):
-            query = query.filter(
-                Station.regional_energy_system_obj.has(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                        )
-                    )
-                )
-            )
+            condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+            query = query.filter(condition)
     
     rows = query.all()
     
@@ -1797,8 +1781,20 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
         regional_energy_system_ids = set()
         union_energy_system_ids = set()
         energy_system_type_ids = set()
+        has_decentralized_zone = False
+        decentralized_zone_est_id = get_decentralized_zone_energy_system_type_id()
 
         for station in stations_on_page:
+            if is_decentralized_zone_station(station):
+                has_decentralized_zone = True
+                if station.id_energy_unit:
+                    energy_unit_ids.add(station.id_energy_unit)
+                if station.id_regional_district:
+                    all_rd_ids.add(station.id_regional_district)
+                    if decentralized_zone_est_id and station.id_regional_energy_system:
+                        rd_to_res[station.id_regional_district] = station.id_regional_energy_system
+                continue
+
             # Энергоузел
             if station.id_energy_unit:
                 energy_unit_ids.add(station.id_energy_unit)
@@ -1855,10 +1851,12 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
             'regional_energy_systems': {res_id: True for res_id in regional_energy_system_ids},
             # Объединенные энергосистемы (ОЭС)
             'union_energy_systems': {ues_id: True for ues_id in union_energy_system_ids},
-            # Типы энергосистем
+            # Типы энергосистем (без децентрализованной зоны)
             'energy_system_types': {est_id: True for est_id in energy_system_type_ids},
-            # Итог по России
+            # Итог по России (без децентрализованной зоны — см. aggregate_all_at_once)
             'total': True,
+            'decentralized_zone': has_decentralized_zone,
+            'decentralized_zone_est_id': decentralized_zone_est_id if has_decentralized_zone else None,
         }
     
     # Проверяем, есть ли еще электростанции после текущей страницы
@@ -1871,7 +1869,9 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
         'union_energy_systems': {},
         'energy_system_types': {},
         'total': False,
-        'aggregate_full_dataset': False
+        'aggregate_full_dataset': False,
+        'decentralized_zone': False,
+        'decentralized_zone_est_id': None,
     }
     
     # Собираем все уникальные группы на странице
@@ -1887,6 +1887,15 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
     rd_to_res = {}
     
     for station in stations_on_page:
+        if is_decentralized_zone_station(station):
+            if station.id_energy_unit:
+                groups_on_page['energy_units'].add(station.id_energy_unit)
+            if station.id_regional_district:
+                groups_on_page['regional_districts'].add(station.id_regional_district)
+                if station.id_regional_energy_system:
+                    rd_to_res[station.id_regional_district] = station.id_regional_energy_system
+            continue
+
         if station.id_energy_unit:
             groups_on_page['energy_units'].add(station.id_energy_unit)
         if station.id_regional_district:
@@ -1906,20 +1915,12 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
     
     # Получаем последнюю станцию на странице
     last_station = stations_on_page[-1]
+    last_gi = get_station_list_group_info(last_station)
     last_energy_unit_id = last_station.id_energy_unit
     last_regional_district_id = last_station.id_regional_district
-    last_regional_energy_system_id = None
-    last_union_energy_system_id = None
-    last_energy_system_type_id = None
-    
-    if last_station.regional_district and last_station.regional_district.regional_energy_systems:
-        res = last_station.regional_district.regional_energy_systems[0]
-        if res:
-            last_regional_energy_system_id = res.id
-            if res.union_energy_system:
-                last_union_energy_system_id = res.union_energy_system.id
-                if res.union_energy_system.energy_system_type:
-                    last_energy_system_type_id = res.union_energy_system.energy_system_type.id
+    last_regional_energy_system_id = last_gi.get("regional_energy_system_id")
+    last_union_energy_system_id = last_gi.get("union_energy_system_id")
+    last_energy_system_type_id = last_gi.get("energy_system_type_id")
     
     if not has_more_stations:
         # Последняя страница - показываем итоги для всех групп на странице
@@ -2055,11 +2056,63 @@ def determine_totals_to_show(stations_on_page, total_count, page, per_page, filt
             for est_id in groups_on_page['energy_system_types']:
                 show_totals['energy_system_types'][est_id] = True
 
-    # При явном запросе «Показать суммы по регионам» (show_totals=1) всегда показывать полные итоги
-    # (Россия, ЕЭС, ТИТЭС) на любой странице, иначе на первой странице может не быть видимых итогов
+    dz_est_id = get_decentralized_zone_energy_system_type_id()
+    has_dz_on_page = any(is_decentralized_zone_station(s) for s in stations_on_page)
+    has_regular_stations_on_page = any(
+        not is_decentralized_zone_station(s) for s in stations_on_page
+    )
+    next_is_dz = bool(
+        next_station_info
+        and (
+            next_station_info.get('is_decentralized_zone')
+            or (
+                dz_est_id is not None
+                and str(next_station_info.get('energy_system_type_id')) == str(dz_est_id)
+            )
+        )
+    )
+    first_station_is_dz = is_decentralized_zone_station(stations_on_page[0])
+    prev_station_is_dz = False
+    if first_station_is_dz and page > 1:
+        try:
+            from app.generation.services.station_services.aggregation_cache import get_cached_page_position
+
+            _, prev_page_last_info = get_cached_page_position(filters, page)
+            prev_station_is_dz = bool(
+                prev_page_last_info
+                and (
+                    prev_page_last_info.get('is_decentralized_zone')
+                    or (
+                        dz_est_id is not None
+                        and str(prev_page_last_info.get('energy_system_type_id')) == str(dz_est_id)
+                    )
+                )
+            )
+        except Exception:
+            prev_station_is_dz = False
+    show_russia_before_dz = bool(
+        has_dz_on_page
+        and (
+            has_regular_stations_on_page
+            or not first_station_is_dz
+            or not prev_station_is_dz
+        )
+    )
+
+    # При явном запросе «Показать суммы по регионам» (show_totals=1)
+    # агрегируем полный набор, но строку «Россия, всего» показываем только один раз:
+    # перед блоком децентрализованной зоны либо в самом конце, если DZ в выборке нет.
     if force_full_aggregates:
         show_totals['aggregate_full_dataset'] = True
-        show_totals['total'] = True
+        show_totals['total'] = (
+            show_russia_before_dz
+            or (not has_more_stations and not has_dz_on_page)
+        )
+
+    if has_dz_on_page:
+        show_totals['decentralized_zone_est_id'] = dz_est_id
+        if not has_more_stations or (last_gi.get('is_decentralized_zone') and not next_is_dz):
+            show_totals['decentralized_zone'] = True
 
     return show_totals
 
@@ -2193,15 +2246,8 @@ def get_next_station_info(current_page, per_page, filters):
             )
         
         if filters.get("energy_system_type_filter"):
-            station_ids_query = station_ids_query.filter(
-                Station.regional_energy_system_obj.has(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                        )
-                    )
-                )
-            )
+            condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+            station_ids_query = station_ids_query.filter(condition)
         
         # Получаем station_id с нужным offset
         # Примечание: Эта функция может работать некорректно с новой Python-сортировкой
@@ -2446,15 +2492,8 @@ def get_filtered_station_ids(filters):
         )
 
     if filters.get("energy_system_type_filter"):
-        station_ids_query = station_ids_query.filter(
-            Station.regional_energy_system_obj.has(
-                RegionalEnergySystem.union_energy_system.has(
-                    UnionEnergySystem.energy_system_type.has(
-                        EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                    )
-                )
-            )
-        )
+        condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+        station_ids_query = station_ids_query.filter(condition)
 
     raw_ids = [row[0] for row in station_ids_query.all()]
 
@@ -2510,15 +2549,8 @@ def get_filtered_station_ids(filters):
                 )
             )
         if filters.get("energy_system_type_filter"):
-            station_query = station_query.filter(
-                Station.regional_energy_system_obj.has(
-                    RegionalEnergySystem.union_energy_system.has(
-                        UnionEnergySystem.energy_system_type.has(
-                            EnergySystemType.id.in_(filters["energy_system_type_filter"])
-                        )
-                    )
-                )
-            )
+            condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
+            station_query = station_query.filter(condition)
         extra_station_ids = [row[0] for row in station_query.with_entities(Station.id).all()]
 
     unique_ids = sorted({sid for sid in raw_ids + extra_station_ids if sid is not None})
@@ -3053,7 +3085,11 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     # Загружаем энергосистемы заново (с фильтрацией по версии БД через кэшированные функции)
     energy_system_type_objects = get_energy_system_type_list_full()
     energy_system_type_list = [{"id": est.id, "name": est.name} for est in energy_system_type_objects]
-    energy_system_type_names = get_energy_system_type_map()
+    energy_system_type_names = dict(get_energy_system_type_map())
+    hierarchy_from_data = data.get("hierarchy_data") or {}
+    est_names_from_hierarchy = hierarchy_from_data.get("energy_system_type_name") or {}
+    if est_names_from_hierarchy:
+        energy_system_type_names.update(est_names_from_hierarchy)
 
     # Загружаем остальные справочники заново (с фильтрацией по версии БД через кэшированные функции)
     union_energy_system_objects = get_union_energy_system_list_full()
@@ -3070,6 +3106,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     from app.common.services.get_services.territories.federal_district_get_services import get_federal_district_list_full
     federal_district_objects = get_federal_district_list_full()
     federal_district_list = [{"id": fd.id, "name": fd.name} for fd in federal_district_objects]
+    federal_district_names = {fd.id: fd.name for fd in federal_district_objects}
     
     from app.common.services.get_services.territories.regional_district_get_services import (
         get_regional_district_list_full, get_regional_districts_map,
@@ -3126,13 +3163,20 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
     # Проверяем наличие stations_grouped в data
     stations_grouped = data.get("stations_grouped", {})
+    dz_est_id = get_decentralized_zone_energy_system_type_id()
     if stations_grouped:
+        normal_est_ids = [
+            est_id for est_id in stations_grouped.keys()
+            if str(est_id) != str(dz_est_id)
+        ]
         sorted_energy_system_type_ids = sorted(
-            stations_grouped.keys(),
+            normal_est_ids,
             key=lambda est_id: _min_ues_index(stations_grouped[est_id])
         )
+        decentralized_zone_est_id = dz_est_id if dz_est_id in stations_grouped else None
     else:
         sorted_energy_system_type_ids = []
+        decentralized_zone_est_id = None
 
     # Получаем энергоузлы заново, чтобы избежать DetachedInstanceError
     from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
@@ -3227,6 +3271,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     machine_tes_types_map = get_current_machine_tes_types_map()
 
     from app.generation.forms.machine_forms import MACHINE_RELABING_OUTCOME_CHOICES
+    from app.generation.services.station_services.filters_services import get_station_sign_filter_choices
 
     relabing_outcome_filter_choices = []
     for val, lab in MACHINE_RELABING_OUTCOME_CHOICES:
@@ -3234,6 +3279,8 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             relabing_outcome_filter_choices.append(("", "не указано"))
         else:
             relabing_outcome_filter_choices.append((val, lab))
+
+    station_sign_filter_choices = get_station_sign_filter_choices()
 
     context = {
             "form": form,
@@ -3262,6 +3309,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "regional_energy_system_names": regional_energy_system_names,
             "regional_energy_system_mapping": regional_energy_system_mapping,
             "federal_district_list": federal_district_list,
+            "federal_district_names": federal_district_names,
             "regional_district_list": regional_district_list,
             "regional_district_names": regional_district_names,
             "regional_district_mapping": regional_district_mapping,
@@ -3302,6 +3350,8 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "note_filter": filters.get("note_filter"),
             "equipment_group_name_filter": filters.get("equipment_group_name_filter"),
             "station_type_filter": filters.get("station_type_filter"),
+            "station_sign_filter": filters.get("station_sign_filter") or [],
+            "station_sign_filter_choices": station_sign_filter_choices,
             "tes_type_filter": filters.get("tes_type_filter"),
             "tes_machine_type_filter": filters.get("tes_machine_type_filter"),
             "pgu_tes_machine_type_filter": filters.get("pgu_tes_machine_type_filter"),
@@ -3316,6 +3366,9 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "machine_tes_types_map": machine_tes_types_map,
             "energy_unit_names": energy_unit_names,
             "sorted_energy_system_type_ids": sorted_energy_system_type_ids,
+            "decentralized_zone_est_id": decentralized_zone_est_id,
+            "decentralized_zone_synthetic_ues_id": DECENTRALIZED_ZONE_SYNTHETIC_UES_ID,
+            "decentralized_zone_synthetic_res_id": DECENTRALIZED_ZONE_SYNTHETIC_RES_ID,
             "grouped_display_order": data.get("grouped_display_order", {}),
             "regional_districts_count_per_res": data.get("regional_districts_count_per_res", {}),
             "station_equipment_group_name_map": data.get("station_equipment_group_name_map", {}),
@@ -3339,6 +3392,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         union_energy_system_aggregates = build_union_energy_system_aggregates(data)
         energy_system_type_aggregates = build_energy_system_type_aggregates(data)
         total_energy_system_type_aggregates = build_total_energy_system_type_aggregates(data)
+        decentralized_zone_aggregates = build_decentralized_zone_aggregates(data)
 
         # Включаем агрегаты по уровням в context
         context.update(energy_unit_aggregates)
@@ -3347,6 +3401,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         context.update(union_energy_system_aggregates)
         context.update(energy_system_type_aggregates)
         context.update(total_energy_system_type_aggregates)
+        context.update(decentralized_zone_aggregates)
 
     print(f"[TIME] get_station_list_template_context заняла: {time.time() - start_time:.2f} сек")
     return context
@@ -3965,6 +4020,168 @@ def build_federal_district_aggregates(data):
     }
 
 
+def build_decentralized_zone_aggregates(data):
+    """Отдельные итоги по децентрализованной зоне: всего, по ФО и по субъектам РФ."""
+    return {
+        "decentralized_zone_yearly_p_ust": data["aggregate_decentralized_zone"]["aggregated"]["p_ust"],
+        "decentralized_zone_yearly_p_ogr": data["aggregate_decentralized_zone"]["aggregated"]["p_ogr"],
+        "decentralized_zone_yearly_p_rasp": data["aggregate_decentralized_zone"]["aggregated"]["p_rasp"],
+        "decentralized_zone_by_regional_districts_yearly_p_ust": data[
+            "aggregate_decentralized_zone_by_regional_districts"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_by_regional_districts_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_by_regional_districts"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_by_regional_districts_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_by_regional_districts"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_by_federal_districts_yearly_p_ust": data[
+            "aggregate_decentralized_zone_by_federal_districts"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_by_federal_districts_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_by_federal_districts"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_by_federal_districts_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_by_federal_districts"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_by_station_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_by_station_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_by_station_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_by_station_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_by_station_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_by_station_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_by_tes_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_by_tes_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_by_tes_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_by_tes_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_by_tes_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_by_tes_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_by_tes_types_with_fuel_yearly_p_ust": data[
+            "aggregate_decentralized_zone_by_tes_types_with_fuel"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_by_tes_types_with_fuel_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_by_tes_types_with_fuel"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_by_tes_types_with_fuel_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_by_tes_types_with_fuel"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_by_tes_machine_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_by_tes_machine_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_by_tes_machine_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_by_tes_machine_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_by_tes_machine_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_by_tes_machine_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_by_tes_machine_types_with_fuel_yearly_p_ust": data[
+            "aggregate_decentralized_zone_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_by_tes_machine_types_with_fuel_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_by_tes_machine_types_with_fuel_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_regional_districts_by_station_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_regional_districts_by_station_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_regional_districts_by_station_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_regional_districts_by_station_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_regional_districts_by_station_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_regional_districts_by_station_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_regional_districts_by_tes_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_regional_districts_by_tes_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_regional_districts_by_tes_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_regional_districts_by_tes_types_with_fuel_yearly_p_ust": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_types_with_fuel"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_regional_districts_by_tes_types_with_fuel_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_types_with_fuel"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_regional_districts_by_tes_types_with_fuel_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_types_with_fuel"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_regional_districts_by_tes_machine_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_machine_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_regional_districts_by_tes_machine_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_machine_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_regional_districts_by_tes_machine_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_machine_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_regional_districts_by_tes_machine_types_with_fuel_yearly_p_ust": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_regional_districts_by_tes_machine_types_with_fuel_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_regional_districts_by_tes_machine_types_with_fuel_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_regional_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_federal_districts_by_station_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_federal_districts_by_station_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_federal_districts_by_station_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_federal_districts_by_station_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_federal_districts_by_station_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_federal_districts_by_station_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_federal_districts_by_tes_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_federal_districts_by_tes_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_federal_districts_by_tes_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_federal_districts_by_tes_types_with_fuel_yearly_p_ust": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_types_with_fuel"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_federal_districts_by_tes_types_with_fuel_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_types_with_fuel"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_federal_districts_by_tes_types_with_fuel_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_types_with_fuel"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_federal_districts_by_tes_machine_types_yearly_p_ust": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_machine_types"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_federal_districts_by_tes_machine_types_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_machine_types"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_federal_districts_by_tes_machine_types_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_machine_types"
+        ]["aggregated"]["p_rasp"],
+        "decentralized_zone_federal_districts_by_tes_machine_types_with_fuel_yearly_p_ust": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ust"],
+        "decentralized_zone_federal_districts_by_tes_machine_types_with_fuel_yearly_p_ogr": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_ogr"],
+        "decentralized_zone_federal_districts_by_tes_machine_types_with_fuel_yearly_p_rasp": data[
+            "aggregate_decentralized_zone_federal_districts_by_tes_machine_types_with_fuel"
+        ]["aggregated"]["p_rasp"],
+    }
+
+
 # -------------------------------
 # Мутации по станциям/агрегатам
 # -------------------------------
@@ -3974,6 +4191,7 @@ def add_station_service(
     name: str,
     id_regional_district: int,
     id_station_type=None,
+    id_regional_energy_system=None,
     force_create: bool = False,
 ) -> Station:
     name = (name or "").strip()
@@ -4007,6 +4225,7 @@ def add_station_service(
                 name=name,
                 id_regional_district=id_regional_district,
                 id_station_type=station_type_id,
+                id_regional_energy_system=id_regional_energy_system,
             )
             # Автоматически связываем с текущей версией БД
             set_db_version_on_create(station)
@@ -4102,6 +4321,7 @@ def update_station_from_form_service(
     *,
     can_edit_generation: bool = True,
     can_edit_fuel: bool = True,
+    can_edit_fuel_dz: bool = False,
 ) -> list:
     changes = []
     try:
@@ -4136,8 +4356,10 @@ def update_station_from_form_service(
                     normalized.append(ch)
             return "".join(normalized)
 
-        if not can_edit_generation and not can_edit_fuel:
+        if not can_edit_generation and not can_edit_fuel and not can_edit_fuel_dz:
             return changes
+
+        can_edit_core = can_edit_generation or can_edit_fuel_dz
 
         if current_user.is_authenticated and getattr(current_user, "is_admin", False):
             old_code = (getattr(station, "external_code", None) or "").strip()
@@ -4155,11 +4377,11 @@ def update_station_from_form_service(
                 station.external_code = new_code
 
         # Название + субъект РФ: проверка уникальности до присваивания
-        new_name = _normalize_angle_quotes(form.name.data) if can_edit_generation else station.name
+        new_name = _normalize_angle_quotes(form.name.data) if can_edit_core else station.name
         new_district_id = (
-            form.id_regional_district.data if can_edit_generation else station.id_regional_district
+            form.id_regional_district.data if can_edit_core else station.id_regional_district
         )
-        if can_edit_generation and (
+        if can_edit_core and (
             station.name != new_name or station.id_regional_district != new_district_id
         ):
             if not _is_excluded_district(new_district_id, station.database_version_id):
@@ -4179,11 +4401,11 @@ def update_station_from_form_service(
                         "Станция с таким названием уже существует в выбранном субъекте РФ и версии БД."
                     )
 
-        if can_edit_generation and station.name != new_name:
+        if can_edit_core and station.name != new_name:
             changes.append(f"Название: {station.name} → {new_name}")
             station.name = new_name
 
-        if can_edit_generation:
+        if can_edit_core:
             # Состояние
             new_condition_type_id = int(form.id_condition_type.data)
             new_condition_type = db.session.query(ConditionType).filter_by(id=new_condition_type_id).first()
@@ -4193,22 +4415,6 @@ def update_station_from_form_service(
                 if old_value != new_value:
                     changes.append(f"Состояние: {old_value} → {new_value}")
                 station.id_condition_type = new_condition_type.id
-
-            # Тип  электростанции
-            if form.id_station_type.data and int(form.id_station_type.data) != 0:
-                new_station_type_id = int(form.id_station_type.data)
-                new_station_type = db.session.query(StationType).filter_by(id=new_station_type_id).first()
-                if new_station_type:
-                    old_value = station.station_type.name if station.station_type else "не указано"
-                    new_value = new_station_type.name
-                    if old_value != new_value:
-                        changes.append(f"Тип  электростанции: {old_value} → {new_value}")
-                    station.id_station_type = new_station_type.id
-            else:
-                if station.id_station_type is not None:
-                    old_value = station.station_type.name if station.station_type else "не указано"
-                    changes.append(f"Тип  электростанции: {old_value} → не указано")
-                    station.id_station_type = None
 
             # Группа электростанции
             new_group_id = form.id_station_group.data
@@ -4249,7 +4455,7 @@ def update_station_from_form_service(
                 )
                 station.station_sign = new_station_sign
 
-        if can_edit_generation:
+        if can_edit_core:
             # Субъект РФ
             if station.id_regional_district != new_district_id:
                 old_value = station.regional_district.name if station.regional_district else "не указано"
@@ -4288,20 +4494,46 @@ def update_station_from_form_service(
 
                     station.regional_district = new_regional_district_obj
 
-                    # Проверка соответствия Субъекта РФ и Региональной энергосистемы
-                    res_id_to_check = form.id_regional_energy_system.data
-                    if res_id_to_check == 0:
-                        res_id_to_check = station.id_regional_energy_system
+                    if can_edit_generation:
+                        # Проверка соответствия Субъекта РФ и Региональной энергосистемы
+                        res_id_to_check = form.id_regional_energy_system.data
+                        if res_id_to_check == 0:
+                            res_id_to_check = station.id_regional_energy_system
 
-                    if res_id_to_check:
-                        res_ids_for_district = {res.id for res in new_regional_district_obj.regional_energy_systems}
-                        if res_id_to_check not in res_ids_for_district:
-                            res_obj = db.session.get(RegionalEnergySystem, res_id_to_check)
-                            res_name = res_obj.name if res_obj else "не указано"
-                            raise ValueError(
-                                f"Субъект РФ '{new_value}' не входит в указанную региональную энергосистему '{res_name}'. "
-                                f"Пожалуйста, выберите соответствующую региональную энергосистему или измените субъект РФ."
-                            )
+                        if res_id_to_check:
+                            res_ids_for_district = {res.id for res in new_regional_district_obj.regional_energy_systems}
+                            if res_id_to_check not in res_ids_for_district:
+                                res_obj = db.session.get(RegionalEnergySystem, res_id_to_check)
+                                res_name = res_obj.name if res_obj else "не указано"
+                                raise ValueError(
+                                    f"Субъект РФ '{new_value}' не входит в указанную региональную энергосистему '{res_name}'. "
+                                    f"Пожалуйста, выберите соответствующую региональную энергосистему или измените субъект РФ."
+                                )
+
+            # Местоположение
+            new_location_raw = getattr(form, "location", None).data if getattr(form, "location", None) is not None else None
+            new_location = _norm_text(new_location_raw) or None
+            old_location = _norm_text(getattr(station, "location", None)) or None
+            if old_location != new_location:
+                changes.append(f"Местоположение: {old_location or 'не указано'} → {new_location or 'не указано'}")
+                station.location = new_location
+
+        if can_edit_generation:
+            # Тип  электростанции
+            if form.id_station_type.data and int(form.id_station_type.data) != 0:
+                new_station_type_id = int(form.id_station_type.data)
+                new_station_type = db.session.query(StationType).filter_by(id=new_station_type_id).first()
+                if new_station_type:
+                    old_value = station.station_type.name if station.station_type else "не указано"
+                    new_value = new_station_type.name
+                    if old_value != new_value:
+                        changes.append(f"Тип  электростанции: {old_value} → {new_value}")
+                    station.id_station_type = new_station_type.id
+            else:
+                if station.id_station_type is not None:
+                    old_value = station.station_type.name if station.station_type else "не указано"
+                    changes.append(f"Тип  электростанции: {old_value} → не указано")
+                    station.id_station_type = None
 
             # Региональная энергосистема (прямая связь через id_regional_energy_system)
             new_res_id = form.id_regional_energy_system.data
@@ -4319,14 +4551,6 @@ def update_station_from_form_service(
                 new_res_name = new_res_obj.name if new_res_obj else "не указано"
                 changes.append(f"Региональная энергосистема: {old_res_name} → {new_res_name}")
                 station.id_regional_energy_system = new_res_id
-
-            # Местоположение
-            new_location_raw = getattr(form, "location", None).data if getattr(form, "location", None) is not None else None
-            new_location = _norm_text(new_location_raw) or None
-            old_location = _norm_text(getattr(station, "location", None)) or None
-            if old_location != new_location:
-                changes.append(f"Местоположение: {old_location or 'не указано'} → {new_location or 'не указано'}")
-                station.location = new_location
 
             # Энергоузел
             from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit

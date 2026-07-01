@@ -9,7 +9,7 @@
         {% if has_tes %}
             {% set tes_name_lower = tes_name|lower %}
             <!-- Первая строка: p_ust -->
-            <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
+            <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center total-power-row" style="vertical-align: middle;">
                 <td class="total-row-cell ind2cm" rowspan="3" colspan="{{ station_list_meta_colspan }}" style="font-weight: bold; padding-left: 6cm;">
                     {{ tes_name }}
                 </td>
@@ -29,7 +29,7 @@
             </tr>
 
             <!-- Вторая строка: p_ogr -->
-            <tr class="table-secondary text-center p-ogr-row">
+            <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center p-ogr-row">
                 <td class="fw-bold">Рогр</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">
@@ -46,7 +46,7 @@
             </tr>
 
             <!-- Третья строка: p_rasp -->
-            <tr class="table-secondary text-center p-rasp-row">
+            <tr class="{{ regional_district_total_class|default('table-secondary') }} text-center p-rasp-row">
                 <td class="fw-bold">Ррасп</td>
                 {% for y in range(start_year, end_year + 1) %}
                     <td class="power-column" style="font-weight: bold;">

@@ -31,7 +31,7 @@
             {% include 'energy_balance/ee_generation/ee_generation_filters.html' %}
         </div>
 
-        {% set column_count = 2 + 5 + (period_columns|length) %}
+        {% set column_count = 2 + 6 + (period_columns|length) %}
 
         <style>
         .page-table-scroll #eeGenerationTable thead th {
@@ -76,7 +76,7 @@
         <table class="table table-hover table-striped table-bordered" id="eeGenerationTable">
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th style="min-width: 48px;">Признак<br>эл.ст.</th>
+                    <th style="min-width: 72px;">КТО</th>
                     <th style="min-width: 220px;">Электростанция</th>
                     {% include 'energy_balance/ee_generation/ee_generation_table_header_filters.html' %}
                     {% for period_num, period_label in period_columns %}
@@ -99,30 +99,41 @@
                 {% set res_control_by_res = res_control_by_res|default({}) %}
                 {% set res_verification_by_res = res_verification_by_res|default({}) %}
                 {% for est_block in hierarchy %}
+                    {% if per_page == 'all' or (show_headers and est_block.est_id in show_headers.get('energy_system_types', [])) %}
                     <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
                         <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
                     </tr>
+                    {% endif %}
                     {% for ues_block in est_block.ues_list %}
+                        {% if per_page == 'all' or (show_headers and ues_block.ues_id in show_headers.get('union_energy_systems', [])) %}
                         <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
                             <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
                         </tr>
+                        {% endif %}
                         {% for res_block in ues_block.res_list %}
+                            {% if per_page == 'all' or (show_headers and res_block.res_id in show_headers.get('regional_energy_systems', [])) %}
                             <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
                                 <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
                             </tr>
+                            {% endif %}
                             {% set show_rd_level = res_show_rd_level_map.get(res_block.res_id, false) %}
                             {% for rd_block in res_block.rd_list %}
+                                {% set show_rd_totals = show_rd_level and should_show_totals.get('regional_districts', {}).get(rd_block.rd_id) %}
                                 {% if show_rd_level and rd_block.rd_name|lower != 'не указано' %}
-                                <tr class="table-warning text-center" style="vertical-align: middle; font-weight: bold;">
-                                    <td colspan="{{ column_count }}">{{ rd_block.rd_name }}</td>
-                                </tr>
+                                    {% if (per_page == 'all' and show_rd_totals) or (per_page != 'all' and show_headers and rd_block.rd_id in show_headers.get('regional_districts', [])) %}
+                                    <tr class="table-warning text-center" style="vertical-align: middle; font-weight: bold;">
+                                        <td colspan="{{ column_count }}">{{ rd_block.rd_name }}</td>
+                                    </tr>
+                                    {% endif %}
                                 {% endif %}
                                 {% for eu_block in rd_block.eu_list %}
                                     {% set skip_eu = (not eu_block.eu_id) or (eu_block.eu_name|lower in ['не указано', 'без энергоузла']) %}
-                                    {% if not skip_eu %}
-                                    <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
-                                        <td colspan="{{ column_count }}">{{ eu_block.eu_name }}</td>
-                                    </tr>
+                                    {% if not skip_eu and eu_block.eu_name|lower != 'не указано' %}
+                                        {% if per_page == 'all' or (show_headers and eu_block.eu_id in show_headers.get('energy_units', [])) %}
+                                        <tr class="table-success text-center" style="vertical-align: middle; font-weight: bold;">
+                                            <td colspan="{{ column_count }}">{{ eu_block.eu_name }}</td>
+                                        </tr>
+                                        {% endif %}
                                     {% endif %}
                                     {% for sign_group in eu_block.sign_groups %}
                                         {% include 'energy_balance/ee_generation/ee_generation_station_sign_group_rows.html' %}
@@ -137,7 +148,6 @@
                                         {% endif %}
                                     {% endif %}
                                 {% endfor %}
-                                {% set show_rd_totals = show_rd_level and should_show_totals.get('regional_districts', {}).get(rd_block.rd_id) %}
                                 {% if show_rd_totals and rd_block.rd_name|lower != 'не указано' %}
                                     {% with label=(regional_district_names.get(rd_block.rd_id) or rd_block.rd_name) ~ ', всего', period_totals=generation_aggregates.get('regional_districts', {}).get(rd_block.rd_id, {}), row_class='table-warning' %}
                                         {% include 'energy_balance/ee_generation/ee_generation_total_row.html' %}
@@ -256,6 +266,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const instantFilters = [
         "station_type_filter",
+        "station_sign_filter",
         "tes_type_filter",
         "tes_machine_type_filter",
         "fuel_type_filter",

@@ -307,6 +307,24 @@
             || document.querySelector("table.power-demand-summary-table");
     }
 
+    function isPdSummaryClientRenderPending() {
+        if (!document.getElementById("pd-summary-client-render-config")) {
+            return false;
+        }
+        var shell = document.getElementById("powerDemandSummaryLoaderShell");
+        return !!(shell && shell.dataset.ready !== "1");
+    }
+
+    function shouldDeferPdSummaryConsume(state, result) {
+        return !!(
+            state &&
+            state.rowAnchor &&
+            result &&
+            result.success &&
+            isPdSummaryClientRenderPending()
+        );
+    }
+
     function save(opts) {
         opts = opts || {};
         var table = getTableEl(opts);
@@ -393,7 +411,7 @@
             }
         });
 
-        if ((consume && result.success) || forceConsume) {
+        if (((consume && result.success) || forceConsume) && !shouldDeferPdSummaryConsume(state, result)) {
             removeSession(key);
         }
         result.hadState = true;
@@ -455,6 +473,17 @@
             });
 
             document.addEventListener("pd-summary-rows-rendered", afterDeferredContent);
+            document.addEventListener("pd-summary-initial-render-finished", function () {
+                if (!trySession(storageKey(scope))) {
+                    return;
+                }
+                window.requestAnimationFrame(function () {
+                    tryRestore(true, false);
+                    window.requestAnimationFrame(function () {
+                        tryRestore(true, false);
+                    });
+                });
+            });
 
             if (window.__pdSummaryRowsReady && typeof window.__pdSummaryRowsReady.then === "function") {
                 window.__pdSummaryRowsReady.then(afterDeferredContent, function () {

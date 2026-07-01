@@ -153,7 +153,7 @@
             </div>
 
             <div class="row align-items-start mb-3">
-                <h4 class="text-center mt-4"> Справочники технологий</h2>
+                <h4 class="text-center mt-4"> Справочники технологий</h4>
                     <div class="col">
                         <a href="{{ url_for('refdata_bp.equipment_group_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы групп оборудования</a>
                     </div>                
@@ -166,10 +166,13 @@
             </div>
 
             <div class="row align-items-start mb-3">
-                <h4 class="text-center mt-4">Справочники видов экономической деятельности (ВЭД)</h4>
+                <h4 class="text-center mt-4"> Справочники прочие</h4>
+                <div class="col">
+                    <a href="{{ url_for('refdata_bp.electricity_production_cost_type_list') }}" class="btn btn-outline-primary fs-4 w-100">Типы затрат на производство ЭЭ и ТЭ</a>
+                </div>                
                 <div class="col">
                     <a href="{{ url_for('refdata_bp.economic_activity_type_list') }}" class="btn btn-outline-primary fs-4 w-100">ВЭД</a>
-                </div>
+                </div>  
             </div>
         </div>
     </div>

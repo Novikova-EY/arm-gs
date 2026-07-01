@@ -243,8 +243,9 @@ PARAMETERS_TITES_OES_SUMMARY: tuple[tuple[str, str], ...] = (
     ("peak_datetime", "Дата и время"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
 )
-# На сводке /power_demand/summary/oes/ исторический столбец только у базовых показателей.
-OES_SUMMARY_HIST_PARAMETER_KEYS: frozenset[str] = frozenset(pk for pk, _ in BASE_PARAMETERS)
+# На сводках /power_demand/summary/{oes,federal_districts,energy_zones}/ исторический столбец только у базовых показателей.
+SUMMARY_HIST_PARAMETER_KEYS: frozenset[str] = frozenset(pk for pk, _ in BASE_PARAMETERS)
+OES_SUMMARY_HIST_PARAMETER_KEYS = SUMMARY_HIST_PARAMETER_KEYS  # обратная совместимость
 # Строка объединённой энергосистемы (ОЭС) в сводке «по энергосистемам».
 PARAMETERS_UES_OES: tuple[tuple[str, str], ...] = (
     ("max_power", "Максимальное потребление мощности, МВт"),
@@ -1212,6 +1213,7 @@ def _finalize_oes_summary_context(
         _attach_oes_summary_live_calc_context(ctx)
 
     mask_power_demand_summary_rows_perimeter_variant_year_display(rows, years)
+    _clear_summary_hist_non_base_parameters(rows)
 
     _filter_power_demand_summary_context_segments(ctx, data_segments, scope="oes")
 
@@ -1260,6 +1262,7 @@ def _finalize_fo_summary_context(
         tag_power_demand_summary_rows_for_territory_compact(rows)
 
     mask_power_demand_summary_rows_perimeter_variant_year_display(rows, years)
+    _clear_summary_hist_non_base_parameters(rows)
 
     _filter_power_demand_summary_context_segments(ctx, data_segments, scope="fo")
 
@@ -1302,6 +1305,7 @@ def _finalize_ez_summary_context(
     mask_power_demand_summary_rows_perimeter_variant_year_display(
         rows, list(ctx["years"])
     )
+    _clear_summary_hist_non_base_parameters(rows)
 
     _filter_power_demand_summary_context_segments(ctx, data_segments, scope="ez")
 
@@ -4693,7 +4697,7 @@ def _copy_pd_summary_row_display_from_reference(
     target_row["year_values"] = source_values[:n_y]
     target_row["year_numeric_tooltips"] = source_tooltips[:n_y]
     pk = str(target_row.get("parameter_key") or "")
-    if pk in OES_SUMMARY_HIST_PARAMETER_KEYS:
+    if pk in SUMMARY_HIST_PARAMETER_KEYS:
         target_row["hist_value"] = reference_row.get("hist_value", "")
         target_row["hist_numeric_tooltip"] = reference_row.get("hist_numeric_tooltip", "")
 
@@ -5110,15 +5114,21 @@ def _enrich_ez_summary_calculated_max_from_res(
     )
 
 
-def _clear_oes_summary_hist_non_base_parameters(
+def _clear_summary_hist_non_base_parameters(
     summary_rows: list[dict[str, Any]],
 ) -> None:
-    """Сводка по ОЭС: «Исторический собственный максимум» только у max_power, peak_datetime, avg_temp."""
+    """Сводки ОЭС/ФО/ЭЗ: «Исторический собственный максимум» только у max_power, peak_datetime, avg_temp."""
     for r in summary_rows:
-        if (r.get("parameter_key") or "") in OES_SUMMARY_HIST_PARAMETER_KEYS:
+        if (r.get("parameter_key") or "") in SUMMARY_HIST_PARAMETER_KEYS:
             continue
         r["hist_value"] = ""
         r["hist_numeric_tooltip"] = ""
+
+
+def _clear_oes_summary_hist_non_base_parameters(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    _clear_summary_hist_non_base_parameters(summary_rows)
 
 
 def enrich_oes_summary_calculated_max_power_from_res_combined(
@@ -5977,7 +5987,6 @@ def _enrich_oes_summary_calculated_max_from_res(
         rows, years, rounding_digits
     )
     enrich_oes_ees_calculated_max_power_consumption(rows, years, rounding_digits)
-    _clear_oes_summary_hist_non_base_parameters(rows)
     _clear_south_ues_with_nt_formula_years_before(rows, years)
 
 

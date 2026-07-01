@@ -1,0 +1,54 @@
+{% set current_rd_id = dz_breakdown_id %}
+{% set regional_district_total_class = dz_breakdown_class|default('table-secondary') %}
+
+{% if dz_breakdown_scope == 'regional_district' %}
+    {% set regional_districts_by_station_types_yearly_p_ust = decentralized_zone_regional_districts_by_station_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_station_types_yearly_p_ogr = decentralized_zone_regional_districts_by_station_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_station_types_yearly_p_rasp = decentralized_zone_regional_districts_by_station_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_ust = decentralized_zone_regional_districts_by_tes_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_ogr = decentralized_zone_regional_districts_by_tes_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_rasp = decentralized_zone_regional_districts_by_tes_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_ust = decentralized_zone_regional_districts_by_tes_types_with_fuel_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_ogr = decentralized_zone_regional_districts_by_tes_types_with_fuel_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_rasp = decentralized_zone_regional_districts_by_tes_types_with_fuel_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_ust = decentralized_zone_regional_districts_by_tes_machine_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_ogr = decentralized_zone_regional_districts_by_tes_machine_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_rasp = decentralized_zone_regional_districts_by_tes_machine_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_ust = decentralized_zone_regional_districts_by_tes_machine_types_with_fuel_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_ogr = decentralized_zone_regional_districts_by_tes_machine_types_with_fuel_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_rasp = decentralized_zone_regional_districts_by_tes_machine_types_with_fuel_yearly_p_rasp|default({}) %}
+{% elif dz_breakdown_scope == 'federal_district' %}
+    {% set regional_districts_by_station_types_yearly_p_ust = decentralized_zone_federal_districts_by_station_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_station_types_yearly_p_ogr = decentralized_zone_federal_districts_by_station_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_station_types_yearly_p_rasp = decentralized_zone_federal_districts_by_station_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_ust = decentralized_zone_federal_districts_by_tes_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_ogr = decentralized_zone_federal_districts_by_tes_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_rasp = decentralized_zone_federal_districts_by_tes_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_ust = decentralized_zone_federal_districts_by_tes_types_with_fuel_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_ogr = decentralized_zone_federal_districts_by_tes_types_with_fuel_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_rasp = decentralized_zone_federal_districts_by_tes_types_with_fuel_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_ust = decentralized_zone_federal_districts_by_tes_machine_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_ogr = decentralized_zone_federal_districts_by_tes_machine_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_rasp = decentralized_zone_federal_districts_by_tes_machine_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_ust = decentralized_zone_federal_districts_by_tes_machine_types_with_fuel_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_ogr = decentralized_zone_federal_districts_by_tes_machine_types_with_fuel_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_rasp = decentralized_zone_federal_districts_by_tes_machine_types_with_fuel_yearly_p_rasp|default({}) %}
+{% else %}
+    {% set regional_districts_by_station_types_yearly_p_ust = decentralized_zone_by_station_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_station_types_yearly_p_ogr = decentralized_zone_by_station_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_station_types_yearly_p_rasp = decentralized_zone_by_station_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_ust = decentralized_zone_by_tes_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_ogr = decentralized_zone_by_tes_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_types_yearly_p_rasp = decentralized_zone_by_tes_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_ust = decentralized_zone_by_tes_types_with_fuel_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_ogr = decentralized_zone_by_tes_types_with_fuel_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_types_with_fuel_yearly_p_rasp = decentralized_zone_by_tes_types_with_fuel_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_ust = decentralized_zone_by_tes_machine_types_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_ogr = decentralized_zone_by_tes_machine_types_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_machine_types_yearly_p_rasp = decentralized_zone_by_tes_machine_types_yearly_p_rasp|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_ust = decentralized_zone_by_tes_machine_types_with_fuel_yearly_p_ust|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_ogr = decentralized_zone_by_tes_machine_types_with_fuel_yearly_p_ogr|default({}) %}
+    {% set regional_districts_by_tes_machine_types_with_fuel_yearly_p_rasp = decentralized_zone_by_tes_machine_types_with_fuel_yearly_p_rasp|default({}) %}
+{% endif %}
+
+{% include 'generation/stations/aggregated_data/regional_districts/aggregated_regional_districts_by_station_type.html' %}

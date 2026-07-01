@@ -69,9 +69,123 @@ from app.fuel.services.equipment_groups.equipment_group_set_services import (
     get_station_fuel_equipment_group_choice_tuples,
     sync_machine_fuel_equipment_group,
 )
+from app.generation.services.station_services.station_access_services import (
+    can_fuel_user_add_machine_to_station,
+)
 
 _FUEL_MODULE_EDIT_ROLES = frozenset({"admin", "fuel-admin", "fuel-editor"})
 _GENERATION_MODULE_EDIT_ROLES = frozenset({"admin", "generation-admin", "generation-editor"})
+
+_MACHINE_FORM_FIELD_LABELS = {
+    "machine_name": "Название агрегата",
+    "machine_number": "Номер агрегата",
+    "id_gen_company": "Организация-собственник",
+    "id_condition_type": "Состояние агрегата",
+    "id_energy_area": "Энергорайон агрегата",
+    "id_machine_type": "Тип агрегата",
+    "id_tes_machine_type": "Тип агрегата ТЭС",
+    "id_equipment_group": "Тип группы оборудования",
+    "id_fuel_equipment_group": "Группа оборудования",
+    "thermal_power_gcalh": "Тепловая мощность, Гкал/час",
+    "note": "Примечание",
+    "external_code": "external_code",
+    "fuel_so": "Топливо (по СО ЕЭС)",
+    "p_ust": "Руст",
+    "p_ogr": "Рогр",
+    "p_rasp": "Ррасп",
+    "year_name": "Название агрегата",
+    "tes_type": "Тип ТЭС",
+    "fuel_type": "Топливо",
+    "date_exploitation": "Дата ввода в эксплуатацию",
+    "date_exploitation_expected": "Ожидаемая дата ввода в эксплуатацию",
+    "date_commission_fact": "Фактическая дата ввода",
+    "date_joining_expected": "Ожидаемая дата присоединения",
+    "date_joining_fact": "Фактическая дата присоединения",
+    "date_detatchment_fact": "Фактическая дата отсоединения",
+    "date_decompressing_expected": "Ожидаемая дата вывода из эксплуатации",
+    "date_decompressing_fact": "Фактическая дата вывода из эксплуатации",
+    "date_modernization_power_change_expected": "Ожидаемая дата модернизации (изменение мощности)",
+    "date_modernization_no_power_change_expected": "Ожидаемая дата модернизации (без изменения мощности)",
+}
+
+_VALIDATION_MESSAGE_RU = {
+    "This field is required.": "Поле обязательно для заполнения.",
+    "Not a valid integer value.": "Укажите целое число.",
+    "Not a valid decimal value.": "Укажите число.",
+    "Number must be at least 0.": "Число должно быть не меньше 0.",
+    "Field cannot be longer than 80 characters.": "Слишком длинное значение (максимум 80 символов).",
+    "Field cannot be longer than 1024 characters.": "Слишком длинное значение (максимум 1024 символов).",
+}
+
+
+def _localize_validation_message(message: str) -> str:
+    text = str(message).strip()
+    return _VALIDATION_MESSAGE_RU.get(text, text)
+
+
+def _field_label_for_validation(form, field_key: str) -> str:
+    normalized_key = str(field_key).split("-")[-1]
+    if form is not None:
+        field = getattr(form, normalized_key, None)
+        label = getattr(getattr(field, "label", None), "text", None)
+        if label:
+            return str(label)
+    return _MACHINE_FORM_FIELD_LABELS.get(normalized_key, normalized_key)
+
+
+def _flatten_form_errors(errors, form=None):
+    if not errors:
+        return
+    if isinstance(errors, dict):
+        for key, value in errors.items():
+            if isinstance(value, list):
+                if not value:
+                    continue
+                if all(isinstance(item, str) for item in value):
+                    yield key, value, form
+                    continue
+                nested_field = getattr(form, key, None) if form is not None else None
+                for index, item in enumerate(value):
+                    if not isinstance(item, dict):
+                        continue
+                    sub_form = None
+                    if nested_field is not None and hasattr(nested_field, "entries"):
+                        entries = nested_field.entries
+                        if index < len(entries):
+                            sub_form = entries[index]
+                    yield from _flatten_form_errors(item, sub_form)
+            elif isinstance(value, dict):
+                yield from _flatten_form_errors(value, form)
+    elif isinstance(errors, list):
+        for item in errors:
+            if isinstance(item, dict):
+                yield from _flatten_form_errors(item, form)
+
+
+def _collect_form_validation_messages(*forms) -> list[str]:
+    messages: list[str] = []
+    seen: set[str] = set()
+    for form in forms:
+        if form is None or not getattr(form, "errors", None):
+            continue
+        for field_key, errs, label_form in _flatten_form_errors(form.errors, form):
+            label = _field_label_for_validation(label_form or form, field_key)
+            for err in errs:
+                text = f"{label}: {_localize_validation_message(err)}"
+                if text in seen:
+                    continue
+                seen.add(text)
+                messages.append(text)
+    return messages
+
+
+def _flash_form_validation_errors(*forms) -> None:
+    messages = _collect_form_validation_messages(*forms)
+    if not messages:
+        flash("Ошибка в заполнении формы.", "danger")
+        return
+    for message in messages:
+        flash(message, "danger")
 
 
 def _machine_post_role_flags() -> dict[str, bool]:
@@ -93,6 +207,106 @@ def _machine_external_code_conflict_id(machine, new_code: str) -> int | None:
     else:
         query = query.filter(Machine.database_version_id == version_id)
     return query.scalar()
+
+
+def _station_is_tes_or_ges(station) -> bool:
+    try:
+        st_name = (station.station_type.name or "").strip().lower() if station.station_type else ""
+    except Exception:
+        st_name = ""
+    return st_name in ("тэс", "гэс", "гаэс")
+
+
+def _sync_main_machine_name_from_year_names(
+    main_form,
+    advanced_form,
+    station,
+    year_features,
+    version_year_start,
+    version_year_end,
+) -> None:
+    """Для ТЭС/ГЭС/ГАЭС: собрать обязательное поле machine_name из таблицы названий по годам."""
+    if not _station_is_tes_or_ges(station):
+        return
+
+    entries = list(getattr(advanced_form.machine_names, "entries", []) or [])
+    if not entries:
+        return
+
+    base_name = None
+    for entry in entries:
+        value = (entry.year_name.data or "").strip()
+        if not value:
+            continue
+        year_num = entry.year.data
+        label = year_features.get(year_num) if year_num is not None else None
+        if label and "план" in str(label).strip().lower():
+            continue
+        base_name = value
+        break
+
+    if not base_name:
+        for entry in entries:
+            value = (entry.year_name.data or "").strip()
+            if value:
+                base_name = value
+                break
+
+    if not base_name:
+        return
+
+    plan_name = None
+    for entry in entries:
+        value = (entry.year_name.data or "").strip()
+        if not value:
+            continue
+        year_num = entry.year.data
+        label = year_features.get(year_num) if year_num is not None else None
+        if not label or "план" not in str(label).strip().lower():
+            continue
+        if value.lower() == base_name.lower():
+            continue
+        plan_name = value
+        break
+
+    main_form.machine_name.data = f"{base_name} ({plan_name})" if plan_name else base_name
+
+
+def _render_machine_details_form_response(
+    *,
+    main_form,
+    advanced_form,
+    pgu_machines_form,
+    station,
+    machine,
+    start_year,
+    end_year,
+    rounding_digits,
+    year_features,
+    all_documents,
+    fuel_can_create_machine,
+    pgu_machines=None,
+):
+    version_year_start, version_year_end = get_current_version_year_range_from_name()
+    return render_template(
+        "generation/stations/machine_details.html",
+        start_year=start_year,
+        end_year=end_year,
+        rounding_digits=rounding_digits,
+        main_form=main_form,
+        advanced_form=advanced_form,
+        pgu_machines_form=pgu_machines_form,
+        pgu_machines=pgu_machines if pgu_machines is not None else [],
+        station=station,
+        machine=machine,
+        year_features=year_features,
+        version_year_start=version_year_start,
+        version_year_end=version_year_end,
+        all_documents=all_documents,
+        machine_logs=[],
+        can_create_machine=fuel_can_create_machine,
+        can_save_machine_all_versions=False,
+    )
 
 
 @no_autoflush
@@ -119,7 +333,8 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         station_id,
         current_version_id,
         query_factory=lambda: Station.query.options(
-            db.joinedload(Station.regional_district)
+            db.joinedload(Station.regional_district),
+            db.joinedload(Station.regional_energy_system_obj),
         ).filter_by(id=station_id),
     )
     if not station:
@@ -389,10 +604,13 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
         "year_features": year_features,
         "pgu_machines_form": pgu_machines_form,
         "pgu_machines": pgu_machines,
-        "year_features": year_features,
         "version_year_start": version_year_start,
         "version_year_end": version_year_end,
         "all_documents": all_documents,
+        "can_create_machine": (
+            machine is None
+            and can_fuel_user_add_machine_to_station(current_user, station)
+        ),
     }
 
 
@@ -1338,7 +1556,12 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     _rpf = _machine_post_role_flags()
     can_edit_fuel = _rpf["can_edit_fuel"]
     can_edit_generation = _rpf["can_edit_generation"]
-    if not can_edit_fuel and not can_edit_generation:
+    fuel_can_create_machine = (
+        machine_id == 0
+        and can_fuel_user_add_machine_to_station(current_user, station)
+    )
+    can_edit_generation_effective = can_edit_generation or fuel_can_create_machine
+    if not can_edit_fuel and not can_edit_generation_effective:
         flash("Недостаточно прав для изменения данных агрегата.", "danger")
         return redirect(
             url_for(
@@ -1425,7 +1648,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
     pgu_ids_to_delete = request.form.getlist("pgu_machines_delete[]", type=int)
 
     # Удаляем ПГУ сразу, до валидации форм
-    if pgu_ids_to_delete and not can_edit_generation:
+    if pgu_ids_to_delete and not can_edit_generation_effective:
         flash("Недостаточно прав для удаления ПГУ агрегатов.", "danger")
         return redirect(
             url_for(
@@ -1477,10 +1700,20 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         pgu_machines_form.machine_number.data
     ])
 
+    version_year_start, version_year_end = get_current_version_year_range_from_name()
+    _sync_main_machine_name_from_year_names(
+        main_form,
+        advanced_form,
+        station,
+        year_features,
+        version_year_start,
+        version_year_end,
+    )
+
     main_valid = main_form.validate()
     adv_valid = advanced_form.validate()
     adv_valid = adv_valid and _validate_power_ranges(advanced_form, normalized)
-    pgu_valid = pgu_machines_form.validate() if (is_pgu_action and can_edit_generation) else True
+    pgu_valid = pgu_machines_form.validate() if (is_pgu_action and can_edit_generation_effective) else True
 
     if not (main_valid and adv_valid and pgu_valid):
         print("main_form.errors:", main_form.errors)
@@ -1488,33 +1721,34 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         print("pgu_machines_form.errors:", pgu_machines_form.errors)
         print(f"[DEBUG] Ошибка валидации: tes_types entries: {len(advanced_form.tes_types.entries)}")
         print(f"[DEBUG] Ошибка валидации: fuels entries: {len(advanced_form.fuels.entries)}")
-        flash(
-            "Ошибка в заполнении формы.",
-            "danger",
+        _flash_form_validation_errors(
+            main_form,
+            advanced_form,
+            pgu_machines_form if is_pgu_action else None,
         )
         # Оптимизированная загрузка документов - только id и name с фильтрацией по версии
         all_documents = choices_cache.get_choices(Document, Document.name)
         # Преобразуем обратно в объекты для совместимости с шаблоном
         all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
         _fill_fuel_equipment_group_choices(main_form, station.id, machine)
-        return render_template(
-            "generation/stations/machine_details.html",
-            start_year=start_year,
-            end_year=end_year,
-            rounding_digits=rounding_digits,
+        return _render_machine_details_form_response(
             main_form=main_form,
             advanced_form=advanced_form,
             pgu_machines_form=pgu_machines_form,
             station=station,
             machine=machine,
+            start_year=start_year,
+            end_year=end_year,
+            rounding_digits=rounding_digits,
             year_features=year_features,
             all_documents=all_documents,
+            fuel_can_create_machine=fuel_can_create_machine,
         )
 
     try:
         quick_fix_machine_details_related_seqs()
 
-        if is_new and not can_edit_generation:
+        if is_new and not can_edit_generation_effective:
             flash("Создание агрегата доступно только ролям модуля «Генерация».", "danger")
             return redirect(
                 url_for(
@@ -1601,7 +1835,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                 end_year=end_year,
                 redirect_args=redirect_args,
                 can_edit_fuel=can_edit_fuel,
-                can_edit_generation=can_edit_generation,
+                can_edit_generation=can_edit_generation_effective,
                 is_pgu_action=is_pgu_action,
                 year_features=year_features,
                 anchor_station=station,
@@ -1619,14 +1853,14 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             start_year=start_year,
             end_year=end_year,
             can_edit_fuel=can_edit_fuel,
-            can_edit_generation=can_edit_generation,
+            can_edit_generation=can_edit_generation_effective,
             is_pgu_action=is_pgu_action,
             year_features=year_features,
             was_new=is_new,
         )
 
         recalculate_station_power(station, start_year, end_year)
-        if can_edit_generation:
+        if can_edit_generation_effective:
             recalculate_machine_years_by_p_ust(machine, changes, year_features)
 
         _commit_with_retry()
@@ -1704,18 +1938,18 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
         # Преобразуем обратно в объекты для совместимости с шаблоном
         all_documents = [Document(id=doc_id, name=doc_name) for doc_id, doc_name in all_documents]
         _fill_fuel_equipment_group_choices(main_form, station.id, machine)
-        return render_template(
-            "generation/stations/machine_details.html",
-            start_year=start_year,
-            end_year=end_year,
-            rounding_digits=rounding_digits,
+        return _render_machine_details_form_response(
             main_form=main_form,
             advanced_form=advanced_form,
             pgu_machines_form=pgu_machines_form,
             station=station,
             machine=machine,
+            start_year=start_year,
+            end_year=end_year,
+            rounding_digits=rounding_digits,
             year_features=year_features,
             all_documents=all_documents,
+            fuel_can_create_machine=fuel_can_create_machine,
         )
 
 
@@ -1894,16 +2128,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
             pgu_form.machine_name.data = "Без названия"
 
     if not pgu_form.validate():
-        err_msgs = []
-        _field_labels = {"machine_name": "Название агрегата", "p_ust": "Мощность"}
-        for field_name, errors in pgu_form.errors.items():
-            if errors:
-                label = _field_labels.get(field_name.split("-")[-1], field_name)
-                err_msgs.append(f"{label}: {'; '.join(str(e) for e in errors)}")
-        flash(
-            "Ошибка в заполнении формы." + (" " + err_msgs[0] if err_msgs else ""),
-            "danger",
-        )
+        _flash_form_validation_errors(pgu_form)
         _, version_year_end = get_current_version_year_range_from_name()
         year_features = get_year_feature_dict()
         # Заполняем pgu_machine_names и powers при ошибке валидации, если пусто
@@ -2335,7 +2560,7 @@ def _fill_main_form_choices(form):
     # Добавляем дефолтное значение "не указано", чтобы оно отображалось в select
     # и могло выступать "пустым" значением до обязательного выбора пользователем.
     form.id_gen_company.choices = choices_cache.get_choices_with_default(GenCompany, GenCompany.id)
-    form.id_energy_area.choices = choices_cache.get_choices(EnergyArea, EnergyArea.id)
+    form.id_energy_area.choices = choices_cache.get_choices_with_default(EnergyArea, EnergyArea.id)
     form.id_machine_type.choices = choices_cache.get_choices(MachineType, MachineType.id)
     form.id_tes_machine_type.choices = choices_cache.get_choices(TesMachineType, TesMachineType.id)
     form.id_equipment_group.choices = choices_cache.get_choices_with_default(EquipmentGroupType, EquipmentGroupType.id)
@@ -2345,6 +2570,8 @@ def _fill_main_form_choices(form):
         form.id_condition_type.data = choices_cache.EMPTY_VALUE_ID
     if form.id_equipment_group.data is None:
         form.id_equipment_group.data = choices_cache.EMPTY_VALUE_ID
+    if form.id_energy_area.data is None:
+        form.id_energy_area.data = choices_cache.EMPTY_VALUE_ID
 
 
 def _fill_advanced_form_choices(form):

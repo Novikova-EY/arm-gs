@@ -45,6 +45,9 @@ from app.refdata.models.refdata_for_stations.technologies.technology_availabilit
 from app.refdata.models.refdata_for_stations.technologies.technology_type_model import (
     TechnologyType,
 )
+from app.refdata.models.electricity_production_cost.electricity_production_cost_type_model import (
+    ElectricityProductionCostType,
+)
 from app.refdata.models.economic_activity.economic_activity_type_model import (
     EconomicActivityType,
 )
@@ -336,6 +339,13 @@ def _technology_type_payload(tech_type: TechnologyType) -> dict[str, Any]:
     }
 
 
+def _electricity_production_cost_type_payload(item: ElectricityProductionCostType) -> dict[str, Any]:
+    return {
+        "name": item.name,
+        "cost_code": item.cost_code,
+    }
+
+
 def _economic_activity_type_payload(activity_type: EconomicActivityType) -> dict[str, Any]:
     return {
         "name": activity_type.name,
@@ -401,6 +411,10 @@ REFDATA_HISTORY_MAPPINGS = {
     TesMachineType: ("tes_machine_type", _tes_machine_type_payload),
     PGUTesMachineType: ("pgu_tes_machine_type", _pgu_tes_machine_type_payload),
     TechnologyType: ("technology_type", _technology_type_payload),
+    ElectricityProductionCostType: (
+        "electricity_production_cost_type",
+        _electricity_production_cost_type_payload,
+    ),
     EconomicActivityType: ("economic_activity_type", _economic_activity_type_payload),
     TechnologyAvailability: ("technology_availability", _technology_availability_payload),
     EquipmentGroupType: ("equipment_group", _equipment_group_payload),

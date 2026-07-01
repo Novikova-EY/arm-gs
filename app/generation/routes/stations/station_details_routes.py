@@ -68,9 +68,25 @@ def _save_station_meta_from_form(
     *,
     can_edit: bool,
     can_edit_fuel: bool,
+    can_edit_fuel_dz: bool = False,
 ):
     """Сохраняет поля карточки станции с учётом раздельных прав (генерация / топливо)."""
     can_edit_external_code = current_user.is_authenticated and getattr(current_user, "is_admin", False)
+
+    if can_edit_fuel_dz and not can_edit:
+        form.process(formdata=request.form)
+        if not form.validate():
+            print("Ошибки в form (station meta fuel dz):", form.errors)
+            return []
+        return update_station_from_form_service(
+            user,
+            station,
+            form,
+            regional_district_list,
+            can_edit_generation=False,
+            can_edit_fuel=True,
+            can_edit_fuel_dz=True,
+        )
 
     if can_edit_fuel and not can_edit:
         if "station_sign" not in request.form and not (
@@ -206,6 +222,12 @@ from app.generation.services.station_services.station_services import (
     _apply_machine_display_names,
     _apply_machine_gen_companies_for_version,
     get_gen_company_choices_for_version,
+)
+from app.generation.services.station_services.station_access_services import (
+    can_fuel_user_add_machine_to_station,
+    can_fuel_user_edit_decentralized_station_details,
+    get_decentralized_zone_energy_system_type_name,
+    is_decentralized_zone_station,
 )
 from app.generation.services.station_services.import_station_services import (
     import_station_list_from_excel, 
@@ -661,6 +683,15 @@ def station_details(station_id):
     can_edit_fuel = current_user.is_authenticated and any(
         role in current_user.role_names for role in fuel_edit_roles
     )
+    can_add_machine = can_fuel_user_add_machine_to_station(current_user, station)
+    can_edit_fuel_dz = can_fuel_user_edit_decentralized_station_details(current_user, station)
+    can_edit_station_energy = can_edit or can_edit_fuel_dz
+    is_station_decentralized_zone = is_decentralized_zone_station(station)
+    decentralized_zone_energy_system_type_name = (
+        get_decentralized_zone_energy_system_type_name(station_version_id)
+        if is_station_decentralized_zone
+        else None
+    )
 
     # Получение параметров запроса с дефолтными значениями
     start_year = request.args.get("start_year", get_filter_start_year(), type=int)
@@ -783,11 +814,14 @@ def station_details(station_id):
     res_auto_map = {}
     res_to_ues = get_res_to_ues_id_map()
     res_to_est = get_res_to_est_id_map()
-    for res_id, _res_name in regional_energy_system_choices:
+    dz_energy_system_type_name = get_decentralized_zone_energy_system_type_name(station_version_id)
+    for res_id, res_name in regional_energy_system_choices:
         ues_id = res_to_ues.get(res_id)
         est_id = res_to_est.get(res_id)
         ues_name = union_energy_system_names.get(ues_id, "Нет данных") if ues_id else "Нет данных"
         est_name = energy_system_type_names.get(est_id, "Нет данных") if est_id else "Нет данных"
+        if isinstance(res_name, str) and res_name.strip().lower() == "не указано":
+            est_name = dz_energy_system_type_name
         res_auto_map[res_id] = {
             "union_energy_system": ues_name,
             "energy_system_type": est_name,
@@ -920,6 +954,7 @@ def station_details(station_id):
                         regional_district_list,
                         can_edit=can_edit,
                         can_edit_fuel=can_edit_fuel,
+                        can_edit_fuel_dz=can_edit_fuel_dz,
                     )
                     if station_changes:
                         flash("Изменения в  электростанции успешно обновлены!", "success")
@@ -966,7 +1001,7 @@ def station_details(station_id):
 
                         traceback.print_exc()
                         flash(f"Ошибка при сохранении выработки/потребления: {e}", "danger")
-            elif can_edit and is_station_energy_form:
+            elif can_edit_station_energy and is_station_energy_form:
                 try:
                     gen_changes = save_station_energy_generation_service(
                         user,
@@ -1138,7 +1173,7 @@ def station_details(station_id):
                 return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
 
         elif is_station_energy_form:
-            if not can_edit:
+            if not can_edit_station_energy:
                 flash("Недостаточно прав для сохранения выработки электроэнергии.", "danger")
                 return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
             form_version = request.form.get("version", type=int)
@@ -1236,6 +1271,7 @@ def station_details(station_id):
                     regional_district_list,
                     can_edit=can_edit,
                     can_edit_fuel=can_edit_fuel,
+                    can_edit_fuel_dz=can_edit_fuel_dz,
                 )
                 if changes:
                     flash("Изменения в  электростанции успешно обновлены!", "success")
@@ -1370,6 +1406,11 @@ def station_details(station_id):
         station_logs=station_logs_formatted,
         can_edit=can_edit,
         can_edit_fuel=can_edit_fuel,
+        can_edit_fuel_dz=can_edit_fuel_dz,
+        can_edit_station_energy=can_edit_station_energy,
+        can_add_machine=can_add_machine,
+        is_station_decentralized_zone=is_station_decentralized_zone,
+        decentralized_zone_energy_system_type_name=decentralized_zone_energy_system_type_name,
         can_save_machines_all_versions=can_save_machines_all_versions,
         can_save_equipment_group_all_versions=can_save_equipment_group_all_versions,
         can_add_equipment_group=can_add_equipment_group,
@@ -1775,6 +1816,9 @@ def station_details_station_energy_row(station_id):
     if not station:
         abort(404)
 
+    can_edit_fuel_dz = can_fuel_user_edit_decentralized_station_details(current_user, station)
+    can_edit_energy = can_edit or can_edit_fuel_dz
+
     station.station_energy_by_year = station_annual_energy_by_year(
         station.id, start_year, end_year, station_version_id
     )
@@ -1789,11 +1833,11 @@ def station_details_station_energy_row(station_id):
         station=station,
         start_year=start_year,
         end_year=end_year,
-        can_edit=can_edit,
+        can_edit=can_edit_energy,
         format_station_energy_gen_display=format_station_energy_gen_display,
     )
     resp = make_response(html)
-    resp.headers["Cache-Control"] = "no-store" if can_edit else "public, max-age=120"
+    resp.headers["Cache-Control"] = "no-store" if can_edit_energy else "public, max-age=120"
     return resp
 
 

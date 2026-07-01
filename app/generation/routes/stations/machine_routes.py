@@ -320,6 +320,7 @@ def machine_details(station_id, machine_id):
             all_documents=result['all_documents'],
             fallback_gen_company=result.get('fallback_gen_company'),
             can_save_machine_all_versions=can_save_machine_all_versions,
+            can_create_machine=result.get('can_create_machine', False),
         )
         render_elapsed = time.perf_counter() - render_start
         total_elapsed = time.perf_counter() - start_time

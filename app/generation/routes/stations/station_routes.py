@@ -51,6 +51,13 @@ from app.common.services.get_services.years.years_get_services import (
 from app.common.services.get_services.territories.regional_district_get_services import (
     get_regional_district_list_full,
 )
+from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
+    get_regional_energy_system_choices,
+)
+from app.generation.services.station_services.station_access_services import (
+    find_choice_id_by_label,
+    is_fuel_decentralized_station_creator,
+)
 from app.generation.routes.stations.station_details_routes import _render_machines_tbody_cached
 
 # Логирование
@@ -59,6 +66,18 @@ from app.generation.services.station_services.generation_year_filter_services im
     STATION_LIST_FILTERS_SESSION_KEY,
     resolve_generation_year_filters_for_request,
 )
+
+_STATION_ADD_EDIT_ROLES = (
+    "admin",
+    "generation-admin",
+    "generation-editor",
+    "fuel-admin",
+    "fuel-editor",
+)
+
+
+def _find_choice_id_by_label(choices, label: str = "не указано"):
+    return find_choice_id_by_label(choices, label)
 
 
 def _serialize_request_args_for_session(args):
@@ -221,11 +240,19 @@ def station_list():
 @station_bp.route('/stations/add', methods=['GET', 'POST'])
 @login_required
 def add_station():
-    edit_roles = ['admin', 'generation-admin', 'generation-editor']
-    can_edit = current_user.is_authenticated and any(role in current_user.role_names for role in edit_roles)
+    can_edit = current_user.is_authenticated and any(
+        role in current_user.role_names for role in _STATION_ADD_EDIT_ROLES
+    )
     if not can_edit:
         flash("Недостаточно прав для добавления  электростанции.", "warning")
         return redirect(url_for("station_bp.station_list"))
+
+    is_fuel_decentralized_creator = is_fuel_decentralized_station_creator(current_user)
+    station_add_title = (
+        "Создание новой  электростанции в децентрализованной зоне энергосистемы России"
+        if is_fuel_decentralized_creator
+        else "Создание новой  электростанции"
+    )
 
     user = session.get('username', 'Неизвестный пользователь')
     log_to_db(user, "Открыта форма создания новой  электростанции")
@@ -242,19 +269,13 @@ def add_station():
 
     # Устанавливаем значение по умолчанию на вариант "не указано", если он есть
     if form.id_regional_district.data in (None, ""):
-        not_specified_rd_id = next(
-            (
-                choice[0]
-                for choice in regional_district_list
-                if isinstance(choice, (list, tuple))
-                and len(choice) >= 2
-                and isinstance(choice[1], str)
-                and choice[1].strip().lower() == "не указано"
-            ),
-            None,
-        )
+        not_specified_rd_id = _find_choice_id_by_label(regional_district_list)
         if not_specified_rd_id is not None:
             form.id_regional_district.data = not_specified_rd_id
+
+    default_res_id = None
+    if is_fuel_decentralized_creator:
+        default_res_id = _find_choice_id_by_label(get_regional_energy_system_choices())
 
     if form.validate_on_submit():
         force_create = request.form.get("confirm_duplicate") in ("1", "true", "True")
@@ -264,6 +285,7 @@ def add_station():
                 name=form.name.data,
                 id_regional_district=form.id_regional_district.data,
                 id_station_type=form.id_station_type.data,
+                id_regional_energy_system=default_res_id if is_fuel_decentralized_creator else None,
                 force_create=force_create,
             )
             flash("Новая станция успешно создана!", "success")
@@ -274,12 +296,17 @@ def add_station():
                     "generation/stations/station_add.html",
                     form=form,
                     show_duplicate_confirm=True,
+                    station_add_title=station_add_title,
                 )
             flash(str(e), "danger")
         except Exception as e:
             flash(f"Ошибка при создании электростанции: {str(e)}", "danger")
 
-    return render_template("generation/stations/station_add.html", form=form)
+    return render_template(
+        "generation/stations/station_add.html",
+        form=form,
+        station_add_title=station_add_title,
+    )
 
 
 @station_bp.route("/get_energy_system_data/<int:regional_district_id>", methods=["GET"])

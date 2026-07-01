@@ -5,7 +5,7 @@ Station model (Электростанция).
 - Добавлены серверные таймстемпы (UTC).
 """
 import uuid
-from sqlalchemy import event, text as sql_text
+from sqlalchemy import event, text as sql_text, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.schema import Index
 from app.extensions import db
@@ -25,6 +25,11 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         Index('ix_station_external_code', 'external_code'),
         Index('ix_station_id_station_group', 'id_station_group'),
         Index('ix_station_id_station_type', 'id_station_type'),
+        UniqueConstraint(
+            'database_version_id',
+            'kto',
+            name='uq_gs_gen_stations_ver_kto',
+        ),
         {"schema": SCHEMA_GENERATION},
     )
 
@@ -123,7 +128,7 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     )
     
     # Прочее
-    kto = db.Column(db.String(80), unique=True, nullable=True)
+    kto = db.Column(db.String(80), nullable=True)
     location = db.Column(db.String(255), unique=True, nullable=True)
     note = db.Column(db.String(1000), nullable=True)
     

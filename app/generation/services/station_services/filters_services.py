@@ -10,6 +10,7 @@ from sqlalchemy.orm import contains_eager, joinedload, selectinload
 from app.common.services.database_version_filter import filter_by_db_version
 
 from app.generation.models.station.station_model import Station
+from app.generation.models.station.station_constants import STATION_SIGN_FILTER_UNSPECIFIED
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_fuel_model import MachineFuel
@@ -239,6 +240,7 @@ def extract_filters_from_args(args):
         "note_filter": args.get("note_filter", "").strip(),
         "equipment_group_name_filter": args.get("equipment_group_name_filter", "").strip(),
         "station_type_filter": args.getlist("station_type_filter", type=int),
+        "station_sign_filter": args.getlist("station_sign_filter"),
         "fuel_type_filter": _fuel_type_filter,
         "tes_type_filter": args.getlist("tes_type_filter", type=int),
         "tes_machine_type_filter": args.getlist("tes_machine_type_filter", type=int),
@@ -425,6 +427,60 @@ def build_relabing_outcome_filter(machine_cls, filters):
             )
         )
     return or_(*parts) if parts else None
+
+
+def build_station_sign_sql_filter(filters):
+    """Фильтр по Station.station_sign; __unspecified__ — пустое значение."""
+    raw = filters.get("station_sign_filter") or []
+    if not raw:
+        return None
+
+    specifics = [
+        str(value).strip()
+        for value in raw
+        if str(value).strip() and str(value).strip() != STATION_SIGN_FILTER_UNSPECIFIED
+    ]
+    include_unspecified = STATION_SIGN_FILTER_UNSPECIFIED in raw
+
+    parts = []
+    if specifics:
+        parts.append(Station.station_sign.in_(specifics))
+    if include_unspecified:
+        parts.append(
+            or_(
+                Station.station_sign.is_(None),
+                func.trim(Station.station_sign) == "",
+            )
+        )
+    return or_(*parts) if parts else None
+
+
+def apply_station_sign_sql_filter(query, filters):
+    condition = build_station_sign_sql_filter(filters)
+    if condition is not None:
+        return query.filter(condition)
+    return query
+
+
+def get_station_sign_filter_choices() -> list[tuple[str, str]]:
+    """Уникальные значения признака эл.ст. в текущей версии БД + «не указано»."""
+    q = db.session.query(Station.station_sign).distinct()
+    q = filter_by_db_version(q, Station)
+
+    choices: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    for (sign,) in q.all():
+        if sign is None or not str(sign).strip():
+            continue
+        normalized = str(sign).strip()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        choices.append((normalized, normalized))
+
+    choices.sort(key=lambda item: item[1].casefold())
+    return [(STATION_SIGN_FILTER_UNSPECIFIED, "не указано"), *choices]
 
 
 def build_date_filters_for_pgu(pgu_cls, filters):
@@ -1039,6 +1095,7 @@ def has_any_filters(args):
         args.get('equipment_group_name_filter'),
         # Фильтры по типам
         args.getlist('station_type_filter'),
+        args.getlist('station_sign_filter'),
         args.getlist('tes_type_filter'),
         args.getlist('tes_machine_type_filter'),
         args.getlist('fuel_type_filter'),

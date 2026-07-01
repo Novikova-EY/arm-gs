@@ -7,7 +7,7 @@
 {% set _list_endpoint = station_list_endpoint | default('station_bp.station_list') %}
 {% set station_list_meta_colspan = 15 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 %}
 {% set table_total_colspan = station_list_meta_colspan + 4 + 2 * (end_year - start_year) %}
-{% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
+{% set edit_roles = ['admin', 'generation-admin', 'generation-editor', 'fuel-admin', 'fuel-editor'] %}
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 
 <!-- Индикатор загрузки для per_page=all -->
@@ -658,8 +658,9 @@
             <!-- Данные таблицы-->
             <tbody>
               
-                {% if sorted_energy_system_type_ids and stations_grouped and stations_grouped|length > 0 %}
+                {% if stations_grouped and stations_grouped|length > 0 %}
                 {% for es_type_id in sorted_energy_system_type_ids %}
+                    {% if not decentralized_zone_est_id or es_type_id|string != decentralized_zone_est_id|string %}
                     {% set es_type_group = stations_grouped[es_type_id] %}
             
                     {# Заголовок типа энергосистемы - показываем только для per_page=all или если это первое вхождение #}
@@ -766,6 +767,7 @@
                         {% include 'generation/stations/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
                     {% endif %}
             
+                    {% endif %}
                 {% endfor %}
                 {% else %}
                     {% for station in stations %}
@@ -774,11 +776,14 @@
                     {% endfor %}
                 {% endif %}
             
-                {# Итог по России #}
+                {# Итог по России (без децентрализованной зоны) #}
                 {% set show_totals = (should_show_totals|default({})).get('total') %}
                 {% if show_totals %}
                     {% include 'generation/stations/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
+
+                {# Децентрализованная зона — после ЕЭС/ТИТЭС и итога по России #}
+                {% include 'generation/stations/aggregated_data/decentralized_zone/decentralized_zone_stations_block.html' %}
             </tbody>
             
         </table>

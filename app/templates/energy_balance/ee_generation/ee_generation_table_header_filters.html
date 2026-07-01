@@ -41,6 +41,49 @@
     </div>
 </th>
 
+<!-- Признак эл.ст. -->
+<th style="width: 80px; text-align: center;">
+    <div class="d-flex align-items-center justify-content-center gap-1">
+        <div class="dropdown">
+            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
+                <strong>Признак <br>эл.ст.</strong>
+                {% if request.args.getlist('station_sign_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+            </button>
+            <ul class="dropdown-menu w-100">
+                {% for sign_value, sign_label in station_sign_filter_choices if sign_label|lower == 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="station_sign_filter"
+                                value="{{ sign_value }}"
+                                {% if sign_value in station_sign_filter %}checked{% endif %}>
+                            {{ sign_label }}
+                        </label>
+                    </li>
+                {% endfor %}
+                {% for sign_value, sign_label in station_sign_filter_choices if sign_label|lower != 'не указано' %}
+                    <li>
+                        <label class="dropdown-item">
+                            <input type="checkbox" name="station_sign_filter"
+                                value="{{ sign_value }}"
+                                {% if sign_value in station_sign_filter %}checked{% endif %}>
+                            {{ sign_label }}
+                        </label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if request.args.getlist('station_sign_filter') %}
+        <button class="btn btn-sm btn-outline-danger filter-clear-btn"
+                type="button"
+                data-filter-name="station_sign_filter"
+                title="Сбросить фильтр"
+                style="padding: 2px 6px; line-height: 1;">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        {% endif %}
+    </div>
+</th>
+
 <!-- Тип ТЭС -->
 <th style="width: 80px; text-align: center;">
     <div class="d-flex align-items-center justify-content-center gap-1">

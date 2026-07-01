@@ -22,6 +22,13 @@ from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
 from app.generation.services.station_services.filters_services import (
     build_machine_note_search_condition,
 )
+from app.generation.services.station_services.station_access_services import (
+    DECENTRALIZED_ZONE_SYNTHETIC_RES_ID,
+    DECENTRALIZED_ZONE_SYNTHETIC_UES_ID,
+    get_decentralized_zone_energy_system_type_id,
+    get_decentralized_zone_energy_system_type_name,
+    is_decentralized_zone_station,
+)
 
 
 def is_current_version(entity) -> bool:
@@ -120,6 +127,49 @@ def build_hierarchy_structure(stations: list[Station], include_names=False):
             print(f"[DEBUG] Станция {station.id} ({station.name}): нет regional_district")
             skipped_count += 1
             skipped_no_rd_or_res += 1
+            continue
+
+        # ----- Децентрализованная зона: отдельная ветка иерархии -----
+        if is_decentralized_zone_station(station):
+            dz_est_id = get_decentralized_zone_energy_system_type_id()
+            if dz_est_id is None:
+                print(
+                    f"[DEBUG] Станция {station.id} ({station.name}): "
+                    "децентрализованная зона, но тип Часть ЭС не найден в справочнике"
+                )
+                skipped_count += 1
+                skipped_no_ues += 1
+                continue
+
+            est_id = dz_est_id
+            ues_id = DECENTRALIZED_ZONE_SYNTHETIC_UES_ID
+            res_id = DECENTRALIZED_ZONE_SYNTHETIC_RES_ID
+            rd_id = station.id_regional_district
+
+            if station.id_energy_unit is not None:
+                eu_id = station.id_energy_unit
+                eu_name = station.energy_unit.name if station.energy_unit else 0
+            else:
+                eu_id = 0
+                eu_name = "без энергоузла"
+
+            station_key = (station.id, est_id, ues_id, res_id, rd_id, eu_id)
+            if station_key in added_stations:
+                skipped_count += 1
+                skipped_duplicates += 1
+                continue
+
+            added_stations.add(station_key)
+            grouped_data[est_id][ues_id][res_id][rd_id][eu_id].append(station)
+
+            if include_names:
+                est_names[est_id] = get_decentralized_zone_energy_system_type_name(
+                    getattr(station, "database_version_id", None)
+                )
+                ues_names[ues_id] = ""
+                res_names[res_id] = ""
+                rd_names[rd_id] = station.regional_district.name
+                eu_names[eu_id] = eu_name
             continue
 
         # ----- Определяем РЭС и ОЭС -----

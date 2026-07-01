@@ -40,7 +40,8 @@ def test_export_ee_generation_empty_hierarchy():
             export_verification=False,
         )
     rows = _read_sheet(stream)
-    assert rows[0][0] == "Признак эл.ст."
+    assert rows[0][0] == "КТО"
+    assert rows[0][1] == "Электростанция"
     assert rows[1][0] == "Электростанции не найдены"
 
 
@@ -67,10 +68,9 @@ def test_export_ee_generation_with_station_row():
                                                 "eu_name": "—",
                                                 "sign_groups": [
                                                     {
-                                                        "sign": "",
-                                                        "merge_station_names": False,
                                                         "stations": [
                                                             {
+                                                                "kto_display": "310340",
                                                                 "station_name": "ТЭЦ-1",
                                                                 "station_type_name": "ТЭЦ",
                                                                 "tes_types": "ТЭС",

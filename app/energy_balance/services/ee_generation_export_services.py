@@ -29,9 +29,10 @@ FILL_TOTAL_RU = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type=
 FILL_VERIFY = PatternFill(start_color="E2ECF7", end_color="E2ECF7", fill_type="solid")
 
 STATIC_COLUMNS = [
-    "Признак эл.ст.",
+    "КТО",
     "Электростанция",
     "Тип электростанции",
+    "Признак эл.ст.",
     "Тип ТЭС",
     "Тип агрегата ТЭС",
     "Основное топливо",
@@ -77,7 +78,7 @@ def _write_total_row(
     *,
     fill=None,
 ) -> int:
-    values = ["", label, "", "", "", "", ""]
+    values = ["", label, "", "", "", "", "", ""]
     values.extend(
         _format_period_value(period_totals.get(period_key), rounding_digits)
         for period_key, _label in period_columns
@@ -94,7 +95,7 @@ def _write_verification_row(
     period_totals: dict,
     rounding_digits: int,
 ) -> int:
-    values = ["", label, "", "", "", "", ""]
+    values = ["", label, "", "", "", "", "", ""]
     red_cols: set[int] = set()
     for idx, (period_key, _label) in enumerate(period_columns, start=8):
         val = period_totals.get(period_key)
@@ -113,34 +114,23 @@ def _write_sign_group_rows(
     rounding_digits: int,
 ) -> int:
     stations = sign_group.get("stations") or []
-    merge_names = bool(sign_group.get("merge_station_names"))
-    sign_label = sign_group.get("sign") or ""
-    group_periods = sign_group.get("periods") or {}
 
-    for i, station_row in enumerate(stations):
+    for station_row in stations:
+        station_periods = station_row.get("periods") or {}
         values = [
-            sign_label if i == 0 else "",
+            station_row.get("kto_display") or "—",
             station_row.get("station_name") or "—",
             station_row.get("station_type_name") or "—",
+            station_row.get("station_sign_display") or "—",
             station_row.get("tes_types") or "—",
             station_row.get("tes_machine_type") or "—",
             station_row.get("primary_fuel") or "—",
             station_row.get("fuel_so") or "—",
         ]
-        if merge_names:
-            if i == 0:
-                values.extend(
-                    _format_period_value(group_periods.get(period_key), rounding_digits)
-                    for period_key, _label in period_columns
-                )
-            else:
-                values.extend("" for _ in period_columns)
-        else:
-            station_periods = station_row.get("periods") or {}
-            values.extend(
-                _format_period_value(station_periods.get(period_key), rounding_digits)
-                for period_key, _label in period_columns
-            )
+        values.extend(
+            _format_period_value(station_periods.get(period_key), rounding_digits)
+            for period_key, _label in period_columns
+        )
         _write_data_row(ws, row_idx, values)
         row_idx += 1
     return row_idx
@@ -227,8 +217,13 @@ def export_ee_generation_to_excel(
                 )
                 show_rd_level = res_show_rd_level_map.get(res_id, False)
                 for rd_block in res_block.get("rd_list") or []:
+                    rd_id = rd_block.get("rd_id")
                     rd_name = rd_block.get("rd_name") or "—"
-                    if show_rd_level and rd_name.lower() != "не указано":
+                    show_rd_totals = (
+                        show_rd_level
+                        and should_show_totals.get("regional_districts", {}).get(rd_id)
+                    )
+                    if show_rd_level and rd_name.lower() != "не указано" and show_rd_totals:
                         row_idx = write_merged_section_row(
                             ws, row_idx, num_cols, rd_name, FILL_STATION_SUMMARY
                         )
@@ -236,7 +231,7 @@ def export_ee_generation_to_excel(
                         eu_id = eu_block.get("eu_id")
                         eu_name = eu_block.get("eu_name") or "—"
                         skip_eu = (not eu_id) or eu_name.lower() in ("не указано", "без энергоузла")
-                        if not skip_eu:
+                        if not skip_eu and eu_name.lower() != "не указано":
                             row_idx = write_merged_section_row(
                                 ws, row_idx, num_cols, eu_name, FILL_EU
                             )
@@ -255,12 +250,7 @@ def export_ee_generation_to_excel(
                                 rounding_digits,
                                 fill=FILL_EU,
                             )
-                    rd_id = rd_block.get("rd_id")
-                    if (
-                        show_rd_level
-                        and should_show_totals.get("regional_districts", {}).get(rd_id)
-                        and rd_name.lower() != "не указано"
-                    ):
+                    if show_rd_totals and rd_name.lower() != "не указано":
                         row_idx = _write_total_row(
                             ws,
                             row_idx,

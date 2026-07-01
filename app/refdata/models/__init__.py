@@ -28,6 +28,7 @@ from app.refdata.models.refdata_for_stations.machine.pgu_tes_machine_type_model 
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
 from app.refdata.models.economic_activity.economic_activity_type_model import EconomicActivityType
+from app.refdata.models.electricity_production_cost.electricity_production_cost_type_model import ElectricityProductionCostType
 
 # --- Годы ---
 from app.refdata.models.years.year_model import Year

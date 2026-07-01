@@ -9,6 +9,13 @@ def aggregate_all_at_once(rows):
     Выполняет все агрегации за один проход по данным.
     Возвращает словарь со всеми агрегированными данными.
     """
+    from app.generation.services.station_services.station_access_services import (
+        get_decentralized_zone_energy_system_type_id,
+        get_decentralized_zone_res_ids,
+    )
+
+    dz_res_ids = get_decentralized_zone_res_ids()
+    dz_est_id = get_decentralized_zone_energy_system_type_id()
     
     # Инициализация структур данных для всех агрегаций
     # Energy Units
@@ -184,6 +191,67 @@ def aggregate_all_at_once(rows):
     test_tes_machine_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     test_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     test_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+
+    # Децентрализованная зона считается отдельно от обычной иерархии и России.
+    dz_total_p_ust = defaultdict(Decimal)
+    dz_total_p_ogr = defaultdict(Decimal)
+    dz_total_p_rasp = defaultdict(Decimal)
+
+    dz_rd_p_ust = defaultdict(lambda: defaultdict(Decimal))
+    dz_rd_p_ogr = defaultdict(lambda: defaultdict(Decimal))
+    dz_rd_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+
+    dz_fd_p_ust = defaultdict(lambda: defaultdict(Decimal))
+    dz_fd_p_ogr = defaultdict(lambda: defaultdict(Decimal))
+    dz_fd_p_rasp = defaultdict(lambda: defaultdict(Decimal))
+
+    dz_total_st_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_total_st_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_total_st_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_total_tes_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_total_tes_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_total_tes_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_total_tes_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_total_tes_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_total_tes_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_total_tes_machine_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_total_tes_machine_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_total_tes_machine_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_total_tes_machine_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    dz_total_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    dz_total_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+
+    dz_rd_st_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_rd_st_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_rd_st_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_rd_tes_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_rd_tes_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_rd_tes_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_rd_tes_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_rd_tes_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_rd_tes_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_rd_tes_machine_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_rd_tes_machine_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_rd_tes_machine_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_rd_tes_machine_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    dz_rd_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    dz_rd_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+
+    dz_fd_st_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_fd_st_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_fd_st_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_fd_tes_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_fd_tes_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_fd_tes_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))
+    dz_fd_tes_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_fd_tes_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_fd_tes_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_fd_tes_machine_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_fd_tes_machine_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_fd_tes_machine_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal))))
+    dz_fd_tes_machine_fuel_p_ust = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    dz_fd_tes_machine_fuel_p_ogr = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
+    dz_fd_tes_machine_fuel_p_rasp = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(Decimal)))))
     
     # Synchronous Areas
     sa_p_ust = defaultdict(lambda: defaultdict(Decimal))
@@ -246,7 +314,9 @@ def aggregate_all_at_once(rows):
         fd = getattr(row, "federal_district_id", None)
         res = row.regional_energy_system_id
         ues = row.union_energy_system_id
-        est = row.energy_system_type_id
+        est_row = row.energy_system_type_id
+        is_dz = res in dz_res_ids
+        est = dz_est_id if (is_dz and dz_est_id is not None) else est_row
         sa = getattr(row, 'synchronous_area_id', None)  # Синхронная зона может быть None
         st = row.station_type_id
         tes_type = row.tes_type_id
@@ -259,66 +329,126 @@ def aggregate_all_at_once(rows):
         p_ogr_val = row.p_ogr or Decimal(0)
         p_rasp_val = row.p_rasp or Decimal(0)
         
-        # Energy Units агрегации
-        eu_p_ust[eu][year] += p_ust_val
-        eu_p_ogr[eu][year] += p_ogr_val
-        eu_p_rasp[eu][year] += p_rasp_val
-        
-        eu_st_p_ust[eu][st][year] += p_ust_val
-        eu_st_p_ogr[eu][st][year] += p_ogr_val
-        eu_st_p_rasp[eu][st][year] += p_rasp_val
-        
-        eu_st_fuel_p_ust[eu][st][fuel][year] += p_ust_val
-        eu_st_fuel_p_ogr[eu][st][fuel][year] += p_ogr_val
-        eu_st_fuel_p_rasp[eu][st][fuel][year] += p_rasp_val
-        
-        eu_tes_p_ust[eu][tes_type][year] += p_ust_val
-        eu_tes_p_ogr[eu][tes_type][year] += p_ogr_val
-        eu_tes_p_rasp[eu][tes_type][year] += p_rasp_val
-        
-        eu_tes_fuel_p_ust[eu][tes_type][fuel][year] += p_ust_val
-        eu_tes_fuel_p_ogr[eu][tes_type][fuel][year] += p_ogr_val
-        eu_tes_fuel_p_rasp[eu][tes_type][fuel][year] += p_rasp_val
-        
-        eu_tes_machine_p_ust[eu][tes_type][tes_machine][year] += p_ust_val
-        eu_tes_machine_p_ogr[eu][tes_type][tes_machine][year] += p_ogr_val
-        eu_tes_machine_p_rasp[eu][tes_type][tes_machine][year] += p_rasp_val
-        
-        eu_tes_machine_fuel_p_ust[eu][tes_type][tes_machine][fuel][year] += p_ust_val
-        eu_tes_machine_fuel_p_ogr[eu][tes_type][tes_machine][fuel][year] += p_ogr_val
-        eu_tes_machine_fuel_p_rasp[eu][tes_type][tes_machine][fuel][year] += p_rasp_val
-        
-        # Regional Districts агрегации
-        rd_p_ust[rd][year] += p_ust_val
-        rd_p_ogr[rd][year] += p_ogr_val
-        rd_p_rasp[rd][year] += p_rasp_val
-        
-        rd_st_p_ust[rd][st][year] += p_ust_val
-        rd_st_p_ogr[rd][st][year] += p_ogr_val
-        rd_st_p_rasp[rd][st][year] += p_rasp_val
-        
-        rd_st_fuel_p_ust[rd][st][fuel][year] += p_ust_val
-        rd_st_fuel_p_ogr[rd][st][fuel][year] += p_ogr_val
-        rd_st_fuel_p_rasp[rd][st][fuel][year] += p_rasp_val
-        
-        rd_tes_p_ust[rd][tes_type][year] += p_ust_val
-        rd_tes_p_ogr[rd][tes_type][year] += p_ogr_val
-        rd_tes_p_rasp[rd][tes_type][year] += p_rasp_val
-        
-        rd_tes_fuel_p_ust[rd][tes_type][fuel][year] += p_ust_val
-        rd_tes_fuel_p_ogr[rd][tes_type][fuel][year] += p_ogr_val
-        rd_tes_fuel_p_rasp[rd][tes_type][fuel][year] += p_rasp_val
-        
-        rd_tes_machine_p_ust[rd][tes_type][tes_machine][year] += p_ust_val
-        rd_tes_machine_p_ogr[rd][tes_type][tes_machine][year] += p_ogr_val
-        rd_tes_machine_p_rasp[rd][tes_type][tes_machine][year] += p_rasp_val
-        
-        rd_tes_machine_fuel_p_ust[rd][tes_type][tes_machine][fuel][year] += p_ust_val
-        rd_tes_machine_fuel_p_ogr[rd][tes_type][tes_machine][fuel][year] += p_ogr_val
-        rd_tes_machine_fuel_p_rasp[rd][tes_type][tes_machine][fuel][year] += p_rasp_val
+        if is_dz:
+            dz_total_p_ust[year] += p_ust_val
+            dz_total_p_ogr[year] += p_ogr_val
+            dz_total_p_rasp[year] += p_rasp_val
+
+            dz_rd_p_ust[rd][year] += p_ust_val
+            dz_rd_p_ogr[rd][year] += p_ogr_val
+            dz_rd_p_rasp[rd][year] += p_rasp_val
+
+            dz_total_key = 0
+            for key, st_map, tes_map, tes_fuel_map, tm_map, tm_fuel_map in (
+                (dz_total_key, dz_total_st_p_ust, dz_total_tes_p_ust, dz_total_tes_fuel_p_ust, dz_total_tes_machine_p_ust, dz_total_tes_machine_fuel_p_ust),
+                (rd, dz_rd_st_p_ust, dz_rd_tes_p_ust, dz_rd_tes_fuel_p_ust, dz_rd_tes_machine_p_ust, dz_rd_tes_machine_fuel_p_ust),
+            ):
+                st_map[key][st][year] += p_ust_val
+                tes_map[key][tes_type][year] += p_ust_val
+                tes_fuel_map[key][tes_type][fuel][year] += p_ust_val
+                tm_map[key][tes_type][tes_machine][year] += p_ust_val
+                tm_fuel_map[key][tes_type][tes_machine][fuel][year] += p_ust_val
+
+            for key, st_map, tes_map, tes_fuel_map, tm_map, tm_fuel_map in (
+                (dz_total_key, dz_total_st_p_ogr, dz_total_tes_p_ogr, dz_total_tes_fuel_p_ogr, dz_total_tes_machine_p_ogr, dz_total_tes_machine_fuel_p_ogr),
+                (rd, dz_rd_st_p_ogr, dz_rd_tes_p_ogr, dz_rd_tes_fuel_p_ogr, dz_rd_tes_machine_p_ogr, dz_rd_tes_machine_fuel_p_ogr),
+            ):
+                st_map[key][st][year] += p_ogr_val
+                tes_map[key][tes_type][year] += p_ogr_val
+                tes_fuel_map[key][tes_type][fuel][year] += p_ogr_val
+                tm_map[key][tes_type][tes_machine][year] += p_ogr_val
+                tm_fuel_map[key][tes_type][tes_machine][fuel][year] += p_ogr_val
+
+            for key, st_map, tes_map, tes_fuel_map, tm_map, tm_fuel_map in (
+                (dz_total_key, dz_total_st_p_rasp, dz_total_tes_p_rasp, dz_total_tes_fuel_p_rasp, dz_total_tes_machine_p_rasp, dz_total_tes_machine_fuel_p_rasp),
+                (rd, dz_rd_st_p_rasp, dz_rd_tes_p_rasp, dz_rd_tes_fuel_p_rasp, dz_rd_tes_machine_p_rasp, dz_rd_tes_machine_fuel_p_rasp),
+            ):
+                st_map[key][st][year] += p_rasp_val
+                tes_map[key][tes_type][year] += p_rasp_val
+                tes_fuel_map[key][tes_type][fuel][year] += p_rasp_val
+                tm_map[key][tes_type][tes_machine][year] += p_rasp_val
+                tm_fuel_map[key][tes_type][tes_machine][fuel][year] += p_rasp_val
+
+            if fd is not None:
+                dz_fd_p_ust[fd][year] += p_ust_val
+                dz_fd_p_ogr[fd][year] += p_ogr_val
+                dz_fd_p_rasp[fd][year] += p_rasp_val
+                dz_fd_st_p_ust[fd][st][year] += p_ust_val
+                dz_fd_st_p_ogr[fd][st][year] += p_ogr_val
+                dz_fd_st_p_rasp[fd][st][year] += p_rasp_val
+                dz_fd_tes_p_ust[fd][tes_type][year] += p_ust_val
+                dz_fd_tes_p_ogr[fd][tes_type][year] += p_ogr_val
+                dz_fd_tes_p_rasp[fd][tes_type][year] += p_rasp_val
+                dz_fd_tes_fuel_p_ust[fd][tes_type][fuel][year] += p_ust_val
+                dz_fd_tes_fuel_p_ogr[fd][tes_type][fuel][year] += p_ogr_val
+                dz_fd_tes_fuel_p_rasp[fd][tes_type][fuel][year] += p_rasp_val
+                dz_fd_tes_machine_p_ust[fd][tes_type][tes_machine][year] += p_ust_val
+                dz_fd_tes_machine_p_ogr[fd][tes_type][tes_machine][year] += p_ogr_val
+                dz_fd_tes_machine_p_rasp[fd][tes_type][tes_machine][year] += p_rasp_val
+                dz_fd_tes_machine_fuel_p_ust[fd][tes_type][tes_machine][fuel][year] += p_ust_val
+                dz_fd_tes_machine_fuel_p_ogr[fd][tes_type][tes_machine][fuel][year] += p_ogr_val
+                dz_fd_tes_machine_fuel_p_rasp[fd][tes_type][tes_machine][fuel][year] += p_rasp_val
+        else:
+            # Energy Units агрегации
+            eu_p_ust[eu][year] += p_ust_val
+            eu_p_ogr[eu][year] += p_ogr_val
+            eu_p_rasp[eu][year] += p_rasp_val
+
+            eu_st_p_ust[eu][st][year] += p_ust_val
+            eu_st_p_ogr[eu][st][year] += p_ogr_val
+            eu_st_p_rasp[eu][st][year] += p_rasp_val
+
+            eu_st_fuel_p_ust[eu][st][fuel][year] += p_ust_val
+            eu_st_fuel_p_ogr[eu][st][fuel][year] += p_ogr_val
+            eu_st_fuel_p_rasp[eu][st][fuel][year] += p_rasp_val
+
+            eu_tes_p_ust[eu][tes_type][year] += p_ust_val
+            eu_tes_p_ogr[eu][tes_type][year] += p_ogr_val
+            eu_tes_p_rasp[eu][tes_type][year] += p_rasp_val
+
+            eu_tes_fuel_p_ust[eu][tes_type][fuel][year] += p_ust_val
+            eu_tes_fuel_p_ogr[eu][tes_type][fuel][year] += p_ogr_val
+            eu_tes_fuel_p_rasp[eu][tes_type][fuel][year] += p_rasp_val
+
+            eu_tes_machine_p_ust[eu][tes_type][tes_machine][year] += p_ust_val
+            eu_tes_machine_p_ogr[eu][tes_type][tes_machine][year] += p_ogr_val
+            eu_tes_machine_p_rasp[eu][tes_type][tes_machine][year] += p_rasp_val
+
+            eu_tes_machine_fuel_p_ust[eu][tes_type][tes_machine][fuel][year] += p_ust_val
+            eu_tes_machine_fuel_p_ogr[eu][tes_type][tes_machine][fuel][year] += p_ogr_val
+            eu_tes_machine_fuel_p_rasp[eu][tes_type][tes_machine][fuel][year] += p_rasp_val
+
+            # Regional Districts агрегации
+            rd_p_ust[rd][year] += p_ust_val
+            rd_p_ogr[rd][year] += p_ogr_val
+            rd_p_rasp[rd][year] += p_rasp_val
+
+            rd_st_p_ust[rd][st][year] += p_ust_val
+            rd_st_p_ogr[rd][st][year] += p_ogr_val
+            rd_st_p_rasp[rd][st][year] += p_rasp_val
+
+            rd_st_fuel_p_ust[rd][st][fuel][year] += p_ust_val
+            rd_st_fuel_p_ogr[rd][st][fuel][year] += p_ogr_val
+            rd_st_fuel_p_rasp[rd][st][fuel][year] += p_rasp_val
+
+            rd_tes_p_ust[rd][tes_type][year] += p_ust_val
+            rd_tes_p_ogr[rd][tes_type][year] += p_ogr_val
+            rd_tes_p_rasp[rd][tes_type][year] += p_rasp_val
+
+            rd_tes_fuel_p_ust[rd][tes_type][fuel][year] += p_ust_val
+            rd_tes_fuel_p_ogr[rd][tes_type][fuel][year] += p_ogr_val
+            rd_tes_fuel_p_rasp[rd][tes_type][fuel][year] += p_rasp_val
+
+            rd_tes_machine_p_ust[rd][tes_type][tes_machine][year] += p_ust_val
+            rd_tes_machine_p_ogr[rd][tes_type][tes_machine][year] += p_ogr_val
+            rd_tes_machine_p_rasp[rd][tes_type][tes_machine][year] += p_rasp_val
+
+            rd_tes_machine_fuel_p_ust[rd][tes_type][tes_machine][fuel][year] += p_ust_val
+            rd_tes_machine_fuel_p_ogr[rd][tes_type][tes_machine][fuel][year] += p_ogr_val
+            rd_tes_machine_fuel_p_rasp[rd][tes_type][tes_machine][fuel][year] += p_rasp_val
 
         # Federal Districts агрегации (только если федеральный округ определен)
-        if fd is not None:
+        if not is_dz and fd is not None:
             fd_p_ust[fd][year] += p_ust_val
             fd_p_ogr[fd][year] += p_ogr_val
             fd_p_rasp[fd][year] += p_rasp_val
@@ -343,64 +473,65 @@ def aggregate_all_at_once(rows):
             fd_tes_machine_fuel_p_ogr[fd][tes_type][tes_machine][fuel][year] += p_ogr_val
             fd_tes_machine_fuel_p_rasp[fd][tes_type][tes_machine][fuel][year] += p_rasp_val
         
-        # Regional Energy Systems агрегации
-        res_p_ust[res][year] += p_ust_val
-        res_p_ogr[res][year] += p_ogr_val
-        res_p_rasp[res][year] += p_rasp_val
-        
-        res_st_p_ust[res][st][year] += p_ust_val
-        res_st_p_ogr[res][st][year] += p_ogr_val
-        res_st_p_rasp[res][st][year] += p_rasp_val
-        
-        res_st_fuel_p_ust[res][st][fuel][year] += p_ust_val
-        res_st_fuel_p_ogr[res][st][fuel][year] += p_ogr_val
-        res_st_fuel_p_rasp[res][st][fuel][year] += p_rasp_val
-        
-        res_tes_p_ust[res][tes_type][year] += p_ust_val
-        res_tes_p_ogr[res][tes_type][year] += p_ogr_val
-        res_tes_p_rasp[res][tes_type][year] += p_rasp_val
-        
-        res_tes_fuel_p_ust[res][tes_type][fuel][year] += p_ust_val
-        res_tes_fuel_p_ogr[res][tes_type][fuel][year] += p_ogr_val
-        res_tes_fuel_p_rasp[res][tes_type][fuel][year] += p_rasp_val
-        
-        res_tes_machine_p_ust[res][tes_type][tes_machine][year] += p_ust_val
-        res_tes_machine_p_ogr[res][tes_type][tes_machine][year] += p_ogr_val
-        res_tes_machine_p_rasp[res][tes_type][tes_machine][year] += p_rasp_val
-        
-        res_tes_machine_fuel_p_ust[res][tes_type][tes_machine][fuel][year] += p_ust_val
-        res_tes_machine_fuel_p_ogr[res][tes_type][tes_machine][fuel][year] += p_ogr_val
-        res_tes_machine_fuel_p_rasp[res][tes_type][tes_machine][fuel][year] += p_rasp_val
-        
-        # Union Energy Systems агрегации
-        ues_p_ust[ues][year] += p_ust_val
-        ues_p_ogr[ues][year] += p_ogr_val
-        ues_p_rasp[ues][year] += p_rasp_val
-        
-        ues_st_p_ust[ues][st][year] += p_ust_val
-        ues_st_p_ogr[ues][st][year] += p_ogr_val
-        ues_st_p_rasp[ues][st][year] += p_rasp_val
-        
-        ues_st_fuel_p_ust[ues][st][fuel][year] += p_ust_val
-        ues_st_fuel_p_ogr[ues][st][fuel][year] += p_ogr_val
-        ues_st_fuel_p_rasp[ues][st][fuel][year] += p_rasp_val
-        
-        ues_tes_p_ust[ues][tes_type][year] += p_ust_val
-        ues_tes_p_ogr[ues][tes_type][year] += p_ogr_val
-        ues_tes_p_rasp[ues][tes_type][year] += p_rasp_val
-        
-        ues_tes_fuel_p_ust[ues][tes_type][fuel][year] += p_ust_val
-        ues_tes_fuel_p_ogr[ues][tes_type][fuel][year] += p_ogr_val
-        ues_tes_fuel_p_rasp[ues][tes_type][fuel][year] += p_rasp_val
-        
-        ues_tes_machine_p_ust[ues][tes_type][tes_machine][year] += p_ust_val
-        ues_tes_machine_p_ogr[ues][tes_type][tes_machine][year] += p_ogr_val
-        ues_tes_machine_p_rasp[ues][tes_type][tes_machine][year] += p_rasp_val
-        
-        ues_tes_machine_fuel_p_ust[ues][tes_type][tes_machine][fuel][year] += p_ust_val
-        ues_tes_machine_fuel_p_ogr[ues][tes_type][tes_machine][fuel][year] += p_ogr_val
-        ues_tes_machine_fuel_p_rasp[ues][tes_type][tes_machine][fuel][year] += p_rasp_val
-        
+        if not is_dz:
+            # Regional Energy Systems агрегации
+            res_p_ust[res][year] += p_ust_val
+            res_p_ogr[res][year] += p_ogr_val
+            res_p_rasp[res][year] += p_rasp_val
+
+            res_st_p_ust[res][st][year] += p_ust_val
+            res_st_p_ogr[res][st][year] += p_ogr_val
+            res_st_p_rasp[res][st][year] += p_rasp_val
+
+            res_st_fuel_p_ust[res][st][fuel][year] += p_ust_val
+            res_st_fuel_p_ogr[res][st][fuel][year] += p_ogr_val
+            res_st_fuel_p_rasp[res][st][fuel][year] += p_rasp_val
+
+            res_tes_p_ust[res][tes_type][year] += p_ust_val
+            res_tes_p_ogr[res][tes_type][year] += p_ogr_val
+            res_tes_p_rasp[res][tes_type][year] += p_rasp_val
+
+            res_tes_fuel_p_ust[res][tes_type][fuel][year] += p_ust_val
+            res_tes_fuel_p_ogr[res][tes_type][fuel][year] += p_ogr_val
+            res_tes_fuel_p_rasp[res][tes_type][fuel][year] += p_rasp_val
+
+            res_tes_machine_p_ust[res][tes_type][tes_machine][year] += p_ust_val
+            res_tes_machine_p_ogr[res][tes_type][tes_machine][year] += p_ogr_val
+            res_tes_machine_p_rasp[res][tes_type][tes_machine][year] += p_rasp_val
+
+            res_tes_machine_fuel_p_ust[res][tes_type][tes_machine][fuel][year] += p_ust_val
+            res_tes_machine_fuel_p_ogr[res][tes_type][tes_machine][fuel][year] += p_ogr_val
+            res_tes_machine_fuel_p_rasp[res][tes_type][tes_machine][fuel][year] += p_rasp_val
+
+            # Union Energy Systems агрегации
+            ues_p_ust[ues][year] += p_ust_val
+            ues_p_ogr[ues][year] += p_ogr_val
+            ues_p_rasp[ues][year] += p_rasp_val
+
+            ues_st_p_ust[ues][st][year] += p_ust_val
+            ues_st_p_ogr[ues][st][year] += p_ogr_val
+            ues_st_p_rasp[ues][st][year] += p_rasp_val
+
+            ues_st_fuel_p_ust[ues][st][fuel][year] += p_ust_val
+            ues_st_fuel_p_ogr[ues][st][fuel][year] += p_ogr_val
+            ues_st_fuel_p_rasp[ues][st][fuel][year] += p_rasp_val
+
+            ues_tes_p_ust[ues][tes_type][year] += p_ust_val
+            ues_tes_p_ogr[ues][tes_type][year] += p_ogr_val
+            ues_tes_p_rasp[ues][tes_type][year] += p_rasp_val
+
+            ues_tes_fuel_p_ust[ues][tes_type][fuel][year] += p_ust_val
+            ues_tes_fuel_p_ogr[ues][tes_type][fuel][year] += p_ogr_val
+            ues_tes_fuel_p_rasp[ues][tes_type][fuel][year] += p_rasp_val
+
+            ues_tes_machine_p_ust[ues][tes_type][tes_machine][year] += p_ust_val
+            ues_tes_machine_p_ogr[ues][tes_type][tes_machine][year] += p_ogr_val
+            ues_tes_machine_p_rasp[ues][tes_type][tes_machine][year] += p_rasp_val
+
+            ues_tes_machine_fuel_p_ust[ues][tes_type][tes_machine][fuel][year] += p_ust_val
+            ues_tes_machine_fuel_p_ogr[ues][tes_type][tes_machine][fuel][year] += p_ogr_val
+            ues_tes_machine_fuel_p_rasp[ues][tes_type][tes_machine][fuel][year] += p_rasp_val
+
         # Energy System Types агрегации
         est_p_ust[est][year] += p_ust_val
         est_p_ogr[est][year] += p_ogr_val
@@ -430,37 +561,38 @@ def aggregate_all_at_once(rows):
         est_tes_machine_fuel_p_ogr[est][tes_type][tes_machine][fuel][year] += p_ogr_val
         est_tes_machine_fuel_p_rasp[est][tes_type][tes_machine][fuel][year] += p_rasp_val
         
-        # Total Energy System Types агрегации (для всей системы с ключом database_version_id)
-        test_p_ust[db_version][year] += p_ust_val
-        test_p_ogr[db_version][year] += p_ogr_val
-        test_p_rasp[db_version][year] += p_rasp_val
-        
-        test_st_p_ust[db_version][st][year] += p_ust_val
-        test_st_p_ogr[db_version][st][year] += p_ogr_val
-        test_st_p_rasp[db_version][st][year] += p_rasp_val
-        
-        test_st_fuel_p_ust[db_version][st][fuel][year] += p_ust_val
-        test_st_fuel_p_ogr[db_version][st][fuel][year] += p_ogr_val
-        test_st_fuel_p_rasp[db_version][st][fuel][year] += p_rasp_val
-        
-        test_tes_p_ust[db_version][tes_type][year] += p_ust_val
-        test_tes_p_ogr[db_version][tes_type][year] += p_ogr_val
-        test_tes_p_rasp[db_version][tes_type][year] += p_rasp_val
-        
-        test_tes_fuel_p_ust[db_version][tes_type][fuel][year] += p_ust_val
-        test_tes_fuel_p_ogr[db_version][tes_type][fuel][year] += p_ogr_val
-        test_tes_fuel_p_rasp[db_version][tes_type][fuel][year] += p_rasp_val
-        
-        test_tes_machine_p_ust[db_version][tes_type][tes_machine][year] += p_ust_val
-        test_tes_machine_p_ogr[db_version][tes_type][tes_machine][year] += p_ogr_val
-        test_tes_machine_p_rasp[db_version][tes_type][tes_machine][year] += p_rasp_val
-        
-        test_tes_machine_fuel_p_ust[db_version][tes_type][tes_machine][fuel][year] += p_ust_val
-        test_tes_machine_fuel_p_ogr[db_version][tes_type][tes_machine][fuel][year] += p_ogr_val
-        test_tes_machine_fuel_p_rasp[db_version][tes_type][tes_machine][fuel][year] += p_rasp_val
-        
+        if not is_dz:
+            # Total Energy System Types агрегации (Россия, без децентрализованной зоны)
+            test_p_ust[db_version][year] += p_ust_val
+            test_p_ogr[db_version][year] += p_ogr_val
+            test_p_rasp[db_version][year] += p_rasp_val
+
+            test_st_p_ust[db_version][st][year] += p_ust_val
+            test_st_p_ogr[db_version][st][year] += p_ogr_val
+            test_st_p_rasp[db_version][st][year] += p_rasp_val
+
+            test_st_fuel_p_ust[db_version][st][fuel][year] += p_ust_val
+            test_st_fuel_p_ogr[db_version][st][fuel][year] += p_ogr_val
+            test_st_fuel_p_rasp[db_version][st][fuel][year] += p_rasp_val
+
+            test_tes_p_ust[db_version][tes_type][year] += p_ust_val
+            test_tes_p_ogr[db_version][tes_type][year] += p_ogr_val
+            test_tes_p_rasp[db_version][tes_type][year] += p_rasp_val
+
+            test_tes_fuel_p_ust[db_version][tes_type][fuel][year] += p_ust_val
+            test_tes_fuel_p_ogr[db_version][tes_type][fuel][year] += p_ogr_val
+            test_tes_fuel_p_rasp[db_version][tes_type][fuel][year] += p_rasp_val
+
+            test_tes_machine_p_ust[db_version][tes_type][tes_machine][year] += p_ust_val
+            test_tes_machine_p_ogr[db_version][tes_type][tes_machine][year] += p_ogr_val
+            test_tes_machine_p_rasp[db_version][tes_type][tes_machine][year] += p_rasp_val
+
+            test_tes_machine_fuel_p_ust[db_version][tes_type][tes_machine][fuel][year] += p_ust_val
+            test_tes_machine_fuel_p_ogr[db_version][tes_type][tes_machine][fuel][year] += p_ogr_val
+            test_tes_machine_fuel_p_rasp[db_version][tes_type][tes_machine][fuel][year] += p_rasp_val
+
         # Synchronous Areas агрегации (только если synchronous_area_id не None)
-        if sa is not None:
+        if not is_dz and sa is not None:
             sa_p_ust[sa][year] += p_ust_val
             sa_p_ogr[sa][year] += p_ogr_val
             sa_p_rasp[sa][year] += p_rasp_val
@@ -555,6 +687,62 @@ def aggregate_all_at_once(rows):
         },
         "aggregate_federal_districts_by_tes_machine_types_with_fuel": {
             "aggregated": {"p_ust": fd_tes_machine_fuel_p_ust, "p_ogr": fd_tes_machine_fuel_p_ogr, "p_rasp": fd_tes_machine_fuel_p_rasp}
+        },
+
+        # Децентрализованная зона
+        "aggregate_decentralized_zone": {
+            "aggregated": {"p_ust": dz_total_p_ust, "p_ogr": dz_total_p_ogr, "p_rasp": dz_total_p_rasp}
+        },
+        "aggregate_decentralized_zone_by_regional_districts": {
+            "aggregated": {"p_ust": dz_rd_p_ust, "p_ogr": dz_rd_p_ogr, "p_rasp": dz_rd_p_rasp}
+        },
+        "aggregate_decentralized_zone_by_federal_districts": {
+            "aggregated": {"p_ust": dz_fd_p_ust, "p_ogr": dz_fd_p_ogr, "p_rasp": dz_fd_p_rasp}
+        },
+        "aggregate_decentralized_zone_by_station_types": {
+            "aggregated": {"p_ust": dz_total_st_p_ust, "p_ogr": dz_total_st_p_ogr, "p_rasp": dz_total_st_p_rasp}
+        },
+        "aggregate_decentralized_zone_by_tes_types": {
+            "aggregated": {"p_ust": dz_total_tes_p_ust, "p_ogr": dz_total_tes_p_ogr, "p_rasp": dz_total_tes_p_rasp}
+        },
+        "aggregate_decentralized_zone_by_tes_types_with_fuel": {
+            "aggregated": {"p_ust": dz_total_tes_fuel_p_ust, "p_ogr": dz_total_tes_fuel_p_ogr, "p_rasp": dz_total_tes_fuel_p_rasp}
+        },
+        "aggregate_decentralized_zone_by_tes_machine_types": {
+            "aggregated": {"p_ust": dz_total_tes_machine_p_ust, "p_ogr": dz_total_tes_machine_p_ogr, "p_rasp": dz_total_tes_machine_p_rasp}
+        },
+        "aggregate_decentralized_zone_by_tes_machine_types_with_fuel": {
+            "aggregated": {"p_ust": dz_total_tes_machine_fuel_p_ust, "p_ogr": dz_total_tes_machine_fuel_p_ogr, "p_rasp": dz_total_tes_machine_fuel_p_rasp}
+        },
+        "aggregate_decentralized_zone_regional_districts_by_station_types": {
+            "aggregated": {"p_ust": dz_rd_st_p_ust, "p_ogr": dz_rd_st_p_ogr, "p_rasp": dz_rd_st_p_rasp}
+        },
+        "aggregate_decentralized_zone_regional_districts_by_tes_types": {
+            "aggregated": {"p_ust": dz_rd_tes_p_ust, "p_ogr": dz_rd_tes_p_ogr, "p_rasp": dz_rd_tes_p_rasp}
+        },
+        "aggregate_decentralized_zone_regional_districts_by_tes_types_with_fuel": {
+            "aggregated": {"p_ust": dz_rd_tes_fuel_p_ust, "p_ogr": dz_rd_tes_fuel_p_ogr, "p_rasp": dz_rd_tes_fuel_p_rasp}
+        },
+        "aggregate_decentralized_zone_regional_districts_by_tes_machine_types": {
+            "aggregated": {"p_ust": dz_rd_tes_machine_p_ust, "p_ogr": dz_rd_tes_machine_p_ogr, "p_rasp": dz_rd_tes_machine_p_rasp}
+        },
+        "aggregate_decentralized_zone_regional_districts_by_tes_machine_types_with_fuel": {
+            "aggregated": {"p_ust": dz_rd_tes_machine_fuel_p_ust, "p_ogr": dz_rd_tes_machine_fuel_p_ogr, "p_rasp": dz_rd_tes_machine_fuel_p_rasp}
+        },
+        "aggregate_decentralized_zone_federal_districts_by_station_types": {
+            "aggregated": {"p_ust": dz_fd_st_p_ust, "p_ogr": dz_fd_st_p_ogr, "p_rasp": dz_fd_st_p_rasp}
+        },
+        "aggregate_decentralized_zone_federal_districts_by_tes_types": {
+            "aggregated": {"p_ust": dz_fd_tes_p_ust, "p_ogr": dz_fd_tes_p_ogr, "p_rasp": dz_fd_tes_p_rasp}
+        },
+        "aggregate_decentralized_zone_federal_districts_by_tes_types_with_fuel": {
+            "aggregated": {"p_ust": dz_fd_tes_fuel_p_ust, "p_ogr": dz_fd_tes_fuel_p_ogr, "p_rasp": dz_fd_tes_fuel_p_rasp}
+        },
+        "aggregate_decentralized_zone_federal_districts_by_tes_machine_types": {
+            "aggregated": {"p_ust": dz_fd_tes_machine_p_ust, "p_ogr": dz_fd_tes_machine_p_ogr, "p_rasp": dz_fd_tes_machine_p_rasp}
+        },
+        "aggregate_decentralized_zone_federal_districts_by_tes_machine_types_with_fuel": {
+            "aggregated": {"p_ust": dz_fd_tes_machine_fuel_p_ust, "p_ogr": dz_fd_tes_machine_fuel_p_ogr, "p_rasp": dz_fd_tes_machine_fuel_p_rasp}
         },
         
         # Regional Energy Systems

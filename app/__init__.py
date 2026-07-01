@@ -10,6 +10,7 @@ from app.refdata.models.refdata_for_stations.machine import machine_type_model, 
 from app.refdata.models.refdata_for_stations.station import station_type_model
 from app.refdata.models.refdata_for_stations.technologies import equipment_group_model, technology_availability_model, technology_type_model
 from app.refdata.models.economic_activity import economic_activity_type_model
+from app.refdata.models.electricity_production_cost import electricity_production_cost_type_model
 from app.common.models.database_version_model import DatabaseVersion
 from config import SECRET_KEY, DEBUG
 from flask import Flask, redirect, request, url_for, flash, g, render_template

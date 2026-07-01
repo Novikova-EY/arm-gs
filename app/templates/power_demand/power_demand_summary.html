@@ -13,6 +13,8 @@
     and coeff_base_year is defined
     and active_summary in ('oes', 'fo', 'ez')
 ) %}
+{% set pd_summary_hist_editable_keys = ('max_power', 'peak_datetime', 'avg_temp') %}
+{% set pd_summary_hist_restricted = active_summary in ('oes', 'fo', 'ez') %}
 {% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours') %}
 {% set pd_formula_texts = pd_formula_texts | default({}) %}
 {# _pd_* формулы — в контексте из Python (см. inject_pd_formula_template_variables) #}
@@ -799,6 +801,7 @@
         </div>
         <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll{% if summary_route_variant == 'coeff' %} pd-coeff-summary-scroll-wrap{% endif %}" style="visibility: hidden;">
         <table id="powerDemandSummaryTable" class="table table-bordered{% if summary_route_variant != 'coeff' %} table-striped{% endif %}{% if can_edit_summary_cells %} table-hover fuel-params-edit-table{% endif %} align-middle power-demand-summary-table{% if summary_route_variant == 'coeff' %} pd-coeff-year-seg-table{% if not (coeff_include_long | default(false)) %} pd-coeff-seg-hide-long{% endif %}{% elif pd_pd_max_year_segments %} pd-ec-max-year-visibility-table{% endif %}"
+               data-active-summary="{{ active_summary }}"
                {% if active_summary in ('oes', 'fo', 'ez') %}data-summary-view="{{ active_summary }}" data-summary-route-variant="{{ summary_route_variant }}" data-summary-log-scope="{{ active_summary }}"{% endif %}
                {% if pd_pd_max_year_segments %}data-ec-max-year-segments="1" data-coeff-long-loaded="1" data-pd-server-medium-loaded="{% if summary_include_medium_years | default(false) %}1{% else %}0{% endif %}"{% endif %}
                {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-pd-rounding-digits-k="{{ rounding_digits_k if rounding_digits_k is defined else rounding_digits }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}"{% endif %}
@@ -1246,14 +1249,19 @@
                     {% endif %}
                     {% set _can_edit_slice = row.demand_model_name and (row.parent_fk_column is none or row.parent_id is not none) %}
                     {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) and not row.get('pd_pd_formula_derived_row') %}
-                    {% set _can_edit_hist_cell = _can_edit_cell and not (active_summary == 'oes' and row.parameter_key not in ('max_power', 'peak_datetime', 'avg_temp')) %}
+                    {% set _hist_param_allowed = (not pd_summary_hist_restricted) or row.parameter_key in pd_summary_hist_editable_keys %}
+                    {% set _can_edit_hist_cell = _can_edit_cell and _hist_param_allowed %}
                     {% set _ues_readonly_coeff_display = summary_route_variant == 'coeff' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') %}
                     {% if show_hist_col %}
-                    <td class="text-center summary-hist-cell"
+                    <td class="text-center summary-hist-cell{% if pd_summary_hist_restricted and row.parameter_key not in pd_summary_hist_editable_keys %} summary-hist-cell-disabled{% endif %}"
+                        {% if not (pd_summary_hist_restricted and row.parameter_key not in pd_summary_hist_editable_keys) %}
                         {% if row.parameter_key == 'peak_datetime' %}
                         title="{% if row.hist_numeric_tooltip|default('') %}{{ row.hist_numeric_tooltip|e }} — {% endif %}Год (ГГГГ) или дата и время (мск): ДД.ММ.ГГГГ ЧЧ:ММ"
                         {% elif row.hist_numeric_tooltip|default('') %}
                         title="{{ row.hist_numeric_tooltip|e }}"
+                        {% endif %}
+                        {% else %}
+                        aria-disabled="true"
                         {% endif %}>
                         {% if _can_edit_hist_cell %}
                         {% set _hv = row.hist_value if row.hist_value != '—' else '' %}
@@ -1289,7 +1297,7 @@
                                data-model="{{ row.demand_model_name }}"
                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, исторический максимум" />
                         {% endif %}
-                        {% else %}
+                        {% elif _hist_param_allowed %}
                         {{ row.hist_value }}
                         {% endif %}
                     </td>
@@ -1831,6 +1839,20 @@ function finishPowerDemandSummaryInitialRenderNow() {
             refreshPowerDemandSummaryLayout();
             window.requestAnimationFrame(function () {
                 refreshPowerDemandSummaryLayout();
+                if (window.armGsPageScrollRestore) {
+                    var pdSummaryTable = document.getElementById("powerDemandSummaryTable");
+                    if (pdSummaryTable) {
+                        window.armGsPageScrollRestore.restore(
+                            window.armGsPageScrollRestore.defaultScope(pdSummaryTable),
+                            {
+                                table: pdSummaryTable,
+                                hScrollEl: powerDemandSummaryScrollWrap,
+                                consume: true
+                            }
+                        );
+                    }
+                }
+                document.dispatchEvent(new CustomEvent("pd-summary-initial-render-finished"));
             });
         });
     });
@@ -3605,6 +3627,12 @@ if (summaryTable) {
     .summary-hist-cell {
         white-space: normal;
     }
+    .summary-hist-cell.summary-hist-cell-disabled {
+        background-color: #f1f3f5;
+        pointer-events: none;
+        user-select: none;
+        cursor: default;
+    }
     .summary-hist-cell,
     .summary-year-cell {
         min-width: 0;
@@ -3863,6 +3891,7 @@ if (summaryTable) {
 
 {% if can_edit_summary_cells %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_year_period_mode.js') }}"></script>
 {% endif %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
@@ -4052,133 +4081,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (useEcMax) {
-            var STORAGE_KEY = "powerDemandSummaryMaxYearSegVisibleV2";
-            var serverMediumLoaded = table.getAttribute("data-pd-server-medium-loaded") === "1";
-
-            function readEc() {
-                if (serverMediumLoaded) {
-                    return { reporting: true, medium: true };
-                }
-                try {
-                    var raw = sessionStorage.getItem(STORAGE_KEY);
-                    if (raw) {
-                        var p = JSON.parse(raw);
-                        return {
-                            reporting: typeof p.reporting === "boolean" ? p.reporting : true,
-                            medium: typeof p.medium === "boolean" ? p.medium : false
-                        };
-                    }
-                } catch (e) { /* */ }
-                return { reporting: true, medium: false };
+            if (typeof initEcMaxYearPeriodMode === "function") {
+                initEcMaxYearPeriodMode();
             }
-
-            function writeEc(v) {
-                try {
-                    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(v));
-                } catch (e2) { /* */ }
-            }
-
-            function applyEcYearVisibility(v) {
-                var n = parseInt(table.getAttribute("data-coeff-base-year") || "", 10);
-                if (!n || isNaN(n)) {
-                    return;
-                }
-                var sySel = document.getElementById("start_year");
-                var eySel = document.getElementById("end_year");
-                var formSy = sySel ? parseInt(sySel.value, 10) : NaN;
-                var formEy = eySel ? parseInt(eySel.value, 10) : NaN;
-                var visible = {};
-                var y;
-                if (v.reporting && v.medium) {
-                    for (y = n - 9; y <= n + 6; y++) {
-                        visible[y] = true;
-                    }
-                } else if (v.reporting) {
-                    for (y = n - 9; y <= n; y++) {
-                        visible[y] = true;
-                    }
-                } else if (v.medium) {
-                    for (y = n + 1; y <= n + 6; y++) {
-                        visible[y] = true;
-                    }
-                } else if (!isNaN(formSy) && !isNaN(formEy)) {
-                    var lo = Math.min(formSy, formEy);
-                    var hi = Math.max(formSy, formEy);
-                    for (y = lo; y <= hi; y++) {
-                        visible[y] = true;
-                    }
-                }
-                table.querySelectorAll("[data-ec-summary-col-year]").forEach(function (el) {
-                    var raw = el.getAttribute("data-ec-summary-col-year");
-                    var yr = parseInt(raw || "", 10);
-                    var show = Object.prototype.hasOwnProperty.call(visible, yr);
-                    el.classList.toggle("pd-ec-year-col-hidden", !show);
-                });
-            }
-
-            function syncEcButtons(v) {
-                bar.querySelectorAll("button[data-coeff-seg]").forEach(function (btn) {
-                    var seg = btn.getAttribute("data-coeff-seg");
-                    if (seg !== "reporting" && seg !== "medium") {
-                        return;
-                    }
-                    var on = v[seg] !== false;
-                    btn.classList.toggle("btn-warning", on);
-                    btn.classList.toggle("btn-outline-warning", !on);
-                    btn.setAttribute("aria-pressed", on ? "true" : "false");
-                });
-            }
-
-            function applyEc(v) {
-                applyEcYearVisibility(v);
-                syncEcButtons(v);
-            }
-
-            var stateEc = readEc();
-            applyEc(stateEc);
-
-            var syEl = document.getElementById("start_year");
-            var eyEl = document.getElementById("end_year");
-            [syEl, eyEl].forEach(function (sel) {
-                if (!sel) {
-                    return;
-                }
-                sel.addEventListener("change", function () {
-                    applyEc(stateEc);
-                });
-            });
-
-            bar.addEventListener("click", function (e) {
-                var btn = e.target.closest("button[data-coeff-seg]");
-                if (!btn) {
-                    return;
-                }
-                var seg = btn.getAttribute("data-coeff-seg");
-                if (seg !== "reporting" && seg !== "medium") {
-                    return;
-                }
-                if (seg === "medium" && !stateEc.medium && !serverMediumLoaded) {
-                    try {
-                        var u = new URL(window.location.href);
-                        u.searchParams.set("pd_medium", "1");
-                        window.location.href = u.toString();
-                    } catch (eNav) { /* */ }
-                    return;
-                }
-                stateEc[seg] = !stateEc[seg];
-                if (seg === "medium" && !stateEc.medium) {
-                    try {
-                        var u2 = new URL(window.location.href);
-                        if (u2.searchParams.has("pd_medium")) {
-                            u2.searchParams.delete("pd_medium");
-                            var qs = u2.searchParams.toString();
-                            window.history.replaceState(window.history.state, "", u2.pathname + (qs ? "?" + qs : "") + u2.hash);
-                        }
-                    } catch (eRm) { /* */ }
-                }
-                writeEc(stateEc);
-                applyEc(stateEc);
-            });
             return;
         }
 
@@ -5814,6 +5719,27 @@ document.addEventListener("DOMContentLoaded", function () {
         return String(s ?? "").trim().replace(/\s+/g, "").replace(",", ".");
     }
 
+    const PD_SUMMARY_HIST_EDITABLE_KEYS = new Set({{ pd_summary_hist_editable_keys | tojson }});
+    const PD_SUMMARY_HIST_RESTRICTED = {{ pd_summary_hist_restricted | tojson }};
+
+    function isPdSummaryHistInputAllowed(inp) {
+        if (!inp) {
+            return false;
+        }
+        const slice = inp.getAttribute("data-slice") || "";
+        if (slice !== "hist") {
+            return true;
+        }
+        if (inp.closest("td.summary-hist-cell-disabled")) {
+            return false;
+        }
+        if (!PD_SUMMARY_HIST_RESTRICTED) {
+            return true;
+        }
+        const pk = inp.getAttribute("data-parameter-key") || "";
+        return PD_SUMMARY_HIST_EDITABLE_KEYS.has(pk);
+    }
+
     const headers = {
         "Content-Type": "application/json",
         "X-Requested-With": "XMLHttpRequest",
@@ -6220,6 +6146,9 @@ document.addEventListener("DOMContentLoaded", function () {
         );
         const changed = [];
         inputs.forEach(function (inp) {
+            if (!isPdSummaryHistInputAllowed(inp)) {
+                return;
+            }
             const initial = inp.getAttribute("data-initial") || "";
             if (normForCompare(initial) !== normForCompare(inp.value)) {
                 changed.push(inp);
@@ -6322,7 +6251,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (changed.length > 0) {
                 window.armGsPageScrollRestore.reload({ table: table, changedInputs: changed });
             } else if (changedVariants.length > 0) {
-                window.location.reload();
+                window.armGsPageScrollRestore.reload({
+                    table: table,
+                    changedInputs: changedVariants
+                });
             }
             syncPdEcPerimeterVariantSelectLabels(table);
             saveBtn.innerHTML = originalHtml;
