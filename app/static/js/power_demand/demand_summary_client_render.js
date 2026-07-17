@@ -20,11 +20,166 @@
         return;
     }
 
+    if (window.__pdPdSummaryTerritoryCompactMode === undefined) {
+        var summaryTableEl = document.getElementById("powerDemandSummaryTable");
+        var compactView =
+            (summaryTableEl &&
+                summaryTableEl.getAttribute("data-summary-view")) ||
+            shellConfig.scope ||
+            "oes";
+        try {
+            window.__pdPdSummaryTerritoryCompactMode =
+                sessionStorage.getItem(
+                    "pdPdSummaryTerritoryCompact_" + compactView
+                ) === "1";
+        } catch (eCompactInit) {
+            window.__pdPdSummaryTerritoryCompactMode = false;
+        }
+    }
+
     var READONLY_KEYS = {};
     (shellConfig.pd_readonly_parameter_keys || []).forEach(function (k) {
         READONLY_KEYS[k] = true;
     });
     var SUMMARY_SCOPES = { oes: true, fo: true, ez: true };
+    var PD_NEW_TERRITORIES_LABEL = "Новые территории";
+
+    function isNtAggregationHeaderRow(row) {
+        return (
+            !!row.pd_pd_aggregation_level_row &&
+            String(row.entity_label || "").trim() === PD_NEW_TERRITORIES_LABEL
+        );
+    }
+
+    function shouldOmitSummaryTableOnlyRow(row) {
+        return (
+            !!row.pd_pd_summary_table_only_row &&
+            window.__pdPdSummaryTerritoryCompactMode !== true
+        );
+    }
+
+    function shouldOmitRowInTerritoryCompactMode(row) {
+        if (!aggregationLevelUsesCompactLayout()) {
+            return false;
+        }
+        return (
+            !!row.pd_pd_territory_compact_hide_row || isNtAggregationHeaderRow(row)
+        );
+    }
+
+    function shouldOmitRowForCurrentView(row) {
+        return (
+            shouldOmitSummaryTableOnlyRow(row) ||
+            shouldOmitRowInTerritoryCompactMode(row)
+        );
+    }
+
+    /** После отсечения строк «Сводной таблицы» / prefix пересчитать rowspan блоков сущностей. */
+    function prepareRowsForClientRender(rows) {
+        var result = [];
+        var i = 0;
+        while (i < rows.length) {
+            var row = rows[i];
+            if (row.pd_pd_aggregation_level_row) {
+                if (!shouldOmitRowForCurrentView(row)) {
+                    result.push(Object.assign({}, row));
+                }
+                i += 1;
+                continue;
+            }
+            if (!row.show_entity_cell) {
+                i += 1;
+                continue;
+            }
+            var blockSize = Math.max(parseInt(row.entity_rowspan || 1, 10), 1);
+            var block = rows.slice(i, i + blockSize);
+            i += blockSize;
+            var visible = block.filter(function (r) {
+                return !shouldOmitRowForCurrentView(r);
+            });
+            if (!visible.length) {
+                continue;
+            }
+            var noteSource = null;
+            for (var bi = 0; bi < block.length; bi++) {
+                if (block[bi].show_entity_note_cell) {
+                    noteSource = block[bi];
+                    break;
+                }
+            }
+            visible.forEach(function (r, idx) {
+                var copy = Object.assign({}, r);
+                copy.show_entity_cell = idx === 0;
+                copy.entity_rowspan = visible.length;
+                if (idx === 0 && noteSource) {
+                    copy.show_entity_note_cell = true;
+                    if (noteSource.entity_note_text !== undefined) {
+                        copy.entity_note_text = noteSource.entity_note_text;
+                    }
+                    if (noteSource.entity_note_row_id !== undefined) {
+                        copy.entity_note_row_id = noteSource.entity_note_row_id;
+                    }
+                } else {
+                    copy.show_entity_note_cell = false;
+                }
+                result.push(copy);
+            });
+        }
+        return result;
+    }
+
+    function pdSummaryRefreshEntityLayout() {
+        if (typeof window.__pdPdSummaryRepositionEntityCells === "function") {
+            window.__pdPdSummaryRepositionEntityCells();
+        }
+    }
+
+    /** Столбцы заголовка уровня агрегации («Новые территории» и т.п.). */
+    function pdSummaryAggregationLevelColspan(yearCount) {
+        var n = 3 + (yearCount || 0);
+        if (window.__pdPdSummaryPerimeterVariantMode === true) {
+            n += 1;
+        }
+        if (window.__pdPdSummaryHistMode === true) {
+            n += 1;
+        }
+        return n;
+    }
+
+    function pdSummaryCountSummaryYearColumns() {
+        var table =
+            document.getElementById("powerDemandSummaryTable") ||
+            document.querySelector("#powerDemandSummaryTable");
+        if (!table) {
+            return 0;
+        }
+        var yearHeaders = table.querySelectorAll("thead th.summary-year-col");
+        if (yearHeaders.length) {
+            return yearHeaders.length;
+        }
+        return table.querySelectorAll("colgroup col.summary-col-year").length;
+    }
+
+    function pdSummarySyncAggregationLevelColspans() {
+        var table =
+            document.getElementById("powerDemandSummaryTable") ||
+            document.querySelector("#powerDemandSummaryTable");
+        if (!table) {
+            return;
+        }
+        var yearCount = pdSummaryCountSummaryYearColumns();
+        var colspan = pdSummaryAggregationLevelColspan(yearCount);
+        table
+            .querySelectorAll(
+                'tbody tr[data-pd-pd-aggregation-level="1"] > td[data-pd-aggregation-header-cell="1"]'
+            )
+            .forEach(function (td) {
+                td.colSpan = colspan;
+            });
+    }
+
+    window.pdSummaryAggregationLevelColspan = pdSummaryAggregationLevelColspan;
+    window.pdSummarySyncAggregationLevelColspans = pdSummarySyncAggregationLevelColspans;
 
     function escapeHtml(text) {
         return String(text == null ? "" : text)
@@ -44,6 +199,40 @@
         }
     }
 
+    function aggregationLevelUsesCompactLayout() {
+        return window.__pdPdSummaryTerritoryCompactMode === true;
+    }
+
+    function pdSummaryAggregationLevelLabel(row) {
+        if (
+            aggregationLevelUsesCompactLayout() &&
+            row.pd_pd_entity_label_territory_compact
+        ) {
+            return row.pd_pd_entity_label_territory_compact;
+        }
+        return row.entity_label || "";
+    }
+
+    function pdSummaryToggleHideRowInitially(row, active) {
+        if (!SUMMARY_SCOPES[active]) {
+            return false;
+        }
+        if (row.pd_pd_nt_extra_row && window.__pdPdSummaryNtDetailMode !== true) {
+            return true;
+        }
+        if (shouldOmitRowForCurrentView(row)) {
+            return true;
+        }
+        if (
+            window.__pdPdSummaryTerritoryCompactMode === true &&
+            row.pd_pd_territory_detail_row &&
+            !row.pd_pd_aggregation_level_row
+        ) {
+            return true;
+        }
+        return false;
+    }
+
     function computeRowClasses(row, cfg) {
         var classes = [
             "summary-kind-" + (row.entity_kind || ""),
@@ -55,11 +244,12 @@
         if (row.pd_pd_verify_for_row) {
             classes.push("pd-pd-verify-for-row");
         }
-        if (row.pd_pd_chi_row) {
+        if (row.pd_pd_ee_row) {
+            classes.push("pd-pd-ee-row", "summary-row-hidden");
+        } else if (row.pd_pd_chi_row) {
             classes.push("pd-pd-chi-row", "summary-row-hidden");
         } else if (
             (active === "oes" || active === "fo" || active === "ez") &&
-            (cfg.summary_route_variant || "max") !== "coeff" &&
             pk &&
             READONLY_KEYS[pk]
         ) {
@@ -67,10 +257,7 @@
         }
         if (row.pd_pd_verify_for_row) {
             classes.push("summary-row-hidden");
-        } else if (
-            SUMMARY_SCOPES[active] &&
-            row.pd_pd_nt_extra_row
-        ) {
+        } else if (pdSummaryToggleHideRowInitially(row, active)) {
             classes.push("summary-row-hidden");
         }
         return classes.join(" ");
@@ -84,13 +271,61 @@
         );
     }
 
+    function isSouthUesWithoutNtManualRow(row) {
+        if (!row || row.demand_model_name !== "UnionEnergySystemDemandParameter") {
+            return false;
+        }
+        if (row.pd_pd_south_ues_without_nt_manual_row) {
+            return true;
+        }
+        var code = String(row.perimeter_variant_code || "");
+        if (code.indexOf("with_nt") === 0) {
+            return false;
+        }
+        if (code !== "without_nt" && code.indexOf("without_nt") !== 0) {
+            return false;
+        }
+        var label = String(row.entity_label || "")
+            .replace(/\s+/g, " ")
+            .trim()
+            .toLowerCase();
+        return label.indexOf("юга") >= 0 && label.indexOf(" с нт") < 0;
+    }
+
     function canEditCell(row, cfg) {
+        if (row.pd_pd_chi_row || row.pd_pd_ee_row) {
+            return false;
+        }
         var pk = row.parameter_key || "";
+        var manualSouthWithoutNt = isSouthUesWithoutNtManualRow(row);
         return (
             canEditSlice(row, cfg) &&
-            !READONLY_KEYS[pk] &&
+            (manualSouthWithoutNt || !READONLY_KEYS[pk]) &&
             !row.pd_pd_formula_derived_row
         );
+    }
+
+    function perimeterVariantYearOutOfRange(row, year) {
+        if (row.pd_pd_skip_perimeter_variant_year_bounds) {
+            return false;
+        }
+        var code = row.perimeter_variant_code;
+        if (!code) {
+            return false;
+        }
+        var yr = parseInt(year, 10);
+        if (isNaN(yr)) {
+            return false;
+        }
+        var fromYear = row.perimeter_variant_from_year;
+        var toYear = row.perimeter_variant_to_year;
+        if (fromYear != null && yr < parseInt(fromYear, 10)) {
+            return true;
+        }
+        if (toYear != null && yr > parseInt(toYear, 10)) {
+            return true;
+        }
+        return false;
     }
 
     function isHistParameterAllowed(row, cfg) {
@@ -237,6 +472,12 @@
             ix < values.length && values[ix] != null ? String(values[ix]) : "—";
         var yrid = ix < rowIds.length ? rowIds[ix] : null;
         var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
+        var pvYearOutOfRange = perimeterVariantYearOutOfRange(row, year);
+        if (pvYearOutOfRange) {
+            value = "—";
+            yrid = null;
+            yrTt = "";
+        }
         var planHide = planHideYearCell(row, year, yearIsPlan);
 
         td.className = "text-center summary-year-cell";
@@ -260,7 +501,7 @@
             return td;
         }
 
-        if (canEditCell(row, cfg)) {
+        if (canEditCell(row, cfg) && !pvYearOutOfRange) {
             var yv = value !== "—" ? value : "";
             if (pk === "peak_datetime") {
                 var ta = document.createElement("textarea");
@@ -418,9 +659,9 @@
             mark.className = "pd-pd-dz-mark ms-1";
             mark.setAttribute("data-bs-toggle", "tooltip");
             mark.setAttribute("data-bs-placement", "top");
-            mark.title = "Децентрализованная зона";
-            mark.setAttribute("aria-label", "Децентрализованная зона");
-            mark.textContent = "ДЗ";
+            mark.title = "Форма О-1";
+            mark.setAttribute("aria-label", "Форма О-1");
+            mark.textContent = "О-1";
             div.appendChild(document.createTextNode(" "));
             div.appendChild(mark);
         }
@@ -495,6 +736,7 @@
         }
         setDataAttr(tr, "data-parent-fk-column", row.parent_fk_column);
         setDataAttr(tr, "data-parent-id", row.parent_id);
+        setDataAttr(tr, "data-id-energy-zone", row.id_energy_zone);
         setDataAttr(tr, "data-id-synchronous-area", row.id_synchronous_area);
         setDataAttr(tr, "data-perimeter-variant-code", row.perimeter_variant_code);
         setDataAttr(
@@ -518,11 +760,20 @@
         if (row.pd_pd_territory_compact_hide_row) {
             tr.setAttribute("data-pd-pd-territory-compact-hide", "1");
         }
+        if (row.pd_pd_summary_table_only_row) {
+            tr.setAttribute("data-pd-pd-summary-table-only", "1");
+        }
+        if (row.pd_pd_ee_row) {
+            tr.setAttribute("data-pd-pd-ee-row", "1");
+        }
         if (row.pd_pd_chi_row) {
             tr.setAttribute("data-pd-pd-chi-row", "1");
         }
         if (row.pd_pd_formula_derived_row) {
             tr.setAttribute("data-pd-pd-formula-derived", "1");
+        }
+        if (row.pd_pd_south_ues_without_nt_manual_row) {
+            tr.setAttribute("data-pd-pd-south-without-nt-manual", "1");
         }
         if (row.pd_pd_verify_a_parameter_key) {
             tr.setAttribute("data-pd-pd-verify-a", row.pd_pd_verify_a_parameter_key);
@@ -551,6 +802,19 @@
             }
         }
 
+        if (row.pd_pd_aggregation_level_row && SUMMARY_SCOPES[cfg.active_summary || ""]) {
+            var aggHeaderTd = document.createElement("td");
+            aggHeaderTd.colSpan = pdSummaryAggregationLevelColspan(years.length);
+            aggHeaderTd.setAttribute("data-pd-aggregation-header-cell", "1");
+            aggHeaderTd.className =
+                "summary-entity-cell summary-depth-" +
+                (row.entity_depth || 0) +
+                " fw-semibold text-center";
+            aggHeaderTd.textContent = pdSummaryAggregationLevelLabel(row);
+            tr.appendChild(aggHeaderTd);
+            return tr;
+        }
+
         if (row.pd_pd_aggregation_level_full_row) {
             var aggTd = document.createElement("td");
             var nCols =
@@ -563,14 +827,14 @@
                 "summary-entity-cell summary-depth-" +
                 (row.entity_depth || 0) +
                 " fw-semibold text-center";
-            aggTd.textContent = row.entity_label || "";
+            aggTd.textContent = pdSummaryAggregationLevelLabel(row);
             tr.appendChild(aggTd);
             return tr;
         }
 
         var entityRs = row.entity_rowspan || 1;
         if (row.show_entity_cell) {
-            if (showPerimeterCol) {
+            if (showPerimeterCol && !row.pd_pd_aggregation_level_row) {
                 tr.appendChild(buildPerimeterVariantCell(row, cfg, entityRs));
             }
             tr.appendChild(buildEntityCell(row, entityRs));
@@ -630,6 +894,7 @@
             row.id_union_energy_system != null ? String(row.id_union_energy_system) : "",
             row.id_regional_energy_system != null ? String(row.id_regional_energy_system) : "",
             row.id_regional_district != null ? String(row.id_regional_district) : "",
+            row.id_energy_zone != null ? String(row.id_energy_zone) : "",
             row.id_energy_unit != null ? String(row.id_energy_unit) : "",
             row.id_synchronous_area != null ? String(row.id_synchronous_area) : "",
             row.entity_kind || "",
@@ -652,6 +917,7 @@
             startTr.getAttribute("data-id-union-energy-system") || "",
             startTr.getAttribute("data-id-regional-energy-system") || "",
             startTr.getAttribute("data-id-regional-district") || "",
+            startTr.getAttribute("data-id-energy-zone") || "",
             startTr.getAttribute("data-id-energy-unit") || "",
             startTr.getAttribute("data-id-synchronous-area") || "",
             startTr.className.match(/summary-kind-(\S+)/)
@@ -667,16 +933,9 @@
     }
 
     function collectBlockRows(startTr) {
-        var blockSize = parseInt(
-            startTr.getAttribute("data-entity-block-size") || "1",
-            10
-        );
-        if (blockSize < 1) {
-            blockSize = 1;
-        }
         var blockRows = [];
         var tr = startTr;
-        while (blockRows.length < blockSize && tr) {
+        while (tr) {
             if (tr.classList.contains("summary-row-param")) {
                 if (
                     blockRows.length > 0 &&
@@ -688,7 +947,21 @@
             }
             tr = tr.nextElementSibling;
         }
+        if (blockRows.length) {
+            var rs = String(blockRows.length);
+            blockRows[0].setAttribute("data-entity-block-size", rs);
+            blockRows.forEach(function (rowTr) {
+                rowTr.setAttribute("data-entity-block-size", rs);
+            });
+        }
         return blockRows;
+    }
+
+    function rowCountsForBlockRowspan(tr) {
+        if (tr.classList.contains("summary-row-empty-block-hidden")) {
+            return false;
+        }
+        return !tr.classList.contains("summary-row-hidden");
     }
 
     /** Куда вставлять строку сегмента относительно уже отрисованного блока. */
@@ -710,9 +983,26 @@
         verify_for_calculated_max_ees_via_oes_mw: "calculated_max_ees_via_oes_mw",
         verify_for_calculated_max_ees_via_es_mw: "calculated_max_ees_via_es_mw",
         verify_for_calculated_max_sa_mw: "calculated_max_sa_mw",
+        peak_combined_on_ees_usage_hours: "combined_on_ees",
+        peak_combined_on_cz_usage_hours: "combined_on_cz",
+        peak_combined_on_oes_usage_hours: "combined_on_oes",
+        peak_combined_on_es_usage_hours: "combined_on_es",
+        peak_combined_on_fo_usage_hours: "combined_on_fo",
+        peak_combined_on_ez_usage_hours: "combined_on_ez",
     };
 
     function findInsertBeforeForMergedRow(blockRows, pk, order) {
+        if (pk === "energy_consumption_mln_kvt_ch") {
+            for (var ei = 0; ei < blockRows.length; ei++) {
+                if (
+                    (blockRows[ei].getAttribute("data-parameter-key") || "") ===
+                    "max_power"
+                ) {
+                    return blockRows[ei];
+                }
+            }
+            return blockRows.length ? blockRows[0] : null;
+        }
         if (pk === "peak_max_power_usage_hours") {
             for (var ci = 0; ci < blockRows.length; ci++) {
                 if (
@@ -720,6 +1010,23 @@
                     "peak_datetime"
                 ) {
                     return blockRows[ci];
+                }
+            }
+        }
+        if (
+            pk.indexOf("peak_combined_on_") === 0 &&
+            pk.slice(-"_usage_hours".length) === "_usage_hours"
+        ) {
+            var combinedKey = pk.slice("peak_".length, -"_usage_hours".length);
+            for (var cai = 0; cai < blockRows.length; cai++) {
+                if (
+                    (blockRows[cai].getAttribute("data-parameter-key") || "") ===
+                    combinedKey
+                ) {
+                    if (cai + 1 < blockRows.length) {
+                        return blockRows[cai + 1];
+                    }
+                    return null;
                 }
             }
         }
@@ -752,7 +1059,16 @@
         if (!startTr || !blockRows || !blockRows.length) {
             return;
         }
-        var blockSize = blockRows.length;
+        var visibleRows = blockRows.filter(rowCountsForBlockRowspan);
+        if (!visibleRows.length) {
+            return;
+        }
+        var blockSize = visibleRows.length;
+        var rsAll = String(blockRows.length);
+        startTr.setAttribute("data-entity-block-size", rsAll);
+        blockRows.forEach(function (rowTr) {
+            rowTr.setAttribute("data-entity-block-size", rsAll);
+        });
         var rs = String(blockSize);
         startTr.setAttribute("data-entity-block-size", rs);
         blockRows.forEach(function (tr) {
@@ -775,32 +1091,64 @@
                 noteTd = blockRows[k].querySelector("td.summary-entity-note-cell");
             }
         }
-        if (entityTd) {
-            entityTd.setAttribute("rowspan", rs);
-        }
+        var firstVis = visibleRows[0];
+        var paramCell = firstVis.querySelector("td.summary-parameter-cell");
         if (variantTd) {
+            var insertBeforeVariant =
+                firstVis.querySelector("td.summary-entity-cell") || paramCell;
+            if (insertBeforeVariant && variantTd.parentNode !== firstVis) {
+                firstVis.insertBefore(variantTd, insertBeforeVariant);
+            } else if (!insertBeforeVariant && variantTd.parentNode !== firstVis) {
+                firstVis.insertBefore(variantTd, firstVis.firstChild);
+            }
             variantTd.setAttribute("rowspan", rs);
         }
-        if (noteTd) {
+        if (entityTd) {
+            if (paramCell && entityTd.parentNode !== firstVis) {
+                firstVis.insertBefore(entityTd, paramCell);
+            }
+            entityTd.setAttribute("rowspan", rs);
+        }
+        if (noteTd && firstVis) {
+            // Always append so a misplaced note (e.g. left of param after EE merge)
+            // is corrected even when it already lives on firstVis.
+            firstVis.appendChild(noteTd);
             noteTd.setAttribute("rowspan", rs);
         }
     }
 
     function isChiOnlySegmentBlock(block) {
-        return (
-            block &&
-            block.length === 1 &&
-            String(block[0].parameter_key || "") === "peak_max_power_usage_hours"
-        );
+        if (!block || !block.length) {
+            return false;
+        }
+        return block.every(function (row) {
+            return !!row.pd_pd_chi_row;
+        });
+    }
+
+    function isEeOnlySegmentBlock(block) {
+        if (!block || !block.length) {
+            return false;
+        }
+        return block.every(function (row) {
+            return (
+                !!row.pd_pd_ee_row ||
+                String(row.parameter_key || "") === "energy_consumption_mln_kvt_ch"
+            );
+        });
     }
 
     function orderSegmentLoadNames(segmentNames) {
         var names = (segmentNames || []).slice();
         var scope = (shellConfig && shellConfig.scope) || "";
-        if (scope === "oes" && names.indexOf("chi") >= 0 && names.indexOf("nt_extra") < 0) {
+        if (
+            scope === "oes" &&
+            (names.indexOf("chi") >= 0 || names.indexOf("ee") >= 0) &&
+            names.indexOf("nt_extra") < 0
+        ) {
             names.unshift("nt_extra");
         }
-        var priority = { nt_extra: 0, calc_max: 1, chi: 2, verify: 3 };
+        var priority = { nt_extra: 0, calc_max: 1, ee: 2, chi: 3, verify: 4 };
         names.sort(function (a, b) {
             var pa = Object.prototype.hasOwnProperty.call(priority, a)
                 ? priority[a]
@@ -974,7 +1322,7 @@
     function normalizeEntityLabel(text) {
         return String(text || "")
             .replace(/\s+/g, " ")
-            .replace(/\s+ДЗ$/, "")
+            .replace(/\s+(?:ДЗ|О-1)$/, "")
             .trim();
     }
 
@@ -1043,6 +1391,13 @@
         );
     }
 
+    function normInputForCompare(s) {
+        return String(s ?? "")
+            .trim()
+            .replace(/\s+/g, "")
+            .replace(",", ".");
+    }
+
     function updateExistingRowTrFromSegmentData(tr, row, cfg, years, yearIsPlan, showHistCol) {
         var values = row.year_values || [];
         var tooltips = row.year_numeric_tooltips || [];
@@ -1056,7 +1411,16 @@
             var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
             var inp = td.querySelector("input.fuel-param-input, textarea.fuel-param-input");
             if (inp) {
-                inp.value = value !== "—" ? value : "";
+                var initial = inp.getAttribute("data-initial") || "";
+                var current = inp.value || "";
+                if (normInputForCompare(initial) !== normInputForCompare(current)) {
+                    return;
+                }
+                var nextVal = value !== "—" ? value : "";
+                inp.value = nextVal;
+                // Синхронизировать initial, иначе value≠data-initial → ложное «грязное»
+                // состояние и массовое сохранение / откат после подгрузки сегментов.
+                inp.setAttribute("data-initial", nextVal);
                 if (yrTt) {
                     inp.setAttribute("title", yrTt);
                     inp.setAttribute("data-db-full", yrTt);
@@ -1081,11 +1445,21 @@
                 var histValue = row.hist_value != null ? String(row.hist_value) : "";
                 var histTt = row.hist_numeric_tooltip || "";
                 if (histInp) {
-                    histInp.value = histValue && histValue !== "—" ? histValue : "";
-                    if (histTt) {
-                        histInp.setAttribute("data-db-full", histTt);
+                    var histInitial = histInp.getAttribute("data-initial") || "";
+                    var histCurrent = histInp.value || "";
+                    if (normInputForCompare(histInitial) !== normInputForCompare(histCurrent)) {
+                        // Грязная hist-ячейка: не затираем ввод, но остальные поля строки
+                        // (формула и т.п.) ниже всё равно можно обновить.
                     } else {
-                        histInp.removeAttribute("data-db-full");
+                        var nextHist =
+                            histValue && histValue !== "—" ? histValue : "";
+                        histInp.value = nextHist;
+                        histInp.setAttribute("data-initial", nextHist);
+                        if (histTt) {
+                            histInp.setAttribute("data-db-full", histTt);
+                        } else {
+                            histInp.removeAttribute("data-db-full");
+                        }
                     }
                 } else if (isHistParameterAllowed(row, cfg)) {
                     histTd.textContent = histValue;
@@ -1271,6 +1645,11 @@
                 showHistCol
             );
             var insertBefore = findInsertBeforeForMergedRow(blockRows, pk, order);
+            var isEeBeforeBlockStart =
+                pk === "energy_consumption_mln_kvt_ch" &&
+                insertBefore &&
+                insertBefore === startTr &&
+                startTr.getAttribute("data-is-block-start") === "1";
             if (insertBefore) {
                 tbody.insertBefore(newTr, insertBefore);
                 var ix = blockRows.indexOf(insertBefore);
@@ -1290,9 +1669,38 @@
                 }
                 blockRows.push(newTr);
             }
+            if (isEeBeforeBlockStart) {
+                startTr.removeAttribute("data-is-block-start");
+                newTr.setAttribute("data-is-block-start", "1");
+                // Entity/perimeter go before the parameter column; note stays last
+                // (same order as server HTML / buildRowTr). Inserting the note
+                // before paramCell shifts all year cells one column right.
+                ["td.summary-perimeter-variant-cell", "td.summary-entity-cell"].forEach(
+                    function (sel) {
+                        var cell = startTr.querySelector(sel);
+                        if (cell) {
+                            var paramCell = newTr.querySelector("td.summary-parameter-cell");
+                            if (paramCell) {
+                                newTr.insertBefore(cell, paramCell);
+                            } else {
+                                newTr.insertBefore(cell, newTr.firstChild);
+                            }
+                        }
+                    }
+                );
+                var noteCell = startTr.querySelector("td.summary-entity-note-cell");
+                if (noteCell) {
+                    newTr.appendChild(noteCell);
+                }
+                startTr = newTr;
+            }
         });
         repositionVerifyRowsInBlock(tbody, blockRows);
+        blockRows = collectBlockRows(startTr);
         syncBlockRowspans(startTr, blockRows);
+        if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
+            window.__pdPdSummaryRefreshLayoutAfterVisibility();
+        }
     }
 
     function insertBlockAfter(tbody, afterTr, block, cfg, years, yearIsPlan, showPerimeterCol, showHistCol) {
@@ -1370,13 +1778,13 @@
 
     function mergeSegmentRowsIntoTbody(tbody, payload, isInitial) {
         if (isInitial) {
-            renderSummaryTableBody(payload);
-            return;
+            return renderSummaryTableBody(payload);
         }
         var cfg = payload.config || {};
         var years = payload.years || [];
         var yearIsPlan = payload.year_is_plan || {};
         var rows = payload.summary_rows || [];
+        rows = prepareRowsForClientRender(rows);
         var showPerimeterCol = !!cfg.show_perimeter_variant_column;
         var showHistCol = cfg.show_hist_col !== false;
 
@@ -1392,6 +1800,10 @@
         while (i < rows.length) {
             var row = rows[i];
             if (row.pd_pd_aggregation_level_row) {
+                if (shouldOmitRowForCurrentView(row)) {
+                    i += 1;
+                    continue;
+                }
                 if (findNtAggregationLevelTr(tbody, row)) {
                     i += 1;
                     continue;
@@ -1423,12 +1835,17 @@
 
             var fp = rowBlockFingerprint(row, true);
             var existing = resolveBlockMapEntry(tbody, blockMap, fp);
-            if ((!existing || !existing.start) && blockIsVerifyOnly(block)) {
-                var verifyFallbackStart = findBlockStartByEntity(tbody, row);
-                if (verifyFallbackStart) {
+            if (
+                (!existing || !existing.start) &&
+                (blockIsVerifyOnly(block) ||
+                    isChiOnlySegmentBlock(block) ||
+                    isEeOnlySegmentBlock(block))
+            ) {
+                var entityFallbackStart = findBlockStartByEntity(tbody, row);
+                if (entityFallbackStart) {
                     existing = {
-                        start: verifyFallbackStart,
-                        rows: collectBlockRows(verifyFallbackStart),
+                        start: entityFallbackStart,
+                        rows: collectBlockRows(entityFallbackStart),
                     };
                     blockMap[fp] = existing;
                 }
@@ -1449,7 +1866,7 @@
             }
             var fallbackStart = findBlockStartByEntity(tbody, row);
             if (row.pd_pd_nt_extra_row) {
-                if (isChiOnlySegmentBlock(block)) {
+                if (isChiOnlySegmentBlock(block) || isEeOnlySegmentBlock(block)) {
                     continue;
                 }
                 var baseStart = findBaseBlockStartForNtRow(tbody, row) || fallbackStart;
@@ -1484,10 +1901,26 @@
                         rows: collectBlockRows(insertedStart),
                     };
                 }
+            } else if (fallbackStart) {
+                mergeRowsIntoBlock(
+                    tbody,
+                    fallbackStart,
+                    collectBlockRows(fallbackStart),
+                    block,
+                    cfg,
+                    years,
+                    yearIsPlan,
+                    showPerimeterCol,
+                    showHistCol
+                );
+                blockMap[fp] = {
+                    start: fallbackStart,
+                    rows: collectBlockRows(fallbackStart),
+                };
             } else {
                 var insertedBaseStart = insertBlockAfter(
                     tbody,
-                    fallbackStart ? lastTrOfBlock(fallbackStart) : tbody.lastElementChild,
+                    tbody.lastElementChild,
                     block,
                     cfg,
                     years,
@@ -1518,10 +1951,49 @@
                 typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function"
             ) {
                 window.__pdPdSummaryRefreshLayoutAfterVisibility();
+            } else {
+                pdSummaryRefreshEntityLayout();
             }
+        } else {
+            pdSummaryRefreshEntityLayout();
+        }
+        if (typeof window.pdSummarySyncAggregationLevelColspans === "function") {
+            window.pdSummarySyncAggregationLevelColspans();
         }
         document.dispatchEvent(new CustomEvent("pd-summary-rows-rendered"));
     }
+
+    function finishSummaryTableBodyRender(tbody, payload) {
+        lastRenderedSummaryPayload = payload;
+        injectLiveCalcData(payload);
+        if (typeof window.__pdPdSummarySyncPerimeterVariantLabels === "function") {
+            window.__pdPdSummarySyncPerimeterVariantLabels();
+        }
+        if (typeof window.__pdPdSummaryInitTableTooltips === "function") {
+            window.__pdPdSummaryInitTableTooltips();
+        }
+        renderEntityPagination(payload);
+        if (!window.__pdPdSummaryDeferSegmentVisibility) {
+            if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                window.__pdPdSummaryReapplyRowVisibility();
+            } else if (
+                typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function"
+            ) {
+                window.__pdPdSummaryRefreshLayoutAfterVisibility();
+            } else {
+                pdSummaryRefreshEntityLayout();
+            }
+        } else {
+            pdSummaryRefreshEntityLayout();
+        }
+        if (typeof window.pdSummarySyncAggregationLevelColspans === "function") {
+            window.pdSummarySyncAggregationLevelColspans();
+        }
+        document.dispatchEvent(new CustomEvent("pd-summary-rows-rendered"));
+    }
+
+    var RENDER_ROWS_CHUNK_SIZE = 48;
+    var lastRenderedSummaryPayload = null;
 
     function renderSummaryTableBody(payload) {
         var tbody =
@@ -1537,7 +2009,6 @@
         var showPerimeterCol = !!cfg.show_perimeter_variant_column;
         var showHistCol = cfg.show_hist_col !== false;
 
-        var frag = document.createDocumentFragment();
         if (!rows.length) {
             var emptyTr = document.createElement("tr");
             var emptyTd = document.createElement("td");
@@ -1549,23 +2020,373 @@
             emptyTd.className = "text-center text-muted";
             emptyTd.textContent = "Нет данных для текущей версии БД.";
             emptyTr.appendChild(emptyTd);
-            frag.appendChild(emptyTr);
-        } else {
+            tbody.replaceChildren(emptyTr);
+            finishSummaryTableBodyRender(tbody, payload);
+            return Promise.resolve();
+        }
+
+        rows = prepareRowsForClientRender(rows);
+
+        if (rows.length <= RENDER_ROWS_CHUNK_SIZE) {
+            var frag = document.createDocumentFragment();
             rows.forEach(function (row) {
                 frag.appendChild(
                     buildRowTr(row, cfg, years, yearIsPlan, showPerimeterCol, showHistCol)
                 );
             });
+            tbody.replaceChildren(frag);
+            finishSummaryTableBodyRender(tbody, payload);
+            return Promise.resolve();
         }
-        tbody.replaceChildren(frag);
-        injectLiveCalcData(payload);
-        if (typeof window.__pdPdSummarySyncPerimeterVariantLabels === "function") {
-            window.__pdPdSummarySyncPerimeterVariantLabels();
+
+        tbody.replaceChildren();
+        var rowIndex = 0;
+        return new Promise(function (resolve) {
+            function renderChunk() {
+                var frag = document.createDocumentFragment();
+                var end = Math.min(rowIndex + RENDER_ROWS_CHUNK_SIZE, rows.length);
+                for (; rowIndex < end; rowIndex++) {
+                    frag.appendChild(
+                        buildRowTr(
+                            rows[rowIndex],
+                            cfg,
+                            years,
+                            yearIsPlan,
+                            showPerimeterCol,
+                            showHistCol
+                        )
+                    );
+                }
+                tbody.appendChild(frag);
+                if (rowIndex < rows.length) {
+                    window.requestAnimationFrame(renderChunk);
+                    return;
+                }
+                finishSummaryTableBodyRender(tbody, payload);
+                resolve();
+            }
+            window.requestAnimationFrame(renderChunk);
+        });
+    }
+
+    var currentEntityPagination = null;
+
+    function paginationScopeEnabled() {
+        if (!shellConfig || !shellConfig.entity_pagination) {
+            return false;
         }
-        if (typeof window.__pdPdSummaryInitTableTooltips === "function") {
-            window.__pdPdSummaryInitTableTooltips();
+        return { oes: true, fo: true, ez: true }[shellConfig.scope] === true;
+    }
+
+    function paginationAllLabel() {
+        var pagCfg = (shellConfig && shellConfig.entity_pagination) || {};
+        if (pagCfg.all_label) {
+            return pagCfg.all_label;
         }
-        document.dispatchEvent(new CustomEvent("pd-summary-rows-rendered"));
+        var labels = {
+            oes: "Все ОЭС",
+            fo: "Все ФО",
+            ez: "Все энергозоны",
+        };
+        return labels[shellConfig.scope] || "Показать всё";
+    }
+
+    function entityPaginationPageSizeFromUrl() {
+        var pagCfg = (shellConfig && shellConfig.entity_pagination) || {};
+        var params = new URLSearchParams(window.location.search || "");
+        var raw = params.get("pd_page_size");
+        if (raw === null || String(raw).trim() === "") {
+            return pagCfg.default_page_size != null
+                ? pagCfg.default_page_size
+                : 2;
+        }
+        var n = parseInt(raw, 10);
+        if (isNaN(n) || n < 0) {
+            return pagCfg.default_page_size != null
+                ? pagCfg.default_page_size
+                : 2;
+        }
+        return n;
+    }
+
+    function entityPaginationPageFromUrl() {
+        var params = new URLSearchParams(window.location.search || "");
+        var n = parseInt(params.get("pd_page") || "1", 10);
+        return isNaN(n) || n < 1 ? 1 : n;
+    }
+
+    function entityPaginationAllPageSize() {
+        var pagCfg = (shellConfig && shellConfig.entity_pagination) || {};
+        return pagCfg.all_page_size != null ? pagCfg.all_page_size : 0;
+    }
+
+    function effectiveEntityPaginationPageSize() {
+        if (window.__pdPdSummaryTerritoryCompactMode === true) {
+            return entityPaginationAllPageSize();
+        }
+        return entityPaginationPageSizeFromUrl();
+    }
+
+    function effectiveEntityPaginationPage(pageSize) {
+        if (pageSize <= 0) {
+            return 1;
+        }
+        return entityPaginationPageFromUrl();
+    }
+
+    function entityPaginationUrlIsPaginated() {
+        return entityPaginationPageSizeFromUrl() > 0;
+    }
+
+    function syncEntityPaginationUrl(page, pageSize) {
+        var params = new URLSearchParams(window.location.search || "");
+        if (pageSize > 0) {
+            params.set("pd_page_size", String(pageSize));
+            params.set("pd_page", String(page));
+        } else {
+            params.set("pd_page_size", "0");
+            params.delete("pd_page");
+        }
+        var qs = params.toString();
+        var next = qs
+            ? window.location.pathname + "?" + qs
+            : window.location.pathname;
+        window.history.replaceState(null, "", next);
+    }
+
+    function renderEntityPagination(payload) {
+        var nav = document.getElementById("pdSummaryEntityPagination");
+        if (!nav || !paginationScopeEnabled()) {
+            return;
+        }
+        var meta = (payload && payload.entity_pagination) || null;
+        currentEntityPagination = meta;
+        if (meta && meta.enabled) {
+            syncEntityPaginationUrl(meta.page || 1, meta.page_size || 2);
+        } else if (
+            window.__pdPdSummaryTerritoryCompactMode === true &&
+            paginationScopeEnabled()
+        ) {
+            syncEntityPaginationUrl(1, entityPaginationAllPageSize());
+        }
+        if (!meta || !meta.enabled || (meta.total_pages || 1) <= 1) {
+            nav.hidden = true;
+            nav.setAttribute("hidden", "hidden");
+            nav.replaceChildren();
+            return;
+        }
+        nav.hidden = false;
+        nav.removeAttribute("hidden");
+
+        var pagCfg = shellConfig.entity_pagination || {};
+        var page = meta.page || 1;
+        var totalPages = meta.total_pages || 1;
+        var pageSize = meta.page_size || pagCfg.default_page_size || 2;
+        var titles = (meta.section_titles || []).filter(Boolean);
+        var info = document.createElement("div");
+        info.className = "small text-muted mb-2 text-center";
+        info.textContent =
+            "Страница " +
+            page +
+            " из " +
+            totalPages +
+            (titles.length ? " — " + titles.join(", ") : "");
+
+        var ul = document.createElement("ul");
+        ul.className = "pagination justify-content-center mb-0 flex-wrap";
+
+        function addItem(label, targetPage, disabled, active) {
+            var li = document.createElement("li");
+            li.className =
+                "page-item" +
+                (disabled ? " disabled" : "") +
+                (active ? " active" : "");
+            var a = document.createElement("a");
+            a.className = "page-link";
+            a.href = "#";
+            a.textContent = label;
+            if (!disabled && !active) {
+                a.addEventListener("click", function (ev) {
+                    ev.preventDefault();
+                    loadEntityPaginationPage(targetPage, pageSize);
+                });
+            }
+            li.appendChild(a);
+            ul.appendChild(li);
+        }
+
+        addItem("« Назад", page - 1, !meta.has_prev, false);
+        for (var p = 1; p <= totalPages; p++) {
+            if (
+                totalPages > 7 &&
+                p !== 1 &&
+                p !== totalPages &&
+                Math.abs(p - page) > 1
+            ) {
+                if (p === 2 || p === totalPages - 1) {
+                    addItem("…", p, true, false);
+                }
+                continue;
+            }
+            addItem(String(p), p, false, p === page);
+        }
+        addItem("Вперёд »", page + 1, !meta.has_next, false);
+
+        var allLi = document.createElement("li");
+        allLi.className = "page-item ms-2";
+        var allA = document.createElement("a");
+        allA.className = "page-link";
+        allA.href = "#";
+        allA.textContent =
+            meta.all_label || pagCfg.all_label || paginationAllLabel();
+        allA.addEventListener("click", function (ev) {
+            ev.preventDefault();
+            loadEntityPaginationPage(1, pagCfg.all_page_size || 0);
+        });
+        allLi.appendChild(allA);
+        ul.appendChild(allLi);
+
+        nav.replaceChildren(info, ul);
+    }
+
+    function resetLoadedSegmentsState() {
+        loadedSegments = {};
+        segmentLoadPromises = {};
+    }
+
+    /**
+     * Active optional segments from view toggles (session-backed window flags).
+     * Used after tbody rebuild / pagination so pressed buttons keep their rows.
+     */
+    function collectActiveOptionalSegmentsFromWindowFlags() {
+        var summaryTableEl = document.getElementById("powerDemandSummaryTable");
+        var view =
+            (shellConfig && shellConfig.scope) ||
+            (summaryTableEl &&
+                summaryTableEl.getAttribute("data-summary-view")) ||
+            "oes";
+        var segs = [];
+        if (window.__pdPdSummaryNtDetailMode === true) {
+            segs.push("nt_extra");
+        }
+        if (window.__pdPdSummaryCalcMaxMode === true) {
+            segs.push("calc_max");
+        }
+        if (window.__pdPdSummaryEeMode === true) {
+            if (
+                (view === "oes" || view === "fo") &&
+                segs.indexOf("nt_extra") < 0
+            ) {
+                segs.push("nt_extra");
+            }
+            segs.push("ee");
+        }
+        if (window.__pdPdSummaryChiMode === true) {
+            if (
+                (view === "oes" || view === "fo") &&
+                segs.indexOf("nt_extra") < 0
+            ) {
+                segs.push("nt_extra");
+            }
+            segs.push("chi");
+        }
+        if (window.__pdPdSummaryVerificationMode === true) {
+            if (segs.indexOf("calc_max") < 0) {
+                segs.push("calc_max");
+            }
+            segs.push("verify");
+        }
+        if (typeof window.__pdPdSummarySegmentsForVisibleRows === "function") {
+            var coreSet = {};
+            defaultSegments().forEach(function (s) {
+                coreSet[s] = true;
+            });
+            window.__pdPdSummarySegmentsForVisibleRows().forEach(function (seg) {
+                if (seg && !coreSet[seg] && segs.indexOf(seg) < 0) {
+                    segs.push(seg);
+                }
+            });
+        }
+        return segs;
+    }
+
+    function reapplyVisibilityAfterSegmentChange() {
+        if (
+            window.__pdPdSummaryCalcMaxMode === true &&
+            typeof window.__pdPdSummarySetCalcMaxRowKeysVisible === "function"
+        ) {
+            window.__pdPdSummarySetCalcMaxRowKeysVisible(true);
+            return;
+        }
+        if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+            window.__pdPdSummaryReapplyRowVisibility();
+        } else if (
+            typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function"
+        ) {
+            window.__pdPdSummaryRefreshLayoutAfterVisibility();
+        }
+        if (typeof refreshPowerDemandSummaryLayout === "function") {
+            refreshPowerDemandSummaryLayout();
+        }
+    }
+
+    function restoreActiveOptionalSegmentsAfterCoreLoad() {
+        var optionalSegs = collectActiveOptionalSegmentsFromWindowFlags();
+        if (!optionalSegs.length) {
+            return Promise.resolve();
+        }
+        if (typeof window.__pdSummaryEnsureSegments !== "function") {
+            return Promise.resolve();
+        }
+        return window.__pdSummaryEnsureSegments(optionalSegs);
+    }
+
+    function loadEntityPaginationPage(page, pageSize) {
+        syncEntityPaginationUrl(page, pageSize);
+        resetLoadedSegmentsState();
+        var tbody =
+            document.getElementById("powerDemandSummaryTbody") ||
+            document.querySelector("#powerDemandSummaryTable tbody");
+        if (!tbody) {
+            return Promise.reject(new Error("tbody не найден"));
+        }
+        pdSummaryShowSegmentLoading();
+        var scrollWrap = document.getElementById("powerDemandSummaryScrollWrap");
+        if (scrollWrap) {
+            scrollWrap.scrollTop = 0;
+        }
+        return fetchSegmentPayload(defaultSegments())
+            .then(function (payload) {
+                return renderSummaryTableBody(payload).then(function () {
+                    return payload;
+                });
+            })
+            .then(function (payload) {
+                // Core rebuild drops optional rows; re-mesh pressed toggles.
+                return restoreActiveOptionalSegmentsAfterCoreLoad().then(
+                    function () {
+                        return payload;
+                    },
+                    function () {
+                        return payload;
+                    }
+                );
+            })
+            .catch(function (err) {
+                var tr = document.createElement("tr");
+                var td = document.createElement("td");
+                td.colSpan = 10;
+                td.className = "text-center text-danger";
+                td.textContent =
+                    "Не удалось загрузить страницу: " + (err.message || err);
+                tr.appendChild(td);
+                tbody.replaceChildren(tr);
+                throw err;
+            })
+            .finally(function () {
+                pdSummaryHideSegmentLoading();
+                reapplyVisibilityAfterSegmentChange();
+            });
     }
 
     var loadedSegments = {};
@@ -1574,6 +2395,8 @@
 
     function pdSummarySegmentToggleButtons() {
         return [
+            document.getElementById("pdPdSummaryTerritoryCompactToggle"),
+            document.getElementById("pdPdSummaryEeToggle"),
             document.getElementById("pdPdSummaryNtDetailToggle"),
             document.getElementById("pdPdSummaryChiToggle"),
             document.getElementById("pdPdSummaryCalcMaxToggle"),
@@ -1637,15 +2460,39 @@
         var path = shellConfig.data_path;
         var params = new URLSearchParams(window.location.search || "");
         params.set("pd_data_segments", segments.join(","));
+        if (paginationScopeEnabled()) {
+            var pageSize = effectiveEntityPaginationPageSize();
+            if (pageSize > 0) {
+                params.set("pd_page_size", String(pageSize));
+                params.set(
+                    "pd_page",
+                    String(effectiveEntityPaginationPage(pageSize))
+                );
+            } else {
+                params.set("pd_page_size", "0");
+                params.delete("pd_page");
+            }
+        }
         var qs = params.toString();
         return qs ? path + "?" + qs : path;
     }
 
     function fetchSegmentPayload(segments) {
         var sorted = segments.slice().sort();
-        var cacheKey = sorted.join(",");
+        // Include pagination in cache key: compact on/off changes page_size.
+        var pageSize = effectiveEntityPaginationPageSize();
+        var page =
+            pageSize > 0 ? effectiveEntityPaginationPage(pageSize) : 1;
+        var cacheKey =
+            sorted.join(",") + "|p" + String(page) + "|s" + String(pageSize);
         if (segmentLoadPromises[cacheKey]) {
-            return segmentLoadPromises[cacheKey];
+            return segmentLoadPromises[cacheKey].then(function (payload) {
+                // Re-mark after tbody rebuild cleared loadedSegments flags.
+                sorted.forEach(function (s) {
+                    loadedSegments[s] = true;
+                });
+                return payload;
+            });
         }
         segmentLoadPromises[cacheKey] = fetch(buildDataUrl(sorted), {
             credentials: "same-origin",
@@ -1672,9 +2519,6 @@
     }
 
     function loadSegmentIntoTable(segmentName) {
-        if (loadedSegments[segmentName]) {
-            return Promise.resolve();
-        }
         var tbody =
             document.getElementById("powerDemandSummaryTbody") ||
             document.querySelector("#powerDemandSummaryTable tbody");
@@ -1682,28 +2526,27 @@
             return Promise.reject(new Error("tbody не найден"));
         }
         var loadPayload = function (name) {
+            // Always merge: after tbody rebuild (e.g. «Сводная таблица»)
+            // loadedSegments may still be true while DOM rows are gone.
             return fetchSegmentPayload([name]).then(function (payload) {
                 mergeSegmentRowsIntoTbody(tbody, payload, false);
             });
         };
         if (
-            segmentName === "chi" &&
+            (segmentName === "chi" || segmentName === "ee") &&
             (shellConfig.scope === "oes" || shellConfig.scope === "fo") &&
             !loadedSegments.nt_extra
         ) {
             return loadSegmentIntoTable("nt_extra").then(function () {
-                return loadPayload("chi");
+                return loadPayload(segmentName);
             });
         }
         return loadPayload(segmentName);
     }
 
     function loadSegmentsIntoTable(segmentNames) {
-        var ordered = orderSegmentLoadNames(segmentNames);
-        var needed = ordered.filter(function (name) {
-            return name && !loadedSegments[name];
-        });
-        if (!needed.length) {
+        var ordered = orderSegmentLoadNames(segmentNames).filter(Boolean);
+        if (!ordered.length) {
             return Promise.resolve();
         }
         var tbody =
@@ -1712,7 +2555,7 @@
         if (!tbody) {
             return Promise.reject(new Error("tbody не найден"));
         }
-        return needed.reduce(function (chain, name) {
+        return ordered.reduce(function (chain, name) {
             return chain.then(function () {
                 return fetchSegmentPayload([name]).then(function (payload) {
                     mergeSegmentRowsIntoTbody(tbody, payload, false);
@@ -1721,24 +2564,53 @@
         }, Promise.resolve());
     }
 
+    window.__pdPdSummaryRerenderTableBody = function () {
+        if (!lastRenderedSummaryPayload) {
+            return Promise.resolve();
+        }
+        /**
+         * Full tbody rebuild drops optional segment rows. Keep fetch cache, but
+         * clear non-core loaded flags so ensureSegments remeshes them into DOM.
+         */
+        var coreSet = {};
+        defaultSegments().forEach(function (s) {
+            coreSet[s] = true;
+        });
+        Object.keys(loadedSegments).forEach(function (s) {
+            if (!coreSet[s]) {
+                delete loadedSegments[s];
+            }
+        });
+        return renderSummaryTableBody(lastRenderedSummaryPayload);
+    };
+
+    window.__pdSummaryLoadEntityPaginationPage = loadEntityPaginationPage;
+    window.__pdSummaryEntityPaginationUrlIsPaginated = entityPaginationUrlIsPaginated;
+    window.__pdPdSummaryCollectActiveOptionalSegments =
+        collectActiveOptionalSegmentsFromWindowFlags;
+
     window.__pdSummaryEnsureSegments = function (segmentNames) {
         if (!segmentNames || !segmentNames.length) {
             return Promise.resolve();
         }
-        var ordered = orderSegmentLoadNames(segmentNames);
-        var needed = ordered.filter(function (s) {
-            return s && !loadedSegments[s];
-        });
-        if (!needed.length) {
+        var ordered = orderSegmentLoadNames(segmentNames).filter(Boolean);
+        if (!ordered.length) {
             return Promise.resolve();
         }
-        pdSummaryShowSegmentLoading();
+        var needsNetwork = ordered.some(function (s) {
+            return !loadedSegments[s];
+        });
+        if (needsNetwork) {
+            pdSummaryShowSegmentLoading();
+        }
         var loadPromise =
-            needed.length === 1
-                ? loadSegmentIntoTable(needed[0])
-                : loadSegmentsIntoTable(needed);
+            ordered.length === 1
+                ? loadSegmentIntoTable(ordered[0])
+                : loadSegmentsIntoTable(ordered);
         return loadPromise.finally(function () {
-            pdSummaryHideSegmentLoading();
+            if (needsNetwork) {
+                pdSummaryHideSegmentLoading();
+            }
         });
     };
 
@@ -1763,8 +2635,9 @@
             if (!tbody) {
                 throw new Error("tbody не найден");
             }
-            mergeSegmentRowsIntoTbody(tbody, payload, true);
-            return payload;
+            return renderSummaryTableBody(payload).then(function () {
+                return payload;
+            });
         })
         .catch(function (err) {
             var tbody =

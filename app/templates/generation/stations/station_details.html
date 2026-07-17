@@ -255,6 +255,14 @@
 {% set is_station_decentralized_zone = is_station_decentralized_zone | default(false) %}
 {% set can_edit_any = can_edit or can_edit_fuel or can_edit_fuel_dz %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
+{# id / external_code — не для reader/guest; только admin и editor #}
+{% set can_view_internal_ids = current_user.is_authenticated and (
+    current_user.has_admin
+    or (current_user.role_names | select('in', [
+        'generation-editor', 'fuel-editor', 'demand-editor', 'ecology-editor', 'load-editor',
+        'generation_editor', 'fuel_editor', 'demand_editor', 'ecology_editor', 'load_editor'
+    ]) | list | length > 0)
+) %}
 
 <style>
 /* Заголовок карточки станции */
@@ -422,7 +430,16 @@
                         <div class="row g-4">
                             <div class="col-12 col-xl-6">
                                 <div class="p-0">
-                                    <h4 class="card-title text-decoration-underline mb-3"><strong>Общая информация</strong></h4>
+                                    <div class="row g-2 align-items-center mb-3">
+                                        <div class="{% if can_view_internal_ids %}col-5{% else %}col-12{% endif %} text-start">
+                                            <h4 class="card-title text-decoration-underline mb-0"><strong>Общая информация</strong></h4>
+                                        </div>
+                                        {% if can_view_internal_ids %}
+                                        <div class="col-7 text-start text-muted">
+                                            id = {{ station.id }}{% if current_db_version %} · версия {{ current_db_version.version_number }}{% endif %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
                             <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">Название:</div>
                                 <div class="col-7 text-start">
@@ -491,6 +508,7 @@
                                     {% endif %}
                                 </div>
                             </div>
+                            {% if can_view_internal_ids %}
                             <div class="row g-2 align-items-center mb-0">
                                 <div class="col-5 text-start fw-semibold">external_code:</div>
                                 <div class="col-7 text-start">
@@ -501,6 +519,7 @@
                                     {% endif %}
                                 </div>
                             </div>
+                            {% endif %}
                                 </div>
                             </div>
 
@@ -1593,7 +1612,6 @@
             const fdElement = document.getElementById("federal_district");
             const resElement = document.getElementById("regional_energy_system");
             const uesElement = document.getElementById("union_energy_system");
-            const estElement = document.getElementById("energy_system_type");
 
             const fdValue = (data && data.federal_district) ? data.federal_district : "Нет данных";
             if (fdElement) {

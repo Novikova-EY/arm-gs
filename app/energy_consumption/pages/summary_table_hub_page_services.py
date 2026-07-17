@@ -23,6 +23,7 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     mask_summary_rows_perimeter_variant_year_display,
     tag_ees_russia_sipr_integer_display_rows,
     tag_energy_consumption_summary_rows_for_territory_compact,
+    tag_energy_consumption_summary_rows_perimeter_variant_labels,
 )
 
 PAGE_TEMPLATE = "energy_consumption/pages/summary_table_hub.html"
@@ -106,6 +107,11 @@ def build_summary_table_hub_page_context(
     if context.get("summary_rows"):
         context["summary_rows"] = filter_summary_table_hub_oes_and_tites_verification_rows(
             context["summary_rows"]
+        )
+        tag_energy_consumption_summary_rows_perimeter_variant_labels(
+            context["summary_rows"],
+            oes_summary=True,
+            use_summary_perimeter_options=True,
         )
     context.update(get_demand_summary_filter_refdata())
     context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()

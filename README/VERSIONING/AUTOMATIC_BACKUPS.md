@@ -270,16 +270,22 @@ cmd = [
 
 ## 📝 Пример конфигурации Production
 
+На сервере Astra бэкапы делаются **systemd timer** (`generation-app-backup.timer`) и скриптом
+`/opt/generation-app/app/scripts/backup_pg.sh`. Дампы лежат в `/var/backups/generation-app/`,
+а не в каталоге приложения (и не в `.deb`). Подробнее: `docs/deployment/ASTRA_INSTALL.md`, раздел 5.
+
 ```bash
-# .env для production
-ENABLE_SCHEDULED_BACKUPS=True
-AUTO_BACKUP_DIR=/var/backups/arm_gs/auto
-KEEP_AUTO_BACKUPS=14  # Хранить 2 недели
-BACKUP_SCHEDULE_HOUR=3
-BACKUP_SCHEDULE_MINUTE=30
+# /etc/generation-app/app.env
+BACKUP_BASE_DIR=/var/backups/generation-app
+AUTO_BACKUP_DIR=/var/backups/generation-app/auto
+KEEP_AUTO_BACKUPS=14
+ENABLE_SCHEDULED_BACKUPS=False
 ```
+
+Встроенный APScheduler (`ENABLE_SCHEDULED_BACKUPS=True`) оставляйте для локальной разработки
+или если timer недоступен.
 
 ---
 
-*Последнее обновление: 21.10.2025*
+*Последнее обновление: 17.07.2026*
 

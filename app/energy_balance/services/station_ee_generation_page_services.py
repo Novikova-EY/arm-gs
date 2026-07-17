@@ -57,12 +57,13 @@ from app.generation.services.station_services.aggregation_cache import get_cache
 from app.generation.services.station_services.station_services import (
     determine_first_headers,
     determine_totals_to_show,
-    get_next_station_info,
     get_regional_districts_count_per_res,
     get_regional_districts_with_stations_per_res,
     get_station_ids_for_aggregation,
     get_stations_list,
 )
+from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from sqlalchemy.orm import joinedload, selectinload
 
 EE_PERIOD_MODE_YEARS = "years"
@@ -105,8 +106,20 @@ def _unspecified_station_sort_key(row: dict[str, Any]) -> tuple:
     )
 
 
+def _is_espp_station_sign(station_sign: str | None) -> bool:
+    return station_sign in (STATION_SIGN_ESPP, "true")
+
+
+def _format_station_sign_display(station_sign: str | None) -> str:
+    if station_sign == STATION_SIGN_ESPP:
+        return "да"
+    if station_sign == "true":
+        return STATION_SIGN_ESPP
+    return "—"
+
+
 def _resolve_station_sign(station: Station) -> str:
-    if getattr(station, "station_sign", None) == STATION_SIGN_ESPP:
+    if _is_espp_station_sign(getattr(station, "station_sign", None)):
         return STATION_SIGN_ESPP
     return STATION_SIGN_UNSPECIFIED
 
@@ -287,10 +300,8 @@ def _add_period_sum(target: dict[int, Decimal], period_key: int, value) -> None:
 def build_generation_aggregates(
     stations: list[Station],
     values_by_station: dict[int, dict[int, Decimal | None]],
-    espp_by_res: dict[int, dict[int, Decimal | None]] | None = None,
-    res_placement: dict[int, tuple[int, int]] | None = None,
 ) -> dict[str, dict]:
-    """Суммы выработки ЭЭ по уровням иерархии (станции + свод ЭСПП по РЭС)."""
+    """Суммы выработки ЭЭ по уровням иерархии (сумма по всем станциям)."""
     aggregates: dict[str, Any] = {
         "energy_units": defaultdict(dict),
         "regional_districts": defaultdict(dict),
@@ -300,8 +311,6 @@ def build_generation_aggregates(
     }
 
     for station in stations or []:
-        if getattr(station, "station_sign", None) == STATION_SIGN_ESPP:
-            continue
         periods = values_by_station.get(station.id, {})
         est_id, ues_id, res_id, rd_id, eu_id = _resolve_station_placement(station)
 
@@ -311,15 +320,6 @@ def build_generation_aggregates(
                 _add_period_sum(aggregates["energy_units"][eu_id], period_key, value)
             if rd_id != -1:
                 _add_period_sum(aggregates["regional_districts"][rd_id], period_key, value)
-            if res_id != -1:
-                _add_period_sum(aggregates["regional_energy_systems"][res_id], period_key, value)
-            if ues_id != -1:
-                _add_period_sum(aggregates["union_energy_systems"][ues_id], period_key, value)
-
-    for res_id, periods in (espp_by_res or {}).items():
-        est_id, ues_id = (res_placement or {}).get(res_id, (-1, -1))
-        for period_key, value in periods.items():
-            _add_period_sum(aggregates["total"], period_key, value)
             if res_id != -1:
                 _add_period_sum(aggregates["regional_energy_systems"][res_id], period_key, value)
             if ues_id != -1:
@@ -338,11 +338,9 @@ def build_stations_sum_by_res(
     stations: list[Station],
     values_by_station: dict[int, dict[int, Decimal | None]],
 ) -> dict[int, dict[int, Decimal | None]]:
-    """Сумма выработки по станциям (без ЭСПП) в разрезе РЭС."""
+    """Сумма выработки по всем станциям в разрезе РЭС."""
     result: dict[int, dict[int, Decimal | None]] = defaultdict(dict)
     for station in stations or []:
-        if getattr(station, "station_sign", None) == STATION_SIGN_ESPP:
-            continue
         _est_id, _ues_id, res_id, _rd_id, _eu_id = _resolve_station_placement(station)
         if res_id in (None, -1):
             continue
@@ -354,24 +352,21 @@ def build_stations_sum_by_res(
 def build_res_verification_by_res(
     res_control_by_res: dict[int, dict[int, Decimal | None]],
     stations_by_res: dict[int, dict[int, Decimal | None]],
-    espp_by_res: dict[int, dict[int, Decimal | None]],
     period_columns: list[tuple[int, str]],
 ) -> dict[int, dict[int, Decimal | None]]:
-    """Проверка РЭС = (сумма по станциям + выработка ЭСПП) − контрольный итог."""
+    """Проверка РЭС = сумма по станциям − контрольный итог."""
     result: dict[int, dict[int, Decimal | None]] = {}
-    res_ids = set(res_control_by_res) | set(stations_by_res) | set(espp_by_res)
+    res_ids = set(res_control_by_res) | set(stations_by_res)
     for res_id in res_ids:
         period_values: dict[int, Decimal | None] = {}
         for period_key, _label in period_columns:
             control = (res_control_by_res.get(res_id) or {}).get(period_key)
             stations_sum = (stations_by_res.get(res_id) or {}).get(period_key)
-            espp_sum = (espp_by_res.get(res_id) or {}).get(period_key)
-            if control is None and stations_sum is None and espp_sum is None:
+            if control is None and stations_sum is None:
                 period_values[period_key] = None
                 continue
             period_values[period_key] = (
                 Decimal(str(stations_sum or 0))
-                + Decimal(str(espp_sum or 0))
                 - Decimal(str(control or 0))
             )
         result[res_id] = period_values
@@ -706,7 +701,7 @@ def build_station_ee_generation_hierarchy(
                 "station_name": station.name or "—",
                 "kto_display": station.kto or "—",
                 "station_sign": _resolve_station_sign(station),
-                "station_sign_display": station.station_sign or "—",
+                "station_sign_display": _format_station_sign_display(station.station_sign),
                 "station_type_display_order": station_type_display_order,
                 "periods": periods,
                 **attrs,
@@ -781,6 +776,23 @@ def build_station_ee_generation_hierarchy(
     return result
 
 
+def _load_stations_for_aggregation(station_ids: list[int]) -> list[Station]:
+    """Загружает станции для расчёта агрегатов выработки ЭЭ."""
+    if not station_ids:
+        return []
+    unique_ids = list(dict.fromkeys(station_ids))
+    query = Station.query.options(
+        joinedload(Station.regional_district)
+        .joinedload(RegionalDistrict.regional_energy_systems)
+        .joinedload(RegionalEnergySystem.union_energy_system),
+        joinedload(Station.regional_energy_system_obj),
+        joinedload(Station.energy_unit),
+    ).filter(Station.id.in_(unique_ids))
+    query = filter_by_db_version(query, Station)
+    stations_by_id = {station.id: station for station in query.all()}
+    return [stations_by_id[sid] for sid in unique_ids if sid in stations_by_id]
+
+
 def format_generation_cell(value, rounding_digits: int, *, show_zero: bool = False) -> str:
     if value is None:
         return "—"
@@ -831,10 +843,8 @@ def get_station_ee_generation_page_data(
     if per_page_int <= 0:
         per_page_int = 50
 
-    need_all_stations = show_all or show_totals
-    all_stations: list[Station] = []
-
-    if need_all_stations:
+    next_station_info = None
+    if show_all:
         station_data = get_stations_list(
             page=1,
             per_page="all",
@@ -842,18 +852,10 @@ def get_station_ee_generation_page_data(
             end_year=list_end_year,
             **list_filters,
         )
-        all_stations = station_data.get("stations") or []
-        total_count = len(all_stations)
-
-        if show_all:
-            page_stations = all_stations
-            total_pages = 1
-            current_page = 1
-        else:
-            total_pages = max(1, (total_count + per_page_int - 1) // per_page_int) if total_count else 1
-            current_page = min(max(page, 1), total_pages)
-            start_idx = (current_page - 1) * per_page_int
-            page_stations = all_stations[start_idx : start_idx + per_page_int]
+        page_stations = station_data.get("stations") or []
+        total_count = len(page_stations)
+        total_pages = 1
+        current_page = 1
     else:
         station_data = get_stations_list(
             page=page,
@@ -864,8 +866,12 @@ def get_station_ee_generation_page_data(
         )
         page_stations = station_data.get("stations") or []
         total_count = station_data.get("total_count", 0)
-        total_pages = max(1, (total_count + per_page_int - 1) // per_page_int) if total_count else 1
+        total_pages_default = max(
+            1, (total_count + per_page_int - 1) // per_page_int
+        ) if total_count else 1
+        total_pages = station_data.get("effective_total_pages") or total_pages_default
         current_page = min(max(page, 1), total_pages)
+        next_station_info = station_data.get("next_station_info")
 
     ensure_stations_machines_for_display(page_stations)
     station_ids = [s.id for s in page_stations]
@@ -883,7 +889,6 @@ def get_station_ee_generation_page_data(
             page_res_ids,
             selected_year,
         )
-        espp_values_by_res = load_monthly_espp_generation_by_res(page_res_ids, selected_year)
     else:
         values_by_station = load_annual_generation_by_station(
             station_ids,
@@ -895,17 +900,11 @@ def get_station_ee_generation_page_data(
             start_year,
             end_year,
         )
-        espp_values_by_res = load_annual_espp_generation_by_res(
-            page_res_ids,
-            start_year,
-            end_year,
-        )
     hierarchy = build_station_ee_generation_hierarchy(
         page_stations,
         values_by_station,
         period_columns,
     )
-    visible_res_ids = collect_res_ids_from_hierarchy(hierarchy)
 
     if show_all:
         show_headers = None
@@ -930,9 +929,6 @@ def get_station_ee_generation_page_data(
 
     if show_totals or show_all:
         per_page_for_totals = None if show_all else per_page_int
-        next_station_info = None
-        if not show_all and per_page_int:
-            next_station_info = get_next_station_info(current_page, per_page_int, list_filters)
 
         should_show_totals = determine_totals_to_show(
             page_stations,
@@ -961,7 +957,8 @@ def get_station_ee_generation_page_data(
                     start_year,
                     end_year,
                 )
-            agg_station_map = {s.id: s for s in all_stations if s.id in set(aggregation_station_ids)}
+            agg_stations = _load_stations_for_aggregation(aggregation_station_ids)
+            agg_station_map = {station.id: station for station in agg_stations}
             agg_res_ids = sorted(
                 {
                     placement[2]
@@ -971,17 +968,11 @@ def get_station_ee_generation_page_data(
                 }
             )
             if period_mode == EE_PERIOD_MODE_MONTHS:
-                agg_espp_values = load_monthly_espp_generation_by_res(agg_res_ids, selected_year)
                 agg_res_control = load_monthly_res_control_generation_by_res(
                     agg_res_ids,
                     selected_year,
                 )
             else:
-                agg_espp_values = load_annual_espp_generation_by_res(
-                    agg_res_ids,
-                    start_year,
-                    end_year,
-                )
                 agg_res_control = load_annual_res_control_generation_by_res(
                     agg_res_ids,
                     start_year,
@@ -990,8 +981,6 @@ def get_station_ee_generation_page_data(
             generation_aggregates = build_generation_aggregates(
                 list(agg_station_map.values()),
                 agg_values_by_station,
-                espp_by_res=agg_espp_values,
-                res_placement=build_res_placement_map(all_stations),
             )
             res_control_by_res = agg_res_control
             stations_sum_by_res = build_stations_sum_by_res(
@@ -1001,7 +990,6 @@ def get_station_ee_generation_page_data(
             res_verification_by_res = build_res_verification_by_res(
                 agg_res_control,
                 stations_sum_by_res,
-                agg_espp_values,
                 period_columns,
             )
 

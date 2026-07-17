@@ -36,7 +36,15 @@ from app.power_demand.services.demand_summary_client_render_services import (
     build_client_render_config,
     build_summary_data_json_response,
 )
-from app.power_demand.services.pd_summary_data_segments import parse_pd_data_segments
+from app.power_demand.services.pd_summary_data_segments import (
+    PD_SUMMARY_SEGMENT_CORE,
+    needs_full_summary_build,
+    parse_pd_data_segments,
+)
+from app.power_demand.services.pd_summary_entity_pagination import (
+    apply_entity_pagination_to_context,
+    parse_pd_entity_pagination,
+)
 from app.power_demand.services.pd_summary_page_cache import (
     cached_load_pd_summary_data,
     clear_pd_summary_page_cache,
@@ -99,10 +107,29 @@ def _attach_pd_summary_client_render(context: dict, *, scope: str, data_path: st
 
 def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
     data_segments = parse_pd_data_segments(scope)
+    entity_pagination = parse_pd_entity_pagination(scope)
 
     def loader() -> dict:
         context = context_builder(for_shell=False, data_segments=data_segments)
-        payload = build_summary_data_json_response(context).get_json()
+        boundary_rows = None
+        if (
+            entity_pagination is not None
+            and entity_pagination[1] > 0
+            and not needs_full_summary_build(data_segments)
+            # core пагинируется целиком (prefix + секции + суффикс ТИТЭС);
+            # boundary нужен только для ленивых сегментов (chi, ee, nt_extra, …).
+            and data_segments != frozenset({PD_SUMMARY_SEGMENT_CORE})
+        ):
+            core_context = context_builder(
+                for_shell=False,
+                data_segments=frozenset({PD_SUMMARY_SEGMENT_CORE}),
+            )
+            boundary_rows = core_context.get("summary_rows")
+        payload = build_summary_data_json_response(
+            context,
+            entity_pagination=entity_pagination,
+            pagination_boundary_rows=boundary_rows,
+        ).get_json()
         payload["loaded_segments"] = sorted(data_segments)
         return payload
 
@@ -384,6 +411,53 @@ def _parse_coeff_summary_year_range() -> tuple[int, int, int]:
     """(N, start_year, end_year) для «Коэффициенты…»: N−9…N+18 (28 лет)."""
     n = _coeff_base_year_n()
     return n, n - 9, n + 18
+
+
+def _parse_coeff_ui_year_form_range(coeff_n: int) -> tuple[int, int, bool]:
+    """
+    Диапазон для формы «Год начала/конца» на страницах «Коэффициенты…».
+
+    Данные таблицы по-прежнему N−9…N+18 (со срезом долгосрочного сегмента).
+    Если в URL есть start_year/end_year — считаем диапазон применённым (ручной режим отображения).
+    Без параметров в URL — по умолчанию отчётное окно N−9…N (как на «Максимумы…»).
+    """
+    bounds = _filter_year_list_for_summary()
+    default_sy = int(coeff_n) - 9
+    default_ey = int(coeff_n)
+    if bounds:
+        lo, hi = bounds[0], bounds[-1]
+        default_sy = max(lo, min(default_sy, hi))
+        default_ey = max(lo, min(default_ey, hi))
+        if default_sy > default_ey:
+            default_sy, default_ey = default_ey, default_sy
+    sy_raw = request.args.get("start_year")
+    ey_raw = request.args.get("end_year")
+    applied = sy_raw not in (None, "") and ey_raw not in (None, "")
+    try:
+        sy = int(sy_raw) if sy_raw not in (None, "") else default_sy
+    except (TypeError, ValueError):
+        sy = default_sy
+    try:
+        ey = int(ey_raw) if ey_raw not in (None, "") else default_ey
+    except (TypeError, ValueError):
+        ey = default_ey
+    if sy > ey:
+        sy, ey = ey, sy
+    if bounds:
+        lo, hi = bounds[0], bounds[-1]
+        sy = max(lo, min(sy, hi))
+        ey = max(lo, min(ey, hi))
+    if sy > ey:
+        sy, ey = ey, sy
+    return sy, ey, applied
+
+
+def _apply_coeff_ui_year_form_context(context: dict, coeff_n: int) -> None:
+    """Подставить годы формы и флаг ручного выбора на страницах coeff."""
+    ui_sy, ui_ey, applied = _parse_coeff_ui_year_form_range(coeff_n)
+    context["start_year"] = ui_sy
+    context["end_year"] = ui_ey
+    context["pd_coeff_years_applied"] = applied
 
 
 def _coeff_period_header_groups(n: int) -> list[dict[str, str | int]]:
@@ -1088,8 +1162,10 @@ def demand_summary_oes_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
+    _apply_coeff_ui_year_form_context(context, coeff_n)
     _attach_pd_summary_logs(context)
     _attach_pd_summary_formula_texts(context)
+    apply_entity_pagination_to_context(context, "oes")
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
@@ -1124,8 +1200,10 @@ def demand_summary_federal_districts_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
+    _apply_coeff_ui_year_form_context(context, coeff_n)
     _attach_pd_summary_logs(context)
     _attach_pd_summary_formula_texts(context)
+    apply_entity_pagination_to_context(context, "fo")
     return render_template("power_demand/power_demand_summary.html", **context)
 
 
@@ -1160,6 +1238,8 @@ def demand_summary_energy_zones_coeff():
     slice_coeff_summary_for_lazy_long_segment(
         context, coeff_n, include_long=coeff_include_long
     )
+    _apply_coeff_ui_year_form_context(context, coeff_n)
     _attach_pd_summary_logs(context)
     _attach_pd_summary_formula_texts(context)
+    apply_entity_pagination_to_context(context, "ez")
     return render_template("power_demand/power_demand_summary.html", **context)

@@ -15,10 +15,20 @@
 {% set fuel_edit_roles = ['admin', 'fuel-admin', 'fuel-editor'] %}
 {% set generation_edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
 {% set can_create_machine = can_create_machine | default(false) %}
+{% set can_edit_dz_machine = can_edit_dz_machine | default(false) %}
 {% set can_edit_fuel = current_user.role_names | select('in', fuel_edit_roles) | list | length > 0 %}
 {% set can_edit_generation = (current_user.role_names | select('in', generation_edit_roles) | list | length > 0) or can_create_machine %}
-{% set can_edit_any = can_edit_fuel or can_edit_generation %}
+{% set can_edit_generation_fields = can_edit_generation or can_edit_dz_machine %}
+{% set can_edit_any = can_edit_fuel or can_edit_generation_fields %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
+{# id / external_code — не для reader/guest; только admin и editor #}
+{% set can_view_internal_ids = current_user.is_authenticated and (
+    current_user.has_admin
+    or (current_user.role_names | select('in', [
+        'generation-editor', 'fuel-editor', 'demand-editor', 'ecology-editor', 'load-editor',
+        'generation_editor', 'fuel_editor', 'demand_editor', 'ecology_editor', 'load_editor'
+    ]) | list | length > 0)
+) %}
 
 <style>
 .generation-details-header-row {
@@ -83,13 +93,27 @@
             <div class="container-fluid">
                 <div class="card mb-3 border-0 shadow-none">
                     <div class="card-body">
+                        <div class="row g-2 align-items-center mb-3">
+                            <div class="col-12 col-lg-3">
+                                <div class="row g-2 align-items-center">
+                                    <div class="{% if can_view_internal_ids %}col-5{% else %}col-12{% endif %} text-start">
+                                        <h4 class="card-title text-decoration-underline mb-0"><strong>Общая информация</strong></h4>
+                                    </div>
+                                    {% if can_view_internal_ids %}
+                                    <div class="col-7 text-start text-muted">
+                                        id = {% if machine and machine.id %}{{ machine.id }}{% else %}—{% endif %}{% if current_db_version %} · версия {{ current_db_version.version_number }}{% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
                         <!-- Четыре столбца, в каждом строки: наименование + значение, выравнивание слева -->
                         <div class="row">
                             <div class="col-12 col-lg-3">
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Номер/название группы агрегата:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.machine_group(class="form-control") }}
                                         {% else %}
                                             {{ main_form.machine_group.data.label if main_form.machine_group.data else '—' }}
@@ -99,7 +123,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Номер агрегата:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.machine_number(class="form-control fw-bold") }}
                                         {% else %}
                                             {{ main_form.machine_number.data if main_form.machine_number.data else '—' }}
@@ -115,7 +139,7 @@
                                                    name="{{ main_form.machine_name.name }}"
                                                    value="{{ main_form.machine_name.data or '' }}"
                                                    class="machine-name-hidden">
-                                        {% elif can_edit_generation %}
+                                        {% elif can_edit_generation_fields %}
                                             {{ main_form.machine_name(class="form-control fw-bold machine-name-textarea", rows="3") }}
                                         {% else %}
                                             <div class="machine-name-display">{{ main_form.machine_name.data if main_form.machine_name.data else '—' }}</div>
@@ -125,7 +149,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Состояние агрегата электростанции:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.id_condition_type(class="form-select") }}
                                         {% else %}
                                             {{ machine.condition_type.name if machine.condition_type else '—' }}
@@ -145,7 +169,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Организация-собственник: <span class="text-danger fw-bold fs-5">*</span></div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.id_gen_company(class="form-select machine-details-searchable-select", id="id_gen_company") }}
                                         {% else %}
                                             {% if machine and machine.gen_company %}
@@ -161,13 +185,14 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Примечание:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.note(class="form-control") }}
                                         {% else %}
                                             {{ main_form.note.data if main_form.note.data else '—' }}
                                         {% endif %}
                                     </div>
                                 </div>
+                                {% if can_view_internal_ids %}
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">external_code:</div>
                                     <div class="col-7 text-start">
@@ -178,6 +203,7 @@
                                         {% endif %}
                                     </div>
                                 </div>
+                                {% endif %}
                             </div>
 
                             <div class="col-12 col-lg-3">
@@ -290,7 +316,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Год ввода в работу:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_commission_year(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_commission_year.data if main_form.date_commission_year.data else '—' }}
@@ -301,7 +327,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_exploitation(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_exploitation.data if main_form.date_exploitation.data else '—' }}
@@ -312,7 +338,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_exploitation_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_exploitation_expected.data if main_form.date_exploitation_expected.data else '—' }}
@@ -322,7 +348,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_decompressing_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_decompressing_expected.data if main_form.date_decompressing_expected.data else '—' }}
@@ -333,7 +359,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации с изменением мощности:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_modernization_power_change_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_modernization_power_change_expected.data if main_form.date_modernization_power_change_expected.data else '—' }}
@@ -343,7 +369,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год модернизации без изменения мощности:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_modernization_no_power_change_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_modernization_no_power_change_expected.data if main_form.date_modernization_no_power_change_expected.data else '—' }}
@@ -353,7 +379,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемая дата присоединения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_joining_expected(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_joining_expected.data if main_form.date_joining_expected.data else '—' }}
@@ -376,7 +402,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата ввода в работу:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_commission_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_commission_fact.data if main_form.date_commission_fact.data else '—' }}
@@ -386,7 +412,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата вывода из эксплуатации:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_decompressing_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_decompressing_fact.data if main_form.date_decompressing_fact.data else '—' }}
@@ -397,7 +423,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата присоединения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_joining_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_joining_fact.data if main_form.date_joining_fact.data else '—' }}
@@ -407,7 +433,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата отсоединения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_detatchment_fact(class="form-control") }}
                                         {% else %}
                                             {{ main_form.date_detatchment_fact.data if main_form.date_detatchment_fact.data else '—' }}
@@ -417,7 +443,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата уточнения:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_update_fact(
                                                 class="form-control",
                                             ) }}
@@ -429,7 +455,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Фактическая дата перемаркировки:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.date_relabing_fact(
                                                 class="form-control",
                                             ) }}
@@ -441,7 +467,7 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Тип изменения состояния оборудования:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation %}
+                                        {% if can_edit_generation_fields %}
                                             {{ main_form.relabing_outcome(class="form-select") }}
                                         {% else %}
                                             {{ ((main_form.relabing_outcome.data or '')|trim) or '—' }}
@@ -649,7 +675,7 @@
                             {% for nm in advanced_form.machine_names %}
                                 {{ nm.year(type="hidden") }}
                                 <td class="align-middle text-center">
-                                    {% if can_edit_generation %}
+                                    {% if can_edit_generation_fields %}
                                         <input type="text"
                                             name="{{ nm.year_name.name }}"
                                             value="{{ nm.year_name.data or '' }}"
@@ -705,7 +731,7 @@
                                     <input type="hidden"
                                         name="{{ p.p_ust.name }}_orig"
                                         value="{{ p.p_ust.data | format_decimal }}">
-                            {% if can_edit_generation %}
+                            {% if can_edit_generation_fields %}
                                         <input type="text"
                                             name="{{ p.p_ust.name }}"
                                             value="{{ p.p_ust.data | format_decimal }}"
@@ -728,7 +754,7 @@
                                     <input type="hidden"
                                         name="{{ p.p_ogr.name }}_orig"
                                         value="{{ p.p_ogr.data | format_decimal }}">
-                            {% if can_edit_generation %}
+                            {% if can_edit_generation_fields %}
                                     <input type="text"
                                         name="{{ p.p_ogr.name }}"
                                         value="{{ p.p_ogr.data | format_decimal }}"
@@ -751,7 +777,7 @@
                                     <input type="hidden"
                                         name="{{ p.p_rasp.name }}_orig"
                                         value="{{ p.p_rasp.data | format_decimal }}">
-                            {% if can_edit_generation %}
+                            {% if can_edit_generation_fields %}
                                     <input type="text"
                                         name="{{ p.p_rasp.name }}"
                                         value="{{ p.p_rasp.data | format_decimal }}"
@@ -1484,6 +1510,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             function extendPowerValue(inputEl, idx) {
                 const value = inputEl.value;
+                if (inputEl.dataset) {
+                    inputEl.dataset.userSet = "1";
+                }
                 // Продление значения по текущей строке, но не дальше maxVersionYear
                 for (let i = idx + 1; i < inputs.length; i++) {
                     if (hasMaxVersionYear && yearsMatchInputs) {
@@ -1491,6 +1520,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
                     }
                     inputs[i].value = value;
+                    if (inputs[i].dataset) {
+                        inputs[i].dataset.userSet = "1";
+                    }
                 }
                 // При заполнении Руст заполняем Ррасп = Руст и продлеваем
                 if (isRustRow && raspRowInputs.length) {
@@ -1502,6 +1534,9 @@ document.addEventListener("DOMContentLoaded", function () {
                             if (typeof y === "number" && !isNaN(y) && y > maxVersionYear) break;
                         }
                         raspRowInputs[i].value = value;
+                        if (raspRowInputs[i].dataset) {
+                            raspRowInputs[i].dataset.userSet = "1";
+                        }
                     }
                 }
             }
@@ -1621,6 +1656,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         inputs.forEach(function (input, index) {
             input.addEventListener("input", function () {
+                this.dataset.userSet = "1";
                 extendNameValue(this, index);
                 if (typeof recomputeMachineNameFromYearNames === "function") {
                     recomputeMachineNameFromYearNames(inputs);
@@ -1628,6 +1664,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (typeof autoFillDatesFromPowers === "function") autoFillDatesFromPowers();
             });
             input.addEventListener("change", function () {
+                this.dataset.userSet = "1";
                 extendNameValue(this, index);
                 recomputeMachineNameFromYearNames(inputs);
                 autoFillDatesFromPowers();
@@ -2166,10 +2203,22 @@ document.addEventListener("DOMContentLoaded", function () {
             const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
             if (!isZero) return;
 
-            if (tesTypeSelects[index]) setSelectValue(tesTypeSelects[index], 0);
-            if (fuelTypeSelects[index]) setSelectValue(fuelTypeSelects[index], 0);
+            if (tesTypeSelects[index]) {
+                if (tesTypeSelects[index].dataset && tesTypeSelects[index].dataset.userSet === "1") {
+                    // Пользователь явно задал тип ТЭС — не сбрасываем при нулевой мощности
+                } else {
+                    setSelectValue(tesTypeSelects[index], 0);
+                }
+            }
+            if (fuelTypeSelects[index]) {
+                if (fuelTypeSelects[index].dataset && fuelTypeSelects[index].dataset.userSet === "1") {
+                    // Пользователь явно задал топливо — не сбрасываем при нулевой мощности
+                } else {
+                    setSelectValue(fuelTypeSelects[index], 0);
+                }
+            }
             // Дополнительно: очищаем "Название по году" при нулевой мощности
-            if (nameInputs[index]) {
+            if (nameInputs[index] && !(nameInputs[index].dataset && nameInputs[index].dataset.userSet === "1")) {
                 nameInputs[index].value = "";
             }
         });
@@ -2178,7 +2227,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function attachTesAndFuelAutoEmpty() {
         const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
         rustInputs.forEach(function (input) {
-            // Реагируем сразу при вводе
+            // Реагируем только на изменение мощности пользователем, не на загрузку страницы
             input.addEventListener("input", function () {
                 autoSetTesAndFuelToEmpty();
             });
@@ -2186,7 +2235,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 autoSetTesAndFuelToEmpty();
             });
         });
-        autoSetTesAndFuelToEmpty();
     }
 
     // --- Продление значения select по строке (как Excel) ---

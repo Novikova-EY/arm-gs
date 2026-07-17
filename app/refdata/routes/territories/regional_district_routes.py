@@ -221,7 +221,7 @@ def regional_district_list():
     # Синхронные зоны с фильтрацией по версии БД
     from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
     synchronous_areas = get_synchronous_area_list_full()
-    form.synchronous_area.choices = [(sa.id, f"{sa.number} ({sa.name})") for sa in synchronous_areas]
+    form.synchronous_area.choices = [(sa.id, sa.name) for sa in synchronous_areas]
     synchronous_area_list = [(sa.id, sa.number, sa.name) for sa in synchronous_areas]
 
     return render_template(

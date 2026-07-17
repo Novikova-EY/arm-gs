@@ -225,6 +225,9 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
     ees_russia_without_nt_without_gaes = _ees_russia_variant_row(
         code=service.CODE_WITHOUT_NT_WITHOUT_GAES,
     )
+    ees_russia_without_nt_with_gaes = _ees_russia_variant_row(
+        code=service.CODE_WITHOUT_NT_WITH_GAES,
+    )
     sync_without_nt_without_gaes = {
         "entity_label": "Первая синхронная зона",
         "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
@@ -243,6 +246,7 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
         ees_type_with_nt_with_gaes,
         ees_type_with_nt_plain,
         ees_type_with_nt_without_gaes,
+        ees_russia_without_nt_with_gaes,
         ees_russia_without_nt_without_gaes,
         sync_without_nt_without_gaes,
         south_with_nt_with_gaes,
@@ -252,10 +256,12 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
     service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
     service._mark_summary_table_nt_on_gaes_off_variant_row_rules(rows)
 
-    assert ees_type_with_nt_without_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
+    assert ees_type_with_nt_with_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
     assert ees_type_with_nt_plain["pd_ec_nt_on_gaes_off_redundant_row"] is True
-    assert ees_type_with_nt_with_gaes["pd_ec_nt_on_gaes_off_redundant_row"] is True
-    assert ees_russia_without_nt_without_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
+    assert ees_type_with_nt_without_gaes["pd_ec_nt_on_gaes_off_redundant_row"] is True
+    assert ees_russia_without_nt_with_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
+    assert ees_russia_without_nt_without_gaes["pd_ec_nt_on_gaes_off_redundant_row"] is True
+    # Нет варианта «с зарядом» — оставляем «без заряда» как fallback.
     assert sync_without_nt_without_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
     assert south_with_nt_with_gaes["pd_ec_nt_on_gaes_off_visible_row"] is True
     assert south_with_nt_without_gaes["pd_ec_nt_on_gaes_off_redundant_row"] is True
@@ -267,11 +273,11 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
         territory_compact_on=True,
     )
     assert (
-        service.export_entity_label_for_summary_row(ees_type_with_nt_without_gaes, ui_opts)
+        service.export_entity_label_for_summary_row(ees_type_with_nt_with_gaes, ui_opts)
         == "ЭЭС России с НТ"
     )
     assert (
-        service.export_entity_label_for_summary_row(ees_russia_without_nt_without_gaes, ui_opts)
+        service.export_entity_label_for_summary_row(ees_russia_without_nt_with_gaes, ui_opts)
         == "ЕЭС России без НТ"
     )
     assert (
@@ -287,9 +293,15 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
         return True
 
     assert service._summary_row_visible_for_export_ui(
+        ees_russia_without_nt_with_gaes, opts=ui_opts, parameter_visible=parameter_visible
+    )
+    assert not service._summary_row_visible_for_export_ui(
         ees_russia_without_nt_without_gaes, opts=ui_opts, parameter_visible=parameter_visible
     )
     assert service._summary_row_visible_for_export_ui(
+        ees_type_with_nt_with_gaes, opts=ui_opts, parameter_visible=parameter_visible
+    )
+    assert not service._summary_row_visible_for_export_ui(
         ees_type_with_nt_without_gaes, opts=ui_opts, parameter_visible=parameter_visible
     )
     assert service._summary_row_visible_for_export_ui(
@@ -297,9 +309,6 @@ def test_nt_on_gaes_off_variant_row_rules_and_export_labels():
     )
     assert not service._summary_row_visible_for_export_ui(
         south_with_nt_without_gaes, opts=ui_opts, parameter_visible=parameter_visible
-    )
-    assert not service._summary_row_visible_for_export_ui(
-        ees_type_with_nt_with_gaes, opts=ui_opts, parameter_visible=parameter_visible
     )
 
 
@@ -314,12 +323,16 @@ def test_collapsed_nt_gaes_visible_rows_skip_empty_hide_marks_south_ues_without_
 
 
 def test_collapsed_nt_gaes_variant_row_rules_mark_primary_rows():
-    ees_russia_row = {
+    ees_russia_with = {
         "entity_label": "ЕЭС России",
         "demand_model_name": "EesRussiaEnergyConsumptionParameter",
         "parent_fk_column": None,
         "parent_id": None,
         "parameter_key": "energy_consumption_mln_kvt_ch",
+        "perimeter_variant_code": service.CODE_WITHOUT_NT_WITH_GAES,
+    }
+    ees_russia_without = {
+        **ees_russia_with,
         "perimeter_variant_code": service.CODE_WITHOUT_NT_WITHOUT_GAES,
     }
     south_rows = [
@@ -335,20 +348,157 @@ def test_collapsed_nt_gaes_variant_row_rules_mark_primary_rows():
         "parameter_key": "energy_consumption_mln_kvt_ch",
         "perimeter_variant_code": "without_nt_without_gaes_with_kaliningrad_es",
     }
-    rows = [ees_russia_row, *south_rows, sync_row]
+    rows = [ees_russia_with, ees_russia_without, *south_rows, sync_row]
 
     service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
 
-    assert ees_russia_row["pd_ec_collapsed_nt_gaes_visible_row"] is True
-    assert ees_russia_row["pd_ec_entity_label_compact_nt_gaes"] == "ЕЭС России"
+    assert ees_russia_with["pd_ec_collapsed_nt_gaes_visible_row"] is True
+    assert ees_russia_with["pd_ec_entity_label_compact_nt_gaes"] == "ЕЭС России"
+    assert ees_russia_without["pd_ec_collapsed_nt_gaes_redundant_row"] is True
     assert south_rows[0]["pd_ec_collapsed_nt_gaes_visible_row"] is True
     assert south_rows[0]["pd_ec_entity_label_compact_nt_gaes"] == "ОЭС Юга"
     assert south_rows[1]["pd_ec_collapsed_nt_gaes_redundant_row"] is True
     assert south_rows[2]["pd_ec_collapsed_nt_gaes_redundant_row"] is True
+    # Только «без заряда» — fallback primary.
     assert sync_row["pd_ec_collapsed_nt_gaes_visible_row"] is True
     assert sync_row["pd_ec_entity_label_compact_nt_gaes"] == (
         "Первая синхронная зона (с ЭС Калининградской области)"
     )
+
+
+def test_collapsed_nt_gaes_hides_fo_without_gaes_when_base_row_exists():
+    """ФО: базовая строка без кода + инжект «без заряда» не должны оба быть primary."""
+    fd_mn = "FederalDistrictEnergyConsumptionParameter"
+    fo_base = {
+        "entity_label": "Центральный ФО",
+        "demand_model_name": fd_mn,
+        "parent_fk_column": "id_federal_district",
+        "parent_id": 1,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "perimeter_variant_code": None,
+        "show_entity_cell": True,
+        "entity_kind": "group",
+    }
+    fo_without = {
+        **fo_base,
+        "entity_label": "Центральный ФО без заряда ГАЭС",
+        "perimeter_variant_code": service.CODE_WITHOUT_NT_WITHOUT_GAES,
+        "pd_ec_gaes_extra_row": True,
+        "pd_ec_gaes_without_row": True,
+        "pd_ec_fo_without_gaes_injected_row": True,
+        "gaes_without_charge_formula_kind": "fo",
+    }
+    rows = [fo_base, fo_without]
+
+    service._mark_summary_table_collapsed_nt_gaes_variant_row_rules(rows)
+    service._mark_summary_table_nt_on_gaes_off_variant_row_rules(rows)
+
+    assert fo_without.get("pd_ec_collapsed_nt_gaes_visible_row") is not True
+    assert fo_without.get("pd_ec_collapsed_nt_gaes_redundant_row") is True
+    assert fo_without.get("pd_ec_nt_on_gaes_off_visible_row") is not True
+    assert fo_without.get("pd_ec_nt_on_gaes_off_redundant_row") is True
+    assert service._summary_row_visible_for_export_ui(
+        fo_without,
+        opts=service.EnergyConsumptionExportUiOptions(
+            sipr_on=False,
+            verification_on=False,
+            gaes_detail_on=False,
+            nt_detail_on=False,
+            isolated_energy_units_on=False,
+            territory_compact_on=True,
+        ),
+        parameter_visible=lambda _pk: True,
+    ) is False
+    assert service._summary_row_visible_for_export_ui(
+        fo_without,
+        opts=service.EnergyConsumptionExportUiOptions(
+            sipr_on=False,
+            verification_on=False,
+            gaes_detail_on=True,
+            nt_detail_on=False,
+            isolated_energy_units_on=False,
+            territory_compact_on=True,
+        ),
+        parameter_visible=lambda _pk: True,
+    ) is True
+
+
+def test_collapse_gaes_split_removes_south_fd_duplicates_without_stations(monkeypatch):
+    """Южный ФО без станций ГАЭС: не оставлять одинаковые строки с/без заряда."""
+    fd_mn = "FederalDistrictEnergyConsumptionParameter"
+    rows = [
+        {
+            "entity_label": "Южный ФО без НТ с зарядом ГАЭС",
+            "demand_model_name": fd_mn,
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 20,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "perimeter_variant_code": service.CODE_WITHOUT_NT_WITH_GAES,
+            "pd_ec_gaes_extra_row": True,
+            "year_values": ["100.0"],
+            "show_entity_cell": True,
+        },
+        {
+            "entity_label": "Южный ФО (заряд ГАЭС)",
+            "demand_model_name": fd_mn,
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 20,
+            "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+            "perimeter_variant_code": None,
+            "pd_ec_gaes_injected_row": True,
+            "year_values": ["—"],
+            "show_entity_cell": True,
+        },
+        {
+            "entity_label": "Южный ФО без НТ без заряда ГАЭС",
+            "demand_model_name": fd_mn,
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 20,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "perimeter_variant_code": service.CODE_WITHOUT_NT_WITHOUT_GAES,
+            "pd_ec_gaes_without_row": True,
+            "year_values": ["100.0"],
+            "show_entity_cell": True,
+        },
+        {
+            "entity_label": "Центральный ФО с зарядом ГАЭС",
+            "demand_model_name": fd_mn,
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 1,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "perimeter_variant_code": service.CODE_WITHOUT_NT_WITH_GAES,
+            "pd_ec_gaes_extra_row": True,
+            "year_values": ["200.0"],
+            "show_entity_cell": True,
+        },
+        {
+            "entity_label": "Центральный ФО без заряда ГАЭС",
+            "demand_model_name": fd_mn,
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 1,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "perimeter_variant_code": service.CODE_WITHOUT_NT_WITHOUT_GAES,
+            "pd_ec_gaes_without_row": True,
+            "year_values": ["190.0"],
+            "show_entity_cell": True,
+        },
+    ]
+
+    def _has_gaes(row):
+        return int(row.get("parent_id") or 0) == 1
+
+    monkeypatch.setattr(service, "_summary_row_entity_has_gaes_charge", _has_gaes)
+
+    service.collapse_gaes_variant_split_for_entities_without_stations(rows)
+
+    south = [r for r in rows if r.get("parent_id") == 20]
+    central = [r for r in rows if r.get("parent_id") == 1]
+    assert len(south) == 1
+    assert south[0]["perimeter_variant_code"] == service.CODE_WITHOUT_NT_WITH_GAES
+    assert south[0].get("pd_ec_gaes_extra_row") is False
+    assert "с зарядом" not in (south[0].get("entity_label") or "")
+    assert len(central) == 2
+    assert any("without_gaes" in str(r.get("perimeter_variant_code") or "") for r in central)
 
 
 def test_expanded_nt_gaes_variant_row_rules_mark_plain_with_nt_redundant():
@@ -904,6 +1054,48 @@ def test_apply_gaes_without_charge_formula_keeps_south_without_nt_without_gaes_d
     assert target_row.get("gaes_without_charge_formula_kind") is None
 
 
+def test_apply_gaes_without_charge_formula_fills_empty_south_without_nt_without_gaes():
+    years = [2024]
+    source_row = _south_variant_row(service.CODE_WITHOUT_NT_WITH_GAES, "100.0")
+    charge_row = _south_gaes_charge_row_for_nt_group("12.0", nt_group="without_nt")
+    target_row = _south_variant_row(service.CODE_WITHOUT_NT_WITHOUT_GAES, "—")
+    rows = [source_row, charge_row, target_row]
+
+    service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
+    service.apply_gaes_without_charge_formula_to_summary_rows(
+        rows,
+        years,
+        rounding_digits=1,
+    )
+
+    assert service._raw_year_values_from_summary_row(target_row, years) == {
+        2024: Decimal("88.0")
+    }
+    assert target_row.get("pd_ec_formula_derived_row") is True
+    assert target_row.get("gaes_without_charge_formula_kind") == "oes"
+
+
+def test_apply_gaes_without_charge_formula_replaces_polluted_south_without_nt_without_gaes():
+    """Ранний проход мог скопировать «с зарядом» — повторный вызов должен вычесть ГАЭС."""
+    years = [2024]
+    source_row = _south_variant_row(service.CODE_WITHOUT_NT_WITH_GAES, "100.0")
+    charge_row = _south_gaes_charge_row_for_nt_group("12.0", nt_group="without_nt")
+    target_row = _south_variant_row(service.CODE_WITHOUT_NT_WITHOUT_GAES, "100.0")
+    rows = [source_row, charge_row, target_row]
+
+    service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
+    service.apply_gaes_without_charge_formula_to_summary_rows(
+        rows,
+        years,
+        rounding_digits=1,
+    )
+
+    assert service._raw_year_values_from_summary_row(target_row, years) == {
+        2024: Decimal("88.0")
+    }
+    assert target_row.get("pd_ec_formula_derived_row") is True
+
+
 def test_apply_gaes_without_charge_formula_does_not_sum_south_nt_charge_twice():
     years = [2024]
     with_nt_source = _south_variant_row(service.CODE_WITH_NT_WITH_GAES, "150.0")
@@ -1044,9 +1236,8 @@ def test_first_sa_kaliningrad_verification_respects_year_bounds():
         if row["parameter_key"] == "energy_consumption_mln_kvt_ch"
     )
 
-    assert with_kal_ec["perimeter_variant_to_year"] == 2024
-    assert with_kal_ec["year_values"][:2] != ["—", "—"]
-    assert with_kal_ec["year_values"][2:] == ["—", "—"]
+    assert with_kal_ec.get("perimeter_variant_to_year") is None
+    assert with_kal_ec["year_values"] != ["—", "—", "—", "—"]
     assert with_kal_ec["pd_ec_verification_year_red"] == [False, False, False, False]
 
     assert without_kal_ec["perimeter_variant_from_year"] == 2025
@@ -1074,9 +1265,9 @@ def test_first_sa_verification_red_flags_nonzero_after_perimeter_tag():
         row for row in rows if row["parameter_key"] == "energy_consumption_mln_kvt_ch"
     )
     assert ec["year_values"][0] not in ("—", "0", "0,0", "0,000000")
-    assert ec["year_values"][1] == "—"
-    assert ec["pd_ec_verification_year_red"] == [True, False]
-    assert ec.get("perimeter_variant_to_year") == 2024
+    assert ec["year_values"][1] not in ("—", "0", "0,0", "0,000000")
+    assert ec["pd_ec_verification_year_red"] == [True, True]
+    assert ec.get("perimeter_variant_to_year") is None
 
 
 def test_first_sa_without_kal_verification_red_flags_nonzero_after_perimeter_tag():
@@ -1301,6 +1492,142 @@ def test_summary_table_russia_with_nt_shows_all_years():
     assert row["year_row_ids"] == [1, 2, 3, 4]
 
 
+def test_energy_unit_ec_perimeter_entity_context_resolves(monkeypatch):
+    from app.common.perimeter_variant.registry import perimeter_entity_context_for_model
+
+    class _FakeEU:
+        name = "Тестовый энергорайон"
+
+    def _fake_import_module(name):
+        mod = type("m", (), {})()
+        if name.endswith("energy_unit_model"):
+            mod.EnergyUnit = type(
+                "EU",
+                (),
+                {
+                    "query": type(
+                        "Q",
+                        (),
+                        {"get": staticmethod(lambda _id: _FakeEU())},
+                    )()
+                },
+            )
+        return mod
+
+    monkeypatch.setattr("importlib.import_module", _fake_import_module)
+    ctx = perimeter_entity_context_for_model(
+        "EnergyUnitEnergyConsumptionParameter",
+        parent_fk_column="id_energy_unit",
+        parent_id=1,
+    )
+    assert ctx == ("energy_unit", "Тестовый энергорайон")
+
+
+def test_tag_ec_summary_o1_energy_unit_gets_perimeter_select_with_options(monkeypatch):
+    from app.common.perimeter_variant.registry import resolve_catalog_o1_perimeter_variant_code
+
+    o1_code = resolve_catalog_o1_perimeter_variant_code()
+    row = {
+        "show_entity_cell": True,
+        "entity_label": "Изолированный энергорайон",
+        "demand_model_name": "EnergyUnitEnergyConsumptionParameter",
+        "parent_fk_column": "id_energy_unit",
+        "parent_id": 42,
+        "perimeter_variant_code": o1_code,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "pd_ec_perimeter_entity_kind": "energy_unit",
+        "pd_ec_perimeter_entity_name": "Изолированный энергорайон",
+    }
+    monkeypatch.setattr(
+        "app.power_demand.services.demand_summary_services._perimeter_variant_options_for_summary",
+        lambda kind, name: [],
+    )
+    service.tag_energy_consumption_summary_rows_perimeter_variant_labels(
+        [row],
+        use_summary_perimeter_options=True,
+    )
+    assert row["show_perimeter_variant_select"] is True
+    assert any(
+        opt.get("code") == o1_code for opt in row.get("perimeter_variant_options") or []
+    )
+
+
+def test_ec_summary_table_oes_perimeter_labels_do_not_strip_gaes(monkeypatch):
+    captured_strip_flags: list[bool] = []
+
+    def _fake_label(code, *, binding, entity_kind, entity_name, strip_gaes_suffix=True):
+        captured_strip_flags.append(strip_gaes_suffix)
+        return "без НТ без заряда ГАЭС"
+
+    def _fake_options(kind, name, *, strip_gaes_suffix=True):
+        captured_strip_flags.append(strip_gaes_suffix)
+        return [{"code": "without_nt_without_gaes", "label": "без НТ без заряда ГАЭС"}]
+
+    monkeypatch.setattr(
+        "app.power_demand.services.demand_summary_services._oes_perimeter_variant_russian_label",
+        _fake_label,
+    )
+    monkeypatch.setattr(
+        "app.power_demand.services.demand_summary_services._perimeter_variant_options_for_oes_summary",
+        _fake_options,
+    )
+    row = {
+        "show_entity_cell": True,
+        "entity_label": "Первая синхронная зона",
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "parent_fk_column": "id_synchronous_area",
+        "parent_id": 39,
+        "perimeter_variant_code": "without_nt_without_gaes",
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "pd_ec_perimeter_entity_kind": "synchronous_area",
+        "pd_ec_perimeter_entity_name": "Первая синхронная зона",
+    }
+    service.tag_energy_consumption_summary_rows_perimeter_variant_labels(
+        [row],
+        oes_summary=True,
+        use_summary_perimeter_options=True,
+    )
+    assert captured_strip_flags == [False, False]
+    assert row["perimeter_variant_label"] == "без НТ без заряда ГАЭС"
+
+
+def test_ec_ensure_gaes_suffix_in_perimeter_variant_label_from_short_catalog():
+    assert service._ensure_gaes_suffix_in_perimeter_variant_label(
+        "без НТ",
+        "without_nt_without_gaes",
+    ) == "без НТ без заряда ГАЭС"
+    assert service._ensure_gaes_suffix_in_perimeter_variant_label(
+        "без заряда ГАЭС",
+        None,
+    ) == "без заряда ГАЭС"
+
+
+def test_ec_retag_preserves_injected_gaes_perimeter_label(monkeypatch):
+    row = {
+        "show_entity_cell": True,
+        "entity_label": "ОЭС Центра без заряда ГАЭС",
+        "demand_model_name": "UnionEnergySystemEnergyConsumptionParameter",
+        "parent_fk_column": "id_union_energy_system",
+        "parent_id": 117,
+        "perimeter_variant_code": None,
+        "perimeter_variant_label": service._GAES_PERIMETER_VARIANT_LABEL_WITHOUT,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "pd_ec_perimeter_entity_kind": "union_energy_system",
+        "pd_ec_perimeter_entity_name": "ОЭС Центра",
+        "pd_ec_ues_without_gaes_injected_row": True,
+    }
+    monkeypatch.setattr(
+        "app.power_demand.services.demand_summary_services._perimeter_variant_options_for_oes_summary",
+        lambda kind, name, strip_gaes_suffix=False: [],
+    )
+    service.tag_energy_consumption_summary_rows_perimeter_variant_labels(
+        [row],
+        oes_summary=True,
+        use_summary_perimeter_options=True,
+    )
+    assert row["perimeter_variant_label"] == service._GAES_PERIMETER_VARIANT_LABEL_WITHOUT
+
+
 def test_ees_russia_without_nt_gaes_verification_computed_for_all_years():
     years = [2023, 2024, 2025, 2026]
     base_ec = {y: Decimal("100") for y in years}
@@ -1500,6 +1827,68 @@ def test_filter_summary_table_gaes_charge_aggregate_rows():
     ]
 
 
+def test_gaes_charge_marker_without_stations_emits_placeholder_row(monkeypatch):
+    """Южный ФО: слот заряда между с/без ГАЭС виден даже без станций ГАЭС в ФО."""
+    fd_mn = "FederalDistrictEnergyConsumptionParameter"
+    marker = service._gaes_charge_marker_entity(
+        service.SummaryEntity(
+            label="Южный ФО",
+            depth=0,
+            parameters=service.PARAMETERS_ENERGY_CONSUMPTION,
+            demand_rows=[],
+            entity_kind="perimeter_variant",
+            demand_model_name=fd_mn,
+            parent_fk_column="id_federal_district",
+            parent_id=42,
+            perimeter_variant_code="without_nt_with_gaes",
+        )
+    )
+    monkeypatch.setattr(service.dps, "get_current_version", lambda: 20)
+    monkeypatch.setattr(
+        service,
+        "_gaes_charge_raw_station_values_for_entity",
+        lambda *args, **kwargs: tuple(),
+    )
+
+    rows = service._gaes_charge_rows_for_entity(marker, [2024, 2025], rounding_digits=1)
+
+    assert len(rows) == 1
+    assert rows[0]["parameter_key"] == service.GAES_CHARGE_PARAMETER_KEY
+    assert rows[0]["entity_label"] == "Южный ФО (заряд ГАЭС)"
+    assert rows[0]["pd_ec_skip_empty_hide_row"] is True
+    assert rows[0]["year_values"] == ["—", "—"]
+    assert rows[0]["parent_id"] == 42
+
+
+def test_fo_rd_gaes_labels_skip_entities_with_structural_gaes_variants():
+    fd_mn = "FederalDistrictEnergyConsumptionParameter"
+    rows = [
+        {
+            "entity_label": "Южный ФО без НТ с зарядом ГАЭС",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "demand_model_name": fd_mn,
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 42,
+            "perimeter_variant_code": "without_nt_with_gaes",
+            "show_entity_cell": True,
+        },
+        {
+            "entity_label": "Южный ФО (заряд ГАЭС)",
+            "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+            "demand_model_name": fd_mn,
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 42,
+            "pd_ec_gaes_injected_row": True,
+            "show_entity_cell": True,
+        },
+    ]
+
+    service.apply_fo_rd_gaes_territory_entity_labels(rows)
+
+    assert rows[0]["entity_label"] == "Южный ФО без НТ с зарядом ГАЭС"
+    assert rows[1]["entity_label"] == "Южный ФО (заряд ГАЭС)"
+
+
 def test_tag_territory_compact_marks_res_rd_and_gaes_charge_rows():
     res_mn = "RegionalEnergySystemEnergyConsumptionParameter"
     rd_mn = "RegionalDistrictEnergyConsumptionParameter"
@@ -1513,6 +1902,7 @@ def test_tag_territory_compact_marks_res_rd_and_gaes_charge_rows():
             "demand_model_name": res_mn,
             "entity_depth": 2,
             "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+            "entity_label": "ОЭС Юга (заряд ГАЭС)",
         },
         {
             "demand_model_name": rd_mn,
@@ -1520,12 +1910,31 @@ def test_tag_territory_compact_marks_res_rd_and_gaes_charge_rows():
             "parameter_key": "energy_consumption_mln_kvt_ch",
             "pd_ec_rd_without_gaes_injected_row": True,
         },
+        {
+            "entity_kind": service.ENTITY_KIND_RUSSIA_FEDERATION,
+            "entity_label": "Заряд ГАЭС",
+            "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+            "entity_depth": 0,
+        },
+        {
+            "entity_label": "Первая синхронная зона",
+            "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+            "gaes_charge_row_station_name": "всего",
+            "entity_depth": 0,
+            "show_entity_cell": True,
+        },
     ]
 
     service.tag_energy_consumption_summary_rows_for_territory_compact(rows)
 
+    assert rows[0].get("pd_ec_territory_detail_row") is True
+    assert "pd_ec_territory_compact_hide_row" not in rows[0]
+    assert rows[1].get("pd_ec_territory_compact_hide_row") is True
+    assert rows[2].get("pd_ec_territory_detail_row") is True
+    assert "pd_ec_territory_compact_hide_row" not in rows[2]
+    assert rows[3].get("pd_ec_territory_compact_hide_row") is True
+    assert rows[4].get("pd_ec_territory_compact_hide_row") is True
     for row in rows:
-        assert row.get("pd_ec_territory_detail_row") is True
         assert "pd_ec_territory_detail_relaxed_compact_nt_gaes" not in row
 
 
@@ -1551,6 +1960,122 @@ def test_keep_centralized_zone_rows_in_territory_compact():
 
     service.keep_centralized_zone_rows_in_territory_compact(rows)
     assert "pd_ec_territory_compact_hide_row" not in rows[0]
+
+
+def test_tag_summary_rows_before_oes_blocks_marks_prefix_only():
+    rows = [
+        {
+            "entity_label": "Россия",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "demand_model_name": "RussiaFederationEnergyConsumptionParameter",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ЦЗ России",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "entity_kind": service.ENTITY_KIND_CENTRALIZED_ZONE,
+            "demand_model_name": "CentralizedZoneEnergyConsumptionParameter",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ОЭС Центра",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "entity_kind": "group",
+            "demand_model_name": "UnionEnergySystemEnergyConsumptionParameter",
+            "parent_fk_column": "id_union_energy_system",
+            "parent_id": 1,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "entity_rowspan": 1,
+        },
+        {
+            "entity_label": "ЭС тест",
+            "show_entity_cell": True,
+            "entity_depth": 1,
+            "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+    ]
+    service.tag_energy_consumption_summary_rows_before_oes_blocks(rows)
+    assert rows[0].get("pd_ec_summary_table_only_row") is True
+    assert rows[1].get("pd_ec_summary_table_only_row") is True
+    assert rows[2].get("pd_ec_summary_table_only_row") is not True
+    assert rows[3].get("pd_ec_summary_table_only_row") is not True
+
+
+def test_territory_compact_tites_block_shows_res_only(monkeypatch):
+    """В «Сводной таблице» под «ТИТЭС» видны только РЭС ветки (как на PD)."""
+    tites_ues_id = 77
+    tites_res_id = 701
+    type_mn = "EnergySystemTypeEnergyConsumptionParameter"
+    res_mn = "RegionalEnergySystemEnergyConsumptionParameter"
+    eu_mn = "EnergyUnitEnergyConsumptionParameter"
+
+    monkeypatch.setattr(
+        service,
+        "_tites_union_energy_system_ids",
+        lambda: frozenset({tites_ues_id}),
+    )
+
+    rows = [
+        {
+            "entity_label": "ТИТЭС",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 0,
+            "entity_kind": "group-root",
+            "demand_model_name": type_mn,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ЭС Камчатского края",
+            "show_entity_cell": True,
+            "entity_rowspan": 2,
+            "entity_depth": 1,
+            "demand_model_name": res_mn,
+            "id_union_energy_system": tites_ues_id,
+            "id_regional_energy_system": tites_res_id,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ЭС Камчатского края",
+            "show_entity_cell": False,
+            "entity_depth": 1,
+            "demand_model_name": res_mn,
+            "id_union_energy_system": tites_ues_id,
+            "id_regional_energy_system": tites_res_id,
+            "parameter_key": "energy_consumption_yoy_pct",
+        },
+        {
+            "entity_label": "Центральный энергорайон Камчатского края",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 2,
+            "demand_model_name": eu_mn,
+            "id_union_energy_system": tites_ues_id,
+            "id_regional_energy_system": tites_res_id,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ДЗ энергорайон",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 1,
+            "demand_model_name": eu_mn,
+            "pd_ec_decentralized_zone_mark": True,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+    ]
+
+    service.tag_energy_consumption_summary_rows_for_territory_compact(rows)
+
+    assert rows[1].get("pd_ec_territory_detail_row") is not True
+    assert "pd_ec_territory_compact_hide_row" not in rows[1]
+    assert rows[2].get("pd_ec_territory_detail_row") is not True
+    assert rows[3].get("pd_ec_territory_detail_row") is True
+    assert rows[4].get("pd_ec_territory_compact_hide_row") is True
 
 
 def test_exclude_centralized_zone_russia_o1_summary_rows():
@@ -1682,6 +2207,34 @@ def test_apply_variant_toggle_rows_hides_non_o1_when_entity_has_o1_variants():
     assert rows[0].get("pd_ec_hide_when_isolated_eu_on") is True
     assert "pd_ec_hide_when_isolated_eu_on" not in rows[1]
     assert "pd_ec_hide_when_isolated_eu_on" not in rows[2]
+
+
+def test_apply_variant_toggle_rows_keeps_null_base_when_entity_has_o1():
+    """Базовая строка без варианта не скрывается кнопкой «Форма О-1» — O-1 добавляется к ней."""
+    rows = [
+        {
+            "entity_label": "ЭС Камчатского края",
+            "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": 601,
+            "perimeter_variant_code": None,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ЭС Камчатского края",
+            "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": 601,
+            "perimeter_variant_code": "o1",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "pd_ec_o1_form_row": True,
+        },
+    ]
+
+    service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
+
+    assert "pd_ec_hide_when_isolated_eu_on" not in rows[0]
+    assert "pd_ec_hide_when_isolated_eu_on" not in rows[1]
 
 
 def _ues_component_row(
@@ -2064,7 +2617,7 @@ def _cz_russia_nt_pair_rows_for_reference_test(*, years: list[int]) -> list[dict
     )
 
 
-def test_inject_summary_table_cz_new_territories_reference_row_before_russia():
+def test_inject_summary_table_cz_new_territories_reference_row_after_cz():
     years = [2023, 2024, 2025]
     rows = _cz_russia_nt_pair_rows_for_reference_test(years=years)
 
@@ -2076,13 +2629,19 @@ def test_inject_summary_table_cz_new_territories_reference_row_before_russia():
         if row.get("show_entity_cell")
         and row.get("entity_label") == service._SUMMARY_TABLE_CZ_NT_REFERENCE_LABEL
     )
+    last_cz_idx = max(
+        index
+        for index, row in enumerate(rows)
+        if service._is_centralized_zone_russia_summary_row(row)
+    )
     russia_start = next(
         index
         for index, row in enumerate(rows)
         if row.get("show_entity_cell")
         and row.get("entity_kind") == service.ENTITY_KIND_RUSSIA_FEDERATION
     )
-    assert ref_start < russia_start
+    # CZ … → СПРАВОЧНО → Россия (как на /summary_table/).
+    assert last_cz_idx < ref_start < russia_start
 
     ref_ec = next(
         row
@@ -2094,6 +2653,13 @@ def test_inject_summary_table_cz_new_territories_reference_row_before_russia():
     assert service._SUMMARY_TABLE_CZ_NT_REFERENCE_FORMULA_TOOLTIP in str(
         ref_ec.get("pd_ec_summary_row_formula_tooltip") or ""
     )
+    assert ref_ec.get("pd_ec_entity_label_compact_nt_gaes") == (
+        service._SUMMARY_TABLE_CZ_NT_REFERENCE_LABEL
+    )
+    assert ref_ec.get("pd_ec_nt_extra_row") is True
+    assert ref_ec.get("pd_ec_formula_text_key") == "summary_table_cz_nt_reference"
+    assert ref_ec.get("show_perimeter_variant_select") is not True
+    assert ref_ec.get("perimeter_variant_code") is None
 
     ref_sipr = next(
         row
@@ -2102,6 +2668,38 @@ def test_inject_summary_table_cz_new_territories_reference_row_before_russia():
         and row.get("parameter_key") == "energy_consumption_sipr_mln_kvt_ch"
     )
     assert ref_sipr["year_values"] == ["—", "5", "5"]
+    assert ref_sipr.get("pd_ec_nt_extra_row") is True
+
+
+def test_inject_summary_table_cz_new_territories_reference_row_after_cz_when_russia_first():
+    """На /summary/oes|fo|ez порядок «Россия → ЦЗ …»: справочная строка всё равно после ЦЗ."""
+    years = [2024]
+    cz_then_russia = _cz_russia_nt_pair_rows_for_reference_test(years=years)
+    russia_rows = [
+        row
+        for row in cz_then_russia
+        if row.get("entity_kind") == service.ENTITY_KIND_RUSSIA_FEDERATION
+    ]
+    cz_rows = [
+        row
+        for row in cz_then_russia
+        if service._is_centralized_zone_russia_summary_row(row)
+    ]
+    rows = russia_rows + cz_rows
+
+    service.inject_summary_table_cz_new_territories_reference_row(rows, years, rounding_digits=1)
+
+    kinds = [
+        row.get("entity_kind")
+        for row in rows
+        if row.get("show_entity_cell")
+    ]
+    assert kinds == [
+        service.ENTITY_KIND_RUSSIA_FEDERATION,
+        service.ENTITY_KIND_CENTRALIZED_ZONE,
+        service.ENTITY_KIND_CENTRALIZED_ZONE,
+        "summary_table_cz_nt_reference",
+    ]
 
 
 def test_inject_summary_table_cz_new_territories_reference_row_is_idempotent():
@@ -3528,6 +4126,8 @@ def test_filter_oes_max_summary_page_hidden_rows():
             "entity_kind": service.ENTITY_KIND_RUSSIA_FEDERATION,
             "entity_label": "Заряд ГАЭС",
             "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
         },
         {
             "entity_kind": "union_energy_system",
@@ -3536,16 +4136,80 @@ def test_filter_oes_max_summary_page_hidden_rows():
             "show_entity_cell": True,
             "entity_rowspan": 1,
         },
+        {
+            "entity_kind": service.ENTITY_KIND_EES_RUSSIA,
+            "entity_label": "ЭЭС России (заряд ГАЭС)",
+            "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+        },
     ]
 
     filtered = service.filter_oes_max_summary_page_hidden_rows(rows)
 
-    assert [row.get("entity_label") for row in filtered] == ["ОЭС Центра"]
+    assert [row.get("entity_label") for row in filtered] == [
+        "ЦЗ России с НТ",
+        "ЦЗ России с НТ",
+        "Россия с НТ",
+        "ОЭС Центра",
+        "ЭЭС России (заряд ГАЭС)",
+    ]
     assert filtered[0].get("show_entity_cell") is True
-    assert filtered[0].get("entity_rowspan") == 1
+    assert filtered[0].get("entity_rowspan") == 2
+    assert filtered[2].get("entity_kind") == service.ENTITY_KIND_RUSSIA_FEDERATION
+    assert all(row.get("entity_label") != "Заряд ГАЭС" for row in filtered)
 
 
-def test_filter_oes_max_keeps_ees_unified_gaes_rows_when_no_ees_russia_aggregate():
+def test_filter_oes_max_summary_page_hidden_rows_norilsk_res():
+    norilsk_label = "ЭС г. Норильска Красноярского края"
+    norilsk_res_id = 7701
+    rows = [
+        {
+            "entity_label": norilsk_label,
+            "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
+            "id_regional_energy_system": norilsk_res_id,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "show_entity_cell": True,
+            "entity_rowspan": 2,
+        },
+        {
+            "entity_label": norilsk_label,
+            "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
+            "id_regional_energy_system": norilsk_res_id,
+            "parameter_key": "energy_consumption_sipr_mln_kvt_ch",
+        },
+        {
+            "entity_label": "Таймырский энергорайон",
+            "demand_model_name": "EnergyUnitEnergyConsumptionParameter",
+            "id_regional_energy_system": norilsk_res_id,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+        },
+        {
+            "entity_label": f"Проверка для {norilsk_label}",
+            "entity_kind": "ues_res_sum_check",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+        },
+        {
+            "entity_label": "ОЭС Сибири",
+            "demand_model_name": "UnionEnergySystemEnergyConsumptionParameter",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+        },
+    ]
+
+    filtered = service.filter_oes_max_summary_page_hidden_rows(rows)
+    labels = [row.get("entity_label") for row in filtered]
+
+    assert labels == ["Таймырский энергорайон", "ОЭС Сибири"]
+    assert all("Норильск" not in str(label) for label in labels)
+
+
+def test_filter_oes_max_keeps_ees_unified_and_ees_russia_aggregate_rows():
     from app.common.perimeter_variant.constants import (
         CODE_WITH_NT_WITH_GAES,
         EES_RUSSIA_AGGREGATE_NAME,
@@ -3584,7 +4248,109 @@ def test_filter_oes_max_keeps_ees_unified_gaes_rows_when_no_ees_russia_aggregate
 
     assert f"{EES_UNIFIED_REF_NAME} с НТ с зарядом ГАЭС" in filtered_labels
     assert EES_RUSSIA_AGGREGATE_NAME in filtered_labels
-    assert EES_UNIFIED_REF_NAME not in filtered_labels
+    assert EES_UNIFIED_REF_NAME in filtered_labels
+
+
+def test_build_oes_summary_table_raw_entities_matches_pd_top_order(monkeypatch):
+    """ЦЗ → ЭЭС → ЕЭС (без ОЭС) → СЗ → ОЭС → ТИТЭС; заряд ГАЭС сохраняется в агрегатах."""
+    from unittest.mock import MagicMock
+
+    cz = MagicMock(label="ЦЗ", children=[])
+    ees = MagicMock(label="ЭЭС", children=[])
+    est = MagicMock(label="ЕЭС", children=[])
+    sa = MagicMock(label="СЗ", children=[])
+    ues = MagicMock(label="ОЭС", children=[], depth=0)
+    tites = service.SummaryEntity(
+        label="ТИТЭС",
+        depth=0,
+        parameters=(),
+        demand_rows=[],
+        children=[],
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_build_perimeter_aggregate_entities",
+        lambda **kwargs: {
+            service.ENTITY_KIND_CENTRALIZED_ZONE: [cz],
+            service.ENTITY_KIND_EES_RUSSIA: [ees],
+            service.ENTITY_KIND_RUSSIA_FEDERATION: [MagicMock(label="Россия")],
+        }.get(kwargs["entity_kind"], []),
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_energy_system_type_entities",
+        lambda name, predicate, **kwargs: (
+            [est] if name == service.EES_UNIFIED_REF_NAME else [tites]
+        ),
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_synchronous_area_entities",
+        lambda **kwargs: [sa],
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_oes_summary_table_union_energy_system_entities",
+        lambda **kwargs: [ues],
+    )
+
+    entities = service._build_oes_summary_table_raw_entities(
+        include_russia_top_row=False,
+        include_ees_russia_rows=True,
+        include_synchronous_area_rows=True,
+    )
+
+    assert entities == [cz, ees, est, sa, ues, tites]
+
+    # ЕЭС строится без дочерних ОЭС (предикат всегда False).
+    calls = []
+    def _capture_est(name, predicate, **kwargs):
+        calls.append((name, predicate))
+        return [est] if name == service.EES_UNIFIED_REF_NAME else [tites]
+
+    monkeypatch.setattr(service, "_build_energy_system_type_entities", _capture_est)
+    service._build_oes_summary_table_raw_entities(
+        include_russia_top_row=False,
+        include_ees_russia_rows=True,
+        include_synchronous_area_rows=True,
+    )
+    ees_call = next(c for c in calls if c[0] == service.EES_UNIFIED_REF_NAME)
+    assert ees_call[1](MagicMock()) is False
+
+
+def test_build_oes_summary_table_raw_entities_russia_federation_first(monkeypatch):
+    from unittest.mock import MagicMock
+
+    cz = MagicMock(label="ЦЗ")
+    russia = MagicMock(label="Россия")
+    ees = MagicMock(label="ЭЭС")
+
+    monkeypatch.setattr(
+        service,
+        "_build_perimeter_aggregate_entities",
+        lambda **kwargs: {
+            service.ENTITY_KIND_CENTRALIZED_ZONE: [cz],
+            service.ENTITY_KIND_RUSSIA_FEDERATION: [russia],
+            service.ENTITY_KIND_EES_RUSSIA: [ees],
+        }.get(kwargs["entity_kind"], []),
+    )
+    monkeypatch.setattr(service, "_build_energy_system_type_entities", lambda *a, **k: [])
+    monkeypatch.setattr(service, "_build_synchronous_area_entities", lambda **k: [])
+    monkeypatch.setattr(
+        service,
+        "_build_oes_summary_table_union_energy_system_entities",
+        lambda **k: [],
+    )
+
+    entities = service._build_oes_summary_table_raw_entities(
+        include_russia_top_row=True,
+        include_ees_russia_rows=True,
+        include_synchronous_area_rows=False,
+        russia_federation_first=True,
+    )
+
+    assert entities[:3] == [russia, cz, ees]
 
 
 def test_inject_verification_rows_use_independent_insert_positions(monkeypatch):
@@ -4423,7 +5189,33 @@ def test_build_energy_unit_entities_uses_o1_for_placeholder_res(monkeypatch):
     entities = service._build_energy_unit_entities([eu], depth=3, id_regional_energy_system=590)
     assert len(entities) == 1
     assert entities[0].perimeter_variant_code == "o1"
+    assert entities[0].is_decentralized_zone_energy_unit is True
     assert captured == ["o1"]
+
+
+def test_flatten_entity_marks_decentralized_zone_energy_units(monkeypatch):
+    monkeypatch.setattr(
+        service,
+        "perimeter_entity_context_for_model",
+        lambda *_a, **_k: None,
+    )
+    entity = service.SummaryEntity(
+        label="Озерновский энергорайон",
+        depth=3,
+        parameters=service.PARAMETERS_ENERGY_CONSUMPTION[:2],
+        demand_rows=[],
+        entity_kind="child",
+        demand_model_name=service.EnergyUnitEnergyConsumptionParameter.__name__,
+        parent_fk_column="id_energy_unit",
+        parent_id=359,
+        id_energy_unit=359,
+        perimeter_variant_code="o1",
+        is_decentralized_zone_energy_unit=True,
+    )
+    rows = service._flatten_entity(entity, years=[2024], rounding_digits=1)
+    assert len(rows) == 2
+    assert all(row.get("pd_ec_decentralized_zone_mark") for row in rows)
+    assert all(row.get("pd_ec_o1_form_row") is None for row in rows)
 
 
 def test_build_regional_energy_system_entity_uses_variant_fallback_loader(
@@ -4447,6 +5239,86 @@ def test_build_regional_energy_system_entity_uses_variant_fallback_loader(
     entity = service._build_regional_energy_system_entity(res, ues_id=10)
     assert entity.demand_rows == ["merged"]
     assert entity.perimeter_variant_code is None
+
+
+def test_expand_o1_subject_perimeter_variants_puts_o1_before_base(monkeypatch):
+    captured: list[str | None] = []
+
+    def _fake_get_demand_rows(model, fk_column, parent_id, *, perimeter_variant_code=None):
+        captured.append(perimeter_variant_code)
+        return [{"pvc": perimeter_variant_code}]
+
+    class _Binding:
+        variants = (type("V", (), {"code": "o1"})(),)
+
+    monkeypatch.setattr(service.dps, "get_demand_rows", _fake_get_demand_rows)
+    monkeypatch.setattr(
+        service,
+        "perimeter_entity_context_for_model",
+        lambda *_a, **_k: ("regional_energy_system", "ЭС Камчатского края"),
+    )
+    monkeypatch.setattr(
+        service,
+        "resolve_entity_perimeter_binding",
+        lambda *_a, **_k: _Binding(),
+    )
+
+    child = service.SummaryEntity(
+        label="Центральный энергорайон",
+        depth=3,
+        parameters=service.PARAMETERS_ENERGY_CONSUMPTION[:1],
+        demand_rows=[],
+        entity_kind="child",
+        demand_model_name=service.EnergyUnitEnergyConsumptionParameter.__name__,
+        parent_fk_column="id_energy_unit",
+        parent_id=10,
+    )
+    base = service.SummaryEntity(
+        label="ЭС Камчатского края",
+        depth=2,
+        parameters=service.PARAMETERS_ENERGY_CONSUMPTION[:1],
+        demand_rows=[{"pvc": None}],
+        entity_kind="child",
+        children=[child],
+        demand_model_name=service.RegionalEnergySystemEnergyConsumptionParameter.__name__,
+        parent_fk_column="id_regional_energy_system",
+        parent_id=601,
+    )
+
+    expanded = service._expand_summary_entities_o1_subject_perimeter_variants([base])
+    assert len(expanded) == 2
+    assert expanded[0].perimeter_variant_code == "o1"
+    assert expanded[0].children == []
+    assert expanded[0].demand_rows == [{"pvc": "o1"}]
+    assert expanded[1].perimeter_variant_code is None
+    assert len(expanded[1].children) == 1
+    assert captured == ["o1"]
+
+
+def test_expand_o1_subject_perimeter_variants_skips_without_o1_binding(monkeypatch):
+    monkeypatch.setattr(
+        service,
+        "perimeter_entity_context_for_model",
+        lambda *_a, **_k: ("regional_energy_system", "ЭС Амурской области"),
+    )
+    monkeypatch.setattr(
+        service,
+        "resolve_entity_perimeter_binding",
+        lambda *_a, **_k: None,
+    )
+
+    base = service.SummaryEntity(
+        label="ЭС Амурской области",
+        depth=2,
+        parameters=service.PARAMETERS_ENERGY_CONSUMPTION[:1],
+        demand_rows=[],
+        entity_kind="child",
+        demand_model_name=service.RegionalEnergySystemEnergyConsumptionParameter.__name__,
+        parent_fk_column="id_regional_energy_system",
+        parent_id=100,
+    )
+    expanded = service._expand_summary_entities_o1_subject_perimeter_variants([base])
+    assert expanded == [base]
 
 
 def test_build_regional_energy_system_entity_shows_energy_units_when_single_subject(
@@ -4539,28 +5411,171 @@ def test_build_regional_energy_system_entity_appends_placeholder_energy_units(
     assert entity.children[1].id_regional_energy_system == 1
 
 
-def test_build_ez_raw_entities_includes_ees_russia_variants_when_expanded(monkeypatch):
-    captured: list[dict] = []
+def test_build_ez_raw_entities_includes_summary_table_top_aggregates_when_expanded(
+    monkeypatch,
+):
+    top_item = object()
+    ez_item = object()
+    monkeypatch.setattr(
+        service,
+        "_build_summary_table_top_aggregate_entities",
+        lambda **kwargs: [top_item],
+    )
+    monkeypatch.setattr(service, "_build_energy_zone_entities", lambda: [ez_item])
 
-    def _fake_build_perimeter_aggregate_entities(**kwargs):
-        captured.append(kwargs)
-        return []
+    entities = service._build_ez_raw_entities(expand_entity_perimeter_variants=True)
+
+    assert entities == [top_item, ez_item]
+
+
+def test_build_summary_table_top_aggregate_entities_russia_first(monkeypatch):
+    from unittest.mock import MagicMock
+
+    russia = MagicMock(label="Россия")
+    cz = MagicMock(label="ЦЗ")
+    ees = MagicMock(label="ЭЭС")
+    est = MagicMock(label="ЕЭС")
+    sa = MagicMock(label="СЗ")
 
     monkeypatch.setattr(
         service,
         "_build_perimeter_aggregate_entities",
-        _fake_build_perimeter_aggregate_entities,
+        lambda **kwargs: {
+            service.ENTITY_KIND_RUSSIA_FEDERATION: [russia],
+            service.ENTITY_KIND_CENTRALIZED_ZONE: [cz],
+            service.ENTITY_KIND_EES_RUSSIA: [ees],
+        }.get(kwargs["entity_kind"], []),
     )
-    monkeypatch.setattr(service, "_build_energy_zone_entities", lambda: [])
+    monkeypatch.setattr(
+        service,
+        "_build_energy_system_type_entities",
+        lambda name, predicate, **kwargs: [est] if name == service.EES_UNIFIED_REF_NAME else [],
+    )
+    monkeypatch.setattr(service, "_build_synchronous_area_entities", lambda **k: [sa])
 
-    entities = service._build_ez_raw_entities(expand_entity_perimeter_variants=True)
+    entities = service._build_summary_table_top_aggregate_entities(
+        include_russia_top_row=True,
+        include_ees_russia_rows=True,
+        include_synchronous_area_rows=True,
+        russia_federation_first=True,
+    )
 
-    assert entities == []
-    assert len(captured) == 2
-    assert captured[0]["entity_kind"] == service.ENTITY_KIND_CENTRALIZED_ZONE
-    assert captured[1]["entity_kind"] == service.ENTITY_KIND_EES_RUSSIA
-    assert captured[1]["all_bound_variants"] is True
-    assert captured[1]["display_label"] == "ЕЭС России"
+    assert entities == [russia, cz, ees, est, sa]
+
+
+def test_tag_summary_rows_before_federal_district_blocks():
+    rows = [
+        {
+            "entity_label": "Россия",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "entity_kind": service.ENTITY_KIND_RUSSIA_FEDERATION,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ЦЗ России",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "entity_kind": service.ENTITY_KIND_CENTRALIZED_ZONE,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ЦФО",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "entity_kind": "group",
+            "demand_model_name": "FederalDistrictEnergyConsumptionParameter",
+            "parent_fk_column": "id_federal_district",
+            "parent_id": 1,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "ЭС тест",
+            "show_entity_cell": True,
+            "entity_depth": 1,
+            "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+    ]
+    service.tag_energy_consumption_summary_rows_before_federal_district_blocks(rows)
+    assert rows[0].get("pd_ec_summary_table_only_row") is True
+    assert rows[1].get("pd_ec_summary_table_only_row") is True
+    assert rows[2].get("pd_ec_summary_table_only_row") is not True
+    assert rows[3].get("pd_ec_summary_table_only_row") is not True
+
+
+def test_tag_summary_rows_before_energy_zone_blocks():
+    rows = [
+        {
+            "entity_label": "ЭЭС России",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "entity_kind": service.ENTITY_KIND_EES_RUSSIA,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+        {
+            "entity_label": "Энергозона Сибири",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+            "entity_kind": "group",
+            "demand_model_name": "EnergyZoneEnergyConsumptionParameter",
+            "parent_fk_column": "id_energy_zone",
+            "parent_id": 2,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        },
+    ]
+    service.tag_energy_consumption_summary_rows_before_energy_zone_blocks(rows)
+    assert rows[0].get("pd_ec_summary_table_only_row") is True
+    assert rows[1].get("pd_ec_summary_table_only_row") is not True
+
+
+def test_tag_summary_table_energy_zone_footer_rows_hides_siberia_east_and_east_children():
+    rows = [
+        {
+            "entity_label": "Энергозона Центра",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+        },
+        {
+            "entity_label": "Энергозона Сибири",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+        },
+        {
+            "entity_label": "Энергозона Сибири",
+            "show_entity_cell": False,
+            "entity_depth": 0,
+        },
+        {
+            "entity_label": "Энергозона Востока",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+        },
+        {
+            "entity_label": "ЭС Амурской области",
+            "show_entity_cell": True,
+            "entity_depth": 1,
+        },
+        {
+            "entity_label": "Другая зона",
+            "show_entity_cell": True,
+            "entity_depth": 0,
+        },
+    ]
+    service.tag_summary_table_energy_zone_footer_rows(rows)
+    assert rows[0].get("pd_ec_summary_table_only_row") is not True
+    assert rows[1].get("pd_ec_summary_table_only_row") is True
+    assert rows[1].get("pd_ec_o1_form_row") is True
+    assert rows[1].get("pd_ec_show_o1_badge") is True
+    assert rows[2].get("pd_ec_summary_table_only_row") is True
+    assert rows[2].get("pd_ec_o1_form_row") is True
+    assert not rows[2].get("pd_ec_show_o1_badge")
+    assert rows[3].get("pd_ec_summary_table_only_row") is True
+    assert rows[3].get("pd_ec_o1_form_row") is True
+    assert rows[3].get("pd_ec_show_o1_badge") is True
+    assert rows[4].get("pd_ec_summary_table_only_row") is True
+    assert rows[4].get("pd_ec_o1_form_row") is not True
+    assert rows[5].get("pd_ec_summary_table_only_row") is not True
 
 
 def test_prune_one_ez_hides_ees_russia_when_filters_active():
@@ -5506,8 +6521,8 @@ def test_filter_east_energy_zone_summary_rows_to_o1_keeps_only_o1_and_marks_pare
         if row.get("show_entity_cell")
         and row.get("entity_label") == service._EAST_ENERGY_ZONE_LABEL
     )
-    assert parent.get("pd_ec_o1_form_row") is not True
-    assert not parent.get("pd_ec_show_o1_badge")
+    assert parent.get("pd_ec_o1_form_row") is True
+    assert parent.get("pd_ec_show_o1_badge") is True
     assert parent.get("pd_ec_skip_empty_hide_row") is True
     assert parent.get("perimeter_variant_code") in (None, "")
     assert service._EAST_ENERGY_ZONE_FORMULA_TOOLTIP in str(
@@ -5614,6 +6629,132 @@ def _chukotka_energy_zone_summary_block() -> list[dict]:
     return rows
 
 
+def _chukotka_oes_split_summary_block() -> list[dict]:
+    """Как на /summary/oes/: О-1 строка РЭС без детей + базовая РЭС с ЭУ без метки О-1."""
+    rowspan = len(service.PARAMETERS_ENERGY_CONSUMPTION)
+
+    def _res_row(*, o1: bool, value_ec: str, value_sipr: str, show_entity: bool, param_key: str, param_label: str) -> dict:
+        value = (
+            value_ec
+            if param_key == "energy_consumption_mln_kvt_ch"
+            else (
+                value_sipr
+                if param_key == "energy_consumption_sipr_mln_kvt_ch"
+                else "—"
+            )
+        )
+        row = {
+            "entity_label": service._CHUKOTKA_RES_LABEL,
+            "entity_rowspan": rowspan,
+            "entity_depth": 1,
+            "entity_kind": "child",
+            "show_entity_cell": show_entity,
+            "show_entity_note_cell": show_entity,
+            "parameter_key": param_key,
+            "parameter_label": param_label,
+            "demand_model_name": "RegionalEnergySystemEnergyConsumptionParameter",
+            "year_values": [value],
+            "year_numeric_tooltips": [value],
+            "hist_value": "—",
+            "hist_numeric_tooltip": "",
+            "year_row_ids": [None],
+            "hist_row_id": None,
+        }
+        if o1:
+            row["perimeter_variant_code"] = "o1"
+            row["pd_ec_o1_form_row"] = True
+        else:
+            row["perimeter_variant_code"] = None
+        return row
+
+    def _eu_row(*, label: str, value_ec: str, value_sipr: str, show_entity: bool, param_key: str, param_label: str) -> dict:
+        value = (
+            value_ec
+            if param_key == "energy_consumption_mln_kvt_ch"
+            else (
+                value_sipr
+                if param_key == "energy_consumption_sipr_mln_kvt_ch"
+                else "—"
+            )
+        )
+        return {
+            "entity_label": label,
+            "entity_rowspan": rowspan,
+            "entity_depth": 2,
+            "entity_kind": "child",
+            "show_entity_cell": show_entity,
+            "show_entity_note_cell": show_entity,
+            "parameter_key": param_key,
+            "parameter_label": param_label,
+            "demand_model_name": "EnergyUnitEnergyConsumptionParameter",
+            "perimeter_variant_code": None,
+            "year_values": [value],
+            "year_numeric_tooltips": [value],
+            "hist_value": "—",
+            "hist_numeric_tooltip": "",
+            "year_row_ids": [None],
+            "hist_row_id": None,
+        }
+
+    rows: list[dict] = []
+    for idx, (param_key, param_label) in enumerate(service.PARAMETERS_ENERGY_CONSUMPTION):
+        rows.append(
+            _res_row(
+                o1=True,
+                value_ec="603.7",
+                value_sipr="600.0",
+                show_entity=idx == 0,
+                param_key=param_key,
+                param_label=param_label,
+            )
+        )
+    for idx, (param_key, param_label) in enumerate(service.PARAMETERS_ENERGY_CONSUMPTION):
+        rows.append(
+            _res_row(
+                o1=False,
+                value_ec="603.7",
+                value_sipr="600.0",
+                show_entity=idx == 0,
+                param_key=param_key,
+                param_label=param_label,
+            )
+        )
+    for idx, (param_key, param_label) in enumerate(service.PARAMETERS_ENERGY_CONSUMPTION):
+        rows.append(
+            _eu_row(
+                label="Анадырский энергорайон",
+                value_ec="134.9",
+                value_sipr="130.0",
+                show_entity=idx == 0,
+                param_key=param_key,
+                param_label=param_label,
+            )
+        )
+    for idx, (param_key, param_label) in enumerate(service.PARAMETERS_ENERGY_CONSUMPTION):
+        rows.append(
+            _eu_row(
+                label=service._CHAUN_BILIBINO_EU_LABEL,
+                value_ec="419.2",
+                value_sipr="410.0",
+                show_entity=idx == 0,
+                param_key=param_key,
+                param_label=param_label,
+            )
+        )
+    rows.append(
+        {
+            "entity_label": "Следующая РЭС",
+            "entity_rowspan": 1,
+            "entity_depth": 1,
+            "show_entity_cell": True,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "parameter_label": "Потребление электрической энергии, млн кВт·ч",
+            "year_values": ["1"],
+        }
+    )
+    return rows
+
+
 def test_apply_chaun_bilibino_chersky_transfer_note():
     summary_rows = _chukotka_energy_zone_summary_block()
     service.apply_chaun_bilibino_chersky_transfer_note(summary_rows)
@@ -5680,6 +6821,8 @@ def test_inject_chukotka_chersky_reference_transfer_row_after_chaun_bilibino(mon
     assert ref_ec.get("pd_ec_formula_derived_row") is True
     assert ref_ec.get("entity_depth") == service._CHUKOTKA_REFERENCE_ROW_ENTITY_DEPTH
     assert ref_ec.get("pd_ec_chukotka_reference_align") is True
+    assert ref_ec.get("pd_ec_o1_form_row") is True
+    assert ref_ec.get("pd_ec_show_o1_badge") is True
     assert ref_ec.get("pd_ec_perimeter_entity_kind") is None
 
     ref_sipr = next(
@@ -5693,6 +6836,37 @@ def test_inject_chukotka_chersky_reference_transfer_row_after_chaun_bilibino(mon
     )
     assert service._CHERSKY_REFERENCE_TRANSFER_FORMULA_TOOLTIP in str(
         ref_sipr.get("pd_ec_summary_row_formula_tooltip") or ""
+    )
+
+
+def test_inject_chukotka_chersky_reference_transfer_row_oes_split_res_blocks(monkeypatch):
+    """OES/FO: О-1 РЭС без детей, ЭУ под базовой РЭС без метки О-1."""
+    monkeypatch.setattr(
+        service,
+        "tag_energy_consumption_summary_rows_perimeter_variant_labels",
+        lambda rows: None,
+    )
+    monkeypatch.setattr(
+        service,
+        "resolve_catalog_o1_perimeter_variant_code",
+        lambda: "o1",
+    )
+
+    summary_rows = _chukotka_oes_split_summary_block()
+    service.apply_chukotka_chersky_reference_summary_rows(summary_rows, [2024], 1)
+
+    ref_ec = next(
+        row
+        for row in summary_rows
+        if row.get("entity_label") == service._CHERSKY_REFERENCE_TRANSFER_LABEL
+        and row.get("parameter_key") == "energy_consumption_mln_kvt_ch"
+    )
+    assert ref_ec["year_values"] == ["49,6"]
+    assert any(
+        row.get("show_entity_cell")
+        and row.get("entity_label")
+        == service._CHAUN_BILIBINO_WITHOUT_CHERSKY_TRANSFER_LABEL
+        for row in summary_rows
     )
 
 
@@ -5810,6 +6984,193 @@ def test_inject_chaun_bilibino_without_chersky_transfer_row_is_idempotent(monkey
     )
     assert count_after_first == 1
     assert count_after_second == 1
+
+
+def test_apply_chukotka_chersky_reference_summary_rows_inserts_both(monkeypatch):
+    monkeypatch.setattr(
+        service,
+        "tag_energy_consumption_summary_rows_perimeter_variant_labels",
+        lambda rows: None,
+    )
+    monkeypatch.setattr(
+        service,
+        "resolve_catalog_o1_perimeter_variant_code",
+        lambda: "o1",
+    )
+
+    summary_rows = _chukotka_energy_zone_summary_block()
+    # На ОЭС/ФО глубина Чаун-Билибинского может отличаться от энергозон.
+    for row in summary_rows:
+        if row.get("entity_label") == service._CHAUN_BILIBINO_EU_LABEL:
+            row["entity_depth"] = 4
+
+    service.apply_chukotka_chersky_reference_summary_rows(summary_rows, [2024], 1)
+
+    labels = [
+        row.get("entity_label")
+        for row in summary_rows
+        if row.get("show_entity_cell")
+    ]
+    assert service._CHERSKY_REFERENCE_TRANSFER_LABEL in labels
+    assert service._CHAUN_BILIBINO_WITHOUT_CHERSKY_TRANSFER_LABEL in labels
+
+    chaun_first = next(
+        row
+        for row in summary_rows
+        if row.get("show_entity_cell")
+        and row.get("entity_label") == service._CHAUN_BILIBINO_EU_LABEL
+    )
+    assert chaun_first.get("pd_ec_chersky_transfer_note") == (
+        service._CHAUN_BILIBINO_CHERSKY_TRANSFER_NOTE
+    )
+
+    ref_depth = next(
+        row.get("entity_depth")
+        for row in summary_rows
+        if row.get("show_entity_cell")
+        and row.get("entity_label") == service._CHERSKY_REFERENCE_TRANSFER_LABEL
+    )
+    assert ref_depth == 4
+
+    for label in (
+        service._CHERSKY_REFERENCE_TRANSFER_LABEL,
+        service._CHAUN_BILIBINO_WITHOUT_CHERSKY_TRANSFER_LABEL,
+    ):
+        ref_rows = [row for row in summary_rows if row.get("entity_label") == label]
+        assert ref_rows
+        assert all(row.get("pd_ec_o1_form_row") is True for row in ref_rows)
+        assert all(
+            row.get("pd_ec_hide_when_summary_table_and_o1") is True for row in ref_rows
+        )
+
+
+def test_chukotka_reference_rows_hidden_when_summary_table_and_o1():
+    row = {
+        "entity_label": service._CHERSKY_REFERENCE_TRANSFER_LABEL,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "pd_ec_o1_form_row": True,
+        "pd_ec_hide_when_summary_table_and_o1": True,
+    }
+
+    def parameter_visible(_pk: str) -> bool:
+        return True
+
+    assert service._summary_row_visible_for_export_ui(
+        row,
+        opts=service.EnergyConsumptionExportUiOptions(
+            isolated_energy_units_on=True,
+            territory_compact_on=False,
+        ),
+        parameter_visible=parameter_visible,
+    )
+    assert not service._summary_row_visible_for_export_ui(
+        row,
+        opts=service.EnergyConsumptionExportUiOptions(
+            isolated_energy_units_on=True,
+            territory_compact_on=True,
+        ),
+        parameter_visible=parameter_visible,
+    )
+    assert not service._summary_row_visible_for_export_ui(
+        row,
+        opts=service.EnergyConsumptionExportUiOptions(
+            isolated_energy_units_on=False,
+            territory_compact_on=True,
+        ),
+        parameter_visible=parameter_visible,
+    )
+
+
+def test_build_oes_summary_context_applies_chukotka_chersky_rows(monkeypatch):
+    captured: list[list] = []
+
+    def _fake_apply(rows, years, rounding_digits):
+        captured.append(list(rows))
+
+    monkeypatch.setattr(
+        service,
+        "apply_chukotka_chersky_reference_summary_rows",
+        _fake_apply,
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_oes_raw_entities",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        service,
+        "_expand_summary_entities_o1_subject_perimeter_variants",
+        lambda entities: entities,
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_summary_context",
+        lambda **_kwargs: {
+            "summary_rows": [{"entity_label": "stub"}],
+            "years": [2024],
+        },
+    )
+
+    ctx = service.build_oes_summary_context(
+        1,
+        start_year=2024,
+        end_year=2024,
+        filter_year_list=[2024],
+        data_start_year=2024,
+        data_end_year=2024,
+    )
+    assert captured
+    assert ctx["summary_rows"] == [{"entity_label": "stub"}]
+
+
+def test_build_federal_district_summary_context_applies_chukotka_chersky_rows(
+    monkeypatch,
+):
+    captured: list[list] = []
+
+    def _fake_apply(rows, years, rounding_digits):
+        captured.append(list(rows))
+
+    monkeypatch.setattr(
+        service,
+        "apply_chukotka_chersky_reference_summary_rows",
+        _fake_apply,
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_summary_table_top_aggregate_entities",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_federal_district_entities",
+        lambda **_kwargs: [],
+    )
+    monkeypatch.setattr(
+        service,
+        "_expand_summary_entities_o1_subject_perimeter_variants",
+        lambda entities: entities,
+    )
+    monkeypatch.setattr(
+        service,
+        "_build_summary_context",
+        lambda **_kwargs: {
+            "summary_rows": [{"entity_label": "fo-stub"}],
+            "years": [2024],
+        },
+    )
+
+    ctx = service.build_federal_district_summary_context(
+        1,
+        start_year=2024,
+        end_year=2024,
+        filter_year_list=[2024],
+        data_start_year=2024,
+        data_end_year=2024,
+        expand_entity_perimeter_variants=True,
+    )
+    assert captured
+    assert ctx["summary_rows"] == [{"entity_label": "fo-stub"}]
 
 
 def test_clear_gaes_charge_summary_cache_clears_lru_helpers(monkeypatch):

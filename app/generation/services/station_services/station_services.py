@@ -184,6 +184,68 @@ from app.generation.services.station_services.station_access_services import (
 )
 
 
+def _normalize_stations_grouped_for_template(grouped) -> dict:
+    """defaultdict → обычный dict, чтобы Jinja надёжно читала вложенные ключи (в т.ч. -1)."""
+    if not grouped:
+        return {}
+
+    def _convert(value):
+        if isinstance(value, defaultdict):
+            return {key: _convert(nested) for key, nested in value.items()}
+        if isinstance(value, list):
+            return value
+        return value
+
+    return _convert(grouped)
+
+
+def _enrich_rd_to_fd_mapping_from_stations(mapping, stations) -> dict:
+    """Дополняет rd→fd из станций страницы (страховка для ДЭЗ при устаревшем кэше)."""
+    enriched = dict(mapping or {})
+    for station in stations or []:
+        rd_id = getattr(station, "id_regional_district", None)
+        if rd_id is None:
+            continue
+        if enriched.get(rd_id) is not None:
+            continue
+        rd = getattr(station, "regional_district", None) or getattr(
+            station, "regional_district_obj", None
+        )
+        fd_id = getattr(rd, "id_federal_district", None) if rd is not None else None
+        if fd_id is not None:
+            enriched[rd_id] = fd_id
+    return enriched
+
+
+def _lookup_grouped_level(grouped: dict, key):
+    """Доступ к уровню иерархии по int/str ключу."""
+    if not grouped:
+        return None
+    if key in grouped:
+        return grouped[key]
+    str_key = str(key)
+    if str_key in grouped:
+        return grouped[str_key]
+    return None
+
+
+def _extract_decentralized_zone_rd_groups(stations_grouped, dz_est_id) -> dict:
+    """Субъекты РФ → энергоузлы → станции для блока децентрализованной зоны."""
+    if dz_est_id is None or not stations_grouped:
+        return {}
+
+    est_group = _lookup_grouped_level(stations_grouped, dz_est_id)
+    if not est_group:
+        return {}
+
+    ues_group = _lookup_grouped_level(est_group, DECENTRALIZED_ZONE_SYNTHETIC_UES_ID)
+    if not ues_group:
+        return {}
+
+    res_group = _lookup_grouped_level(ues_group, DECENTRALIZED_ZONE_SYNTHETIC_RES_ID)
+    return res_group if isinstance(res_group, dict) else {}
+
+
 def _pagination_station_group_info(station):
     """Словарь групп для пагинации и кэша позиций страницы."""
     gi = get_station_list_group_info(station)
@@ -3144,7 +3206,10 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     res_to_ues_mapping_one = get_res_to_ues_id_map()
     res_to_rd_mapping = get_res_to_rd_ids_map()
     res_to_fd_mapping = get_res_to_fd_ids_map()
-    rd_to_fd_mapping_one = get_rd_to_fd_id_map()
+    rd_to_fd_mapping_one = _enrich_rd_to_fd_mapping_from_stations(
+        get_rd_to_fd_id_map(),
+        data.get("stations"),
+    )
     rd_to_res_mapping = get_rd_to_res_ids_map()
     rd_to_ues_mapping = get_rd_to_ues_ids_map()
     rd_to_est_mapping = get_rd_to_est_ids_map()
@@ -3162,7 +3227,8 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         return min(indices) if indices else 10**9
 
     # Проверяем наличие stations_grouped в data
-    stations_grouped = data.get("stations_grouped", {})
+    stations_grouped_raw = data.get("stations_grouped", {})
+    stations_grouped = _normalize_stations_grouped_for_template(stations_grouped_raw)
     dz_est_id = get_decentralized_zone_energy_system_type_id()
     if stations_grouped:
         normal_est_ids = [
@@ -3174,9 +3240,16 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             key=lambda est_id: _min_ues_index(stations_grouped[est_id])
         )
         decentralized_zone_est_id = dz_est_id if dz_est_id in stations_grouped else None
+        if decentralized_zone_est_id is None and dz_est_id is not None:
+            decentralized_zone_est_id = dz_est_id if str(dz_est_id) in stations_grouped else None
     else:
         sorted_energy_system_type_ids = []
         decentralized_zone_est_id = None
+
+    decentralized_zone_rd_groups = _extract_decentralized_zone_rd_groups(
+        stations_grouped,
+        decentralized_zone_est_id,
+    )
 
     # Получаем энергоузлы заново, чтобы избежать DetachedInstanceError
     from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
@@ -3287,7 +3360,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "stations": data.get("stations", []),
             "show_headers": data.get("show_headers"),
             "show_all": show_all,
-            "stations_grouped": data["stations_grouped"],
+            "stations_grouped": stations_grouped,
             "station_ids": data["station_ids"],
             "total_count": data["total_count"],
             "total_pages": data["total_pages"],
@@ -3367,6 +3440,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "energy_unit_names": energy_unit_names,
             "sorted_energy_system_type_ids": sorted_energy_system_type_ids,
             "decentralized_zone_est_id": decentralized_zone_est_id,
+            "decentralized_zone_rd_groups": decentralized_zone_rd_groups,
             "decentralized_zone_synthetic_ues_id": DECENTRALIZED_ZONE_SYNTHETIC_UES_ID,
             "decentralized_zone_synthetic_res_id": DECENTRALIZED_ZONE_SYNTHETIC_RES_ID,
             "grouped_display_order": data.get("grouped_display_order", {}),

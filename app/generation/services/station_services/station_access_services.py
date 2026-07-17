@@ -15,6 +15,15 @@ if TYPE_CHECKING:
 FUEL_DECENTRALIZED_CREATOR_ROLE_FULL_NAMES = frozenset(
     {"Топливо-админ", "Топливо-редактор"}
 )
+DECENTRALIZED_ZONE_MACHINE_EDIT_ROLES = frozenset(
+    {
+        "admin",
+        "fuel-admin",
+        "fuel-editor",
+        "generation-admin",
+        "generation-editor",
+    }
+)
 DECENTRALIZED_ZONE_ENERGY_SYSTEM_TYPE_NAME = "Децентрализованная зона"
 UNSPECIFIED_REF_LABEL = "не указано"
 # Синтетические ключи иерархии для station_list (не пересекаются с реальными id справочников)
@@ -190,3 +199,15 @@ def can_fuel_user_edit_decentralized_station_details(user, station: "Station") -
         is_fuel_decentralized_station_creator(user)
         and is_decentralized_zone_station(station)
     )
+
+
+def can_edit_decentralized_zone_machine_details(user, station: "Station") -> bool:
+    """Редактирование карточки агрегата на станции ДЭЗ — топливо/генерация admin+editor."""
+    if not getattr(user, "is_authenticated", False):
+        return False
+    if not is_decentralized_zone_station(station):
+        return False
+    role_names = set(getattr(user, "role_names", []) or [])
+    if role_names & DECENTRALIZED_ZONE_MACHINE_EDIT_ROLES:
+        return True
+    return is_fuel_decentralized_station_creator(user)

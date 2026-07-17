@@ -162,13 +162,10 @@ def dedupe_station_ids_from_rows(
             parent[right_root] = left_root
 
     token_owner: dict[tuple[str, object], int] = {}
+    family_map = _station_families_for_dedupe_batch(result)
     for station_id in result:
-        station = db.session.get(Station, station_id)
-        if station is None:
-            continue
-
         tokens: set[tuple[str, object]] = set()
-        for family_station in _station_family_for_check(station):
+        for family_station in family_map.get(station_id, []):
             family_id = getattr(family_station, "id", None)
             if family_id is not None:
                 tokens.add(("id", family_id))
@@ -877,6 +874,162 @@ def _merge_family_by_id(*families) -> list:
             result.append(item)
             seen_ids.add(item_id)
     return result
+
+
+def _station_signature_family(
+    db_station: Station,
+    signature_candidates: list[Station],
+) -> list[Station]:
+    name_key = _normalize_check_key(getattr(db_station, "name", None))
+    name_so_key = _normalize_check_key(getattr(db_station, "name_so", None))
+    name_combined_key = _normalize_check_key(getattr(db_station, "name_combined", None))
+    if not name_key and not name_so_key and not name_combined_key:
+        return []
+
+    regional_district = getattr(db_station, "regional_district", None)
+    signature_family: list[Station] = []
+    for candidate in signature_candidates:
+        if not _regional_district_matches(
+            regional_district,
+            getattr(candidate, "regional_district", None),
+        ):
+            continue
+        candidate_name_key = _normalize_check_key(getattr(candidate, "name", None))
+        candidate_so_key = _normalize_check_key(getattr(candidate, "name_so", None))
+        candidate_combined_key = _normalize_check_key(
+            getattr(candidate, "name_combined", None)
+        )
+        if (
+            (name_key and candidate_name_key == name_key)
+            or (name_so_key and candidate_so_key == name_so_key)
+            or (name_combined_key and candidate_combined_key == name_combined_key)
+        ):
+            signature_family.append(candidate)
+    return signature_family
+
+
+def _station_families_for_dedupe_batch(station_ids: list[int]) -> dict[int, list[Station]]:
+    """Пакетно строит семейства станций для union-find на странице проверки external_code."""
+    if not station_ids:
+        return {}
+
+    from sqlalchemy import or_
+    from sqlalchemy.orm import joinedload
+
+    stations = (
+        db.session.query(Station)
+        .options(joinedload(Station.regional_district))
+        .filter(Station.id.in_(station_ids))
+        .all()
+    )
+    if not stations:
+        return {}
+
+    stations_by_id = {station.id: station for station in stations}
+
+    external_codes: set[str] = set()
+    name_keys: set[str] = set()
+    name_so_keys: set[str] = set()
+    name_combined_keys: set[str] = set()
+    for station in stations:
+        code = (getattr(station, "external_code", None) or "").strip()
+        if code:
+            external_codes.add(code)
+        name_key = _normalize_check_key(getattr(station, "name", None))
+        if name_key:
+            name_keys.add(name_key)
+        name_so_key = _normalize_check_key(getattr(station, "name_so", None))
+        if name_so_key:
+            name_so_keys.add(name_so_key)
+        name_combined_key = _normalize_check_key(getattr(station, "name_combined", None))
+        if name_combined_key:
+            name_combined_keys.add(name_combined_key)
+
+    code_family_by_code: dict[str, list[Station]] = defaultdict(list)
+    if external_codes:
+        code_rows = (
+            db.session.query(Station)
+            .options(joinedload(Station.regional_district))
+            .filter(db.func.trim(Station.external_code).in_(external_codes))
+            .order_by(Station.database_version_id.asc().nullsfirst(), Station.id.asc())
+            .all()
+        )
+        for row in code_rows:
+            code = (getattr(row, "external_code", None) or "").strip()
+            if code:
+                code_family_by_code[code].append(row)
+
+    signature_filters = []
+    if name_keys:
+        signature_filters.append(db.func.lower(db.func.trim(Station.name)).in_(name_keys))
+    if name_so_keys:
+        signature_filters.append(db.func.lower(db.func.trim(Station.name_so)).in_(name_so_keys))
+    if name_combined_keys:
+        signature_filters.append(
+            db.func.lower(db.func.trim(Station.name_combined)).in_(name_combined_keys)
+        )
+
+    signature_candidates: list[Station] = []
+    if signature_filters:
+        signature_candidates = (
+            db.session.query(Station)
+            .options(joinedload(Station.regional_district))
+            .filter(or_(*signature_filters))
+            .order_by(Station.database_version_id.asc().nullsfirst(), Station.id.asc())
+            .all()
+        )
+
+    candidates_by_name: dict[str, list[Station]] = defaultdict(list)
+    candidates_by_name_so: dict[str, list[Station]] = defaultdict(list)
+    candidates_by_name_combined: dict[str, list[Station]] = defaultdict(list)
+    for candidate in signature_candidates:
+        candidate_name_key = _normalize_check_key(getattr(candidate, "name", None))
+        if candidate_name_key:
+            candidates_by_name[candidate_name_key].append(candidate)
+        candidate_so_key = _normalize_check_key(getattr(candidate, "name_so", None))
+        if candidate_so_key:
+            candidates_by_name_so[candidate_so_key].append(candidate)
+        candidate_combined_key = _normalize_check_key(getattr(candidate, "name_combined", None))
+        if candidate_combined_key:
+            candidates_by_name_combined[candidate_combined_key].append(candidate)
+
+    family_map: dict[int, list[Station]] = {}
+    for station_id, db_station in stations_by_id.items():
+        external_code = (getattr(db_station, "external_code", None) or "").strip()
+        name_key = _normalize_check_key(getattr(db_station, "name", None))
+        name_so_key = _normalize_check_key(getattr(db_station, "name_so", None))
+        name_combined_key = _normalize_check_key(getattr(db_station, "name_combined", None))
+
+        signature_family: list[Station] = []
+        if name_key or name_so_key or name_combined_key:
+            regional_district = getattr(db_station, "regional_district", None)
+            seen_candidate_ids: set[int] = set()
+            candidate_lists = []
+            if name_key:
+                candidate_lists.append(candidates_by_name.get(name_key, []))
+            if name_so_key:
+                candidate_lists.append(candidates_by_name_so.get(name_so_key, []))
+            if name_combined_key:
+                candidate_lists.append(candidates_by_name_combined.get(name_combined_key, []))
+            for candidates in candidate_lists:
+                for candidate in candidates:
+                    candidate_id = getattr(candidate, "id", None)
+                    if candidate_id is None or candidate_id in seen_candidate_ids:
+                        continue
+                    if not _regional_district_matches(
+                        regional_district,
+                        getattr(candidate, "regional_district", None),
+                    ):
+                        continue
+                    seen_candidate_ids.add(candidate_id)
+                    signature_family.append(candidate)
+
+        code_family = code_family_by_code.get(external_code, []) if external_code else []
+        family_map[station_id] = (
+            _merge_family_by_id(signature_family, code_family, [db_station]) or [db_station]
+        )
+
+    return family_map
 
 
 def _station_family_for_check(station: Station) -> list[Station]:

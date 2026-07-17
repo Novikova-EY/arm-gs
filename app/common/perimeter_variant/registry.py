@@ -551,6 +551,10 @@ def perimeter_entity_context_for_model(
             "energy_unit",
             "app.refdata.models.energy_systems.energy_unit_model:EnergyUnit",
         ),
+        ("EnergyUnitEnergyConsumptionParameter", "id_energy_unit"): (
+            "energy_unit",
+            "app.refdata.models.energy_systems.energy_unit_model:EnergyUnit",
+        ),
     }
     if parent_fk_column and parent_id is not None:
         lookup = parent_lookup.get((key, parent_fk_column))

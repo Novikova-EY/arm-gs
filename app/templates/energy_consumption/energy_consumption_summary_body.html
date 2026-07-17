@@ -1,4 +1,4 @@
-﻿{% if current_user.is_authenticated %}
+{% if current_user.is_authenticated %}
 {% set energy_consumption_gaes_charge_only_page = energy_consumption_gaes_charge_only_page | default(false) %}
 {% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
 {% set show_perimeter_variant_column = current_user.is_authenticated and current_user.has_admin %}
@@ -1097,6 +1097,7 @@
                     {% if row.get('pd_ec_skip_empty_hide_row') %}data-pd-ec-skip-empty-hide="1"{% endif %}
                     {% if row.get('pd_ec_sipr_integer_display_row') %}data-pd-ec-sipr-integer-display="1"{% endif %}
                     {% if row.get('pd_ec_o1_form_row') %}data-pd-ec-o1-form="1"{% endif %}
+                    {% if row.get('pd_ec_hide_when_summary_table_and_o1') %}data-pd-ec-hide-when-summary-table-and-o1="1"{% endif %}
                     {% if row.get('pd_ec_chukotka_reference_align') %}data-pd-ec-chukotka-reference-align="1"{% endif %}
                     {% if row.get('pd_ec_verification_nt_split_only') %}data-pd-ec-verification-nt-only="1"{% endif %}
                     {% if row.get('pd_ec_verification_omit_sipr_abs') %}data-pd-ec-verification-omit-sipr-abs="1"{% endif %}
@@ -2565,6 +2566,15 @@ if (summaryTable) {
                     !isVerTr &&
                     tr.getAttribute("data-pd-ec-o1-form") === "1" &&
                     (!isolatedEnergyUnitsOn || siprOn)
+                ) {
+                    show = false;
+                }
+                if (
+                    show &&
+                    !isVerTr &&
+                    tr.getAttribute("data-pd-ec-hide-when-summary-table-and-o1") === "1" &&
+                    window.__pdEcSummaryTerritoryCompactMode === true &&
+                    isolatedEnergyUnitsOn
                 ) {
                     show = false;
                 }

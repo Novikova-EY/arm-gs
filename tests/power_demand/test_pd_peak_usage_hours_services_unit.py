@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Юнит-тесты расчёта ЧЧИ на сводке /power_demand/summary/oes/."""
 
+import pytest
+
 from app.common.perimeter_variant.constants import (
     CODE_WITHOUT_NT_WITHOUT_GAES,
     CODE_WITHOUT_NT_WITH_GAES,
@@ -225,6 +227,17 @@ def test_divide_hours_multiplies_result_by_1000():
     assert _divide_hours(100.0, None) is None
 
 
+def test_combined_chi_uses_ec_over_combined_on_with_1000_scale():
+    from app.power_demand.services.pd_peak_usage_hours_services import (
+        _divide_combined_peak_usage_hours,
+    )
+
+    # ОЭС Северо-Запада, 2016: 92880,3 / 13652 × 1000 ≈ 6803,42
+    assert _divide_combined_peak_usage_hours(92_880.3, 13_652.0) == pytest.approx(
+        6803.42, rel=1e-4
+    )
+
+
 def test_chi_rounding_digits_is_integer():
     from app.power_demand.services.pd_peak_usage_hours_services import _CHI_ROUNDING_DIGITS
 
@@ -318,14 +331,19 @@ def test_inject_peak_usage_hours_rows_for_centralized_zone_without_nt():
     from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
 
     original = chi_svc._build_ec_consumption_index
-    original_hub = chi_svc._build_centralized_zone_hub_ec_chi_index
+    original_hub = chi_svc._build_oes_top_hub_ec_indexes
     chi_svc._build_ec_consumption_index = lambda _years: ec_index
-    chi_svc._build_centralized_zone_hub_ec_chi_index = lambda _years, _rd: cz_hub_index
+    chi_svc._build_oes_top_hub_ec_indexes = (
+        lambda _years, _rd, *, need_cz, need_ees_sa, pipeline_rows=None: (
+            cz_hub_index if need_cz else None,
+            None,
+        )
+    )
     try:
         inject_peak_usage_hours_rows(rows, years, 0)
     finally:
         chi_svc._build_ec_consumption_index = original
-        chi_svc._build_centralized_zone_hub_ec_chi_index = original_hub
+        chi_svc._build_oes_top_hub_ec_indexes = original_hub
 
     chi_rows = [r for r in rows if r.get("parameter_key") == PEAK_MAX_POWER_USAGE_HOURS_KEY]
     assert len(chi_rows) == 1
@@ -542,3 +560,354 @@ def test_south_fd_without_nt_chi_uses_direct_lookup_for_all_years():
             )
     finally:
         chi_svc._south_federal_district_id_for_chi.cache_clear()
+
+
+def test_inject_combined_peak_usage_hours_after_combined_on_row():
+    years = [2016]
+    ues_id = 7
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 7,
+            "entity_label": "ОЭС Северо-Запада",
+            "demand_model_name": "UnionEnergySystemDemandParameter",
+            "parent_fk_column": "id_union_energy_system",
+            "parent_id": ues_id,
+            "id_union_energy_system": ues_id,
+            "perimeter_variant_code": CODE_WITHOUT_NT,
+            "parameter_key": "max_power",
+            "hist_value": "100",
+            "year_values": ["100"],
+        },
+        {
+            "parameter_key": "calculated_max_power_mw",
+            "year_values": ["100"],
+        },
+        {
+            "parameter_key": "peak_datetime",
+            "year_values": ["—"],
+        },
+        {
+            "parameter_key": "avg_temp",
+            "year_values": ["—"],
+        },
+        {
+            "parameter_key": "combined_on_ees",
+            "parameter_label": (
+                "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"
+            ),
+            "hist_value": "13 652",
+            "year_values": ["13 652"],
+        },
+        {
+            "parameter_key": "calculated_combined_on_ees_mw",
+            "year_values": ["13 652"],
+        },
+        {
+            "parameter_key": "verify_for_calculated_combined_on_ees_mw",
+            "pd_pd_verify_for_row": True,
+            "year_values": ["0"],
+        },
+    ]
+    ec_index = {
+        ("UnionEnergySystemEnergyConsumptionParameter", ues_id, CODE_WITHOUT_NT, 2016): 92_880.3,
+    }
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+    from app.power_demand.services.pd_peak_usage_hours_services import (
+        inject_combined_peak_usage_hours_rows,
+        peak_combined_usage_hours_key,
+    )
+
+    original = chi_svc._build_ec_consumption_index
+    chi_svc._build_ec_consumption_index = lambda _years: ec_index
+    try:
+        inject_combined_peak_usage_hours_rows(rows, years, 0)
+    finally:
+        chi_svc._build_ec_consumption_index = original
+
+    chi_key = peak_combined_usage_hours_key("combined_on_ees")
+    chi_rows = [r for r in rows if r.get("parameter_key") == chi_key]
+    assert len(chi_rows) == 1
+    assert chi_rows[0]["pd_pd_chi_row"] is True
+    assert chi_rows[0]["year_values"] == ["6 803"]
+    combined_idx = next(
+        i
+        for i, r in enumerate(rows)
+        if r.get("parameter_key") == "combined_on_ees"
+    )
+    assert rows.index(chi_rows[0]) == combined_idx + 1
+    calculated_idx = next(
+        i
+        for i, r in enumerate(rows)
+        if r.get("parameter_key") == "calculated_combined_on_ees_mw"
+    )
+    assert calculated_idx == combined_idx + 2
+    assert rows[0]["entity_rowspan"] == 8
+
+
+def test_inject_combined_peak_usage_hours_updates_rowspan_for_multiple_rows():
+    years = [2025]
+    res_id = 3
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 5,
+            "entity_label": "РЭС",
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": res_id,
+            "id_regional_energy_system": res_id,
+            "perimeter_variant_code": CODE_WITHOUT_NT,
+            "parameter_key": "max_power",
+            "year_values": ["100"],
+        },
+        {"parameter_key": "peak_datetime", "year_values": ["—"]},
+        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {
+            "parameter_key": "combined_on_oes",
+            "parameter_label": "Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт",
+            "year_values": ["40"],
+        },
+        {
+            "parameter_key": "combined_on_ees",
+            "parameter_label": "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт",
+            "year_values": ["50"],
+        },
+    ]
+    ec_index = {
+        (
+            "RegionalEnergySystemEnergyConsumptionParameter",
+            res_id,
+            CODE_WITHOUT_NT,
+            2025,
+        ): 200.0,
+    }
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+    from app.power_demand.services.pd_peak_usage_hours_services import (
+        inject_combined_peak_usage_hours_rows,
+        peak_combined_usage_hours_key,
+    )
+
+    original = chi_svc._build_ec_consumption_index
+    chi_svc._build_ec_consumption_index = lambda _years: ec_index
+    try:
+        inject_combined_peak_usage_hours_rows(rows, years, 0)
+    finally:
+        chi_svc._build_ec_consumption_index = original
+
+    assert rows[0]["entity_rowspan"] == 7
+    chi_keys = {
+        peak_combined_usage_hours_key("combined_on_oes"),
+        peak_combined_usage_hours_key("combined_on_ees"),
+    }
+    assert sum(1 for r in rows if r.get("parameter_key") in chi_keys) == 2
+
+
+def test_combined_chi_segment_is_chi():
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CHI,
+        segment_for_parameter_key,
+    )
+
+    assert (
+        segment_for_parameter_key("peak_combined_on_ees_usage_hours", scope="oes")
+        == PD_SUMMARY_SEGMENT_CHI
+    )
+    assert (
+        segment_for_parameter_key("peak_combined_on_fo_usage_hours", scope="fo")
+        == PD_SUMMARY_SEGMENT_CHI
+    )
+
+
+def test_combined_chi_row_copies_id_federal_district_for_res_block():
+    years = [2025]
+    res_id = 572
+    fd_id = 88
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 4,
+            "entity_label": "РЭС",
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": res_id,
+            "id_regional_energy_system": res_id,
+            "id_federal_district": fd_id,
+            "perimeter_variant_code": CODE_WITHOUT_NT,
+            "parameter_key": "max_power",
+            "year_values": ["100"],
+        },
+        {"parameter_key": "peak_datetime", "year_values": ["—"]},
+        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {
+            "parameter_key": "combined_on_fo",
+            "parameter_label": (
+                "Совмещенное потребление мощности на час максимума ФО, МВт"
+            ),
+            "year_values": ["50"],
+        },
+    ]
+    ec_index = {
+        (
+            "RegionalEnergySystemEnergyConsumptionParameter",
+            res_id,
+            CODE_WITHOUT_NT,
+            2025,
+        ): 25_000.0,
+    }
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+    from app.power_demand.services.pd_peak_usage_hours_services import (
+        inject_combined_peak_usage_hours_rows,
+        peak_combined_usage_hours_key,
+    )
+
+    original = chi_svc._build_ec_consumption_index
+    chi_svc._build_ec_consumption_index = lambda _years: ec_index
+    try:
+        inject_combined_peak_usage_hours_rows(rows, years, 0)
+    finally:
+        chi_svc._build_ec_consumption_index = original
+
+    chi_key = peak_combined_usage_hours_key("combined_on_fo")
+    chi_row = next(r for r in rows if r.get("parameter_key") == chi_key)
+    assert chi_row["id_federal_district"] == fd_id
+
+
+def test_inject_combined_peak_usage_hours_for_energy_zone_block():
+    years = [2025]
+    ez_id = 3
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 4,
+            "entity_label": "1 — ОЭС Северо-Запада",
+            "demand_model_name": "EnergyZoneDemandParameter",
+            "parent_fk_column": "id_energy_zone",
+            "parent_id": ez_id,
+            "id_energy_zone": ez_id,
+            "perimeter_variant_code": CODE_WITHOUT_NT,
+            "parameter_key": "max_power",
+            "year_values": ["100"],
+        },
+        {"parameter_key": "peak_datetime", "year_values": ["—"]},
+        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {
+            "parameter_key": "combined_on_ees",
+            "parameter_label": (
+                "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"
+            ),
+            "year_values": ["50"],
+        },
+    ]
+    ec_index = {
+        (
+            "EnergyZoneEnergyConsumptionParameter",
+            ez_id,
+            CODE_WITHOUT_NT,
+            2025,
+        ): 25_000.0,
+    }
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+    from app.power_demand.services.pd_peak_usage_hours_services import (
+        inject_combined_peak_usage_hours_rows,
+        peak_combined_usage_hours_key,
+    )
+
+    original = chi_svc._build_ec_consumption_index
+    chi_svc._build_ec_consumption_index = lambda _years: ec_index
+    try:
+        inject_combined_peak_usage_hours_rows(rows, years, 0)
+    finally:
+        chi_svc._build_ec_consumption_index = original
+
+    chi_key = peak_combined_usage_hours_key("combined_on_ees")
+    chi_row = next(r for r in rows if r.get("parameter_key") == chi_key)
+    assert chi_row["id_energy_zone"] == ez_id
+    assert chi_row["year_values"] == ["500 000"]
+    assert "совмещенного потребления мощности на час прохождения максимума ЕЭС" in (
+        chi_row.get("parameter_label") or ""
+    )
+
+
+def test_inject_combined_peak_usage_hours_for_res_energy_zone_block():
+    years = [2025]
+    res_id = 572
+    ez_id = 3
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 5,
+            "entity_label": "ЭС Мурманской области",
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": res_id,
+            "id_regional_energy_system": res_id,
+            "id_energy_zone": ez_id,
+            "perimeter_variant_code": CODE_WITHOUT_NT,
+            "parameter_key": "max_power",
+            "year_values": ["100"],
+        },
+        {"parameter_key": "peak_datetime", "year_values": ["—"]},
+        {"parameter_key": "avg_temp", "year_values": ["—"]},
+        {
+            "parameter_key": "combined_on_ees",
+            "parameter_label": (
+                "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"
+            ),
+            "year_values": ["40"],
+        },
+        {
+            "parameter_key": "combined_on_ez",
+            "parameter_label": (
+                "Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт"
+            ),
+            "year_values": ["30"],
+        },
+    ]
+    ec_index = {
+        (
+            "RegionalEnergySystemEnergyConsumptionParameter",
+            res_id,
+            CODE_WITHOUT_NT,
+            2025,
+        ): 12_000.0,
+    }
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+    from app.power_demand.services.pd_peak_usage_hours_services import (
+        inject_combined_peak_usage_hours_rows,
+        peak_combined_usage_hours_key,
+    )
+
+    original = chi_svc._build_ec_consumption_index
+    chi_svc._build_ec_consumption_index = lambda _years: ec_index
+    try:
+        inject_combined_peak_usage_hours_rows(rows, years, 0)
+    finally:
+        chi_svc._build_ec_consumption_index = original
+
+    ees_chi = next(
+        r
+        for r in rows
+        if r.get("parameter_key") == peak_combined_usage_hours_key("combined_on_ees")
+    )
+    ez_chi = next(
+        r
+        for r in rows
+        if r.get("parameter_key") == peak_combined_usage_hours_key("combined_on_ez")
+    )
+    assert ees_chi["id_energy_zone"] == ez_id
+    assert ez_chi["id_energy_zone"] == ez_id
+    assert ees_chi["year_values"] == ["300 000"]
+    assert ez_chi["year_values"] == ["400 000"]
+
+
+def test_energy_zone_combined_chi_formula_registry_entries():
+    from app.power_demand.services.power_demand_summary_formula_registry import (
+        PAGE_EZ,
+        get_formula_def,
+    )
+
+    ees_def = get_formula_def("pd_peak_combined_on_ees_usage_hours")
+    ez_def = get_formula_def("pd_peak_combined_on_ez_usage_hours")
+    assert ees_def is not None and PAGE_EZ in ees_def.pages
+    assert ez_def is not None and PAGE_EZ in ez_def.pages

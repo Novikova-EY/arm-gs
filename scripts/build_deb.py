@@ -24,13 +24,11 @@ BUILD_ROOT = PROJECT_ROOT / "packaging" / "build"
 DEB_OUTPUT_TEMPLATE = PROJECT_ROOT / "packaging" / "generation-app_{version}_amd64.deb"
 
 # Каталоги/файлы, которые попадут в /opt/generation-app/app
+# backups/backup/logs не включаем: дампы БД раздувают .deb до ~1.5 ГБ
 PAYLOAD_ITEMS = [
     "app",
     "migrations",
     "scripts",
-    "backup",
-    "backups",
-    "logs",
     "run.py",
     "config.py",
     "gunicorn_config.py",
@@ -220,6 +218,15 @@ def normalize_debian_scripts_line_endings(build_dir: Path) -> None:
             script_path.write_text(text, encoding="utf-8")
 
 
+def normalize_shell_scripts_line_endings(build_dir: Path) -> None:
+    """CRLF в .sh из Windows-сборки ломает shebang на Linux."""
+    payload_scripts = build_dir / "opt" / "generation-app" / "app" / "scripts"
+    for script_path in payload_scripts.glob("*.sh") if payload_scripts.is_dir() else []:
+        text = script_path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+        script_path.write_text(text, encoding="utf-8")
+        script_path.chmod(script_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
 def make_scripts_executable(build_dir: Path) -> None:
     for script_name in ("postinst", "postrm", "prerm"):
         script_path = build_dir / "DEBIAN" / script_name
@@ -294,6 +301,7 @@ def main() -> int:
     copy_static_files(build_dir)
     patch_control_version(build_dir, version)
     normalize_debian_scripts_line_endings(build_dir)
+    normalize_shell_scripts_line_endings(build_dir)
     make_scripts_executable(build_dir)
     output_path = build_package(
         build_dir,

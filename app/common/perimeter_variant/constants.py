@@ -127,7 +127,6 @@ FALLBACK_PERIMETER_VARIANT_BY_CODE: dict[str, PerimeterVariantDefinition] = {
     CODE_WITHOUT_NT_WITH_KALININGRAD_ES: PerimeterVariantDefinition(
         CODE_WITHOUT_NT_WITH_KALININGRAD_ES,
         "без НТ (с ЭС Калининградской области)",
-        effective_to_year=2024,
     ),
     CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES: PerimeterVariantDefinition(
         CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES,
@@ -176,6 +175,16 @@ FALLBACK_ENTITY_PERIMETER_BINDINGS: tuple[EntityPerimeterBinding, ...] = (
         entity_name_cf=RUSSIA_FEDERATION_AGGREGATE_NAME_CF,
         entity_name=RUSSIA_FEDERATION_AGGREGATE_NAME,
         label_prefix=RUSSIA_FEDERATION_AGGREGATE_NAME,
+        variants=(
+            FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITH_NT],
+            FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITHOUT_NT],
+        ),
+    ),
+    EntityPerimeterBinding(
+        entity_kind=ENTITY_KIND_CENTRALIZED_ZONE,
+        entity_name_cf=CENTRALIZED_ZONE_AGGREGATE_NAME_CF,
+        entity_name=CENTRALIZED_ZONE_AGGREGATE_NAME,
+        label_prefix=CENTRALIZED_ZONE_AGGREGATE_NAME,
         variants=(
             FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITH_NT],
             FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITHOUT_NT],

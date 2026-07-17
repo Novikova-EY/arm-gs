@@ -455,7 +455,7 @@
                                                             per_page=per_page,
                                                             sort_by=sort_by,
                                                             sort_dir=sort_dir) }}" class="dropdown-item">
-                                                            {{ number }} ({{ name }})
+                                                            {{ name }}
                                                         </a>
                                                     </li>
                                             {% endfor %}
@@ -538,7 +538,7 @@
                                     <select name="synchronous_areas[]" class="form-select">
                                         {% for id, number, name in synchronous_area_list %}
                                         <option value="{{ id }}"{% if id == item.id_synchronous_area %} selected{% endif %}>
-                                            {{ number }} ({{ name }})
+                                            {{ name }}
                                         </option>
                                         {% endfor %}
                                     </select>

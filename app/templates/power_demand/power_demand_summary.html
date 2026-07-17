@@ -5,67 +5,22 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 {% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
-{% set show_perimeter_variant_column = summary_route_variant != 'coeff' and current_user.is_authenticated and current_user.has_admin %}
 {% set year_is_plan = year_is_plan | default({}) %}
 {% set summary_route_variant = summary_route_variant | default('max') %}
+{% set show_perimeter_variant_column = active_summary in ('oes', 'fo', 'ez') %}
 {% set pd_pd_max_year_segments = (
     summary_route_variant != 'coeff'
     and coeff_base_year is defined
     and active_summary in ('oes', 'fo', 'ez')
 ) %}
-{% set pd_summary_hist_editable_keys = ('max_power', 'peak_datetime', 'avg_temp') %}
+{% set pd_coeff_fixed_cols = 9 + (1 if show_perimeter_variant_column else 0) %}
+{% set pd_summary_hist_editable_keys = ('max_power', 'peak_datetime', 'avg_temp', 'entity_note') %}
 {% set pd_summary_hist_restricted = active_summary in ('oes', 'fo', 'ez') %}
-{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours') %}
+{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours', 'peak_combined_on_ees_usage_hours', 'peak_combined_on_oes_usage_hours', 'peak_combined_on_es_usage_hours', 'peak_combined_on_fo_usage_hours', 'peak_combined_on_cz_usage_hours', 'peak_combined_on_ez_usage_hours') %}
 {% set pd_formula_texts = pd_formula_texts | default({}) %}
 {# _pd_* формулы — в контексте из Python (см. inject_pd_formula_template_variables) #}
 {% set show_hist_col = summary_route_variant != 'coeff' %}
 <div class="container-fluid mt-2">
-    <div class="d-flex flex-wrap align-items-start gap-2 mb-3 w-100">
-        <div class="d-flex flex-wrap gap-2 flex-grow-1" style="min-width:0;">
-            {% if summary_route_variant == 'coeff' %}
-                <a href="{{ url_for('power_demand_bp.demand_summary_oes_coeff') }}"
-                   class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
-                    Коэффициенты и совмещенные максимумы по энергосистемам
-                </a>
-                {% if active_summary == 'oes' %}
-                <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
-                    Коэффициенты и совмещенные максимумы по ФО
-                </span>
-                <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
-                    Коэффициенты и совмещенные максимумы по энергозонам
-                </span>
-                {% else %}
-                <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts_coeff') }}"
-                   class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
-                    Коэффициенты и совмещенные максимумы по ФО
-                </a>
-                <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones_coeff') }}"
-                   class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
-                    Коэффициенты и совмещенные максимумы по энергозонам
-                </a>
-                {% endif %}
-            {% else %}
-                <a href="{{ url_for('power_demand_bp.demand_summary_oes') }}"
-                   class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
-                    Максимумы потребления мощности по энергосистемам
-                </a>
-                <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts') }}"
-                   class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
-                    Максимумы потребления мощности по ФО
-                </a>
-                <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones') }}"
-                   class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
-                    Максимумы потребления мощности по энергозонам
-                </a>
-            {% endif %}
-        </div>
-        <a href="{{ url_for('power_demand_bp.hub') }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-md-auto">
-            <i class="bi bi-gear-wide-connected"></i> Модуль «Нагрузки»
-        </a>
-    </div>
-
-    <h1 class="text-center mb-4">{{ page_title }}</h1>
-
     {% if summary_route_variant == 'coeff' %}
         {% if active_summary == 'oes' %}
         {% set export_endpoint = 'power_demand_bp.demand_summary_oes_export_coeff' %}
@@ -84,8 +39,56 @@
         {% endif %}
     {% endif %}
 
-    {# Липкая панель: кнопки, территориальные фильтры, импорт/экспорт, строка годов — над шапкой таблицы #}
+    {# Липкая панель: переключатели ОЭС/ФО/ЭЗ, фильтры, импорт/экспорт, строка годов — над шапкой таблицы #}
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+    <div class="col-12 mb-2">
+        <div class="d-flex flex-wrap align-items-start gap-2 w-100">
+            <div class="d-flex flex-wrap gap-2 flex-grow-1" style="min-width:0;">
+                {% if summary_route_variant == 'coeff' %}
+                    <a href="{{ url_for('power_demand_bp.demand_summary_oes_coeff') }}"
+                       class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
+                        Коэффициенты и совмещенные максимумы по энергосистемам
+                    </a>
+                    {% if active_summary == 'oes' %}
+                    <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
+                        Коэффициенты и совмещенные максимумы по ФО
+                    </span>
+                    <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
+                        Коэффициенты и совмещенные максимумы по энергозонам
+                    </span>
+                    {% else %}
+                    <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts_coeff') }}"
+                       class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
+                        Коэффициенты и совмещенные максимумы по ФО
+                    </a>
+                    <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones_coeff') }}"
+                       class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
+                        Коэффициенты и совмещенные максимумы по энергозонам
+                    </a>
+                    {% endif %}
+                {% else %}
+                    <a href="{{ url_for('power_demand_bp.demand_summary_oes') }}"
+                       class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                        Максимумы потребления мощности по энергосистемам
+                    </a>
+                    <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts') }}"
+                       class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                        Максимумы потребления мощности по ФО
+                    </a>
+                    <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones') }}"
+                       class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                        Максимумы потребления мощности по энергозонам
+                    </a>
+                {% endif %}
+            </div>
+            <a href="{{ url_for('power_demand_bp.hub') }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-md-auto">
+                <i class="bi bi-gear-wide-connected"></i> Модуль «Нагрузки»
+            </a>
+        </div>
+    </div>
+
+    <h1 class="text-center mb-2">{{ page_title }}</h1>
+
     <!-- Как на fuel/stations_equipment_groups: строка с кнопками Фильтр/Поиск и Импорт/Экспорт -->
     <div class="col-12 mb-2">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -124,7 +127,7 @@
             {% if active_summary == 'oes' and union_energy_system_list is defined %}
             <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
                 {% for key, values in request.args.lists() %}
-                    {% if key not in ['ds_ues', 'ds_res', 'ds_rd', 'ds_eu', 'ds_sa'] and not (summary_route_variant == 'coeff' and (key == 'start_year' or key == 'end_year')) %}
+                    {% if key not in ['ds_ues', 'ds_res', 'ds_rd', 'ds_eu', 'ds_sa'] %}
                         {% for value in values %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endfor %}
@@ -172,7 +175,7 @@
             {% elif active_summary == 'fo' and federal_district_list is defined %}
             <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
                 {% for key, values in request.args.lists() %}
-                    {% if key not in ['ds_fd', 'ds_res'] and not (summary_route_variant == 'coeff' and (key == 'start_year' or key == 'end_year')) %}
+                    {% if key not in ['ds_fd', 'ds_res'] %}
                         {% for value in values %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endfor %}
@@ -204,7 +207,7 @@
             {% elif active_summary == 'ez' and energy_zone_list is defined %}
             <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex flex-wrap align-items-center gap-2 justify-content-start mb-0 pd-summary-filters-form">
                 {% for key, values in request.args.lists() %}
-                    {% if key not in ['ds_ez', 'ds_res'] and not (summary_route_variant == 'coeff' and (key == 'start_year' or key == 'end_year')) %}
+                    {% if key not in ['ds_ez', 'ds_res'] %}
                         {% for value in values %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endfor %}
@@ -263,12 +266,11 @@
         </div>
     </div>
 
-    <!-- «Максимумы…»: Год начала/конца + округление. «Коэффициенты…» — фиксированные годы N−9…N+18, только округление. -->
+    <!-- Год начала/конца + кнопки периодов; на «Коэффициенты…» дополнительно долгосрочный период и строки k. -->
     <div class="col-12 mb-2">
         <div class="d-flex align-items-center flex-wrap gap-2 w-100">
-            {% if summary_route_variant != 'coeff' %}
             <form method="GET" action="{{ url_for(request.endpoint) }}" class="d-flex align-items-center gap-2 flex-wrap flex-grow-0" id="powerDemandSummaryYearForm"
-                  {% if pd_pd_max_year_segments and filter_year_list %}data-pd-filter-year-min="{{ filter_year_list[0] }}" data-pd-filter-year-max="{{ filter_year_list[-1] }}"{% endif %}>
+                  {% if (pd_pd_max_year_segments or summary_route_variant == 'coeff') and filter_year_list %}data-pd-filter-year-min="{{ filter_year_list[0] }}" data-pd-filter-year-max="{{ filter_year_list[-1] }}"{% endif %}>
                 {% for key, values in request.args.lists() %}
                     {% if key != 'start_year' and key != 'end_year' %}
                         {% for value in values %}
@@ -291,7 +293,6 @@
                 <button type="submit" class="btn btn-outline-success">Применить</button>
                 <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
             </form>
-            {% endif %}
             {% if summary_route_variant == 'coeff' or pd_pd_max_year_segments %}
             <div id="powerDemandCoeffSegToggles" class="d-flex flex-wrap align-items-center gap-2 flex-grow-1 justify-content-center justify-content-md-start" role="toolbar" aria-label="Периоды по годам">
                 <button type="button" class="btn btn-warning text-wrap" data-coeff-seg="reporting" aria-pressed="true" title="Показать или скрыть отчетный период">Отчетный период</button>
@@ -301,6 +302,7 @@
                 {% endif %}
             </div>
             {% endif %}
+            <div id="pdPdSummaryViewToggles" class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto flex-wrap justify-content-end">
             {% if active_summary in ('oes', 'fo', 'ez') %}
             <button type="button"
                     id="pdPdSummaryTerritoryCompactToggle"
@@ -309,9 +311,20 @@
                     title="Скрыть строки региональных энергосистем, субъектов РФ и энергорайонов; остаются основные агрегированные уровни">
                 Сводная таблица
             </button>
-            {% endif %}
-            <div class="d-flex align-items-center gap-3 flex-shrink-0 ms-auto flex-wrap justify-content-end">
-            {% if active_summary in ('oes', 'fo', 'ez') %}
+            <button type="button"
+                    id="pdPdSummaryEeToggle"
+                    class="btn btn-outline-danger text-nowrap flex-shrink-0"
+                    aria-pressed="false"
+                    title="Показать строки «Потребление электрической энергии, млн кВт·ч» (светло-красный фон)">
+                Потребление ЭЭ
+            </button>
+            <button type="button"
+                    id="pdPdSummaryPerimeterVariantToggle"
+                    class="btn btn-outline-info text-wrap flex-shrink-0"
+                    aria-pressed="false"
+                    title="Показать столбец «Варианты периметра»">
+                Варианты периметра
+            </button>
             <button type="button"
                     id="pdPdSummaryNtDetailToggle"
                     class="btn btn-outline-secondary text-nowrap flex-shrink-0"
@@ -325,8 +338,6 @@
                     {% endif %}>
                 + НТ
             </button>
-            {% endif %}
-            {% if active_summary in ('oes', 'fo', 'ez') and summary_route_variant != 'coeff' %}
             <button type="button"
                     id="pdPdSummaryHideEmptyToggle"
                     class="btn btn-outline-primary text-wrap flex-shrink-0"
@@ -334,13 +345,19 @@
                     title="Показать энергосистемы, у которых все показатели пусты или равны нулю">
                 Пустые строки
             </button>
-            {% if active_summary in ('oes', 'fo', 'ez') %}
             <button type="button"
                     id="pdPdSummaryChiToggle"
                     class="btn btn-outline-warning text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки «Число часов использования максимального потребления мощности»{% if active_summary == 'oes' %} для России, ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов{% elif active_summary == 'fo' %} для федеральных округов и РЭС{% else %} для энергозон и РЭС{% endif %} (оранжевый фон)">
+                    title="Показать строки «Число часов использования максимального потребления мощности» и «Число часов использования совмещенного потребления мощности на час прохождения максимума»{% if active_summary == 'oes' %} для России, ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов{% elif active_summary == 'fo' %} для федеральных округов и РЭС{% else %} для энергозон и РЭС{% endif %} (оранжевый фон)">
                 ЧЧИ
+            </button>
+            <button type="button"
+                    id="pdPdSummaryHistToggle"
+                    class="btn btn-outline-secondary text-wrap flex-shrink-0"
+                    aria-pressed="false"
+                    title="Показать столбец «Исторический собственный максимум»">
+                Исторические максимумы
             </button>
             <button type="button"
                     id="pdPdSummaryCalcMaxToggle"
@@ -357,8 +374,14 @@
                 Проверка
             </button>
             {% endif %}
-            {% endif %}
             {% if summary_route_variant == 'coeff' %}
+            <button type="button"
+                    id="pdCoeffMixinColsToggle"
+                    class="btn btn-outline-secondary text-wrap"
+                    aria-pressed="false"
+                    title="Показать или скрыть столбцы группы «Расчетный коэффициент совмещения»">
+                Расчетные коэффициенты
+            </button>
             <button type="button"
                     id="pdCoeffKColsToggle"
                     class="btn btn-warning text-wrap"
@@ -380,15 +403,6 @@
                     <option value="-1" {% if _rd_k == -1 %}selected{% endif %}>Целое число</option>
                 </select>
             </div>
-            {% if active_summary in ('oes', 'fo', 'ez') %}
-            <button type="button"
-                    id="pdPdSummaryHideEmptyToggle"
-                    class="btn btn-outline-primary text-wrap flex-shrink-0"
-                    aria-pressed="false"
-                    title="Показать энергосистемы, у которых все показатели пусты или равны нулю">
-                Пустые строки
-            </button>
-            {% endif %}
             {% endif %}
             <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 16rem;">
                 <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл (МВт):</label>
@@ -768,6 +782,15 @@
     .pd-coeff-year-seg-table.pd-coeff-seg-hide-long td[data-coeff-year-segment="long"] {
         display: none !important;
     }
+    .pd-coeff-year-seg-table .pd-coeff-year-col-hidden {
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        overflow: hidden !important;
+    }
     .pd-coeff-year-seg-table.pd-coeff-hide-k-columns .pd-coeff-k-inline-stack {
         display: none !important;
     }
@@ -800,11 +823,12 @@
             </div>
         </div>
         <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll{% if summary_route_variant == 'coeff' %} pd-coeff-summary-scroll-wrap{% endif %}" style="visibility: hidden;">
-        <table id="powerDemandSummaryTable" class="table table-bordered{% if summary_route_variant != 'coeff' %} table-striped{% endif %}{% if can_edit_summary_cells %} table-hover fuel-params-edit-table{% endif %} align-middle power-demand-summary-table{% if summary_route_variant == 'coeff' %} pd-coeff-year-seg-table{% if not (coeff_include_long | default(false)) %} pd-coeff-seg-hide-long{% endif %}{% elif pd_pd_max_year_segments %} pd-ec-max-year-visibility-table{% endif %}"
+        <table id="powerDemandSummaryTable" class="table table-bordered{% if summary_route_variant != 'coeff' %} table-striped{% endif %}{% if can_edit_summary_cells %} table-hover fuel-params-edit-table{% endif %} align-middle power-demand-summary-table{% if summary_route_variant == 'coeff' %} pd-coeff-year-seg-table pd-coeff-hide-mixin-columns{% if not (coeff_include_long | default(false)) %} pd-coeff-seg-hide-long{% endif %}{% elif pd_pd_max_year_segments %} pd-ec-max-year-visibility-table{% endif %}{% if active_summary in ('oes', 'fo', 'ez') and summary_route_variant != 'coeff' %} pd-summary-hist-col-hidden{% endif %}{% if show_perimeter_variant_column %} pd-summary-perimeter-variant-col-hidden{% endif %}"
+               {% if summary_route_variant == 'coeff' %}data-ec-unify-block-bg="1"{% endif %}
                data-active-summary="{{ active_summary }}"
                {% if active_summary in ('oes', 'fo', 'ez') %}data-summary-view="{{ active_summary }}" data-summary-route-variant="{{ summary_route_variant }}" data-summary-log-scope="{{ active_summary }}"{% endif %}
                {% if pd_pd_max_year_segments %}data-ec-max-year-segments="1" data-coeff-long-loaded="1" data-pd-server-medium-loaded="{% if summary_include_medium_years | default(false) %}1{% else %}0{% endif %}"{% endif %}
-               {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-pd-rounding-digits-k="{{ rounding_digits_k if rounding_digits_k is defined else rounding_digits }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}"{% endif %}
+               {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-pd-rounding-digits-k="{{ rounding_digits_k if rounding_digits_k is defined else rounding_digits }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}" data-pd-coeff-years-applied="{% if pd_coeff_years_applied | default(false) %}1{% else %}0{% endif %}"{% endif %}
                {% if coeff_base_year is defined %}data-coeff-base-year="{{ coeff_base_year }}"{% endif %}
                {% if can_edit_summary_cells %}
                data-save-cell-url="{{ url_for('power_demand_bp.demand_summary_save_cell') }}"
@@ -834,6 +858,7 @@
                 {% for y in years %}
                 {% if summary_route_variant == 'coeff' %}
                 <col class="summary-col-year summary-col-year-mw"
+                    data-summary-year="{{ y }}"
                     {% if coeff_base_year is defined %}
                     data-coeff-year-segment="{% if y >= coeff_base_year - 9 and y <= coeff_base_year %}reporting{% elif y >= coeff_base_year + 1 and y <= coeff_base_year + 6 %}medium{% else %}long{% endif %}"
                     {% endif %} />
@@ -866,6 +891,9 @@
             <thead>
                 {% if summary_route_variant == 'coeff' and coeff_period_header_groups is defined %}
                 <tr class="table-success power-demand-coeff-thead-top">
+                    {% if show_perimeter_variant_column %}
+                    <th rowspan="2" class="text-center align-middle summary-perimeter-variant-col text-wrap">Варианты<br>периметра</th>
+                    {% endif %}
                     <th rowspan="2" class="text-center align-middle summary-entity-col">Энергосистема</th>
                     <th rowspan="2" class="text-center align-middle summary-parameter-col">
                         <span class="summary-parameter-header-inner">
@@ -957,6 +985,7 @@
                     </th>
                     {% for year in years %}
                     <th class="text-center align-middle summary-year-col summary-year-mw-col"
+                        data-summary-year="{{ year }}"
                         data-coeff-year-segment="{% if year >= coeff_base_year - 9 and year <= coeff_base_year %}reporting{% elif year >= coeff_base_year + 1 and year <= coeff_base_year + 6 %}medium{% else %}long{% endif %}">
                         {{ year }}
                         {% if year in year_features %}
@@ -1033,6 +1062,15 @@
                 {% if active_summary in ('oes', 'fo', 'ez') and row.get('pd_pd_nt_extra_row') %}
                     {% set row_initial_hidden = true %}
                 {% endif %}
+                {% if active_summary in ('oes', 'fo', 'ez') and row.get('pd_pd_summary_table_only_row') and not (summary_initial_compact_mode | default(false)) %}
+                    {% set row_initial_hidden = true %}
+                {% endif %}
+                {% if active_summary in ('oes', 'fo', 'ez') and summary_initial_compact_mode | default(false) and row.get('pd_pd_territory_detail_row') and not row.get('pd_pd_aggregation_level_row') %}
+                    {% set row_initial_hidden = true %}
+                {% endif %}
+                {% if active_summary in ('oes', 'fo', 'ez') and summary_initial_compact_mode | default(false) and row.get('pd_pd_territory_compact_hide_row') %}
+                    {% set row_initial_hidden = true %}
+                {% endif %}
                 {% set _pd_coeff_mixin_ui = summary_route_variant == 'coeff' and row.parameter_key not in ('peak_datetime', 'max_power') and not _cz_fo_tot %}
                 {% set _pd_coeff_combined_res = _pd_coeff_mixin_ui and active_summary == 'oes' and row.demand_model_name == 'RegionalEnergySystemDemandParameter' and row.parameter_key in ('combined_on_oes', 'combined_on_ees') %}
                 {% if summary_route_variant == 'coeff' %}
@@ -1041,7 +1079,7 @@
                     {% endif %}
                     {% set _pd_row_stripe = 'pd-entity-block-stripe-alt' if (_pd_block_idx.n % 2 == 0) else 'pd-entity-block-stripe-base' %}
                 {% endif %}
-                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary in ('oes', 'fo', 'ez') and summary_route_variant != 'coeff' and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if summary_route_variant == 'coeff' %} {{ _pd_row_stripe }}{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
+                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_ee_row') %} pd-pd-ee-row summary-row-hidden{% elif row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
                     data-parameter-key="{{ row.parameter_key }}"
                     {% if row.demand_model_name %}data-demand-model-name="{{ row.demand_model_name|e }}"{% endif %}
                     {% if row.id_union_energy_system is not none %}data-id-union-energy-system="{{ row.id_union_energy_system }}"{% endif %}
@@ -1059,13 +1097,16 @@
                     {% if row.get('pd_pd_skip_empty_hide_row') %}data-pd-pd-skip-empty-hide="1"{% endif %}
                     {% if row.get('pd_pd_territory_detail_row') %}data-pd-pd-territory-detail="1"{% endif %}
                     {% if row.get('pd_pd_territory_compact_hide_row') %}data-pd-pd-territory-compact-hide="1"{% endif %}
+                    {% if row.get('pd_pd_summary_table_only_row') %}data-pd-pd-summary-table-only="1"{% endif %}
+                    {% if row.get('pd_pd_ee_row') %}data-pd-pd-ee-row="1"{% endif %}
                     {% if row.get('pd_pd_chi_row') %}data-pd-pd-chi-row="1"{% endif %}
                     {% if row.get('pd_pd_formula_derived_row') %}data-pd-pd-formula-derived="1"{% endif %}
+                    {% if row.get('pd_pd_south_ues_without_nt_manual_row') %}data-pd-pd-south-without-nt-manual="1"{% endif %}
                     {% if row.get('pd_pd_verify_a_parameter_key') %}data-pd-pd-verify-a="{{ row.pd_pd_verify_a_parameter_key }}" data-pd-pd-verify-b="{{ row.pd_pd_verify_b_parameter_key }}"{% endif %}
                     data-entity-block-size="{{ row.entity_rowspan }}"
                     {% if summary_route_variant == 'coeff' %}style="--pd-row-stack: {{ loop.index }}"{% endif %}
                     {% if row.show_entity_cell %}data-is-block-start="1"{% endif %}
-                    {% if row.show_entity_cell and (row.get('pd_pd_entity_label_compact_nt') or row.get('pd_pd_entity_label_nt_detail')) %}
+                    {% if row.show_entity_cell and (row.get('pd_pd_entity_label_compact_nt') or row.get('pd_pd_entity_label_nt_detail') or row.get('pd_pd_entity_label_territory_compact')) %}
                     data-pd-pd-entity-label-full="{{ row.entity_label|e }}"
                     {% if row.get('pd_pd_entity_label_compact_nt') %}
                     data-pd-pd-entity-label-compact-nt="{{ row.pd_pd_entity_label_compact_nt|e }}"
@@ -1073,18 +1114,32 @@
                     {% if row.get('pd_pd_entity_label_nt_detail') %}
                     data-pd-pd-entity-label-nt-detail="{{ row.pd_pd_entity_label_nt_detail|e }}"
                     {% endif %}
+                    {% if row.get('pd_pd_entity_label_territory_compact') %}
+                    data-pd-pd-entity-label-territory-compact="{{ row.pd_pd_entity_label_territory_compact|e }}"
+                    {% endif %}
                     {% endif %}>
-                    {% if row.get('pd_pd_aggregation_level_full_row') %}
-                    <td colspan="{% if summary_route_variant == 'coeff' %}{{ 9 + (years|length) }}{% else %}{{ (2 if not show_hist_col else 3) + (years|length) + 1 + (1 if show_perimeter_variant_column else 0) }}{% endif %}"
+                    {% if row.get('pd_pd_aggregation_level_row') and active_summary in ('oes', 'fo', 'ez') and summary_route_variant != 'coeff' %}
+                    <td colspan="{{ 3 + (years|length) }}" data-pd-aggregation-header-cell="1"
                         class="summary-entity-cell summary-depth-{{ row.entity_depth }} fw-semibold text-center">
-                        {{ row.entity_label }}
+                        {{ row.pd_pd_entity_label_territory_compact if (summary_initial_compact_mode | default(false) and row.get('pd_pd_entity_label_territory_compact')) else row.entity_label }}
+                    </td>
+                    {% elif row.get('pd_pd_aggregation_level_full_row') %}
+                    <td colspan="{% if summary_route_variant == 'coeff' %}{{ pd_coeff_fixed_cols + (years|length) }}{% else %}{{ (2 if not show_hist_col else 3) + (years|length) + 1 + (1 if show_perimeter_variant_column else 0) }}{% endif %}"
+                        class="summary-entity-cell summary-depth-{{ row.entity_depth }} fw-semibold text-center">
+                        {{ row.pd_pd_entity_label_territory_compact if (summary_initial_compact_mode | default(false) and row.get('pd_pd_entity_label_territory_compact')) else row.entity_label }}
                     </td>
                     {% else %}
                     {% if row.show_entity_cell %}
+                    {% if row.get('pd_pd_aggregation_level_row') and active_summary in ('oes', 'fo', 'ez') and summary_initial_compact_mode | default(false) %}
+                    {% set _entity_rs_params = 1 %}
+                    {% set _entity_rs_with_k = 1 %}
+                    {% set _initial_entity_rowspan = 1 %}
+                    {% else %}
                     {% set _entity_rs_params = row.entity_rowspan %}
                     {% set _entity_rs_with_k = row.entity_rowspan * 2 %}
                     {% set _initial_entity_rowspan = _entity_rs_params %}
-                    {% if show_perimeter_variant_column %}
+                    {% endif %}
+                    {% if show_perimeter_variant_column and not row.get('pd_pd_aggregation_level_row') %}
                     <td rowspan="{{ _initial_entity_rowspan if _initial_entity_rowspan > 0 else 1 }}"
                         data-original-rowspan="{{ row.entity_rowspan }}"
                         class="summary-perimeter-variant-cell text-center align-middle text-wrap">
@@ -1112,9 +1167,9 @@
                     <td rowspan="{{ _initial_entity_rowspan if _initial_entity_rowspan > 0 else 1 }}"
                         data-original-rowspan="{{ _entity_rs_params }}"
                         {% if summary_route_variant == 'coeff' %}data-entity-rowspan-with-k="{{ _entity_rs_with_k }}"{% endif %}
-                        class="summary-entity-cell summary-depth-{{ row.entity_depth }}">
+                        class="summary-entity-cell summary-depth-{{ row.entity_depth }}{% if row.get('pd_pd_aggregation_level_row') and active_summary in ('oes', 'fo', 'ez') and summary_initial_compact_mode | default(false) %} fw-semibold{% endif %}">
                         <div style="padding-left: {{ row.entity_depth * 1.5 }}rem;">
-                            {{ row.entity_label }}{% if row.get('pd_pd_decentralized_zone_mark') %}<span class="pd-pd-dz-mark ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Децентрализованная зона" aria-label="Децентрализованная зона">ДЗ</span>{% endif %}
+                            {{ row.pd_pd_entity_label_territory_compact if (summary_initial_compact_mode | default(false) and row.get('pd_pd_entity_label_territory_compact')) else row.entity_label }}{% if row.get('pd_pd_decentralized_zone_mark') %}<span class="pd-pd-dz-mark ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Форма О-1" aria-label="Форма О-1">О-1</span>{% endif %}
                         </div>
                     </td>
                     {% endif %}
@@ -1247,8 +1302,9 @@
                     <td class="text-center summary-coeff-mixin-cell summary-coeff-source-cell"><span class="text-muted">—</span></td>
                     {% endif %}
                     {% endif %}
+                    {% set _pd_south_without_nt_manual = row.get('pd_pd_south_ues_without_nt_manual_row') %}
                     {% set _can_edit_slice = row.demand_model_name and (row.parent_fk_column is none or row.parent_id is not none) %}
-                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) and not row.get('pd_pd_formula_derived_row') %}
+                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys or _pd_south_without_nt_manual) and not row.get('pd_pd_formula_derived_row') and not row.get('pd_pd_chi_row') and not row.get('pd_pd_ee_row') %}
                     {% set _hist_param_allowed = (not pd_summary_hist_restricted) or row.parameter_key in pd_summary_hist_editable_keys %}
                     {% set _can_edit_hist_cell = _can_edit_cell and _hist_param_allowed %}
                     {% set _ues_readonly_coeff_display = summary_route_variant == 'coeff' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') %}
@@ -1416,11 +1472,13 @@
                         {% endif %}
                         </div>
                     </td>
+                    {% elif row.get('pd_pd_aggregation_level_row') and active_summary in ('oes', 'fo', 'ez') and summary_initial_compact_mode | default(false) %}
+                    <td class="summary-entity-note-cell"></td>
                     {% endif %}
                     {% endif %}
                 </tr>
-                {% if summary_route_variant == 'coeff' and row.parameter_key != 'max_power' and not row.get('pd_pd_verify_for_row') and not row.get('pd_pd_aggregation_level_full_row') %}
-                <tr class="summary-kind-{{ row.entity_kind }} summary-row-coeff-k {{ _pd_row_stripe }}{% if row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
+                {% if summary_route_variant == 'coeff' and row.parameter_key != 'max_power' and not row.get('pd_pd_verify_for_row') and not row.get('pd_pd_aggregation_level_full_row') and not row.get('pd_pd_chi_row') and not row.get('pd_pd_ee_row') %}
+                <tr class="summary-kind-{{ row.entity_kind }} summary-row-coeff-k{% if row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
                     data-parameter-key="{{ row.parameter_key }}"
                     {% if row.demand_model_name %}data-demand-model-name="{{ row.demand_model_name|e }}"{% endif %}
                     {% if row.id_union_energy_system is not none %}data-id-union-energy-system="{{ row.id_union_energy_system }}"{% endif %}
@@ -1435,6 +1493,7 @@
                     {% if row.get('pd_pd_skip_empty_hide_row') %}data-pd-pd-skip-empty-hide="1"{% endif %}
                     {% if row.get('pd_pd_territory_detail_row') %}data-pd-pd-territory-detail="1"{% endif %}
                     {% if row.get('pd_pd_territory_compact_hide_row') %}data-pd-pd-territory-compact-hide="1"{% endif %}
+                    {% if row.get('pd_pd_summary_table_only_row') %}data-pd-pd-summary-table-only="1"{% endif %}
                     {% if _pd_coeff_mixin_ui %}data-pd-coeff-ui-key="{{ (row.demand_model_name or '') }}|{{ row.parent_id if row.parent_id is not none else '' }}|{{ row.parameter_key }}"{% endif %}>
                     <td class="summary-parameter-cell summary-coeff-k-label-cell">
                         {% set _pd_coeff_k_tooltip = '' %}
@@ -1531,11 +1590,12 @@
                         {% endif %}
                         {% elif _medium_k_input %}
                         {% if coeff_k_pkey %}
+                        {% set _k_from_db = _k_stored_cell != '' and _k_stored_cell != '—' %}
                         <input type="text"
                                inputmode="decimal"
                                autocomplete="off"
                                class="form-control form-control-lg text-center pd-coeff-medium-k-input"
-                               value="{% if _k_stored_cell != '' and _k_stored_cell != '—' %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
+                               value="{% if _k_from_db %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
                                data-summary-year="{{ _yr }}"
                                data-parameter-key="{{ coeff_k_pkey }}"
                                {% if yrid is not none %}data-row-id="{{ yrid }}"{% endif %}
@@ -1543,7 +1603,8 @@
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-model="{{ row.demand_model_name }}"
                                data-slice="{{ _yr }}"
-                               data-initial="{% if _k_stored_cell != '' and _k_stored_cell != '—' %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
+                               data-initial="{% if _k_from_db %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
+                               {% if _k_from_db %}data-pd-medium-k-stored="1"{% endif %}
                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
                         {% else %}
                         <input type="text"
@@ -1572,7 +1633,7 @@
                 {% endif %}
                 {% else %}
                 <tr>
-                    <td colspan="{% if summary_route_variant == 'coeff' %}{{ 9 + (years|length) }}{% else %}{{ (2 if not show_hist_col else 3) + (years|length) + 1 + (1 if show_perimeter_variant_column else 0) }}{% endif %}" class="text-center text-muted">
+                    <td colspan="{% if summary_route_variant == 'coeff' %}{{ pd_coeff_fixed_cols + (years|length) }}{% else %}{{ (2 if not show_hist_col else 3) + (years|length) + 1 + (1 if show_perimeter_variant_column else 0) }}{% endif %}" class="text-center text-muted">
                         Нет данных для текущей версии БД.
                     </td>
                 </tr>
@@ -1580,75 +1641,85 @@
                 {% endif %}
             </tbody>
         </table>
+        {% if pd_summary_client_render | default(false) and active_summary in ('oes', 'fo', 'ez') %}
+        <nav id="pdSummaryEntityPagination" class="mt-3 mb-2" hidden aria-label="Пагинация сводки"></nav>
+        {% elif pd_entity_pagination is defined %}
+        {% include 'power_demand/_pd_summary_entity_pagination.html' %}
+        {% endif %}
+        {% if active_summary in ('oes', 'fo', 'ez') and (pd_summary_logs_formatted is defined or pd_summary_logs_lazy | default(false)) %}
+        {% set pd_logs_initial_limit = pd_summary_logs_initial_limit | default(10) %}
+        {% set pd_logs_load_more_limit = pd_summary_logs_load_more_limit | default(20) %}
+        {# Внутри scroll-wrap: на coeff один Y-скролл (иначе двойной скроллбар — wrap + host). #}
+        <div class="pd-summary-logs-section">
+        <h3 class="mb-0 ms-3 mt-4">Журнал изменений</h3>
+        <div class="mt-3">
+            <div class="card">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered" id="pd-summary-logs-table"
+                           data-pd-logs-base-url="{{ url_for('power_demand_bp.demand_summary_scope_logs', scope=active_summary) }}"
+                           data-pd-logs-initial-limit="{{ pd_logs_initial_limit }}"
+                           data-pd-logs-load-more-limit="{{ pd_logs_load_more_limit }}"
+                           {% if pd_summary_logs_lazy | default(false) %}data-pd-logs-lazy="1"{% endif %}>
+                        <thead class="table-light">
+                            <tr>
+                                <th class="pd-log-col-date" style="width:140px;">Дата</th>
+                                <th class="pd-log-col-time" style="width:120px;">Время</th>
+                                <th class="pd-log-col-user" style="width:260px;">Пользователь</th>
+                                <th class="pd-log-col-action">Действие</th>
+                                <th class="pd-log-col-ver" style="width:150px;">Версия базы данных</th>
+                                <th class="pd-log-col-details">Информация</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted and pd_summary_logs_formatted|length > 0 %}
+                                {% for log in pd_summary_logs_formatted %}
+                                    <tr>
+                                        <td data-date="{{ log.date }}">{{ log.date }}</td>
+                                        <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                        <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
+                                        <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
+                                        <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
+                                        <td>{% if log.details %}<div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% elif pd_summary_logs_lazy | default(false) %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted p-3">Загрузка журнала…</td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                    </div>
+                </div>
+                {% if (pd_summary_logs_formatted is defined and pd_summary_logs_formatted and pd_summary_logs_formatted|length > 0) or pd_summary_logs_lazy | default(false) %}
+                <div class="card-footer text-center">
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            Показано: <span id="pd-summary-logs-shown">{% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted %}{{ pd_summary_logs_formatted|length }}{% else %}0{% endif %}</span> из <span id="pd-summary-logs-total">?</span>
+                        </small>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="pd-summary-load-more-logs"
+                            data-offset="{% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted %}{{ pd_summary_logs_formatted|length }}{% else %}0{% endif %}"
+                            style="display: none;">
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
+                        Показать ещё
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            <div class="my-3"></div>
+        </div>
+        </div>
+        {% endif %}
         </div>
     </div>
 
 {% if active_summary in ('oes', 'fo', 'ez') and (pd_summary_logs_formatted is defined or pd_summary_logs_lazy | default(false)) %}
-{% set pd_logs_initial_limit = pd_summary_logs_initial_limit | default(10) %}
-{% set pd_logs_load_more_limit = pd_summary_logs_load_more_limit | default(20) %}
-<h3 class="mb-0 ms-3 mt-4">Журнал изменений</h3>
-<div class="mt-3">
-    <div class="card">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-            <table class="table table-hover table-striped table-bordered" id="pd-summary-logs-table"
-                   data-pd-logs-base-url="{{ url_for('power_demand_bp.demand_summary_scope_logs', scope=active_summary) }}"
-                   data-pd-logs-initial-limit="{{ pd_logs_initial_limit }}"
-                   data-pd-logs-load-more-limit="{{ pd_logs_load_more_limit }}"
-                   {% if pd_summary_logs_lazy | default(false) %}data-pd-logs-lazy="1"{% endif %}>
-                <thead class="table-light">
-                    <tr>
-                        <th class="pd-log-col-date" style="width:140px;">Дата</th>
-                        <th class="pd-log-col-time" style="width:120px;">Время</th>
-                        <th class="pd-log-col-user" style="width:260px;">Пользователь</th>
-                        <th class="pd-log-col-action">Действие</th>
-                        <th class="pd-log-col-ver" style="width:150px;">Версия базы данных</th>
-                        <th class="pd-log-col-details">Информация</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted and pd_summary_logs_formatted|length > 0 %}
-                        {% for log in pd_summary_logs_formatted %}
-                            <tr>
-                                <td data-date="{{ log.date }}">{{ log.date }}</td>
-                                <td data-time="{{ log.time }}">{{ log.time }}</td>
-                                <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
-                                <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
-                                <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
-                                <td>{% if log.details %}<div data-details="{{ log.details_lower }}" style="white-space: pre-wrap;">{{ log.details }}</div>{% endif %}</td>
-                            </tr>
-                        {% endfor %}
-                    {% elif pd_summary_logs_lazy | default(false) %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted p-3">Загрузка журнала…</td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-            </div>
-        </div>
-        {% if (pd_summary_logs_formatted is defined and pd_summary_logs_formatted and pd_summary_logs_formatted|length > 0) or pd_summary_logs_lazy | default(false) %}
-        <div class="card-footer text-center">
-            <div class="mb-2">
-                <small class="text-muted">
-                    Показано: <span id="pd-summary-logs-shown">{% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted %}{{ pd_summary_logs_formatted|length }}{% else %}0{% endif %}</span> из <span id="pd-summary-logs-total">?</span>
-                </small>
-            </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" id="pd-summary-load-more-logs"
-                    data-offset="{% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted %}{{ pd_summary_logs_formatted|length }}{% else %}0{% endif %}"
-                    style="display: none;">
-                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" style="display: none;"></span>
-                Показать ещё
-            </button>
-        </div>
-        {% endif %}
-    </div>
-    <div class="my-3"></div>
-</div>
 <style>
 #pd-summary-logs-table td:nth-child(4) div, #pd-summary-logs-table td:nth-child(6) div { white-space: pre-wrap; }
 #pd-summary-logs-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
@@ -1790,7 +1861,7 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=13"></script>
 {% endif %}
 
 <script>
@@ -1897,6 +1968,47 @@ window.__pdPdSummaryFinishInitialRender = finishPowerDemandSummaryInitialRender;
 
 const summaryTable = document.getElementById("powerDemandSummaryTable");
 if (summaryTable) {
+    if (typeof window.pdSummaryAggregationLevelColspan !== "function") {
+        window.pdSummaryAggregationLevelColspan = function (yearCount) {
+            var n = 3 + (yearCount || 0);
+            if (window.__pdPdSummaryPerimeterVariantMode === true) {
+                n += 1;
+            }
+            if (window.__pdPdSummaryHistMode === true) {
+                n += 1;
+            }
+            return n;
+        };
+    }
+    if (typeof window.pdSummarySyncAggregationLevelColspans !== "function") {
+        window.pdSummaryCountSummaryYearColumns = function () {
+            var table = document.getElementById("powerDemandSummaryTable");
+            if (!table) {
+                return 0;
+            }
+            var yearHeaders = table.querySelectorAll("thead th.summary-year-col");
+            if (yearHeaders.length) {
+                return yearHeaders.length;
+            }
+            return table.querySelectorAll("colgroup col.summary-col-year").length;
+        };
+        window.pdSummarySyncAggregationLevelColspans = function () {
+            var table = document.getElementById("powerDemandSummaryTable");
+            if (!table) {
+                return;
+            }
+            var yearCount = window.pdSummaryCountSummaryYearColumns();
+            var colspan = window.pdSummaryAggregationLevelColspan(yearCount);
+            table
+                .querySelectorAll(
+                    'tbody tr[data-pd-pd-aggregation-level="1"] > td[data-pd-aggregation-header-cell="1"]'
+                )
+                .forEach(function (td) {
+                    td.colSpan = colspan;
+                });
+        };
+    }
+
     const FILTER_STORAGE_KEY = "powerDemandSummaryRowFilter";
     var pdPdNtStorageKey =
         "pdPdSummaryNtDetail_" + (summaryTable.getAttribute("data-summary-view") || "oes");
@@ -1906,8 +2018,10 @@ if (summaryTable) {
         window.__pdPdSummaryNtDetailMode = false;
     }
 
-    var pdPdTerritoryCompactKey =
-        "pdPdSummaryTerritoryCompact_" + (summaryTable.getAttribute("data-summary-view") || "oes");
+    var pdPdSummaryViewKey = summaryTable.getAttribute("data-summary-view") || "oes";
+    var pdPdTerritoryCompactKey = "pdPdSummaryTerritoryCompact_" + pdPdSummaryViewKey;
+    var pdPdPaginationBeforeCompactKey =
+        "pdPdSummaryPaginationBeforeCompact_" + pdPdSummaryViewKey;
     var pdPdTerritoryCompactBtn = document.getElementById("pdPdSummaryTerritoryCompactToggle");
     function syncPdPdTerritoryCompactToggleUi() {
         if (!pdPdTerritoryCompactBtn) {
@@ -1918,6 +2032,75 @@ if (summaryTable) {
         pdPdTerritoryCompactBtn.classList.toggle("btn-success", on);
         pdPdTerritoryCompactBtn.classList.toggle("btn-outline-success", !on);
     }
+    function pdSummaryServerEntityPaginationPageSizeFromUrl() {
+        var params = new URLSearchParams(window.location.search || "");
+        var raw = params.get("pd_page_size");
+        if (raw === null || String(raw).trim() === "") {
+            return 2;
+        }
+        var n = parseInt(raw, 10);
+        if (isNaN(n) || n < 0) {
+            return 2;
+        }
+        return n;
+    }
+    function pdSummaryServerEntityPaginationUrlIsPaginated() {
+        return pdSummaryServerEntityPaginationPageSizeFromUrl() > 0;
+    }
+    function pdSummarySavePaginationBeforeCompact() {
+        try {
+            var params = new URLSearchParams(window.location.search || "");
+            var prevSize = pdSummaryServerEntityPaginationPageSizeFromUrl();
+            var prevPage = parseInt(params.get("pd_page") || "1", 10);
+            if (prevSize > 0) {
+                var saved = {
+                    page: isNaN(prevPage) || prevPage < 1 ? 1 : prevPage,
+                    pageSize: prevSize,
+                };
+                window.__pdPdSummaryPaginationBeforeCompact = saved;
+                sessionStorage.setItem(
+                    pdPdPaginationBeforeCompactKey,
+                    JSON.stringify(saved)
+                );
+            }
+        } catch (ePagSave) { /* */ }
+    }
+    function pdSummaryReadPaginationBeforeCompact() {
+        var saved = window.__pdPdSummaryPaginationBeforeCompact || null;
+        window.__pdPdSummaryPaginationBeforeCompact = null;
+        if (saved && saved.pageSize > 0) {
+            try {
+                sessionStorage.removeItem(pdPdPaginationBeforeCompactKey);
+            } catch (ePagClrMem) { /* */ }
+            return saved;
+        }
+        try {
+            var raw = sessionStorage.getItem(pdPdPaginationBeforeCompactKey);
+            sessionStorage.removeItem(pdPdPaginationBeforeCompactKey);
+            if (!raw) {
+                return null;
+            }
+            saved = JSON.parse(raw);
+            if (saved && saved.pageSize > 0) {
+                return saved;
+            }
+        } catch (ePagRead) { /* */ }
+        return null;
+    }
+    function pdSummaryNavigateServerEntityPagination(page, pageSize) {
+        var params = new URLSearchParams(window.location.search || "");
+        if (pageSize > 0) {
+            params.set("pd_page_size", String(pageSize));
+            params.set("pd_page", String(Math.max(1, page || 1)));
+        } else {
+            params.set("pd_page_size", "0");
+            params.delete("pd_page");
+        }
+        var qs = params.toString();
+        window.location.assign(
+            qs ? window.location.pathname + "?" + qs : window.location.pathname
+        );
+    }
     if (pdPdTerritoryCompactBtn) {
         try {
             window.__pdPdSummaryTerritoryCompactMode =
@@ -1926,10 +2109,14 @@ if (summaryTable) {
             window.__pdPdSummaryTerritoryCompactMode = false;
         }
         if (window.__pdPdSummaryTerritoryCompactMode) {
-            window.__pdPdSummaryNtDetailMode = true;
-            try {
-                sessionStorage.setItem(pdPdNtStorageKey, "1");
-            } catch (eCompactNtInit) { /* */ }
+            /** Серверный рендер (coeff): как на max — при compact показать все секции. */
+            if (
+                typeof window.__pdSummaryLoadEntityPaginationPage !== "function" &&
+                pdSummaryServerEntityPaginationUrlIsPaginated()
+            ) {
+                pdSummarySavePaginationBeforeCompact();
+                pdSummaryNavigateServerEntityPagination(1, 0);
+            }
         }
         syncPdPdTerritoryCompactToggleUi();
         pdPdTerritoryCompactBtn.addEventListener("click", function () {
@@ -1940,31 +2127,170 @@ if (summaryTable) {
                     window.__pdPdSummaryTerritoryCompactMode ? "1" : "0"
                 );
             } catch (eTc) { /* */ }
-            function reapplyAfterCompactToggle() {
-                syncPdPdTerritoryCompactToggleUi();
-                if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+            /**
+             * Rerender uses last core payload and rebuilds tbody, so optional
+             * segments (ЧЧИ / ЭЭ / проверка / расчётные макс.) must be loaded
+             * again after rerender — otherwise toggle buttons stay pressed
+             * but their rows are missing until the user re-clicks them.
+             */
+            function collectActiveOptionalSegmentsAfterCompact() {
+                if (
+                    typeof window.__pdPdSummaryCollectActiveOptionalSegments ===
+                    "function"
+                ) {
+                    return window.__pdPdSummaryCollectActiveOptionalSegments();
+                }
+                var view = summaryTable.getAttribute("data-summary-view") || "oes";
+                var segs = [];
+                if (window.__pdPdSummaryNtDetailMode === true) {
+                    segs.push("nt_extra");
+                }
+                if (window.__pdPdSummaryCalcMaxMode === true) {
+                    segs.push("calc_max");
+                }
+                if (window.__pdPdSummaryEeMode === true) {
+                    if (
+                        (view === "oes" || view === "fo") &&
+                        segs.indexOf("nt_extra") < 0
+                    ) {
+                        segs.push("nt_extra");
+                    }
+                    segs.push("ee");
+                }
+                if (window.__pdPdSummaryChiMode === true) {
+                    if (
+                        (view === "oes" || view === "fo") &&
+                        segs.indexOf("nt_extra") < 0
+                    ) {
+                        segs.push("nt_extra");
+                    }
+                    segs.push("chi");
+                }
+                if (window.__pdPdSummaryVerificationMode === true) {
+                    if (segs.indexOf("calc_max") < 0) {
+                        segs.push("calc_max");
+                    }
+                    segs.push("verify");
+                }
+                if (typeof window.__pdPdSummarySegmentsForVisibleRows === "function") {
+                    window.__pdPdSummarySegmentsForVisibleRows().forEach(function (seg) {
+                        if (
+                            seg &&
+                            seg !== "core" &&
+                            segs.indexOf(seg) < 0
+                        ) {
+                            segs.push(seg);
+                        }
+                    });
+                }
+                return segs;
+            }
+            function afterCompactLayoutRefresh() {
+                if (
+                    window.__pdPdSummaryCalcMaxMode === true &&
+                    typeof window.__pdPdSummarySetCalcMaxRowKeysVisible === "function"
+                ) {
+                    window.__pdPdSummarySetCalcMaxRowKeysVisible(true);
+                } else if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
                     window.__pdPdSummaryReapplyRowVisibility();
                 }
                 syncPdPdNtAdjustedEntityLabels();
             }
-            if (window.__pdPdSummaryTerritoryCompactMode) {
-                window.__pdPdSummaryNtDetailMode = true;
-                try {
-                    sessionStorage.setItem(pdPdNtStorageKey, "1");
-                } catch (eCompactNtOn) { /* */ }
-                var ntBtn = document.getElementById("pdPdSummaryNtDetailToggle");
-                if (ntBtn) {
-                    ntBtn.setAttribute("aria-pressed", "true");
-                    ntBtn.classList.add("btn-primary");
-                    ntBtn.classList.remove("btn-outline-secondary");
-                }
-                if (typeof window.__pdSummaryEnsureSegments === "function") {
-                    window.__pdSummaryEnsureSegments(["nt_extra"]).then(
-                        reapplyAfterCompactToggle,
-                        reapplyAfterCompactToggle
+            function ensureOptionalThenFinish() {
+                var optionalSegs = collectActiveOptionalSegmentsAfterCompact();
+                if (
+                    optionalSegs.length &&
+                    typeof window.__pdSummaryEnsureSegments === "function"
+                ) {
+                    window.__pdSummaryEnsureSegments(optionalSegs).then(
+                        afterCompactLayoutRefresh,
+                        afterCompactLayoutRefresh
                     );
                     return;
                 }
+                afterCompactLayoutRefresh();
+            }
+            function reapplyAfterCompactToggle(opts) {
+                syncPdPdTerritoryCompactToggleUi();
+                // Pagination reload already remeshed optional segments — only
+                // refresh visibility/labels. A second tbody rebuild would drop
+                // them again and race with in-flight segment merges.
+                if (opts && opts.skipRerender) {
+                    afterCompactLayoutRefresh();
+                    return;
+                }
+                if (typeof window.__pdPdSummaryRerenderTableBody === "function") {
+                    var rerenderPromise = window.__pdPdSummaryRerenderTableBody();
+                    if (rerenderPromise && typeof rerenderPromise.then === "function") {
+                        rerenderPromise.then(
+                            ensureOptionalThenFinish,
+                            ensureOptionalThenFinish
+                        );
+                        return;
+                    }
+                }
+                ensureOptionalThenFinish();
+            }
+            if (window.__pdPdSummaryTerritoryCompactMode) {
+                var needsAllSectionsClient =
+                    typeof window.__pdSummaryEntityPaginationUrlIsPaginated ===
+                        "function" &&
+                    window.__pdSummaryEntityPaginationUrlIsPaginated();
+                if (
+                    needsAllSectionsClient &&
+                    typeof window.__pdSummaryLoadEntityPaginationPage === "function"
+                ) {
+                    pdSummarySavePaginationBeforeCompact();
+                    window.__pdSummaryLoadEntityPaginationPage(1, 0).then(
+                        function () {
+                            reapplyAfterCompactToggle({ skipRerender: true });
+                        },
+                        function () {
+                            reapplyAfterCompactToggle({ skipRerender: true });
+                        }
+                    );
+                    return;
+                }
+                if (
+                    typeof window.__pdSummaryLoadEntityPaginationPage !== "function" &&
+                    pdSummaryServerEntityPaginationUrlIsPaginated()
+                ) {
+                    pdSummarySavePaginationBeforeCompact();
+                    pdSummaryNavigateServerEntityPagination(1, 0);
+                    return;
+                }
+                reapplyAfterCompactToggle();
+                return;
+            }
+            var savedPag = pdSummaryReadPaginationBeforeCompact();
+            if (
+                savedPag &&
+                savedPag.pageSize > 0 &&
+                typeof window.__pdSummaryLoadEntityPaginationPage === "function"
+            ) {
+                window.__pdSummaryLoadEntityPaginationPage(
+                    savedPag.page || 1,
+                    savedPag.pageSize
+                ).then(
+                    function () {
+                        reapplyAfterCompactToggle({ skipRerender: true });
+                    },
+                    function () {
+                        reapplyAfterCompactToggle({ skipRerender: true });
+                    }
+                );
+                return;
+            }
+            if (
+                savedPag &&
+                savedPag.pageSize > 0 &&
+                typeof window.__pdSummaryLoadEntityPaginationPage !== "function"
+            ) {
+                pdSummaryNavigateServerEntityPagination(
+                    savedPag.page || 1,
+                    savedPag.pageSize
+                );
+                return;
             }
             reapplyAfterCompactToggle();
         });
@@ -2008,25 +2334,38 @@ if (summaryTable) {
     function syncPdPdNtAdjustedEntityLabels() {
         var ntDetailBtnPresent = document.getElementById("pdPdSummaryNtDetailToggle");
         var ntDetailOn = !ntDetailBtnPresent || window.__pdPdSummaryNtDetailMode === true;
+        var territoryCompactOn = window.__pdPdSummaryTerritoryCompactMode === true;
         var tbody = summaryTable.querySelector("tbody");
         if (!tbody) {
             return;
         }
-        tbody.querySelectorAll("tr[data-pd-pd-entity-label-full]").forEach(function (tr) {
+        tbody
+            .querySelectorAll(
+                "tr[data-pd-pd-entity-label-full], tr[data-pd-pd-entity-label-territory-compact]"
+            )
+            .forEach(function (tr) {
             var wrap = pdSummaryFindEntityLabelWrap(tr);
+            var entityCell = null;
             if (!wrap) {
-                return;
+                entityCell = tr.querySelector("td.summary-entity-cell");
+                if (!entityCell) {
+                    return;
+                }
+                wrap = entityCell;
             }
             var fullL = tr.getAttribute("data-pd-pd-entity-label-full");
             var cn = tr.getAttribute("data-pd-pd-entity-label-compact-nt");
             var ntDet = tr.getAttribute("data-pd-pd-entity-label-nt-detail");
+            var terrCompact = tr.getAttribute("data-pd-pd-entity-label-territory-compact");
             var text;
-            if (ntDetailOn) {
+            if (territoryCompactOn && terrCompact) {
+                text = terrCompact;
+            } else if (ntDetailOn) {
                 text = ntDet || fullL;
             } else {
                 text = cn || fullL;
             }
-            var dzMark = wrap.querySelector(".pd-pd-dz-mark");
+            var dzMark = wrap.querySelector ? wrap.querySelector(".pd-pd-dz-mark") : null;
             wrap.textContent = text || "";
             if (dzMark) {
                 wrap.appendChild(document.createTextNode(" "));
@@ -2041,6 +2380,38 @@ if (summaryTable) {
             !tr.classList.contains("summary-row-empty-block-hidden")
         );
     }
+
+    /** Фон видимых строк показателя на coeff — как table-striped на /summary/oes/ (по блокам entity). */
+    function applyPdBlockRowBackgrounds() {
+        if (summaryTable.getAttribute("data-ec-unify-block-bg") !== "1") {
+            return;
+        }
+        var tbody = summaryTable.querySelector("tbody");
+        if (!tbody) {
+            return;
+        }
+        Array.prototype.forEach.call(
+            tbody.querySelectorAll("tr.summary-row-param"),
+            function (tr) {
+                tr.removeAttribute("data-ec-block-stripe");
+            }
+        );
+        var blockParity = 0;
+        var startRows = tbody.querySelectorAll('tr.summary-row-param[data-is-block-start="1"]');
+        Array.prototype.forEach.call(startRows, function (startTr) {
+            var blockRows = pdSummaryCollectEntityBlockRows(startTr);
+            var visibleRows = blockRows.filter(function (r) {
+                return pdSummaryRowIsDomVisible(r);
+            });
+            var stripe = String(blockParity % 2);
+            visibleRows.forEach(function (r) {
+                r.setAttribute("data-ec-block-stripe", stripe);
+            });
+            blockParity += 1;
+        });
+    }
+
+    window.__pdPdSummaryApplyBlockRowBackgrounds = applyPdBlockRowBackgrounds;
 
     function pdSummaryCoeffKRowForMwTr(mwTr) {
         if (!mwTr) {
@@ -2060,13 +2431,9 @@ if (summaryTable) {
     }
 
     function pdSummaryCollectEntityBlockRows(startTr) {
-        var blockSize = parseInt(startTr.getAttribute("data-entity-block-size") || "1", 10);
-        if (blockSize < 1) {
-            blockSize = 1;
-        }
         var blockRows = [];
         var tr = startTr;
-        while (blockRows.length < blockSize && tr) {
+        while (tr) {
             if (tr.classList.contains("summary-row-param")) {
                 if (
                     blockRows.length > 0 &&
@@ -2078,12 +2445,65 @@ if (summaryTable) {
             }
             tr = tr.nextElementSibling;
         }
+        if (blockRows.length) {
+            var rs = String(blockRows.length);
+            blockRows[0].setAttribute("data-entity-block-size", rs);
+            blockRows.forEach(function (rowTr) {
+                rowTr.setAttribute("data-entity-block-size", rs);
+            });
+        }
         return blockRows;
+    }
+
+    function pdSummaryTerritoryCompactShouldHideRow(tr) {
+        if (
+            tr.getAttribute("data-pd-pd-summary-table-only") === "1" &&
+            window.__pdPdSummaryTerritoryCompactMode !== true
+        ) {
+            return true;
+        }
+        if (window.__pdPdSummaryTerritoryCompactMode !== true) {
+            return false;
+        }
+        if (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1") {
+            return true;
+        }
+        if (tr.getAttribute("data-pd-pd-aggregation-level") === "1") {
+            var aggCell = tr.querySelector("td.summary-entity-cell");
+            if (
+                aggCell &&
+                (aggCell.textContent || "").trim() === "Новые территории"
+            ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     function pdSummaryApplyOptionalRowLayers() {
         if (summaryView !== "oes" && summaryView !== "fo" && summaryView !== "ez") {
             return;
+        }
+        var eeBtn = document.getElementById("pdPdSummaryEeToggle");
+        if (eeBtn) {
+            var eeOn = window.__pdPdSummaryEeMode === true;
+            var ntDetailBtnForEe = document.getElementById("pdPdSummaryNtDetailToggle");
+            var ntDetailOnForEe = !ntDetailBtnForEe || window.__pdPdSummaryNtDetailMode === true;
+            summaryTable
+                .querySelectorAll('tbody tr[data-pd-pd-ee-row="1"], tbody tr.pd-pd-ee-row')
+                .forEach(function (tr) {
+                    var hide =
+                        !eeOn ||
+                        (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOnForEe) ||
+                        pdSummaryTerritoryCompactShouldHideRow(tr) ||
+                        (window.__pdPdSummaryTerritoryCompactMode === true &&
+                            tr.getAttribute("data-pd-pd-territory-detail") === "1");
+                    tr.classList.toggle("summary-row-hidden", hide);
+                    var kRowEe = pdSummaryCoeffKRowForMwTr(tr);
+                    if (kRowEe) {
+                        kRowEe.classList.toggle("summary-row-hidden", hide);
+                    }
+                });
         }
         var chiBtn = document.getElementById("pdPdSummaryChiToggle");
         if (chiBtn) {
@@ -2096,10 +2516,14 @@ if (summaryTable) {
                     var hide =
                         !chiOn ||
                         (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn) ||
+                        pdSummaryTerritoryCompactShouldHideRow(tr) ||
                         (window.__pdPdSummaryTerritoryCompactMode === true &&
-                            (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1" ||
-                                tr.getAttribute("data-pd-pd-territory-detail") === "1"));
+                            tr.getAttribute("data-pd-pd-territory-detail") === "1");
                     tr.classList.toggle("summary-row-hidden", hide);
+                    var kRowChi = pdSummaryCoeffKRowForMwTr(tr);
+                    if (kRowChi) {
+                        kRowChi.classList.toggle("summary-row-hidden", hide);
+                    }
                 });
         }
         var verificationBtn = document.getElementById("pdPdSummaryVerificationToggle");
@@ -2117,9 +2541,9 @@ if (summaryTable) {
                 var hide =
                     !verOn ||
                     (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntOn2) ||
+                    pdSummaryTerritoryCompactShouldHideRow(tr) ||
                     (window.__pdPdSummaryTerritoryCompactMode === true &&
-                        (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1" ||
-                            tr.getAttribute("data-pd-pd-territory-detail") === "1"));
+                        tr.getAttribute("data-pd-pd-territory-detail") === "1");
                 tr.classList.toggle("summary-row-hidden", hide);
                 var kRow = pdSummaryCoeffKRowForMwTr(tr);
                 if (kRow) {
@@ -2196,7 +2620,8 @@ if (summaryTable) {
                 blockRows[i].classList.contains("pd-pd-verification-row") ||
                 blockRows[i].classList.contains("pd-pd-verify-for-row") ||
                 blockRows[i].classList.contains("pd-pd-calc-max-row") ||
-                blockRows[i].classList.contains("pd-pd-chi-row")
+                blockRows[i].classList.contains("pd-pd-chi-row") ||
+                blockRows[i].classList.contains("pd-pd-ee-row")
             ) {
                 continue;
             }
@@ -2240,6 +2665,9 @@ if (summaryTable) {
     }
 
     window.__pdPdSummaryRefreshLayoutAfterVisibility = function () {
+        if (typeof window.pdSummarySyncAggregationLevelColspans === "function") {
+            window.pdSummarySyncAggregationLevelColspans();
+        }
         applyPdSummaryHideEmptyEntityBlocks();
         if (typeof window.__pdPdSummaryRepositionEntityCells === "function") {
             window.__pdPdSummaryRepositionEntityCells();
@@ -2310,6 +2738,37 @@ if (summaryTable) {
          * Если эту строку скрывают, без переноса ячейки таблица «ломается» (колонки съезжают).
          * Переносим td.summary-entity-cell на первую видимую строку блока и выставляем rowspan.
          */
+        function clampRowspansBeforeAggregationHeaders(tbody) {
+            if (!tbody) {
+                return;
+            }
+            var trs = tbody.querySelectorAll("tr.summary-row-param");
+            var aggIndices = [];
+            for (var a = 0; a < trs.length; a++) {
+                var aggTr = trs[a];
+                if (
+                    aggTr.getAttribute("data-pd-pd-aggregation-level") === "1" &&
+                    !aggTr.classList.contains("summary-row-hidden")
+                ) {
+                    aggIndices.push(a);
+                }
+            }
+            for (var ai = 0; ai < aggIndices.length; ai++) {
+                var aggIdx = aggIndices[ai];
+                for (var i = 0; i < aggIdx; i++) {
+                    var tr = trs[i];
+                    var cells = tr.cells;
+                    for (var c = 0; c < cells.length; c++) {
+                        var td = cells[c];
+                        var rs = parseInt(td.getAttribute("rowspan") || "1", 10);
+                        if (rs > 1 && i + rs > aggIdx) {
+                            td.setAttribute("rowspan", String(Math.max(1, aggIdx - i)));
+                        }
+                    }
+                }
+            }
+        }
+
         function repositionEntityCellsAndRowspans() {
             var tbody = summaryTable.querySelector("tbody");
             if (!tbody) {
@@ -2319,6 +2778,9 @@ if (summaryTable) {
                 'tr.summary-row-param[data-is-block-start="1"]'
             );
             Array.prototype.forEach.call(startRows, function (startTr) {
+                if (startTr.getAttribute("data-pd-pd-aggregation-level") === "1") {
+                    return;
+                }
                 var blockRows = pdSummaryCollectEntityBlockRows(startTr);
                 if (blockRows.length === 0) {
                     return;
@@ -2353,6 +2815,17 @@ if (summaryTable) {
                     if (variantTd) {
                         variantTd.setAttribute("rowspan", "1");
                     }
+                    var noteTdZero = null;
+                    for (var knz = 0; knz < blockRows.length; knz++) {
+                        var ntz = blockRows[knz].querySelector("td.summary-entity-note-cell");
+                        if (ntz) {
+                            noteTdZero = ntz;
+                            break;
+                        }
+                    }
+                    if (noteTdZero) {
+                        noteTdZero.setAttribute("rowspan", "1");
+                    }
                     return;
                 }
                 var firstVis = visibleRows[0];
@@ -2384,13 +2857,14 @@ if (summaryTable) {
                 }
                 if (noteTd && visibleRows.length > 0) {
                     var firstVisNote = visibleRows[0];
-                    if (noteTd.parentNode !== firstVisNote) {
-                        firstVisNote.appendChild(noteTd);
-                    }
+                    // Always append so a misplaced note stays the last cell.
+                    firstVisNote.appendChild(noteTd);
                     noteTd.setAttribute("rowspan", String(visibleRows.length));
                 }
             });
+            clampRowspansBeforeAggregationHeaders(tbody);
             syncSummaryNoteFieldHeights();
+            applyPdBlockRowBackgrounds();
         }
 
         function syncSummaryNoteFieldHeights() {
@@ -2456,10 +2930,9 @@ if (summaryTable) {
 
         function syncCalcMaxModeFromKeyMap(keyMap) {
             if (
-                (summaryView !== "oes" &&
-                    summaryView !== "fo" &&
-                    summaryView !== "ez") ||
-                routeVariant === "coeff"
+                summaryView !== "oes" &&
+                summaryView !== "fo" &&
+                summaryView !== "ez"
             ) {
                 return;
             }
@@ -2501,9 +2974,6 @@ if (summaryTable) {
         window.__pdPdSummarySetCalcMaxRowKeysVisible = applyCalcMaxRowKeysVisible;
 
         function migrateCalcMaxKeysInKeyMap(keyMap) {
-            if (routeVariant === "coeff") {
-                return keyMap;
-            }
             var calcKeys = pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant);
             if (!calcKeys.length) {
                 return keyMap;
@@ -2554,10 +3024,7 @@ if (summaryTable) {
                     ) {
                         hideAgg = true;
                     }
-                    if (
-                        window.__pdPdSummaryTerritoryCompactMode === true &&
-                        tr.getAttribute("data-pd-pd-territory-compact-hide") === "1"
-                    ) {
+                    if (pdSummaryTerritoryCompactShouldHideRow(tr)) {
                         hideAgg = true;
                     }
                     tr.classList.toggle("summary-row-hidden", hideAgg);
@@ -2567,18 +3034,17 @@ if (summaryTable) {
                     return;
                 }
                 if (
-                    (summaryView === "oes" || summaryView === "fo") &&
-                    routeVariant !== "coeff" &&
+                    (summaryView === "oes" ||
+                        summaryView === "fo" ||
+                        summaryView === "ez") &&
                     (tr.getAttribute("data-pd-pd-chi-row") === "1" ||
-                        tr.classList.contains("pd-pd-chi-row"))
+                        tr.classList.contains("pd-pd-chi-row") ||
+                        tr.getAttribute("data-pd-pd-ee-row") === "1" ||
+                        tr.classList.contains("pd-pd-ee-row"))
                 ) {
                     return;
                 }
                 var pk = tr.getAttribute("data-parameter-key") || "";
-                if (routeVariant === "coeff" && pk.indexOf("verify_for_") === 0) {
-                    tr.classList.add("summary-row-hidden");
-                    return;
-                }
                 var show = keyMap[pk] !== false;
                 if (
                     show &&
@@ -2587,11 +3053,7 @@ if (summaryTable) {
                 ) {
                     show = false;
                 }
-                if (
-                    show &&
-                    window.__pdPdSummaryTerritoryCompactMode === true &&
-                    tr.getAttribute("data-pd-pd-territory-compact-hide") === "1"
-                ) {
+                if (show && pdSummaryTerritoryCompactShouldHideRow(tr)) {
                     show = false;
                 }
                 if (
@@ -2613,6 +3075,7 @@ if (summaryTable) {
             applyPdSummaryHideEmptyEntityBlocks();
             repositionEntityCellsAndRowspans();
             syncPdPdNtAdjustedEntityLabels();
+            applyPdBlockRowBackgrounds();
             if (
                 summaryTable.classList.contains("pd-coeff-year-seg-table") &&
                 typeof window.refreshPowerDemandCoeffMixins === "function"
@@ -2732,9 +3195,6 @@ if (summaryTable) {
     }
 
     function pdSummaryCalcMaxPickerKeysForView(view, routeVar) {
-        if (routeVar === "coeff") {
-            return [];
-        }
         if (view === "oes") {
             return [
                 "calculated_max_power_mw",
@@ -2747,10 +3207,14 @@ if (summaryTable) {
             ];
         }
         if (view === "fo") {
-            return [
+            var foCalcKeys = [
                 "calculated_max_power_mw",
                 "calculated_combined_on_cz_mw",
             ];
+            if (routeVar === "coeff") {
+                foCalcKeys.push("calculated_max_fo_mw");
+            }
+            return foCalcKeys;
         }
         if (view === "ez") {
             return [
@@ -2765,15 +3229,98 @@ if (summaryTable) {
     var routeVariant = summaryTable.getAttribute("data-summary-route-variant") || "max";
     var coeffDefaultHidden = routeVariant === "coeff" ? ["peak_datetime", "avg_temp"] : [];
     var rowPickerDefaultHidden = coeffDefaultHidden.slice();
-    if (routeVariant !== "coeff") {
-        pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant).forEach(function (k) {
-            if (rowPickerDefaultHidden.indexOf(k) < 0) {
-                rowPickerDefaultHidden.push(k);
+    pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant).forEach(function (k) {
+        if (rowPickerDefaultHidden.indexOf(k) < 0) {
+            rowPickerDefaultHidden.push(k);
+        }
+    });
+
+    // Кнопка «Потребление ЭЭ» — строки потребления со сводок energy_consumption (только чтение).
+    var pdPdEeBtn = document.getElementById("pdPdSummaryEeToggle");
+    var pdPdEeStorageKey =
+        "pdPdSummaryEe_" +
+        (summaryTable.getAttribute("data-summary-view") || "oes") +
+        "_" +
+        (summaryTable.getAttribute("data-summary-route-variant") || "max");
+    try {
+        window.__pdPdSummaryEeMode = sessionStorage.getItem(pdPdEeStorageKey) === "1";
+    } catch (ePdPdEeInit) {
+        window.__pdPdSummaryEeMode = false;
+    }
+    function enableNtDetailForEeVariants() {
+        if (
+            (summaryView !== "oes" && summaryView !== "fo") ||
+            window.__pdPdSummaryEeMode !== true
+        ) {
+            return;
+        }
+        window.__pdPdSummaryNtDetailMode = true;
+        try {
+            sessionStorage.setItem(pdPdNtStorageKey, "1");
+        } catch (eEeNt) { /* */ }
+        var ntBtn = document.getElementById("pdPdSummaryNtDetailToggle");
+        if (ntBtn) {
+            ntBtn.setAttribute("aria-pressed", "true");
+            ntBtn.classList.add("btn-primary");
+            ntBtn.classList.remove("btn-outline-secondary");
+        }
+    }
+    if (window.__pdPdSummaryEeMode) {
+        enableNtDetailForEeVariants();
+    }
+    function syncPdPdEeToggleUi() {
+        if (!pdPdEeBtn) {
+            return;
+        }
+        var on = window.__pdPdSummaryEeMode === true;
+        pdPdEeBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        pdPdEeBtn.classList.toggle("btn-danger", on);
+        pdPdEeBtn.classList.toggle("btn-outline-danger", !on);
+    }
+    function applyPdPdEeVisibility() {
+        pdSummaryApplyOptionalRowLayers();
+        if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
+            window.__pdPdSummaryRefreshLayoutAfterVisibility();
+        }
+    }
+    window.__pdPdSummaryApplyEeVisibility = applyPdPdEeVisibility;
+    if (pdPdEeBtn) {
+        syncPdPdEeToggleUi();
+        pdPdEeBtn.addEventListener("click", function () {
+            window.__pdPdSummaryEeMode = !window.__pdPdSummaryEeMode;
+            try {
+                sessionStorage.setItem(
+                    pdPdEeStorageKey,
+                    window.__pdPdSummaryEeMode ? "1" : "0"
+                );
+            } catch (ePdPdEeSt) { /* */ }
+            if (window.__pdPdSummaryEeMode) {
+                enableNtDetailForEeVariants();
+            }
+            var applyEe = function () {
+                syncPdPdEeToggleUi();
+                if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
+                    window.__pdPdSummaryReapplyRowVisibility();
+                } else {
+                    applyPdPdEeVisibility();
+                }
+            };
+            if (
+                window.__pdPdSummaryEeMode &&
+                typeof window.__pdSummaryEnsureSegments === "function"
+            ) {
+                var eeSegments =
+                    summaryView === "oes" || summaryView === "fo"
+                        ? ["nt_extra", "ee"]
+                        : ["ee"];
+                window.__pdSummaryEnsureSegments(eeSegments).then(applyEe, applyEe);
+            } else {
+                applyEe();
             }
         });
     }
 
-    // Кнопка «ЧЧИ» (/summary/oes/, не coeff) — до initPdSummaryRowPicker, чтобы видимость
+    // Кнопка «ЧЧИ» — до initPdSummaryRowPicker, чтобы видимость
     // пересчитывалась вместе с фильтром строк и «Скрыть пустые».
     var pdPdChiBtn = document.getElementById("pdPdSummaryChiToggle");
     var pdPdChiStorageKey =
@@ -2889,6 +3436,15 @@ if (summaryTable) {
         }
         if (window.__pdPdSummaryCalcMaxMode === true) {
             segs.push("calc_max");
+        }
+        if (window.__pdPdSummaryEeMode === true) {
+            if (
+                (summaryView === "oes" || summaryView === "fo") &&
+                segs.indexOf("nt_extra") < 0
+            ) {
+                segs.push("nt_extra");
+            }
+            segs.push("ee");
         }
         if (window.__pdPdSummaryChiMode === true) {
             if (
@@ -3037,6 +3593,109 @@ if (summaryTable) {
         ensurePdPdNtDetailRowsVisible();
     }
 
+    // Кнопка «Варианты периметра» — столбец «Варианты периметра»
+    var pdPdPerimeterVariantBtn = document.getElementById("pdPdSummaryPerimeterVariantToggle");
+    var pdPdPerimeterVariantStorageKey =
+        "pdPdSummaryPerimeterVariant_" +
+        (summaryTable.getAttribute("data-summary-view") || "oes") +
+        "_" +
+        (summaryTable.getAttribute("data-summary-route-variant") || "max");
+    try {
+        window.__pdPdSummaryPerimeterVariantMode =
+            sessionStorage.getItem(pdPdPerimeterVariantStorageKey) === "1";
+    } catch (ePdPdPvInit) {
+        window.__pdPdSummaryPerimeterVariantMode = false;
+    }
+    function syncPdPdPerimeterVariantToggleUi() {
+        if (!pdPdPerimeterVariantBtn) {
+            return;
+        }
+        var on = window.__pdPdSummaryPerimeterVariantMode === true;
+        pdPdPerimeterVariantBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        pdPdPerimeterVariantBtn.classList.toggle("btn-info", on);
+        pdPdPerimeterVariantBtn.classList.toggle("btn-outline-info", !on);
+    }
+    function applyPdPdPerimeterVariantColVisibility() {
+        if (!summaryTable) {
+            return;
+        }
+        summaryTable.classList.toggle(
+            "pd-summary-perimeter-variant-col-hidden",
+            window.__pdPdSummaryPerimeterVariantMode !== true
+        );
+        if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
+            window.__pdPdSummaryRefreshLayoutAfterVisibility();
+        }
+    }
+    window.__pdPdSummaryApplyPerimeterVariantColVisibility = applyPdPdPerimeterVariantColVisibility;
+    if (pdPdPerimeterVariantBtn) {
+        syncPdPdPerimeterVariantToggleUi();
+        applyPdPdPerimeterVariantColVisibility();
+        pdPdPerimeterVariantBtn.addEventListener("click", function () {
+            window.__pdPdSummaryPerimeterVariantMode = !window.__pdPdSummaryPerimeterVariantMode;
+            try {
+                sessionStorage.setItem(
+                    pdPdPerimeterVariantStorageKey,
+                    window.__pdPdSummaryPerimeterVariantMode ? "1" : "0"
+                );
+            } catch (ePdPdPvSt) { /* */ }
+            syncPdPdPerimeterVariantToggleUi();
+            applyPdPdPerimeterVariantColVisibility();
+        });
+        document.addEventListener("pd-summary-rows-rendered", applyPdPdPerimeterVariantColVisibility);
+    }
+
+    // Кнопка «Исторические максимумы» — столбец «Исторический собственный максимум»
+    var pdPdHistBtn = document.getElementById("pdPdSummaryHistToggle");
+    var pdPdHistStorageKey =
+        "pdPdSummaryHist_" +
+        (summaryTable.getAttribute("data-summary-view") || "oes") +
+        "_" +
+        (summaryTable.getAttribute("data-summary-route-variant") || "max");
+    try {
+        window.__pdPdSummaryHistMode = sessionStorage.getItem(pdPdHistStorageKey) === "1";
+    } catch (ePdPdHistInit) {
+        window.__pdPdSummaryHistMode = false;
+    }
+    function syncPdPdHistToggleUi() {
+        if (!pdPdHistBtn) {
+            return;
+        }
+        var on = window.__pdPdSummaryHistMode === true;
+        pdPdHistBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        pdPdHistBtn.classList.toggle("btn-secondary", on);
+        pdPdHistBtn.classList.toggle("btn-outline-secondary", !on);
+    }
+    function applyPdPdHistColVisibility() {
+        if (!summaryTable) {
+            return;
+        }
+        summaryTable.classList.toggle(
+            "pd-summary-hist-col-hidden",
+            window.__pdPdSummaryHistMode !== true
+        );
+        if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
+            window.__pdPdSummaryRefreshLayoutAfterVisibility();
+        }
+    }
+    window.__pdPdSummaryApplyHistColVisibility = applyPdPdHistColVisibility;
+    if (pdPdHistBtn) {
+        syncPdPdHistToggleUi();
+        applyPdPdHistColVisibility();
+        pdPdHistBtn.addEventListener("click", function () {
+            window.__pdPdSummaryHistMode = !window.__pdPdSummaryHistMode;
+            try {
+                sessionStorage.setItem(
+                    pdPdHistStorageKey,
+                    window.__pdPdSummaryHistMode ? "1" : "0"
+                );
+            } catch (ePdPdHistSt) { /* */ }
+            syncPdPdHistToggleUi();
+            applyPdPdHistColVisibility();
+        });
+        document.addEventListener("pd-summary-rows-rendered", applyPdPdHistColVisibility);
+    }
+
     // Кнопка «Расчетные максимумы» (/summary/oes/, не coeff)
     var pdPdCalcMaxBtn = document.getElementById("pdPdSummaryCalcMaxToggle");
     function syncPdPdCalcMaxToggleUi() {
@@ -3174,6 +3833,9 @@ if (summaryTable) {
     if (typeof window.__pdPdSummaryReapplyRowVisibility === "function") {
         window.__pdPdSummaryReapplyRowVisibility();
     }
+    if (typeof window.pdSummarySyncAggregationLevelColspans === "function") {
+        window.pdSummarySyncAggregationLevelColspans();
+    }
 
 }
 })();
@@ -3208,6 +3870,14 @@ if (summaryTable) {
 #powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-chi-row:hover > td,
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-chi-row:hover > td {
     background-color: #ecdece !important;
+}
+/* Строки «Потребление ЭЭ»: мягкий светло-красный фон (без «Энергосистема» и «Примечание»). */
+#powerDemandSummaryTable tbody tr.pd-pd-ee-row > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+    background-color: #f8e9e9 !important;
+}
+#powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell),
+#powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+    background-color: #f0dede !important;
 }
 </style>
 
@@ -3266,6 +3936,12 @@ if (summaryTable) {
         width: auto;
         min-width: 2.75rem;
         max-width: none;
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-year {
+        width: 5.7rem;
+        min-width: 5.7rem;
+        max-width: 5.7rem;
         box-sizing: border-box;
     }
     .power-demand-summary-table thead th {
@@ -3476,31 +4152,65 @@ if (summaryTable) {
     .pd-coeff-year-seg-table tbody td.summary-parameter-cell {
         z-index: calc(300 + var(--pd-row-stack, 0));
     }
-    /* Единый фон строки внутри блока «Энергосистема» (параметр + k): чередование по блоку, не по tr */
-    .pd-coeff-year-seg-table tbody tr.pd-entity-block-stripe-base > td {
+    /* Строки k (не «всегда видимые» показатели): серый фон по блоку entity */
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]) tbody tr.pd-entity-block-stripe-base > td {
         background-color: #fff;
     }
-    .pd-coeff-year-seg-table tbody tr.pd-entity-block-stripe-alt > td {
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]) tbody tr.pd-entity-block-stripe-alt > td {
         background-color: #eef5ff;
     }
-    .pd-coeff-year-seg-table.table-hover > tbody > tr.pd-entity-block-stripe-base:hover > td {
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]).table-hover > tbody > tr.pd-entity-block-stripe-base:hover > td {
         background-color: #e9ecef;
     }
-    .pd-coeff-year-seg-table.table-hover > tbody > tr.pd-entity-block-stripe-alt:hover > td {
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]).table-hover > tbody > tr.pd-entity-block-stripe-alt:hover > td {
         background-color: #dde8fc;
     }
-    /* Строки k: чуть темнее строки показателя, нейтрально-серый (отличимы, текст остаётся чёрным) */
-    .pd-coeff-year-seg-table tbody tr.summary-row-coeff-k.pd-entity-block-stripe-base > td {
-        background-color: #e8e8e8;
+    /* Видимые строки показателя на coeff: тот же фон, что table-striped на /summary/oes/ */
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param[data-ec-block-stripe="0"] > td {
+        background-color: var(--bs-table-striped-bg, rgba(0, 0, 0, 0.05)) !important;
     }
-    .pd-coeff-year-seg-table tbody tr.summary-row-coeff-k.pd-entity-block-stripe-alt > td {
-        background-color: #d8dde6;
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param[data-ec-block-stripe="1"] > td {
+        background-color: var(--bs-table-bg, var(--bs-body-bg, #fff)) !important;
     }
-    .pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-coeff-k.pd-entity-block-stripe-base:hover > td {
-        background-color: #dedede;
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param:hover > td {
+        background-color: var(--bs-table-hover-bg, #e7ecf1) !important;
     }
-    .pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-coeff-k.pd-entity-block-stripe-alt:hover > td {
-        background-color: #ccd4e0;
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-verify-for-row > td {
+        background-color: #e2ecf7 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-verify-for-row:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-verify-for-row:hover > td {
+        background-color: #d5e3f2 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-calc-max-row > td {
+        background-color: #e3efe8 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-calc-max-row:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-calc-max-row:hover > td {
+        background-color: #d8e8df !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-chi-row > td {
+        background-color: #f5e8dc !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-chi-row:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-chi-row:hover > td {
+        background-color: #ecdece !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-ee-row > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+        background-color: #f8e9e9 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell),
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+        background-color: #f0dede !important;
+    }
+    /* Строки k: единый светло-голубой фон на всех coeff-страницах (ОЭС / ФО / ЭЗ) */
+    .pd-coeff-year-seg-table tbody tr.summary-row-coeff-k > td {
+        background-color: #e9edf5 !important;
+    }
+    .pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-coeff-k:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-coeff-k:hover > td {
+        background-color: #dde4f0 !important;
     }
     {% endif %}
     .power-demand-summary-table.pd-coeff-year-seg-table {
@@ -3544,15 +4254,20 @@ if (summaryTable) {
     .pd-coeff-year-seg-table .pd-coeff-k-inline-stack.summary-year-k-cell,
     .pd-coeff-year-seg-table td.summary-year-cell {
         box-sizing: border-box;
-        min-width: 6.25rem;
+        width: 5.7rem;
+        min-width: 5.7rem;
+        max-width: 5.7rem;
         white-space: nowrap;
         word-break: normal;
         overflow-wrap: normal;
         vertical-align: middle;
     }
+    .pd-coeff-year-seg-table th.summary-year-col {
+        white-space: normal;
+    }
     .pd-coeff-year-seg-table th.summary-year-col .power-demand-year-feature-caption {
-        white-space: nowrap;
-        overflow-wrap: normal;
+        white-space: normal;
+        overflow-wrap: break-word;
         word-break: normal;
     }
     .pd-coeff-year-seg-table td.summary-year-cell .pd-coeff-display-k,
@@ -3595,6 +4310,10 @@ if (summaryTable) {
         font-size: 1.1rem;
         line-height: 1.3;
     }
+    .pd-coeff-year-seg-table tbody tr.summary-row-param > td {
+        font-size: inherit;
+        line-height: inherit;
+    }
     .pd-coeff-year-seg-table td.summary-entity-cell,
     .pd-coeff-year-seg-table td.summary-entity-note-cell {
         vertical-align: middle;
@@ -3606,6 +4325,9 @@ if (summaryTable) {
         text-align: left;
         font-size: inherit;
         font-weight: inherit;
+        color: inherit;
+    }
+    .pd-coeff-year-seg-table tr.summary-row-coeff-k .pd-coeff-k-label-text {
         color: inherit;
     }
     .pd-coeff-year-seg-table td.summary-coeff-mixin-empty {
@@ -3640,7 +4362,9 @@ if (summaryTable) {
         word-break: break-word;
     }
     .pd-coeff-year-seg-table .summary-year-cell {
-        min-width: 6.25rem;
+        width: 5.7rem;
+        min-width: 5.7rem;
+        max-width: 5.7rem;
         overflow-wrap: normal;
         word-break: normal;
         white-space: nowrap;
@@ -3846,9 +4570,38 @@ if (summaryTable) {
     .pd-coeff-year-seg-table.pd-coeff-seg-hide-long td[data-coeff-year-segment="long"] {
         display: none !important;
     }
+    .pd-coeff-year-seg-table .pd-coeff-year-col-hidden {
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        overflow: hidden !important;
+    }
     .pd-ec-max-year-visibility-table col[data-ec-summary-col-year].pd-ec-year-col-hidden,
     .pd-ec-max-year-visibility-table th[data-ec-summary-col-year].pd-ec-year-col-hidden,
     .pd-ec-max-year-visibility-table td[data-ec-summary-col-year].pd-ec-year-col-hidden {
+        display: none !important;
+    }
+    .power-demand-summary-table.pd-summary-hist-col-hidden col.summary-col-hist,
+    .power-demand-summary-table.pd-summary-hist-col-hidden th.summary-hist-col,
+    .power-demand-summary-table.pd-summary-hist-col-hidden td.summary-hist-cell {
+        display: none !important;
+    }
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden col.summary-col-perimeter-variant,
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden th.summary-perimeter-variant-col,
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden td.summary-perimeter-variant-cell {
+        display: none !important;
+    }
+    /* Режим «без столбцов расчетных коэффициентов совмещения» (кнопка над таблицей) */
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-num,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-sample,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-manual,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-source,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns th.power-demand-coeff-mixin-group-th,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns th.power-demand-coeff-mixin-th,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns td.summary-coeff-mixin-cell {
         display: none !important;
     }
     /* Режим «без строк k» (кнопка над таблицей): скрыты отдельные строки коэффициентов */
@@ -4088,8 +4841,110 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         var longLoaded = table.getAttribute("data-coeff-long-loaded") === "1";
+        var yearsApplied = table.getAttribute("data-pd-coeff-years-applied") === "1";
         var STORAGE_KEY = "powerDemandSummaryCoeffYearSegVisible";
+        var MANUAL_STORAGE_KEY = "powerDemandSummaryCoeffYearManualV1";
         var defaults = { reporting: true, medium: true, long: false };
+
+        function parseBaseYear() {
+            var n = parseInt(table.getAttribute("data-coeff-base-year") || "", 10);
+            return n && !isNaN(n) ? n : null;
+        }
+
+        function readAppliedYearsFromFormOrUrl() {
+            try {
+                var u = new URL(window.location.href);
+                var sy = parseInt(u.searchParams.get("start_year") || "", 10);
+                var ey = parseInt(u.searchParams.get("end_year") || "", 10);
+                if (!isNaN(sy) && !isNaN(ey)) {
+                    return { sy: Math.min(sy, ey), ey: Math.max(sy, ey) };
+                }
+            } catch (eUrl) { /* */ }
+            var sySel = document.getElementById("start_year");
+            var eySel = document.getElementById("end_year");
+            if (!sySel || !eySel) {
+                return null;
+            }
+            var formSy = parseInt(sySel.value, 10);
+            var formEy = parseInt(eySel.value, 10);
+            if (isNaN(formSy) || isNaN(formEy)) {
+                return null;
+            }
+            return { sy: Math.min(formSy, formEy), ey: Math.max(formSy, formEy) };
+        }
+
+        function clearManualYearVisibility() {
+            table.querySelectorAll(".pd-coeff-year-col-hidden").forEach(function (el) {
+                el.classList.remove("pd-coeff-year-col-hidden");
+            });
+            table.querySelectorAll("th.power-demand-coeff-period-th[data-coeff-group]").forEach(function (th) {
+                th.classList.remove("pd-coeff-year-col-hidden");
+                var mw = th.getAttribute("data-pd-coeff-period-cspan-mw");
+                if (mw) {
+                    th.setAttribute("colspan", mw);
+                }
+            });
+        }
+
+        function applyManualYearVisibility(sy, ey) {
+            clearManualYearVisibility();
+            ["reporting", "medium", "long"].forEach(function (seg) {
+                table.classList.remove("pd-coeff-seg-hide-" + seg);
+            });
+            table.querySelectorAll("[data-summary-year]").forEach(function (el) {
+                var yr = parseInt(el.getAttribute("data-summary-year") || "", 10);
+                if (isNaN(yr)) {
+                    return;
+                }
+                el.classList.toggle("pd-coeff-year-col-hidden", yr < sy || yr > ey);
+            });
+            var n = parseBaseYear();
+            table.querySelectorAll("th.power-demand-coeff-period-th[data-coeff-group]").forEach(function (th) {
+                var seg = th.getAttribute("data-coeff-group");
+                var lo = null;
+                var hi = null;
+                if (seg === "reporting" && n) {
+                    lo = n - 9;
+                    hi = n;
+                } else if (seg === "medium" && n) {
+                    lo = n + 1;
+                    hi = n + 6;
+                } else if (seg === "long" && n) {
+                    lo = n + 7;
+                    hi = n + 18;
+                }
+                if (lo === null) {
+                    return;
+                }
+                var visible = 0;
+                var y;
+                for (y = Math.max(lo, sy); y <= Math.min(hi, ey); y++) {
+                    visible += 1;
+                }
+                if (visible <= 0) {
+                    th.classList.add("pd-coeff-year-col-hidden");
+                } else {
+                    th.classList.remove("pd-coeff-year-col-hidden");
+                    th.setAttribute("colspan", String(visible));
+                }
+            });
+        }
+
+        function syncManualPeriodButtons() {
+            bar.querySelectorAll("button[data-coeff-seg]").forEach(function (btn) {
+                var seg = btn.getAttribute("data-coeff-seg");
+                btn.classList.remove("btn-warning");
+                btn.classList.add("btn-outline-warning");
+                btn.setAttribute("aria-pressed", "false");
+                if (seg === "reporting") {
+                    btn.title = "Показать отчётный период (сбросить ручной выбор годов)";
+                } else if (seg === "medium") {
+                    btn.title = "Показать среднесрочный период (сбросить ручной выбор годов)";
+                } else {
+                    btn.title = "Показать долгосрочный период (сбросить ручной выбор годов)";
+                }
+            });
+        }
 
         function read() {
             try {
@@ -4113,6 +4968,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function apply(v) {
+            clearManualYearVisibility();
             ["reporting", "medium", "long"].forEach(function (seg) {
                 table.classList.remove("pd-coeff-seg-hide-" + seg);
             });
@@ -4132,9 +4988,66 @@ document.addEventListener("DOMContentLoaded", function () {
                     btn.classList.toggle("btn-warning", on);
                     btn.classList.toggle("btn-outline-warning", !on);
                     btn.setAttribute("aria-pressed", on ? "true" : "false");
+                    if (seg === "reporting") {
+                        btn.title = "Показать или скрыть отчетный период";
+                    } else if (seg === "medium") {
+                        btn.title = "Показать или скрыть среднесрочный период";
+                    } else {
+                        btn.title = "Показать или скрыть долгосрочный период";
+                    }
                 });
             }
             refreshPowerDemandSummaryLayout();
+        }
+
+        function exitManualToSegments(preferred) {
+            try {
+                sessionStorage.removeItem(MANUAL_STORAGE_KEY);
+            } catch (eMan) { /* */ }
+            var u = new URL(window.location.href);
+            u.searchParams.delete("start_year");
+            u.searchParams.delete("end_year");
+            if (preferred && preferred.long && !longLoaded) {
+                u.searchParams.set("coeff_include_long", "1");
+            }
+            window.location.href = u.pathname + (u.searchParams.toString() ? "?" + u.searchParams.toString() : "") + u.hash;
+        }
+
+        var yearForm = document.getElementById("powerDemandSummaryYearForm");
+        if (yearForm) {
+            yearForm.addEventListener("submit", function () {
+                try {
+                    sessionStorage.setItem(MANUAL_STORAGE_KEY, "1");
+                } catch (eSub) { /* */ }
+            });
+        }
+
+        if (yearsApplied) {
+            var appliedYears = readAppliedYearsFromFormOrUrl();
+            if (appliedYears) {
+                applyManualYearVisibility(appliedYears.sy, appliedYears.ey);
+                syncManualPeriodButtons();
+                refreshPowerDemandSummaryLayout();
+            }
+            bar.addEventListener("click", function (e) {
+                var btn = e.target.closest("button[data-coeff-seg]");
+                if (!btn) {
+                    return;
+                }
+                var seg = btn.getAttribute("data-coeff-seg");
+                if (!seg) {
+                    return;
+                }
+                var next = { reporting: false, medium: false, long: false };
+                next[seg] = true;
+                if (seg === "long" && !longLoaded) {
+                    exitManualToSegments({ long: true });
+                    return;
+                }
+                write(next);
+                exitManualToSegments(next);
+            });
+            return;
         }
 
         var state = read();
@@ -4154,30 +5067,27 @@ document.addEventListener("DOMContentLoaded", function () {
             } catch (e3) { /* */ }
         }
 
-        var bar = document.getElementById("powerDemandCoeffSegToggles");
-        if (bar) {
-            bar.addEventListener("click", function (e) {
-                var btn = e.target.closest("button[data-coeff-seg]");
-                if (!btn) {
-                    return;
+        bar.addEventListener("click", function (e) {
+            var btn = e.target.closest("button[data-coeff-seg]");
+            if (!btn) {
+                return;
+            }
+            var seg = btn.getAttribute("data-coeff-seg");
+            if (!seg || !Object.prototype.hasOwnProperty.call(state, seg)) {
+                return;
+            }
+            if (seg === "long" && !longLoaded) {
+                if (state.long === false) {
+                    var u = new URL(window.location.href);
+                    u.searchParams.set("coeff_include_long", "1");
+                    window.location.href = u.toString();
                 }
-                var seg = btn.getAttribute("data-coeff-seg");
-                if (!seg || !Object.prototype.hasOwnProperty.call(state, seg)) {
-                    return;
-                }
-                if (seg === "long" && !longLoaded) {
-                    if (state.long === false) {
-                        var u = new URL(window.location.href);
-                        u.searchParams.set("coeff_include_long", "1");
-                        window.location.href = u.toString();
-                    }
-                    return;
-                }
-                state[seg] = !state[seg];
-                write(state);
-                apply(state);
-            });
-        }
+                return;
+            }
+            state[seg] = !state[seg];
+            write(state);
+            apply(state);
+        });
     })();
 
 
@@ -4296,6 +5206,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             tr.querySelectorAll("input.pd-coeff-medium-k-input").forEach(function (kinp) {
                 kinp.removeAttribute("data-pd-medium-k-override");
+                /* Смена «используемого k» — пересчитать превью, в т.ч. поверх ранее сохранённых. */
+                kinp.removeAttribute("data-pd-medium-k-stored");
             });
             persistRow(rowKey, String(inp.value || ""), t.value);
             if (typeof window.refreshPowerDemandCoeffMixins === "function") {
@@ -4820,6 +5732,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (kinp.getAttribute("data-pd-medium-k-override") === "1") {
                             return;
                         }
+                        /* Не затирать k из БД: иначе после reload «Сохранить» кажется сломанным
+                           (value ≠ data-initial → массовое «ложное» сохранение / откат UI). */
+                        if (kinp.getAttribute("data-pd-medium-k-stored") === "1") {
+                            return;
+                        }
                         if (document.activeElement === kinp) {
                             return;
                         }
@@ -4829,7 +5746,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             kCell.removeAttribute("title");
                         } else {
                             var coeffR = roundCoeffKCalc(coeff);
-                            kinp.value = formatCoeffK(coeffR, rd);
+                            var coeffDisp = formatCoeffK(coeffR, rd);
+                            kinp.value = coeffDisp;
+                            /* Пустой initial — только превью с источника; не считаем «изменением» для Save. */
+                            if (!(String(kinp.getAttribute("data-initial") || "").trim())) {
+                                kinp.setAttribute("data-initial", coeffDisp);
+                            }
                             setCoeffKCellFullTitle(kCell, coeffR);
                             setCoeffKCellFullTitle(kinp, coeffR);
                         }
@@ -5433,6 +6355,83 @@ document.addEventListener("DOMContentLoaded", function () {
         refresh();
     })();
 
+    (function initPowerDemandCoeffMixinColumnsToggle() {
+        var table = document.getElementById("powerDemandSummaryTable");
+        if (!table || !table.classList.contains("pd-coeff-year-seg-table")) {
+            return;
+        }
+        var STORAGE_KEY = "powerDemandCoeffMixinColumnsVisibleV1";
+        var btnToggle = document.getElementById("pdCoeffMixinColsToggle");
+
+        function refreshLayoutAfterMixinVisibility() {
+            if (typeof window.__pdPdSummaryRepositionEntityCells === "function") {
+                window.__pdPdSummaryRepositionEntityCells();
+            }
+            if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+                window.requestAnimationFrame(function () {
+                    window.armGsApplyStickyTheadOffsets();
+                });
+            }
+            if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
+                window.requestAnimationFrame(function () {
+                    window.armGsUpdatePdSummaryControlsStickyHeight();
+                });
+            }
+            window.requestAnimationFrame(function () {
+                window.dispatchEvent(new Event("resize"));
+            });
+        }
+
+        function syncCoeffMixinToggleButton() {
+            if (!btnToggle) {
+                return;
+            }
+            var visible = !table.classList.contains("pd-coeff-hide-mixin-columns");
+            btnToggle.setAttribute("aria-pressed", visible ? "true" : "false");
+            btnToggle.classList.toggle("btn-secondary", visible);
+            btnToggle.classList.toggle("btn-outline-secondary", !visible);
+        }
+
+        function applyCoeffMixinColumnsVisible(show) {
+            if (show) {
+                table.classList.remove("pd-coeff-hide-mixin-columns");
+            } else {
+                table.classList.add("pd-coeff-hide-mixin-columns");
+            }
+            try {
+                sessionStorage.setItem(STORAGE_KEY, show ? "1" : "0");
+            } catch (e) { /* */ }
+            syncCoeffMixinToggleButton();
+            refreshLayoutAfterMixinVisibility();
+            if (show && typeof window.refreshPowerDemandCoeffMixins === "function") {
+                window.refreshPowerDemandCoeffMixins();
+            }
+        }
+
+        function readStoredShowMixin() {
+            try {
+                var v = sessionStorage.getItem(STORAGE_KEY);
+                if (v === "1") {
+                    return true;
+                }
+                if (v === "0") {
+                    return false;
+                }
+            } catch (e2) { /* */ }
+            /* по умолчанию группа «Расчетный коэффициент совмещения» скрыта */
+            return false;
+        }
+
+        applyCoeffMixinColumnsVisible(readStoredShowMixin());
+
+        if (btnToggle) {
+            btnToggle.addEventListener("click", function () {
+                var hidden = table.classList.contains("pd-coeff-hide-mixin-columns");
+                applyCoeffMixinColumnsVisible(hidden);
+            });
+        }
+    })();
+
     (function initPowerDemandCoeffKColumnsToggle() {
         var table = document.getElementById("powerDemandSummaryTable");
         if (!table || !table.classList.contains("pd-coeff-year-seg-table")) {
@@ -5701,6 +6700,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (typeof window.__pdPdSummaryInitTableTooltips === "function") {
             window.__pdPdSummaryInitTableTooltips();
         }
+        if (typeof window.__pdPdSummaryApplyBlockRowBackgrounds === "function") {
+            window.__pdPdSummaryApplyBlockRowBackgrounds();
+        }
     });
 
     const table = document.querySelector(".power-demand-summary-table[data-save-cell-url]");
@@ -5726,6 +6728,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!inp) {
             return false;
         }
+        const pk = inp.getAttribute("data-parameter-key") || "";
+        // Примечание хранится на hist-строке, но не относится к ограничению
+        // редактирования столбца «Исторический максимум».
+        if (pk === "entity_note" || inp.classList.contains("power-demand-summary-note-field")) {
+            return true;
+        }
         const slice = inp.getAttribute("data-slice") || "";
         if (slice !== "hist") {
             return true;
@@ -5736,7 +6744,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!PD_SUMMARY_HIST_RESTRICTED) {
             return true;
         }
-        const pk = inp.getAttribute("data-parameter-key") || "";
         return PD_SUMMARY_HIST_EDITABLE_KEYS.has(pk);
     }
 
@@ -6025,10 +7032,20 @@ document.addEventListener("DOMContentLoaded", function () {
     function perimeterVariantPayloadValue(fromTr) {
         var sel = findBlockVariantSelect(fromTr);
         if (sel) {
-            return sel.value || null;
+            var selected = String(sel.value || "").trim();
+            if (selected) {
+                return selected;
+            }
         }
         var tr = fromTr.closest("tr");
-        if (tr && tr.hasAttribute("data-demand-model-name")) {
+        var startTr = findSummaryBlockStartTr(tr);
+        if (startTr) {
+            var fromStart = startTr.getAttribute("data-perimeter-variant-code");
+            if (fromStart) {
+                return fromStart;
+            }
+        }
+        if (tr) {
             return tr.getAttribute("data-perimeter-variant-code");
         }
         return null;
@@ -6208,13 +7225,24 @@ document.addEventListener("DOMContentLoaded", function () {
                         payload.row_id = rid;
                     }
                 }
-                const pfk = inp.getAttribute("data-parent-fk");
+                const blockStartTr = findSummaryBlockStartTr(inp.closest("tr"));
+                const pfk =
+                    inp.getAttribute("data-parent-fk") ||
+                    (blockStartTr
+                        ? blockStartTr.getAttribute("data-parent-fk-column")
+                        : null);
                 if (pfk) {
                     payload.parent_fk_column = pfk;
                 }
-                const pidi = inp.getAttribute("data-parent-id");
+                const pidi =
+                    inp.getAttribute("data-parent-id") ||
+                    (blockStartTr ? blockStartTr.getAttribute("data-parent-id") : null);
                 if (pidi !== null && pidi !== "") {
                     payload.parent_id = parseInt(pidi, 10);
+                }
+                if (!payload.demand_model_name && blockStartTr) {
+                    payload.demand_model_name =
+                        blockStartTr.getAttribute("data-demand-model-name") || "";
                 }
                 const pvcTr = inp.closest("tr");
                 const pvcFromSelect = perimeterVariantPayloadValue(inp);
@@ -6227,7 +7255,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
                 }
                 if (!payload.demand_model_name || !payload.parameter_key) {
-                    continue;
+                    alert(
+                        "Не удалось сохранить ячейку: нет модели или параметра. Обновите страницу и попробуйте снова."
+                    );
+                    saveBtn.innerHTML = originalHtml;
+                    saveBtn.disabled = false;
+                    return;
                 }
                 const logScope = table.getAttribute("data-summary-log-scope");
                 if (logScope) {
@@ -6247,6 +7280,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     saveBtn.disabled = false;
                     return;
                 }
+                if (typeof data.display_value === "string") {
+                    inp.value = data.display_value === "—" ? "" : data.display_value;
+                }
+                inp.setAttribute("data-initial", inp.value || "");
             }
             if (changed.length > 0) {
                 window.armGsPageScrollRestore.reload({ table: table, changedInputs: changed });

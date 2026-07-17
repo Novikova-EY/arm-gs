@@ -16,6 +16,7 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     apply_oes_territory_detail_gaes_entity_labels,
     apply_oes_tites_root_formula_to_summary_rows,
     apply_oes_ees_unified_consumption_formula_to_summary_rows,
+    collapse_gaes_variant_split_for_entities_without_stations,
     tag_oes_ees_unified_summary_nt_toggle_rows,
     apply_summary_table_formula_calculations,
     apply_summary_table_russia_federation_row_rules,
@@ -143,7 +144,11 @@ def convert_context_to_summary_table_page(
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
-    tag_energy_consumption_summary_rows_perimeter_variant_labels(context["summary_rows"])
+    tag_energy_consumption_summary_rows_perimeter_variant_labels(
+        context["summary_rows"],
+        oes_summary=context.get("active_summary") == "oes",
+        use_summary_perimeter_options=True,
+    )
     mask_summary_rows_perimeter_variant_year_display(
         context["summary_rows"],
         list(context.get("years") or []),
@@ -164,6 +169,7 @@ def convert_context_to_summary_table_page(
     if context.get("active_summary") == "oes":
         apply_union_energy_system_gaes_entity_labels(context["summary_rows"])
         apply_oes_territory_detail_gaes_entity_labels(context["summary_rows"])
+    collapse_gaes_variant_split_for_entities_without_stations(context["summary_rows"])
     if hide_gaes_charge_aggregate_rows and context.get("active_summary") == "oes":
         context["summary_rows"] = filter_summary_table_gaes_charge_aggregate_rows(
             context["summary_rows"]
@@ -190,7 +196,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     summary_rows = list(context.get("summary_rows") or [])
     eu_source_rows_for_tites = list(summary_rows)
     apply_energy_consumption_summary_table_variant_toggle_rows(summary_rows)
-    if context.get("active_summary") == "oes":
+    if context.get("active_summary") in ("oes", "fo", "ez"):
         apply_summary_table_russia_federation_row_rules(summary_rows)
     tag_oes_ees_unified_summary_nt_toggle_rows(summary_rows)
     if context.get("active_summary") == "fo":
@@ -238,13 +244,26 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
-    if context.get("active_summary") == "oes":
-        apply_oes_ees_unified_consumption_formula_to_summary_rows(
+    if context.get("active_summary") in ("fo", "ez"):
+        # Верхние агрегаты (Россия / ЦЗ / ЭЭС / ЕЭС / СЗ) — как на /summary/oes/
+        # и /summary_table/: формулы ГАЭС и СЗ, без суммы ОЭС для типа «ЕЭС».
+        apply_summary_table_formula_calculations(
             summary_rows,
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
-            ues_source_rows=eu_source_rows_for_tites,
+            eu_source_rows_for_tites=eu_source_rows_for_tites,
         )
+    if context.get("active_summary") == "oes":
+        # На /summary/oes/ в режиме сводной таблицы значения «ЕЭС России» (тип ЭС)
+        # должны совпадать с /summary_table/ (данные из БД + формулы ГАЭС), а не
+        # пересчитываться как сумма ОЭС.
+        if not context.get("skip_oes_ees_unified_consumption_formula"):
+            apply_oes_ees_unified_consumption_formula_to_summary_rows(
+                summary_rows,
+                years=list(context.get("years") or []),
+                rounding_digits=int(context.get("rounding_digits") or 1),
+                ues_source_rows=eu_source_rows_for_tites,
+            )
         apply_oes_tites_root_formula_to_summary_rows(
             summary_rows,
             years=list(context.get("years") or []),
@@ -295,7 +314,11 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
-    tag_energy_consumption_summary_rows_perimeter_variant_labels(summary_rows)
+    tag_energy_consumption_summary_rows_perimeter_variant_labels(
+        summary_rows,
+        oes_summary=context.get("active_summary") == "oes",
+        use_summary_perimeter_options=True,
+    )
     mask_summary_rows_perimeter_variant_year_display(
         summary_rows,
         list(context.get("years") or []),
@@ -316,9 +339,13 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     if context.get("active_summary") == "oes":
         apply_union_energy_system_gaes_entity_labels(summary_rows)
         apply_oes_territory_detail_gaes_entity_labels(summary_rows)
+    collapse_gaes_variant_split_for_entities_without_stations(summary_rows)
     tag_energy_consumption_summary_rows_for_territory_compact(summary_rows)
-    if context.get("active_summary") == "fo":
+    if context.get("active_summary") in ("oes", "fo", "ez"):
+        # Как на /power_demand/summary/oes/: «ЦЗ России» остаётся в режиме «Сводная таблица».
         keep_centralized_zone_rows_in_territory_compact(summary_rows)
+    if context.get("active_summary") in ("fo", "ez"):
+        # Значения «ЦЗ России …» как на /summary_table/ (формула по ОЭС недоступна без UES).
         apply_federal_district_centralized_zone_values_from_summary_table_hub(
             summary_rows,
             years=list(context.get("years") or []),

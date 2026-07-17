@@ -6,6 +6,9 @@ from __future__ import annotations
 from typing import Any
 
 from app.common.perimeter_variant.registry import CODE_WITH_NT, CODE_WITHOUT_NT
+from app.power_demand.services.pd_peak_usage_hours_services import (
+    combined_on_key_from_peak_combined_usage_hours,
+)
 from app.power_demand.services.power_demand_summary_formula_registry import get_formula_def
 
 _SECOND_SYNC_AREA_LABEL_CF = "вторая синхронная"
@@ -88,6 +91,12 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
     if dm == "CentralizedZoneDemandParameter" and pk == "peak_max_power_usage_hours":
         return "fo_chi_centralized_zone"
 
+    if dm == "CentralizedZoneDemandParameter":
+        if pk == "calculated_max_power_mw":
+            return "cz_russia_calc_max_mw"
+        if pk == "verify_for_calculated_max_power_mw":
+            return "cz_russia_verify_calc_max_mw"
+
     if dm in ("EnergySystemTypeDemandParameter", "EesRussiaWithNtDemandParameter"):
         if pk == "calculated_max_ees_via_oes_mw":
             return "oes_ees_russia_calc_max_via_oes"
@@ -117,6 +126,7 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
             "calculated_max_power_mw": "sa_second_calc_max_power_mw",
             "calculated_max_sa_mw": "sa_second_calc_max_sa_mw",
             "peak_max_power_usage_hours": "sa_second_chi_from_ues_east",
+            "peak_combined_on_ees_usage_hours": "sa_second_chi_combined_from_ues_east",
         }.get(pk)
         if formula_key:
             return formula_key
@@ -130,6 +140,7 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
             "calculated_max_power_mw": "sa_kaliningrad_calc_max_power_mw",
             "calculated_max_sa_mw": "sa_kaliningrad_calc_max_sa_mw",
             "peak_max_power_usage_hours": "sa_kaliningrad_chi_from_es",
+            "peak_combined_on_ees_usage_hours": "sa_kaliningrad_chi_combined_from_es",
         }.get(pk)
         if formula_key:
             return formula_key
@@ -161,6 +172,8 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
     if pk == "verify_for_calculated_max_power_mw":
         if dm == "FederalDistrictDemandParameter":
             return "fo_verify_calc_max_mw"
+        if dm == "CentralizedZoneDemandParameter":
+            return "cz_russia_verify_calc_max_mw"
         return "oes_verify_calc_max_mw"
 
     if pk == "verify_for_calculated_combined_on_ees_mw":
@@ -175,6 +188,10 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
 
     if pk == "verify_for_calculated_max_sa_mw":
         return "sa_first_verify_combined_ees"
+
+    combined_on_key = combined_on_key_from_peak_combined_usage_hours(pk)
+    if combined_on_key:
+        return f"pd_peak_{combined_on_key}_usage_hours"
 
     if pk == "peak_max_power_usage_hours":
         if row.get("pd_pd_decentralized_zone_mark"):

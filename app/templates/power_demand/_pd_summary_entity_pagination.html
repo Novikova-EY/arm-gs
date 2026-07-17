@@ -1,0 +1,56 @@
+{# Пагинация секций сводки (coeff — серверный рендер). #}
+{% if pd_entity_pagination is defined and pd_entity_pagination.enabled and (pd_entity_pagination.total_pages | default(1)) > 1 %}
+{% set pag = pd_entity_pagination %}
+{% set pag_args = request.args.to_dict() %}
+<nav class="mt-3 mb-2" aria-label="Пагинация сводки">
+    <div class="small text-muted mb-2 text-center">
+        Страница {{ pag.page }} из {{ pag.total_pages }}
+        {% if pag.section_titles %}
+        — {{ pag.section_titles | join(', ') }}
+        {% endif %}
+    </div>
+    <ul class="pagination justify-content-center mb-0 flex-wrap">
+        <li class="page-item{% if not pag.has_prev %} disabled{% endif %}">
+            {% if pag.has_prev %}
+            {% set prev_args = pag_args.copy() %}
+            {% set _ = prev_args.update({'pd_page': pag.page - 1, 'pd_page_size': pag.page_size}) %}
+            <a class="page-link" href="{{ url_for(request.endpoint, **prev_args) }}">« Назад</a>
+            {% else %}
+            <span class="page-link">« Назад</span>
+            {% endif %}
+        </li>
+        {% for p in range(1, pag.total_pages + 1) %}
+            {% if pag.total_pages > 7 and p != 1 and p != pag.total_pages and (p < pag.page - 1 or p > pag.page + 1) %}
+                {% if p == 2 or p == pag.total_pages - 1 %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+            {% else %}
+        <li class="page-item{% if p == pag.page %} active{% endif %}">
+            {% if p == pag.page %}
+            <span class="page-link">{{ p }}</span>
+            {% else %}
+            {% set page_args = pag_args.copy() %}
+            {% set _ = page_args.update({'pd_page': p, 'pd_page_size': pag.page_size}) %}
+            <a class="page-link" href="{{ url_for(request.endpoint, **page_args) }}">{{ p }}</a>
+            {% endif %}
+        </li>
+            {% endif %}
+        {% endfor %}
+        <li class="page-item{% if not pag.has_next %} disabled{% endif %}">
+            {% if pag.has_next %}
+            {% set next_args = pag_args.copy() %}
+            {% set _ = next_args.update({'pd_page': pag.page + 1, 'pd_page_size': pag.page_size}) %}
+            <a class="page-link" href="{{ url_for(request.endpoint, **next_args) }}">Вперёд »</a>
+            {% else %}
+            <span class="page-link">Вперёд »</span>
+            {% endif %}
+        </li>
+        <li class="page-item ms-2">
+            {% set all_args = pag_args.copy() %}
+            {% set _ = all_args.update({'pd_page_size': 0}) %}
+            {% set _ = all_args.pop('pd_page', None) %}
+            <a class="page-link" href="{{ url_for(request.endpoint, **all_args) }}">{{ pag.all_label | default('Показать всё') }}</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}

@@ -203,34 +203,19 @@ def machine_details(station_id, machine_id):
 
     rounding_digits = request.values.get("rounding_digits", 1, type=int)
 
-    if request.method == "GET":
-        start_year, end_year, year_redirect = resolve_generation_year_filters_for_request()
-        if year_redirect:
-            return year_redirect
-    else:
-        start_year = request.values.get("start_year", get_filter_start_year(), type=int)
-        end_year = request.values.get("end_year", get_filter_end_year(), type=int)
-
-    nsy, ney = _normalize_start_end_years(start_year, end_year)
-    if request.method == "GET" and (nsy, ney) != (start_year, end_year):
-        q = request.args.to_dict(flat=True)
-        q["start_year"] = nsy
-        q["end_year"] = ney
-        target = url_for(
-            "station_bp.machine_details",
-            station_id=station_id,
-            machine_id=machine_id,
-        )
-        return redirect(f"{target}?{urlencode(q)}")
-    start_year, end_year = nsy, ney
-
     from app.common.services.version_entity_resolve_services import resolve_machine_details_ids
 
+    # Сначала резолвим id станции/агрегата в текущую версию БД, чтобы любой
+    # последующий redirect (годы / нормализация) уже писал актуальные id в URL.
     resolved = resolve_machine_details_ids(station_id, machine_id)
     if not resolved:
         if request.method == "GET" and machine_id != 0:
             resolved_station_id = _resolved_station_id_for_current_version(station_id)
             if resolved_station_id is not None:
+                start_year, end_year, _year_redirect = (
+                    resolve_generation_year_filters_for_request()
+                )
+                start_year, end_year = _normalize_start_end_years(start_year, end_year)
                 flash(
                     "Агрегат отсутствует в выбранной версии БД. "
                     "Открыта карточка электростанции в текущей версии.",
@@ -248,18 +233,36 @@ def machine_details(station_id, machine_id):
                 )
         abort(404)
     resolved_station_id, resolved_machine_id = resolved
-    if request.method == "GET" and (
+
+    if request.method == "GET":
+        start_year, end_year, year_redirect = resolve_generation_year_filters_for_request()
+    else:
+        start_year = request.values.get("start_year", get_filter_start_year(), type=int)
+        end_year = request.values.get("end_year", get_filter_end_year(), type=int)
+        year_redirect = None
+
+    nsy, ney = _normalize_start_end_years(start_year, end_year)
+    id_mismatch = (
         resolved_station_id != station_id or resolved_machine_id != machine_id
+    )
+    years_mismatch = request.method == "GET" and (nsy, ney) != (start_year, end_year)
+    if request.method == "GET" and (
+        id_mismatch or year_redirect is not None or years_mismatch
     ):
         q = request.args.to_dict(flat=True)
-        q["start_year"] = start_year
-        q["end_year"] = end_year
+        if year_redirect is not None:
+            q["start_year"] = start_year
+            q["end_year"] = end_year
+        else:
+            q["start_year"] = nsy
+            q["end_year"] = ney
         target = url_for(
             "station_bp.machine_details",
             station_id=resolved_station_id,
             machine_id=resolved_machine_id,
         )
         return redirect(f"{target}?{urlencode(q)}")
+    start_year, end_year = nsy, ney
     station_id, machine_id = resolved_station_id, resolved_machine_id
 
     if request.method == "POST":
@@ -321,6 +324,7 @@ def machine_details(station_id, machine_id):
             fallback_gen_company=result.get('fallback_gen_company'),
             can_save_machine_all_versions=can_save_machine_all_versions,
             can_create_machine=result.get('can_create_machine', False),
+            can_edit_dz_machine=result.get('can_edit_dz_machine', False),
         )
         render_elapsed = time.perf_counter() - render_start
         total_elapsed = time.perf_counter() - start_time

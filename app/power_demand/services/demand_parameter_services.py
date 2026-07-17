@@ -52,7 +52,9 @@ from app.common.perimeter_variant.registry import (
     model_supports_perimeter_variant,
     normalize_perimeter_variant_code,
     perimeter_entity_context_for_model,
+    perimeter_variant_applies_to_year_code,
     perimeter_variant_display_label_for_entity,
+    perimeter_variant_year_bounds_for_code,
     validate_ees_unified_summary_perimeter_variant_code,
     validate_perimeter_variant_for_entity,
     validate_perimeter_variant_for_summary_entity,
@@ -63,6 +65,26 @@ _UNSET = object()
 
 def _username() -> str:
     return session.get("username", "Неизвестный пользователь")
+
+
+def _assert_perimeter_variant_year_allowed(
+    perimeter_variant_code: str | None | object,
+    year_n: int | None,
+) -> None:
+    if perimeter_variant_code in (_UNSET, None) or year_n is None:
+        return
+    code = str(perimeter_variant_code)
+    if not perimeter_variant_applies_to_year_code(code, int(year_n)):
+        fy, ty = perimeter_variant_year_bounds_for_code(code)
+        parts: list[str] = []
+        if fy is not None:
+            parts.append(f"с {fy}")
+        if ty is not None:
+            parts.append(f"по {ty}")
+        period = " ".join(parts) if parts else "не задан"
+        raise ValueError(
+            f"Год {year_n} вне периода действия варианта периметра ({period})."
+        )
 
 
 def parse_slice_year(raw: Any) -> tuple[bool, Optional[int]]:
@@ -1542,9 +1564,7 @@ def _maybe_log_pd_summary_cell(
         pl = _parent_binding_label_for_pd_summary_log(parent_fk_column, parent_id)
         if pl:
             header_bits.append(pl)
-    if is_hist:
-        header_bits.append("срез=исторический максимум")
-    else:
+    if not is_hist:
         yn = getattr(row, "year_number", None)
         if yn is not None:
             header_bits.append(f"год={yn}")
@@ -1845,6 +1865,9 @@ def save_demand_summary_cell(
         ):
             pvc = None
 
+    if not is_hist:
+        _assert_perimeter_variant_year_allowed(pvc, year_n)
+
     display_row_main: Any = None
     snap_before_main: dict[str, Any] = {}
     for vid in version_ids:
@@ -1910,6 +1933,10 @@ def save_demand_summary_cell(
     clear_power_demand_rows_bulk_cache()
 
     if display_row_main is None:
+        if str(raw_value or "").strip():
+            raise ValueError(
+                "Не удалось сохранить значение. Обновите страницу или проверьте привязку строки к объекту."
+            )
         return "—"
 
     _maybe_log_pd_summary_cell(

@@ -122,6 +122,47 @@ def test_strip_gaes_text_from_perimeter_variant_label_fragment():
     ) == "без НТ (с ЭС Калининградской области)"
 
 
+def test_pd_oes_perimeter_variant_label_keeps_gaes_suffix():
+    binding = MagicMock()
+    binding.variants = (
+        MagicMock(
+            code=CODE_WITHOUT_NT_WITHOUT_GAES,
+            label_suffix="без НТ",
+        ),
+    )
+    label = service._oes_perimeter_variant_russian_label(
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+        binding=binding,
+        entity_kind="synchronous_area",
+        entity_name="Первая синхронная зона",
+        strip_gaes_suffix=False,
+    )
+    assert label == "без НТ без заряда ГАЭС"
+
+    options = service._perimeter_variant_options_for_oes_summary(
+        "synchronous_area",
+        "Первая синхронная зона",
+        strip_gaes_suffix=False,
+    )
+    without_gaes_opt = next(
+        (opt for opt in options if opt.get("code") == CODE_WITHOUT_NT_WITHOUT_GAES),
+        None,
+    )
+    if without_gaes_opt is not None:
+        assert "без заряда ГАЭС" in without_gaes_opt["label"]
+
+
+def test_pd_oes_perimeter_variant_label_strips_gaes_suffix_when_requested():
+    label = service._oes_perimeter_variant_russian_label(
+        CODE_WITHOUT_NT_WITHOUT_GAES,
+        binding=None,
+        entity_kind="synchronous_area",
+        entity_name="Первая синхронная зона",
+        strip_gaes_suffix=True,
+    )
+    assert "без заряда ГАЭС" not in label
+
+
 def test_first_sync_zone_export_labels_match_screen_toggle():
     rows = [
         _first_sync_zone_row(
@@ -396,6 +437,44 @@ def test_south_federal_district_without_nt_compact_label_for_fo_summary():
     assert row["pd_pd_nt_extra_row"] is False
 
 
+def test_coeff_summary_restores_without_gaes_suffix_in_full_entity_label():
+    row = {
+        "show_entity_cell": True,
+        "entity_label": "ОЭС Юга без НТ",
+        "demand_model_name": UnionEnergySystemDemandParameter.__name__,
+        "parameter_key": "max_power",
+        "perimeter_variant_code": "without_nt_without_gaes",
+        "entity_kind": "perimeter_variant",
+        "entity_depth": 0,
+    }
+    service.tag_power_demand_summary_rows_for_nt_toggle([row])
+    service.tag_power_demand_coeff_summary_rows_without_gaes_entity_labels([row])
+
+    expected = "ОЭС Юга без НТ без заряда ГАЭС"
+    assert row["entity_label"] == expected
+    assert row["pd_pd_entity_label_nt_detail"] == expected
+    assert row["pd_pd_entity_label_compact_nt"] == expected
+
+
+def test_coeff_summary_without_gaes_label_keeps_kaliningrad_suffix():
+    row = {
+        "show_entity_cell": True,
+        "entity_label": "Первая синхронная зона без НТ (без ЭС Калининградской области)",
+        "demand_model_name": SynchronousAreaDemandParameter.__name__,
+        "parameter_key": "max_power",
+        "perimeter_variant_code": "without_nt_without_gaes_without_kaliningrad_es",
+        "entity_kind": "synchronous_area",
+        "entity_depth": 0,
+    }
+    service.tag_power_demand_summary_rows_for_nt_toggle([row])
+    service.tag_power_demand_coeff_summary_rows_without_gaes_entity_labels([row])
+
+    assert row["entity_label"] == (
+        "Первая синхронная зона без НТ без заряда ГАЭС "
+        "(без ЭС Калининградской области)"
+    )
+
+
 def test_drop_null_perimeter_variant_group_when_nt_pairs_exist():
     groups = [
         (None, [object()]),
@@ -446,4 +525,358 @@ def test_exclude_o1_perimeter_variant_summary_rows():
     assert filtered[0]["entity_rowspan"] == 2
     assert filtered[1]["show_entity_cell"] is False
     assert filtered[2]["show_entity_cell"] is True
+
+
+def test_exclude_o1_perimeter_variant_summary_rows_by_entity_label():
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_label": "ЭС Магаданской области",
+            "perimeter_variant_code": "with_nt",
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 2,
+            "entity_label": "ЭС Магаданской области O-1",
+            "perimeter_variant_code": None,
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": False,
+            "entity_rowspan": 2,
+            "entity_label": "ЭС Магаданской области O-1",
+            "parameter_key": "peak_datetime",
+        },
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_label": "ЭС Сахалинской области (О-1)",
+            "pd_ec_o1_form_row": True,
+            "parameter_key": "max_power",
+        },
+    ]
+
+    filtered = service.exclude_o1_perimeter_variant_summary_rows(rows)
+
+    assert len(filtered) == 1
+    assert filtered[0]["entity_label"] == "ЭС Магаданской области"
+
+
+def test_rebuild_summary_entity_row_blocks_splits_on_show_entity_cell():
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 10,
+            "entity_label": "Хабаровский край",
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": False,
+            "entity_rowspan": 10,
+            "entity_label": "Хабаровский край",
+            "parameter_key": "peak_datetime",
+        },
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 10,
+            "entity_label": "Николаевский энергорайон",
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": False,
+            "entity_rowspan": 10,
+            "entity_label": "Николаевский энергорайон",
+            "parameter_key": "combined_on_es",
+        },
+    ]
+
+    rebuilt = service._rebuild_summary_entity_row_blocks(rows)
+
+    assert len(rebuilt) == 4
+    assert rebuilt[0]["show_entity_cell"] is True
+    assert rebuilt[0]["entity_rowspan"] == 2
+    assert rebuilt[1]["show_entity_cell"] is False
+    assert rebuilt[2]["show_entity_cell"] is True
+    assert rebuilt[2]["entity_rowspan"] == 2
+    assert rebuilt[3]["show_entity_cell"] is False
+
+
+def test_energy_units_for_federal_district_subject_orders_dz_last():
+    class _RES:
+        pass
+
+    class _EU:
+        pass
+
+    placeholder_res = _RES()
+    placeholder_res.name = "не указано"
+    valid_res_id = 590
+
+    eu_regular = _EU()
+    eu_regular.id = 77
+    eu_regular.name = "Центральный энергорайон"
+    eu_regular.id_regional_energy_system = valid_res_id
+
+    eu_dz_a = _EU()
+    eu_dz_a.id = 359
+    eu_dz_a.name = "Озерновский энергорайон"
+    eu_dz_a.id_regional_energy_system = 569
+    eu_dz_a.regional_energy_system = placeholder_res
+
+    eu_dz_b = _EU()
+    eu_dz_b.id = 367
+    eu_dz_b.name = "Южные электрические сети"
+    eu_dz_b.id_regional_energy_system = 569
+    eu_dz_b.regional_energy_system = placeholder_res
+
+    result = service._energy_units_for_federal_district_subject(
+        [eu_dz_a, eu_regular, eu_dz_b],
+        valid_res_id,
+    )
+    assert [eu.id for eu in result] == [77, 359, 367]
+
+
+def test_build_energy_unit_entities_preserves_decentralized_zone_order(monkeypatch):
+    monkeypatch.setattr(service.dps, "get_demand_rows", lambda *args, **kwargs: [])
+
+    class _RES:
+        pass
+
+    class _EU:
+        pass
+
+    placeholder_res = _RES()
+    placeholder_res.name = "не указано"
+
+    eu_regular = _EU()
+    eu_regular.id = 77
+    eu_regular.name = "Центральный энергорайон"
+    eu_regular.id_regional_energy_system = 590
+
+    eu_dz = _EU()
+    eu_dz.id = 359
+    eu_dz.name = "Озерновский энергорайон"
+    eu_dz.id_regional_energy_system = 569
+    eu_dz.regional_energy_system = placeholder_res
+
+    ordered = service._energy_units_for_federal_district_subject(
+        [eu_dz, eu_regular],
+        590,
+    )
+    entities = service._build_energy_unit_entities(ordered, depth=3)
+
+    assert [e.label for e in entities] == [
+        "Центральный энергорайон",
+        "Озерновский энергорайон",
+    ]
+    assert entities[0].is_decentralized_zone_energy_unit is False
+    assert entities[1].is_decentralized_zone_energy_unit is True
+
+
+def test_energy_unit_summary_perimeter_variant_code_uses_o1_for_dz():
+    from types import SimpleNamespace
+
+    from app.power_demand.services import demand_summary_services as service
+
+    eu = SimpleNamespace(
+        name="Новиковский энергорайон",
+        regional_energy_system=SimpleNamespace(name="не указано"),
+    )
+    assert service._energy_unit_summary_perimeter_variant_code(eu) == "o1"
+
+
+def test_demand_rows_for_energy_unit_summary_falls_back_to_base_perimeter(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.power_demand.services import demand_summary_services as service
+
+    eu = SimpleNamespace(
+        id=359,
+        name="Озерновский энергорайон",
+        regional_energy_system=SimpleNamespace(name="не указано"),
+    )
+    calls: list[str | None] = []
+
+    def fake_get_demand_rows(model, fk, parent_id, *, perimeter_variant_code=None):
+        calls.append(perimeter_variant_code)
+        if perimeter_variant_code == "o1":
+            return []
+        return [object()]
+
+    monkeypatch.setattr(service.dps, "get_demand_rows", fake_get_demand_rows)
+    rows = service._demand_rows_for_energy_unit_summary(eu)
+    assert len(rows) == 1
+    assert calls == ["o1", None]
+
+
+def test_flatten_entity_marks_decentralized_zone_skip_empty_hide():
+    from app.power_demand.services import demand_summary_services as service
+
+    entity = service.SummaryEntity(
+        label="Новиковский энергорайон",
+        depth=3,
+        parameters=(("max_power", "Максимальное потребление мощности, МВт"),),
+        demand_rows=[],
+        entity_kind="child",
+        is_decentralized_zone_energy_unit=True,
+    )
+    rows = service._flatten_entity(entity, [2024, 2025], 1)
+    assert rows[0]["pd_pd_decentralized_zone_mark"] is True
+    assert rows[0]["pd_pd_skip_empty_hide_row"] is True
+
+
+def test_build_federal_district_res_entity_shows_subjects_with_energy_units(monkeypatch):
+    from app.power_demand.services import demand_summary_services as service
+
+    monkeypatch.setattr(service.dps, "get_demand_rows", lambda *args, **kwargs: [])
+
+    class _EU:
+        pass
+
+    class _RD:
+        pass
+
+    class _RES:
+        pass
+
+    eu1 = _EU()
+    eu1.id = 501
+    eu1.name = "Энергорайон 1"
+    eu1.id_regional_energy_system = 1
+    rd1 = _RD()
+    rd1.id = 101
+    rd1.name = "Субъект 1"
+    rd1.energy_units = [eu1]
+    rd2 = _RD()
+    rd2.id = 102
+    rd2.name = "Субъект 2"
+    rd2.energy_units = []
+    res = _RES()
+    res.id = 1
+    res.name = "РЭС тест"
+    res.id_union_energy_system = 7
+    res.regional_districts = [rd1, rd2]
+    res.energy_units = []
+
+    entity = service._build_federal_district_res_entity(
+        res,
+        federal_district_id=10,
+        fd_rd_ids={101, 102},
+    )
+    assert entity is not None
+    assert len(entity.children) == 2
+    assert entity.children[0].demand_model_name == (
+        service.RegionalDistrictDemandParameter.__name__
+    )
+    assert entity.children[1].id_regional_district == 102
+    assert len(entity.children[0].children) == 1
+    assert entity.children[0].children[0].demand_model_name == (
+        service.EnergyUnitDemandParameter.__name__
+    )
+    assert entity.children[0].children[0].id_energy_unit == 501
+    assert entity.children[0].children[0].parameters == service.PARAMETERS_ENERGY_UNIT_FD_SUMMARY
+
+
+def test_build_federal_district_res_entity_shows_energy_units_when_single_subject(
+    monkeypatch,
+):
+    from app.power_demand.services import demand_summary_services as service
+
+    monkeypatch.setattr(service.dps, "get_demand_rows", lambda *args, **kwargs: [])
+
+    class _EU:
+        pass
+
+    class _RD:
+        pass
+
+    class _RES:
+        pass
+
+    eu1 = _EU()
+    eu1.id = 501
+    eu1.name = "Энергорайон 1"
+    eu1.id_regional_energy_system = 1
+    rd1 = _RD()
+    rd1.id = 101
+    rd1.name = "Субъект 1"
+    rd1.energy_units = [eu1]
+    rd2 = _RD()
+    rd2.id = 102
+    rd2.name = "Субъект 2"
+    rd2.energy_units = []
+    res = _RES()
+    res.id = 1
+    res.name = "РЭС тест"
+    res.id_union_energy_system = 7
+    res.regional_districts = [rd1, rd2]
+    res.energy_units = []
+
+    entity = service._build_federal_district_res_entity(
+        res,
+        federal_district_id=10,
+        fd_rd_ids={101},
+    )
+    assert entity is not None
+    assert len(entity.children) == 1
+    assert entity.children[0].demand_model_name == (
+        service.EnergyUnitDemandParameter.__name__
+    )
+    assert entity.children[0].id_energy_unit == 501
+    assert entity.id_regional_district == 101
+    assert entity.children[0].parameters == service.PARAMETERS_ENERGY_UNIT_FD_SUMMARY
+    assert entity.children[0].id_federal_district == 10
+
+
+def test_build_federal_district_res_entity_appends_placeholder_energy_units(monkeypatch):
+    from app.power_demand.services import demand_summary_services as service
+
+    monkeypatch.setattr(service.dps, "get_demand_rows", lambda *args, **kwargs: [])
+
+    class _EU:
+        pass
+
+    class _RD:
+        pass
+
+    class _RES:
+        pass
+
+    placeholder_res = _RES()
+    placeholder_res.name = "не указано"
+
+    eu_res = _EU()
+    eu_res.id = 501
+    eu_res.name = "ЭР РЭС"
+    eu_res.id_regional_energy_system = 1
+
+    eu_dz = _EU()
+    eu_dz.id = 502
+    eu_dz.name = "ЭР ДЗ"
+    eu_dz.id_regional_energy_system = 569
+    eu_dz.regional_energy_system = placeholder_res
+
+    rd1 = _RD()
+    rd1.id = 101
+    rd1.name = "Субъект 1"
+    rd1.energy_units = [eu_dz, eu_res]
+    res = _RES()
+    res.id = 1
+    res.name = "РЭС тест"
+    res.id_union_energy_system = 7
+    res.regional_districts = [rd1]
+    res.energy_units = []
+
+    entity = service._build_federal_district_res_entity(
+        res,
+        federal_district_id=10,
+        fd_rd_ids={101},
+    )
+    assert entity is not None
+    assert [c.id_energy_unit for c in entity.children] == [501, 502]
+    assert entity.children[0].is_decentralized_zone_energy_unit is False
+    assert entity.children[1].is_decentralized_zone_energy_unit is True
+    assert entity.children[0].parameters == service.PARAMETERS_ENERGY_UNIT_FD_SUMMARY
 

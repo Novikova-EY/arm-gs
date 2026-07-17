@@ -1,5 +1,5 @@
 /**
- * Построчная вставка из Excel (tab-separated) в сводках «Нагрузки»:
+ * Построчная вставка из Excel (tab-separated) в сводках «Нагрузки» и «Спрос»:
  * копируете строку значений → фокус в первую ячейку строки → Ctrl+V.
  */
 (function () {
@@ -61,7 +61,13 @@
             s.indexOf("тнв") >= 0 ||
             s.indexOf("совмещ") >= 0 ||
             s.indexOf("мвт") >= 0 ||
-            s.indexOf("мск") >= 0
+            s.indexOf("мск") >= 0 ||
+            s.indexOf("потреблен") >= 0 ||
+            s.indexOf("сипр") >= 0 ||
+            s.indexOf("млн") >= 0 ||
+            s.indexOf("квт") >= 0 ||
+            s.indexOf("гаэс") >= 0 ||
+            s.indexOf("заряд") >= 0
         );
     }
 
@@ -74,6 +80,15 @@
             var v0 = trimmed[0];
             var v1 = trimmed[1];
             if (!looksLikeDataCell(v0) && looksLikeParamLabel(v1)) {
+                trimmed = trimmed.slice(2);
+                continue;
+            }
+            if (
+                !looksLikeDataCell(v0) &&
+                !looksLikeDataCell(v1) &&
+                trimmed.length >= 3 &&
+                looksLikeDataCell(trimmed[2])
+            ) {
                 trimmed = trimmed.slice(2);
                 continue;
             }

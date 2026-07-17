@@ -587,17 +587,8 @@ def station_details(station_id):
     user = session.get('username', 'Неизвестный пользователь')
     route_started_at = time.perf_counter()
 
-    if request.method == "GET":
-        from app.generation.services.station_services.generation_year_filter_services import (
-            resolve_generation_year_filters_for_request,
-        )
-
-        _, _, year_redirect = resolve_generation_year_filters_for_request()
-        if year_redirect:
-            return year_redirect
-
     current_version_id = get_current_db_version_id()
-    
+
     def _station_query():
         return (
             db.session.query(Station)
@@ -628,6 +619,9 @@ def station_details(station_id):
             .filter_by(id=station_id)
         )
 
+    # Сначала резолвим id в текущую версию БД (по external_code), затем уже
+    # канонизируем URL — иначе redirect по годам при смене версии оставляет
+    # в адресной строке чужой id из другой версии.
     station, station_version_id = _load_station_with_version(
         _station_query, current_version_id, station_id=station_id
     )
@@ -635,10 +629,25 @@ def station_details(station_id):
     if not station:
         abort(404)
 
-    if request.method == "GET" and station.id != station_id:
-        return redirect(
-            url_for("station_bp.station_details", station_id=station.id, **request.args)
+    if request.method == "GET":
+        from app.generation.services.station_services.generation_year_filter_services import (
+            resolve_generation_year_filters_for_request,
         )
+
+        start_year, end_year, year_redirect = resolve_generation_year_filters_for_request()
+        id_mismatch = station.id != station_id
+        if id_mismatch or year_redirect is not None:
+            q = request.args.to_dict(flat=True)
+            if year_redirect is not None:
+                q["start_year"] = start_year
+                q["end_year"] = end_year
+            return redirect(
+                url_for(
+                    "station_bp.station_details",
+                    station_id=station.id,
+                    **q,
+                )
+            )
 
     station.machines = _filter_items_by_version(station.machines, station_version_id)
     

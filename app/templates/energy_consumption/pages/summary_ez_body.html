@@ -1,8 +1,8 @@
-﻿{# Отдельный шаблон страницы /energy_consumption/summary/energy_zones/ — правки здесь не затрагивают другие сводки. #}
+{# Отдельный шаблон страницы /energy_consumption/summary/energy_zones/ — правки здесь не затрагивают другие сводки. #}
 {% if current_user.is_authenticated %}
 {% set energy_consumption_gaes_charge_only_page = energy_consumption_gaes_charge_only_page | default(false) %}
 {% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
-{% set show_perimeter_variant_column = current_user.is_authenticated and current_user.has_admin %}
+{% set show_perimeter_variant_column = active_summary in ('oes', 'fo', 'ez') %}
 {% set summary_route_variant = 'max' %}
 {% set show_hist_col = false %}
 {% set pd_readonly_parameter_keys = ('energy_consumption_yoy_growth_pct', 'energy_consumption_sipr_abs_growth_mln', 'energy_consumption_sipr_yoy_growth_pct') %}
@@ -41,58 +41,6 @@
 
 {% set pd_ec_max_year_segments = (coeff_base_year is defined and active_summary in ('oes', 'fo', 'ez')) %}
 <div class="container-fluid mt-2">
-    <div class="d-flex flex-wrap align-items-start gap-2 mb-3 w-100">
-        <div class="d-flex flex-wrap gap-2 flex-grow-1" style="min-width:0;">
-            {% if summary_route_variant == 'coeff' %}
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_oes_coeff') }}"
-                   class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
-                    Коэффициенты и совмещенные максимумы по энергосистемам
-                </a>
-                {% if active_summary == 'oes' %}
-                <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
-                    Коэффициенты и совмещенные максимумы по ФО
-                </span>
-                <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
-                    Коэффициенты и совмещенные максимумы по энергозонам
-                </span>
-                {% else %}
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_federal_districts_coeff') }}"
-                   class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
-                    Коэффициенты и совмещенные максимумы по ФО
-                </a>
-                <a href="{{ url_for('energy_consumption_bp.demand_summary_energy_zones_coeff') }}"
-                   class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
-                    Коэффициенты и совмещенные максимумы по энергозонам
-                </a>
-                {% endif %}
-            {% else %}
-                {% if not summary_table_standalone %}
-                <a href="{{ url_for('energy_consumption_bp.summary_table_hub') }}{{ ec_summary_info_nav_qs }}"
-                   class="btn btn-outline-primary fs-5">
-                    Сводная информация
-                </a>
-                {% endif %}
-                <a href="{{ url_for(summary_oes_endpoint) }}"
-                   class="btn {% if active_summary == 'oes' and not energy_consumption_gaes_charge_only_page %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
-                    Потребление электрической энергии по энергосистемам
-                </a>
-                <a href="{{ url_for(summary_fo_endpoint) }}"
-                   class="btn {% if active_summary == 'fo' and not energy_consumption_gaes_charge_only_page %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
-                    Потребление электрической энергии по ФО
-                </a>
-                <a href="{{ url_for(summary_ez_endpoint) }}"
-                   class="btn {% if active_summary == 'ez' and not energy_consumption_gaes_charge_only_page %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
-                    Потребление электрической энергии по энергозонам
-                </a>
-            {% endif %}
-        </div>
-        <a href="{{ url_for(summary_hub_endpoint) }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-md-auto">
-            <i class="bi bi-gear-wide-connected"></i> {% if summary_table_standalone %}Сводная таблица{% else %}Модуль «Спрос»{% endif %}
-        </a>
-    </div>
-
-    <h1 class="text-center mb-4">{{ page_title }}</h1>
-
     {% if summary_route_variant == 'coeff' %}
         {% if active_summary == 'oes' %}
         {% set export_endpoint = 'energy_consumption_bp.demand_summary_oes_export_coeff' %}
@@ -113,8 +61,62 @@
         {% endif %}
     {% endif %}
 
-    {# Липкая панель: кнопки, территориальные фильтры, импорт/экспорт, строка годов — над шапкой таблицы #}
+    {# Липкая панель: переключатели ОЭС/ФО/ЭЗ, фильтры, импорт/экспорт, строка годов — над шапкой таблицы #}
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+    <div class="col-12 mb-2">
+        <div class="d-flex flex-wrap align-items-start gap-2 w-100">
+            <div class="d-flex flex-wrap gap-2 flex-grow-1" style="min-width:0;">
+                {% if summary_route_variant == 'coeff' %}
+                    <a href="{{ url_for('energy_consumption_bp.demand_summary_oes_coeff') }}"
+                       class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
+                        Коэффициенты и совмещенные максимумы по энергосистемам
+                    </a>
+                    {% if active_summary == 'oes' %}
+                    <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
+                        Коэффициенты и совмещенные максимумы по ФО
+                    </span>
+                    <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
+                        Коэффициенты и совмещенные максимумы по энергозонам
+                    </span>
+                    {% else %}
+                    <a href="{{ url_for('energy_consumption_bp.demand_summary_federal_districts_coeff') }}"
+                       class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
+                        Коэффициенты и совмещенные максимумы по ФО
+                    </a>
+                    <a href="{{ url_for('energy_consumption_bp.demand_summary_energy_zones_coeff') }}"
+                       class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
+                        Коэффициенты и совмещенные максимумы по энергозонам
+                    </a>
+                    {% endif %}
+                {% else %}
+                    {% if not summary_table_standalone %}
+                    <a href="{{ url_for('energy_consumption_bp.demand_summary_oes_gaes_charge') }}{{ ec_summary_info_nav_qs }}"
+                       class="btn {% if energy_consumption_gaes_charge_only_page %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                        Заряд ГАЭС
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for(summary_oes_endpoint) }}"
+                       class="btn {% if active_summary == 'oes' and not energy_consumption_gaes_charge_only_page %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                        Потребление электрической энергии по энергосистемам
+                    </a>
+                    <a href="{{ url_for(summary_fo_endpoint) }}"
+                       class="btn {% if active_summary == 'fo' and not energy_consumption_gaes_charge_only_page %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                        Потребление электрической энергии по ФО
+                    </a>
+                    <a href="{{ url_for(summary_ez_endpoint) }}"
+                       class="btn {% if active_summary == 'ez' and not energy_consumption_gaes_charge_only_page %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
+                        Потребление электрической энергии по энергозонам
+                    </a>
+                {% endif %}
+            </div>
+            <a href="{{ url_for(summary_hub_endpoint) }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-md-auto">
+                <i class="bi bi-gear-wide-connected"></i> {% if summary_table_standalone %}Сводная таблица{% else %}Модуль «Спрос»{% endif %}
+            </a>
+        </div>
+    </div>
+
+    <h1 class="text-center mb-2">{{ page_title }}</h1>
+
     <!-- Как на fuel/stations_equipment_groups: строка с кнопками Фильтр/Поиск и Импорт/Экспорт -->
     <div class="col-12 mb-2">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -356,6 +358,7 @@
                 {% endif %}
             </div>
             {% endif %}
+            <div id="pdEcSummaryViewToggles" class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto flex-wrap justify-content-end">
             {% if not energy_consumption_gaes_charge_only_page %}
             {% if summary_route_variant != 'coeff' and active_summary in ('oes', 'fo', 'ez') and not summary_table_hide_toggle %}
             <button type="button"
@@ -367,24 +370,24 @@
             </button>
             {% endif %}
             {% endif %}
-            <div class="d-flex align-items-center gap-3 flex-shrink-0 ms-auto flex-wrap justify-content-end">
+            {% if summary_route_variant != 'coeff' and show_perimeter_variant_column %}
+            <button type="button"
+                    id="pdEcSummaryPerimeterVariantToggle"
+                    class="btn btn-outline-info text-wrap flex-shrink-0"
+                    aria-pressed="false"
+                    title="Показать столбец «Варианты периметра»">
+                Варианты периметра
+            </button>
+            {% endif %}
             {% if summary_route_variant != 'coeff' and active_summary in ('oes', 'fo', 'ez') %}
-            <div class="d-flex align-items-center gap-2 flex-shrink-0">
             {% if not energy_consumption_gaes_charge_only_page %}
             <button type="button"
                     id="pdEcSummaryGaesDetailToggle"
                     class="btn {% if summary_variant_toggle_default_off %}btn-outline-secondary{% else %}btn-primary{% endif %} text-nowrap flex-shrink-0"
                     aria-pressed="{% if summary_variant_toggle_default_off %}false{% else %}true{% endif %}"
-                    title="Добавить строки с вариантом «с зарядом ГАЭС» и заряд ГАЭС; при выключении — строки «без заряда ГАЭС» без приписки">
-                + Заряд ГАЭС
+                    title="Показать строки с/без заряда ГАЭС с приписками; по умолчанию — только «с зарядом ГАЭС» без приписки">
+                без заряда ГАЭС
             </button>
-            <a href="{{ ec_gaes_charge_detail_url }}{{ ec_summary_info_nav_qs }}"
-               id="pdEcSummaryGaesChargeInfoLink"
-               class="btn btn-primary rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0 text-decoration-none"
-               title="Потребление электрической энергии ГАЭС на заряд"
-               aria-label="Страница «Потребление электрической энергии ГАЭС на заряд»">
-                <span class="fst-italic fw-bold lh-1" style="font-size: 1.05rem;">i</span>
-            </a>
             {% endif %}
             {% if not energy_consumption_gaes_charge_only_page %}
             <button type="button"
@@ -395,6 +398,13 @@
                 + НТ
             </button>
             <button type="button"
+                    id="pdEcSummaryHideEmptyToggle"
+                    class="btn btn-outline-primary text-wrap flex-shrink-0"
+                    aria-pressed="false"
+                    title="Показать энергосистемы, у которых все показатели пусты или равны нулю">
+                Пустые строки
+            </button>
+            <button type="button"
                     id="pdEcSummaryIsolatedEnergyUnitsToggle"
                     class="btn btn-outline-secondary text-nowrap flex-shrink-0"
                     aria-pressed="false"
@@ -402,7 +412,6 @@
                 Форма О-1
             </button>
             {% endif %}
-            </div>
             {% endif %}
             {% if not energy_consumption_gaes_charge_only_page %}
             {% if summary_route_variant != 'coeff' %}
@@ -413,15 +422,6 @@
                     title="Показать строки по данным СиПР (значения млн кВт·ч — СиПР; во всплывающей подсказке ячейки — потребление без СиПР)">
                 СиПР
             </button>
-            {% if active_summary in ('oes', 'fo', 'ez') %}
-            <button type="button"
-                    id="pdEcSummaryHideEmptyToggle"
-                    class="btn btn-primary text-wrap flex-shrink-0"
-                    aria-pressed="true"
-                    title="Скрыть строки, у которых все показатели пусты или равны нулю">
-                Пустые строки
-            </button>
-            {% endif %}
             {% if active_summary in ('oes', 'fo', 'ez') %}
             <button type="button"
                     id="pdEcSummaryVerificationToggle"
@@ -442,8 +442,8 @@
                 Показать коэффициенты
             </button>
             {% endif %}
-            <div class="d-flex align-items-center gap-1" style="min-width: 11rem;">
-                <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл:</label>
+            <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
+                <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
                 <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
                     <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
                     <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
@@ -468,18 +468,20 @@
         min-width: 7.75rem;
         box-sizing: border-box;
     }
-    /* Круг; высота как у стандартной .btn / .form-select в Bootstrap: 1.5em + вертик. padding + границы */
-    #pdEcSummaryGaesChargeInfoLink {
-        padding: 0;
-        box-sizing: border-box;
-        width: calc(1.5em + 0.75rem + 2 * var(--bs-border-width));
-        height: calc(1.5em + 0.75rem + 2 * var(--bs-border-width));
-        min-width: calc(1.5em + 0.75rem + 2 * var(--bs-border-width));
-    }
     #pdEcSummaryTerritoryCompactToggle {
         min-width: 11rem;
         max-width: 100%;
         box-sizing: border-box;
+    }
+    #pdEcSummaryPerimeterVariantToggle {
+        min-width: 11rem;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden col.summary-col-perimeter-variant,
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden th.summary-perimeter-variant-col,
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden td.summary-perimeter-variant-cell {
+        display: none !important;
     }
     /* Блок фильтров не тянуть на всю ширину; выпадающие меню не обрезать */
     .power-demand-filters-collapse,
@@ -799,7 +801,7 @@
             </div>
         </div>
         <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll{% if summary_route_variant == 'coeff' %} pd-coeff-summary-scroll-wrap{% endif %}" style="visibility: hidden;">
-        <table id="powerDemandSummaryTable" class="table table-bordered table-striped{% if can_edit_summary_cells %} table-hover fuel-params-edit-table{% endif %} align-middle power-demand-summary-table{% if summary_route_variant == 'coeff' %} pd-coeff-year-seg-table{% if not (coeff_include_long | default(false)) %} pd-coeff-seg-hide-long{% endif %} pd-coeff-hide-k-columns{% elif pd_ec_max_year_segments %} pd-ec-max-year-visibility-table{% endif %}"
+        <table id="powerDemandSummaryTable" class="table table-bordered table-striped{% if can_edit_summary_cells %} table-hover fuel-params-edit-table{% endif %} align-middle power-demand-summary-table{% if summary_route_variant == 'coeff' %} pd-coeff-year-seg-table{% if not (coeff_include_long | default(false)) %} pd-coeff-seg-hide-long{% endif %} pd-coeff-hide-k-columns{% elif pd_ec_max_year_segments %} pd-ec-max-year-visibility-table{% endif %}{% if show_perimeter_variant_column %} pd-summary-perimeter-variant-col-hidden{% endif %}"
                {% if energy_consumption_gaes_charge_only_page %}data-ec-gaes-charge-only="1"{% endif %}
                {% if active_summary in ('oes', 'fo', 'ez') %}data-summary-view="{{ active_summary }}" data-summary-route-variant="{{ summary_route_variant }}" data-summary-log-scope="{{ active_summary }}"{% endif %}
                {% if show_summary_note_col %}data-ec-unify-block-bg="1"{% endif %}
@@ -1076,6 +1078,9 @@
                 {% if summary_route_variant != 'coeff' and active_summary in ('oes', 'fo', 'ez') and row.get('pd_ec_nt_extra_row') %}
                     {% set row_initial_hidden = true %}
                 {% endif %}
+                {% if summary_route_variant != 'coeff' and active_summary in ('oes', 'fo', 'ez') and row.get('pd_ec_summary_table_only_row') and not summary_initial_compact_mode and not summary_table_standalone %}
+                    {% set row_initial_hidden = true %}
+                {% endif %}
                 {% if summary_route_variant != 'coeff' and active_summary in ('oes', 'fo', 'ez') and summary_initial_compact_mode and row.get('pd_ec_territory_detail_row') %}
                     {% set row_initial_hidden = true %}
                 {% endif %}
@@ -1118,6 +1123,7 @@
                     {% if row.get('pd_ec_sipr_integer_display_row') %}data-pd-ec-sipr-integer-display="1"{% endif %}
                     {% if row.get('pd_ec_o1_form_row') %}data-pd-ec-o1-form="1"{% endif %}
                     {% if row.get('pd_ec_hide_when_isolated_eu_on') %}data-pd-ec-hide-when-isolated-eu="1"{% endif %}
+                    {% if row.get('pd_ec_hide_when_summary_table_and_o1') %}data-pd-ec-hide-when-summary-table-and-o1="1"{% endif %}
                     {% if row.get('pd_ec_chukotka_reference_align') %}data-pd-ec-chukotka-reference-align="1"{% endif %}
                     {% if row.get('pd_ec_verification_nt_split_only') %}data-pd-ec-verification-nt-only="1"{% endif %}
                     {% if row.get('pd_ec_verification_omit_sipr_abs') %}data-pd-ec-verification-omit-sipr-abs="1"{% endif %}
@@ -1126,6 +1132,7 @@
                     {% if row.get('pd_ec_territory_detail_row') %}data-pd-ec-territory-detail="1"{% endif %}
                     {% if row.get('pd_ec_territory_detail_relaxed_compact_nt_gaes') %}data-pd-ec-territory-detail-relaxed-nt-gaes="1"{% endif %}
                     {% if row.get('pd_ec_territory_compact_hide_row') and not summary_table_standalone %}data-pd-ec-territory-compact-hide="1"{% endif %}
+                    {% if row.get('pd_ec_summary_table_only_row') %}data-pd-ec-summary-table-only="1"{% endif %}
                     {% if row.get('pd_ec_first_sa_gaes_compact_variant') %}data-pd-ec-first-sa-gaes="{{ row.pd_ec_first_sa_gaes_compact_variant|e }}"{% endif %}
                     {% set pd_ec_need_label_sync = row.get('pd_ec_entity_label_compact') or row.get('pd_ec_entity_label_compact_nt') or row.get('pd_ec_entity_label_compact_nt_gaes') or row.get('pd_ec_ees_verification_nt_collapsed_label') or row.get('pd_ec_sync_verify_label_matrix') %}
                     {% if pd_ec_need_label_sync %}
@@ -1882,6 +1889,18 @@ function finishPowerDemandSummaryInitialRender() {
     powerDemandSummaryLoaderShell.dataset.ready = "1";
     var waitMs = Math.max(0, PD_EC_SUMMARY_LOADER_MIN_MS - (Date.now() - pdEcSummaryLoaderStartedAt));
 
+    function refreshEcSummaryStickyLayout() {
+        if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
+            window.armGsUpdatePdSummaryControlsStickyHeight();
+        }
+        if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+            window.armGsApplyStickyTheadOffsets();
+        }
+        if (typeof window.armGsUpdateHorizontalScrollFlags === "function") {
+            window.armGsUpdateHorizontalScrollFlags();
+        }
+    }
+
     function revealPowerDemandSummaryTable() {
         window.requestAnimationFrame(function () {
             window.requestAnimationFrame(function () {
@@ -1892,6 +1911,8 @@ function finishPowerDemandSummaryInitialRender() {
                     powerDemandSummaryLoadingOverlay.style.display = "none";
                 }
                 powerDemandSummaryLoaderShell.setAttribute("aria-busy", "false");
+                refreshEcSummaryStickyLayout();
+                window.requestAnimationFrame(refreshEcSummaryStickyLayout);
             });
         });
     }
@@ -1923,7 +1944,7 @@ if (summaryTable) {
     }
 
     var pdEcGaesStorageKey =
-        "pdEcSummaryGaesDetail_" + (summaryTable.getAttribute("data-summary-view") || "oes");
+        "pdEcSummaryWithoutGaes_" + (summaryTable.getAttribute("data-summary-view") || "oes");
     var pdEcNtStorageKey =
         "pdEcSummaryNtDetail_" + (summaryTable.getAttribute("data-summary-view") || "oes");
     var pdEcIsolatedEuStorageKey =
@@ -1988,6 +2009,57 @@ if (summaryTable) {
         });
     } else {
         window.__pdEcSummaryTerritoryCompactMode = pdEcTerritoryCompactForced;
+    }
+
+    // Кнопка «Варианты периметра» — столбец «Варианты периметра»
+    var pdEcPerimeterVariantBtn = document.getElementById("pdEcSummaryPerimeterVariantToggle");
+    var pdEcPerimeterVariantStorageKey =
+        "pdEcSummaryPerimeterVariant_" +
+        (summaryTable.getAttribute("data-summary-view") || "oes") +
+        "_" +
+        (summaryTable.getAttribute("data-summary-route-variant") || "max");
+    try {
+        window.__pdEcSummaryPerimeterVariantMode =
+            sessionStorage.getItem(pdEcPerimeterVariantStorageKey) === "1";
+    } catch (ePdEcPvInit) {
+        window.__pdEcSummaryPerimeterVariantMode = false;
+    }
+    function syncPdEcPerimeterVariantToggleUi() {
+        if (!pdEcPerimeterVariantBtn) {
+            return;
+        }
+        var on = window.__pdEcSummaryPerimeterVariantMode === true;
+        pdEcPerimeterVariantBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        pdEcPerimeterVariantBtn.classList.toggle("btn-info", on);
+        pdEcPerimeterVariantBtn.classList.toggle("btn-outline-info", !on);
+    }
+    function applyPdEcPerimeterVariantColVisibility() {
+        if (!summaryTable) {
+            return;
+        }
+        summaryTable.classList.toggle(
+            "pd-summary-perimeter-variant-col-hidden",
+            window.__pdEcSummaryPerimeterVariantMode !== true
+        );
+        if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
+            window.armGsUpdatePdSummaryControlsStickyHeight();
+        }
+    }
+    window.__pdEcSummaryApplyPerimeterVariantColVisibility = applyPdEcPerimeterVariantColVisibility;
+    if (pdEcPerimeterVariantBtn) {
+        syncPdEcPerimeterVariantToggleUi();
+        applyPdEcPerimeterVariantColVisibility();
+        pdEcPerimeterVariantBtn.addEventListener("click", function () {
+            window.__pdEcSummaryPerimeterVariantMode = !window.__pdEcSummaryPerimeterVariantMode;
+            try {
+                sessionStorage.setItem(
+                    pdEcPerimeterVariantStorageKey,
+                    window.__pdEcSummaryPerimeterVariantMode ? "1" : "0"
+                );
+            } catch (ePdEcPvSt) { /* */ }
+            syncPdEcPerimeterVariantToggleUi();
+            applyPdEcPerimeterVariantColVisibility();
+        });
     }
 
     summaryTable.addEventListener("change", function (ev) {
@@ -2090,7 +2162,7 @@ if (summaryTable) {
         if (!hideEmptyBtnPresent) {
             return;
         }
-        var hideOn = window.__pdEcSummaryHideEmptyMode === true;
+        var showEmptyOn = window.__pdEcSummaryShowEmptyMode === true;
         var gaesDetailBtnPresent = document.getElementById("pdEcSummaryGaesDetailToggle");
         var ntDetailBtnPresent = document.getElementById("pdEcSummaryNtDetailToggle");
         var gaesDetailOn =
@@ -2118,6 +2190,9 @@ if (summaryTable) {
             var blockHasGaesExtra = blockRows.some(function (tr) {
                 return tr.getAttribute("data-pd-ec-gaes-extra") === "1";
             });
+            var blockHasGaesWithout = blockRows.some(function (tr) {
+                return tr.getAttribute("data-pd-ec-gaes-without") === "1";
+            });
             var blockIsCzRussiaWithoutNt = blockRows.some(function (tr) {
                 return (
                     tr.classList.contains("summary-kind-centralized_zone") &&
@@ -2126,12 +2201,12 @@ if (summaryTable) {
             });
             blockRows.forEach(function (tr) {
                 var hideBlock =
-                    hideOn &&
+                    !showEmptyOn &&
                     isEmpty &&
                     !skipEmptyHide &&
                     !blockIsCzRussiaWithoutNt &&
                     !(ntDetailOn && blockHasNtExtra) &&
-                    !(gaesDetailOn && blockHasGaesExtra);
+                    !(gaesDetailOn && (blockHasGaesExtra || blockHasGaesWithout));
                 if (hideBlock) {
                     tr.classList.add("summary-row-empty-block-hidden");
                 } else {
@@ -2239,7 +2314,7 @@ if (summaryTable) {
     }
 
     /**
-     * Подписи с «без заряда ГАЭС (…)» и/или « без НТ»: короткий текст при выключенных «Заряд ГАЭС» / «НТ».
+     * Подписи с «без заряда ГАЭС (…)» и/или « без НТ»: короткий текст при выключенных «без заряда ГАЭС» / «НТ».
      */
     function syncPdEcGaesAdjustedEntityLabels() {
         var gaesDetailBtnPresent = document.getElementById("pdEcSummaryGaesDetailToggle");
@@ -2657,6 +2732,15 @@ if (summaryTable) {
                 if (
                     show &&
                     !isVerTr &&
+                    tr.getAttribute("data-pd-ec-hide-when-summary-table-and-o1") === "1" &&
+                    window.__pdEcSummaryTerritoryCompactMode === true &&
+                    isolatedEnergyUnitsOn
+                ) {
+                    show = false;
+                }
+                if (
+                    show &&
+                    !isVerTr &&
                     tr.getAttribute("data-pd-ec-gaes-extra") === "1" &&
                     !gaesDetailOn &&
                     !(
@@ -2708,6 +2792,14 @@ if (summaryTable) {
                     !isVerTr &&
                     tr.getAttribute("data-pd-ec-nt-extra") === "1" &&
                     !ntDetailOn
+                ) {
+                    show = false;
+                }
+                if (
+                    show &&
+                    !isVerTr &&
+                    tr.getAttribute("data-pd-ec-summary-table-only") === "1" &&
+                    window.__pdEcSummaryTerritoryCompactMode !== true
                 ) {
                     show = false;
                 }
@@ -2878,18 +2970,18 @@ if (summaryTable) {
     var summaryView = summaryTable.getAttribute("data-summary-view");
     var routeVariant = summaryTable.getAttribute("data-summary-route-variant") || "max";
     var coeffDefaultHidden = routeVariant === "coeff" ? ["peak_datetime", "avg_temp"] : [];
-    var pdEcHideEmptyStorageKey =
-        "pdEcSummaryHideEmpty_" +
+    var pdEcShowEmptyStorageKey =
+        "pdEcSummaryShowEmpty_" +
         (summaryTable.getAttribute("data-summary-view") || "oes") +
         "_" +
         routeVariant;
     if (document.getElementById("pdEcSummaryHideEmptyToggle")) {
         try {
-            var storedHideEmpty = sessionStorage.getItem(pdEcHideEmptyStorageKey);
-            window.__pdEcSummaryHideEmptyMode =
-                storedHideEmpty === null ? true : storedHideEmpty === "1";
-        } catch (eHideEmptyInit) {
-            window.__pdEcSummaryHideEmptyMode = true;
+            var storedShowEmpty = sessionStorage.getItem(pdEcShowEmptyStorageKey);
+            window.__pdEcSummaryShowEmptyMode =
+                storedShowEmpty === null ? false : storedShowEmpty === "1";
+        } catch (eShowEmptyInit) {
+            window.__pdEcSummaryShowEmptyMode = false;
         }
     }
     if (pdEcGaesChargeOnlyPage) {
@@ -2970,20 +3062,20 @@ if (summaryTable) {
     var pdEcHideEmptyBtn = document.getElementById("pdEcSummaryHideEmptyToggle");
     if (pdEcHideEmptyBtn) {
         function syncPdEcHideEmptyToggleUi() {
-            var on = window.__pdEcSummaryHideEmptyMode === true;
+            var on = window.__pdEcSummaryShowEmptyMode === true;
             pdEcHideEmptyBtn.setAttribute("aria-pressed", on ? "true" : "false");
             pdEcHideEmptyBtn.classList.toggle("btn-primary", on);
             pdEcHideEmptyBtn.classList.toggle("btn-outline-primary", !on);
         }
         syncPdEcHideEmptyToggleUi();
         pdEcHideEmptyBtn.addEventListener("click", function () {
-            window.__pdEcSummaryHideEmptyMode = !window.__pdEcSummaryHideEmptyMode;
+            window.__pdEcSummaryShowEmptyMode = !window.__pdEcSummaryShowEmptyMode;
             try {
                 sessionStorage.setItem(
-                    pdEcHideEmptyStorageKey,
-                    window.__pdEcSummaryHideEmptyMode ? "1" : "0"
+                    pdEcShowEmptyStorageKey,
+                    window.__pdEcSummaryShowEmptyMode ? "1" : "0"
                 );
-            } catch (eHideEmptySt) { /* */ }
+            } catch (eShowEmptySt) { /* */ }
             syncPdEcHideEmptyToggleUi();
             if (typeof window.__pdEcSummaryReapplyRowVisibility === "function") {
                 window.__pdEcSummaryReapplyRowVisibility();
@@ -3749,6 +3841,9 @@ if (summaryTable) {
 {% if pd_ec_max_year_segments %}
 <script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_year_period_mode.js') }}"></script>
 <script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_excel_import.js') }}"></script>
+{% endif %}
+{% if can_edit_summary_cells %}
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}"></script>
 {% endif %}
 
 <script>
@@ -5752,6 +5847,10 @@ document.addEventListener("DOMContentLoaded", function () {
     saveBtn.addEventListener("click", function () {
         runDemandSummarySave();
     });
+
+    if (typeof window.initPowerDemandSummaryRowPaste === "function") {
+        window.initPowerDemandSummaryRowPaste(table);
+    }
 
     table.addEventListener("keydown", function (e) {
         if (e.key !== "Enter" || e.repeat) {

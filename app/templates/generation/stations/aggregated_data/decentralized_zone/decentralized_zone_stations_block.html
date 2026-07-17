@@ -1,9 +1,7 @@
 {# Станции децентрализованной зоны — после итога «Россия, всего» #}
-{% if decentralized_zone_est_id and stations_grouped.get(decentralized_zone_est_id) %}
+{% if decentralized_zone_est_id and (decentralized_zone_rd_groups or stations_grouped.get(decentralized_zone_est_id)) %}
     {% set es_type_id = decentralized_zone_est_id %}
-    {% set es_type_group = stations_grouped[decentralized_zone_est_id] %}
-    {% set dz_ues_group = es_type_group.get(decentralized_zone_synthetic_ues_id, {}) %}
-    {% set dz_res_group = dz_ues_group.get(decentralized_zone_synthetic_res_id, {}) %}
+    {% set dz_res_group = decentralized_zone_rd_groups|default({}) %}
 
     {% if per_page == 'all' or (show_headers and decentralized_zone_est_id in show_headers.get('energy_system_types', [])) %}
         {% include 'generation/stations/aggregated_data/energy_system_types/energy_system_type_header.html' %}

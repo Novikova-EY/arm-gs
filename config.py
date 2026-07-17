@@ -177,11 +177,18 @@ class Config:
     SESSION_TYPE = 'redis'
     SESSION_REDIS = None  # Будет установлен в create_app
     
-    # Настройки автоматических бэкапов
+    # Настройки бэкапов БД.
+    # На сервере: BACKUP_BASE_DIR=/var/backups/generation-app + systemd timer
+    # generation-app-backup.timer (см. docs/deployment/ASTRA_INSTALL.md).
+    # Локально по умолчанию — каталог backups/ в корне проекта.
+    BACKUP_BASE_DIR = os.getenv('BACKUP_BASE_DIR', 'backups')
     ENABLE_SCHEDULED_BACKUPS = os.getenv('ENABLE_SCHEDULED_BACKUPS', 'False').lower() == 'true'
-    AUTO_BACKUP_DIR = os.getenv('AUTO_BACKUP_DIR', 'backups/auto')
+    AUTO_BACKUP_DIR = os.getenv(
+        'AUTO_BACKUP_DIR',
+        os.path.join(BACKUP_BASE_DIR, 'auto'),
+    )
     KEEP_AUTO_BACKUPS = int(os.getenv('KEEP_AUTO_BACKUPS', 7))  # Количество хранимых бэкапов
-    # Расписание бэкапов (по умолчанию: каждый день в 2:00)
+    # Расписание встроенного APScheduler (если ENABLE_SCHEDULED_BACKUPS=True)
     BACKUP_SCHEDULE = {
         'hour': int(os.getenv('BACKUP_SCHEDULE_HOUR', 2)),
         'minute': int(os.getenv('BACKUP_SCHEDULE_MINUTE', 0))

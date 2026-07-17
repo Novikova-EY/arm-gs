@@ -3,11 +3,21 @@
 from functools import lru_cache
 from typing import Union, List
 
+from sqlalchemy import Integer, case, cast
+
 # Модели
 from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
 
 # Сервисы
 from app.common.services.database_version_services import get_current_version
+
+
+def _energy_zone_number_sort():
+    """Числовая сортировка по номеру: 1, 2, …, 10, 11 (не лексикографическая)."""
+    return case(
+        (EnergyZone.number.op("~")("^[0-9]+$"), cast(EnergyZone.number, Integer)),
+        else_=None,
+    )
 
 
 def get_energy_zone_list_full():
@@ -22,7 +32,9 @@ def get_energy_zone_list_full():
         query
         .order_by(
             (EnergyZone.id != 0),
-            EnergyZone.name.asc()
+            _energy_zone_number_sort().asc().nullslast(),
+            EnergyZone.number.asc(),
+            EnergyZone.name.asc(),
         )
         .all()
     )
@@ -40,7 +52,11 @@ def get_energy_zone_list():
     return (
         query
         .filter(EnergyZone.id.isnot(None), EnergyZone.id > 0)
-        .order_by(EnergyZone.name.asc())
+        .order_by(
+            _energy_zone_number_sort().asc().nullslast(),
+            EnergyZone.number.asc(),
+            EnergyZone.name.asc(),
+        )
     )
 
 

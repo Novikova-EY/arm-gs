@@ -2313,9 +2313,23 @@ def export_fuel_economic_region():
 
 
 def _force_tes_station_type_filter(filters):
-    """Ограничивает электростанции только типом 'ТЭС' (по справочнику)."""
+    """Ограничивает электростанции только типом 'ТЭС' (по справочнику).
+
+    Для фильтра «Децентрализованная зона» ограничение снимаем: в ДЭЗ входят
+    ТЭС/ДЭС/ГТЭС изолированных узлов, и их группы оборудования должны быть видны.
+    """
     filters = filters.copy()
     try:
+        from app.generation.services.station_services.station_access_services import (
+            get_decentralized_zone_energy_system_type_id,
+        )
+
+        dz_est_id = get_decentralized_zone_energy_system_type_id()
+        est_ids = filters.get("energy_system_type_filter") or []
+        if dz_est_id is not None and dz_est_id in est_ids:
+            filters.pop("station_type_filter", None)
+            return filters
+
         tes_type = (
             apply_version_filter(StationType.query, StationType)
             .filter(func.lower(StationType.name) == "тэс")

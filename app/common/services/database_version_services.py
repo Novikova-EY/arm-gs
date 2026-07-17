@@ -4375,7 +4375,12 @@ def set_active_version(version_id, user):
         from app.common.services.cache_services import CacheService
         from app.common.services.choices_cache_service import ChoicesCacheService
         from app.common.services.get_services.territories.regional_district_get_services import (
-            get_regional_districts_map, get_rd_to_fd_id_map
+            _get_regional_districts_map,
+            _get_rd_to_fd_id_map,
+            _get_rd_to_res_ids_map,
+            _get_rd_to_ues_ids_map,
+            _get_rd_to_est_ids_map,
+            invalidate_regional_district_lookups_cache,
         )
         from app.common.services.get_services.territories.federal_district_get_services import (
             get_federal_districts_map, get_fd_to_rd_ids_map, get_regional_district_to_fd_id_map
@@ -4405,10 +4410,7 @@ def set_active_version(version_id, user):
         ChoicesCacheService.clear_cache()
         
         # Очищаем кэши территорий
-        if hasattr(get_regional_districts_map, 'cache_clear'):
-            get_regional_districts_map.cache_clear()
-        if hasattr(get_rd_to_fd_id_map, 'cache_clear'):
-            get_rd_to_fd_id_map.cache_clear()
+        invalidate_regional_district_lookups_cache()
         if hasattr(get_federal_districts_map, 'cache_clear'):
             get_federal_districts_map.cache_clear()
         if hasattr(get_fd_to_rd_ids_map, 'cache_clear'):
@@ -4527,8 +4529,9 @@ def save_version_snapshot(version_id, user):
     )
     
     try:
-        # Путь к директории бэкапов
-        backup_dir = "backups/versions"
+        # Путь к директории бэкапов (на сервере — /var/backups/generation-app/versions)
+        backup_base = current_app.config.get('BACKUP_BASE_DIR', 'backups')
+        backup_dir = os.path.join(backup_base, 'versions')
         os.makedirs(backup_dir, exist_ok=True)
         
         # Формирование имени файла
@@ -4857,7 +4860,8 @@ def load_version_snapshot(version_id, user):
         # ВАЖНО: Создаем автоматический бэкап текущего состояния перед восстановлением
         current_app.logger.info("Создание автоматического бэкапа перед восстановлением...")
         try:
-            backup_dir = "backups/auto_before_restore"
+            backup_base = current_app.config.get('BACKUP_BASE_DIR', 'backups')
+            backup_dir = os.path.join(backup_base, 'auto_before_restore')
             os.makedirs(backup_dir, exist_ok=True)
             
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

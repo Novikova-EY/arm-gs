@@ -219,6 +219,7 @@
                         maxH = 160;
                     }
                     host.style.maxHeight = maxH + 'px';
+                    host.style.setProperty('--pd-coeff-host-client-width', Math.max(0, Math.floor(host.clientWidth)) + 'px');
                 });
             }
 
@@ -333,6 +334,8 @@
                 updatePdCoeffTableHostMaxHeight();
                 applyStickyTheadOffsets();
                 updateHorizontalScrollFlags();
+                /* clientWidth host зависит от появления полос → после has-x-scroll */
+                updatePdCoeffTableHostMaxHeight();
             }
 
             window.addEventListener('load', function () {

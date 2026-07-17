@@ -13,13 +13,40 @@ from flask import request
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.aggregation_cache import get_redis_client
 
-PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 17
+PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 22
 _CACHE_TIMEOUT = timedelta(minutes=30)
 _memory_cache: dict[str, tuple[Any, datetime]] = {}
+# Поколение кэша: отсекает «опоздавшие» записи после clear (threaded/gunicorn).
+_cache_generation: int = 0
+_REDIS_GENERATION_KEY = f"pd_summary:cache_gen:v{PD_SUMMARY_PAGE_CACHE_KEY_VERSION}"
 
 
 def _cache_ttl_seconds() -> int:
     return int(_CACHE_TIMEOUT.total_seconds())
+
+
+def _get_cache_generation() -> int:
+    redis_client = get_redis_client()
+    if redis_client:
+        try:
+            raw = redis_client.get(_REDIS_GENERATION_KEY)
+            if raw is not None:
+                return int(raw)
+        except Exception:
+            pass
+    return _cache_generation
+
+
+def _bump_cache_generation() -> int:
+    global _cache_generation
+    redis_client = get_redis_client()
+    if redis_client:
+        try:
+            return int(redis_client.incr(_REDIS_GENERATION_KEY))
+        except Exception:
+            pass
+    _cache_generation += 1
+    return _cache_generation
 
 
 def make_pd_summary_data_cache_key(scope: str, query_string: str) -> str:
@@ -73,11 +100,15 @@ def cached_load_pd_summary_data(
 ) -> dict[str, Any]:
     query_string = request.query_string.decode("utf-8") if request.query_string else ""
     cache_key = make_pd_summary_data_cache_key(scope, query_string)
+    generation = _get_cache_generation()
     cached = get_cached_value(cache_key)
     if cached is not None:
         return cached
     value = loader()
-    set_cached_value(cache_key, value)
+    # Не писать в кэш, если за время loader() был clear_pd_summary_page_cache()
+    # (иначе устаревший ответ перетирает свежие данные после сохранения ячейки).
+    if _get_cache_generation() == generation:
+        set_cached_value(cache_key, value)
     return value
 
 
@@ -85,6 +116,7 @@ def clear_pd_summary_page_cache() -> None:
     """Сбрасывает кэш JSON-данных сводок нагрузок (Redis + in-memory)."""
     global _memory_cache
 
+    _bump_cache_generation()
     redis_client = get_redis_client()
     if redis_client:
         try:

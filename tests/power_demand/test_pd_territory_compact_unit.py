@@ -4,12 +4,70 @@
 from app.power_demand.services import demand_summary_services as service
 
 
-def test_territory_compact_hides_nt_block_and_chukotka_territorial_rows():
+def test_filter_oes_summary_hidden_chukotka_rd_rows():
+    rows = [
+        {
+            "entity_label": "ЭС Чукотского АО",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "parameter_key": "max_power",
+        },
+        {
+            "entity_label": "Чукотский АО (в территориальных границах)",
+            "show_entity_cell": True,
+            "entity_rowspan": 2,
+            "entity_kind": "chukotka_territorial_boundaries",
+            "demand_model_name": "RegionalDistrictDemandParameter",
+            "parameter_key": "max_power",
+        },
+        {
+            "entity_label": "Чукотский АО (в территориальных границах)",
+            "show_entity_cell": False,
+            "parameter_key": "peak_datetime",
+        },
+        {
+            "entity_label": "Чукотский АО",
+            "show_entity_cell": True,
+            "entity_rowspan": 2,
+            "entity_kind": "child",
+            "demand_model_name": "RegionalDistrictDemandParameter",
+            "parameter_key": "max_power",
+        },
+        {
+            "entity_label": "Чукотский АО",
+            "show_entity_cell": False,
+            "parameter_key": "peak_datetime",
+        },
+        {
+            "entity_label": "Чаун-Билибинский",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "demand_model_name": "EnergyUnitDemandParameter",
+            "parameter_key": "max_power",
+        },
+    ]
+
+    filtered = service.filter_oes_summary_hidden_chukotka_rd_rows(rows)
+
+    labels = [r["entity_label"] for r in filtered if r.get("show_entity_cell")]
+    assert labels == [
+        "ЭС Чукотского АО",
+        "Чукотский АО (в территориальных границах)",
+        "Чаун-Билибинский",
+    ]
+    assert not any(
+        r.get("entity_label") == "Чукотский АО"
+        and r.get("entity_kind") != "chukotka_territorial_boundaries"
+        for r in filtered
+    )
+
+
     rows = [
         {
             "entity_label": "Новые территории",
             "show_entity_cell": True,
-            "entity_rowspan": 2,
+            "entity_rowspan": 1,
             "pd_pd_nt_extra_row": True,
             "pd_pd_aggregation_level_row": True,
             "demand_model_name": None,
@@ -44,20 +102,20 @@ def test_territory_compact_hides_nt_block_and_chukotka_territorial_rows():
 
     service.tag_power_demand_summary_rows_for_territory_compact(rows)
 
-    assert rows[0].get("pd_pd_territory_compact_hide_row") is not True
+    assert rows[0]["pd_pd_territory_compact_hide_row"] is True
     assert rows[0].get("pd_pd_territory_detail_row") is not True
-    assert rows[1].get("pd_pd_territory_compact_hide_row") is not True
+    assert rows[1]["pd_pd_territory_compact_hide_row"] is True
     assert rows[1]["pd_pd_territory_detail_row"] is True
     assert rows[2]["pd_pd_territory_compact_hide_row"] is True
     assert rows[3]["pd_pd_territory_compact_hide_row"] is True
-    assert rows[4].get("pd_pd_territory_compact_hide_row") is not True
+    assert rows[4]["pd_pd_territory_compact_hide_row"] is True
     assert rows[4]["pd_pd_territory_detail_row"] is True
 
     exported = service.apply_power_demand_summary_territory_compact_export_ui(
         rows,
         territory_compact_on=True,
     )
-    assert [r["entity_label"] for r in exported] == ["Новые территории"]
+    assert exported == []
 
 
 def test_territory_compact_hides_chi_and_verify_at_territory_detail_levels():
@@ -169,3 +227,124 @@ def test_territory_compact_export_keeps_top_level_rows():
         territory_compact_on=True,
     )
     assert [r["entity_label"] for r in exported] == ["ОЭС Юга"]
+
+
+def test_territory_compact_hides_nt_aggregation_subtree_on_ez_summary():
+    rows = [
+        {
+            "entity_label": "1 — ОЭС Юга",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 0,
+            "demand_model_name": "EnergyZoneDemandParameter",
+        },
+        {
+            "entity_label": "Новые территории",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 1,
+            "pd_pd_aggregation_level_row": True,
+            "demand_model_name": None,
+        },
+        {
+            "entity_label": "Запорожская область",
+            "show_entity_cell": True,
+            "entity_rowspan": 3,
+            "entity_depth": 2,
+            "demand_model_name": "RegionalDistrictDemandParameter",
+        },
+        {
+            "entity_label": "Запорожская область",
+            "show_entity_cell": False,
+            "entity_depth": 2,
+            "parameter_key": "peak_datetime",
+            "demand_model_name": "RegionalDistrictDemandParameter",
+        },
+    ]
+
+    service.tag_power_demand_summary_rows_for_territory_compact(rows)
+
+    assert rows[1]["pd_pd_territory_compact_hide_row"] is True
+    assert rows[2]["pd_pd_territory_compact_hide_row"] is True
+    assert rows[3]["pd_pd_territory_compact_hide_row"] is True
+    assert rows[0].get("pd_pd_territory_compact_hide_row") is not True
+
+    exported = service.apply_power_demand_summary_territory_compact_export_ui(
+        rows,
+        territory_compact_on=True,
+    )
+    assert [r.get("entity_label") for r in exported] == ["1 — ОЭС Юга"]
+
+
+def test_territory_compact_tites_block_shows_res_only_and_renames_header(monkeypatch):
+    tites_ues_id = 77
+    tites_res_id = 701
+
+    monkeypatch.setattr(
+        service,
+        "_tites_union_energy_system_ids",
+        lambda: frozenset({tites_ues_id}),
+    )
+
+    rows = [
+        {
+            "entity_label": "ТИТЭС и децентрализованная зона",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 0,
+            "pd_pd_aggregation_level_row": True,
+            "demand_model_name": None,
+        },
+        {
+            "entity_label": "ЭС ТИТЭС Востока",
+            "show_entity_cell": True,
+            "entity_rowspan": 3,
+            "entity_depth": 1,
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "id_union_energy_system": tites_ues_id,
+            "id_regional_energy_system": tites_res_id,
+            "parameter_key": "max_power",
+        },
+        {
+            "entity_label": "ЭС ТИТЭС Востока",
+            "show_entity_cell": False,
+            "entity_depth": 1,
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "id_union_energy_system": tites_ues_id,
+            "id_regional_energy_system": tites_res_id,
+            "parameter_key": "peak_datetime",
+        },
+        {
+            "entity_label": "Таймырский",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 2,
+            "demand_model_name": "EnergyUnitDemandParameter",
+            "id_union_energy_system": tites_ues_id,
+            "id_regional_energy_system": tites_res_id,
+            "parameter_key": "max_power",
+        },
+        {
+            "entity_label": "ДЗ энергорайон",
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_depth": 1,
+            "demand_model_name": "EnergyUnitDemandParameter",
+            "pd_pd_decentralized_zone_mark": True,
+            "parameter_key": "max_power",
+        },
+    ]
+
+    service.tag_power_demand_summary_rows_for_territory_compact(rows)
+
+    assert rows[0]["pd_pd_entity_label_territory_compact"] == "ТИТЭС"
+    assert rows[1].get("pd_pd_territory_detail_row") is not True
+    assert rows[3]["pd_pd_territory_detail_row"] is True
+    assert rows[4]["pd_pd_territory_compact_hide_row"] is True
+
+    exported = service.apply_power_demand_summary_territory_compact_export_ui(
+        rows,
+        territory_compact_on=True,
+    )
+    labels = [r.get("entity_label") for r in exported if r.get("show_entity_cell")]
+    assert labels == ["ТИТЭС", "ЭС ТИТЭС Востока"]

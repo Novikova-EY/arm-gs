@@ -86,6 +86,64 @@ sudo systemctl status redis-server
 
 ---
 
+## 5. Бэкапы БД на сервере (вне релиза)
+
+Дампы PostgreSQL **не входят в `.deb`**. На сервере они хранятся в `/var/backups/generation-app/` и создаются системным таймером.
+
+### Что устанавливается пакетом
+
+| Компонент | Назначение |
+|-----------|------------|
+| `/opt/generation-app/app/scripts/backup_pg.sh` | `pg_dump` + ротация (`KEEP_AUTO_BACKUPS`) |
+| `generation-app-backup.service` / `.timer` | ежедневно около 02:00 |
+| `/var/backups/generation-app/{auto,versions,auto_before_restore}` | каталоги под пользователя `generation-app` |
+
+В `/etc/generation-app/app.env` (из `app.env.example`):
+
+```bash
+BACKUP_BASE_DIR=/var/backups/generation-app
+AUTO_BACKUP_DIR=/var/backups/generation-app/auto
+KEEP_AUTO_BACKUPS=14
+ENABLE_SCHEDULED_BACKUPS=False
+```
+
+`ENABLE_SCHEDULED_BACKUPS=False` — чтобы не дублировать бэкапы встроенным APScheduler; на сервере достаточно timer.
+
+### Проверка после установки
+
+```bash
+systemctl status generation-app-backup.timer
+systemctl list-timers generation-app-backup.timer
+sudo -u generation-app /opt/generation-app/app/scripts/backup_pg.sh
+ls -lth /var/backups/generation-app/auto/ | head
+```
+
+Ручной запуск через systemd:
+
+```bash
+sudo systemctl start generation-app-backup.service
+journalctl -u generation-app-backup.service -n 50 --no-pager
+```
+
+### Альтернатива: cron
+
+Пример: `/usr/share/generation-app/cron-backup.example`. Скопируйте в `/etc/cron.d/` и отключите timer:
+
+```bash
+sudo systemctl disable --now generation-app-backup.timer
+```
+
+### Восстановление
+
+```bash
+pg_restore -l /var/backups/generation-app/auto/auto_backup_YYYYMMDD_HHMMSS.dump
+# ВНИМАНИЕ: --clean удалит текущие объекты в целевой БД
+pg_restore -h 127.0.0.1 -U postgres -d arm_generation --clean --if-exists \
+  /var/backups/generation-app/auto/auto_backup_YYYYMMDD_HHMMSS.dump
+```
+
+---
+
 ## 2. Сборка `.deb`
 1. Собираем Docker-образ
 

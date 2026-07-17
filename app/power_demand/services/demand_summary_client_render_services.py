@@ -9,7 +9,21 @@ from typing import Any
 
 from flask import jsonify
 
+from app.power_demand.services.formula_text.power_demand_summary_formula_text_services import (
+    apply_row_formula_text_overrides,
+)
+from app.power_demand.services.pd_peak_usage_hours_services import (
+    combined_on_key_from_peak_combined_usage_hours,
+    is_peak_combined_usage_hours_key,
+    peak_combined_usage_hours_keys,
+)
 from app.power_demand.services.pd_summary_data_segments import build_client_segment_config
+from app.power_demand.services.pd_summary_entity_pagination import (
+    PAGINATION_SCOPES,
+    client_entity_pagination_config,
+    filter_segment_rows_to_pagination_page,
+    paginate_summary_rows_for_scope,
+)
 
 PD_READONLY_PARAMETER_KEYS_MAX: frozenset[str] = frozenset(
     {
@@ -23,6 +37,7 @@ PD_READONLY_PARAMETER_KEYS_MAX: frozenset[str] = frozenset(
         "calculated_max_ees_via_es_mw",
         "calculated_max_power_consumption_mw",
         "peak_max_power_usage_hours",
+        *peak_combined_usage_hours_keys(),
     }
 )
 
@@ -199,6 +214,22 @@ def enrich_row_formula_tooltip_gaps(
         row["pd_parameter_formula_tooltip"] = str(
             row.get("pd_fo_cz_calc_max_tooltip") or ""
         )
+    elif dm == "CentralizedZoneDemandParameter":
+        if pk == "calculated_max_power_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "cz_russia_calc_max_mw_without_nt", ""
+            )
+        elif pk == "verify_for_calculated_max_power_mw":
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "cz_russia_verify_calc_max_mw_without_nt", ""
+            )
+    elif is_peak_combined_usage_hours_key(pk):
+        combined_on_key = combined_on_key_from_peak_combined_usage_hours(pk)
+        if combined_on_key:
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                f"pd_peak_{combined_on_key}_usage_hours",
+                "",
+            )
 
 
 def prepare_summary_rows_for_client(
@@ -224,25 +255,61 @@ def build_client_render_config(
     scope: str,
     data_path: str,
 ) -> dict[str, Any]:
-    return {
+    cfg: dict[str, Any] = {
         "scope": scope,
         "data_path": data_path,
         "pd_readonly_parameter_keys": sorted(PD_READONLY_PARAMETER_KEYS_MAX),
         "segments": build_client_segment_config(scope),
     }
+    if scope in PAGINATION_SCOPES:
+        cfg["entity_pagination"] = client_entity_pagination_config(scope)
+    return cfg
 
 
-def build_summary_data_json_response(context: dict[str, Any]) -> Any:
+def build_summary_data_json_response(
+    context: dict[str, Any],
+    *,
+    entity_pagination: tuple[int, int] | None = None,
+    pagination_boundary_rows: list[dict[str, Any]] | None = None,
+) -> Any:
     """Flask Response с данными таблицы для клиентского рендера."""
     formula_texts = context.get("pd_formula_texts") or {}
     years = list(context.get("years") or [])
     year_is_plan = {
         str(y): bool(v) for y, v in (context.get("year_is_plan") or {}).items()
     }
+    summary_rows = context.get("summary_rows")
+    pagination_meta: dict[str, Any] | None = None
+    if entity_pagination is not None and context.get("active_summary") in PAGINATION_SCOPES:
+        page, page_size = entity_pagination
+        scope = str(context.get("active_summary"))
+        if pagination_boundary_rows is not None:
+            _, pagination_meta = paginate_summary_rows_for_scope(
+                pagination_boundary_rows,
+                scope,
+                page=page,
+                page_size=page_size,
+            )
+            summary_rows = filter_segment_rows_to_pagination_page(
+                summary_rows,
+                pagination_boundary_rows,
+                scope,
+                page=page,
+                page_size=page_size,
+            )
+        else:
+            summary_rows, pagination_meta = paginate_summary_rows_for_scope(
+                summary_rows,
+                scope,
+                page=page,
+                page_size=page_size,
+            )
+    if summary_rows:
+        apply_row_formula_text_overrides(summary_rows)
     payload = {
         "ok": True,
         "summary_rows": prepare_summary_rows_for_client(
-            context.get("summary_rows"),
+            summary_rows,
             formula_texts=formula_texts,
             summary_route_variant=str(
                 context.get("summary_route_variant") or "max"
@@ -256,7 +323,8 @@ def build_summary_data_json_response(context: dict[str, Any]) -> Any:
                 "summary_route_variant": context.get("summary_route_variant", "max"),
                 "show_hist_col": context.get("summary_route_variant") != "coeff",
                 "show_perimeter_variant_column": bool(
-                    context.get("can_edit_summary_cells")
+                    context.get("summary_route_variant") != "coeff"
+                    and context.get("active_summary") in ("oes", "fo", "ez")
                 ),
                 "can_edit_summary_cells": bool(
                     context.get("can_edit_summary_cells")
@@ -283,4 +351,6 @@ def build_summary_data_json_response(context: dict[str, Any]) -> Any:
     ez_filters = context.get("pd_ez_filters_cascade")
     if ez_filters is not None:
         payload["pd_ez_filters_cascade"] = _json_safe(ez_filters)
+    if pagination_meta is not None:
+        payload["entity_pagination"] = _json_safe(pagination_meta)
     return jsonify(payload)

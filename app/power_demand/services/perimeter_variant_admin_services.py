@@ -2,7 +2,7 @@
 """CRUD справочника вариантов периметра и привязок к сущностям."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Type
 
 from sqlalchemy.exc import IntegrityError
 
@@ -23,6 +23,128 @@ def _username() -> str:
 def _invalidate_perimeter_variant_dependent_caches() -> None:
     invalidate_perimeter_catalog_cache()
     clear_pd_summary_page_cache()
+
+
+def _parameter_models_with_perimeter_variant_code() -> tuple[Type[Any], ...]:
+    """Модели PD/EC с колонкой perimeter_variant_code (мягкая ссылка на код варианта)."""
+    from app.energy_consumption.models.energy_systems.centralized_zone_energy_consumption_parameter_model import (
+        CentralizedZoneEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.ees_energy_consumption_parameter_model import (
+        EesEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.ees_russia_energy_consumption_parameter_model import (
+        EesRussiaEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.energy_area_energy_consumption_parameter_model import (
+        EnergyAreaEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.energy_system_type_energy_consumption_parameter_model import (
+        EnergySystemTypeEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
+        EnergyUnitEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.energy_zone_energy_consumption_parameter_model import (
+        EnergyZoneEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.regional_energy_system_energy_consumption_parameter_model import (
+        RegionalEnergySystemEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.synchronous_area_energy_consumption_parameter_model import (
+        SynchronousAreaEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.energy_systems.union_energy_system_energy_consumption_parameter_model import (
+        UnionEnergySystemEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.territories.federal_district_energy_consumption_parameter_model import (
+        FederalDistrictEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.territories.regional_district_energy_consumption_parameter_model import (
+        RegionalDistrictEnergyConsumptionParameter,
+    )
+    from app.energy_consumption.models.territories.russia_federation_energy_consumption_parameter_model import (
+        RussiaFederationEnergyConsumptionParameter,
+    )
+    from app.power_demand.models.energy_systems.centralized_zone_demand_parameter_model import (
+        CentralizedZoneDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.ees_demand_parameter_model import (
+        EesDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.ees_russia_demand_parameter_model import (
+        EesRussiaDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model import (
+        EnergySystemTypeDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.energy_unit_demand_parameter_model import (
+        EnergyUnitDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.energy_zone_demand_parameter_model import (
+        EnergyZoneDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.regional_energy_system_demand_parameter_model import (
+        RegionalEnergySystemDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.synchronous_area_demand_parameter_model import (
+        SynchronousAreaDemandParameter,
+    )
+    from app.power_demand.models.energy_systems.union_energy_system_demand_parameter_model import (
+        UnionEnergySystemDemandParameter,
+    )
+    from app.power_demand.models.territories.federal_district_demand_parameter_model import (
+        FederalDistrictDemandParameter,
+    )
+    from app.power_demand.models.territories.regional_district_demand_parameter_model import (
+        RegionalDistrictDemandParameter,
+    )
+    from app.power_demand.models.territories.russia_federation_demand_parameter_model import (
+        RussiaFederationDemandParameter,
+    )
+
+    return (
+        CentralizedZoneDemandParameter,
+        EesDemandParameter,
+        EesRussiaDemandParameter,
+        EnergySystemTypeDemandParameter,
+        EnergyUnitDemandParameter,
+        EnergyZoneDemandParameter,
+        RegionalEnergySystemDemandParameter,
+        SynchronousAreaDemandParameter,
+        UnionEnergySystemDemandParameter,
+        FederalDistrictDemandParameter,
+        RegionalDistrictDemandParameter,
+        RussiaFederationDemandParameter,
+        CentralizedZoneEnergyConsumptionParameter,
+        EesEnergyConsumptionParameter,
+        EesRussiaEnergyConsumptionParameter,
+        EnergyAreaEnergyConsumptionParameter,
+        EnergySystemTypeEnergyConsumptionParameter,
+        EnergyUnitEnergyConsumptionParameter,
+        EnergyZoneEnergyConsumptionParameter,
+        RegionalEnergySystemEnergyConsumptionParameter,
+        SynchronousAreaEnergyConsumptionParameter,
+        UnionEnergySystemEnergyConsumptionParameter,
+        FederalDistrictEnergyConsumptionParameter,
+        RegionalDistrictEnergyConsumptionParameter,
+        RussiaFederationEnergyConsumptionParameter,
+    )
+
+
+def _purge_dependent_parameter_rows_for_variant_codes(codes: set[str]) -> int:
+    """Удаляет строки параметров PD/EC с указанными кодами вариантов периметра."""
+    if not codes:
+        return 0
+    removed = 0
+    code_list = list(codes)
+    for model in _parameter_models_with_perimeter_variant_code():
+        removed += (
+            model.query.filter(model.perimeter_variant_code.in_(code_list)).delete(
+                synchronize_session=False
+            )
+        )
+    return removed
 
 
 def list_variants_for_admin() -> list[PerimeterVariant]:
@@ -130,14 +252,19 @@ def save_variants_from_form(form_data) -> tuple[int, int]:
     deletes = {int(x) for x in form_data.getlist("variant_delete[]") if str(x).strip().isdigit()}
 
     deleted = 0
+    codes_to_purge: set[str] = set()
     for did in deletes:
         row = PerimeterVariant.query.get(did)
         if row is None:
             continue
+        codes_to_purge.add(row.code)
         duplicate_rows = PerimeterVariant.query.filter(PerimeterVariant.code == row.code).all()
         for duplicate in duplicate_rows:
             db.session.delete(duplicate)
             deleted += 1
+
+    if codes_to_purge:
+        _purge_dependent_parameter_rows_for_variant_codes(codes_to_purge)
 
     saved = 0
     n = max(len(codes), len(labels))

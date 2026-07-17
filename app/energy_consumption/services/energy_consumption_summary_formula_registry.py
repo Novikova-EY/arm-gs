@@ -651,7 +651,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
     ),
     _def(
         "summary_table_cz_nt_reference",
-        pages=frozenset({PAGE_SUMMARY_TABLE}),
+        pages=frozenset({PAGE_SUMMARY_TABLE, PAGE_OES, PAGE_FO, PAGE_EZ}),
         aggregation_level="Централизованные зоны",
         cell_name="СПРАВОЧНО. Новые территории",
         default_text=(
@@ -671,7 +671,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
     ),
     _def(
         "chersky_reference_transfer",
-        pages=frozenset({PAGE_OES, PAGE_SUMMARY_TABLE}),
+        pages=frozenset({PAGE_OES, PAGE_FO, PAGE_EZ, PAGE_SUMMARY_TABLE}),
         aggregation_level="Переток",
         cell_name="СПРАВОЧНО. Переток в пос. Черский",
         default_text=(
@@ -681,7 +681,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
     ),
     _def(
         "chaun_bilibino_without_chersky",
-        pages=frozenset({PAGE_OES, PAGE_SUMMARY_TABLE}),
+        pages=frozenset({PAGE_OES, PAGE_FO, PAGE_EZ, PAGE_SUMMARY_TABLE}),
         aggregation_level="Переток",
         cell_name="СПРАВОЧНО. Чаун-Билибинский энергорайон",
         default_text=(

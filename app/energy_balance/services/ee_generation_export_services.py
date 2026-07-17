@@ -3,18 +3,20 @@
 
 from __future__ import annotations
 
+import math
+from decimal import Decimal
 from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
 
+from app.common.services.help_services import format_decimal_for_display
 from app.energy_balance.services.station_ee_generation_page_services import (
-    format_generation_cell,
     get_station_ee_generation_page_data,
     is_verification_nonzero,
 )
-from openpyxl.utils import get_column_letter
 
 from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
     FILL_EST,
@@ -39,33 +41,129 @@ STATIC_COLUMNS = [
     "Топливо (по СО ЕЭС)",
 ]
 
+_PERIOD_COL_START = len(STATIC_COLUMNS) + 1
 
-def _format_period_value(value, rounding_digits: int, *, verification: bool = False) -> str:
-    if verification:
-        return format_generation_cell(value, rounding_digits, show_zero=True)
-    return format_generation_cell(value, rounding_digits)
+
+def _excel_number_format(rounding_digits: int) -> str:
+    """Формат Excel: пробел — тысячи, запятая — дробная часть (как на экране)."""
+    if rounding_digits == -1:
+        return "# ##0"
+    if rounding_digits >= 1:
+        return "# ##0," + ("0" * rounding_digits)
+    return "# ##0,##########"
+
+
+def _parse_period_numeric(value) -> float | None:
+    """Приводит сырое или экранное значение выработки к float."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        x = float(value)
+        return x if math.isfinite(x) else None
+    if isinstance(value, Decimal):
+        x = float(value)
+        return x if math.isfinite(x) else None
+
+    s = str(value).strip()
+    if s in ("", "—", "-"):
+        return None
+    s = s.replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
+    negative = s.startswith("-")
+    if negative:
+        s = s[1:].strip()
+    s = s.replace("\u00a0", "").replace(" ", "").replace(",", ".")
+    try:
+        x = float(s)
+    except ValueError:
+        return None
+    if not math.isfinite(x):
+        return None
+    return -x if negative else x
+
+
+def _excel_period_cell_value(
+    value,
+    *,
+    verification: bool = False,
+) -> tuple[Any, bool]:
+    """Возвращает (значение ячейки, нужен ли числовой формат)."""
+    parsed = _parse_period_numeric(value)
+    if parsed is None:
+        return "—", False
+    if parsed == 0:
+        if verification:
+            return 0.0, True
+        return "—", False
+    return parsed, True
+
+
+def _write_period_cell(
+    ws,
+    row_idx: int,
+    col_idx: int,
+    value,
+    rounding_digits: int,
+    *,
+    verification: bool = False,
+    bold: bool = False,
+    fill=None,
+    red: bool = False,
+) -> None:
+    cell_value, is_numeric = _excel_period_cell_value(value, verification=verification)
+    cell = ws.cell(row=row_idx, column=col_idx, value=cell_value)
+    cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    if bold:
+        cell.font = Font(bold=True)
+    if fill is not None:
+        cell.fill = fill
+    if red:
+        cell.font = Font(bold=bold, color="FF0000")
+    if is_numeric:
+        cell.number_format = _excel_number_format(rounding_digits)
 
 
 def _write_data_row(
     ws,
     row_idx: int,
-    values: list,
+    static_values: list,
+    period_values: list | None = None,
     *,
     bold: bool = False,
     fill=None,
     red_period_cols: set[int] | None = None,
+    rounding_digits: int = 1,
+    verification: bool = False,
 ) -> None:
-    for col_idx, value in enumerate(values, start=1):
+    col_idx = 1
+    for value in static_values:
         cell = ws.cell(row=row_idx, column=col_idx, value=value)
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        if col_idx == 2:
-            cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        cell.alignment = Alignment(
+            horizontal="left" if col_idx == 2 else "center",
+            vertical="center",
+            wrap_text=True,
+        )
         if bold:
             cell.font = Font(bold=True)
         if fill is not None:
             cell.fill = fill
-        if red_period_cols and col_idx in red_period_cols:
-            cell.font = Font(bold=bold, color="FF0000")
+        col_idx += 1
+
+    if period_values is not None:
+        for offset, value in enumerate(period_values):
+            period_col = _PERIOD_COL_START + offset
+            _write_period_cell(
+                ws,
+                row_idx,
+                period_col,
+                value,
+                rounding_digits,
+                verification=verification,
+                bold=bold,
+                fill=fill,
+                red=period_col in (red_period_cols or set()),
+            )
 
 
 def _write_total_row(
@@ -78,12 +176,17 @@ def _write_total_row(
     *,
     fill=None,
 ) -> int:
-    values = ["", label, "", "", "", "", "", ""]
-    values.extend(
-        _format_period_value(period_totals.get(period_key), rounding_digits)
-        for period_key, _label in period_columns
+    static_values = ["", label, "", "", "", "", "", ""]
+    period_values = [period_totals.get(period_key) for period_key, _label in period_columns]
+    _write_data_row(
+        ws,
+        row_idx,
+        static_values,
+        period_values,
+        bold=True,
+        fill=fill,
+        rounding_digits=rounding_digits,
     )
-    _write_data_row(ws, row_idx, values, bold=True, fill=fill)
     return row_idx + 1
 
 
@@ -95,14 +198,25 @@ def _write_verification_row(
     period_totals: dict,
     rounding_digits: int,
 ) -> int:
-    values = ["", label, "", "", "", "", "", ""]
+    static_values = ["", label, "", "", "", "", "", ""]
+    period_values = []
     red_cols: set[int] = set()
-    for idx, (period_key, _label) in enumerate(period_columns, start=8):
+    for idx, (period_key, _label) in enumerate(period_columns, start=_PERIOD_COL_START):
         val = period_totals.get(period_key)
-        values.append(_format_period_value(val, rounding_digits, verification=True))
+        period_values.append(val)
         if is_verification_nonzero(val):
             red_cols.add(idx)
-    _write_data_row(ws, row_idx, values, bold=True, fill=FILL_VERIFY, red_period_cols=red_cols)
+    _write_data_row(
+        ws,
+        row_idx,
+        static_values,
+        period_values,
+        bold=True,
+        fill=FILL_VERIFY,
+        red_period_cols=red_cols,
+        rounding_digits=rounding_digits,
+        verification=True,
+    )
     return row_idx + 1
 
 
@@ -117,7 +231,7 @@ def _write_sign_group_rows(
 
     for station_row in stations:
         station_periods = station_row.get("periods") or {}
-        values = [
+        static_values = [
             station_row.get("kto_display") or "—",
             station_row.get("station_name") or "—",
             station_row.get("station_type_name") or "—",
@@ -127,11 +241,16 @@ def _write_sign_group_rows(
             station_row.get("primary_fuel") or "—",
             station_row.get("fuel_so") or "—",
         ]
-        values.extend(
-            _format_period_value(station_periods.get(period_key), rounding_digits)
-            for period_key, _label in period_columns
+        period_values = [
+            station_periods.get(period_key) for period_key, _label in period_columns
+        ]
+        _write_data_row(
+            ws,
+            row_idx,
+            static_values,
+            period_values,
+            rounding_digits=rounding_digits,
         )
-        _write_data_row(ws, row_idx, values)
         row_idx += 1
     return row_idx
 
@@ -304,10 +423,19 @@ def export_ee_generation_to_excel(
         )
 
     max_lengths = [len(c) for c in columns]
-    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, values_only=True):
-        for i, val in enumerate(row):
-            if val is not None and i < len(max_lengths):
-                max_lengths[i] = max(max_lengths[i], len(str(val)))
+    period_col_offset = len(STATIC_COLUMNS)
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
+        for i, cell in enumerate(row):
+            if i >= len(max_lengths):
+                continue
+            val = cell.value
+            if val is None:
+                continue
+            if i >= period_col_offset and isinstance(val, (int, float)):
+                display = format_decimal_for_display(val, digits=rounding_digits)
+            else:
+                display = str(val)
+            max_lengths[i] = max(max_lengths[i], len(display))
     for col_idx, width in enumerate(max_lengths, start=1):
         ws.column_dimensions[get_column_letter(col_idx)].width = max(10, min(48, width + 2))
 

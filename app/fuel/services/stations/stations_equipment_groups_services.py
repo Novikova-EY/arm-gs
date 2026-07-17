@@ -503,9 +503,12 @@ def _union_energy_system_and_est_filter_clause(eg_model, filters, version_id):
     Раньше использовался только INNER JOIN: oes → UnionEnergySystemExternalMapping.
     У части групп oes пустой, но заполнен regional_energy_system_id — тогда цепочка
     РЭС → ОЭС → тип ЕЭС из справочника должна проходить так же, как у станций.
+
+    «Децентрализованная зона» в справочнике — синтетическая ветка (как в station_list):
+    станции с РЭС «не указано», а не UES.id_energy_system_type == DZ.
     """
     ues_ids = filters.get("union_energy_system_filter") or []
-    est_ids = filters.get("energy_system_type_filter") or []
+    est_ids = list(filters.get("energy_system_type_filter") or [])
     if not ues_ids and not est_ids:
         return None
 
@@ -518,17 +521,19 @@ def _union_energy_system_and_est_filter_clause(eg_model, filters, version_id):
     from app.refdata.models.energy_systems.regional_energy_system_model import (
         RegionalEnergySystem,
     )
+    from app.generation.models.station.station_model import Station
+    from app.generation.services.station_services.station_access_services import (
+        get_decentralized_zone_energy_system_type_id,
+        get_decentralized_zone_res_ids,
+    )
 
     UESM = UnionEnergySystemExternalMapping
     UES = UnionEnergySystem
     RES = RegionalEnergySystem
 
-    ues_conds = []
-    if ues_ids:
-        ues_conds.append(UES.id.in_(ues_ids))
-    if est_ids:
-        ues_conds.append(UES.id_energy_system_type.in_(est_ids))
-    ues_hierarchy_match = and_(*ues_conds)
+    dz_est_id = get_decentralized_zone_energy_system_type_id(version_id)
+    include_dz = dz_est_id is not None and dz_est_id in est_ids
+    regular_est_ids = [eid for eid in est_ids if eid != dz_est_id]
 
     if version_id is None:
         ues_ver = UES.database_version_id.is_(None)
@@ -537,30 +542,66 @@ def _union_energy_system_and_est_filter_clause(eg_model, filters, version_id):
         ues_ver = UES.database_version_id == version_id
         res_ver = or_(RES.database_version_id == version_id, RES.database_version_id.is_(None))
 
-    oes_path = exists(
-        select(1)
-        .select_from(UESM)
-        .join(UES, UESM.union_energy_system_ref_uuid == UES.ref_uuid)
-        .where(
-            cast(eg_model.oes, String) == UESM.external_id,
-            ues_hierarchy_match,
-            ues_ver,
-        )
-    )
+    paths = []
 
-    res_path = exists(
-        select(1)
-        .select_from(RES)
-        .join(UES, RES.id_union_energy_system == UES.id)
-        .where(
-            eg_model.regional_energy_system_id == RES.id,
-            ues_hierarchy_match,
-            ues_ver,
-            res_ver,
-        )
-    )
+    if ues_ids or regular_est_ids:
+        ues_conds = []
+        if ues_ids:
+            ues_conds.append(UES.id.in_(ues_ids))
+        if regular_est_ids:
+            ues_conds.append(UES.id_energy_system_type.in_(regular_est_ids))
+        ues_hierarchy_match = and_(*ues_conds)
 
-    return or_(oes_path, res_path)
+        paths.append(
+            exists(
+                select(1)
+                .select_from(UESM)
+                .join(UES, UESM.union_energy_system_ref_uuid == UES.ref_uuid)
+                .where(
+                    cast(eg_model.oes, String) == UESM.external_id,
+                    ues_hierarchy_match,
+                    ues_ver,
+                )
+            )
+        )
+        paths.append(
+            exists(
+                select(1)
+                .select_from(RES)
+                .join(UES, RES.id_union_energy_system == UES.id)
+                .where(
+                    eg_model.regional_energy_system_id == RES.id,
+                    ues_hierarchy_match,
+                    ues_ver,
+                    res_ver,
+                )
+            )
+        )
+
+    if include_dz:
+        dz_res_ids = list(get_decentralized_zone_res_ids(version_id))
+        if dz_res_ids:
+            paths.append(eg_model.regional_energy_system_id.in_(dz_res_ids))
+            paths.append(
+                exists(
+                    select(1)
+                    .select_from(EquipmentGroupSet)
+                    .join(
+                        EquipmentGroupSetStation,
+                        EquipmentGroupSet.equipment_group_set_station_id
+                        == EquipmentGroupSetStation.id,
+                    )
+                    .join(Station, Station.id == EquipmentGroupSetStation.station_id)
+                    .where(
+                        EquipmentGroupSet.equipment_group_id == eg_model.id,
+                        Station.id_regional_energy_system.in_(dz_res_ids),
+                    )
+                )
+            )
+
+    if not paths:
+        return None
+    return or_(*paths)
 
 
 def get_filtered_standalone_equipment_group_ids(filters, version_id=None, strict_version=False):
@@ -2035,7 +2076,30 @@ def _hierarchy_key_from_station(station, equipment_group=None) -> tuple | None:
     if not station:
         return None
 
+    from app.generation.services.station_services.station_access_services import (
+        DECENTRALIZED_ZONE_SYNTHETIC_RES_ID,
+        DECENTRALIZED_ZONE_SYNTHETIC_UES_ID,
+        get_decentralized_zone_energy_system_type_id,
+        is_decentralized_zone_station,
+    )
+
     rd = getattr(station, "regional_district", None)
+    rd_id = rd.id if rd else -1
+
+    # Как в station_list: ДЭЗ — синтетическая ветка EST→UES→РЭС, не цепочка справочника.
+    if is_decentralized_zone_station(station):
+        dz_est_id = get_decentralized_zone_energy_system_type_id(
+            getattr(station, "database_version_id", None)
+        )
+        if dz_est_id is not None:
+            return (
+                dz_est_id,
+                DECENTRALIZED_ZONE_SYNTHETIC_UES_ID,
+                DECENTRALIZED_ZONE_SYNTHETIC_RES_ID,
+                rd_id,
+                rd_id,
+            )
+
     res = _resolve_regional_energy_system_for_hierarchy(station, equipment_group)
     ues = getattr(res, "union_energy_system", None) if res else None
     est = getattr(ues, "energy_system_type", None) if ues else None
@@ -2043,7 +2107,6 @@ def _hierarchy_key_from_station(station, equipment_group=None) -> tuple | None:
     est_id = est.id if est else -1
     ues_id = ues.id if ues else -1
     res_id = res.id if res else -1
-    rd_id = rd.id if rd else -1
     eu_id = rd_id
     return (est_id, ues_id, res_id, rd_id, eu_id)
 
@@ -2060,6 +2123,11 @@ def _station_matches_selected_territory_filters(station, filters=None, equipment
     if not station:
         return False
 
+    from app.generation.services.station_services.station_access_services import (
+        get_decentralized_zone_energy_system_type_id,
+        is_decentralized_zone_station,
+    )
+
     _filters = filters or {}
     rd_ids = _filters.get("regional_district_filter") or []
     fd_ids = _filters.get("federal_district_filter") or []
@@ -2075,6 +2143,23 @@ def _station_matches_selected_territory_filters(station, filters=None, equipment
     fd_id = getattr(rd, "id_federal_district", None) if rd else None
     if fd_ids and fd_id not in fd_ids:
         return False
+
+    is_dz = is_decentralized_zone_station(station)
+    if is_dz:
+        # ДЭЗ не проходит через обычную цепочку РЭС→ОЭС→тип ЕЭС.
+        if ues_ids:
+            return False
+        if res_ids:
+            res_id = getattr(station, "id_regional_energy_system", None)
+            if res_id not in res_ids:
+                return False
+        if est_ids:
+            dz_est_id = get_decentralized_zone_energy_system_type_id(
+                getattr(station, "database_version_id", None)
+            )
+            if dz_est_id is None or dz_est_id not in est_ids:
+                return False
+        return True
 
     res = _resolve_regional_energy_system_for_hierarchy(station, equipment_group)
     res_id = getattr(res, "id", None) if res else None

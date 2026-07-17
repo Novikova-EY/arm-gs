@@ -7,9 +7,17 @@ from typing import Any
 
 from flask import request
 
+from app.power_demand.services.pd_peak_usage_hours_services import (
+    ENERGY_CONSUMPTION_MLN_KVT_CH_KEY,
+    PEAK_MAX_POWER_USAGE_HOURS_KEY,
+    is_peak_combined_usage_hours_key,
+    peak_combined_usage_hours_keys,
+)
+
 PD_SUMMARY_SEGMENT_CORE = "core"
 PD_SUMMARY_SEGMENT_CALC_MAX = "calc_max"
 PD_SUMMARY_SEGMENT_CHI = "chi"
+PD_SUMMARY_SEGMENT_EE = "ee"
 PD_SUMMARY_SEGMENT_VERIFY = "verify"
 PD_SUMMARY_SEGMENT_NT_EXTRA = "nt_extra"
 
@@ -18,6 +26,7 @@ ALL_PD_SUMMARY_DATA_SEGMENTS: frozenset[str] = frozenset(
         PD_SUMMARY_SEGMENT_CORE,
         PD_SUMMARY_SEGMENT_CALC_MAX,
         PD_SUMMARY_SEGMENT_CHI,
+        PD_SUMMARY_SEGMENT_EE,
         PD_SUMMARY_SEGMENT_VERIFY,
         PD_SUMMARY_SEGMENT_NT_EXTRA,
     }
@@ -62,13 +71,15 @@ _SCOPE_CORE_PARAMETER_KEYS: dict[str, frozenset[str]] = {
     "ez": _EZ_CORE_PARAMETER_KEYS,
 }
 
-_CHI_PARAMETER_KEY = "peak_max_power_usage_hours"
+_CHI_PARAMETER_KEY = PEAK_MAX_POWER_USAGE_HOURS_KEY
+_COMBINED_CHI_PARAMETER_KEYS = peak_combined_usage_hours_keys()
 
 _SCOPE_OPTIONAL_SEGMENTS: dict[str, frozenset[str]] = {
     "oes": frozenset(
         {
             PD_SUMMARY_SEGMENT_CALC_MAX,
             PD_SUMMARY_SEGMENT_CHI,
+            PD_SUMMARY_SEGMENT_EE,
             PD_SUMMARY_SEGMENT_VERIFY,
             PD_SUMMARY_SEGMENT_NT_EXTRA,
         }
@@ -77,6 +88,7 @@ _SCOPE_OPTIONAL_SEGMENTS: dict[str, frozenset[str]] = {
         {
             PD_SUMMARY_SEGMENT_CALC_MAX,
             PD_SUMMARY_SEGMENT_CHI,
+            PD_SUMMARY_SEGMENT_EE,
             PD_SUMMARY_SEGMENT_VERIFY,
             PD_SUMMARY_SEGMENT_NT_EXTRA,
         }
@@ -85,6 +97,7 @@ _SCOPE_OPTIONAL_SEGMENTS: dict[str, frozenset[str]] = {
         {
             PD_SUMMARY_SEGMENT_CALC_MAX,
             PD_SUMMARY_SEGMENT_CHI,
+            PD_SUMMARY_SEGMENT_EE,
             PD_SUMMARY_SEGMENT_VERIFY,
             PD_SUMMARY_SEGMENT_NT_EXTRA,
         }
@@ -113,7 +126,9 @@ def segment_for_parameter_key(parameter_key: str, *, scope: str) -> str | None:
     pk = str(parameter_key or "").strip()
     if not pk:
         return None
-    if pk == _CHI_PARAMETER_KEY:
+    if pk == ENERGY_CONSUMPTION_MLN_KVT_CH_KEY:
+        return PD_SUMMARY_SEGMENT_EE
+    if pk == _CHI_PARAMETER_KEY or is_peak_combined_usage_hours_key(pk):
         return PD_SUMMARY_SEGMENT_CHI
     if pk.startswith("verify_for_"):
         return PD_SUMMARY_SEGMENT_VERIFY
@@ -162,6 +177,8 @@ def _row_in_data_segments(
 ) -> bool:
     if row.get("pd_pd_chi_row"):
         return PD_SUMMARY_SEGMENT_CHI in segments
+    if row.get("pd_pd_ee_row") or str(row.get("parameter_key") or "") == ENERGY_CONSUMPTION_MLN_KVT_CH_KEY:
+        return PD_SUMMARY_SEGMENT_EE in segments
     # Заголовок «Новые территории» помечен pd_pd_nt_extra_row, но всегда в core (позиция в дереве ОЭС Юга).
     if row.get("pd_pd_aggregation_level_row"):
         return PD_SUMMARY_SEGMENT_CORE in segments
@@ -242,10 +259,13 @@ def build_client_segment_config(scope: str) -> dict[str, Any]:
         "core_parameter_keys": sorted(core_parameter_keys_for_scope(scope)),
         "calc_max_parameter_keys": calc_keys,
         "chi_parameter_key": _CHI_PARAMETER_KEY,
+        "ee_parameter_key": ENERGY_CONSUMPTION_MLN_KVT_CH_KEY,
         "parameter_key_segments": {
             pk: PD_SUMMARY_SEGMENT_CORE
             for pk in core_parameter_keys_for_scope(scope)
         }
         | {pk: PD_SUMMARY_SEGMENT_CALC_MAX for pk in calc_keys}
-        | {_CHI_PARAMETER_KEY: PD_SUMMARY_SEGMENT_CHI},
+        | {_CHI_PARAMETER_KEY: PD_SUMMARY_SEGMENT_CHI}
+        | {pk: PD_SUMMARY_SEGMENT_CHI for pk in sorted(_COMBINED_CHI_PARAMETER_KEYS)}
+        | {ENERGY_CONSUMPTION_MLN_KVT_CH_KEY: PD_SUMMARY_SEGMENT_EE},
     }

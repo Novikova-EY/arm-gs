@@ -45,6 +45,30 @@ from app.logs.services.logging_service import log_to_db
 from app.logs.services.field_names_ru import format_field_change, get_field_name_ru
 
 
+def _sync_energy_zone_aggregates_for_ids(
+    energy_zone_ids,
+    *,
+    database_version_id=None,
+):
+    """Пересчёт агрегатов потребления ЭЗ после смены привязки субъектов."""
+    ids = {int(ez_id) for ez_id in energy_zone_ids if ez_id is not None}
+    if not ids:
+        return
+
+    from app.energy_consumption.services.energy_consumption_parameter_services import (
+        sync_energy_zone_consumption_aggregates,
+    )
+
+    for ez_id in sorted(ids):
+        ez = db.session.get(EnergyZone, ez_id)
+        if ez is not None:
+            db.session.expire(ez, ["regional_districts"])
+        sync_energy_zone_consumption_aggregates(
+            database_version_id=database_version_id,
+            id_energy_zone=ez_id,
+        )
+
+
 def regional_district_query(
     regional_district_filter=None,
     federal_district_filter=None,
@@ -201,6 +225,7 @@ def update_regional_district_service(data, user):
         raise ValueError(f"Данные должны быть предоставлены в виде списка словарей.")
 
     updated_ids = []
+    affected_energy_zone_ids = set()
     
     log_to_db(
         user, 
@@ -325,6 +350,10 @@ def update_regional_district_service(data, user):
                     old_name = prev_obj.name if prev_obj else "не указано"
                     new_name = new_obj.name if new_obj else "не указано"
                     changes.append(f"Энергозона: {old_name} → {new_name}")
+                    if obj.id_energy_zone is not None:
+                        affected_energy_zone_ids.add(int(obj.id_energy_zone))
+                    if new_val is not None:
+                        affected_energy_zone_ids.add(int(new_val))
                     obj.id_energy_zone = new_val
 
             # Проверка наличия синхронной зоны
@@ -352,6 +381,8 @@ def update_regional_district_service(data, user):
                 updated_ids.append(regional_district_id)
 
         db.session.flush()
+
+    _sync_energy_zone_aggregates_for_ids(affected_energy_zone_ids)
 
     try:
         # Сохранение изменений в базе данных
@@ -824,10 +855,24 @@ def add_regional_district_all_versions_service(data, user):
 
 @no_autoflush
 def update_regional_district_all_versions_service(data, user):
+    from collections import defaultdict
+
     from app.refdata.services.refdata_all_versions_common import add_all_versions_records, update_all_versions_records, fk_id_for_version
     from app.refdata.models.territories.federal_district_model import FederalDistrict
     from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
     from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
+
+    tracked_fields = [
+        "name",
+        "name_full",
+        "name_rp",
+        "name_dp",
+        "region_id",
+        "id_federal_district",
+        "id_energy_zone",
+        "id_synchronous_area",
+    ]
+    affected_energy_zones_by_version = defaultdict(set)
 
     def normalize_record(record):
         regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
@@ -867,6 +912,25 @@ def update_regional_district_all_versions_service(data, user):
             "id_synchronous_area": fk_id_for_version(SynchronousArea, clean["synchronous_area_id"], version_id) if clean["synchronous_area_id"] is not None else None,
         }
 
+    def apply_changes(obj, final):
+        old_ez = getattr(obj, "id_energy_zone", None)
+        new_ez = final.get("id_energy_zone")
+        for field in tracked_fields:
+            setattr(obj, field, final.get(field))
+        if old_ez != new_ez:
+            vid = getattr(obj, "database_version_id", None)
+            if old_ez is not None:
+                affected_energy_zones_by_version[vid].add(int(old_ez))
+            if new_ez is not None:
+                affected_energy_zones_by_version[vid].add(int(new_ez))
+
+    def before_commit():
+        for version_id, ez_ids in affected_energy_zones_by_version.items():
+            _sync_energy_zone_aggregates_for_ids(
+                ez_ids,
+                database_version_id=version_id,
+            )
+
     return update_all_versions_records(
         data=data,
         user=user,
@@ -875,9 +939,11 @@ def update_regional_district_all_versions_service(data, user):
         pk_field="regional_district_id",
         normalize_record=normalize_record,
         resolve_for_version=resolve_for_version,
-        tracked_fields=['name', 'name_full', 'name_rp', 'name_dp', 'region_id', 'id_federal_district', 'id_energy_zone', 'id_synchronous_area'],
+        tracked_fields=tracked_fields,
         unique_fields=['name', 'name_full'],
         temp_fields=['name', 'name_full'],
-        clear_fields=[]
+        clear_fields=[],
+        apply_changes=apply_changes,
+        before_commit=before_commit,
     )
 # === all_versions_regional_district end ===

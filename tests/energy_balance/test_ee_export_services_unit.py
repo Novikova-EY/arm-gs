@@ -77,7 +77,7 @@ def test_export_ee_generation_with_station_row():
                                                                 "tes_machine_type": "—",
                                                                 "primary_fuel": "Газ",
                                                                 "fuel_so": "—",
-                                                                "periods": {2024: 12.3},
+                                                                "periods": {2024: 12.3456},
                                                             }
                                                         ],
                                                     }
@@ -112,10 +112,93 @@ def test_export_ee_generation_with_station_row():
             show_totals=False,
             export_verification=False,
         )
-    rows = _read_sheet(stream)
-    flat = [cell for row in rows for cell in row if cell]
-    assert "ТЭЦ-1" in flat
-    assert "12,3" in flat or "12.3" in flat
+    wb = load_workbook(stream)
+    ws = wb.active
+    station_row_idx = next(
+        row[0].row for row in ws.iter_rows(min_row=2) if row[1].value == "ТЭЦ-1"
+    )
+    period_cell = ws.cell(row=station_row_idx, column=9)
+    assert isinstance(period_cell.value, float)
+    assert period_cell.value == 12.3456
+    assert period_cell.number_format == "# ##0,0"
+
+
+def test_export_ee_generation_parses_display_formatted_period_value():
+    page_data = {
+        "hierarchy": [
+            {
+                "est_name": "ЕЭС России",
+                "ues_list": [
+                    {
+                        "ues_id": 1,
+                        "ues_name": "ОЭС Центра",
+                        "res_list": [
+                            {
+                                "res_id": 10,
+                                "res_name": "РЭС Центра",
+                                "rd_list": [
+                                    {
+                                        "rd_id": 100,
+                                        "rd_name": "Московская область",
+                                        "eu_list": [
+                                            {
+                                                "eu_id": 0,
+                                                "eu_name": "—",
+                                                "sign_groups": [
+                                                    {
+                                                        "stations": [
+                                                            {
+                                                                "kto_display": "310340",
+                                                                "station_name": "ТЭЦ-2",
+                                                                "station_type_name": "ТЭЦ",
+                                                                "tes_types": "ТЭС",
+                                                                "tes_machine_type": "—",
+                                                                "primary_fuel": "Газ",
+                                                                "fuel_so": "—",
+                                                                "periods": {2024: "1 796,6"},
+                                                            }
+                                                        ],
+                                                    }
+                                                ],
+                                            }
+                                        ],
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ],
+        "period_columns": [(2024, "2024")],
+        "generation_aggregates": {},
+        "should_show_totals": {},
+        "res_show_rd_level_map": {10: False},
+        "res_verification_by_res": {},
+    }
+    with patch(
+        "app.energy_balance.services.ee_generation_export_services.get_station_ee_generation_page_data",
+        return_value=page_data,
+    ):
+        stream = export_ee_generation_to_excel(
+            filters={},
+            period_mode="years",
+            selected_year=None,
+            start_year=2024,
+            end_year=2024,
+            rounding_digits=1,
+            show_totals=False,
+            export_verification=False,
+        )
+    wb = load_workbook(stream)
+    ws = wb.active
+    station_row_idx = next(
+        row[0].row for row in ws.iter_rows(min_row=2) if row[1].value == "ТЭЦ-2"
+    )
+    period_cell = ws.cell(row=station_row_idx, column=9)
+    assert isinstance(period_cell.value, float)
+    assert period_cell.value == 1796.6
+    assert period_cell.number_format == "# ##0,0"
 
 
 def test_export_ee_transfers_with_row():

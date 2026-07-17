@@ -784,6 +784,15 @@
                         return;
                     }
                     var variantCode = uTr.getAttribute("data-perimeter-variant-code") || "";
+                    if (
+                        uTr.getAttribute("data-pd-pd-south-without-nt-manual") === "1" ||
+                        (southUesId !== null &&
+                            southUesId !== undefined &&
+                            String(uid) === String(southUesId) &&
+                            !perimeterVariantIsWithNt(variantCode))
+                    ) {
+                        return;
+                    }
                     var isSouthWithNt =
                         southUesId !== null &&
                         southUesId !== undefined &&

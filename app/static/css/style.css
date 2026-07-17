@@ -105,12 +105,10 @@ html.has-page-table-scroll {
 
 /* Горизонтальный скролл только у сводной таблицы: панель над шапкой не уезжает вбок.
    Вертикальная прокрутка остаётся на .page-table-scroll; липкая шапка — top от wrapper, left — от host. */
-.page-table-scroll:has(.pd-summary-table-x-scroll-host),
-.page-table-scroll:has(.pd-coeff-summary-scroll-wrap) {
+.page-table-scroll:has(.pd-summary-table-x-scroll-host) {
     overflow-x: hidden !important;
 }
-.page-table-scroll:has(.pd-summary-table-x-scroll-host).has-x-scroll,
-.page-table-scroll:has(.pd-coeff-summary-scroll-wrap).has-x-scroll {
+.page-table-scroll:has(.pd-summary-table-x-scroll-host).has-x-scroll {
     overflow-x: hidden !important;
 }
 .page-table-scroll .pd-summary-table-x-scroll-host {
@@ -124,7 +122,15 @@ html.has-page-table-scroll {
     overflow-x: auto !important;
 }
 
-/* Коэффициенты: скролл (X и Y) только у таблицы; max-height задаётся JS (см. updatePdCoeffTableHostMaxHeight) */
+/* Коэффициенты: один скролл (X+Y) у таблицы; снаружи .page-table-scroll без Y,
+   иначе справа два скроллбара (host + wrapper из‑за журнала/высоты). */
+.page-table-scroll:has(.pd-coeff-summary-scroll-wrap) {
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
+}
+.page-table-scroll:has(.pd-coeff-summary-scroll-wrap).has-x-scroll {
+    overflow-x: hidden !important;
+}
 .page-table-scroll .pd-coeff-summary-scroll-wrap {
     width: 100%;
     max-width: 100%;
@@ -276,6 +282,16 @@ tfoot {
 }
 .page-table-scroll .pd-coeff-summary-scroll-wrap table thead tr:nth-child(4) th {
     top: var(--sticky-thead-row4-top, var(--sticky-thead-row4-offset, 0px));
+}
+
+/* Журнал внутри coeff-host: не уезжает вбок при горизонтальном скролле таблицы */
+.page-table-scroll .pd-coeff-summary-scroll-wrap > .pd-summary-logs-section {
+    position: sticky;
+    left: 0;
+    width: var(--pd-coeff-host-client-width, 100%);
+    box-sizing: border-box;
+    z-index: 2;
+    background-color: var(--bs-body-bg, #fff);
 }
 
 /* Контейнер со скроллом для очень больших таблиц (список станций) */

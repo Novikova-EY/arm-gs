@@ -80,24 +80,30 @@ def get_regional_districts_dto_list() -> List[dict]:
     ]
 
 # 3) Lookup {rd_id: name} — легкий и кэшируемый
-@lru_cache(maxsize=1)
 def get_regional_districts_map() -> Dict[int, str]:
-    """Возвращает отображение {Субъект.id: Субъект.name} (кэшируется)."""
-    current_version = get_current_version()
+    """Возвращает отображение {Субъект.id: Субъект.name} (кэшируется по версии БД)."""
+    return _get_regional_districts_map(get_current_version())
+
+
+@lru_cache(maxsize=16)
+def _get_regional_districts_map(current_version) -> Dict[int, str]:
     query = RegionalDistrict.query.with_entities(RegionalDistrict.id, RegionalDistrict.name)
-    
+
     if current_version:
         query = query.filter(RegionalDistrict.database_version_id == current_version)
-    
+
     rows = query.order_by(RegionalDistrict.id).all()
     return {id_: name for id_, name in rows}
 
 
 # 4) Маппинг {rd_id: fd_id} — часто нужен для валидации/фильтров
-@lru_cache(maxsize=1)
 def get_rd_to_fd_id_map() -> Dict[int, int]:
-    """Возвращает отображение {Субъект.id: ФО.id} (кэшируется)."""
-    current_version = get_current_version()
+    """Возвращает отображение {Субъект.id: ФО.id} (кэшируется по версии БД)."""
+    return _get_rd_to_fd_id_map(get_current_version())
+
+
+@lru_cache(maxsize=16)
+def _get_rd_to_fd_id_map(current_version) -> Dict[int, int]:
     query = (
         RegionalDistrict.query
         .with_entities(RegionalDistrict.id, RegionalDistrict.id_federal_district)
@@ -108,19 +114,23 @@ def get_rd_to_fd_id_map() -> Dict[int, int]:
     rows = query.all()
     return {rd_id: fd_id for rd_id, fd_id in rows}
 
+
 # 5) Инвалидатор кэшей — вызывать после CRUD по субъектам/их привязке к ФО
 def invalidate_regional_district_lookups_cache() -> None:
-    get_regional_districts_map.cache_clear()
-    get_rd_to_fd_id_map.cache_clear()
-    get_rd_to_res_ids_map.cache_clear()
-    get_rd_to_ues_ids_map.cache_clear()
-    get_rd_to_est_ids_map.cache_clear()
+    _get_regional_districts_map.cache_clear()
+    _get_rd_to_fd_id_map.cache_clear()
+    _get_rd_to_res_ids_map.cache_clear()
+    _get_rd_to_ues_ids_map.cache_clear()
+    _get_rd_to_est_ids_map.cache_clear()
 
 
-@lru_cache(maxsize=1)
 def get_rd_to_res_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {СубъектРФ.id: [РЭС.id, ...]} через M2M (кэшируется)."""
-    current_version = get_current_version()
+    """Возвращает отображение {СубъектРФ.id: [РЭС.id, ...]} через M2M (кэшируется по версии БД)."""
+    return _get_rd_to_res_ids_map(get_current_version())
+
+
+@lru_cache(maxsize=16)
+def _get_rd_to_res_ids_map(current_version) -> Dict[int, List[int]]:
     query = (
         db.session.query(
             regional_district_regional_energy_system.c.regional_district_id,
@@ -150,11 +160,15 @@ def get_rd_to_res_ids_map() -> Dict[int, List[int]]:
     return dict(acc)
 
 
-@lru_cache(maxsize=1)
 def get_rd_to_ues_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {СубъектРФ.id: [ОЭС.id, ...]} через РЭС (кэшируется)."""
+    """Возвращает отображение {СубъектРФ.id: [ОЭС.id, ...]} через РЭС (кэшируется по версии БД)."""
     current_version = get_current_version()
-    rd_to_res = get_rd_to_res_ids_map()
+    return _get_rd_to_ues_ids_map(current_version)
+
+
+@lru_cache(maxsize=16)
+def _get_rd_to_ues_ids_map(current_version) -> Dict[int, List[int]]:
+    rd_to_res = _get_rd_to_res_ids_map(current_version)
     
     # Получаем связь РЭС -> ОЭС
     res_to_ues_query = db.session.query(
@@ -181,11 +195,15 @@ def get_rd_to_ues_ids_map() -> Dict[int, List[int]]:
     return {k: list(set(v)) for k, v in acc.items()}
 
 
-@lru_cache(maxsize=1)
 def get_rd_to_est_ids_map() -> Dict[int, List[int]]:
-    """Возвращает отображение {СубъектРФ.id: [ТипЭС.id, ...]} через ОЭС (кэшируется)."""
+    """Возвращает отображение {СубъектРФ.id: [ТипЭС.id, ...]} через ОЭС (кэшируется по версии БД)."""
     current_version = get_current_version()
-    rd_to_ues = get_rd_to_ues_ids_map()
+    return _get_rd_to_est_ids_map(current_version)
+
+
+@lru_cache(maxsize=16)
+def _get_rd_to_est_ids_map(current_version) -> Dict[int, List[int]]:
+    rd_to_ues = _get_rd_to_ues_ids_map(current_version)
     
     # Получаем связь ОЭС -> Тип ЭС
     ues_to_est_query = db.session.query(
