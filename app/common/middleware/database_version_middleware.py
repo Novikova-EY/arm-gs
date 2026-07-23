@@ -147,14 +147,13 @@ def set_session_version(version_id):
         # Обновляем текущий контекст
         g.current_db_version = version_id
 
-        # Очищаем все кэши: агрегации, отсортированные списки, позиции страниц
-        # Иначе возможны данные от предыдущей версии БД
+        # Очищаем все кэши: иначе возможны данные от предыдущей версии БД
         try:
-            from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
-            clear_aggregation_cache()
+            from app.common.services.clear_all_caches import clear_all_application_caches
+            clear_all_application_caches()
         except Exception as e:
             current_app.logger.warning(
-                f"[VERSION_MIDDLEWARE] Ошибка при очистке кэшей агрегации: {e}"
+                f"[VERSION_MIDDLEWARE] Ошибка при очистке кэшей: {e}"
             )
 
         try:

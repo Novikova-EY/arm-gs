@@ -71,10 +71,29 @@ def enrich_row_formula_tooltip_gaps(
     """Дополняет pd_parameter_formula_tooltip для случаев, которые в шаблоне заданы явно."""
     if row.get("pd_parameter_formula_tooltip"):
         return
+
+    from app.power_demand.services.formula_text.pd_summary_formula_row_resolver import (
+        resolve_pd_summary_parameter_formula_base_key,
+        resolve_pd_summary_row_formula_key,
+    )
+
+    resolved_key = resolve_pd_summary_row_formula_key(
+        row,
+        base_key=resolve_pd_summary_parameter_formula_base_key(row),
+    )
+    if resolved_key and formula_texts.get(resolved_key):
+        row["pd_formula_text_key"] = resolved_key
+        row["pd_parameter_formula_tooltip"] = formula_texts[resolved_key]
+        return
+
     pk = str(row.get("parameter_key") or "")
     dm = str(row.get("demand_model_name") or "")
     ek = str(row.get("entity_kind") or "")
     lbl = _label_cf(row.get("entity_label"))
+
+    def _text_for_nt_base(base_key: str) -> str:
+        key = resolve_pd_summary_row_formula_key(row, base_key=base_key)
+        return formula_texts.get(key or base_key, "")
 
     if dm == "SynchronousAreaDemandParameter":
         if pk == "calculated_max_power_mw":
@@ -87,8 +106,8 @@ def enrich_row_formula_tooltip_gaps(
                     "sa_kaliningrad_calc_max_power_mw", ""
                 )
             else:
-                row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                    "sa_first_calc_max_power_mw_without_nt", ""
+                row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                    "sa_first_calc_max_power_mw"
                 )
         elif pk == "calculated_max_sa_mw":
             if lbl.startswith(_SECOND_SA_LABEL_CF):
@@ -100,8 +119,8 @@ def enrich_row_formula_tooltip_gaps(
                     "sa_kaliningrad_calc_max_sa_mw", ""
                 )
             else:
-                row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                    "sa_first_calc_max_sa_mw_without_nt", ""
+                row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                    "sa_first_calc_max_sa_mw"
                 )
     elif ek == "synchronous_area" and pk == "verify_for_calculated_max_power_mw":
         if lbl.startswith(_SECOND_SA_LABEL_CF):
@@ -113,8 +132,8 @@ def enrich_row_formula_tooltip_gaps(
                 "sa_kaliningrad_verify_max_power", ""
             )
         else:
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "sa_first_verify_max_power_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "sa_first_verify_max_power"
             )
     elif pk == "verify_for_calculated_max_sa_mw":
         if ek == "synchronous_area":
@@ -127,12 +146,12 @@ def enrich_row_formula_tooltip_gaps(
                     "sa_kaliningrad_verify_combined_ees", ""
                 )
             else:
-                row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                    "sa_first_verify_combined_ees_without_nt", ""
+                row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                    "sa_first_verify_combined_ees"
                 )
         else:
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "sa_first_verify_combined_ees_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "sa_first_verify_combined_ees"
             )
     elif (
         pk == "calculated_max_power_mw"
@@ -156,30 +175,25 @@ def enrich_row_formula_tooltip_gaps(
                 "fo_calc_max_power_mw", ""
             )
         elif pk == "calculated_combined_on_cz_mw":
-            cz_formula_key = (
-                "fo_calc_combined_on_cz_mw_coeff"
-                if summary_route_variant == "coeff"
-                else "fo_calc_combined_on_cz_mw"
+            # Coeff ФО использует тот же набор строк, что /summary/federal_districts/.
+            row["pd_parameter_formula_tooltip"] = formula_texts.get(
+                "fo_calc_combined_on_cz_mw", ""
             )
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(cz_formula_key, "")
         elif pk == "calculated_combined_on_ees_mw":
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
                 "fo_calc_combined_on_ees_mw", ""
             )
         elif pk == "verify_for_calculated_max_power_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "fo_verify_calc_max_mw_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "fo_verify_calc_max_mw"
             )
         elif pk == "verify_for_calculated_combined_on_cz_mw":
-            cz_verify_key = (
-                "fo_verify_combined_on_cz_mw_coeff_without_nt"
-                if summary_route_variant == "coeff"
-                else "fo_verify_combined_on_cz_mw_without_nt"
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "fo_verify_combined_on_cz_mw"
             )
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(cz_verify_key, "")
         elif pk == "verify_for_calculated_combined_on_ees_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "fo_verify_combined_ees_mw_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "fo_verify_combined_ees_mw"
             )
         elif pk == "peak_max_power_usage_hours":
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
@@ -199,12 +213,12 @@ def enrich_row_formula_tooltip_gaps(
                 "ez_calc_combined_on_ees_mw", ""
             )
         elif pk == "verify_for_calculated_max_power_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "ez_verify_calc_max_mw_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "ez_verify_calc_max_mw"
             )
         elif pk == "verify_for_calculated_combined_on_ees_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "ez_verify_combined_ees_mw_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "ez_verify_combined_ees_mw"
             )
         elif pk == "peak_max_power_usage_hours":
             row["pd_parameter_formula_tooltip"] = formula_texts.get(
@@ -216,12 +230,12 @@ def enrich_row_formula_tooltip_gaps(
         )
     elif dm == "CentralizedZoneDemandParameter":
         if pk == "calculated_max_power_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "cz_russia_calc_max_mw_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "cz_russia_calc_max_mw"
             )
         elif pk == "verify_for_calculated_max_power_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "cz_russia_verify_calc_max_mw_without_nt", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "cz_russia_verify_calc_max_mw"
             )
     elif is_peak_combined_usage_hours_key(pk):
         combined_on_key = combined_on_key_from_peak_combined_usage_hours(pk)
@@ -323,8 +337,7 @@ def build_summary_data_json_response(
                 "summary_route_variant": context.get("summary_route_variant", "max"),
                 "show_hist_col": context.get("summary_route_variant") != "coeff",
                 "show_perimeter_variant_column": bool(
-                    context.get("summary_route_variant") != "coeff"
-                    and context.get("active_summary") in ("oes", "fo", "ez")
+                    context.get("active_summary") in ("oes", "fo", "ez")
                 ),
                 "can_edit_summary_cells": bool(
                     context.get("can_edit_summary_cells")

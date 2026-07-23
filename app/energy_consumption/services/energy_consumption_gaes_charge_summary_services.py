@@ -146,11 +146,37 @@ def exclude_gaes_charge_summary_rows(
 
 def remove_gaes_charge_rows_from_summary_context(
     context: dict[str, Any],
+    *,
+    preserve_summary_table_top_aggregate_rows: bool = True,
 ) -> dict[str, Any]:
-    """Сводка без строк заряда ГАЭС (страница /summary/energy_zones/)."""
+    """Сводка без строк заряда ГАЭС (страница /summary/energy_zones/).
+
+    При ``preserve_summary_table_top_aggregate_rows`` строки заряда в общем верху
+    (Россия / ЦЗ / ЭЭС / ЕЭС / СЗ до блоков энергозон) сохраняются — как на
+    /summary/oes/ и /summary/federal_districts/ в режиме «Сводная таблица».
+    """
+    from app.energy_consumption.services.energy_consumption_summary_services import (
+        _is_energy_zone_summary_top_block_start,
+    )
+
     out = dict(context)
-    out["summary_rows"] = exclude_gaes_charge_summary_rows(
-        list(context.get("summary_rows") or [])
+    rows = list(context.get("summary_rows") or [])
+    if not preserve_summary_table_top_aggregate_rows:
+        out["summary_rows"] = exclude_gaes_charge_summary_rows(rows)
+        return out
+
+    first_ez_idx: int | None = None
+    for i, row in enumerate(rows):
+        if _is_energy_zone_summary_top_block_start(row):
+            first_ez_idx = i
+            break
+    if first_ez_idx is None:
+        out["summary_rows"] = exclude_gaes_charge_summary_rows(rows)
+        return out
+
+    out["summary_rows"] = (
+        list(rows[:first_ez_idx])
+        + exclude_gaes_charge_summary_rows(rows[first_ez_idx:])
     )
     return out
 

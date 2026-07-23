@@ -11,14 +11,13 @@ from app.energy_consumption.pages._summary_page_transforms import (
 )
 from app.energy_consumption.services.energy_consumption_summary_services import (
     append_summary_table_hub_energy_zone_footer_rows,
-    apply_centralized_zone_with_nt_sum_formula,
-    apply_centralized_zone_without_nt_sum_formula,
     build_oes_summary_context,
-    inject_summary_table_cz_new_territories_reference_row,
+    exclude_centralized_zone_russia_non_o1_summary_rows,
     filter_summary_table_hub_oes_and_tites_verification_rows,
     get_demand_summary_filter_refdata,
     get_energy_consumption_oes_filter_cascade_data,
     apply_sipr_consumption_display_fallback_to_summary_rows,
+    inject_summary_table_cz_new_territories_reference_row,
     recompute_sipr_growth_metrics_for_summary_rows,
     mask_summary_rows_perimeter_variant_year_display,
     tag_ees_russia_sipr_integer_display_rows,
@@ -68,27 +67,21 @@ def build_summary_table_hub_page_context(
         data_end_year=data_end_year,
         filter_year_list=filter_year_list,
     )
-    if context.get("summary_rows") and context.get("years"):
-        apply_centralized_zone_with_nt_sum_formula(
-            context["summary_rows"],
-            years=list(context["years"]),
-            rounding_digits=rounding_digits,
-        )
-        apply_centralized_zone_without_nt_sum_formula(
-            context["summary_rows"],
-            years=list(context["years"]),
-            rounding_digits=rounding_digits,
-        )
-        inject_summary_table_cz_new_territories_reference_row(
-            context["summary_rows"],
-            years=list(context["years"]),
-            rounding_digits=rounding_digits,
-        )
+    context["summary_rows"] = exclude_centralized_zone_russia_non_o1_summary_rows(
+        list(context.get("summary_rows") or [])
+    )
     if context.get("summary_rows"):
+        years = list(context.get("years") or [])
+        if years:
+            inject_summary_table_cz_new_territories_reference_row(
+                context["summary_rows"],
+                years,
+                rounding_digits=rounding_digits,
+            )
         tag_energy_consumption_summary_rows_for_territory_compact(context["summary_rows"])
         mask_summary_rows_perimeter_variant_year_display(
             context["summary_rows"],
-            list(context.get("years") or []),
+            years,
         )
         apply_sipr_consumption_display_fallback_to_summary_rows(
             context["summary_rows"],

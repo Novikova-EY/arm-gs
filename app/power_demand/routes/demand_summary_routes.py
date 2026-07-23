@@ -38,11 +38,11 @@ from app.power_demand.services.demand_summary_client_render_services import (
 )
 from app.power_demand.services.pd_summary_data_segments import (
     PD_SUMMARY_SEGMENT_CORE,
+    filter_summary_rows_for_data_segments,
     needs_full_summary_build,
     parse_pd_data_segments,
 )
 from app.power_demand.services.pd_summary_entity_pagination import (
-    apply_entity_pagination_to_context,
     parse_pd_entity_pagination,
 )
 from app.power_demand.services.pd_summary_page_cache import (
@@ -55,6 +55,8 @@ from app.power_demand.services.demand_summary_services import (
     FO_EXPORT_PARAMETER_KEYS,
     OES_EXPORT_PARAMETER_KEYS,
     apply_power_demand_oes_summary_nt_export_ui,
+    apply_power_demand_summary_export_entity_label_overrides,
+    apply_power_demand_summary_screen_entity_labels,
     apply_power_demand_summary_territory_compact_export_ui,
     build_energy_zones_summary_context,
     build_energy_zones_summary_context_coeff,
@@ -64,10 +66,13 @@ from app.power_demand.services.demand_summary_services import (
     build_oes_summary_context_coeff,
     enrich_summary_rows_coeff_k_columns,
     filter_summary_rows_for_parameter_keys,
+    filter_summary_rows_hide_empty_entity_blocks,
     get_demand_summary_filter_refdata,
     get_power_demand_ez_filter_cascade_data,
     get_power_demand_fo_filter_cascade_data,
     get_power_demand_oes_filter_cascade_data,
+    parse_power_demand_export_hide_empty,
+    parse_power_demand_export_hist,
     parse_power_demand_export_nt_detail,
     parse_power_demand_export_territory_compact,
     slice_coeff_summary_for_lazy_long_segment,
@@ -105,7 +110,9 @@ def _attach_pd_summary_client_render(context: dict, *, scope: str, data_path: st
     )
 
 
-def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
+def _build_summary_data_json_response(
+    *, scope: str, context_builder, cache_scope: str | None = None
+) -> Any:
     data_segments = parse_pd_data_segments(scope)
     entity_pagination = parse_pd_entity_pagination(scope)
 
@@ -133,7 +140,7 @@ def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
         payload["loaded_segments"] = sorted(data_segments)
         return payload
 
-    return jsonify(cached_load_pd_summary_data(scope, loader))
+    return jsonify(cached_load_pd_summary_data(cache_scope or scope, loader))
 
 
 def _parse_oes_max_summary_args() -> dict:
@@ -291,6 +298,165 @@ def _build_ez_max_summary_context(*, for_shell: bool, data_segments=None) -> dic
         context["pd_summary_logs_initial_limit"] = PD_SUMMARY_LOGS_INITIAL_LIMIT
         context["pd_summary_logs_load_more_limit"] = PD_SUMMARY_LOGS_LOAD_MORE_LIMIT
     return context
+
+
+def _coeff_build_segments_for_k_enrichment(
+    data_segments: frozenset[str] | None,
+) -> frozenset[str] | None:
+    """Для k нужен max_power в блоке: при ленивых сегментах временно включаем core."""
+    if data_segments is None or needs_full_summary_build(data_segments):
+        return data_segments
+    if PD_SUMMARY_SEGMENT_CORE in data_segments:
+        return data_segments
+    return frozenset(data_segments | {PD_SUMMARY_SEGMENT_CORE})
+
+
+def _finalize_coeff_summary_context(
+    context: dict,
+    *,
+    scope: str,
+    for_shell: bool,
+    data_segments: frozenset[str] | None,
+    coeff_n: int,
+    coeff_include_long: bool,
+) -> dict:
+    context["rounding_digits_k"] = _parse_rounding_digits_k(
+        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
+    )
+    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["summary_route_variant"] = "coeff"
+    context["coeff_base_year"] = coeff_n
+    context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
+        include_long=coeff_include_long
+    )
+    if not for_shell:
+        _apply_coeff_year_k_columns(context)
+        build_segs = _coeff_build_segments_for_k_enrichment(data_segments)
+        if (
+            data_segments is not None
+            and build_segs is not None
+            and data_segments != build_segs
+        ):
+            context["summary_rows"] = filter_summary_rows_for_data_segments(
+                context.get("summary_rows"),
+                data_segments,
+                scope=scope,
+            )
+        slice_coeff_summary_for_lazy_long_segment(
+            context, coeff_n, include_long=coeff_include_long
+        )
+    else:
+        # Shell: только метаданные/годы (без строк); срез долгосрочных колонок для thead.
+        slice_coeff_summary_for_lazy_long_segment(
+            context, coeff_n, include_long=coeff_include_long
+        )
+        context["summary_rows"] = []
+    _apply_coeff_ui_year_form_context(context, coeff_n)
+    _attach_pd_summary_formula_texts(context)
+    if for_shell:
+        context["pd_summary_logs_lazy"] = True
+        context["pd_summary_logs_initial_limit"] = PD_SUMMARY_LOGS_INITIAL_LIMIT
+        context["pd_summary_logs_load_more_limit"] = PD_SUMMARY_LOGS_LOAD_MORE_LIMIT
+    return context
+
+
+def _build_oes_coeff_summary_context(*, for_shell: bool, data_segments=None) -> dict:
+    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
+    coeff_include_long = _parse_coeff_include_long()
+    oes_ordered = _parse_oes_territory_ordered()
+    ues_l, res_l, rd_l, eu_l = oes_ordered
+    build_segs = (
+        None
+        if for_shell
+        else _coeff_build_segments_for_k_enrichment(data_segments)
+    )
+    context = build_oes_summary_context_coeff(
+        _parse_rounding_digits(),
+        start_year=start_year,
+        end_year=end_year,
+        filter_year_list=_filter_year_list_for_summary(),
+        oes_territory_ordered=oes_ordered,
+        for_client_render_shell=for_shell,
+        data_segments=build_segs,
+    )
+    if for_shell:
+        context.update(get_demand_summary_filter_refdata())
+        context["pd_oes_filters_cascade"] = get_power_demand_oes_filter_cascade_data()
+    context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
+    return _finalize_coeff_summary_context(
+        context,
+        scope="oes",
+        for_shell=for_shell,
+        data_segments=data_segments,
+        coeff_n=coeff_n,
+        coeff_include_long=coeff_include_long,
+    )
+
+
+def _build_fo_coeff_summary_context(*, for_shell: bool, data_segments=None) -> dict:
+    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
+    coeff_include_long = _parse_coeff_include_long()
+    fo_sets = _parse_fo_filter_sets()
+    f_fd, f_res = fo_sets
+    build_segs = (
+        None
+        if for_shell
+        else _coeff_build_segments_for_k_enrichment(data_segments)
+    )
+    context = build_federal_district_summary_context_coeff(
+        _parse_rounding_digits(),
+        start_year=start_year,
+        end_year=end_year,
+        filter_year_list=_filter_year_list_for_summary(),
+        fo_filter_sets=fo_sets,
+        for_client_render_shell=for_shell,
+        data_segments=build_segs,
+    )
+    if for_shell:
+        context.update(get_demand_summary_filter_refdata())
+        context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
+    context["has_active_summary_filters"] = bool(f_fd or f_res)
+    return _finalize_coeff_summary_context(
+        context,
+        scope="fo",
+        for_shell=for_shell,
+        data_segments=data_segments,
+        coeff_n=coeff_n,
+        coeff_include_long=coeff_include_long,
+    )
+
+
+def _build_ez_coeff_summary_context(*, for_shell: bool, data_segments=None) -> dict:
+    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
+    coeff_include_long = _parse_coeff_include_long()
+    ez_ordered = _parse_ez_territory_ordered()
+    ez_l, res_l = ez_ordered
+    build_segs = (
+        None
+        if for_shell
+        else _coeff_build_segments_for_k_enrichment(data_segments)
+    )
+    context = build_energy_zones_summary_context_coeff(
+        _parse_rounding_digits(),
+        start_year=start_year,
+        end_year=end_year,
+        filter_year_list=_filter_year_list_for_summary(),
+        ez_territory_ordered=ez_ordered,
+        for_client_render_shell=for_shell,
+        data_segments=build_segs,
+    )
+    if for_shell:
+        context.update(get_demand_summary_filter_refdata())
+        context["pd_ez_filters_cascade"] = get_power_demand_ez_filter_cascade_data()
+    context["has_active_summary_filters"] = bool(ez_l or res_l)
+    return _finalize_coeff_summary_context(
+        context,
+        scope="ez",
+        for_shell=for_shell,
+        data_segments=data_segments,
+        coeff_n=coeff_n,
+        coeff_include_long=coeff_include_long,
+    )
 
 
 def _parse_rounding_digits() -> int:
@@ -489,10 +655,6 @@ def _parse_coeff_include_long() -> bool:
     )
 
 
-def _parse_oes_export_visible_keys() -> frozenset[str] | None:
-    return _parse_summary_export_visible_keys(OES_EXPORT_PARAMETER_KEYS)
-
-
 def _parse_ordered_unique_int_ids(arg_name: str) -> list[int]:
     """Порядок значений в URL сохраняется (для объединения фильтров по раундам)."""
     seen: set[int] = set()
@@ -543,6 +705,77 @@ def _parse_summary_export_visible_keys(allowed: frozenset[str]) -> frozenset[str
     return frozenset(keys)
 
 
+def _parse_export_entity_label_overrides() -> dict[str, str]:
+    """Подписи энергосистем с экрана: JSON-тело POST или GET export_entity_labels."""
+    raw = None
+    if request.method == "POST":
+        payload = request.get_json(silent=True)
+        if isinstance(payload, dict):
+            raw = payload.get("export_entity_labels")
+    if raw is None:
+        raw = request.args.get("export_entity_labels")
+    if raw is None:
+        return {}
+    if isinstance(raw, str):
+        raw_s = raw.strip()
+        if not raw_s:
+            return {}
+        try:
+            import json
+
+            raw = json.loads(raw_s)
+        except (TypeError, ValueError):
+            return {}
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, str] = {}
+    for key, label in raw.items():
+        ks = str(key or "").strip()
+        ls = str(label or "").strip()
+        if ks and ls:
+            out[ks] = ls
+    return out
+
+
+def _apply_summary_export_view_filters(
+    context: dict,
+    allowed_keys: frozenset[str],
+) -> dict:
+    """Применить к context те же ограничения строк, что на экране (кнопки / пикер / пустые)."""
+    sub_years = _parse_export_years_list(list(context.get("years") or []))
+    if sub_years is not None:
+        context = slice_power_demand_summary_context_for_export_years(context, sub_years)
+    visible = _parse_summary_export_visible_keys(allowed_keys)
+    if visible is not None:
+        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
+            context["summary_rows"], visible
+        )
+    nt_detail_on = parse_power_demand_export_nt_detail()
+    territory_compact_on = parse_power_demand_export_territory_compact()
+    context["summary_rows"] = apply_power_demand_oes_summary_nt_export_ui(
+        context["summary_rows"],
+        nt_detail_on=nt_detail_on,
+    )
+    context["summary_rows"] = apply_power_demand_summary_territory_compact_export_ui(
+        context["summary_rows"],
+        territory_compact_on=territory_compact_on,
+    )
+    context["summary_rows"] = apply_power_demand_summary_screen_entity_labels(
+        context["summary_rows"],
+        nt_detail_on=nt_detail_on,
+        territory_compact_on=territory_compact_on,
+    )
+    context["summary_rows"] = apply_power_demand_summary_export_entity_label_overrides(
+        context["summary_rows"],
+        _parse_export_entity_label_overrides(),
+    )
+    context["summary_rows"] = filter_summary_rows_hide_empty_entity_blocks(
+        context["summary_rows"],
+        hide_empty=parse_power_demand_export_hide_empty(),
+    )
+    return context
+
+
 def _parse_export_years_list(full_years: list[int]) -> list[int] | None:
     """GET export_years=2015,2016,... — подмножество full_years, порядок как в запросе."""
     raw = request.args.get("export_years")
@@ -572,7 +805,7 @@ def _apply_coeff_year_k_columns(context: dict) -> None:
         coeff_n = _coeff_base_year_n()
     rd_k = context.get("rounding_digits_k")
     if rd_k is None:
-        rd_k = context["rounding_digits"]
+        rd_k = DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
     enrich_summary_rows_coeff_k_columns(
         context["summary_rows"],
         context["years"],
@@ -591,6 +824,7 @@ def _demand_summary_excel_response(
         coeff_excel = context.get("coeff_base_year")
         if coeff_excel is None:
             coeff_excel = _coeff_base_year_n()
+    show_hist = (not export_coeff_k_columns) and parse_power_demand_export_hist()
     stream = build_demand_summary_excel_stream(
         summary_rows=context["summary_rows"],
         years=context["years"],
@@ -601,7 +835,7 @@ def _demand_summary_excel_response(
         coeff_base_year=int(coeff_excel) if coeff_excel is not None else None,
         rounding_digits=int(context.get("rounding_digits") or 1),
         rounding_digits_k=context.get("rounding_digits_k"),
-        show_hist_col=not export_coeff_k_columns,
+        show_hist_col=show_hist,
         coeff_include_long=bool(context.get("coeff_include_long")),
     )
     fn = f"{filename_prefix}_{context['start_year']}_{context['end_year']}.xlsx"
@@ -613,7 +847,7 @@ def _demand_summary_excel_response(
     )
 
 
-@power_demand_bp.route("/summary/oes/export.xlsx")
+@power_demand_bp.route("/summary/oes/export.xlsx", methods=["GET", "POST"])
 @login_required
 def demand_summary_oes_export():
     sy, ey = _parse_summary_year_range()
@@ -631,26 +865,11 @@ def demand_summary_oes_export():
         filter_year_list=_filter_year_list_for_summary(),
         oes_territory_ordered=oes_ordered,
     )
-    sub_years = _parse_export_years_list(list(context.get("years") or []))
-    if sub_years is not None:
-        context = slice_power_demand_summary_context_for_export_years(context, sub_years)
-    visible = _parse_oes_export_visible_keys()
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
-        )
-    context["summary_rows"] = apply_power_demand_oes_summary_nt_export_ui(
-        context["summary_rows"],
-        nt_detail_on=parse_power_demand_export_nt_detail(),
-    )
-    context["summary_rows"] = apply_power_demand_summary_territory_compact_export_ui(
-        context["summary_rows"],
-        territory_compact_on=parse_power_demand_export_territory_compact(),
-    )
+    context = _apply_summary_export_view_filters(context, OES_EXPORT_PARAMETER_KEYS)
     return _demand_summary_excel_response(context, "power_demand_svodka_oes")
 
 
-@power_demand_bp.route("/summary/federal_districts/export.xlsx")
+@power_demand_bp.route("/summary/federal_districts/export.xlsx", methods=["GET", "POST"])
 @login_required
 def demand_summary_federal_districts_export():
     sy, ey = _parse_summary_year_range()
@@ -670,26 +889,11 @@ def demand_summary_federal_districts_export():
         fo_aggregate_by_res=True,
         fo_max_extended_parameters=True,
     )
-    sub_years = _parse_export_years_list(list(context.get("years") or []))
-    if sub_years is not None:
-        context = slice_power_demand_summary_context_for_export_years(context, sub_years)
-    visible = _parse_summary_export_visible_keys(FO_EXPORT_PARAMETER_KEYS)
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
-        )
-    context["summary_rows"] = apply_power_demand_oes_summary_nt_export_ui(
-        context["summary_rows"],
-        nt_detail_on=parse_power_demand_export_nt_detail(),
-    )
-    context["summary_rows"] = apply_power_demand_summary_territory_compact_export_ui(
-        context["summary_rows"],
-        territory_compact_on=parse_power_demand_export_territory_compact(),
-    )
+    context = _apply_summary_export_view_filters(context, FO_EXPORT_PARAMETER_KEYS)
     return _demand_summary_excel_response(context, "power_demand_svodka_fo")
 
 
-@power_demand_bp.route("/summary/energy_zones/export.xlsx")
+@power_demand_bp.route("/summary/energy_zones/export.xlsx", methods=["GET", "POST"])
 @login_required
 def demand_summary_energy_zones_export():
     sy, ey = _parse_summary_year_range()
@@ -708,29 +912,14 @@ def demand_summary_energy_zones_export():
         ez_territory_ordered=ez_ordered,
         ez_max_extended_parameters=True,
     )
-    sub_years = _parse_export_years_list(list(context.get("years") or []))
-    if sub_years is not None:
-        context = slice_power_demand_summary_context_for_export_years(context, sub_years)
-    visible = _parse_summary_export_visible_keys(EZ_EXPORT_PARAMETER_KEYS)
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
-        )
-    context["summary_rows"] = apply_power_demand_oes_summary_nt_export_ui(
-        context["summary_rows"],
-        nt_detail_on=parse_power_demand_export_nt_detail(),
-    )
-    context["summary_rows"] = apply_power_demand_summary_territory_compact_export_ui(
-        context["summary_rows"],
-        territory_compact_on=parse_power_demand_export_territory_compact(),
-    )
+    context = _apply_summary_export_view_filters(context, EZ_EXPORT_PARAMETER_KEYS)
     return _demand_summary_excel_response(context, "power_demand_svodka_ez")
 
 
 # --- «Коэффициенты и совмещенные максимумы» (независимые URL и выгрузки, те же данные) ---
 
 
-@power_demand_bp.route("/summary/coeff/oes/export.xlsx")
+@power_demand_bp.route("/summary/coeff/oes/export.xlsx", methods=["GET", "POST"])
 @login_required
 def demand_summary_oes_export_coeff():
     _n, start_year, end_year = _parse_coeff_summary_year_range()
@@ -746,26 +935,14 @@ def demand_summary_oes_export_coeff():
     context["rounding_digits_k"] = _parse_rounding_digits_k(
         fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
     )
-    visible = _parse_oes_export_visible_keys()
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
-        )
-    context["summary_rows"] = apply_power_demand_oes_summary_nt_export_ui(
-        context["summary_rows"],
-        nt_detail_on=parse_power_demand_export_nt_detail(),
-    )
-    context["summary_rows"] = apply_power_demand_summary_territory_compact_export_ui(
-        context["summary_rows"],
-        territory_compact_on=parse_power_demand_export_territory_compact(),
-    )
+    context = _apply_summary_export_view_filters(context, OES_EXPORT_PARAMETER_KEYS)
     _apply_coeff_year_k_columns(context)
     return _demand_summary_excel_response(
         context, "power_demand_svodka_oes_coeff", export_coeff_k_columns=True
     )
 
 
-@power_demand_bp.route("/summary/coeff/federal_districts/export.xlsx")
+@power_demand_bp.route("/summary/coeff/federal_districts/export.xlsx", methods=["GET", "POST"])
 @login_required
 def demand_summary_federal_districts_export_coeff():
     _n, start_year, end_year = _parse_coeff_summary_year_range()
@@ -781,18 +958,8 @@ def demand_summary_federal_districts_export_coeff():
     context["rounding_digits_k"] = _parse_rounding_digits_k(
         fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
     )
-    visible = _parse_summary_export_visible_keys(FO_COEFF_EXPORT_PARAMETER_KEYS)
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
-        )
-    context["summary_rows"] = apply_power_demand_oes_summary_nt_export_ui(
-        context["summary_rows"],
-        nt_detail_on=parse_power_demand_export_nt_detail(),
-    )
-    context["summary_rows"] = apply_power_demand_summary_territory_compact_export_ui(
-        context["summary_rows"],
-        territory_compact_on=parse_power_demand_export_territory_compact(),
+    context = _apply_summary_export_view_filters(
+        context, FO_COEFF_EXPORT_PARAMETER_KEYS
     )
     _apply_coeff_year_k_columns(context)
     return _demand_summary_excel_response(
@@ -800,7 +967,7 @@ def demand_summary_federal_districts_export_coeff():
     )
 
 
-@power_demand_bp.route("/summary/coeff/energy_zones/export.xlsx")
+@power_demand_bp.route("/summary/coeff/energy_zones/export.xlsx", methods=["GET", "POST"])
 @login_required
 def demand_summary_energy_zones_export_coeff():
     _n, start_year, end_year = _parse_coeff_summary_year_range()
@@ -816,19 +983,7 @@ def demand_summary_energy_zones_export_coeff():
     context["rounding_digits_k"] = _parse_rounding_digits_k(
         fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
     )
-    visible = _parse_summary_export_visible_keys(EZ_EXPORT_PARAMETER_KEYS)
-    if visible is not None:
-        context["summary_rows"] = filter_summary_rows_for_parameter_keys(
-            context["summary_rows"], visible
-        )
-    context["summary_rows"] = apply_power_demand_oes_summary_nt_export_ui(
-        context["summary_rows"],
-        nt_detail_on=parse_power_demand_export_nt_detail(),
-    )
-    context["summary_rows"] = apply_power_demand_summary_territory_compact_export_ui(
-        context["summary_rows"],
-        territory_compact_on=parse_power_demand_export_territory_compact(),
-    )
+    context = _apply_summary_export_view_filters(context, EZ_EXPORT_PARAMETER_KEYS)
     _apply_coeff_year_k_columns(context)
     return _demand_summary_excel_response(
         context, "power_demand_svodka_ez_coeff", export_coeff_k_columns=True
@@ -851,14 +1006,14 @@ def demand_summary_save_cell():
         rounding_digits_k = (
             int(rd_k_raw)
             if rd_k_raw is not None and str(rd_k_raw).strip() != ""
-            else rounding_digits
+            else DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
         )
     except (TypeError, ValueError):
         return jsonify(ok=False, error="Неверный запрос"), 400
     if rounding_digits not in (-1, 0, 1, 2, 3):
         rounding_digits = 1
     if rounding_digits_k not in (-1, 0, 1, 2, 3):
-        rounding_digits_k = rounding_digits
+        rounding_digits_k = DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
 
     rid_raw = data.get("row_id")
     row_id = None
@@ -1134,112 +1289,64 @@ def demand_summary_federal_districts_data():
 @power_demand_bp.route("/summary/coeff/oes/")
 @login_required
 def demand_summary_oes_coeff():
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
-    oes_ordered = _parse_oes_territory_ordered()
-    ues_l, res_l, rd_l, eu_l = oes_ordered
-    rd = _parse_rounding_digits()
-    context = build_oes_summary_context_coeff(
-        rd,
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        oes_territory_ordered=oes_ordered,
+    context = _build_oes_coeff_summary_context(for_shell=True)
+    _attach_pd_summary_client_render(
+        context,
+        scope="oes",
+        data_path="/power_demand/summary/coeff/oes/data.json",
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(
-        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_power_demand_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
-    context["summary_route_variant"] = "coeff"
-    context["coeff_base_year"] = coeff_n
-    context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
-        include_long=coeff_include_long
-    )
-    _apply_coeff_year_k_columns(context)
-    slice_coeff_summary_for_lazy_long_segment(
-        context, coeff_n, include_long=coeff_include_long
-    )
-    _apply_coeff_ui_year_form_context(context, coeff_n)
-    _attach_pd_summary_logs(context)
-    _attach_pd_summary_formula_texts(context)
-    apply_entity_pagination_to_context(context, "oes")
     return render_template("power_demand/power_demand_summary.html", **context)
+
+
+@power_demand_bp.route("/summary/coeff/oes/data.json")
+@login_required
+def demand_summary_oes_coeff_data():
+    return _build_summary_data_json_response(
+        scope="oes",
+        context_builder=_build_oes_coeff_summary_context,
+        cache_scope="coeff_oes",
+    )
 
 
 @power_demand_bp.route("/summary/coeff/federal_districts/")
 @login_required
 def demand_summary_federal_districts_coeff():
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
-    fo_sets = _parse_fo_filter_sets()
-    f_fd, f_res = fo_sets
-    rd = _parse_rounding_digits()
-    context = build_federal_district_summary_context_coeff(
-        rd,
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        fo_filter_sets=fo_sets,
+    context = _build_fo_coeff_summary_context(for_shell=True)
+    _attach_pd_summary_client_render(
+        context,
+        scope="fo",
+        data_path="/power_demand/summary/coeff/federal_districts/data.json",
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(
-        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(f_fd or f_res)
-    context["summary_route_variant"] = "coeff"
-    context["coeff_base_year"] = coeff_n
-    context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
-        include_long=coeff_include_long
-    )
-    _apply_coeff_year_k_columns(context)
-    slice_coeff_summary_for_lazy_long_segment(
-        context, coeff_n, include_long=coeff_include_long
-    )
-    _apply_coeff_ui_year_form_context(context, coeff_n)
-    _attach_pd_summary_logs(context)
-    _attach_pd_summary_formula_texts(context)
-    apply_entity_pagination_to_context(context, "fo")
     return render_template("power_demand/power_demand_summary.html", **context)
+
+
+@power_demand_bp.route("/summary/coeff/federal_districts/data.json")
+@login_required
+def demand_summary_federal_districts_coeff_data():
+    return _build_summary_data_json_response(
+        scope="fo",
+        context_builder=_build_fo_coeff_summary_context,
+        cache_scope="coeff_fo",
+    )
 
 
 @power_demand_bp.route("/summary/coeff/energy_zones/")
 @login_required
 def demand_summary_energy_zones_coeff():
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
-    ez_ordered = _parse_ez_territory_ordered()
-    ez_l, res_l = ez_ordered
-    rd = _parse_rounding_digits()
-    context = build_energy_zones_summary_context_coeff(
-        rd,
-        start_year=start_year,
-        end_year=end_year,
-        filter_year_list=_filter_year_list_for_summary(),
-        ez_territory_ordered=ez_ordered,
+    context = _build_ez_coeff_summary_context(for_shell=True)
+    _attach_pd_summary_client_render(
+        context,
+        scope="ez",
+        data_path="/power_demand/summary/coeff/energy_zones/data.json",
     )
-    context["rounding_digits_k"] = _parse_rounding_digits_k(
-        fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
-    )
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_ez_filters_cascade"] = get_power_demand_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
-    context["has_active_summary_filters"] = bool(ez_l or res_l)
-    context["summary_route_variant"] = "coeff"
-    context["coeff_base_year"] = coeff_n
-    context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
-        include_long=coeff_include_long
-    )
-    _apply_coeff_year_k_columns(context)
-    slice_coeff_summary_for_lazy_long_segment(
-        context, coeff_n, include_long=coeff_include_long
-    )
-    _apply_coeff_ui_year_form_context(context, coeff_n)
-    _attach_pd_summary_logs(context)
-    _attach_pd_summary_formula_texts(context)
-    apply_entity_pagination_to_context(context, "ez")
     return render_template("power_demand/power_demand_summary.html", **context)
+
+
+@power_demand_bp.route("/summary/coeff/energy_zones/data.json")
+@login_required
+def demand_summary_energy_zones_coeff_data():
+    return _build_summary_data_json_response(
+        scope="ez",
+        context_builder=_build_ez_coeff_summary_context,
+        cache_scope="coeff_ez",
+    )

@@ -1,0 +1,130 @@
+# -*- coding: utf-8 -*-
+"""Префикс ЕЭС/СЗ на ФО/ЭЗ заполняется теми же формулами ОЭС (скрытые источники)."""
+
+from __future__ import annotations
+
+from unittest.mock import patch
+
+from app.power_demand.services import demand_summary_services as dss
+
+
+def test_apply_national_prefix_oes_formulas_uses_hidden_ues_sources_when_absent() -> None:
+    years = [2024]
+    prefix_row = {
+        "demand_model_name": "SynchronousAreaDemandParameter",
+        "parameter_key": "max_power",
+        "year_values": ["—"],
+        "show_entity_cell": True,
+    }
+    source_row = {
+        "demand_model_name": "UnionEnergySystemDemandParameter",
+        "parameter_key": "combined_on_ees",
+        "year_values": ["100"],
+        "show_entity_cell": True,
+        "id_union_energy_system": 7,
+    }
+    rows = [prefix_row]
+
+    with (
+        patch.object(
+            dss,
+            "_build_oes_national_prefix_source_rows",
+            return_value=[source_row],
+        ) as build_sources,
+        patch.object(dss, "_enrich_national_prefix_calculated_max_like_oes") as enrich_calc,
+        patch.object(dss, "apply_second_sa_from_ues_east_formula") as apply_second,
+        patch.object(
+            dss, "apply_kaliningrad_sa_from_kaliningrad_es_formula"
+        ) as apply_kal,
+    ):
+        sources = dss._apply_national_prefix_oes_formulas(
+            rows,
+            years,
+            rounding_digits=0,
+            filter_year_list=years,
+            enrich_calculated=True,
+        )
+
+    build_sources.assert_called_once()
+    assert sources == [source_row]
+    enrich_calc.assert_called_once()
+    working = enrich_calc.call_args.args[0]
+    assert working[0] is prefix_row
+    assert working[1] is source_row
+    assert apply_second.call_args.args[0] is working
+    assert apply_kal.call_args.args[0] is working
+    # Скрытые источники не остаются в исходном списке страницы.
+    assert rows == [prefix_row]
+
+
+def test_apply_national_prefix_oes_formulas_skips_rebuild_when_ues_already_present() -> None:
+    years = [2024]
+    rows = [
+        {
+            "demand_model_name": "UnionEnergySystemDemandParameter",
+            "parameter_key": "combined_on_ees",
+            "year_values": ["10"],
+            "show_entity_cell": True,
+            "id_union_energy_system": 1,
+        }
+    ]
+    with (
+        patch.object(dss, "_build_oes_national_prefix_source_rows") as build_sources,
+        patch.object(dss, "_enrich_national_prefix_calculated_max_like_oes") as enrich_calc,
+        patch.object(dss, "apply_second_sa_from_ues_east_formula"),
+        patch.object(dss, "apply_kaliningrad_sa_from_kaliningrad_es_formula"),
+    ):
+        sources = dss._apply_national_prefix_oes_formulas(
+            rows,
+            years,
+            rounding_digits=0,
+            enrich_calculated=True,
+        )
+
+    build_sources.assert_not_called()
+    assert sources == []
+    enrich_calc.assert_called_once_with(
+        rows,
+        years,
+        0,
+        filter_year_list=years,
+    )
+
+
+def test_finalize_fo_summary_context_applies_national_prefix_formulas() -> None:
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CALC_MAX,
+    )
+
+    ctx = {
+        "summary_rows": [{"show_entity_cell": True, "entity_kind": "centralized_zone"}],
+        "years": [2024],
+        "rounding_digits": 0,
+        "filter_year_list": [2024],
+        "avg_temp_uses_global_rounding": False,
+        "fo_max_extended_parameters": True,
+    }
+    with (
+        patch.object(dss, "reorder_centralized_zone_russia_variant_blocks_in_summary_rows"),
+        patch.object(
+            dss, "exclude_o1_perimeter_variant_summary_rows", side_effect=lambda r: r
+        ),
+        patch.object(dss, "_enrich_fo_summary_calculated_max_from_res"),
+        patch.object(dss, "_inject_fo_max_cz_russia_calculated_max_row"),
+        patch.object(
+            dss, "_apply_national_prefix_oes_formulas", return_value=[]
+        ) as apply_prefix,
+        patch.object(dss, "_tag_common_power_demand_summary_rows"),
+        patch.object(dss, "mask_power_demand_summary_rows_perimeter_variant_year_display"),
+        patch.object(dss, "_clear_summary_hist_non_base_parameters"),
+        patch.object(dss, "_filter_power_demand_summary_context_segments"),
+        patch(
+            "app.power_demand.services.pd_summary_entity_pagination.tag_summary_rows_before_section_blocks"
+        ),
+    ):
+        dss._finalize_fo_summary_context(
+            ctx, 0, frozenset({PD_SUMMARY_SEGMENT_CALC_MAX})
+        )
+
+    apply_prefix.assert_called_once()
+    assert apply_prefix.call_args.kwargs.get("enrich_calculated") is True

@@ -33,7 +33,6 @@ def get_version_statistics(version_id):
         # Generation tables
         (SCHEMA_GENERATION, 'stations'),
         (SCHEMA_GENERATION, 'machines'),
-        (SCHEMA_GENERATION, 'station_powers'),
         (SCHEMA_GENERATION, 'machine_powers'),
         (SCHEMA_GENERATION, 'machine_fuels'),
         (SCHEMA_GENERATION, 'pgu_machines'),

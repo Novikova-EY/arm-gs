@@ -1,7 +1,6 @@
 from app.generation.routes.stations import station_bp
 from app.extensions import db
 from config import Config
-from decimal import Decimal
 from flask import (
     render_template, request, redirect, url_for, flash, session, current_app, send_file, jsonify, abort, make_response
 )
@@ -19,7 +18,6 @@ from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
-from app.generation.models.station.station_power_model import StationPower
 from app.generation.models.station.station_gaes_charge_consumption_model import (
     StationGaesChargeConsumption,
 )
@@ -205,14 +203,16 @@ from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
     get_year_list_full,
 )
+from app.generation.services.station_services.station_power_aggregation import (
+    load_station_powers_by_year,
+    aggregate_powers_from_machine_power_rows,
+)
 from app.generation.services.station_services.station_services import (
     get_stations_list,
     get_station_by_id, 
     assign_machine_powers_by_year, 
     get_station_list_template_context, 
-    recalculate_station_power,
     get_current_machine_tes_types_map, 
-    recalculate_station_powers_by_filtered_machines,
     update_station_from_form_service,
     delete_machines_service,
     update_machines_from_form_service,
@@ -753,31 +753,13 @@ def station_details(station_id):
     station_groups = form_data['station_groups']
     gen_companies = form_data['gen_companies']
 
-    # Оптимизированный пересчет мощностей - только если нужно
-    if request.method == "GET":
-        recalculate_station_power(station, start_year, end_year)
-
-    # Получаем мощности по годам из StationPower
-    station_power_query = (
-        StationPower.query.filter_by(id_station=station.id)
-        .filter(
-            StationPower.year_number >= start_year,
-            StationPower.year_number <= end_year
-        )
-    )
-    station_power_query = filter_by_explicit_db_version(
-        station_power_query,
-        StationPower,
+    # Итоги мощностей станции считаем из MachinePower (без отдельной таблицы)
+    station.powers_by_year = load_station_powers_by_year(
+        station.id,
+        start_year,
+        end_year,
         station_version_id,
     )
-    station.powers_by_year = {
-        sp.year_number: {
-            "p_ust": sp.p_ust,
-            "p_ogr": sp.p_ogr,
-            "p_rasp": sp.p_rasp
-        }
-        for sp in station_power_query.all()
-    }
 
     station.station_energy_by_year = station_annual_energy_by_year(
         station.id, start_year, end_year, station_version_id
@@ -1985,8 +1967,6 @@ def _render_machines_tbody(
     fuels_by_machine_year = {}
 
     if machine_ids:
-        # Суммируем в Decimal, чтобы избежать артефактов float (18,779999999998)
-        _agg_decimal = defaultdict(lambda: {"p_ust": Decimal(0), "p_ogr": Decimal(0), "p_rasp": Decimal(0)})
         # MachinePower
         mp_query = (
             db.session.query(MachinePower)
@@ -1998,20 +1978,11 @@ def _render_machines_tbody(
         for mp in mp_list:
             y = mp.year_number
             powers_by_machine_year.setdefault(mp.id_machine, {})[y] = mp
-            agg = _agg_decimal[y]
-            if mp.p_ust:
-                agg["p_ust"] += Decimal(str(mp.p_ust))
-            if mp.p_ogr:
-                agg["p_ogr"] += Decimal(str(mp.p_ogr))
-            if mp.p_rasp:
-                agg["p_rasp"] += Decimal(str(mp.p_rasp))
-        # Итоги оставляем как Decimal — форматирование выполняет шаблон
-        for y, data in _agg_decimal.items():
-            powers_by_year[y] = {
-                "p_ust": data["p_ust"],
-                "p_ogr": data["p_ogr"],
-                "p_rasp": data["p_rasp"],
-            }
+        powers_by_year = aggregate_powers_from_machine_power_rows(
+            mp_list,
+            start_year=start_year,
+            end_year=end_year,
+        )
 
         # MachineFuel
         mf_query = (

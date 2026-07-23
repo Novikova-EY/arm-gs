@@ -45,7 +45,6 @@ def import_all_models():
         # generation
         "app.generation.models.station_group_model",
         "app.generation.models.station_model",
-        "app.generation.models.station_power_model",
         "app.generation.models.station.station_gaes_charge_consumption_model",
         "app.energy_balance.models.station_energy_generation_model",
         "app.energy_balance.models.espp_energy_generation_model",
@@ -62,6 +61,7 @@ def import_all_models():
         "app.fuel.models.fue_machine_fuel_param_model",
         "app.fuel.models.fue_equipment_group_fuel_param_model",
         "app.fuel.models.fue_equipment_group_extra_fuel_param_model",
+        "app.fuel.models.fue_equipment_group_natural_fuel_model",
         "app.fuel.models.fue_equipment_group_specific_fuel_consumption_model",
         "app.fuel.models.fue_distribution_parameter_model",
         "app.fuel.models.coefficient.distribution_coefficient_summary_model",

@@ -37,7 +37,6 @@ from app.refdata.models.refdata_for_stations.technologies.equipment_group_model 
 from app.generation.forms.machine_forms import MachineFilterForm, EditMachineForm, PGUMachineFilterForm
 
 from app.generation.services.station_services.station_services import (
-    recalculate_station_power,
     get_machine_by_id,
     get_station_by_id,
     clear_station_aggregation_cache,
@@ -1962,7 +1961,6 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
             fuel_can_create_machine=fuel_can_create_machine,
         )
 
-        recalculate_station_power(station, start_year, end_year)
         if can_edit_generation or can_edit_dz_machine or fuel_can_create_machine:
             recalculate_machine_years_by_p_ust(machine, changes, year_features)
 

@@ -155,3 +155,104 @@ def test_ees_russia_calculated_max_via_es_sums_res_with_subject_fallback(_mock_u
         r for r in rows if r.get("parameter_key") == "calculated_max_ees_via_es_mw"
     )
     assert via_es["year_values"] == ["1 500"]
+
+
+@patch(
+    "app.power_demand.services.demand_summary_services._union_energy_system_ids_for_energy_system_type",
+    return_value=frozenset({1, 2}),
+)
+@patch(
+    "app.power_demand.services.demand_summary_services._new_territories_regional_district_ids",
+    return_value=frozenset({901}),
+)
+@patch(
+    "app.power_demand.services.demand_summary_services._south_ues_ids_for_nt_enrichment",
+    return_value=frozenset({2}),
+)
+def test_ees_russia_with_nt_equals_without_nt_plus_nt_subjects(
+    _mock_south, _mock_nt_ids, _mock_ues_ids
+) -> None:
+    """ЕЭС с НТ = сумма ОЭС как у без НТ + Σ combined_on_ees субъектов НТ."""
+    years = [2025]
+    without = _ees_russia_block(variant="without_nt")
+    without[0]["entity_label"] = "ЕЭС России без НТ"
+    with_nt = [
+        {
+            "demand_model_name": "EnergySystemTypeDemandParameter",
+            "parameter_key": "max_power",
+            "show_entity_cell": True,
+            "entity_rowspan": 2,
+            "entity_label": "ЕЭС России с НТ",
+            "perimeter_variant_code": "with_nt",
+            "year_values": ["100"],
+            "year_numeric_tooltips": ["100"],
+        },
+        {
+            "demand_model_name": "EnergySystemTypeDemandParameter",
+            "parameter_key": "calculated_max_ees_russia_mw",
+            "show_entity_cell": False,
+            "entity_rowspan": 1,
+            "perimeter_variant_code": "with_nt",
+            "year_values": ["—"],
+            "year_numeric_tooltips": [""],
+        },
+    ]
+    rows = (
+        without
+        + with_nt
+        + [
+            _ues_row(
+                ues_id=1,
+                pk="combined_on_ees",
+                year_values=["10 000"],
+                show_entity_cell=True,
+            ),
+            # ОЭС Юга без НТ — база для обеих агрегаций ЕЭС.
+            _ues_row(
+                ues_id=2,
+                pk="combined_on_ees",
+                year_values=["20 000"],
+                show_entity_cell=True,
+                perimeter_variant_code="without_nt",
+            ),
+            # ОЭС Юга с НТ — заниженное значение; не должно уменьшать ЕЭС с НТ.
+            _ues_row(
+                ues_id=2,
+                pk="combined_on_ees",
+                year_values=["1"],
+                show_entity_cell=True,
+                perimeter_variant_code="with_nt",
+            ),
+            {
+                "demand_model_name": "RegionalDistrictDemandParameter",
+                "parameter_key": "combined_on_ees",
+                "parent_fk_column": "id_regional_district",
+                "parent_id": 901,
+                "id_union_energy_system": 2,
+                "id_regional_district": 901,
+                "year_values": ["500"],
+                "year_numeric_tooltips": ["500"],
+                "show_entity_cell": True,
+                "entity_rowspan": 1,
+                "entity_label": "НТ субъект",
+            },
+        ]
+    )
+    without[0]["entity_rowspan"] = 2
+    with_nt[0]["entity_rowspan"] = 2
+
+    enrich_oes_ees_russia_calculated_max_russia_mw(
+        rows, years, rounding_digits=0, filter_year_list=years
+    )
+
+    calc_rows = [
+        r for r in rows if r.get("parameter_key") == "calculated_max_ees_russia_mw"
+    ]
+    without_calc = next(
+        r for r in calc_rows if r.get("perimeter_variant_code") == "without_nt"
+    )
+    with_nt_calc = next(
+        r for r in calc_rows if r.get("perimeter_variant_code") == "with_nt"
+    )
+    assert without_calc["year_values"] == ["30 000"]
+    assert with_nt_calc["year_values"] == ["30 500"]

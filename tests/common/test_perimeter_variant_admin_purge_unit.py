@@ -81,6 +81,144 @@ def test_purge_dependent_parameter_rows_noop_for_empty_codes(monkeypatch) -> Non
     assert called is False
 
 
+def test_rename_dependent_parameter_rows_updates_by_code(monkeypatch) -> None:
+    update_calls: list[tuple[str, str, str]] = []
+
+    class FakePdModel:
+        perimeter_variant_code = "perimeter_variant_code"
+
+        class query:
+            @staticmethod
+            def filter(criterion):
+                q = MagicMock()
+
+                def _update(values, synchronize_session=False):
+                    update_calls.append(
+                        (
+                            FakePdModel.__name__,
+                            "with_nt",
+                            values[FakePdModel.perimeter_variant_code],
+                        )
+                    )
+                    return 2
+
+                q.update = _update
+                return q
+
+    class FakeEcModel:
+        perimeter_variant_code = "perimeter_variant_code"
+
+        class query:
+            @staticmethod
+            def filter(criterion):
+                q = MagicMock()
+
+                def _update(values, synchronize_session=False):
+                    update_calls.append(
+                        (
+                            FakeEcModel.__name__,
+                            "with_nt",
+                            values[FakeEcModel.perimeter_variant_code],
+                        )
+                    )
+                    return 1
+
+                q.update = _update
+                return q
+
+    monkeypatch.setattr(
+        pvas,
+        "_parameter_models_with_perimeter_variant_code",
+        lambda: (FakePdModel, FakeEcModel),
+    )
+
+    updated = pvas._rename_dependent_parameter_rows_for_variant_code("with_nt", "with_nt_v2")
+
+    assert updated == 3
+    assert update_calls == [
+        ("FakePdModel", "with_nt", "with_nt_v2"),
+        ("FakeEcModel", "with_nt", "with_nt_v2"),
+    ]
+
+
+def test_rename_dependent_parameter_rows_noop_when_codes_equal(monkeypatch) -> None:
+    called = False
+
+    def _boom():
+        nonlocal called
+        called = True
+        return ()
+
+    monkeypatch.setattr(pvas, "_parameter_models_with_perimeter_variant_code", _boom)
+    assert pvas._rename_dependent_parameter_rows_for_variant_code("with_nt", "with_nt") == 0
+    assert pvas._rename_dependent_parameter_rows_for_variant_code("", "x") == 0
+    assert called is False
+
+
+def test_save_variants_from_form_renames_parameter_codes(monkeypatch) -> None:
+    renamed: list[tuple[str, str]] = []
+
+    variant = SimpleNamespace(
+        id=10,
+        code="with_nt",
+        label_suffix="old",
+        effective_from_year=None,
+        effective_to_year=None,
+        display_order=1,
+        note=None,
+        database_version_id=None,
+        modified_by=None,
+    )
+
+    class _Query:
+        def get(self, rid):
+            return variant if rid == 10 else None
+
+        def filter(self, *_a, **_k):
+            return self
+
+        def all(self):
+            return [variant]
+
+    session = SimpleNamespace(
+        delete=lambda row: None,
+        commit=lambda: None,
+        rollback=lambda: None,
+        add=lambda row: None,
+    )
+    monkeypatch.setattr(pvas, "PerimeterVariant", SimpleNamespace(query=_Query(), code="code"))
+    monkeypatch.setattr(
+        pvas,
+        "_rename_dependent_parameter_rows_for_variant_code",
+        lambda old, new: renamed.append((old, new)) or 1,
+    )
+    monkeypatch.setattr(pvas.db, "session", session)
+    monkeypatch.setattr(pvas, "_invalidate_perimeter_variant_dependent_caches", lambda: None)
+    monkeypatch.setattr(pvas, "_username", lambda: "tester")
+
+    form = MagicMock()
+    form.getlist = MagicMock(
+        side_effect=lambda key: {
+            "variant_id[]": ["10"],
+            "variant_code[]": ["with_nt_v2"],
+            "variant_label[]": ["Подпись"],
+            "variant_from_year[]": [""],
+            "variant_to_year[]": [""],
+            "variant_display_order[]": ["1"],
+            "variant_note[]": [""],
+            "variant_delete[]": [],
+        }.get(key, [])
+    )
+
+    saved, deleted = pvas.save_variants_from_form(form)
+
+    assert saved == 1
+    assert deleted == 0
+    assert renamed == [("with_nt", "with_nt_v2")]
+    assert variant.code == "with_nt_v2"
+    assert variant.label_suffix == "Подпись"
+
+
 def test_save_variants_from_form_purges_before_commit(monkeypatch) -> None:
     purged: list[set[str]] = []
     deleted_ids: list[int] = []

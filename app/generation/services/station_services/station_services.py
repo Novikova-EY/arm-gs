@@ -33,12 +33,12 @@ from app.generation.models.station.station_constants import (
     STATION_SIGN_ESPP,
     STATION_SIGN_UNSPECIFIED,
 )
-from app.generation.models.station.station_power_model import StationPower
-
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_fuel_model import MachineFuel
-from app.generation.models.station.station_power_model import StationPower
 from app.generation.models.machine.machine_power_model import MachinePower
+from app.generation.services.station_services.station_power_aggregation import (
+    assign_station_powers_from_filtered_machines,
+)
 from app.generation.models.machine.machine_tes_type_model import MachineTesType
 from app.generation.models.machine.machine_name_model import MachineName
 from app.generation.models.station.station_group_model import StationGroup
@@ -3548,37 +3548,17 @@ def load_station_power_by_year(station, start_year=None, end_year=None, rounding
 
 
 def recalculate_station_powers_by_filtered_machines(stations, start_year, end_year, rounding_digits):
-    for station in stations:
-        powers_by_year = defaultdict(lambda: {"p_ust": Decimal(0), "p_ogr": Decimal(0), "p_rasp": Decimal(0)})
-
-        for machine in station.machines:
-            # Важно: считаем итоги из machine.powers_by_year (нормализовано до 1 записи на год),
-            # иначе при дублях MachinePower за один год сумма "по станции" разойдётся с таблицей.
-            mp_map = getattr(machine, "powers_by_year", None) or {}
-            for year in range(start_year, end_year + 1):
-                mp = mp_map.get(year) or {}
-                p_ust = mp.get("p_ust")
-                p_ogr = mp.get("p_ogr")
-                p_rasp = mp.get("p_rasp")
-                if p_ust is not None:
-                    powers_by_year[year]["p_ust"] += Decimal(p_ust)
-                if p_ogr is not None:
-                    powers_by_year[year]["p_ogr"] += Decimal(p_ogr)
-                if p_rasp is not None:
-                    powers_by_year[year]["p_rasp"] += Decimal(p_rasp)
-
-        # Округляем
-        for year_data in powers_by_year.values():
-            for k in year_data:
-                year_data[k] = year_data[k]
-
-        station.powers_by_year = powers_by_year
+    """Итоги станции = сумма machine.powers_by_year (без записи в БД)."""
+    # rounding_digits сохранён в сигнатуре для совместимости вызовов.
+    _ = rounding_digits
+    assign_station_powers_from_filtered_machines(stations, start_year, end_year)
 
 
 def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits):
     # Нормализуем мощности до 1 записи на год.
     # В БД могут встречаться дубли MachinePower на один год; для отображения и итогов
     # важно выбирать детерминированно одну запись (берём с максимальным id).
+    _ = rounding_digits
     by_year_best = {}
     for mp in getattr(machine, "machine_powers", []) or []:
         y = getattr(mp, "year_number", None)
@@ -3599,98 +3579,6 @@ def assign_machine_powers_by_year(machine, start_year, end_year, rounding_digits
         }
 
         # fuel_type_by_year вычисляется автоматически через @property в модели Machine
-
-
-@no_autoflush
-def recalculate_station_power(station, start_year, end_year):
-    """
-    Высокопроизводительный пересчет мощностей электростанции.
-    Использует прямой SQL-запрос вместо ORM для максимальной скорости.
-    """
-    from sqlalchemy import func
-    
-    # Используем SQL для подсчета суммарных мощностей всех агрегатов электростанции
-    # Это намного быстрее, чем перебор через ORM
-    power_sums = (
-        db.session.query(
-            MachinePower.year_number,
-            func.coalesce(func.sum(MachinePower.p_ust), 0).label('p_ust'),
-            func.coalesce(func.sum(MachinePower.p_ogr), 0).label('p_ogr'),
-            func.coalesce(func.sum(MachinePower.p_rasp), 0).label('p_rasp'),
-        )
-        .join(Machine, MachinePower.id_machine == Machine.id)
-        .filter(Machine.id_station == station.id)
-        .filter(MachinePower.year_number.between(start_year, end_year))
-        .group_by(MachinePower.year_number)
-        .all()
-    )
-    
-    # Преобразуем результат в словарь для быстрого доступа
-    power_by_year = {
-        row.year_number: {
-            "p_ust": Decimal(str(row.p_ust or "0")),
-            "p_ogr": Decimal(str(row.p_ogr or "0")),
-            "p_rasp": Decimal(str(row.p_rasp or "0")),
-        }
-        for row in power_sums
-    }
-    
-    # Добавляем нулевые значения для годов без данных
-    for year in range(start_year, end_year + 1):
-        if year not in power_by_year:
-            power_by_year[year] = {
-                "p_ust": Decimal("0"),
-                "p_ogr": Decimal("0"),
-                "p_rasp": Decimal("0"),
-            }
-
-    # Оптимизация: загружаем существующие мощности одним запросом
-    existing_spowers = {
-        sp.year_number: sp
-        for sp in StationPower.query.filter_by(id_station=station.id)
-        .filter(StationPower.year_number.in_(range(start_year, end_year + 1)))
-        .all()
-    }
-
-    # Оптимизация: собираем изменения и коммитим одним запросом
-    powers_to_update = []
-    powers_to_create = []
-    
-    for year, values in power_by_year.items():
-        if year in existing_spowers:
-            sp = existing_spowers[year]
-            # Проверяем, изменились ли значения
-            if (sp.p_ust != values["p_ust"] or 
-                sp.p_ogr != values["p_ogr"] or 
-                sp.p_rasp != values["p_rasp"]):
-                sp.p_ust = values["p_ust"]
-                sp.p_ogr = values["p_ogr"]
-                sp.p_rasp = values["p_rasp"]
-                powers_to_update.append(sp)
-        else:
-            sp = StationPower(
-                id_station=station.id,
-                year_number=year,
-                p_ust=values["p_ust"],
-                p_ogr=values["p_ogr"],
-                p_rasp=values["p_rasp"],
-            )
-            set_db_version_on_create(sp)
-            powers_to_create.append(sp)
-
-    # Коммитим только если есть изменения
-    if powers_to_update or powers_to_create:
-        if powers_to_create:
-            # Чиним sequence через отдельное соединение, чтобы возможная ошибка
-            # не оставляла ORM-сессию в aborted state перед основным commit().
-            try:
-                quick_fix_seq(SCHEMA_GENERATION, "gs_gen_station_powers", "id")
-            except Exception:
-                # Если БД не PostgreSQL или нет последовательности — тихо пропускаем
-                pass
-        db.session.add_all(powers_to_create)
-        _commit_with_retry()
-        clear_station_aggregation_cache("после изменения мощностей")  # Очищаем кэш после изменения мощностей
 
 
 def build_energy_unit_aggregates(data):
@@ -4964,20 +4852,10 @@ def delete_machines_service(user, station: Station, machine_ids_to_delete: list)
     changes = []
     try:
         machines_to_delete = Machine.query.filter(Machine.id.in_(machine_ids_to_delete)).all()
-        affected_station_ids = set()
         for machine in machines_to_delete:
-            affected_station_ids.add(machine.id_station)
             # Полагаться на каскадные связи ORM: дети удаляются автоматически
             changes.append(f"Агрегат {machine.machine_number or '—'} удален")
             db.session.delete(machine)
-
-        for station_id in affected_station_ids:
-            remaining_machines = Machine.query.filter_by(id_station=station_id).count()
-            if remaining_machines == 0:
-                powers_to_delete = StationPower.query.filter_by(id_station=station_id).all()
-                for sp in powers_to_delete:
-                    db.session.delete(sp)
-                changes.append(f"Мощности электростанции ID={station_id} удалены, так как все агрегаты были удалены")
 
         _commit_with_retry()
         clear_station_aggregation_cache("после удаления агрегатов")  # Очищаем кэш после удаления агрегатов

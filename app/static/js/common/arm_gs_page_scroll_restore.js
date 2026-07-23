@@ -292,11 +292,46 @@
         return null;
     }
 
+    function getVScrollEl(opts) {
+        if (opts && opts.vScrollEl) {
+            return opts.vScrollEl;
+        }
+        var coeffWrap = document.querySelector(
+            ".page-table-scroll .pd-coeff-summary-scroll-wrap"
+        );
+        if (coeffWrap) {
+            return coeffWrap;
+        }
+        return document.querySelector(".page-table-scroll");
+    }
+
     function getHScrollEl(opts) {
         if (opts && opts.hScrollEl) {
-            return opts.hScrollEl;
+            var explicit = opts.hScrollEl;
+            // На max/oes/fo/ez wrap с overflow:visible — X-скролл у .page-table-scroll.
+            if (
+                explicit
+                && explicit.id === "powerDemandSummaryScrollWrap"
+                && !(
+                    explicit.classList
+                    && explicit.classList.contains("pd-coeff-summary-scroll-wrap")
+                )
+            ) {
+                var pageWrap = document.querySelector(".page-table-scroll");
+                if (pageWrap) {
+                    return pageWrap;
+                }
+            }
+            return explicit;
         }
-        return document.getElementById("powerDemandSummaryScrollWrap");
+        var host = document.querySelector(
+            ".page-table-scroll .pd-summary-table-x-scroll-host, "
+            + ".page-table-scroll .pd-coeff-summary-scroll-wrap"
+        );
+        if (host) {
+            return host;
+        }
+        return document.querySelector(".page-table-scroll");
     }
 
     function getTableEl(opts) {
@@ -307,35 +342,54 @@
             || document.querySelector("table.power-demand-summary-table");
     }
 
+    function isPdSummaryClientRenderPage() {
+        return !!document.getElementById("pd-summary-client-render-config");
+    }
+
     function isPdSummaryClientRenderPending() {
-        if (!document.getElementById("pd-summary-client-render-config")) {
+        if (!isPdSummaryClientRenderPage()) {
             return false;
         }
         var shell = document.getElementById("powerDemandSummaryLoaderShell");
         return !!(shell && shell.dataset.ready !== "1");
     }
 
+    function isPdSummaryUiSettling() {
+        return window.__pdPdSummaryDeferSegmentVisibility === true;
+    }
+
+    /**
+     * На PD client-render не снимаем sessionStorage, пока:
+     * - shell ещё не ready, или
+     * - ещё грузятся optional-сегменты / финальная видимость, или
+     * - якорь строки задан, но строка ещё не в DOM.
+     * Иначе restore «успешен» по scrollTop=0 у .page-table-scroll (coeff)
+     * и позиция после save теряется.
+     */
     function shouldDeferPdSummaryConsume(state, result) {
-        return !!(
-            state &&
-            state.rowAnchor &&
-            result &&
-            result.success &&
-            isPdSummaryClientRenderPending()
-        );
+        if (!state || !isPdSummaryClientRenderPage()) {
+            return false;
+        }
+        if (isPdSummaryClientRenderPending() || isPdSummaryUiSettling()) {
+            return true;
+        }
+        if (state.rowAnchor && !(result && result.rowFound)) {
+            return true;
+        }
+        return false;
     }
 
     function save(opts) {
         opts = opts || {};
         var table = getTableEl(opts);
         var scope = opts.scope || defaultScope(table);
-        var scrollWrap = document.querySelector(".page-table-scroll");
+        var vScroll = getVScrollEl(opts);
         var hScroll = getHScrollEl(opts);
         var anchorEl = resolveAnchorElement(opts);
         var anchorTr = anchorEl && anchorEl.closest ? anchorEl.closest("tr") : null;
         setSession(storageKey(scope), JSON.stringify({
             rowAnchor: buildGenericRowAnchor(anchorTr),
-            scrollTop: scrollWrap ? scrollWrap.scrollTop : (window.scrollY || 0),
+            scrollTop: vScroll ? vScroll.scrollTop : (window.scrollY || 0),
             scrollLeft: hScroll ? hScroll.scrollLeft : 0,
             tableSelector: table && table.id ? ("#" + table.id) : null
         }));
@@ -347,7 +401,7 @@
         if (!table && state.tableSelector) {
             table = document.querySelector(state.tableSelector);
         }
-        var scrollWrap = document.querySelector(".page-table-scroll");
+        var vScroll = getVScrollEl(opts);
         var hScroll = getHScrollEl(opts);
         var root = table || document;
         var rowFound = false;
@@ -361,8 +415,8 @@
         }
         var scrollApplied = false;
         if (!rowFound && typeof state.scrollTop === "number") {
-            if (scrollWrap) {
-                scrollWrap.scrollTop = state.scrollTop;
+            if (vScroll) {
+                vScroll.scrollTop = state.scrollTop;
                 scrollApplied = true;
             } else if (!state.rowAnchor) {
                 window.scrollTo(0, state.scrollTop);
@@ -375,10 +429,14 @@
         if (typeof window.refreshPowerDemandSummaryLayout === "function") {
             window.refreshPowerDemandSummaryLayout();
         }
+        // Если цель — конкретная строка, «успех» только при её нахождении.
+        // Иначе scrollTop (часто 0 на coeff) раньше считался успехом и consume
+        // убивал состояние до появления строки в DOM.
+        var success = state.rowAnchor ? rowFound : (rowFound || scrollApplied);
         return {
             rowFound: rowFound,
             scrollApplied: scrollApplied,
-            success: rowFound || scrollApplied
+            success: success
         };
     }
 
@@ -473,7 +531,7 @@
             });
 
             document.addEventListener("pd-summary-rows-rendered", afterDeferredContent);
-            document.addEventListener("pd-summary-initial-render-finished", function () {
+            function afterUiSettled() {
                 if (!trySession(storageKey(scope))) {
                     return;
                 }
@@ -483,7 +541,9 @@
                         tryRestore(true, false);
                     });
                 });
-            });
+            }
+            document.addEventListener("pd-summary-initial-render-finished", afterUiSettled);
+            document.addEventListener("pd-summary-ui-settled", afterUiSettled);
 
             if (window.__pdSummaryRowsReady && typeof window.__pdSummaryRowsReady.then === "function") {
                 window.__pdSummaryRowsReady.then(afterDeferredContent, function () {

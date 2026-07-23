@@ -14,9 +14,9 @@
                     {% endfor %}
                     <button type="button"
                             id="exportSpecificFuelPriceButton"
-                            class="btn btn-outline-success"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                             style="white-space: nowrap;">
-                        Выгрузка цены для групп оборудования
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
                 {% elif show_electricity_production_cost_export|default(false) %}
@@ -27,9 +27,9 @@
                     {% endfor %}
                     <button type="button"
                             id="exportElectricityProductionCostButton"
-                            class="btn btn-outline-success"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                             style="white-space: nowrap;">
-                        Выгрузка затрат ТЭС на производство ЭЭ и ТЭ
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
                 {% elif show_specific_fuel_cost_export|default(false) %}
@@ -40,9 +40,9 @@
                     {% endfor %}
                     <button type="button"
                             id="exportSpecificFuelCostButton"
-                            class="btn btn-outline-success"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                             style="white-space: nowrap;">
-                        Выгрузка стоимости для групп оборудования
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
                 {% elif show_specific_fuel_consumption_export|default(false) %}
@@ -53,9 +53,9 @@
                     {% endfor %}
                     <button type="button"
                             id="exportSpecificFuelConsumptionButton"
-                            class="btn btn-outline-success"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                             style="white-space: nowrap;">
-                        Выгрузка удельных показателей
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
                 {% elif show_extra_fuel_params_export|default(false) %}
@@ -65,9 +65,21 @@
                     {% endfor %}
                     <button type="button"
                             id="exportExtraFuelParamsButton"
-                            class="btn btn-outline-success"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                             style="white-space: nowrap;">
-                        Выгрузка дополнительных топливных параметров
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                    </button>
+                </form>
+                {% elif show_natural_fuel_export|default(false) %}
+                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_natural_fuel') }}" id="exportNaturalFuelForm">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportNaturalFuelButton"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                            style="white-space: nowrap;">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
                 {% elif show_fuel_params_export|default(false) and hide_fuel_params_export_button|default(false) %}
@@ -79,14 +91,14 @@
                     {% endfor %}
                     <button type="button"
                             id="exportFuelParamsButton"
-                            class="btn btn-outline-success"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                             style="white-space: nowrap;">
-                        Выгрузка основных топливных параметров
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
                 {% elif show_fuel_formula_page|default(false) %}
-                <button type="button" id="exportFuelFormulasToExcel" class="btn btn-outline-success" style="white-space: nowrap;">
-                    Экспорт в Excel
+                <button type="button" id="exportFuelFormulasToExcel" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
+                    <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                 </button>
                 {% elif show_ee_generation_import|default(false) %}
                 <!-- Экспорт (страница «Выработка ЭЭ» — как на /energy_consumption/summary_table/) -->
@@ -125,8 +137,8 @@
                     {% for key, value in request.args.items() %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
-                    <button type="button" id="exportExcelFull" class="btn btn-outline-success" style="white-space: nowrap;">
-                        Экспорт списка отображаемых станций
+                    <button type="button" id="exportExcelFull" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
                 {% endif %}
@@ -192,8 +204,8 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelConsumptionFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelConsumptionBtn">
-                        Загрузка Коэффициента экономии от теплофикации
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importSpecificFuelConsumptionBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -240,8 +252,8 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelPriceFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelPriceBtn">
-                        Загрузка цены для групп оборудования
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importSpecificFuelPriceBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -287,8 +299,8 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importElectricityProductionCostFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importElectricityProductionCostBtn">
-                        Загрузка затрат ТЭС на производство ЭЭ и ТЭ
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importElectricityProductionCostBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -334,8 +346,8 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelCostFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelCostBtn">
-                        Загрузка стоимости для групп оборудования
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importSpecificFuelCostBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -381,8 +393,8 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelConsumptionCalcFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importSpecificFuelConsumptionCalcBtn">
-                        Загрузка рассчитанных значений удельных показателей
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importSpecificFuelConsumptionCalcBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -428,8 +440,8 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importExtraFuelParamsFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importExtraFuelParamsBtn">
-                        Загрузка дополнительных топливных данных
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importExtraFuelParamsBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -463,6 +475,53 @@
                     }
                 })();
                 </script>
+                {% elif show_natural_fuel_import|default(false) %}
+                <form action="{{ import_natural_fuel_action|default(url_for('fuel_bp.import_equipment_group_natural_fuel')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importNaturalFuelForm">
+                    {{ form.csrf_token }}
+                    <input type="hidden" name="year" id="importNaturalFuelYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importNaturalFuelFile" required>
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importNaturalFuelBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importNaturalFuelForm');
+                    var btn = document.getElementById('importNaturalFuelBtn');
+                    var fileInput = document.getElementById('importNaturalFuelFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                var yearSelect = document.getElementById('year');
+                                var yearInput = document.getElementById('importNaturalFuelYear');
+                                if (yearSelect && yearInput) {
+                                    yearInput.value = yearSelect.value;
+                                }
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
+                            var yearSelect = document.getElementById('year');
+                            var yearInput = document.getElementById('importNaturalFuelYear');
+                            if (yearSelect && yearInput) {
+                                yearInput.value = yearSelect.value;
+                            }
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
                 {% elif show_fuel_params_import|default(false) and hide_fuel_params_import_button|default(false) %}
                 {% elif show_fuel_params_import|default(false) %}
                 <form action="{{ import_fuel_params_action|default(url_for('fuel_bp.import_equipment_group_fuel_params')) }}"
@@ -476,8 +535,8 @@
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelParamsFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importFuelParamsBtn">
-                        Загрузка основных топливных данных
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelParamsBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -600,8 +659,8 @@
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelFormulaFile" required>
-                    <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importFuelFormulaBtn">
-                        Загрузка формул топлива из Excel
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelFormulaBtn">
+                        <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
                 <script>
@@ -637,13 +696,13 @@
                     {% endfor %}
                     {% if import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') == 'fuel_bp.stations_equipment_groups' %}
                         <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelDbFile" required>
-                        <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="importFuelDbBtn">
-                            Загрузка данных в БД
+                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn">
+                            <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     {% else %}
                         <input type="file" name="file" class="form-control" accept=".xlsx,.xls" style="max-width: 220px;" required>
-                        <button type="submit" class="btn btn-outline-primary" style="white-space: nowrap;" id="importFuelDbBtn">
-                            Загрузка данных БД Топливо
+                        <button type="submit" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn">
+                            <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     {% endif %}
                 </form>

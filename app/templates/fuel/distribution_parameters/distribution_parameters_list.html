@@ -400,8 +400,8 @@
                         {% for key, value in request.args.items() %}
                             <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endfor %}
-                        <button type="submit" class="btn btn-outline-success" style="white-space: nowrap;">
-                            Экспорт в Excel
+                        <button type="submit" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
+                            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                         </button>
                     </form>
                 </div>
@@ -411,8 +411,8 @@
                           class="d-flex align-items-center flex-wrap gap-2" id="distributionParametersImportForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="file" name="file" class="d-none" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="distributionParametersImportFile" required>
-                        <button type="button" class="btn btn-outline-primary" style="white-space: nowrap;" id="distributionParametersImportBtn">
-                            Загрузка параметров распределения из Excel
+                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="distributionParametersImportBtn">
+                            <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     </form>
                 </div>

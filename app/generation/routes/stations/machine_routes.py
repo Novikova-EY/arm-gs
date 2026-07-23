@@ -19,7 +19,6 @@ from app.generation.services.machine_services.machine_services import (
 from app.generation.services.station_services.station_services import (
     get_machine_by_id,
     get_station_by_id, 
-    recalculate_station_power,
 )
 from app.common.services.help_services import (
     convert_to_date,

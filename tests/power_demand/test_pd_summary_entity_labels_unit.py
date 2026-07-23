@@ -77,28 +77,71 @@ def _aggregate_row(
     return row
 
 
-def test_first_sync_zone_entity_labels_include_kaliningrad_suffix_nt_off():
+def test_first_sync_zone_entity_labels_omit_kaliningrad_suffix_nt_off():
     row = _first_sync_zone_row(
         CODE_WITHOUT_NT_WITH_KALININGRAD_ES,
         "Первая синхронная зона без НТ (с ЭС Калининградской области)",
     )
     service.tag_power_demand_summary_rows_for_nt_toggle([row])
 
-    assert row["pd_pd_entity_label_compact_nt"] == (
-        "Первая синхронная зона (с ЭС Калининградской области)"
+    assert row["pd_pd_entity_label_compact_nt"] == "Первая синхронная зона"
+
+
+def test_summary_variant_entity_label_ignores_perimeter_catalog_suffix():
+    binding = MagicMock()
+    binding.display_label_prefix = "Первая синхронная зона"
+    binding.variants = (
+        MagicMock(
+            code="with_nt_without_gaes_kaliningrad",
+            label_suffix="с НТ без заряда ГАЭС (Калин)",
+        ),
     )
+    label = service._summary_variant_entity_label(
+        binding,
+        "Первая синхронная зона",
+        "with_nt_without_gaes_kaliningrad",
+        "synchronous_area",
+        "Первая синхронная зона",
+    )
+    assert label == "Первая синхронная зона с НТ"
 
 
-def test_first_sync_zone_entity_labels_include_kaliningrad_suffix_nt_on():
+def test_summary_variant_entity_label_o1_code_adds_only_nt_suffix():
+    binding = MagicMock()
+    binding.variants = (
+        MagicMock(code="o1_with_nt", label_suffix="O-1 с НТ и что угодно"),
+    )
+    label = service._summary_variant_entity_label(
+        binding,
+        "ЦЗ России",
+        "o1_with_nt",
+        "centralized_zone",
+        "ЦЗ России",
+    )
+    assert label == "ЦЗ России с НТ"
+    assert "O-1" not in label
+
+
+def test_toggle_strips_catalog_kaliningrad_parenthetical():
+    row = _first_sync_zone_row(
+        "with_nt_without_gaes_kaliningrad",
+        "Первая синхронная зона с НТ без заряда ГАЭС (Калин)",
+    )
+    service.tag_power_demand_summary_rows_for_nt_toggle([row])
+
+    assert row["pd_pd_entity_label_compact_nt"] == "Первая синхронная зона"
+    assert row["pd_pd_entity_label_nt_detail"] == "Первая синхронная зона с НТ"
+    assert row["entity_label"] == "Первая синхронная зона с НТ"
+
+
+def test_first_sync_zone_entity_labels_omit_kaliningrad_suffix_nt_on():
     row = _first_sync_zone_row(
         CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES,
         "Первая синхронная зона без НТ (без ЭС Калининградской области)",
     )
     service.tag_power_demand_summary_rows_for_nt_toggle([row])
 
-    assert row["pd_pd_entity_label_nt_detail"] == (
-        "Первая синхронная зона без НТ (без ЭС Калининградской области)"
-    )
+    assert row["pd_pd_entity_label_nt_detail"] == "Первая синхронная зона без НТ"
 
 
 def test_first_sync_zone_entity_labels_strip_gaes_from_source_label():
@@ -108,12 +151,8 @@ def test_first_sync_zone_entity_labels_strip_gaes_from_source_label():
     )
     service.tag_power_demand_summary_rows_for_nt_toggle([row])
 
-    assert row["entity_label"] == (
-        "Первая синхронная зона без НТ (с ЭС Калининградской области)"
-    )
-    assert row["pd_pd_entity_label_compact_nt"] == (
-        "Первая синхронная зона (с ЭС Калининградской области)"
-    )
+    assert row["entity_label"] == "Первая синхронная зона без НТ"
+    assert row["pd_pd_entity_label_compact_nt"] == "Первая синхронная зона"
 
 
 def test_strip_gaes_text_from_perimeter_variant_label_fragment():
@@ -179,22 +218,14 @@ def test_first_sync_zone_export_labels_match_screen_toggle():
     compact_export = service.apply_power_demand_summary_nt_export_ui(
         rows, nt_detail_on=False
     )
-    assert compact_export[0]["entity_label"] == (
-        "Первая синхронная зона (с ЭС Калининградской области)"
-    )
-    assert compact_export[1]["entity_label"] == (
-        "Первая синхронная зона (без ЭС Калининградской области)"
-    )
+    assert compact_export[0]["entity_label"] == "Первая синхронная зона"
+    assert compact_export[1]["entity_label"] == "Первая синхронная зона"
 
     detail_export = service.apply_power_demand_summary_nt_export_ui(
         rows, nt_detail_on=True
     )
-    assert detail_export[0]["entity_label"] == (
-        "Первая синхронная зона без НТ (с ЭС Калининградской области)"
-    )
-    assert detail_export[1]["entity_label"] == (
-        "Первая синхронная зона без НТ (без ЭС Калининградской области)"
-    )
+    assert detail_export[0]["entity_label"] == "Первая синхронная зона без НТ"
+    assert detail_export[1]["entity_label"] == "Первая синхронная зона без НТ"
 
 
 def test_oes_aggregate_with_nt_rows_get_nt_detail_label_and_stay_nt_extra():
@@ -399,25 +430,108 @@ def test_centralized_zone_without_nt_compact_label_for_fo_summary():
     assert row["pd_pd_nt_extra_row"] is False
 
 
-def test_build_centralized_zone_entities_prefers_non_o1_when_bound(app):
-    with app.app_context():
-        binding = resolve_entity_perimeter_variants(
-            ENTITY_KIND_CENTRALIZED_ZONE,
-            CENTRALIZED_ZONE_AGGREGATE_NAME,
-        )
-        if binding is None:
-            return
-        codes = {v.code for v in binding.variants}
-        if "o1_with_nt" not in codes:
-            return
+def test_build_centralized_zone_entities_prefers_o1_when_bound():
+    from unittest.mock import MagicMock, patch
+
+    binding = MagicMock()
+    binding.variants = [
+        MagicMock(code="with_nt"),
+        MagicMock(code="without_nt"),
+        MagicMock(code="o1_with_nt"),
+        MagicMock(code="o1_without_nt"),
+    ]
+    groups = [
+        ("with_nt", []),
+        ("without_nt", []),
+        ("o1_with_nt", []),
+        ("o1_without_nt", []),
+    ]
+    with (
+        patch.object(
+            service,
+            "resolve_entity_perimeter_binding",
+            return_value=binding,
+        ),
+        patch.object(
+            service,
+            "_demand_row_groups_for_oes_top_aggregate",
+            return_value=groups,
+        ),
+        patch.object(
+            service,
+            "_summary_variant_entity_label",
+            side_effect=lambda _b, base, code, *_a: f"{base} {code}",
+        ),
+    ):
         entities = service._build_centralized_zone_perimeter_entities()
     entity_codes = [e.perimeter_variant_code for e in entities]
-    assert all(not is_o1_perimeter_variant_code(c) for c in entity_codes if c)
-    assert "with_nt" in entity_codes or "without_nt" in entity_codes
-    assert all(
-        not getattr(e, "centralized_zone_o1_display_row", False) for e in entities
-    )
-    assert all("O-1" not in e.label for e in entities)
+    assert entity_codes == ["o1_with_nt", "o1_without_nt"]
+    assert all(is_o1_perimeter_variant_code(c) for c in entity_codes)
+
+
+def test_exclude_o1_keeps_centralized_zone_russia_o1_rows():
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_kind": "centralized_zone",
+            "demand_model_name": CentralizedZoneDemandParameter.__name__,
+            "entity_label": "ЦЗ России О-1 с НТ",
+            "perimeter_variant_code": "o1_with_nt",
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_kind": "centralized_zone",
+            "demand_model_name": CentralizedZoneDemandParameter.__name__,
+            "entity_label": "ЦЗ России О-1 без НТ",
+            "perimeter_variant_code": "o1_without_nt",
+            "parameter_key": "max_power",
+        },
+        {
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_label": "ЭС Магаданской области O-1",
+            "perimeter_variant_code": "o1",
+            "parameter_key": "max_power",
+        },
+    ]
+    filtered = service.exclude_o1_perimeter_variant_summary_rows(rows)
+    assert [r.get("perimeter_variant_code") for r in filtered] == [
+        "o1_with_nt",
+        "o1_without_nt",
+    ]
+
+
+def test_centralized_zone_o1_nt_toggle_labels():
+    rows = [
+        {
+            "show_entity_cell": True,
+            "entity_kind": "centralized_zone",
+            "demand_model_name": CentralizedZoneDemandParameter.__name__,
+            "entity_label": "ЦЗ России О-1 с НТ",
+            "perimeter_variant_code": "o1_with_nt",
+            "parameter_key": "max_power",
+            "entity_depth": 0,
+        },
+        {
+            "show_entity_cell": True,
+            "entity_kind": "centralized_zone",
+            "demand_model_name": CentralizedZoneDemandParameter.__name__,
+            "entity_label": "ЦЗ России О-1 без НТ",
+            "perimeter_variant_code": "o1_without_nt",
+            "parameter_key": "max_power",
+            "entity_depth": 0,
+        },
+    ]
+    service.tag_power_demand_summary_rows_for_nt_toggle(rows)
+    assert rows[0]["pd_pd_entity_label_nt_detail"] == "ЦЗ России с НТ"
+    assert rows[0]["pd_pd_entity_label_compact_nt"] == "ЦЗ России"
+    assert rows[0]["pd_pd_nt_extra_row"] is True
+    assert rows[1]["pd_pd_entity_label_nt_detail"] == "ЦЗ России без НТ"
+    assert rows[1]["pd_pd_entity_label_compact_nt"] == "ЦЗ России"
+    assert rows[1]["pd_pd_nt_extra_row"] is False
 
 
 def test_south_federal_district_without_nt_compact_label_for_fo_summary():
@@ -456,7 +570,7 @@ def test_coeff_summary_restores_without_gaes_suffix_in_full_entity_label():
     assert row["pd_pd_entity_label_compact_nt"] == expected
 
 
-def test_coeff_summary_without_gaes_label_keeps_kaliningrad_suffix():
+def test_coeff_summary_without_gaes_label_omits_kaliningrad_suffix():
     row = {
         "show_entity_cell": True,
         "entity_label": "Первая синхронная зона без НТ (без ЭС Калининградской области)",
@@ -469,10 +583,7 @@ def test_coeff_summary_without_gaes_label_keeps_kaliningrad_suffix():
     service.tag_power_demand_summary_rows_for_nt_toggle([row])
     service.tag_power_demand_coeff_summary_rows_without_gaes_entity_labels([row])
 
-    assert row["entity_label"] == (
-        "Первая синхронная зона без НТ без заряда ГАЭС "
-        "(без ЭС Калининградской области)"
-    )
+    assert row["entity_label"] == "Первая синхронная зона без НТ без заряда ГАЭС"
 
 
 def test_drop_null_perimeter_variant_group_when_nt_pairs_exist():

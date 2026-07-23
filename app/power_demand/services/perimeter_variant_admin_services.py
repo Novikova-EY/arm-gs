@@ -147,6 +147,21 @@ def _purge_dependent_parameter_rows_for_variant_codes(codes: set[str]) -> int:
     return removed
 
 
+def _rename_dependent_parameter_rows_for_variant_code(old_code: str, new_code: str) -> int:
+    """Переименовывает perimeter_variant_code в строках параметров PD/EC."""
+    if not old_code or not new_code or old_code == new_code:
+        return 0
+    updated = 0
+    for model in _parameter_models_with_perimeter_variant_code():
+        updated += (
+            model.query.filter(model.perimeter_variant_code == old_code).update(
+                {model.perimeter_variant_code: new_code},
+                synchronize_session=False,
+            )
+        )
+    return updated
+
+
 def list_variants_for_admin() -> list[PerimeterVariant]:
     try:
         rows = PerimeterVariant.query.order_by(
@@ -300,7 +315,10 @@ def save_variants_from_form(form_data) -> tuple[int, int]:
             row = PerimeterVariant.query.get(rid)
             if row is None:
                 continue
-            rows_to_update = PerimeterVariant.query.filter(PerimeterVariant.code == row.code).all()
+            old_code = row.code
+            rows_to_update = PerimeterVariant.query.filter(PerimeterVariant.code == old_code).all()
+            if old_code != code:
+                _rename_dependent_parameter_rows_for_variant_code(old_code, code)
         else:
             row = PerimeterVariant()
             row.database_version_id = None

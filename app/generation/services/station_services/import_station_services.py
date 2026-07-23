@@ -21,7 +21,6 @@ from app.common.services.database_version_filter import (
     get_current_db_version_id,
 )
 from app.generation.models.station.station_model import Station
-from app.generation.models.station.station_power_model import StationPower
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.models.machine.machine_fuel_model import MachineFuel
@@ -1990,70 +1989,6 @@ def update_machine_power_ogr(machine, years: list[int], user):
                 print(f"Пересчет ограничения мощности  электростанции {machine.machine_station.name} ({machine.machine_station.regional_district.name}), Агрегат: {machine.machine_number} - {machine.machine_name}, год {year}: p_ogr {old_ogr} → {power.p_ogr}")
 
 
-# Вспомогательная функция: расчет агрегированной мощности электростанции по годам
-def update_station_power(station, years: list[int], user):
-    for year in years:
-        total_values = db.session.query(
-            db.func.sum(MachinePower.p_ust).label("total_p_ust"),
-            db.func.sum(MachinePower.p_ogr).label("total_p_ogr"),
-            db.func.sum(MachinePower.p_rasp).label("total_p_rasp")
-        ).join(Machine).filter(
-            Machine.id_station == station.id,
-            MachinePower.year_number == year
-        )
-        total_values = filter_by_db_version(total_values, MachinePower)
-        total_values = filter_by_db_version(total_values, Machine)
-        total_values = total_values.first()
-
-        total_p_ust = total_values.total_p_ust or 0
-        total_p_ogr = total_values.total_p_ogr or 0
-        total_p_rasp = total_values.total_p_rasp or 0
-
-        record = (
-            versioned_query(StationPower)
-            .filter_by(id_station=station.id, year_number=year)
-            .first()
-        )
-        updates = []
-
-        if record:
-            # Нормализуем значения для сравнения: None и 0 считаются одинаковыми
-            record_p_ust_normalized = record.p_ust if record.p_ust is not None else Decimal(0)
-            record_p_ogr_normalized = record.p_ogr if record.p_ogr is not None else Decimal(0)
-            record_p_rasp_normalized = record.p_rasp if record.p_rasp is not None else Decimal(0)
-            total_p_ust_normalized = total_p_ust if total_p_ust is not None else Decimal(0)
-            total_p_ogr_normalized = total_p_ogr if total_p_ogr is not None else Decimal(0)
-            total_p_rasp_normalized = total_p_rasp if total_p_rasp is not None else Decimal(0)
-            
-            if record_p_ust_normalized != total_p_ust_normalized:
-                updates.append(f"p_ust {record.p_ust} → {total_p_ust}")
-                record.p_ust = total_p_ust
-            if record_p_ogr_normalized != total_p_ogr_normalized:
-                updates.append(f"p_ogr {record.p_ogr} → {total_p_ogr}")
-                record.p_ogr = total_p_ogr
-            if record_p_rasp_normalized != total_p_rasp_normalized:
-                updates.append(f"p_rasp {record.p_rasp} → {total_p_rasp}")
-                record.p_rasp = total_p_rasp
-
-            if updates:
-                log_to_db(user, f"Обновление мощности  электростанции {station.name} ({station.regional_district.name})",
-                          f"Станция: {station.name}, год {year}: " + ", ".join(updates))
-                print(f"Обновление мощности  электростанции {station.name} ({station.regional_district.name}), Станция: {station.name}, год {year}: " + ", ".join(updates))
-        else:
-            record = StationPower(
-                id_station=station.id,
-                year_number=year,
-                p_ust=total_p_ust,
-                p_ogr=total_p_ogr,
-                p_rasp=total_p_rasp
-            )
-            set_db_version_on_create(record)
-            db.session.add(record)
-            log_to_db(user, f"Создание мощности  электростанции ({station.name})",
-                      f"Станция: {station.name}, год {year}: p_ust {total_p_ust}, p_ogr {total_p_ogr}, p_rasp {total_p_rasp}")
-            print(f"Создание мощности  электростанции ({station.name}), Станция: {station.name}, год {year}: p_ust {total_p_ust}, p_ogr {total_p_ogr}, p_rasp {total_p_rasp}")
-
-
 # Вспомогательная функция: запись топлива агрегата по годам
 def assign_machine_fuel(machine, row, years: list[int], user):
     # Получаем тип электростанции из связанной электростанции
@@ -2380,7 +2315,6 @@ def import_station_list_from_excel(file, user):
     current_station = None
     current_machine = None
     awaiting_rasp_row = False
-    touched_stations: dict[int, Station] = {}
     touched_machine_ids: set[int] = set()
     import_scope: dict[str, object] = {}
 
@@ -2449,8 +2383,6 @@ def import_station_list_from_excel(file, user):
                 ):
                     current_machine = None
                     awaiting_rasp_row = False
-                if current_station is not None and getattr(current_station, "id", None) is not None:
-                    touched_stations[current_station.id] = current_station
 
             # Строка агрегата (Руст): machine_name + gen_company + date_exploitation.
             # Если в этой же строке есть реквизиты электростанции, current_station уже
@@ -2559,25 +2491,6 @@ def import_station_list_from_excel(file, user):
             }
             errors.append(err)
             logger.exception("[IMPORT_STATIONS] row failed: %s", err)
-            continue
-
-    # После всех строк: расчет агрегированных мощностей по каждой электростанции
-    for station in touched_stations.values():
-        try:
-            update_station_power(station, power_years, user)
-        except Exception:
-            try:
-                db.session.rollback()
-            except Exception:
-                pass
-            err = {
-                "stage": "update_station_power",
-                "station_name": getattr(station, "name", None),
-                "station_id": getattr(station, "id", None),
-                "filename": filename,
-            }
-            errors.append(err)
-            logger.exception("[IMPORT_STATIONS] update_station_power failed: %s", err)
             continue
 
     created_machine_names = 0

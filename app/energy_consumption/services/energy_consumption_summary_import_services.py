@@ -211,6 +211,7 @@ def _parse_numeric_cell(val: Any) -> Optional[Decimal]:
     return ecps.parse_decimal(val)
 
 
+
 def _year_numbers_for_version(version_id: int) -> set[int]:
     rows = Year.query.filter(Year.database_version_id == version_id).all()
     return {int(y.number) for y in rows if y.number is not None}
@@ -1563,6 +1564,53 @@ def _find_existing_parameter_row(
     return q.first()
 
 
+def _preload_parameter_rows_for_accumulator(
+    acc: defaultdict[tuple[Type[Any], str, int, int, str | None], Decimal],
+    *,
+    version_id: int,
+) -> dict[tuple[Type[Any], str, int, int, str | None], Any]:
+    """Один/несколько SELECT на модель вместо SELECT на каждую ячейку импорта."""
+    from app.common.perimeter_variant.registry import model_supports_perimeter_variant
+
+    by_model_fk: dict[tuple[Type[Any], str], set[tuple[int, int]]] = defaultdict(set)
+    for model, fk_column, parent_id, year_n, _pvc in acc.keys():
+        by_model_fk[(model, fk_column)].add((int(parent_id), int(year_n)))
+
+    index: dict[tuple[Type[Any], str, int, int, str | None], Any] = {}
+    for (model, fk_column), parent_years in by_model_fk.items():
+        years = {year_n for _pid, year_n in parent_years}
+        supports_pv = model_supports_perimeter_variant(model)
+        if fk_column == _FK_AGGREGATE_NO_PARENT:
+            q = model.query.filter(model.year_number.in_(years))
+            q = filter_by_explicit_db_version(q, model, version_id)
+            rows = q.order_by(model.id.asc()).all()
+            for row in rows:
+                pvc = getattr(row, "perimeter_variant_code", None) if supports_pv else None
+                key = (model, fk_column, 0, int(row.year_number), pvc)
+                if key not in index:
+                    index[key] = row
+            continue
+        parent_ids = {pid for pid, _year in parent_years}
+        q = model.query.filter(
+            getattr(model, fk_column).in_(parent_ids),
+            model.year_number.in_(years),
+        )
+        q = filter_by_explicit_db_version(q, model, version_id)
+        rows = q.order_by(model.id.asc()).all()
+        for row in rows:
+            pvc = getattr(row, "perimeter_variant_code", None) if supports_pv else None
+            key = (
+                model,
+                fk_column,
+                int(getattr(row, fk_column)),
+                int(row.year_number),
+                pvc,
+            )
+            if key not in index:
+                index[key] = row
+    return index
+
+
 def _import_username(user: str | None = None) -> str:
     if user:
         return user
@@ -1609,6 +1657,7 @@ def _apply_accumulator_for_version(
                     else ecps._UNSET,
                 )
     db.session.flush()
+    existing_by_key = _preload_parameter_rows_for_accumulator(acc, version_id=version_id)
 
     def _write_bound_row(
         model: Type[Any],
@@ -1640,14 +1689,15 @@ def _apply_accumulator_for_version(
                     return
                 if perimeter_variant_code is ecps._UNSET:
                     perimeter_variant_code = None
-        row = _find_existing_parameter_row(
+        lookup_parent = 0 if write_fk == _FK_AGGREGATE_NO_PARENT else int(parent_id)
+        row_key = (
             model,
             write_fk,
-            parent_id,
-            year_n,
-            version_id,
-            perimeter_variant_code=perimeter_variant_code,
+            lookup_parent,
+            int(year_n),
+            perimeter_variant_code if model_supports_perimeter_variant(model) else None,
         )
+        row = existing_by_key.get(row_key)
         if row is None:
             row = model()
             if write_fk != _FK_AGGREGATE_NO_PARENT:
@@ -1658,6 +1708,7 @@ def _apply_accumulator_for_version(
                 row.perimeter_variant_code = perimeter_variant_code
             row.created_by = import_user
             db.session.add(row)
+            existing_by_key[row_key] = row
         setattr(row, field_name, total)
         row.modified_by = import_user
         touched += 1
@@ -1685,6 +1736,12 @@ _FORMULA_ROW_PERSIST_PARAMETER_KEYS: tuple[str, ...] = (
 )
 
 
+# Инжект «… без заряда ГАЭС» на /summary/oes|fo|ez — только экранный расчёт.
+# У OES-стиля perimeter_variant_code=None совпадает с базовой строкой; запись в БД
+# затирала бы ручной ввод (потребление − заряд вместо потребления).
+# См. _is_display_only_without_gaes_injected_summary_row в summary_services.
+
+
 def _accumulator_from_formula_summary_rows(
     summary_rows: list[dict[str, Any]],
     years: list[int],
@@ -1693,12 +1750,15 @@ def _accumulator_from_formula_summary_rows(
 ) -> dict[tuple[Type[Any], str, int, int, str | None], Decimal]:
     from app.energy_consumption.services.energy_consumption_summary_services import (
         _DEMAND_MODEL_CLASS_BY_NAME,
+        _is_display_only_without_gaes_injected_summary_row,
         _raw_year_values_from_summary_row,
     )
 
     acc: dict[tuple[Type[Any], str, int, int, str | None], Decimal] = {}
     for row in summary_rows:
         if not row.get("pd_ec_formula_derived_row"):
+            continue
+        if _is_display_only_without_gaes_injected_summary_row(row):
             continue
         if row.get("parameter_key") != field_name:
             continue
@@ -1842,7 +1902,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(
     raw: bytes,
     *,
     user: str | None = None,
-    on_version_progress: Callable[[int, int], None] | None = None,
+    on_version_progress: Callable[..., None] | None = None,
 ) -> dict[str, Any]:
     """
     Читает листы «млн. кВт.ч» и/или «СиПР» (какие есть в книге), сопоставляет наименования
@@ -1887,15 +1947,30 @@ def _format_unmatched_label(label: str, pvc: str | None) -> str:
     return label
 
 
+def _emit_import_progress(
+    on_version_progress: Callable[..., None] | None,
+    done: int,
+    total: int,
+    detail: str | None = None,
+) -> None:
+    if on_version_progress is None:
+        return
+    try:
+        on_version_progress(done, total, detail)
+    except TypeError:
+        # Старые колбэки только (done, total).
+        on_version_progress(done, total)
+
+
 def _import_energy_consumption_summary_from_xlsx_bytes_impl(
     raw: bytes,
     *,
     version_ids: list[int],
     import_user: str,
-    on_version_progress: Callable[[int, int], None] | None,
+    on_version_progress: Callable[..., None] | None,
 ) -> dict[str, Any]:
-    if on_version_progress is not None:
-        on_version_progress(0, len(version_ids))
+    versions_total = len(version_ids)
+    _emit_import_progress(on_version_progress, 0, versions_total, "чтение Excel…")
 
     wb = _load_summary_workbook_from_bytes(raw)
     screen_export_mln: defaultdict[tuple[str, int, str | None], Decimal] | None = None
@@ -1972,13 +2047,18 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
         n_mln = 0
         n_sipr = 0
         n_formula = 0
-        versions_total = len(version_ids)
         for versions_done, vid in enumerate(version_ids, start=1):
+            done_before = versions_done - 1
+            _emit_import_progress(
+                on_version_progress,
+                done_before,
+                versions_total,
+                f"версия {versions_done}/{versions_total}: сопоставление строк",
+            )
             ctx = _binding_ctx(vid)
             years_ok = _year_numbers_for_version(vid)
             if not years_ok:
-                if on_version_progress is not None:
-                    on_version_progress(versions_done, versions_total)
+                _emit_import_progress(on_version_progress, versions_done, versions_total)
                 continue
             acc_m, explicit_rd_mln = _collapse_labels_to_bind_keys(
                 acc_mln_labels,
@@ -2002,6 +2082,12 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
                 database_version_id=vid,
                 explicit_rd_subject_year_pairs=explicit_rd_sipr,
             )
+            _emit_import_progress(
+                on_version_progress,
+                done_before,
+                versions_total,
+                f"версия {versions_done}/{versions_total}: запись млн. кВт·ч",
+            )
             n_mln += _apply_accumulator_for_version(
                 acc_m,
                 field_name="energy_consumption_mln_kvt_ch",
@@ -2010,6 +2096,12 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
                 user=import_user,
             )
             db.session.flush()
+            _emit_import_progress(
+                on_version_progress,
+                done_before,
+                versions_total,
+                f"версия {versions_done}/{versions_total}: запись СиПР",
+            )
             n_sipr += _apply_accumulator_for_version(
                 acc_s,
                 field_name="energy_consumption_sipr_mln_kvt_ch",
@@ -2018,6 +2110,12 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
                 user=import_user,
             )
             db.session.flush()
+            _emit_import_progress(
+                on_version_progress,
+                done_before,
+                versions_total,
+                f"версия {versions_done}/{versions_total}: пересчёт формул",
+            )
             n_formula += persist_all_energy_consumption_summary_computed_rows(
                 database_version_id=vid,
                 years=sorted(years_ok),
@@ -2030,8 +2128,7 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
             )
             db.session.flush()
             db.session.commit()
-            if on_version_progress is not None:
-                on_version_progress(versions_done, versions_total)
+            _emit_import_progress(on_version_progress, versions_done, versions_total)
         if db.session.is_active:
             db.session.commit()
     except IntegrityError:

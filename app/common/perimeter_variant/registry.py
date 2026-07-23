@@ -23,6 +23,8 @@ from app.common.perimeter_variant.constants import (
     EES_UNIFIED_REF_NAME_CF,
     FALLBACK_ENTITY_PERIMETER_BINDINGS,
     FALLBACK_PERIMETER_VARIANT_BY_CODE,
+    KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR,
+    KALININGRAD_SYNC_AREA_NAME_TOKEN_CF,
     RUSSIA_FEDERATION_AGGREGATE_NAME,
     WITH_NT_EFFECTIVE_FROM_YEAR,
     legacy_nt_group_for_perimeter_code,
@@ -58,7 +60,11 @@ __all__ = [
     "perimeter_variant_applies_to_year",
     "perimeter_variant_applies_to_year_code",
     "perimeter_variant_year_bounds_for_code",
+    "is_kaliningrad_sync_area_entity_name",
+    "kaliningrad_sync_area_year_bounds",
     "resolve_catalog_o1_perimeter_variant_code",
+    "KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR",
+    "KALININGRAD_SYNC_AREA_NAME_TOKEN_CF",
     "perimeter_variant_definitions",
     "resolve_entity_perimeter_variants",
     "resolve_entity_perimeter_binding",
@@ -263,6 +269,13 @@ def validate_perimeter_variant_for_entity(
 ) -> str | None:
     pvc = normalize_perimeter_variant_code(raw)
     allowed = perimeter_variant_codes_for_entity(entity_kind, entity_name)
+    # СЗ Калининграда: привязка задаёт «Год с»/«Год по», но «не указано» остаётся допустимым.
+    if (
+        entity_kind == "synchronous_area"
+        and is_kaliningrad_sync_area_entity_name(entity_name)
+        and pvc is None
+    ):
+        return None
     if pvc is None:
         if not allowed:
             return None
@@ -378,6 +391,37 @@ def perimeter_variant_year_bounds_for_code(
     if legacy_nt_group_for_perimeter_code(s) == CODE_WITH_NT:
         from_year = WITH_NT_EFFECTIVE_FROM_YEAR
     return from_year, to_year
+
+
+def is_kaliningrad_sync_area_entity_name(name: str | None) -> bool:
+    """True для наименования «Синхронная зона Калининградской области»."""
+    return KALININGRAD_SYNC_AREA_NAME_TOKEN_CF in str(name or "").casefold()
+
+
+def kaliningrad_sync_area_year_bounds() -> tuple[int | None, int | None]:
+    """Год с/по для строки СЗ Калининграда.
+
+    Берётся из привязки сущности на /perimeter_variants/ (min «Год с» / max «Год по»
+    по вариантам). Если привязки нет или годы не заданы — с
+    ``KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR``.
+    """
+    from_years: list[int] = []
+    to_years: list[int] = []
+    for binding in entity_perimeter_bindings():
+        if binding.entity_kind != "synchronous_area":
+            continue
+        if not is_kaliningrad_sync_area_entity_name(
+            binding.entity_name or binding.entity_name_cf
+        ):
+            continue
+        for vdef in binding.variants:
+            if vdef.effective_from_year is not None:
+                from_years.append(int(vdef.effective_from_year))
+            if vdef.effective_to_year is not None:
+                to_years.append(int(vdef.effective_to_year))
+    fy = min(from_years) if from_years else KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR
+    ty = max(to_years) if to_years else None
+    return fy, ty
 
 
 def perimeter_variant_applies_to_year(variant: PerimeterVariantDefinition, year: int) -> bool:

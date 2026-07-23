@@ -49,7 +49,6 @@ class Year(db.Model, AuditMixin, VersionedModelMixin):
     # Годы теперь версионируются через database_version_id
 
     # Relations retained as-is
-    station_powers = db.relationship('StationPower', back_populates='year')
     machine_powers = db.relationship('MachinePower', back_populates='year')
     machine_fuels = db.relationship('MachineFuel', back_populates='year')
     machine_tes_types = db.relationship('MachineTesType', back_populates='year')

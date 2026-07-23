@@ -1,5 +1,5 @@
 /**
- * Клиентский рендер tbody сводок «Максимумы» (ОЭС / ФО / ЭЗ).
+ * Клиентский рендер tbody сводок «Максимумы» и «Коэффициенты» (ОЭС / ФО / ЭЗ).
  * Shell-страница загружает JSON и строит строки таблицы вместо ~5 МБ HTML.
  */
 (function () {
@@ -62,9 +62,12 @@
         if (!aggregationLevelUsesCompactLayout()) {
             return false;
         }
-        return (
-            !!row.pd_pd_territory_compact_hide_row || isNtAggregationHeaderRow(row)
-        );
+        // Блок «Новые территории» в «Сводной таблице» показывается кнопкой «+ НТ»,
+        // как в полном дереве ОЭС — не отсекаем его режимом compact.
+        if (row.pd_pd_nt_extra_row || isNtAggregationHeaderRow(row)) {
+            return false;
+        }
+        return !!row.pd_pd_territory_compact_hide_row;
     }
 
     function shouldOmitRowForCurrentView(row) {
@@ -226,11 +229,120 @@
         if (
             window.__pdPdSummaryTerritoryCompactMode === true &&
             row.pd_pd_territory_detail_row &&
-            !row.pd_pd_aggregation_level_row
+            !row.pd_pd_aggregation_level_row &&
+            !row.pd_pd_nt_extra_row
         ) {
             return true;
         }
         return false;
+    }
+
+    function isCoeffRoute(cfg) {
+        return (cfg && cfg.summary_route_variant) === "coeff";
+    }
+
+    function coeffBaseYear(cfg) {
+        var n = cfg && cfg.coeff_base_year;
+        if (n == null || n === "") {
+            return null;
+        }
+        var parsed = parseInt(n, 10);
+        return isNaN(parsed) ? null : parsed;
+    }
+
+    function coeffYearSegment(year, baseYear) {
+        if (baseYear == null) {
+            return "";
+        }
+        var y = parseInt(year, 10);
+        if (isNaN(y)) {
+            return "";
+        }
+        if (y >= baseYear - 9 && y <= baseYear) {
+            return "reporting";
+        }
+        if (y >= baseYear + 1 && y <= baseYear + 6) {
+            return "medium";
+        }
+        return "long";
+    }
+
+    function isFoCoeffCzTotalRow(row) {
+        return !!(row && row.pd_fo_coeff_cz_total);
+    }
+
+    function shouldBuildCoeffKRow(row) {
+        var pk = row.parameter_key || "";
+        if (pk === "max_power") {
+            return false;
+        }
+        if (row.pd_pd_verify_for_row) {
+            return false;
+        }
+        if (row.pd_pd_aggregation_level_full_row || row.pd_pd_aggregation_level_row) {
+            return false;
+        }
+        if (row.pd_pd_chi_row || row.pd_pd_ee_row) {
+            return false;
+        }
+        return true;
+    }
+
+    /** Строка «Проверка …» относится к указанному parameter_key (якорь A). */
+    function isVerifyRowForParameter(verifyRow, paramKey) {
+        if (!verifyRow || !paramKey) {
+            return false;
+        }
+        if (
+            !(
+                verifyRow.pd_pd_verify_for_row ||
+                String(verifyRow.parameter_key || "").indexOf("verify_for_") === 0
+            )
+        ) {
+            return false;
+        }
+        var a = verifyRow.pd_pd_verify_a_parameter_key;
+        if (a && String(a) === String(paramKey)) {
+            return true;
+        }
+        return String(verifyRow.parameter_key || "") === "verify_for_" + paramKey;
+    }
+
+    function coeffPlanHideYear(row, year, yearIsPlan, cfg) {
+        var pk = row.parameter_key || "";
+        if (!yearIsPlan[String(year)] || pk === "max_power") {
+            return false;
+        }
+        if (isFoCoeffCzTotalRow(row)) {
+            return false;
+        }
+        var base = coeffBaseYear(cfg);
+        var y = parseInt(year, 10);
+        var isMedium =
+            base != null && !isNaN(y) && y >= base + 1 && y <= base + 6;
+        var inReport =
+            base != null && !isNaN(y) && y >= base - 9 && y <= base;
+        var resCombinedMediumExempt =
+            isMedium &&
+            (pk === "combined_on_oes" || pk === "combined_on_ees") &&
+            row.demand_model_name === "RegionalEnergySystemDemandParameter";
+        var uesCalcPlanUncollapse =
+            row.demand_model_name === "UnionEnergySystemDemandParameter" &&
+            (pk === "calculated_max_power_mw" ||
+                pk === "calculated_combined_on_ees_mw") &&
+            (inReport || isMedium);
+        var uesCombinedEesMediumOnly =
+            isMedium &&
+            row.demand_model_name === "UnionEnergySystemDemandParameter" &&
+            pk === "combined_on_ees";
+        if (
+            resCombinedMediumExempt ||
+            uesCalcPlanUncollapse ||
+            uesCombinedEesMediumOnly
+        ) {
+            return false;
+        }
+        return true;
     }
 
     function computeRowClasses(row, cfg) {
@@ -256,6 +368,11 @@
             classes.push("pd-pd-calc-max-row", "summary-row-hidden");
         }
         if (row.pd_pd_verify_for_row) {
+            classes.push("summary-row-hidden");
+        } else if (
+            isCoeffRoute(cfg) &&
+            (pk === "peak_datetime" || pk === "avg_temp")
+        ) {
             classes.push("summary-row-hidden");
         } else if (pdSummaryToggleHideRowInitially(row, active)) {
             classes.push("summary-row-hidden");
@@ -328,6 +445,38 @@
         return false;
     }
 
+    function sakhaMembershipYearOutOfRange(row, year) {
+        var yr = parseInt(year, 10);
+        if (isNaN(yr)) {
+            return false;
+        }
+        var throughYear = parseInt(
+            String(
+                row.sakha_membership_through_year != null
+                    ? row.sakha_membership_through_year
+                    : "2018"
+            ),
+            10
+        );
+        if (!Number.isFinite(throughYear)) {
+            throughYear = 2018;
+        }
+        if (row.pd_pd_sakha_tites_through_year_row) {
+            return yr > throughYear;
+        }
+        if (row.pd_pd_sakha_oes_east_from_year_row) {
+            return yr <= throughYear;
+        }
+        return false;
+    }
+
+    function summaryYearOutOfRange(row, year) {
+        return (
+            perimeterVariantYearOutOfRange(row, year) ||
+            sakhaMembershipYearOutOfRange(row, year)
+        );
+    }
+
     function isHistParameterAllowed(row, cfg) {
         var summary = cfg.active_summary || "";
         if (summary !== "oes" && summary !== "fo" && summary !== "ez") {
@@ -379,23 +528,35 @@
         return isHistParameterAllowed(row, cfg);
     }
 
-    function planHideYearCell(row, year, yearIsPlan) {
+    function planHideYearCell(row, year, yearIsPlan, cfg) {
+        if (isCoeffRoute(cfg)) {
+            return coeffPlanHideYear(row, year, yearIsPlan, cfg || {});
+        }
         var pk = row.parameter_key || "";
         return !!yearIsPlan[String(year)] && pk !== "max_power";
     }
 
-    function buildParameterCellHtml(row) {
+    function buildParameterCellHtml(row, cfg) {
         var label = escapeHtml(row.parameter_label || "");
-        if (row.pd_parameter_formula_tooltip) {
-            return (
+        var tip =
+            row.pd_parameter_formula_tooltip ||
+            (isFoCoeffCzTotalRow(row) ? row.pd_fo_coeff_cz_total_tooltip : "") ||
+            "";
+        var inner;
+        if (tip) {
+            inner =
                 '<span class="text-wrap">' +
                 label +
                 '<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="' +
-                escapeAttr(row.pd_parameter_formula_tooltip) +
-                '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>'
-            );
+                escapeAttr(tip) +
+                '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>';
+        } else {
+            inner = label;
         }
-        return label;
+        if (isCoeffRoute(cfg)) {
+            return '<div class="pd-coeff-param-name-line">' + inner + "</div>";
+        }
+        return inner;
     }
 
     function buildHistCell(row, cfg) {
@@ -472,15 +633,27 @@
             ix < values.length && values[ix] != null ? String(values[ix]) : "—";
         var yrid = ix < rowIds.length ? rowIds[ix] : null;
         var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
-        var pvYearOutOfRange = perimeterVariantYearOutOfRange(row, year);
+        var pvYearOutOfRange = summaryYearOutOfRange(row, year);
         if (pvYearOutOfRange) {
             value = "—";
             yrid = null;
             yrTt = "";
         }
-        var planHide = planHideYearCell(row, year, yearIsPlan);
+        var planHide = planHideYearCell(row, year, yearIsPlan, cfg);
+        var coeff = isCoeffRoute(cfg);
+        var baseYear = coeffBaseYear(cfg);
 
         td.className = "text-center summary-year-cell";
+        if (coeff) {
+            td.classList.add("summary-year-mw-cell");
+            td.setAttribute("data-summary-year", String(year));
+            if (baseYear != null) {
+                td.setAttribute(
+                    "data-coeff-year-segment",
+                    coeffYearSegment(year, baseYear)
+                );
+            }
+        }
         if (planHide) {
             td.classList.add("summary-plan-empty");
         }
@@ -500,6 +673,12 @@
         if (planHide) {
             return td;
         }
+
+        var uesReadonlyCoeffDisplay =
+            coeff &&
+            row.demand_model_name === "UnionEnergySystemDemandParameter" &&
+            (pk === "calculated_max_power_mw" ||
+                pk === "calculated_combined_on_ees_mw");
 
         if (canEditCell(row, cfg) && !pvYearOutOfRange) {
             var yv = value !== "—" ? value : "";
@@ -574,10 +753,245 @@
                 }
                 td.appendChild(inp);
             }
+        } else if (uesReadonlyCoeffDisplay || isFoCoeffCzTotalRow(row)) {
+            var ro = document.createElement("input");
+            ro.type = "text";
+            ro.readOnly = true;
+            ro.tabIndex = -1;
+            ro.lang = "ru";
+            ro.className =
+                "form-control form-control-lg text-center pd-coeff-display-mw" +
+                (isFoCoeffCzTotalRow(row) ? " pd-fo-cz-total-mw" : "");
+            ro.value = value;
+            ro.setAttribute(
+                "aria-label",
+                (row.entity_label || "") +
+                    " — " +
+                    (row.parameter_label || "") +
+                    ", " +
+                    year +
+                    " год"
+            );
+            if (yrTt) {
+                ro.setAttribute("title", yrTt);
+                ro.setAttribute("data-db-full", yrTt);
+            }
+            td.appendChild(ro);
         } else {
             td.textContent = value;
         }
         return td;
+    }
+
+    function appendCoeffMixinEmptyCells(tr, row) {
+        var pk = row.parameter_key || "";
+        var mixinUi =
+            pk !== "peak_datetime" &&
+            pk !== "max_power" &&
+            !isFoCoeffCzTotalRow(row);
+        var i;
+        if (mixinUi || pk === "max_power") {
+            for (i = 0; i < 4; i++) {
+                var empty = document.createElement("td");
+                empty.className = "summary-coeff-mixin-cell summary-coeff-mixin-empty";
+                tr.appendChild(empty);
+            }
+            var manual = document.createElement("td");
+            manual.className =
+                "summary-coeff-mixin-cell summary-coeff-mixin-empty summary-coeff-manual-cell";
+            tr.appendChild(manual);
+            var source = document.createElement("td");
+            source.className =
+                "summary-coeff-mixin-cell summary-coeff-mixin-empty summary-coeff-source-cell";
+            tr.appendChild(source);
+            return;
+        }
+        // peak_datetime / cz totals — заглушки «—»
+        var classes = [
+            "summary-coeff-gs10-cell",
+            "summary-coeff-gs10-minmax-trim-cell",
+            "summary-coeff-gs5-cell",
+            "summary-coeff-sample-cell",
+            "summary-coeff-manual-cell",
+            "summary-coeff-source-cell",
+        ];
+        classes.forEach(function (cls) {
+            var td = document.createElement("td");
+            td.className = "text-center summary-coeff-mixin-cell " + cls;
+            if (
+                cls === "summary-coeff-manual-cell" ||
+                cls === "summary-coeff-source-cell"
+            ) {
+                var span = document.createElement("span");
+                span.className = "text-muted";
+                span.textContent = "—";
+                td.appendChild(span);
+            } else {
+                td.textContent = "—";
+            }
+            tr.appendChild(td);
+        });
+    }
+
+    function buildCoeffKRowTr(row, cfg, years, yearIsPlan) {
+        var tr = document.createElement("tr");
+        var pk = row.parameter_key || "";
+        var classes = [
+            "summary-kind-" + (row.entity_kind || ""),
+            "summary-row-coeff-k",
+        ];
+        if (
+            pk === "peak_datetime" ||
+            pk === "avg_temp" ||
+            computeRowClasses(row, cfg).indexOf("summary-row-hidden") >= 0
+        ) {
+            classes.push("summary-row-hidden");
+        }
+        tr.className = classes.join(" ");
+        setDataAttr(tr, "data-parameter-key", row.parameter_key);
+        setDataAttr(tr, "data-demand-model-name", row.demand_model_name);
+        setDataAttr(tr, "data-id-union-energy-system", row.id_union_energy_system);
+        setDataAttr(tr, "data-id-regional-energy-system", row.id_regional_energy_system);
+        if (row.id_regional_district != null) {
+            setDataAttr(tr, "data-id-regional-district", row.id_regional_district);
+        }
+        setDataAttr(tr, "data-id-synchronous-area", row.id_synchronous_area);
+        setDataAttr(tr, "data-perimeter-variant-code", row.perimeter_variant_code);
+        if (row.pd_pd_nt_extra_row) {
+            tr.setAttribute("data-pd-pd-nt-extra", "1");
+        }
+        if (row.pd_pd_summary_table_only_row) {
+            tr.setAttribute("data-pd-pd-summary-table-only", "1");
+        }
+        if (row.pd_pd_territory_detail_row) {
+            tr.setAttribute("data-pd-pd-territory-detail", "1");
+        }
+        if (row.pd_pd_territory_compact_hide_row) {
+            tr.setAttribute("data-pd-pd-territory-compact-hide", "1");
+        }
+        var mixinUi =
+            pk !== "peak_datetime" &&
+            pk !== "max_power" &&
+            !isFoCoeffCzTotalRow(row);
+        if (mixinUi) {
+            tr.setAttribute(
+                "data-pd-coeff-ui-key",
+                (row.demand_model_name || "") +
+                    "|" +
+                    (row.parent_id != null ? String(row.parent_id) : "") +
+                    "|" +
+                    pk
+            );
+        }
+
+        var labelTd = document.createElement("td");
+        labelTd.className = "summary-parameter-cell summary-coeff-k-label-cell";
+        var kTip = row.pd_coeff_k_formula_tooltip || "";
+        if (!kTip && isFoCoeffCzTotalRow(row)) {
+            kTip = row.pd_fo_coeff_cz_total_tooltip || "";
+        }
+        labelTd.innerHTML =
+            '<span class="pd-coeff-k-label-text">k</span>' +
+            (kTip
+                ? '<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="' +
+                  escapeAttr(kTip) +
+                  '" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта коэффициента k"></i>'
+                : "");
+        tr.appendChild(labelTd);
+
+        if (mixinUi) {
+            ["gs10", "gs10-minmax-trim", "gs5", "sample"].forEach(function (name) {
+                var td = document.createElement("td");
+                td.className =
+                    "text-center summary-coeff-mixin-cell summary-coeff-" +
+                    name +
+                    "-cell";
+                tr.appendChild(td);
+            });
+            var manTd = document.createElement("td");
+            manTd.className =
+                "text-center summary-coeff-mixin-cell summary-coeff-manual-cell";
+            var manInp = document.createElement("input");
+            manInp.type = "text";
+            manInp.inputMode = "decimal";
+            manInp.autocomplete = "off";
+            manInp.className =
+                "form-control form-control-sm text-center pd-coeff-manual-input";
+            manInp.value = "";
+            manInp.setAttribute(
+                "aria-label",
+                (row.entity_label || "") +
+                    " — " +
+                    (row.parameter_label || "") +
+                    ", ручной ввод коэффициента совмещения"
+            );
+            manTd.appendChild(manInp);
+            tr.appendChild(manTd);
+            var srcTd = document.createElement("td");
+            srcTd.className =
+                "text-center summary-coeff-mixin-cell summary-coeff-source-cell";
+            var sel = document.createElement("select");
+            sel.className = "form-select form-select-sm pd-coeff-source-select";
+            sel.setAttribute(
+                "aria-label",
+                (row.entity_label || "") +
+                    " — " +
+                    (row.parameter_label || "") +
+                    ", используемый коэффициент совмещения"
+            );
+            [
+                ["gs5", "СиПР (5 лет)", true],
+                ["sample", "период", false],
+                ["manual", "ручной ввод", false],
+            ].forEach(function (opt) {
+                var o = document.createElement("option");
+                o.value = opt[0];
+                o.textContent = opt[1];
+                if (opt[2]) {
+                    o.selected = true;
+                }
+                sel.appendChild(o);
+            });
+            srcTd.appendChild(sel);
+            tr.appendChild(srcTd);
+        } else {
+            for (var mi = 0; mi < 6; mi++) {
+                var dash = document.createElement("td");
+                dash.className = "text-center summary-coeff-mixin-cell";
+                dash.textContent = "—";
+                tr.appendChild(dash);
+            }
+        }
+
+        var kValues = row.year_k_values || [];
+        var kTooltips = row.year_k_full_tooltips || [];
+        var baseYear = coeffBaseYear(cfg);
+        years.forEach(function (year, ix) {
+            var td = document.createElement("td");
+            var kDisp =
+                ix < kValues.length && kValues[ix] != null
+                    ? String(kValues[ix])
+                    : "—";
+            var kTt = ix < kTooltips.length ? kTooltips[ix] || "" : "";
+            var planHide = coeffPlanHideYear(row, year, yearIsPlan, cfg);
+            td.className = "text-center summary-year-cell summary-year-k-cell";
+            if (planHide) {
+                td.classList.add("summary-plan-empty");
+            }
+            td.setAttribute("data-summary-year", String(year));
+            if (baseYear != null) {
+                td.setAttribute(
+                    "data-coeff-year-segment",
+                    coeffYearSegment(year, baseYear)
+                );
+            }
+            if (kTt && !planHide) {
+                td.setAttribute("title", kTt);
+            }
+            td.textContent = kDisp;
+            tr.appendChild(td);
+        });
+        return tr;
     }
 
     function buildPerimeterVariantCell(row, cfg, entityRowspan) {
@@ -645,12 +1059,18 @@
         return td;
     }
 
-    function buildEntityCell(row, entityRowspan) {
+    function buildEntityCell(row, entityRowspan, cfg) {
         var td = document.createElement("td");
         td.className =
             "summary-entity-cell summary-depth-" + (row.entity_depth || 0);
         td.rowSpan = entityRowspan > 0 ? entityRowspan : 1;
         td.setAttribute("data-original-rowspan", String(row.entity_rowspan || 1));
+        if (isCoeffRoute(cfg)) {
+            td.setAttribute(
+                "data-entity-rowspan-with-k",
+                String((row.entity_rowspan || 1) * 2)
+            );
+        }
         var div = document.createElement("div");
         div.style.paddingLeft = String((row.entity_depth || 0) * 1.5) + "rem";
         div.textContent = row.entity_label || "";
@@ -674,6 +1094,12 @@
         td.className = "summary-entity-note-cell text-start";
         td.rowSpan = noteRowspan > 0 ? noteRowspan : 1;
         td.setAttribute("data-original-note-rowspan", String(row.entity_rowspan || 1));
+        if (isCoeffRoute(cfg)) {
+            td.setAttribute(
+                "data-original-note-rowspan-with-k",
+                String((row.entity_rowspan || 1) * 2)
+            );
+        }
         var wrap = document.createElement("div");
         wrap.className = "summary-entity-note-wrap";
         var noteText = row.entity_note_text != null ? String(row.entity_note_text) : "";
@@ -748,6 +1174,18 @@
         if (row.pd_pd_nt_extra_row) {
             tr.setAttribute("data-pd-pd-nt-extra", "1");
         }
+        if (row.pd_pd_sakha_tites_through_year_row) {
+            tr.setAttribute("data-pd-pd-sakha-tites-through-year", "1");
+        }
+        if (row.pd_pd_sakha_oes_east_from_year_row) {
+            tr.setAttribute("data-pd-pd-sakha-oes-east-from-year", "1");
+        }
+        if (row.sakha_membership_through_year != null) {
+            tr.setAttribute(
+                "data-sakha-membership-through-year",
+                String(row.sakha_membership_through_year)
+            );
+        }
         if (row.pd_pd_aggregation_level_row) {
             tr.setAttribute("data-pd-pd-aggregation-level", "1");
         }
@@ -785,7 +1223,9 @@
         }
         if (
             row.show_entity_cell &&
-            (row.pd_pd_entity_label_compact_nt || row.pd_pd_entity_label_nt_detail)
+            (row.pd_pd_entity_label_compact_nt ||
+                row.pd_pd_entity_label_nt_detail ||
+                row.pd_pd_entity_label_territory_compact)
         ) {
             tr.setAttribute("data-pd-pd-entity-label-full", row.entity_label || "");
             if (row.pd_pd_entity_label_compact_nt) {
@@ -800,11 +1240,19 @@
                     row.pd_pd_entity_label_nt_detail
                 );
             }
+            if (row.pd_pd_entity_label_territory_compact) {
+                tr.setAttribute(
+                    "data-pd-pd-entity-label-territory-compact",
+                    row.pd_pd_entity_label_territory_compact
+                );
+            }
         }
 
         if (row.pd_pd_aggregation_level_row && SUMMARY_SCOPES[cfg.active_summary || ""]) {
             var aggHeaderTd = document.createElement("td");
-            aggHeaderTd.colSpan = pdSummaryAggregationLevelColspan(years.length);
+            aggHeaderTd.colSpan = isCoeffRoute(cfg)
+                ? 9 + years.length + (showPerimeterCol ? 1 : 0)
+                : pdSummaryAggregationLevelColspan(years.length);
             aggHeaderTd.setAttribute("data-pd-aggregation-header-cell", "1");
             aggHeaderTd.className =
                 "summary-entity-cell summary-depth-" +
@@ -817,11 +1265,12 @@
 
         if (row.pd_pd_aggregation_level_full_row) {
             var aggTd = document.createElement("td");
-            var nCols =
-                (showHistCol ? 3 : 2) +
-                years.length +
-                1 +
-                (showPerimeterCol ? 1 : 0);
+            var nCols = isCoeffRoute(cfg)
+                ? 9 + years.length + (showPerimeterCol ? 1 : 0)
+                : (showHistCol ? 3 : 2) +
+                  years.length +
+                  1 +
+                  (showPerimeterCol ? 1 : 0);
             aggTd.colSpan = nCols;
             aggTd.className =
                 "summary-entity-cell summary-depth-" +
@@ -837,13 +1286,17 @@
             if (showPerimeterCol && !row.pd_pd_aggregation_level_row) {
                 tr.appendChild(buildPerimeterVariantCell(row, cfg, entityRs));
             }
-            tr.appendChild(buildEntityCell(row, entityRs));
+            tr.appendChild(buildEntityCell(row, entityRs, cfg));
         }
 
         var paramTd = document.createElement("td");
         paramTd.className = "summary-parameter-cell";
-        paramTd.innerHTML = buildParameterCellHtml(row);
+        paramTd.innerHTML = buildParameterCellHtml(row, cfg);
         tr.appendChild(paramTd);
+
+        if (isCoeffRoute(cfg)) {
+            appendCoeffMixinEmptyCells(tr, row);
+        }
 
         if (showHistCol) {
             tr.appendChild(buildHistCell(row, cfg));
@@ -858,6 +1311,54 @@
         }
 
         return tr;
+    }
+
+    /**
+     * Одна логическая строка → 1–2 <tr> (на coeff — показатель + строка k).
+     * Если следом идёт «Проверка …» для этого показателя — k откладывается
+     * и рисуется сразу после проверки (расчётный → проверка → k).
+     * opts: { prevRow, nextRow } из соседних summary_rows.
+     */
+    function buildRowNodes(
+        row,
+        cfg,
+        years,
+        yearIsPlan,
+        showPerimeterCol,
+        showHistCol,
+        opts
+    ) {
+        opts = opts || {};
+        var prevRow = opts.prevRow || null;
+        var nextRow = opts.nextRow || null;
+        var tr = buildRowTr(
+            row,
+            cfg,
+            years,
+            yearIsPlan,
+            showPerimeterCol,
+            showHistCol
+        );
+        var nodes = [tr];
+        if (!isCoeffRoute(cfg)) {
+            return nodes;
+        }
+        var deferOwnK =
+            shouldBuildCoeffKRow(row) &&
+            nextRow &&
+            isVerifyRowForParameter(nextRow, row.parameter_key);
+        if (shouldBuildCoeffKRow(row) && !deferOwnK) {
+            nodes.push(buildCoeffKRowTr(row, cfg, years, yearIsPlan));
+        }
+        if (
+            isVerifyMergeRow(row) &&
+            prevRow &&
+            isVerifyRowForParameter(row, prevRow.parameter_key) &&
+            shouldBuildCoeffKRow(prevRow)
+        ) {
+            nodes.push(buildCoeffKRowTr(prevRow, cfg, years, yearIsPlan));
+        }
+        return nodes;
     }
 
     function injectLiveCalcData(payload) {
@@ -964,6 +1465,39 @@
         return !tr.classList.contains("summary-row-hidden");
     }
 
+    /** Строка k для показателя (на coeff может идти после «Проверка …»). */
+    function coeffKRowAfterParamTr(paramTr) {
+        if (!paramTr) {
+            return null;
+        }
+        var pk = paramTr.getAttribute("data-parameter-key") || "";
+        if (!pk || pk === "max_power") {
+            return null;
+        }
+        var nx = paramTr.nextElementSibling;
+        while (
+            nx &&
+            nx.classList.contains("summary-row-param") &&
+            nx.classList.contains("pd-pd-verify-for-row")
+        ) {
+            var aKey = nx.getAttribute("data-pd-pd-verify-a") || "";
+            var vPk = nx.getAttribute("data-parameter-key") || "";
+            if (aKey === pk || vPk === "verify_for_" + pk) {
+                nx = nx.nextElementSibling;
+                continue;
+            }
+            break;
+        }
+        if (
+            nx &&
+            nx.classList.contains("summary-row-coeff-k") &&
+            (nx.getAttribute("data-parameter-key") || "") === pk
+        ) {
+            return nx;
+        }
+        return null;
+    }
+
     /** Куда вставлять строку сегмента относительно уже отрисованного блока. */
     var MERGE_ROW_INSERT_AFTER = {
         calculated_max_power_mw: "max_power",
@@ -1037,6 +1571,17 @@
                     (blockRows[ai].getAttribute("data-parameter-key") || "") ===
                     afterPk
                 ) {
+                    // «Проверка …» — сразу после якоря, перед его строкой k (если есть).
+                    if (isVerifyParameterKey(pk)) {
+                        var maybeK = coeffKRowAfterParamTr(blockRows[ai]);
+                        if (maybeK) {
+                            return maybeK;
+                        }
+                        if (ai + 1 < blockRows.length) {
+                            return blockRows[ai + 1];
+                        }
+                        return null;
+                    }
                     if (ai + 1 < blockRows.length) {
                         return blockRows[ai + 1];
                     }
@@ -1236,18 +1781,43 @@
             row.id_union_energy_system != null
                 ? String(row.id_union_energy_system)
                 : "";
+        var ezId =
+            row.id_energy_zone != null ? String(row.id_energy_zone) : "";
+        var fdId =
+            row.id_federal_district != null
+                ? String(row.id_federal_district)
+                : "";
         var aggRows = tbody.querySelectorAll('tr[data-pd-pd-aggregation-level="1"]');
+        var fallback = null;
         for (var i = 0; i < aggRows.length; i++) {
             var tr = aggRows[i];
             if (tr.getAttribute("data-pd-pd-nt-extra") !== "1") {
                 continue;
             }
-            if (uesId && tr.getAttribute("data-id-union-energy-system") !== uesId) {
-                continue;
+            if (!fallback) {
+                fallback = tr;
             }
-            return tr;
+            var trUes = tr.getAttribute("data-id-union-energy-system") || "";
+            var trEz = tr.getAttribute("data-id-energy-zone") || "";
+            var trFd = tr.getAttribute("data-id-federal-district") || "";
+            if (uesId && trUes && trUes === uesId) {
+                return tr;
+            }
+            if (ezId && trEz && trEz === ezId) {
+                return tr;
+            }
+            if (fdId && trFd && trFd === fdId) {
+                return tr;
+            }
+            var labels = startTrEntityLabels(tr);
+            var isNtLabel = labels.some(function (lbl) {
+                return lbl.indexOf(PD_NEW_TERRITORIES_LABEL) >= 0;
+            });
+            if (isNtLabel) {
+                return tr;
+            }
         }
-        return null;
+        return fallback;
     }
 
     function findInsertAfterForSouthNtAggregationRow(tbody, row) {
@@ -1255,15 +1825,43 @@
             row.id_union_energy_system != null
                 ? String(row.id_union_energy_system)
                 : "";
-        if (!uesId) {
-            return null;
-        }
+        var ezId =
+            row.id_energy_zone != null ? String(row.id_energy_zone) : "";
+        var fdId =
+            row.id_federal_district != null
+                ? String(row.id_federal_district)
+                : "";
         var lastEnd = null;
         var inBaseSouth = false;
         var starts = tbody.querySelectorAll('tr[data-is-block-start="1"]');
         for (var i = 0; i < starts.length; i++) {
             var st = starts[i];
-            if (st.getAttribute("data-id-union-energy-system") !== uesId) {
+            var stUes = st.getAttribute("data-id-union-energy-system") || "";
+            var stEz = st.getAttribute("data-id-energy-zone") || "";
+            var stFd = st.getAttribute("data-id-federal-district") || "";
+            var sameScope = false;
+            if (uesId && stUes === uesId) {
+                sameScope = true;
+            } else if (ezId && stEz === ezId) {
+                sameScope = true;
+            } else if (fdId && stFd === fdId) {
+                sameScope = true;
+            } else if (
+                !uesId &&
+                !ezId &&
+                !fdId &&
+                startTrEntityKind(st) === "perimeter_variant"
+            ) {
+                var scopeLabels = startTrEntityLabels(st);
+                var scopeLbl = scopeLabels.length ? scopeLabels[0] : "";
+                if (
+                    scopeLbl.indexOf("ОЭС Юга") >= 0 ||
+                    scopeLbl.indexOf("Южный ФО") >= 0
+                ) {
+                    sameScope = true;
+                }
+            }
+            if (!sameScope) {
                 if (inBaseSouth) {
                     break;
                 }
@@ -1276,6 +1874,11 @@
             if (st.getAttribute("data-pd-pd-aggregation-level") === "1") {
                 break;
             }
+            if (st.getAttribute("data-pd-pd-nt-extra") === "1") {
+                // Уже вставленные субъекты НТ не сдвигают якорь — заголовок
+                // должен остаться перед ними.
+                break;
+            }
             var labels = startTrEntityLabels(st);
             var lbl = labels.length ? labels[0] : "";
             if (
@@ -1283,9 +1886,20 @@
                 lbl.indexOf("без НТ") >= 0
             ) {
                 inBaseSouth = true;
+                lastEnd = lastTrOfBlock(st);
                 continue;
             }
             if (!inBaseSouth) {
+                // ЭЗ: якорь — зона ОЭС Юга без варианта периметра.
+                if (
+                    ezId &&
+                    stEz === ezId &&
+                    lbl.indexOf("ОЭС Юга") >= 0
+                ) {
+                    inBaseSouth = true;
+                    lastEnd = lastTrOfBlock(st);
+                    continue;
+                }
                 continue;
             }
             lastEnd = lastTrOfBlock(st);
@@ -1337,9 +1951,10 @@
             startTr.getAttribute("data-pd-pd-entity-label-compact-nt"),
             startTr.getAttribute("data-pd-pd-entity-label-nt-detail"),
         ];
-        var entityCell = startTr.querySelector("td.summary-entity-cell div");
+        var entityCell = startTr.querySelector("td.summary-entity-cell");
         if (entityCell) {
-            labels.push(entityCell.textContent);
+            var inner = entityCell.querySelector("div");
+            labels.push(inner ? inner.textContent : entityCell.textContent);
         }
         return labels.map(normalizeEntityLabel).filter(Boolean);
     }
@@ -1347,14 +1962,22 @@
     function findBlockStartByEntity(tbody, row) {
         var targetKind = String(row.entity_kind || "");
         var targetLabel = normalizeEntityLabel(row.entity_label);
-        if (!targetKind || !targetLabel) {
-            return null;
-        }
         var targetNt = row.pd_pd_nt_extra_row ? "1" : "0";
         var targetPvc =
             row.perimeter_variant_code != null
                 ? String(row.perimeter_variant_code)
                 : "";
+        var targetSa =
+            row.id_synchronous_area != null
+                ? String(row.id_synchronous_area)
+                : "";
+        var targetParentId =
+            row.parent_id != null ? String(row.parent_id) : "";
+        var targetParentFk = row.parent_fk_column || "";
+        var targetDm = row.demand_model_name || "";
+        if (!targetKind && !targetSa && !targetParentId) {
+            return null;
+        }
         var starts = tbody.querySelectorAll('tr[data-is-block-start="1"]');
         for (var i = 0; i < starts.length; i++) {
             var st = starts[i];
@@ -1362,7 +1985,7 @@
             if (startNt !== targetNt) {
                 continue;
             }
-            if (startTrEntityKind(st) !== targetKind) {
+            if (targetKind && startTrEntityKind(st) !== targetKind) {
                 continue;
             }
             if (
@@ -1371,7 +1994,26 @@
             ) {
                 continue;
             }
-            if (startTrEntityLabels(st).indexOf(targetLabel) >= 0) {
+            if (
+                targetSa &&
+                (st.getAttribute("data-id-synchronous-area") || "") === targetSa
+            ) {
+                return st;
+            }
+            if (
+                targetDm &&
+                targetParentFk &&
+                targetParentId &&
+                (st.getAttribute("data-demand-model-name") || "") === targetDm &&
+                (st.getAttribute("data-parent-fk-column") || "") === targetParentFk &&
+                (st.getAttribute("data-parent-id") || "") === targetParentId
+            ) {
+                return st;
+            }
+            if (
+                targetLabel &&
+                startTrEntityLabels(st).indexOf(targetLabel) >= 0
+            ) {
                 return st;
             }
         }
@@ -1474,7 +2116,7 @@
         if (row.pd_parameter_formula_tooltip) {
             var paramTd = tr.querySelector("td.summary-parameter-cell");
             if (paramTd) {
-                paramTd.innerHTML = buildParameterCellHtml(row);
+                paramTd.innerHTML = buildParameterCellHtml(row, cfg);
             }
         }
     }
@@ -1503,7 +2145,10 @@
         return { calcRows: calcRows, verifyRows: verifyRows };
     }
 
-    /** После вставки расчётных строк вернуть «Проверка …» сразу под якорной строкой. */
+    /**
+     * После вставки расчётных строк вернуть «Проверка …» сразу под якорной
+     * строкой показателя (перед строкой k, если она есть).
+     */
     function repositionVerifyRowsInBlock(tbody, blockRows) {
         if (!tbody || !blockRows || blockRows.length < 2) {
             return;
@@ -1517,7 +2162,9 @@
                 if (!isVerifyParameterKey(verifyPk)) {
                     continue;
                 }
-                var anchorPk = MERGE_ROW_INSERT_AFTER[verifyPk];
+                var anchorPk =
+                    verifyTr.getAttribute("data-pd-pd-verify-a") ||
+                    MERGE_ROW_INSERT_AFTER[verifyPk];
                 if (!anchorPk) {
                     continue;
                 }
@@ -1532,20 +2179,26 @@
                 }
                 var anchorIdx = blockRows.indexOf(anchorTr);
                 var verifyIdx = blockRows.indexOf(verifyTr);
-                if (verifyIdx === anchorIdx + 1) {
+                var domOk = anchorTr.nextElementSibling === verifyTr;
+                var listOk = verifyIdx === anchorIdx + 1;
+                if (domOk && listOk) {
                     continue;
                 }
-                blockRows.splice(verifyIdx, 1);
-                anchorIdx = blockRows.indexOf(anchorTr);
-                var insertBefore =
-                    anchorIdx + 1 < blockRows.length
-                        ? blockRows[anchorIdx + 1]
-                        : null;
-                blockRows.splice(anchorIdx + 1, 0, verifyTr);
-                if (insertBefore) {
-                    tbody.insertBefore(verifyTr, insertBefore);
-                } else {
-                    anchorTr.parentNode.appendChild(verifyTr);
+                if (!domOk) {
+                    // Сразу после якоря: перед k или следующей param-строкой.
+                    var ref = anchorTr.nextElementSibling;
+                    if (ref === verifyTr) {
+                        /* already adjacent */
+                    } else if (ref) {
+                        tbody.insertBefore(verifyTr, ref);
+                    } else {
+                        anchorTr.parentNode.appendChild(verifyTr);
+                    }
+                }
+                if (!listOk) {
+                    blockRows.splice(verifyIdx, 1);
+                    anchorIdx = blockRows.indexOf(anchorTr);
+                    blockRows.splice(anchorIdx + 1, 0, verifyTr);
                 }
                 moved = true;
                 break;
@@ -1554,6 +2207,17 @@
                 break;
             }
         }
+    }
+
+    function repositionAllVerifyRowsInTbody(tbody) {
+        if (!tbody) {
+            return;
+        }
+        tbody.querySelectorAll('tr.summary-row-param[data-is-block-start="1"]').forEach(
+            function (startTr) {
+                repositionVerifyRowsInBlock(tbody, collectBlockRows(startTr));
+            }
+        );
     }
 
     function mergeRowsIntoBlock(
@@ -1636,7 +2300,7 @@
                     mergeRow.id_synchronous_area = saId ? parseInt(saId, 10) : null;
                 }
             }
-            var newTr = buildRowTr(
+            var newNodes = buildRowNodes(
                 mergeRow,
                 cfg,
                 years,
@@ -1644,6 +2308,7 @@
                 showPerimeterCol,
                 showHistCol
             );
+            var newTr = newNodes[0];
             var insertBefore = findInsertBeforeForMergedRow(blockRows, pk, order);
             var isEeBeforeBlockStart =
                 pk === "energy_consumption_mln_kvt_ch" &&
@@ -1651,21 +2316,60 @@
                 insertBefore === startTr &&
                 startTr.getAttribute("data-is-block-start") === "1";
             if (insertBefore) {
-                tbody.insertBefore(newTr, insertBefore);
+                newNodes.forEach(function (node) {
+                    tbody.insertBefore(node, insertBefore);
+                });
                 var ix = blockRows.indexOf(insertBefore);
                 if (ix >= 0) {
                     blockRows.splice(ix, 0, newTr);
+                } else if (
+                    insertBefore.classList.contains("summary-row-coeff-k") &&
+                    isVerifyParameterKey(pk)
+                ) {
+                    var anchorPkForList =
+                        newTr.getAttribute("data-pd-pd-verify-a") ||
+                        MERGE_ROW_INSERT_AFTER[pk];
+                    var aIx = -1;
+                    if (anchorPkForList) {
+                        for (var aj = 0; aj < blockRows.length; aj++) {
+                            if (
+                                (blockRows[aj].getAttribute("data-parameter-key") ||
+                                    "") === anchorPkForList
+                            ) {
+                                aIx = aj;
+                                break;
+                            }
+                        }
+                    }
+                    if (aIx >= 0) {
+                        blockRows.splice(aIx + 1, 0, newTr);
+                    } else {
+                        blockRows.push(newTr);
+                    }
                 } else {
                     blockRows.push(newTr);
                 }
             } else {
                 var last = blockRows[blockRows.length - 1];
-                if (last && last.nextElementSibling) {
-                    tbody.insertBefore(newTr, last.nextElementSibling);
-                } else if (last) {
-                    last.parentNode.appendChild(newTr);
+                var anchor = last;
+                if (last) {
+                    var lastK = coeffKRowAfterParamTr(last);
+                    if (lastK) {
+                        anchor = lastK;
+                    }
+                }
+                if (anchor && anchor.nextElementSibling) {
+                    newNodes.forEach(function (node) {
+                        tbody.insertBefore(node, anchor.nextElementSibling);
+                    });
+                } else if (anchor) {
+                    newNodes.forEach(function (node) {
+                        anchor.parentNode.appendChild(node);
+                    });
                 } else {
-                    tbody.appendChild(newTr);
+                    newNodes.forEach(function (node) {
+                        tbody.appendChild(node);
+                    });
                 }
                 blockRows.push(newTr);
             }
@@ -1706,17 +2410,34 @@
     function insertBlockAfter(tbody, afterTr, block, cfg, years, yearIsPlan, showPerimeterCol, showHistCol) {
         var frag = document.createDocumentFragment();
         var built = [];
-        block.forEach(function (row) {
-            built.push(
-                buildRowTr(row, cfg, years, yearIsPlan, showPerimeterCol, showHistCol)
+        block.forEach(function (row, idx) {
+            var nodes = buildRowNodes(
+                row,
+                cfg,
+                years,
+                yearIsPlan,
+                showPerimeterCol,
+                showHistCol,
+                {
+                    prevRow: idx > 0 ? block[idx - 1] : null,
+                    nextRow: idx + 1 < block.length ? block[idx + 1] : null,
+                }
             );
+            built.push(nodes[0]);
+            nodes.forEach(function (node) {
+                frag.appendChild(node);
+            });
         });
-        built.forEach(function (tr) {
-            frag.appendChild(tr);
-        });
-        if (afterTr && afterTr.nextSibling) {
-            tbody.insertBefore(frag, afterTr.nextSibling);
-        } else if (afterTr) {
+        var insertAfter = afterTr;
+        if (insertAfter && insertAfter.classList.contains("summary-row-param")) {
+            var afterK = coeffKRowAfterParamTr(insertAfter);
+            if (afterK) {
+                insertAfter = afterK;
+            }
+        }
+        if (insertAfter && insertAfter.nextSibling) {
+            tbody.insertBefore(frag, insertAfter.nextSibling);
+        } else if (insertAfter) {
             tbody.appendChild(frag);
         } else {
             tbody.appendChild(frag);
@@ -1739,13 +2460,23 @@
         }
         var frag = document.createDocumentFragment();
         var built = [];
-        block.forEach(function (row) {
-            built.push(
-                buildRowTr(row, cfg, years, yearIsPlan, showPerimeterCol, showHistCol)
+        block.forEach(function (row, idx) {
+            var nodes = buildRowNodes(
+                row,
+                cfg,
+                years,
+                yearIsPlan,
+                showPerimeterCol,
+                showHistCol,
+                {
+                    prevRow: idx > 0 ? block[idx - 1] : null,
+                    nextRow: idx + 1 < block.length ? block[idx + 1] : null,
+                }
             );
-        });
-        built.forEach(function (tr) {
-            frag.appendChild(tr);
+            built.push(nodes[0]);
+            nodes.forEach(function (node) {
+                frag.appendChild(node);
+            });
         });
         tbody.insertBefore(frag, beforeTr);
         return built.length ? built[0] : null;
@@ -1869,12 +2600,12 @@
                 if (isChiOnlySegmentBlock(block) || isEeOnlySegmentBlock(block)) {
                     continue;
                 }
-                var baseStart = findBaseBlockStartForNtRow(tbody, row) || fallbackStart;
-                var insertedStart;
-                if (baseStart) {
-                    insertedStart = insertBlockBefore(
+                // calc_max / verify: влить в уже отрисованный блок «с НТ», не плодить новый.
+                if (fallbackStart) {
+                    mergeRowsIntoBlock(
                         tbody,
-                        baseStart,
+                        fallbackStart,
+                        collectBlockRows(fallbackStart),
                         block,
                         cfg,
                         years,
@@ -1882,8 +2613,16 @@
                         showPerimeterCol,
                         showHistCol
                     );
-                } else {
-                    var afterNtSubtree = findInsertAfterForNtSubtreeRow(tbody, row);
+                    blockMap[fp] = {
+                        start: fallbackStart,
+                        rows: collectBlockRows(fallbackStart),
+                    };
+                    continue;
+                }
+                // Субъекты / строки под «Новые территории» — сразу после заголовка агрегации.
+                var afterNtSubtree = findInsertAfterForNtSubtreeRow(tbody, row);
+                var insertedStart;
+                if (afterNtSubtree) {
                     insertedStart = insertBlockAfter(
                         tbody,
                         afterNtSubtree,
@@ -1894,6 +2633,43 @@
                         showPerimeterCol,
                         showHistCol
                     );
+                } else if (
+                    block.some(function (r) {
+                        return !!r.pd_pd_summary_table_only_row;
+                    })
+                ) {
+                    // Prefix «с НТ» без якоря — не в конец tbody.
+                    continue;
+                } else {
+                    var baseStart = findBaseBlockStartForNtRow(tbody, row);
+                    if (baseStart) {
+                        // Пары with_nt ↔ without_nt: before «без НТ».
+                        insertedStart = insertBlockBefore(
+                            tbody,
+                            baseStart,
+                            block,
+                            cfg,
+                            years,
+                            yearIsPlan,
+                            showPerimeterCol,
+                            showHistCol
+                        );
+                    } else {
+                        var afterSouth = findInsertAfterForSouthNtAggregationRow(
+                            tbody,
+                            row
+                        );
+                        insertedStart = insertBlockAfter(
+                            tbody,
+                            afterSouth,
+                            block,
+                            cfg,
+                            years,
+                            yearIsPlan,
+                            showPerimeterCol,
+                            showHistCol
+                        );
+                    }
                 }
                 if (insertedStart) {
                     blockMap[fp] = {
@@ -1917,6 +2693,14 @@
                     start: fallbackStart,
                     rows: collectBlockRows(fallbackStart),
                 };
+            } else if (
+                block.some(function (r) {
+                    return !!r.pd_pd_summary_table_only_row;
+                })
+            ) {
+                // Prefix (ЦЗ / ЕЭС / 1-я СЗ): без блока-якоря в DOM не дописывать
+                // в конец страницы — иначе «Расчетное максимальное…» оказывается внизу.
+                continue;
             } else {
                 var insertedBaseStart = insertBlockAfter(
                     tbody,
@@ -1965,6 +2749,7 @@
 
     function finishSummaryTableBodyRender(tbody, payload) {
         lastRenderedSummaryPayload = payload;
+        repositionAllVerifyRowsInTbody(tbody);
         injectLiveCalcData(payload);
         if (typeof window.__pdPdSummarySyncPerimeterVariantLabels === "function") {
             window.__pdPdSummarySyncPerimeterVariantLabels();
@@ -2012,11 +2797,12 @@
         if (!rows.length) {
             var emptyTr = document.createElement("tr");
             var emptyTd = document.createElement("td");
-            emptyTd.colSpan =
-                (showHistCol ? 3 : 2) +
-                years.length +
-                1 +
-                (showPerimeterCol ? 1 : 0);
+            emptyTd.colSpan = isCoeffRoute(cfg)
+                ? 9 + years.length + (showPerimeterCol ? 1 : 0)
+                : (showHistCol ? 3 : 2) +
+                  years.length +
+                  1 +
+                  (showPerimeterCol ? 1 : 0);
             emptyTd.className = "text-center text-muted";
             emptyTd.textContent = "Нет данных для текущей версии БД.";
             emptyTr.appendChild(emptyTd);
@@ -2029,10 +2815,21 @@
 
         if (rows.length <= RENDER_ROWS_CHUNK_SIZE) {
             var frag = document.createDocumentFragment();
-            rows.forEach(function (row) {
-                frag.appendChild(
-                    buildRowTr(row, cfg, years, yearIsPlan, showPerimeterCol, showHistCol)
-                );
+            rows.forEach(function (row, idx) {
+                buildRowNodes(
+                    row,
+                    cfg,
+                    years,
+                    yearIsPlan,
+                    showPerimeterCol,
+                    showHistCol,
+                    {
+                        prevRow: idx > 0 ? rows[idx - 1] : null,
+                        nextRow: idx + 1 < rows.length ? rows[idx + 1] : null,
+                    }
+                ).forEach(function (node) {
+                    frag.appendChild(node);
+                });
             });
             tbody.replaceChildren(frag);
             finishSummaryTableBodyRender(tbody, payload);
@@ -2043,21 +2840,28 @@
         var rowIndex = 0;
         return new Promise(function (resolve) {
             function renderChunk() {
-                var frag = document.createDocumentFragment();
+                var fragChunk = document.createDocumentFragment();
                 var end = Math.min(rowIndex + RENDER_ROWS_CHUNK_SIZE, rows.length);
                 for (; rowIndex < end; rowIndex++) {
-                    frag.appendChild(
-                        buildRowTr(
-                            rows[rowIndex],
-                            cfg,
-                            years,
-                            yearIsPlan,
-                            showPerimeterCol,
-                            showHistCol
-                        )
-                    );
+                    buildRowNodes(
+                        rows[rowIndex],
+                        cfg,
+                        years,
+                        yearIsPlan,
+                        showPerimeterCol,
+                        showHistCol,
+                        {
+                            prevRow: rowIndex > 0 ? rows[rowIndex - 1] : null,
+                            nextRow:
+                                rowIndex + 1 < rows.length
+                                    ? rows[rowIndex + 1]
+                                    : null,
+                        }
+                    ).forEach(function (node) {
+                        fragChunk.appendChild(node);
+                    });
                 }
-                tbody.appendChild(frag);
+                tbody.appendChild(fragChunk);
                 if (rowIndex < rows.length) {
                     window.requestAnimationFrame(renderChunk);
                     return;
@@ -2525,9 +3329,13 @@
         if (!tbody) {
             return Promise.reject(new Error("tbody не найден"));
         }
+        // Skip remesh when already loaded. Callers that rebuild tbody
+        // (pagination / «Сводная таблица») must clear loadedSegments first —
+        // otherwise merge + pd-summary-rows-rendered can loop forever.
+        if (loadedSegments[segmentName]) {
+            return Promise.resolve();
+        }
         var loadPayload = function (name) {
-            // Always merge: after tbody rebuild (e.g. «Сводная таблица»)
-            // loadedSegments may still be true while DOM rows are gone.
             return fetchSegmentPayload([name]).then(function (payload) {
                 mergeSegmentRowsIntoTbody(tbody, payload, false);
             });
@@ -2557,6 +3365,9 @@
         }
         return ordered.reduce(function (chain, name) {
             return chain.then(function () {
+                if (loadedSegments[name]) {
+                    return;
+                }
                 return fetchSegmentPayload([name]).then(function (payload) {
                     mergeSegmentRowsIntoTbody(tbody, payload, false);
                 });
@@ -2594,23 +3405,19 @@
             return Promise.resolve();
         }
         var ordered = orderSegmentLoadNames(segmentNames).filter(Boolean);
-        if (!ordered.length) {
+        var toLoad = ordered.filter(function (s) {
+            return s && !loadedSegments[s];
+        });
+        if (!toLoad.length) {
             return Promise.resolve();
         }
-        var needsNetwork = ordered.some(function (s) {
-            return !loadedSegments[s];
-        });
-        if (needsNetwork) {
-            pdSummaryShowSegmentLoading();
-        }
+        pdSummaryShowSegmentLoading();
         var loadPromise =
-            ordered.length === 1
-                ? loadSegmentIntoTable(ordered[0])
-                : loadSegmentsIntoTable(ordered);
+            toLoad.length === 1
+                ? loadSegmentIntoTable(toLoad[0])
+                : loadSegmentsIntoTable(toLoad);
         return loadPromise.finally(function () {
-            if (needsNetwork) {
-                pdSummaryHideSegmentLoading();
-            }
+            pdSummaryHideSegmentLoading();
         });
     };
 

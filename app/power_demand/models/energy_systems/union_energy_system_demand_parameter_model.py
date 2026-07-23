@@ -57,13 +57,14 @@ class UnionEnergySystemDemandParameter(db.Model, AuditMixin, PerimeterVariantCol
     # Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт
     calculated_combined_on_ees_mw = db.Column(Numeric(25, 3), nullable=True)
 
-    # Коэффициент k для показателя «Расчетный максимум ОЭС, МВт»
+    # Коэффициент k для показателя «Расчетный максимум ОЭС, МВт» (Numeric: не более 6 знаков после запятой)
     coeff_k_calculated_max_power_mw = db.Column(Numeric(25, 6), nullable=True)
 
-    # Коэффициент k для показателя «Совмещённый на ЕЭС, МВт»
+    # Коэффициент k для показателя «Совмещённый на ЕЭС, МВт» (Numeric: не более 6 знаков после запятой)
     coeff_k_combined_on_ees = db.Column(Numeric(25, 6), nullable=True)
 
     # Коэффициент k для показателя «Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт»
+    # (Numeric: не более 6 знаков после запятой)
     coeff_k_calculated_combined_on_ees_mw = db.Column(Numeric(25, 6), nullable=True)
 
     # Примечание

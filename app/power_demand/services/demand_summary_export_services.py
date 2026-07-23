@@ -1,7 +1,9 @@
-"""Выгрузка сводных таблиц нагрузок в Excel (оформление как на экранной сводке)."""
+"""Выгрузка сводных таблиц нагрузок в Excel (оформление как на экранной сводке).
+
+Числовые ячейки: полное значение из tooltip + number_format (как на выгрузке «Выработка ЭЭ»).
+"""
 from __future__ import annotations
 
-import math
 from io import BytesIO
 from typing import Any
 
@@ -9,6 +11,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from app.common.services.excel_numeric_cell import (
+    excel_number_format,
+    excel_numeric_cell_value,
+    parse_excel_numeric,
+)
 from app.power_demand.services.demand_summary_services import (
     CALCULATED_MAX_MW_ROUNDING_DIGITS,
     CALCULATED_MAX_PARAMETER_KEYS,
@@ -34,76 +41,51 @@ _CENTER_WRAP = Alignment(horizontal="center", vertical="center", wrap_text=True)
 _LEFT_WRAP = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
 
-def _excel_numeric_display_to_float(raw: Any) -> float | None:
-    """Разбор числа из отображаемой ячейки сводки (пробелы, запятая, «—»)."""
-    if raw in (None, ""):
-        return None
-    s = str(raw).strip()
-    if s in ("—", "-"):
-        return None
-    s = s.replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
-    s = s.replace("\u00a0", "").replace(" ", "").replace(",", ".")
-    try:
-        x = float(s)
-    except ValueError:
-        return None
-    return x if math.isfinite(x) else None
-
-
 def _excel_rounding_digits_for_parameter(parameter_key: str, rounding_digits: int) -> int:
     if parameter_key in CALCULATED_MAX_PARAMETER_KEYS:
         return CALCULATED_MAX_MW_ROUNDING_DIGITS
     return rounding_digits
 
 
-def _excel_fraction_digits_in_display(display: Any) -> int:
-    s = str(display or "").strip().replace("\xa0", " ").replace(" ", "")
-    if "," not in s:
-        return 0
-    return len(s.split(",", 1)[1])
+def _excel_raw_year_source(row: dict[str, Any], index: int) -> Any:
+    tooltips = row.get("year_numeric_tooltips") or []
+    if index < len(tooltips) and tooltips[index]:
+        return tooltips[index]
+    yvals = row.get("year_values") or []
+    if index < len(yvals):
+        return yvals[index]
+    return None
 
 
-def _excel_number_format(
-    rounding_digits: int,
-    *,
-    display: Any = None,
-    trimmed: bool = False,
-) -> str:
-    """Формат Excel: пробел — тысячи, запятая — дробная часть (как на экране)."""
-    if rounding_digits == -1:
-        return "# ##0"
-    if rounding_digits >= 1:
-        return "# ##0," + ("0" * rounding_digits)
-    if trimmed:
-        frac = _excel_fraction_digits_in_display(display)
-        if frac > 0:
-            return "# ##0," + ("#" * min(frac, 10))
-        return "# ##0,##########"
-    frac = _excel_fraction_digits_in_display(display)
-    if frac > 0:
-        return "# ##0," + ("#" * min(frac, 10))
-    return "# ##0,##########"
+def _excel_raw_k_source(row: dict[str, Any], index: int) -> Any:
+    tooltips = row.get("year_k_full_tooltips") or []
+    if index < len(tooltips) and tooltips[index]:
+        return tooltips[index]
+    ykvals = row.get("year_k_values") or []
+    if index < len(ykvals):
+        return ykvals[index]
+    return None
 
 
-def _excel_display_numeric_value(
+def _excel_raw_hist_source(row: dict[str, Any]) -> Any:
+    tip = row.get("hist_numeric_tooltip")
+    if tip:
+        return tip
+    return row.get("hist_value")
+
+
+def _excel_cell_value_for_parameter(
     parameter_key: str,
-    display: Any,
+    raw: Any,
     *,
     force_numeric: bool = False,
-) -> Any:
-    """Число из экранного отображения; дата/время — текст."""
+    verification: bool = False,
+) -> tuple[Any, bool]:
     if not force_numeric and parameter_key in _EXCEL_TEXT_PARAMETER_KEYS:
-        if display in (None, ""):
-            return "—"
-        return display
-    parsed = _excel_numeric_display_to_float(display)
-    if parsed is not None:
-        return parsed
-    if display in (None, ""):
-        return None
-    if str(display).strip() in ("—", "-"):
-        return "—"
-    return display
+        if raw in (None, ""):
+            return "—", False
+        return raw, False
+    return excel_numeric_cell_value(raw, verification=verification, zero_as_dash=False)
 
 
 def _excel_hide_plan_year_cell(
@@ -198,8 +180,8 @@ def _write_data_cell(
     col_idx: int,
     value: Any,
     *,
+    is_numeric: bool,
     parameter_key: str,
-    display: Any,
     rounding_digits: int,
     is_k_column: bool,
     rounding_digits_k: int,
@@ -212,28 +194,28 @@ def _write_data_cell(
     cell.alignment = _CENTER_WRAP
 
     if verification_row:
-        parsed = _excel_numeric_display_to_float(display)
+        parsed = parse_excel_numeric(value) if is_numeric else None
         if parsed is not None and parsed != 0:
             cell.font = Font(size=11, italic=True, color="FF0000")
         else:
             cell.font = Font(size=11, italic=True)
+        if is_numeric:
+            rd = rounding_digits_k if is_k_column else _excel_rounding_digits_for_parameter(
+                parameter_key, rounding_digits
+            )
+            cell.number_format = excel_number_format(rd)
         return
 
-    if parameter_key in _EXCEL_TEXT_PARAMETER_KEYS or (
-        isinstance(value, str) and value not in ("", "—")
-    ):
-        cell.font = _BASE_FONT
-        return
-
-    if isinstance(value, (int, float)):
-        rd = rounding_digits_k if is_k_column else _excel_rounding_digits_for_parameter(
-            parameter_key, rounding_digits
-        )
-        trimmed = (not is_k_column) and parameter_key in CALCULATED_MAX_PARAMETER_KEYS
-        cell.number_format = _excel_number_format(
-            rd, display=display, trimmed=trimmed or rd == 0
-        )
     cell.font = _BASE_FONT
+    if not is_numeric:
+        return
+    if parameter_key in _EXCEL_TEXT_PARAMETER_KEYS:
+        return
+
+    rd = rounding_digits_k if is_k_column else _excel_rounding_digits_for_parameter(
+        parameter_key, rounding_digits
+    )
+    cell.number_format = excel_number_format(rd)
 
 
 def build_demand_summary_excel_stream(
@@ -250,7 +232,7 @@ def build_demand_summary_excel_stream(
     show_hist_col: bool = True,
     coeff_include_long: bool = False,
 ) -> BytesIO:
-    rd_k = rounding_digits_k if rounding_digits_k is not None else rounding_digits
+    rd_k = rounding_digits_k if rounding_digits_k is not None else 3
     yf = year_features or {}
 
     wb = Workbook()
@@ -359,16 +341,17 @@ def build_demand_summary_excel_stream(
 
         col = 3
         if show_hist_col:
-            hist_disp = row.get("hist_value")
-            hist_show = hist_disp if hist_disp is not None else "—"
-            hist_val = _excel_display_numeric_value(pk, hist_show)
+            hist_raw = _excel_raw_hist_source(row)
+            hist_val, hist_num = _excel_cell_value_for_parameter(
+                pk, hist_raw, verification=verification_row
+            )
             _write_data_cell(
                 ws,
                 excel_row,
                 col,
                 hist_val,
+                is_numeric=hist_num,
                 parameter_key=pk,
-                display=hist_show,
                 rounding_digits=rounding_digits,
                 is_k_column=False,
                 rounding_digits_k=rd_k,
@@ -377,17 +360,11 @@ def build_demand_summary_excel_stream(
             )
             col += 1
 
-        yvals = row.get("year_values") or []
-        ykvals = row.get("year_k_values") or []
         for i, y in enumerate(years):
-            v = yvals[i] if i < len(yvals) else "—"
-            disp = v if v is not None and v != "" else "—"
             hide_plan = _excel_hide_plan_year_cell(
                 y, pk, row, year_is_plan, coeff_base_year
             )
             if export_coeff_k_columns:
-                kk = ykvals[i] if i < len(ykvals) else "—"
-                k_disp = kk if kk is not None and kk != "" else "—"
                 if hide_plan:
                     ws.cell(row=excel_row, column=col, value=None)
                     ws.cell(row=excel_row, column=col + 1, value=None)
@@ -398,28 +375,34 @@ def build_demand_summary_excel_stream(
                         c.alignment = _CENTER_WRAP
                     col += 2
                     continue
-                k_val = _excel_display_numeric_value(pk, k_disp, force_numeric=True)
+                k_raw = _excel_raw_k_source(row, i)
+                k_val, k_num = _excel_cell_value_for_parameter(
+                    pk, k_raw, force_numeric=True, verification=verification_row
+                )
                 _write_data_cell(
                     ws,
                     excel_row,
                     col,
                     k_val,
+                    is_numeric=k_num,
                     parameter_key=pk,
-                    display=k_disp,
                     rounding_digits=rounding_digits,
                     is_k_column=True,
                     rounding_digits_k=rd_k,
                     param_fill=param_fill,
                     verification_row=verification_row,
                 )
-                mw_val = _excel_display_numeric_value(pk, disp)
+                mw_raw = _excel_raw_year_source(row, i)
+                mw_val, mw_num = _excel_cell_value_for_parameter(
+                    pk, mw_raw, verification=verification_row
+                )
                 _write_data_cell(
                     ws,
                     excel_row,
                     col + 1,
                     mw_val,
+                    is_numeric=mw_num,
                     parameter_key=pk,
-                    display=disp,
                     rounding_digits=rounding_digits,
                     is_k_column=False,
                     rounding_digits_k=rd_k,
@@ -434,14 +417,17 @@ def build_demand_summary_excel_stream(
                 c.alignment = _CENTER_WRAP
                 col += 1
             else:
-                cell_val = _excel_display_numeric_value(pk, disp)
+                raw = _excel_raw_year_source(row, i)
+                cell_val, is_num = _excel_cell_value_for_parameter(
+                    pk, raw, verification=verification_row
+                )
                 _write_data_cell(
                     ws,
                     excel_row,
                     col,
                     cell_val,
+                    is_numeric=is_num,
                     parameter_key=pk,
-                    display=disp,
                     rounding_digits=rounding_digits,
                     is_k_column=False,
                     rounding_digits_k=rd_k,

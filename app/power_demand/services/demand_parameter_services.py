@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Optional, Type
 
 from flask import session
@@ -112,6 +112,32 @@ def parse_decimal(value: Any) -> Optional[Decimal]:
         return Decimal(s)
     except InvalidOperation:
         return None
+
+
+# Совпадает с Numeric(25, 6) у столбцов coeff_k_* в моделях gs_pd.
+COEFF_K_DECIMAL_PLACES = 6
+_COEFF_K_QUANT = Decimal("1." + ("0" * COEFF_K_DECIMAL_PLACES))
+
+
+def quantize_coeff_k(value: Optional[Decimal]) -> Optional[Decimal]:
+    """Округлить коэффициент k до не более 6 знаков после запятой (как в БД)."""
+    if value is None:
+        return None
+    try:
+        return value.quantize(_COEFF_K_QUANT, rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def resolve_coeff_k_for_save(
+    visible_raw: Any,
+    db_snapshot_raw: Any,
+    rounding_digits: int,
+) -> Optional[Decimal]:
+    """Сохранение coeff_k_*: как resolve_max_power_mw_for_save, затем квантование до 6 знаков."""
+    return quantize_coeff_k(
+        resolve_max_power_mw_for_save(visible_raw, db_snapshot_raw, rounding_digits)
+    )
 
 
 def _normalize_peak_datetime_text(value: Any) -> str:
@@ -402,6 +428,33 @@ def get_demand_rows(
         demand_model.year_number.asc().nullsfirst(),
     ).all()
     return rows
+
+
+def peek_stored_perimeter_variant_code_for_parent(
+    demand_model,
+    fk_column_name: Optional[str],
+    parent_id: Optional[int],
+) -> str | None:
+    """Сохранённый код варианта периметра у родителя (метка year IS NULL или любая строка)."""
+    if not model_supports_perimeter_variant(demand_model):
+        return None
+    if fk_column_name is None or parent_id is None:
+        return None
+    q = demand_model.query
+    q = filter_demand_by_version(q, demand_model)
+    q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
+    rows = q.order_by(demand_model.year_number.asc().nullsfirst()).all()
+    for row in rows:
+        if getattr(row, "year_number", None) is not None:
+            continue
+        code = getattr(row, "perimeter_variant_code", None)
+        if code:
+            return str(code)
+    for row in rows:
+        code = getattr(row, "perimeter_variant_code", None)
+        if code:
+            return str(code)
+    return None
 
 
 _LEGACY_NT_TREE_DISPLAY_CODES = frozenset({CODE_WITH_NT, CODE_WITHOUT_NT})
@@ -917,7 +970,23 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
     if str(parameter_key or "").startswith("coeff_k_"):
         if hasattr(row, "__table__") and parameter_key in row.__table__.columns:
             v = getattr(row, parameter_key, None)
-            return _summary_numeric_display(v, digits=rounding_digits)
+            # «Округл (k)» 1–3 / −1; «Не округлять» (0) — не более 6 знаков (как Numeric(25, 6)).
+            dig = (
+                COEFF_K_DECIMAL_PLACES
+                if rounding_digits == 0
+                else rounding_digits
+            )
+            if dig in (1, 2, 3, -1):
+                from app.common.services.help_services import format_decimal_for_display as _fdf
+
+                return _dash_summary_display(
+                    _fdf(v, digits=dig) if v is not None else None
+                )
+            return _dash_summary_display(
+                format_decimal_trim_for_display(v, digits=COEFF_K_DECIMAL_PLACES)
+                if v is not None
+                else None
+            )
         return "—"
     if parameter_key == "max_power":
         v = getattr(row, "max_power_consumption_mw", None)
@@ -1315,14 +1384,14 @@ def _apply_summary_field_to_row(
             raise ValueError("Некорректное число в поле коэффициента k.")
         prev = getattr(row, parameter_key, None)
         old_shown = (
-            format_decimal_trim_for_display(prev, digits=rounding_digits)
+            format_decimal_trim_for_display(prev, digits=COEFF_K_DECIMAL_PLACES)
             if prev is not None
             else ""
         )
         setattr(
             row,
             parameter_key,
-            resolve_max_power_mw_for_save(raw_value, old_shown, rounding_digits),
+            resolve_coeff_k_for_save(raw_value, old_shown, rounding_digits),
         )
 
 
@@ -1865,7 +1934,8 @@ def save_demand_summary_cell(
         ):
             pvc = None
 
-    if not is_hist:
+    # На /summary/oes|fo|ez ввод по годам не ограничен «Год с»/«Год по» варианта.
+    if not is_hist and summary_log_scope not in ("oes", "fo", "ez"):
         _assert_perimeter_variant_year_allowed(pvc, year_n)
 
     display_row_main: Any = None

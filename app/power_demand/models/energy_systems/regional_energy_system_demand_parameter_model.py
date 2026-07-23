@@ -74,10 +74,10 @@ class RegionalEnergySystemDemandParameter(db.Model, AuditMixin, PerimeterVariant
     # Совмещенный максимум на ЦЗ России, МВт
     combined_on_cz = db.Column(Numeric(25, 3), nullable=True)
 
-    # Коэффициент k для показателя «Совмещённый на ОЭС, МВт»
+    # Коэффициент k для показателя «Совмещённый на ОЭС, МВт» (Numeric: не более 6 знаков после запятой)
     coeff_k_combined_on_oes = db.Column(Numeric(25, 6), nullable=True)
 
-    # Коэффициент k для показателя «Совмещённый на ЕЭС, МВт»
+    # Коэффициент k для показателя «Совмещённый на ЕЭС, МВт» (Numeric: не более 6 знаков после запятой)
     coeff_k_combined_on_ees = db.Column(Numeric(25, 6), nullable=True)
 
     # Примечание

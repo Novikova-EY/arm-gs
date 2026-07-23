@@ -14,12 +14,17 @@ CODE_WITHOUT_NT = "without_nt"
 CODE_WITHOUT_CRIMEA_SEV = "without_crimea_sev"
 CODE_WITHOUT_NT_WITH_KALININGRAD_ES = "without_nt_with_kaliningrad_es"
 CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES = "without_nt_without_kaliningrad_es"
+# Синхронная зона Калининградской области на сводках — данные / формулы с этого года.
+KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR = 2025
+KALININGRAD_SYNC_AREA_NAME_TOKEN_CF = "калининград"
 CODE_WITH_NT_WITH_GAES = "with_nt_with_gaes"
 CODE_WITH_NT_WITHOUT_GAES = "with_nt_without_gaes"
 CODE_WITHOUT_NT_WITH_GAES = "without_nt_with_gaes"
 CODE_WITHOUT_NT_WITHOUT_GAES = "without_nt_without_gaes"
 CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES = "without_nt_with_gaes_with_kaliningrad_es"
 CODE_O1 = "o1"
+CODE_O1_WITH_NT = "o1_with_nt"
+CODE_O1_WITHOUT_NT = "o1_without_nt"
 CODE_TERRITORIAL_BOUNDARIES = "territorial_boundaries"
 
 # Варианты блоков «с/без заряда ГАЭС» на сводке — не строки дерева ОЭС/ЕЭС.
@@ -131,9 +136,13 @@ FALLBACK_PERIMETER_VARIANT_BY_CODE: dict[str, PerimeterVariantDefinition] = {
     CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES: PerimeterVariantDefinition(
         CODE_WITHOUT_NT_WITHOUT_KALININGRAD_ES,
         "без НТ (без ЭС Калининградской области)",
-        effective_from_year=2025,
+        effective_from_year=KALININGRAD_SYNC_AREA_EFFECTIVE_FROM_YEAR,
     ),
     CODE_O1: PerimeterVariantDefinition(CODE_O1, "О-1"),
+    CODE_O1_WITH_NT: PerimeterVariantDefinition(
+        CODE_O1_WITH_NT, "О-1 с НТ", effective_from_year=WITH_NT_EFFECTIVE_FROM_YEAR
+    ),
+    CODE_O1_WITHOUT_NT: PerimeterVariantDefinition(CODE_O1_WITHOUT_NT, "О-1 без НТ"),
     CODE_TERRITORIAL_BOUNDARIES: PerimeterVariantDefinition(
         CODE_TERRITORIAL_BOUNDARIES, "(в территориальных границах)"
     ),
@@ -186,8 +195,8 @@ FALLBACK_ENTITY_PERIMETER_BINDINGS: tuple[EntityPerimeterBinding, ...] = (
         entity_name=CENTRALIZED_ZONE_AGGREGATE_NAME,
         label_prefix=CENTRALIZED_ZONE_AGGREGATE_NAME,
         variants=(
-            FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITH_NT],
-            FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITHOUT_NT],
+            FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_O1_WITH_NT],
+            FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_O1_WITHOUT_NT],
         ),
     ),
     EntityPerimeterBinding(
@@ -199,12 +208,5 @@ FALLBACK_ENTITY_PERIMETER_BINDINGS: tuple[EntityPerimeterBinding, ...] = (
             FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITH_NT],
             FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_WITHOUT_NT],
         ),
-    ),
-    EntityPerimeterBinding(
-        entity_kind="regional_district",
-        entity_name_cf="чукотский ао",
-        entity_name="Чукотский АО",
-        label_prefix="Чукотский АО",
-        variants=(FALLBACK_PERIMETER_VARIANT_BY_CODE[CODE_TERRITORIAL_BOUNDARIES],),
     ),
 )

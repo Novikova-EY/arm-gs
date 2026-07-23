@@ -54,6 +54,16 @@ class _DummySession:
         return None
 
 
+class _FakeStation:
+    """Лёгкий double вместо ORM Station — unit-тесты не поднимают полный реестр mapper'ов."""
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        if not hasattr(self, "id"):
+            self.id = None
+
+
 class _FakeExcelFile:
     def __init__(self, df):
         self.sheet_names = ["список"]
@@ -241,7 +251,6 @@ def test_import_station_list_from_excel_processes_combined_station_machine_row(m
     monkeypatch.setattr(service, "assign_machine_power_p_rasp", lambda *a, **k: None)
     monkeypatch.setattr(service, "update_machine_commission_status", lambda *a, **k: None)
     monkeypatch.setattr(service, "update_machine_power_ogr", lambda *a, **k: None)
-    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
     monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(fake_station))
     monkeypatch.setattr(service.db, "session", _DummySession())
 
@@ -313,7 +322,6 @@ def test_import_station_list_from_excel_uses_power_type_for_machine_row(monkeypa
         "update_machine_power_ogr",
         lambda *a, **k: calls.__setitem__("p_ogr", calls["p_ogr"] + 1),
     )
-    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
     monkeypatch.setattr(service, "sync_missing_machine_names_from_tes_types", lambda *a, **k: 0)
     monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(fake_station))
     monkeypatch.setattr(service.db, "session", _DummySession())
@@ -393,7 +401,6 @@ def test_import_station_list_from_excel_uses_power_type_for_followup_power_row(m
         "update_machine_power_ogr",
         lambda *a, **k: calls.__setitem__("p_ogr", calls["p_ogr"] + 1),
     )
-    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
     monkeypatch.setattr(service, "sync_missing_machine_names_from_tes_types", lambda *a, **k: 0)
     monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(fake_station))
     monkeypatch.setattr(service.db, "session", _DummySession())
@@ -485,7 +492,6 @@ def test_import_station_list_from_excel_parses_station_machine_and_followup_rasp
     monkeypatch.setattr(service, "cleanup_machine_fuel_and_tes_type", lambda *a, **k: None)
     monkeypatch.setattr(service, "update_machine_commission_status", lambda *a, **k: None)
     monkeypatch.setattr(service, "update_machine_power_ogr", lambda *a, **k: None)
-    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
     monkeypatch.setattr(service, "sync_missing_machine_names_from_tes_types", lambda *a, **k: 0)
     monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(fake_station))
     monkeypatch.setattr(service.db, "session", _DummySession())
@@ -504,7 +510,7 @@ def test_import_station_list_from_excel_parses_station_machine_and_followup_rasp
     ]
 
 
-def test_import_station_list_updates_exact_touched_station_not_name_lookup(monkeypatch):
+def test_import_station_list_uses_exact_touched_station_for_machine_not_name_lookup(monkeypatch):
     df = pd.DataFrame(
         [
             {
@@ -514,6 +520,8 @@ def test_import_station_list_updates_exact_touched_station_not_name_lookup(monke
                 "machine_number": "1, 2",
                 "machine_name": "Гидроагрегат",
                 "gen_company": "ООО «ТГК»",
+                "date_exploitation": "1984",
+                "station_type": "ГЭС",
                 "p_2024": "24.9",
             }
         ]
@@ -521,33 +529,30 @@ def test_import_station_list_updates_exact_touched_station_not_name_lookup(monke
     fake_excel = _FakeExcelFile(df)
     touched_station = SimpleNamespace(id=101, name="Белопорожская ГЭС-1")
     wrong_station = SimpleNamespace(id=999, name="Белопорожская ГЭС-1")
+    machine_station_ids = []
     fake_machine = SimpleNamespace(
+        id=501,
         machine_number="1, 2",
         machine_name="Гидроагрегат",
         machine_station=touched_station,
     )
-    updated_station_ids = []
+
+    def fake_handle_machine(row, current_station, user, import_power_years=None, import_scope=None):
+        machine_station_ids.append(getattr(current_station, "id", None))
+        return fake_machine
 
     monkeypatch.setattr(service.pd, "ExcelFile", lambda _: fake_excel)
     monkeypatch.setattr(service, "_overwrite_power_columns_from_excel_raw", lambda *a, **k: None)
     monkeypatch.setattr(service, "_canonicalize_station_import_power_columns", lambda df: [2024])
     monkeypatch.setattr(service, "handle_station", lambda row, user, **kwargs: touched_station)
-    monkeypatch.setattr(
-        service,
-        "handle_machine",
-        lambda row, current_station, user, import_power_years=None, import_scope=None: fake_machine,
-    )
+    monkeypatch.setattr(service, "handle_machine", fake_handle_machine)
     monkeypatch.setattr(service, "assign_machine_types", lambda *a, **k: None)
     monkeypatch.setattr(service, "assign_machine_power_p_ust", lambda *a, **k: None)
     monkeypatch.setattr(service, "cleanup_machine_fuel_and_tes_type", lambda *a, **k: None)
     monkeypatch.setattr(service, "assign_machine_power_p_rasp", lambda *a, **k: None)
     monkeypatch.setattr(service, "update_machine_commission_status", lambda *a, **k: None)
     monkeypatch.setattr(service, "update_machine_power_ogr", lambda *a, **k: None)
-    monkeypatch.setattr(
-        service,
-        "update_station_power",
-        lambda station, years, user: updated_station_ids.append(station.id),
-    )
+    monkeypatch.setattr(service, "sync_missing_machine_names_from_tes_types", lambda *a, **k: 0)
     monkeypatch.setattr(service, "versioned_query", lambda model: _FakeQuery(wrong_station))
     monkeypatch.setattr(service.db, "session", _DummySession())
 
@@ -557,7 +562,7 @@ def test_import_station_list_updates_exact_touched_station_not_name_lookup(monke
     )
 
     assert result["errors_count"] == 0
-    assert updated_station_ids == [101]
+    assert machine_station_ids == [101]
 
 
 def test_import_station_list_marks_non_adjacent_duplicate_station_block_as_unused_slot(monkeypatch):
@@ -593,7 +598,6 @@ def test_import_station_list_marks_non_adjacent_duplicate_station_block_as_unuse
     monkeypatch.setattr(service, "_overwrite_power_columns_from_excel_raw", lambda *a, **k: None)
     monkeypatch.setattr(service, "_canonicalize_station_import_power_columns", lambda df: [2024])
     monkeypatch.setattr(service, "handle_station", fake_handle_station)
-    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
     monkeypatch.setattr(service.db, "session", _DummySession())
 
     result = service.import_station_list_from_excel(
@@ -638,7 +642,6 @@ def test_import_station_list_marks_adjacent_duplicate_station_block_as_unused_sl
     monkeypatch.setattr(service, "_overwrite_power_columns_from_excel_raw", lambda *a, **k: None)
     monkeypatch.setattr(service, "_canonicalize_station_import_power_columns", lambda df: [2024])
     monkeypatch.setattr(service, "handle_station", fake_handle_station)
-    monkeypatch.setattr(service, "update_station_power", lambda *a, **k: None)
     monkeypatch.setattr(service.db, "session", _DummySession())
 
     result = service.import_station_list_from_excel(
@@ -718,7 +721,13 @@ def test_handle_station_creates_new_station_for_duplicate_name_with_other_machin
         }
     )
     district = SimpleNamespace(id=7, name="Республика Карелия", regional_energy_systems=[])
-    existing_station = SimpleNamespace(id=101, name="ТСС-1", id_station_type=None, note=None)
+    existing_station = SimpleNamespace(
+        id=101,
+        name="ТСС-1",
+        id_station_type=None,
+        note=None,
+        id_regional_district=7,
+    )
     condition_type = SimpleNamespace(id=1)
     energy_unit = SimpleNamespace(id=0)
     session = _DummySession()
@@ -733,10 +742,22 @@ def test_handle_station_creates_new_station_for_duplicate_name_with_other_machin
         if model is service.Station:
             return _ListQuery([existing_station])
         if model is service.Machine:
-            return _ListQuery([])
+            # У существующей станции уже есть другой агрегат → создаём новую станцию-слот
+            return _ListQuery(
+                [
+                    SimpleNamespace(
+                        id_station=101,
+                        machine_group="Г-1",
+                        machine_number="1",
+                        machine_name="Старый агрегат",
+                        date_exploitation=1970,
+                    )
+                ]
+            )
         raise AssertionError(f"unexpected model: {model}")
 
     monkeypatch.setattr(service, "versioned_query", fake_versioned_query)
+    monkeypatch.setattr(service, "Station", _FakeStation)
     monkeypatch.setattr(service, "safe_lookup", lambda *args, **kwargs: None)
     monkeypatch.setattr(service, "set_db_version_on_create", lambda *args, **kwargs: None)
     monkeypatch.setattr(service, "get_current_db_version_id", lambda: None)
@@ -799,6 +820,7 @@ def test_handle_station_does_not_merge_duplicate_name_by_station_type_when_machi
         raise AssertionError(f"unexpected model: {model}")
 
     monkeypatch.setattr(service, "versioned_query", fake_versioned_query)
+    monkeypatch.setattr(service, "Station", _FakeStation)
     monkeypatch.setattr(service, "safe_lookup", lambda model, field, value, cleaner=None: 99 if model is service.StationType else None)
     monkeypatch.setattr(service, "set_db_version_on_create", lambda *args, **kwargs: None)
     monkeypatch.setattr(service, "get_current_db_version_id", lambda: None)
@@ -860,6 +882,7 @@ def test_handle_station_prefers_unused_slot_for_repeated_station_block(monkeypat
         raise AssertionError(f"unexpected model: {model}")
 
     monkeypatch.setattr(service, "versioned_query", fake_versioned_query)
+    monkeypatch.setattr(service, "Station", _FakeStation)
     monkeypatch.setattr(service, "safe_lookup", lambda model, field, value, cleaner=None: 99 if model is service.StationType else None)
     monkeypatch.setattr(service, "set_db_version_on_create", lambda *args, **kwargs: None)
     monkeypatch.setattr(service, "get_current_db_version_id", lambda: None)

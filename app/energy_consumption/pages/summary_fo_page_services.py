@@ -11,10 +11,9 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     _mark_summary_table_expanded_nt_gaes_variant_row_rules,
     _mark_summary_table_nt_on_gaes_off_variant_row_rules,
     append_summary_table_hub_energy_zone_footer_rows,
-    apply_centralized_zone_with_nt_sum_formula,
-    apply_centralized_zone_without_nt_sum_formula,
     apply_sipr_consumption_display_fallback_to_summary_rows,
     build_federal_district_summary_context,
+    exclude_centralized_zone_russia_non_o1_summary_rows,
     get_demand_summary_filter_refdata,
     get_energy_consumption_fo_filter_cascade_data,
     inject_summary_table_cz_new_territories_reference_row,
@@ -67,26 +66,20 @@ def build_summary_fo_page_context(
         filter_year_list=filter_year_list,
     )
     tag_summary_table_energy_zone_footer_rows(context["summary_rows"])
+    context["summary_rows"] = exclude_centralized_zone_russia_non_o1_summary_rows(
+        list(context.get("summary_rows") or [])
+    )
     if context.get("summary_rows") and context.get("years"):
         years = list(context["years"])
-        apply_centralized_zone_with_nt_sum_formula(
-            context["summary_rows"],
-            years=years,
-            rounding_digits=rounding_digits,
-        )
-        apply_centralized_zone_without_nt_sum_formula(
-            context["summary_rows"],
-            years=years,
-            rounding_digits=rounding_digits,
-        )
         inject_summary_table_cz_new_territories_reference_row(
             context["summary_rows"],
-            years=years,
+            years,
             rounding_digits=rounding_digits,
         )
         mask_summary_rows_perimeter_variant_year_display(
             context["summary_rows"],
             years,
+            unrestricted_perimeter_variant_input=True,
         )
         apply_sipr_consumption_display_fallback_to_summary_rows(
             context["summary_rows"],

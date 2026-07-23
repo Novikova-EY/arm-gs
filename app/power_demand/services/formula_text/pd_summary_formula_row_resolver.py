@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.common.perimeter_variant.constants import legacy_nt_group_for_perimeter_code
 from app.common.perimeter_variant.registry import CODE_WITH_NT, CODE_WITHOUT_NT
 from app.power_demand.services.pd_peak_usage_hours_services import (
     combined_on_key_from_peak_combined_usage_hours,
@@ -12,6 +13,7 @@ from app.power_demand.services.pd_peak_usage_hours_services import (
 from app.power_demand.services.power_demand_summary_formula_registry import get_formula_def
 
 _SECOND_SYNC_AREA_LABEL_CF = "вторая синхронная"
+_NT_KEY_SUFFIXES = ("_without_nt", "_with_nt")
 
 
 def _label_cf(row: dict[str, Any]) -> str:
@@ -33,18 +35,61 @@ def _is_kaliningrad_synchronous_area(row: dict[str, Any]) -> bool:
     return "калининград" in _label_cf(row)
 
 
-def _nt_suffix(perimeter_variant_code: Any) -> str:
-    if perimeter_variant_code == CODE_WITH_NT:
+def strip_pd_formula_nt_suffix(formula_key: str | None) -> str:
+    """Убрать хвостовой ``_with_nt`` / ``_without_nt`` у ключа формулы."""
+    key = str(formula_key or "").strip()
+    if not key:
+        return ""
+    for suffix in _NT_KEY_SUFFIXES:
+        if key.endswith(suffix):
+            return key[: -len(suffix)]
+    return key
+
+
+def nt_group_for_pd_formula_row(row: dict[str, Any]) -> str:
+    """Группа НТ для выбора текста формулы: ``with_nt`` или ``without_nt``.
+
+    Учитывает составные коды (``with_nt_without_gaes``, ``o1_with_nt`` и т.п.)
+    и подпись строки («… с НТ» / «… без НТ»), если кода нет.
+    """
+    code = str(row.get("perimeter_variant_code") or "").strip()
+    if code:
+        group = legacy_nt_group_for_perimeter_code(code)
+        if group in (CODE_WITH_NT, CODE_WITHOUT_NT):
+            return group
+        # o1_with_nt / o1_without_nt и прочие составные коды вне GAES-группы.
+        # «without_nt» проверяем раньше: иначе «with_nt» ложно сработает на подстроке.
+        normalized = code.casefold()
+        if "without_nt" in normalized:
+            return CODE_WITHOUT_NT
+        if "with_nt" in normalized:
+            return CODE_WITH_NT
+
+    lbl = _label_cf(row)
+    compact = str(row.get("pd_pd_entity_label_compact_nt") or "").strip().casefold()
+    for candidate in (lbl, compact):
+        if candidate.endswith(" без нт") or " без нт" in candidate:
+            return CODE_WITHOUT_NT
+        if candidate.endswith(" с нт") or " с нт" in candidate:
+            return CODE_WITH_NT
+    return CODE_WITHOUT_NT
+
+
+def _nt_suffix(nt_group: Any) -> str:
+    if nt_group == CODE_WITH_NT:
         return "_with_nt"
     return "_without_nt"
 
 
-def _nt_formula_key(base_key: str, perimeter_variant_code: Any) -> str | None:
+def _nt_formula_key(base_key: str, nt_group: Any) -> str | None:
     if not base_key:
         return None
-    candidate = f"{base_key}{_nt_suffix(perimeter_variant_code)}"
+    bare = strip_pd_formula_nt_suffix(base_key)
+    candidate = f"{bare}{_nt_suffix(nt_group)}"
     if get_formula_def(candidate):
         return candidate
+    if get_formula_def(bare):
+        return bare
     if get_formula_def(base_key):
         return base_key
     return None
@@ -54,7 +99,7 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
     """Базовый ключ формулы (без суффикса _with_nt/_without_nt) для строки показателя."""
     explicit = row.get("pd_formula_text_key")
     if explicit and get_formula_def(str(explicit)):
-        return str(explicit)
+        return strip_pd_formula_nt_suffix(str(explicit)) or str(explicit)
 
     pk = str(row.get("parameter_key") or "")
     dm = str(row.get("demand_model_name") or "")
@@ -249,7 +294,4 @@ def resolve_pd_summary_coeff_k_formula_base_key(row: dict[str, Any]) -> str | No
 def resolve_pd_summary_row_formula_key(row: dict[str, Any], *, base_key: str | None) -> str | None:
     if not base_key:
         return None
-    pvc = row.get("perimeter_variant_code")
-    if pvc in (CODE_WITH_NT, CODE_WITHOUT_NT):
-        return _nt_formula_key(base_key, pvc)
-    return _nt_formula_key(base_key, CODE_WITHOUT_NT)
+    return _nt_formula_key(base_key, nt_group_for_pd_formula_row(row))

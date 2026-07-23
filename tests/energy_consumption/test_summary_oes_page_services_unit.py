@@ -27,6 +27,16 @@ def test_apply_max_skips_oes_ees_unified_formula_when_flag_set(monkeypatch):
 
     monkeypatch.setattr(
         transforms,
+        "mask_sakha_yakutia_tites_oes_east_year_membership",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        transforms,
+        "collapse_gaes_variant_split_for_entities_without_stations",
+        lambda *_a, **_k: None,
+    )
+    monkeypatch.setattr(
+        transforms,
         "apply_energy_consumption_summary_table_variant_toggle_rows",
         lambda *_a, **_k: None,
     )
@@ -167,3 +177,59 @@ def test_apply_max_skips_oes_ees_unified_formula_when_flag_set(monkeypatch):
     }
     transforms.apply_max_summary_page_variant_behaviour(context_no_skip)
     assert calls[:3] == ["unified", "tites", "formulas"]
+
+
+def test_apply_max_fo_and_ez_inject_shared_top_verification(monkeypatch):
+    """ФО/ЭЗ получают те же проверки ЕЭС/первой СЗ, что и общий верх ОЭС."""
+    inject_calls: list[str] = []
+
+    def _noop(*_a, **_k):
+        return None
+
+    for name in (
+        "apply_energy_consumption_summary_table_variant_toggle_rows",
+        "apply_summary_table_russia_federation_row_rules",
+        "tag_oes_ees_unified_summary_nt_toggle_rows",
+        "apply_federal_district_formula_to_summary_rows",
+        "apply_energy_zone_formula_to_summary_rows",
+        "inject_south_fd_new_territories_summary_rows",
+        "inject_federal_district_without_gaes_summary_rows",
+        "inject_oes_territory_detail_without_gaes_summary_rows",
+        "apply_gaes_without_charge_formula_to_summary_rows",
+        "inject_fo_summary_verification_rows",
+        "inject_east_energy_zone_o1_res_energy_unit_verification_rows",
+        "inject_east_energy_zone_o1_parent_verification_row",
+        "apply_summary_table_formula_calculations",
+        "tag_energy_consumption_summary_rows_perimeter_variant_labels",
+        "mask_summary_rows_perimeter_variant_year_display",
+        "apply_sipr_consumption_display_fallback_to_summary_rows",
+        "recompute_sipr_growth_metrics_for_summary_rows",
+        "tag_ees_russia_sipr_integer_display_rows",
+        "apply_fo_rd_gaes_territory_entity_labels",
+        "apply_oes_territory_detail_gaes_entity_labels",
+        "collapse_gaes_variant_split_for_entities_without_stations",
+        "tag_energy_consumption_summary_rows_for_territory_compact",
+        "keep_centralized_zone_rows_in_territory_compact",
+        "apply_federal_district_centralized_zone_values_from_summary_table_hub",
+        "_mark_summary_table_collapsed_nt_gaes_variant_row_rules",
+        "_mark_summary_table_nt_on_gaes_off_variant_row_rules",
+    ):
+        monkeypatch.setattr(transforms, name, _noop)
+
+    monkeypatch.setattr(
+        transforms,
+        "inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows",
+        lambda *_a, **_k: inject_calls.append("verify"),
+    )
+
+    for active in ("fo", "ez"):
+        inject_calls.clear()
+        transforms.apply_max_summary_page_variant_behaviour(
+            {
+                "active_summary": active,
+                "summary_rows": [{"entity_label": "ЕЭС России"}],
+                "years": [2026],
+                "rounding_digits": 1,
+            }
+        )
+        assert inject_calls == ["verify"], active

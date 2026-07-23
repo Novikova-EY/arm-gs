@@ -20,6 +20,9 @@ from app.refdata.models.fuels.fuel_model import Fuel
 from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
 from app.generation.models.pgu_machine.pgu_machine_power_model import PGUMachinePower
 from app.generation.services.station_services.station_services import _apply_machine_display_names
+from app.generation.services.station_services.station_power_aggregation import (
+    aggregate_powers_from_machine_power_rows,
+)
 from app.common.services.database_version_filter import (
     get_current_db_version_id,
     filter_by_explicit_db_version,
@@ -183,27 +186,25 @@ def get_equipment_group_machines_data(
         _apply_machine_display_names(machines)
 
         # Прикрепляем данные к машинам и считаем итоги по электростанции
-        station_powers_by_year = defaultdict(lambda: {"p_ust": Decimal(0), "p_ogr": Decimal(0), "p_rasp": Decimal(0)})
         station_nt_sum = Decimal(0)
         for m in machines:
             m.machine_powers = list((powers_by_machine_year.get(m.id, {}) or {}).values())
             m.machine_fuels = list((fuels_by_machine_year.get(m.id, {}) or {}).values())
             m.pgu_machines = pgu_by_parent.get(m.id, [])
             m.base_rows = 1 + len(m.pgu_machines)
-            for mp in m.machine_powers:
-                y = mp.year_number
-                if mp.p_ust:
-                    station_powers_by_year[y]["p_ust"] += Decimal(str(mp.p_ust))
-                if mp.p_ogr:
-                    station_powers_by_year[y]["p_ogr"] += Decimal(str(mp.p_ogr))
-                if mp.p_rasp:
-                    station_powers_by_year[y]["p_rasp"] += Decimal(str(mp.p_rasp))
 
             mfp = getattr(m, "machine_fuel_param", None)
             if mfp and mfp.nt is not None:
                 station_nt_sum += Decimal(str(mfp.nt))
 
-        station.powers_by_year = dict(station_powers_by_year)
+        all_machine_powers = []
+        for m in machines:
+            all_machine_powers.extend(m.machine_powers)
+        station.powers_by_year = aggregate_powers_from_machine_power_rows(
+            all_machine_powers,
+            start_year=start_year,
+            end_year=end_year,
+        )
         station.machines_nt_sum = station_nt_sum
         station.machines = machines
         result.append((station, machines))

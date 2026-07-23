@@ -20,6 +20,16 @@
         if (!td || td.classList.contains("summary-plan-empty")) {
             return null;
         }
+        var title = td.getAttribute("title");
+        if (title) {
+            var tt = String(title).trim().replace(/\s/g, "");
+            if (tt && tt !== "—" && /^-?\d+([.,]\d+)?$/.test(tt)) {
+                var tn = parseFloat(tt.replace(",", "."));
+                if (Number.isFinite(tn)) {
+                    return tn;
+                }
+            }
+        }
         var inp = td.querySelector("input, textarea");
         var t = inp ? String(inp.value || "").trim() : String(td.textContent || "").trim();
         if (t === "" || t === "—") {
@@ -96,6 +106,45 @@
         } else {
             td.removeAttribute("title");
         }
+    }
+
+    /** Формулы только в «Год с»…«Год по» варианта периметра строки (данные вне периода не затираем).
+     *  Первая СЗ: формулы по всем годам; «Год с» только для вычитания Калининграда на сервере. */
+    function formulaYearAppliesToRow(tr, year) {
+        if (!tr) {
+            return true;
+        }
+        var meta = readLiveCalcMeta();
+        var firstSaId =
+            meta.first_sync_area_id !== null && meta.first_sync_area_id !== undefined
+                ? String(meta.first_sync_area_id)
+                : null;
+        var said = tr.getAttribute("data-id-synchronous-area");
+        if (
+            firstSaId &&
+            said &&
+            said === firstSaId &&
+            tr.getAttribute("data-demand-model-name") === "SynchronousAreaDemandParameter"
+        ) {
+            return true;
+        }
+        var code = tr.getAttribute("data-perimeter-variant-code");
+        if (!code) {
+            return true;
+        }
+        var yr = parseInt(year, 10);
+        if (!Number.isFinite(yr)) {
+            return true;
+        }
+        var fromYear = tr.getAttribute("data-perimeter-variant-from-year");
+        var toYear = tr.getAttribute("data-perimeter-variant-to-year");
+        if (fromYear != null && fromYear !== "" && yr < parseInt(fromYear, 10)) {
+            return false;
+        }
+        if (toYear != null && toYear !== "" && yr > parseInt(toYear, 10)) {
+            return false;
+        }
+        return true;
     }
 
     var cachedYears = null;
@@ -216,6 +265,17 @@
         return { year: y, value: fb === undefined ? null : fb };
     }
 
+    function perimeterVariantNtGroup(code) {
+        var s = String(code || "");
+        if (s.indexOf("with_nt") === 0) {
+            return "with_nt";
+        }
+        if (s.indexOf("without_nt") === 0) {
+            return "without_nt";
+        }
+        return s;
+    }
+
     function uesRowMatchesEesRussiaVariant(uTr, targetVariant) {
         var code = uTr.getAttribute("data-perimeter-variant-code");
         if (!code) {
@@ -223,6 +283,11 @@
         }
         var meta = readLiveCalcMeta();
         var target = targetVariant || meta.default_perimeter_variant || "";
+        var codeGroup = perimeterVariantNtGroup(code);
+        var targetGroup = perimeterVariantNtGroup(target);
+        if (codeGroup && targetGroup && (codeGroup === "with_nt" || codeGroup === "without_nt")) {
+            return codeGroup === targetGroup;
+        }
         return String(code) === String(target);
     }
 
@@ -253,12 +318,23 @@
                 return;
             }
             var variant = startTr.getAttribute("data-perimeter-variant-code") || "";
+            // «ЕЭС с НТ» = сумма ОЭС как у «без НТ» + ΣНТ (не строка «ОЭС Юга с НТ»).
+            var uesFilterVariant = perimeterVariantIsWithNt(variant)
+                ? "without_nt"
+                : variant;
             var block = collectBlockRows(startTr);
             var calcTr = findRowInBlock(block, "calculated_max_ees_russia_mw");
             if (!calcTr) {
                 return;
             }
             getYearsFromTable().forEach(function (y) {
+                var calcCell = findYearCell(calcTr, y);
+                if (!calcCell) {
+                    return;
+                }
+                if (!formulaYearAppliesToRow(calcTr, y)) {
+                    return;
+                }
                 var sum = 0;
                 var has = false;
                 table
@@ -270,7 +346,7 @@
                         if (!uid || !allowed[String(uid)]) {
                             return;
                         }
-                        if (!uesRowMatchesEesRussiaVariant(uTr, variant)) {
+                        if (!uesRowMatchesEesRussiaVariant(uTr, uesFilterVariant)) {
                             return;
                         }
                         var cell = findYearCell(uTr, y);
@@ -281,16 +357,12 @@
                         sum += v;
                         has = true;
                     });
-                if (variant === "with_nt") {
+                if (perimeterVariantIsWithNt(variant)) {
                     var ntAdd = ntCombinedOnEesByYear[y];
                     if (ntAdd !== undefined) {
                         sum += ntAdd;
                         has = true;
                     }
-                }
-                var calcCell = findYearCell(calcTr, y);
-                if (!calcCell) {
-                    return;
                 }
                 if (!has) {
                     setYearCellDisplay(calcCell, "—", null);
@@ -301,51 +373,13 @@
         });
     }
 
-    /** «Расчетный максимум …» (ЭЭС России) = первая СЗ − ветка ТИТЭС + энергорайоны формулы. */
-    function sumAllTitesBranchMaxPowerByYear() {
-        var meta = readLiveCalcMeta();
-        var titesIds = {};
-        (meta.tites_ues_ids || []).forEach(function (id) {
-            titesIds[String(id)] = true;
-        });
-        var out = {};
-        if (!Object.keys(titesIds).length) {
-            return out;
-        }
-        table
-            .querySelectorAll('tr[data-parameter-key="max_power"]')
-            .forEach(function (tr) {
-                var uid = tr.getAttribute("data-id-union-energy-system");
-                if (!uid || !titesIds[String(uid)]) {
-                    return;
-                }
-                tr.querySelectorAll("td[data-ec-summary-col-year]").forEach(function (td) {
-                    var y = parseInt(String(td.getAttribute("data-ec-summary-col-year") || ""), 10);
-                    var v = parseCellNumber(td);
-                    if (!Number.isFinite(y) || v === null) {
-                        return;
-                    }
-                    if (out[y] === undefined) {
-                        out[y] = 0;
-                    }
-                    out[y] += v;
-                });
-            });
-        return out;
-    }
-
-    function sumEesAggregateFormulaTitesEuMaxPowerByYear(legacyAdjustments) {
+    /** «Расчетный максимум …» (ЭЭС России) = max_power ЕЭС без НТ + max_power энергорайонов формулы. */
+    function sumEesAggregateFormulaTitesEuMaxPowerByYear() {
         var meta = readLiveCalcMeta();
         var euIds = {};
         (meta.ees_aggregate_tites_eu_ids || []).forEach(function (id) {
             euIds[String(id)] = true;
         });
-        var subtractMap = legacyAdjustments
-            ? meta.ees_aggregate_tites_eu_subtract_mw || {}
-            : meta.ees_aggregate_tites_eu_base_subtract_mw || {};
-        var chaunThreshold =
-            parseFloat(meta.ees_aggregate_tites_eu_chaun_unadjusted_max_power_mw || "62") || 62;
-        var chaunSubtract = 6.6;
         var out = {};
         table
             .querySelectorAll(
@@ -365,21 +399,17 @@
                     if (!Number.isFinite(y) || v === null) {
                         return;
                     }
-                    var subtract = parseFloat(subtractMap[String(euId)] || "0") || 0;
-                    if (
-                        !legacyAdjustments &&
-                        Math.abs(subtract - chaunSubtract) < 0.001 &&
-                        v <= chaunThreshold
-                    ) {
-                        subtract = 0;
-                    }
                     if (out[y] === undefined) {
                         out[y] = 0;
                     }
-                    out[y] += v - subtract;
+                    out[y] += v;
                 });
             });
         return out;
+    }
+
+    function perimeterVariantIsWithoutNt(code) {
+        return String(code || "").indexOf("without_nt") === 0;
     }
 
     function eesRussiaMaxPowerWithoutNtByYear() {
@@ -388,7 +418,7 @@
             if (startTr.getAttribute("data-demand-model-name") !== "EnergySystemTypeDemandParameter") {
                 return;
             }
-            if (startTr.getAttribute("data-perimeter-variant-code") !== "without_nt") {
+            if (!perimeterVariantIsWithoutNt(startTr.getAttribute("data-perimeter-variant-code"))) {
                 return;
             }
             var block = collectBlockRows(startTr);
@@ -408,91 +438,58 @@
         return out;
     }
 
-    function firstSyncCalculatedMaxPowerByYear(variant) {
-        var meta = readLiveCalcMeta();
-        var firstSaId =
-            meta.first_sync_area_id !== null && meta.first_sync_area_id !== undefined
-                ? String(meta.first_sync_area_id)
-                : null;
+    /** «Расчетный максимум …» (ЭЭС России без НТ) по годам. */
+    function eesCalculatedMaxPowerConsumptionBaseByYear() {
+        var eesRow = eesRussiaMaxPowerWithoutNtByYear();
+        var euSums = sumEesAggregateFormulaTitesEuMaxPowerByYear();
         var out = {};
-        if (!firstSaId) {
+        getYearsFromTable().forEach(function (y) {
+            var er = eesRow[y];
+            var eu = euSums[y];
+            if (er === undefined && eu === undefined) {
+                return;
+            }
+            out[y] = (er || 0) + (eu || 0);
+        });
+        return out;
+    }
+
+    function ntSubjectsMaxPowerSumByYear(southUesId, ntRdIds) {
+        var out = {};
+        if (!southUesId || !ntRdIds || !ntRdIds.length) {
             return out;
         }
+        var allowed = {};
+        ntRdIds.forEach(function (id) {
+            allowed[String(id)] = true;
+        });
         table
             .querySelectorAll(
-                'tr[data-demand-model-name="SynchronousAreaDemandParameter"][data-parameter-key="calculated_max_power_mw"]'
+                'tr[data-demand-model-name="RegionalDistrictDemandParameter"][data-parameter-key="max_power"]'
             )
-            .forEach(function (tr) {
-                if (String(tr.getAttribute("data-id-synchronous-area") || "") !== firstSaId) {
+            .forEach(function (rdTr) {
+                if (
+                    String(rdTr.getAttribute("data-id-union-energy-system") || "") !==
+                    String(southUesId)
+                ) {
                     return;
                 }
-                if ((tr.getAttribute("data-perimeter-variant-code") || "") !== (variant || "")) {
+                var rdId = rdTr.getAttribute("data-id-regional-district");
+                if (!rdId || !allowed[String(rdId)]) {
                     return;
                 }
-                tr.querySelectorAll("td[data-ec-summary-col-year]").forEach(function (td) {
+                rdTr.querySelectorAll("td[data-ec-summary-col-year]").forEach(function (td) {
                     var y = parseInt(String(td.getAttribute("data-ec-summary-col-year") || ""), 10);
                     var v = parseCellNumber(td);
                     if (!Number.isFinite(y) || v === null) {
                         return;
                     }
-                    out[y] = v;
+                    if (out[y] === undefined) {
+                        out[y] = 0;
+                    }
+                    out[y] += v;
                 });
             });
-        return out;
-    }
-
-    function firstSyncMinusTitesFormulaEesPartByYear() {
-        var titesSumByYear = sumAllTitesBranchMaxPowerByYear();
-        var firstSaByYear = firstSyncCalculatedMaxPowerByYear("without_nt");
-        var meta = readLiveCalcMeta();
-        var titesCorrection =
-            parseFloat(meta.ees_formula_tites_branch_subtract_correction_mw || "21.6") || 0;
-        var out = {};
-        getYearsFromTable().forEach(function (y) {
-            var fs = firstSaByYear[y];
-            var tb = titesSumByYear[y];
-            if (fs === undefined && tb === undefined) {
-                return;
-            }
-            out[y] = (fs || 0) - ((tb || 0) - titesCorrection);
-        });
-        return out;
-    }
-
-    /** «Расчетный максимум …» (ЭЭС России без НТ) по годам. */
-    function eesCalculatedMaxPowerConsumptionBaseByYear() {
-        var meta = readLiveCalcMeta();
-        var threshold =
-            parseFloat(meta.ees_formula_use_legacy_first_sa_threshold_mw || "1500") || 1500;
-        var formulaEes = firstSyncMinusTitesFormulaEesPartByYear();
-        var eesRow = eesRussiaMaxPowerWithoutNtByYear();
-        var euLegacy = sumEesAggregateFormulaTitesEuMaxPowerByYear(true);
-        var euBase = sumEesAggregateFormulaTitesEuMaxPowerByYear(false);
-        var out = {};
-        getYearsFromTable().forEach(function (y) {
-            var fe = formulaEes[y];
-            var er = eesRow[y];
-            if (fe === undefined && er === undefined) {
-                return;
-            }
-            var useLegacy =
-                fe !== undefined &&
-                er !== undefined &&
-                er > fe + threshold;
-            var eesPart;
-            var euPart;
-            if (useLegacy) {
-                eesPart = fe;
-                euPart = euLegacy[y] || 0;
-            } else if (er !== undefined) {
-                eesPart = er;
-                euPart = euBase[y] || 0;
-            } else {
-                eesPart = fe || 0;
-                euPart = euLegacy[y] || 0;
-            }
-            out[y] = eesPart + euPart;
-        });
         return out;
     }
 
@@ -503,9 +500,9 @@
         var ntRdIds = Array.isArray(meta.nt_regional_district_ids)
             ? meta.nt_regional_district_ids
             : [];
-        var ntCombinedOnEsByYear =
+        var ntMaxPowerByYear =
             southUesId !== null && southUesId !== undefined
-                ? ntSubjectsCombinedOnEsSumByYear(southUesId, ntRdIds)
+                ? ntSubjectsMaxPowerSumByYear(southUesId, ntRdIds)
                 : {};
         table.querySelectorAll('tr[data-is-block-start="1"]').forEach(function (startTr) {
             if (startTr.getAttribute("data-demand-model-name") !== "EesRussiaDemandParameter") {
@@ -523,13 +520,16 @@
                 if (!calcCell) {
                     return;
                 }
+                if (!formulaYearAppliesToRow(calcTr, y)) {
+                    return;
+                }
                 if (base === undefined) {
                     setYearCellDisplay(calcCell, "—", null);
                     return;
                 }
                 var total = base;
-                if (variant === "with_nt") {
-                    var ntAdd = ntCombinedOnEsByYear[y];
+                if (perimeterVariantIsWithNt(variant)) {
+                    var ntAdd = ntMaxPowerByYear[y];
                     if (ntAdd !== undefined) {
                         total += ntAdd;
                     }
@@ -538,6 +538,7 @@
             });
         });
     }
+
 
     function getYearsFromTable() {
         if (cachedYears) {
@@ -609,6 +610,10 @@
                 var bCell = findYearCell(bTr, y);
                 var vCell = findYearCell(tr, y);
                 if (!vCell) {
+                    return;
+                }
+                if (!formulaYearAppliesToRow(tr, y)) {
+                    setYearCellDisplay(vCell, "—", null);
                     return;
                 }
                 var av = aCell ? parseCellNumber(aCell) : null;
@@ -803,8 +808,10 @@
                         if (!cell) {
                             return;
                         }
+                        if (!formulaYearAppliesToRow(uTr, y)) {
+                            return;
+                        }
                         if (isSouthWithNt && !southUesWithNtFormulaYear(y, meta)) {
-                            setYearCellDisplay(cell, "—", null);
                             return;
                         }
                         var byYear = store[uid];
@@ -858,6 +865,9 @@
             var sourceCell = findYearCell(sourceTr, y);
             var targetCell = findYearCell(targetTr, y);
             if (!targetCell) {
+                return;
+            }
+            if (!formulaYearAppliesToRow(targetTr, y)) {
                 return;
             }
             if (!sourceCell) {
@@ -929,6 +939,10 @@
     /** Расчётный максимум синхронной зоны: для 2-й СЗ — ОЭС Востока; для Калининграда — ЭС Калининградской области; иначе — сумма «Максимум …». */
     function refreshSaCalculatedMaxPowerFromRes() {
         var meta = readLiveCalcMeta();
+        var firstSaId =
+            meta.first_sync_area_id !== null && meta.first_sync_area_id !== undefined
+                ? String(meta.first_sync_area_id)
+                : null;
         var secondSaId =
             meta.second_sync_area_id !== null && meta.second_sync_area_id !== undefined
                 ? String(meta.second_sync_area_id)
@@ -1024,6 +1038,10 @@
                 if (!said) {
                     return;
                 }
+                // 1-я СЗ: сумма ОЭС ± Калининград считается на сервере («Год с» только для вычитания).
+                if (firstSaId && said === firstSaId) {
+                    return;
+                }
                 var store;
                 if (kaliningradSaId && said === kaliningradSaId && kaliningradEsId) {
                     store = { [kaliningradSaId]: kaliningradMax };
@@ -1035,6 +1053,9 @@
                 getYearsFromTable().forEach(function (y) {
                     var cell = findYearCell(saTr, y);
                     if (!cell) {
+                        return;
+                    }
+                    if (!formulaYearAppliesToRow(saTr, y)) {
                         return;
                     }
                     var byYear = store[said];
@@ -1125,6 +1146,9 @@
                 getYearsFromTable().forEach(function (y) {
                     var cell = findYearCell(saTr, y);
                     if (!cell) {
+                        return;
+                    }
+                    if (!formulaYearAppliesToRow(saTr, y)) {
                         return;
                     }
                     var byYear = byYearStore[said];

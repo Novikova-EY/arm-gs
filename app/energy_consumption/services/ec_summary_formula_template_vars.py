@@ -27,6 +27,9 @@ EC_FORMULA_TEMPLATE_VAR_KEYS: dict[str, str] = {
     "_pd_ec_fo_gaes_adj_sum_res_formula": "fo_gaes_adj_sum_res",
     "_pd_ec_rd_gaes_adj_formula": "rd_gaes_adj",
     "_pd_ec_gaes_adj_fd_oes_formula": "gaes_adj_fd_oes",
+    "_pd_ec_gaes_adj_south_ues_without_nt_without_gaes_formula": (
+        "gaes_adj_south_ues_without_nt_without_gaes"
+    ),
     "_pd_ec_gaes_adj_ez_formula": "gaes_adj_ez",
     "_pd_ec_gaes_adj_ees_russia_ez_formula": "gaes_adj_ees_russia_ez",
     "_pd_ec_gaes_adj_ees_russia_with_nt_formula": "gaes_adj_ees_russia_with_nt",
@@ -45,9 +48,9 @@ EC_FORMULA_TEMPLATE_VAR_KEYS: dict[str, str] = {
     ),
     "_pd_ec_first_sa_with_nt_with_gaes_formula": "first_sa_with_nt_with_gaes_with_kaliningrad_py",
     "_pd_ec_first_sa_without_nt_without_kaliningrad_with_gaes_formula": (
-        "first_sa_without_nt_without_kaliningrad_with_gaes"
+        "first_sa_without_nt_with_gaes_without_kaliningrad"
     ),
-    "_pd_ec_ees_russia_ez_row_tooltip": "cz_russia_without_nt",
+    "_pd_ec_ees_russia_ez_row_tooltip": "oes_ees_russia_without_nt_mln",
     "_pd_ec_ees_russia_ez_with_nt_tooltip": "ees_russia_ez_with_nt",
     "_pd_ec_oes_ees_russia_without_nt_mln_tooltip": "oes_ees_russia_without_nt_mln",
     "_pd_ec_oes_ees_russia_with_nt_mln_tooltip": "oes_ees_russia_with_nt_mln",

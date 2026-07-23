@@ -1,34 +1,48 @@
 """Выгрузка сводных таблиц потребления в Excel (в духе экранной таблицы: шапка, подписи к годам, заливки).
 
 Дополнительно в книгу добавляются листы «млн. кВт.ч» и «СиПР» в формате, совместимом с импортом сводки.
+Числовые ячейки основного листа: полное значение + number_format (как на выгрузке «Выработка ЭЭ»).
 """
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from typing import Any
 
 from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
 
+from app.common.services.excel_numeric_cell import (
+    excel_number_format,
+    excel_numeric_cell_value,
+    parse_excel_numeric,
+)
 from app.energy_consumption.services.energy_consumption_summary_import_services import (
     SHEET_MLN_KVTCH,
     SHEET_SIPR,
 )
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from openpyxl.utils import get_column_letter
+from app.energy_consumption.services.energy_consumption_summary_services import (
+    ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY,
+    ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
+    ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+    GAES_CHARGE_PARAMETER_KEY,
+)
 
-
-def _excel_numeric_display_to_decimal(raw: Any) -> Decimal | None:
-    if raw in (None, ""):
-        return None
-    s = str(raw).strip().replace("\xa0", " ").replace(" ", "").replace(",", ".")
-    if not s or s == "—":
-        return None
-    try:
-        return Decimal(s)
-    except (InvalidOperation, ValueError):
-        return None
-
+_ENERGY_CONSUMPTION_YOY_PARAMETER_KEYS = frozenset(
+    {
+        ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+        ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
+    }
+)
+_ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS = 2
+_EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS = 6
+_SIPR_INTEGER_DISPLAY_PARAMETER_KEYS = frozenset(
+    {
+        "energy_consumption_sipr_mln_kvt_ch",
+        ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY,
+        GAES_CHARGE_PARAMETER_KEY,
+    }
+)
 
 _IMPORT_PARAMETER_KEYS = (
     "energy_consumption_mln_kvt_ch",
@@ -36,12 +50,41 @@ _IMPORT_PARAMETER_KEYS = (
 )
 
 
-def _import_cell_value(display: Any) -> Any:
+def _excel_raw_year_source(row: dict[str, Any], index: int) -> Any:
+    """Полное значение: tooltip, иначе экранная строка."""
+    tooltips = row.get("year_numeric_tooltips") or []
+    if index < len(tooltips) and tooltips[index]:
+        return tooltips[index]
+    yvals = row.get("year_values") or []
+    if index < len(yvals):
+        return yvals[index]
+    return None
+
+
+def _excel_display_digits_for_row(
+    row: dict[str, Any],
+    *,
+    rounding_digits: int,
+    sipr_on: bool,
+    summary_table_page: bool,
+    verification_row: bool,
+) -> int:
+    if verification_row:
+        return _EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS
+    pk = str(row.get("parameter_key") or "")
+    if pk in _ENERGY_CONSUMPTION_YOY_PARAMETER_KEYS:
+        return _ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS
+    if sipr_on and (
+        row.get("pd_ec_sipr_integer_display_row")
+        or (summary_table_page and pk in _SIPR_INTEGER_DISPLAY_PARAMETER_KEYS)
+    ):
+        return -1
+    return rounding_digits
+
+
+def _import_cell_value(raw: Any) -> Any:
     """Число для листа импорта; пустые и «—» остаются пустыми."""
-    d = _excel_numeric_display_to_decimal(display)
-    if d is None:
-        return None
-    return float(d)
+    return parse_excel_numeric(raw)
 
 
 def _build_import_format_matrix(
@@ -62,8 +105,8 @@ def _build_import_format_matrix(
         pvc = row.get("perimeter_variant_code")
         if pvc not in (None, ""):
             has_variant = True
-        yvals = list(row.get("year_values") or [])
-        data_rows.append((label, str(pvc) if pvc not in (None, "") else None, yvals))
+        raw_vals = [_excel_raw_year_source(row, i) for i in range(len(years))]
+        data_rows.append((label, str(pvc) if pvc not in (None, "") else None, raw_vals))
 
     header: list[Any] = (
         ["perimeter-variants", "Наименование", *years]
@@ -71,10 +114,10 @@ def _build_import_format_matrix(
         else ["", "Наименование", *years]
     )
     matrix: list[list[Any]] = [header]
-    for label, pvc, yvals in data_rows:
+    for label, pvc, raw_vals in data_rows:
         body: list[Any] = [pvc or "", label] if has_variant else ["", label]
         for i, _y in enumerate(years):
-            v = yvals[i] if i < len(yvals) else None
+            v = raw_vals[i] if i < len(raw_vals) else None
             body.append(_import_cell_value(v))
         matrix.append(body)
     return matrix
@@ -102,12 +145,10 @@ def _append_ec_summary_import_sheets(
             ws_s.append(row)
 
 
-def _verification_export_year_font(display: Any) -> Font:
+def _verification_export_year_font(value: Any) -> Font:
     """Курсив; ненулевые значения — красным (как на экране сводки)."""
-    d = _excel_numeric_display_to_decimal(display)
-    if d is None:
-        return Font(size=11, italic=True)
-    if d == 0:
+    parsed = parse_excel_numeric(value)
+    if parsed is None or parsed == 0:
         return Font(size=11, italic=True)
     return Font(size=11, italic=True, color="FF0000")
 
@@ -118,6 +159,9 @@ def build_demand_summary_excel_stream(
     years: list[int],
     sheet_title: str,
     year_features: dict[int, Any] | dict[Any, Any] | None = None,
+    rounding_digits: int = 1,
+    sipr_on: bool = False,
+    summary_table_page: bool = False,
 ) -> BytesIO:
     yf = year_features or {}
     wb = Workbook()
@@ -183,6 +227,13 @@ def build_demand_summary_excel_stream(
         stripe = bool(bi % 2)
         param_fill, year_fill = body_fills(entity_kind, stripe)
         verification_row = str(row.get("entity_label") or "").startswith("Проверка ")
+        digits = _excel_display_digits_for_row(
+            row,
+            rounding_digits=rounding_digits,
+            sipr_on=sipr_on,
+            summary_table_page=summary_table_page,
+            verification_row=verification_row,
+        )
 
         entity_cell = ""
         if row.get("show_entity_cell"):
@@ -205,15 +256,22 @@ def build_demand_summary_excel_stream(
         c2.alignment = left_wrap
         c2.border = cell_border
 
-        yvals = row.get("year_values") or []
         for i, _y in enumerate(years):
-            v = yvals[i] if i < len(yvals) else "—"
-            disp = v if v is not None and v != "" else "—"
-            c = ws.cell(row=excel_row, column=3 + i, value=disp)
-            c.font = _verification_export_year_font(disp) if verification_row else base_font
+            raw = _excel_raw_year_source(row, i)
+            cell_value, is_numeric = excel_numeric_cell_value(
+                raw, verification=verification_row, zero_as_dash=False
+            )
+            c = ws.cell(row=excel_row, column=3 + i, value=cell_value)
+            c.font = (
+                _verification_export_year_font(cell_value)
+                if verification_row
+                else base_font
+            )
             c.fill = year_fill
             c.alignment = center_wrap
             c.border = cell_border
+            if is_numeric:
+                c.number_format = excel_number_format(digits)
 
     for col in range(1, ncols + 1):
         letter = get_column_letter(col)

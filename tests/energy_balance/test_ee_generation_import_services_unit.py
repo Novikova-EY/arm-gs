@@ -254,6 +254,90 @@ def test_parse_prepared_2022_xls_espp_if_available():
     assert all(row.res_name for row in parsed.espp_rows)
 
 
+def test_detect_svod_2024_name_and_res_columns():
+    """Свод 2024: «Наименование Энергосистемы» ≠ колонка названия объекта."""
+    header = [
+        "Наименование Энергосистемы",
+        "Тип ЭС",
+        "external_code",
+        "Название объектов и показателей",
+        "Нараст. итог с начала года",
+        "1 квартал",
+        "январь",
+        "февраль",
+        "март",
+    ]
+    layout = _detect_column_layout([tuple(header)])
+    assert layout.res_col == 0
+    assert layout.sign_col == 1
+    assert layout.name_col == 3
+    assert layout.annual_col == 4
+    assert layout.month_cols == {6: 1, 7: 2, 8: 3}
+
+
+def test_parse_svod_control_vyabotka_rows():
+    """Строки «ВЫРАБОТКА» из свода должны попадать в control_rows."""
+    file_bytes = _build_workbook_bytes(
+        [
+            [
+                "Наименование Энергосистемы",
+                "Тип ЭС",
+                "external_code",
+                "Название объектов и показателей",
+                "Нараст. итог с начала года",
+                "1 квартал",
+                "январь",
+            ],
+            ["ОЭС Востока", None, None, None, None, None, None],
+            [None, None, None, "ВЫРАБОТКА", 17430.1, None, 1830.9],
+            ["ЭС Амурской области", "ТЭС", STATION_UUID, "Райчихинская ГРЭС", 598.7, None, 58.1],
+            ["ЭС Амурской области", "ЭСПП", None, "ЭСПП", 33.6, None, 2.1],
+            [None, None, None, "ВЫРАБОТКА", 11373.4, None, 1215.2],
+            [
+                "ЭС Приморского края",
+                "ТЭС",
+                "bb68b842-dcbe-5aa3-b379-ca48c69112b2",
+                "Партизанская ГРЭС",
+                1037.0,
+                None,
+                129.2,
+            ],
+        ]
+    )
+    parsed = parse_ee_generation_workbook(file_bytes, filename="1_Свод_выработка_2024.xlsx")
+    assert not parsed.is_multi_year
+    assert parsed.year_number == 2024
+    assert len(parsed.stations) == 2
+    assert len(parsed.espp_rows) == 1
+    assert parsed.espp_rows[0].res_name == "ЭС Амурской области"
+    assert len(parsed.control_rows) == 2
+    assert parsed.control_rows[0].res_name == "ЭС Амурской области"
+    assert parsed.control_rows[0].values.annual == Decimal("17430.1")
+    assert parsed.control_rows[0].values.months[1] == Decimal("1830.9")
+    assert parsed.control_rows[1].res_name == "ЭС Приморского края"
+    assert parsed.control_rows[1].values.annual == Decimal("11373.4")
+
+
+def test_parse_svod_2024_workbook_if_available():
+    path = Path(
+        r"z:\НИО-10\АРМ ГС\Шаблоны для АРМ ГС\2. Балансы электроэнергии и мощности"
+        r"\Баланс ЭЭ\Для загрузки\Свод 2024\1_Свод_выработка_2024.xlsx"
+    )
+    if not path.is_file():
+        pytest.skip("sample workbook is not available")
+
+    parsed = parse_ee_generation_workbook(path.read_bytes(), filename=path.name)
+    assert parsed.year_number == 2024
+    assert len(parsed.stations) > 0
+    assert len(parsed.espp_rows) > 0
+    assert len(parsed.control_rows) > 0
+    assert all(row.res_name for row in parsed.control_rows)
+    assert any(
+        row.res_name and "Архангель" in row.res_name and row.values.annual is not None
+        for row in parsed.control_rows
+    )
+
+
 def test_detect_oes_standard_column_layout_a_to_u():
     """Классическая раскладка свода ОЭС: A–U с квартальными заголовками."""
     header = [""] * 21

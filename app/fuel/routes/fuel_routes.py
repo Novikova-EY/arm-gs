@@ -123,6 +123,18 @@ from app.fuel.services.fuel_imports.import_equipment_group_fuel_params_services 
 from app.fuel.services.fuel_imports.import_equipment_group_extra_fuel_params_services import (
     import_equipment_group_extra_fuel_params_from_excel,
 )
+from app.fuel.services.equipment_groups.equipment_group_natural_fuel_services import (
+    get_equipment_groups_with_natural_fuel_data,
+    build_equipment_group_natural_fuel_hierarchy,
+    NATURAL_FUEL_COLUMNS,
+    NATURAL_FUEL_NUMERIC_ATTRS,
+)
+from app.fuel.services.fuel_imports.import_equipment_group_natural_fuel_services import (
+    import_equipment_group_natural_fuel_from_excel,
+)
+from app.fuel.services.fuel_exports.export_stations_equipment_group_natural_fuel_services import (
+    export_stations_equipment_group_natural_fuel_to_excel,
+)
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_services import (
     get_equipment_groups_with_specific_fuel_consumption_data,
     build_equipment_group_specific_fuel_consumption_hierarchy,
@@ -2899,6 +2911,132 @@ def stations_equipment_group_extra_fuel_params():
     )
 
 
+@fuel_bp.route("/stations_equipment_group_natural_fuel", methods=["GET", "POST"])
+@login_required
+def stations_equipment_group_natural_fuel():
+    form = StationFilterForm()
+
+    if request.method == "POST":
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_natural_fuel",
+                **extract_filters_from_form(request.form),
+            )
+        )
+
+    filters = extract_filters_from_args(request.args)
+    page = request.args.get("page", 1, type=int)
+    filters.pop("page", None)
+    per_page_param = request.args.get("per_page", "10")
+    show_all = str(per_page_param).lower() == "all"
+    per_page = "all" if show_all else int(per_page_param) if str(per_page_param).isdigit() else 10
+    selected_year, filter_year_list = _get_single_year_filter_options()
+    start_year = selected_year
+    end_year = selected_year
+
+    try:
+        rounding_digits = int(request.args.get("rounding_digits"))
+    except (ValueError, TypeError):
+        rounding_digits = 1
+
+    if rounding_digits is None or rounding_digits < 0:
+        rounding_digits = 1
+
+    natural_fuel_data = get_equipment_groups_with_natural_fuel_data(
+        filters=filters,
+        per_page=per_page,
+        page=page,
+        start_year=start_year,
+        end_year=end_year,
+        show_all=show_all,
+    )
+
+    rows = natural_fuel_data.get("rows") or []
+    hierarchy_full = build_equipment_group_natural_fuel_hierarchy(rows)
+    total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
+    if show_all:
+        equipment_group_natural_fuel_hierarchy = hierarchy_full
+        total_pages = 1
+        current_page = 1
+    else:
+        (
+            equipment_group_natural_fuel_hierarchy,
+            total_eg_count,
+            total_pages,
+            current_page,
+        ) = paginate_fuel_eg_station_hierarchy(
+            hierarchy_full,
+            page,
+            per_page,
+            NATURAL_FUEL_NUMERIC_ATTRS,
+        )
+
+    if (
+        not fuel_eg_station_hierarchy_nonempty(equipment_group_natural_fuel_hierarchy)
+        and total_eg_count > 0
+        and page > 1
+    ):
+        target_page = max(1, current_page - 1)
+        args_multi = request.args.to_dict(flat=False)
+        args_multi["page"] = [str(target_page)]
+        redirect_args = {}
+        for key, values in args_multi.items():
+            if not values:
+                continue
+            if len(values) == 1:
+                redirect_args[key] = values[0]
+            else:
+                redirect_args[key] = values
+        return redirect(
+            url_for("fuel_bp.stations_equipment_group_natural_fuel", **redirect_args)
+        )
+
+    data = {
+        "stations": [],
+        "stations_grouped": {},
+        "station_ids": [],
+        "total_count": total_eg_count,
+        "total_pages": total_pages,
+        "page": current_page,
+        "per_page": per_page,
+        "show_headers": {},
+        "station_totals": {},
+        "show_p_ogr": False,
+        "show_p_rasp": False,
+    }
+
+    context = get_station_list_template_context(
+        form,
+        data,
+        rounding_digits,
+        {**filters, "start_year": start_year, "end_year": end_year},
+        show_all=show_all,
+        hierarchy_data=None,
+    )
+    context["filter_year_list"] = filter_year_list
+
+    has_active_filters = has_any_filters(request.args)
+
+    fuel_query = filter_by_db_version(Fuel.query, Fuel)
+    fuel_nazvl_to_name = {
+        row.nazvl: (row.name[0].lower() + row.name[1:]) if row.name and len(row.name) > 0 else (row.name or "")
+        for row in fuel_query.with_entities(Fuel.nazvl, Fuel.name)
+        if row.nazvl and row.name
+    }
+    fuel_nazvl_to_name["gtt"] = "газотурбинное топливо"
+
+    return render_template(
+        "fuel/natural_fuel/stations_equipment_group_natural_fuel.html",
+        has_active_filters=has_active_filters,
+        selected_year=selected_year,
+        equipment_group_natural_fuel_rows=rows,
+        equipment_group_natural_fuel_hierarchy=equipment_group_natural_fuel_hierarchy,
+        natural_fuel_columns_display=NATURAL_FUEL_COLUMNS,
+        fuel_nazvl_to_name=fuel_nazvl_to_name,
+        **context,
+    )
+
+
 @fuel_bp.route("/stations_equipment_group_specific_fuel_consumption", methods=["GET", "POST"])
 @login_required
 def stations_equipment_group_specific_fuel_consumption():
@@ -4679,6 +4817,68 @@ def import_equipment_group_extra_fuel_params():
     return redirect(url_for("fuel_bp.stations_equipment_group_extra_fuel_params", **redirect_args))
 
 
+@fuel_bp.route("/stations_equipment_group_natural_fuel/import", methods=["POST"])
+@login_required
+def import_equipment_group_natural_fuel():
+    """Загрузка данных EquipmentGroupNaturalFuel (Натура99). Связь по numb1120 = EquipmentGroup.numb."""
+    user = session.get("username", "Неизвестный пользователь")
+    log_to_db(user, "Начата загрузка калорийных эквивалентов топлива")
+    current_app.logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_NATURAL_FUEL] start user=%s filename=%s mimetype=%s remote_addr=%s",
+        user,
+        getattr(request.files.get("file"), "filename", None),
+        getattr(request.files.get("file"), "mimetype", None),
+        request.remote_addr,
+    )
+
+    redirect_args = {
+        k: v for k, v in request.form.items() if k not in ("file", "csrf_token")
+    }
+
+    if "file" not in request.files:
+        flash("Файл не найден.", "danger")
+        return redirect(url_for("fuel_bp.stations_equipment_group_natural_fuel", **redirect_args))
+
+    file = request.files["file"]
+    if file.mimetype not in [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.stations_equipment_group_natural_fuel", **redirect_args))
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        flash("Неверный формат файла.", "danger")
+        return redirect(url_for("fuel_bp.stations_equipment_group_natural_fuel", **redirect_args))
+
+    try:
+        result = import_equipment_group_natural_fuel_from_excel(file, user)
+        flash(result["message"], "success")
+        clear_station_aggregation_cache("после импорта natural fuel")
+        current_app.logger.info(
+            "[IMPORT_EQUIPMENT_GROUP_NATURAL_FUEL] done user=%s filename=%s created=%s updated=%s skipped=%s",
+            user,
+            getattr(file, "filename", None),
+            result.get("created"),
+            result.get("updated"),
+            result.get("skipped"),
+        )
+    except ValueError as e:
+        current_app.logger.warning(
+            "[IMPORT_EQUIPMENT_GROUP_NATURAL_FUEL] validation error user=%s filename=%s: %s",
+            user,
+            getattr(file, "filename", None),
+            str(e),
+            exc_info=True,
+        )
+        flash(str(e), "danger")
+    except Exception as e:
+        current_app.logger.exception("[IMPORT_EQUIPMENT_GROUP_NATURAL_FUEL] import failed")
+        flash(f"Ошибка загрузки данных: {str(e)}", "danger")
+
+    return redirect(url_for("fuel_bp.stations_equipment_group_natural_fuel", **redirect_args))
+
+
 @fuel_bp.route("/stations_equipment_group_specific_fuel_consumption/import", methods=["POST"])
 @login_required
 def import_equipment_group_specific_fuel_consumption():
@@ -5197,6 +5397,57 @@ def export_stations_equipment_group_extra_fuel_params():
         flash(f"Ошибка экспорта данных: {str(e)}", "danger")
         return redirect(
             url_for("fuel_bp.stations_equipment_group_extra_fuel_params", **request.args.to_dict())
+        )
+
+
+@fuel_bp.route("/stations_equipment_group_natural_fuel/export", methods=["GET"])
+@login_required
+def export_stations_equipment_group_natural_fuel():
+    """Экспорт калорийных эквивалентов топлива групп оборудования в Excel с учётом фильтров."""
+    try:
+        filters = extract_filters_from_args(request.args)
+        filters.pop("page", None)
+
+        start_year, end_year = _export_year_range_for_station_fuel_lists()
+
+        try:
+            rounding_digits = int(request.args.get("rounding_digits", 1))
+        except (ValueError, TypeError):
+            rounding_digits = 1
+
+        excel_file = export_stations_equipment_group_natural_fuel_to_excel(
+            filters,
+            start_year,
+            end_year,
+            per_page="all",
+            page=1,
+            show_all=True,
+            rounding_digits=rounding_digits,
+        )
+        if excel_file is None:
+            flash("Нет данных для экспорта.", "warning")
+            return redirect(
+                url_for("fuel_bp.stations_equipment_group_natural_fuel", **request.args.to_dict())
+            )
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"Калорийные_эквиваленты_топлива_{timestamp}.xlsx"
+
+        excel_file.seek(0)
+        return send_file(
+            excel_file,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Ошибка экспорта калорийных эквивалентов топлива: {e}")
+        import traceback
+
+        current_app.logger.error(traceback.format_exc())
+        flash(f"Ошибка экспорта данных: {str(e)}", "danger")
+        return redirect(
+            url_for("fuel_bp.stations_equipment_group_natural_fuel", **request.args.to_dict())
         )
 
 

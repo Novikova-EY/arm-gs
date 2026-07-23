@@ -66,7 +66,6 @@ from app.common.services.database_version_filter import (
     get_current_db_version_id,
     filter_by_explicit_db_version,
 )
-from app.generation.models.station.station_power_model import StationPower
 from app.generation.models.machine.machine_power_model import MachinePower
 from app.generation.services.station_services.aggregation_station_services.aggregation_services_energy_units import (
     aggregate_power_by_energy_units,
@@ -2013,26 +2012,6 @@ def export_station_sipr_ees_application_A_service(user, filters=None):
                     has_groups_text = "Да" if has_groups else "Нет"
                     
                     processed_stations += 1
-                    
-                    # Мощности электростанции с учетом активной версии БД
-                    power_query = (
-                        StationPower.query
-                        .filter_by(id_station=station.id)
-                        .filter(StationPower.year_number.in_(all_years))
-                    )
-                    power_query = filter_by_explicit_db_version(
-                        power_query,
-                        StationPower,
-                        current_version_id,
-                    )
-                    power_data = {
-                        sp.year_number: {
-                            "p_ust": sp.p_ust,
-                            "p_ogr": sp.p_ogr,
-                            "p_rasp": sp.p_rasp,
-                        }
-                        for sp in power_query.all()
-                    }
 
                     # Предварительно проверяем, есть ли у электростанции агрегаты с ненулевой мощностью
                     # Собираем мощности всех агрегатов для предварительной проверки

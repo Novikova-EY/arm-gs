@@ -169,7 +169,7 @@
                     <button type="submit" class="btn btn-outline-primary">Поиск</button>
                 </div>
                 <div class="pd-summary-filter-field pd-summary-filter-actions">
-                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger fw-bold">Сбросить</a>
                 </div>
             </form>
             {% elif active_summary == 'fo' and federal_district_list is defined %}
@@ -201,7 +201,7 @@
                     <button type="submit" class="btn btn-outline-primary">Поиск</button>
                 </div>
                 <div class="pd-summary-filter-field pd-summary-filter-actions">
-                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger fw-bold">Сбросить</a>
                 </div>
             </form>
             {% elif active_summary == 'ez' and energy_zone_list is defined %}
@@ -233,7 +233,7 @@
                     <button type="submit" class="btn btn-outline-primary">Поиск</button>
                 </div>
                 <div class="pd-summary-filter-field pd-summary-filter-actions">
-                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger">Сбросить</a>
+                    <a href="{{ url_for(request.endpoint) }}" class="btn btn-outline-danger fw-bold">Сбросить</a>
                 </div>
             </form>
             {% endif %}
@@ -258,7 +258,7 @@
                             id="powerDemandSummaryExportBtn"
                             class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
                             style="white-space: nowrap;"
-                            data-pd-visible-rows-key="{% if active_summary == 'oes' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryOesCoeffVisibleRowKeysV2{% else %}powerDemandSummaryOesVisibleRowKeysV2{% endif %}{% elif active_summary == 'fo' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryFoCoeffVisibleRowKeysV3{% else %}powerDemandSummaryFoVisibleRowKeys{% endif %}{% else %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryEzCoeffVisibleRowKeys{% else %}powerDemandSummaryEzVisibleRowKeys{% endif %}{% endif %}">
+                            data-pd-visible-rows-key="{% if active_summary == 'oes' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryOesCoeffVisibleRowKeysV2{% else %}powerDemandSummaryOesVisibleRowKeysV3{% endif %}{% elif active_summary == 'fo' %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryFoCoeffVisibleRowKeysV4{% else %}powerDemandSummaryFoVisibleRowKeysV2{% endif %}{% else %}{% if summary_route_variant == 'coeff' %}powerDemandSummaryEzCoeffVisibleRowKeysV2{% else %}powerDemandSummaryEzVisibleRowKeysV2{% endif %}{% endif %}">
                         <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
@@ -330,11 +330,11 @@
                     class="btn btn-outline-secondary text-nowrap flex-shrink-0"
                     aria-pressed="false"
                     {% if active_summary == 'oes' %}
-                    title="Показать строки «Россия с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «ОЭС Юга с НТ» и «Первая синхронная зона с НТ»; при выключении — короткие подписи по данным строк без НТ"
+                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «ОЭС Юга с НТ» и «Первая синхронная зона с НТ»; при выключении — короткие подписи по данным строк без НТ"
                     {% elif active_summary == 'fo' %}
-                    title="Показать строки «ЦЗ России с НТ», «Южный ФО с НТ» и блок «Новые территории»; при выключении — короткие подписи по данным строк без НТ"
+                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ», «Первая синхронная зона с НТ», «Южный ФО с НТ» и блок «Новые территории»; при выключении — короткие подписи по данным строк без НТ"
                     {% else %}
-                    title="Показать строки «ЕЭС России с НТ»; при выключении — «ЕЭС России» по данным строки без НТ"
+                    title="Показать строки «ЦЗ России с НТ», «ЭЭС России с НТ», «ЕЭС России с НТ» и «Первая синхронная зона с НТ»; при выключении — короткие подписи по данным строк без НТ"
                     {% endif %}>
                 + НТ
             </button>
@@ -349,7 +349,7 @@
                     id="pdPdSummaryChiToggle"
                     class="btn btn-outline-warning text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки «Число часов использования максимального потребления мощности» и «Число часов использования совмещенного потребления мощности на час прохождения максимума»{% if active_summary == 'oes' %} для России, ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов{% elif active_summary == 'fo' %} для федеральных округов и РЭС{% else %} для энергозон и РЭС{% endif %} (оранжевый фон)">
+                    title="Показать строки «Число часов использования максимального потребления мощности» и «Число часов использования совмещенного потребления мощности на час прохождения максимума»{% if active_summary == 'oes' %} для ЦЗ/ЭЭС/ЕЭС России, синхронных зон, ОЭС, РЭС, субъектов РФ и энергорайонов{% elif active_summary == 'fo' %} для ЦЗ/ЭЭС/ЕЭС России, синхронных зон, федеральных округов и РЭС{% else %} для ЦЗ/ЭЭС/ЕЭС России, синхронных зон, энергозон и РЭС{% endif %} (оранжевый фон)">
                 ЧЧИ
             </button>
             <button type="button"
@@ -395,7 +395,7 @@
                  aria-hidden="false">
                 <label for="rounding_digits_k" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл (k):</label>
                 <select id="rounding_digits_k" name="rounding_digits_k_ui" class="form-select" style="min-width: 140px;">
-                    {% set _rd_k = rounding_digits_k if rounding_digits_k is defined else rounding_digits %}
+                    {% set _rd_k = rounding_digits_k if rounding_digits_k is defined else 3 %}
                     <option value="0" {% if _rd_k == 0 %}selected{% endif %}>Не округлять</option>
                     <option value="1" {% if _rd_k == 1 %}selected{% endif %}>1 знак</option>
                     <option value="2" {% if _rd_k == 2 %}selected{% endif %}>2 знака</option>
@@ -539,10 +539,6 @@
                             <span>Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_sa_mw" data-pd-row-key="calculated_max_sa_mw">
-                            <span>Расчетное совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт</span>
-                        </label>
-                        <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_calculated_max_power_mw" data-pd-row-key="calculated_max_power_mw">
                             <span>Расчетное максимальное потребление мощности, МВт</span>
                         </label>
@@ -588,12 +584,10 @@
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="max_power" checked>
                             <span>Максимальное потребление мощности, МВт</span>
                         </label>
-                        {% if summary_route_variant != 'coeff' %}
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_power_mw">
                             <span>Расчетное максимальное потребление мощности, МВт</span>
                         </label>
-                        {% endif %}
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="peak_datetime" checked>
                             <span>Дата и время, мск</span>
@@ -604,33 +598,15 @@
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_combined_on_cz_mw">
-                            {% if summary_route_variant == 'coeff' %}
-                            <span>Расчетный совмещенный на ЦЗ России, МВт</span>
-                            {% else %}
                             <span>Расчетное совмещенное потребление мощности на час максимума ЦЗ России, МВт</span>
-                            {% endif %}
                         </label>
-                        {% if summary_route_variant == 'coeff' %}
-                        <label class="list-group-item d-flex align-items-center gap-2">
-                            <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="calculated_max_fo_mw">
-                            <span>Расчетный максимум ФО, МВт</span>
-                        </label>
-                        {% endif %}
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_cz" checked>
-                            {% if summary_route_variant == 'coeff' %}
-                            <span>Совмещенное потребление мощности на час прохождения максимума ЦЗ России, МВт</span>
-                            {% else %}
-                            <span>Совмещенное потребление мощности на час максимума централизованную зону, МВт</span>
-                            {% endif %}
+                            <span>Совмещенное потребление мощности на час максимума ЦЗ России, МВт</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="combined_on_fo" checked>
-                            {% if summary_route_variant == 'coeff' %}
-                            <span>Совмещенное потребление мощности на час прохождения максимума ФО, МВт</span>
-                            {% else %}
                             <span>Совмещенное потребление мощности на час максимума ФО, МВт</span>
-                            {% endif %}
                         </label>
                     </div>
                 </div>
@@ -828,7 +804,7 @@
                data-active-summary="{{ active_summary }}"
                {% if active_summary in ('oes', 'fo', 'ez') %}data-summary-view="{{ active_summary }}" data-summary-route-variant="{{ summary_route_variant }}" data-summary-log-scope="{{ active_summary }}"{% endif %}
                {% if pd_pd_max_year_segments %}data-ec-max-year-segments="1" data-coeff-long-loaded="1" data-pd-server-medium-loaded="{% if summary_include_medium_years | default(false) %}1{% else %}0{% endif %}"{% endif %}
-               {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-pd-rounding-digits-k="{{ rounding_digits_k if rounding_digits_k is defined else rounding_digits }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}" data-pd-coeff-years-applied="{% if pd_coeff_years_applied | default(false) %}1{% else %}0{% endif %}"{% endif %}
+               {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-pd-rounding-digits-k="{{ rounding_digits_k if rounding_digits_k is defined else 3 }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}" data-pd-coeff-years-applied="{% if pd_coeff_years_applied | default(false) %}1{% else %}0{% endif %}"{% endif %}
                {% if coeff_base_year is defined %}data-coeff-base-year="{{ coeff_base_year }}"{% endif %}
                {% if can_edit_summary_cells %}
                data-save-cell-url="{{ url_for('power_demand_bp.demand_summary_save_cell') }}"
@@ -892,10 +868,11 @@
                 {% if summary_route_variant == 'coeff' and coeff_period_header_groups is defined %}
                 <tr class="table-success power-demand-coeff-thead-top">
                     {% if show_perimeter_variant_column %}
-                    <th rowspan="2" class="text-center align-middle summary-perimeter-variant-col text-wrap">Варианты<br>периметра</th>
+                    <th class="text-center align-middle summary-perimeter-variant-col text-wrap pd-coeff-sticky-head-label">Варианты<br>периметра</th>
                     {% endif %}
-                    <th rowspan="2" class="text-center align-middle summary-entity-col">Энергосистема</th>
-                    <th rowspan="2" class="text-center align-middle summary-parameter-col">
+                    {# Без rowspan: иначе Chrome рисует period/year th поверх липких левых столбцов при горизонтальном скролле. #}
+                    <th class="text-center align-middle summary-entity-col pd-coeff-sticky-head-label">Энергосистема</th>
+                    <th class="text-center align-middle summary-parameter-col pd-coeff-sticky-head-label">
                         <span class="summary-parameter-header-inner">
                             <span>Наименование параметров</span>
                             {% if active_summary == 'oes' %}
@@ -940,6 +917,11 @@
                     <th rowspan="2" class="text-center align-middle summary-col-note-header">Примечание</th>
                 </tr>
                 <tr class="table-success power-demand-coeff-thead-years">
+                    {% if show_perimeter_variant_column %}
+                    <th class="summary-perimeter-variant-col pd-coeff-sticky-head-cont" aria-hidden="true"></th>
+                    {% endif %}
+                    <th class="summary-entity-col pd-coeff-sticky-head-cont" aria-hidden="true"></th>
+                    <th class="summary-parameter-col pd-coeff-sticky-head-cont" aria-hidden="true"></th>
                     <th rowspan="1" class="text-center align-middle power-demand-coeff-mixin-th power-demand-coeff-mixin-th-num">
                         для ГС<br><span class="power-demand-coeff-mixin-th-paren">(10 лет)</span><i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_coeff_f_gs10|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула расчёта столбца"></i>
                     </th>
@@ -1089,10 +1071,14 @@
                     {% if row.parent_fk_column %}data-parent-fk-column="{{ row.parent_fk_column }}"{% endif %}
                     {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                     {% if row.id_synchronous_area is not none %}data-id-synchronous-area="{{ row.id_synchronous_area }}"{% endif %}
+                    {% if row.id_energy_zone is not none %}data-id-energy-zone="{{ row.id_energy_zone }}"{% elif row.parent_fk_column == 'id_energy_zone' and row.parent_id is not none %}data-id-energy-zone="{{ row.parent_id }}"{% endif %}
                     {% if row.perimeter_variant_code %}data-perimeter-variant-code="{{ row.perimeter_variant_code }}"{% endif %}
                     {% if row.get('perimeter_variant_from_year') is not none %}data-perimeter-variant-from-year="{{ row.perimeter_variant_from_year }}"{% endif %}
                     {% if row.get('perimeter_variant_to_year') is not none %}data-perimeter-variant-to-year="{{ row.perimeter_variant_to_year }}"{% endif %}
                     {% if row.get('pd_pd_nt_extra_row') %}data-pd-pd-nt-extra="1"{% endif %}
+                    {% if row.get('pd_pd_sakha_tites_through_year_row') %}data-pd-pd-sakha-tites-through-year="1"{% endif %}
+                    {% if row.get('pd_pd_sakha_oes_east_from_year_row') %}data-pd-pd-sakha-oes-east-from-year="1"{% endif %}
+                    {% if row.get('sakha_membership_through_year') is not none %}data-sakha-membership-through-year="{{ row.sakha_membership_through_year }}"{% endif %}
                     {% if row.get('pd_pd_aggregation_level_row') %}data-pd-pd-aggregation-level="1"{% endif %}
                     {% if row.get('pd_pd_skip_empty_hide_row') %}data-pd-pd-skip-empty-hide="1"{% endif %}
                     {% if row.get('pd_pd_territory_detail_row') %}data-pd-pd-territory-detail="1"{% endif %}
@@ -1187,25 +1173,25 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_max_oes_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif summary_route_variant != 'coeff' and active_summary == 'oes' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ues_calc_combined_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'oes' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_oes_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_oes_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary in ('oes', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_russia_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_russia_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'oes' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_fo_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_cz_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (_pd_fo_calc_combined_on_cz_mw_coeff_formula if summary_route_variant == 'coeff' else _pd_fo_calc_combined_on_cz_mw_formula)|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'calculated_combined_on_ees_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_calc_combined_on_ees_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'oes' and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
@@ -1214,7 +1200,7 @@
                         {% else %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_calc_max_power_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% endif %}
-                        {% elif active_summary == 'oes' and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_sa_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name == 'SynchronousAreaDemandParameter' and row.parameter_key == 'calculated_max_sa_mw' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
@@ -1223,7 +1209,7 @@
                         {% else %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_calc_max_sa_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% endif %}
-                        {% elif active_summary == 'oes' and row.entity_kind == 'synchronous_area' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.entity_kind == 'synchronous_area' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
                         {% set _pd_sa_lbl_cf = (row.entity_label or '').strip().lower() %}
                         {% if _pd_sa_lbl_cf.startswith('вторая синхронная') %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_second_verify_max_power_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
@@ -1237,7 +1223,7 @@
                         {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.parameter_key == 'verify_for_calculated_combined_on_cz_mw' %}
-                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (_pd_fo_verify_combined_on_cz_mw_coeff_formula if summary_route_variant == 'coeff' else _pd_fo_verify_combined_on_cz_mw_formula)|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_verify_combined_on_cz_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'ez' and row.parameter_key == 'verify_for_calculated_max_power_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ez_verify_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_combined_on_ees_mw' %}
@@ -1259,11 +1245,11 @@
                         {% else %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_sa_first_verify_combined_ees_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% endif %}
-                        {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_ees_russia_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key == 'verify_for_calculated_max_ees_russia_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_ees_via_oes_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key == 'verify_for_calculated_max_ees_via_oes_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
-                        {% elif active_summary == 'oes' and row.parameter_key == 'verify_for_calculated_max_ees_via_es_mw' %}
+                        {% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key == 'verify_for_calculated_max_ees_via_es_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.entity_kind == 'centralized_zone' and row.parameter_key == 'cz_calculated_max_cz_russia_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_cz_calc_max_tooltip|default('')|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
@@ -1489,6 +1475,9 @@
                     {% if row.get('perimeter_variant_from_year') is not none %}data-perimeter-variant-from-year="{{ row.perimeter_variant_from_year }}"{% endif %}
                     {% if row.get('perimeter_variant_to_year') is not none %}data-perimeter-variant-to-year="{{ row.perimeter_variant_to_year }}"{% endif %}
                     {% if row.get('pd_pd_nt_extra_row') %}data-pd-pd-nt-extra="1"{% endif %}
+                    {% if row.get('pd_pd_sakha_tites_through_year_row') %}data-pd-pd-sakha-tites-through-year="1"{% endif %}
+                    {% if row.get('pd_pd_sakha_oes_east_from_year_row') %}data-pd-pd-sakha-oes-east-from-year="1"{% endif %}
+                    {% if row.get('sakha_membership_through_year') is not none %}data-sakha-membership-through-year="{{ row.sakha_membership_through_year }}"{% endif %}
                     {% if row.get('pd_pd_aggregation_level_row') %}data-pd-pd-aggregation-level="1"{% endif %}
                     {% if row.get('pd_pd_skip_empty_hide_row') %}data-pd-pd-skip-empty-hide="1"{% endif %}
                     {% if row.get('pd_pd_territory_detail_row') %}data-pd-pd-territory-detail="1"{% endif %}
@@ -1590,12 +1579,11 @@
                         {% endif %}
                         {% elif _medium_k_input %}
                         {% if coeff_k_pkey %}
-                        {% set _k_from_db = _k_stored_cell != '' and _k_stored_cell != '—' %}
                         <input type="text"
                                inputmode="decimal"
                                autocomplete="off"
                                class="form-control form-control-lg text-center pd-coeff-medium-k-input"
-                               value="{% if _k_from_db %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
+                               value=""
                                data-summary-year="{{ _yr }}"
                                data-parameter-key="{{ coeff_k_pkey }}"
                                {% if yrid is not none %}data-row-id="{{ yrid }}"{% endif %}
@@ -1603,17 +1591,17 @@
                                {% if row.parent_id is not none %}data-parent-id="{{ row.parent_id }}"{% endif %}
                                data-model="{{ row.demand_model_name }}"
                                data-slice="{{ _yr }}"
-                               data-initial="{% if _k_from_db %}{{ _k_stored_cell }}{% elif k_disp != '—' %}{{ k_disp }}{% endif %}"
-                               {% if _k_from_db %}data-pd-medium-k-stored="1"{% endif %}
+                               data-initial=""
                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
                         {% else %}
                         <input type="text"
                                inputmode="decimal"
                                autocomplete="off"
                                class="form-control form-control-lg text-center pd-coeff-medium-k-input"
-                               value="{% if k_disp != '—' %}{{ k_disp }}{% endif %}"
+                               value=""
                                data-summary-year="{{ _yr }}"
                                data-parameter-key="{{ row.parameter_key }}"
+                               data-initial=""
                                aria-label="{{ row.entity_label }} — {{ row.parameter_label }}, k среднесрочный период, {{ _yr }} год" />
                         {% endif %}
                         {% else %}
@@ -1861,7 +1849,7 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=20"></script>
 {% endif %}
 
 <script>
@@ -1882,7 +1870,69 @@ function refreshPowerDemandSummaryLayout() {
     if (typeof window.armGsUpdateHorizontalScrollFlags === "function") {
         window.armGsUpdateHorizontalScrollFlags();
     }
+    if (typeof window.__pdCoeffClipStickyLeadHeaders === "function") {
+        window.__pdCoeffClipStickyLeadHeaders();
+    }
 }
+
+/**
+ * Chrome рисует sticky-top period/year th поверх sticky-left шапки в одной строке.
+ * Обрезаем левый край «наезжающих» th по границе столбца «Наименование параметров».
+ */
+window.__pdCoeffClipStickyLeadHeaders = function pdCoeffClipStickyLeadHeaders() {
+    var wrap = powerDemandSummaryScrollWrap;
+    var table = document.getElementById("powerDemandSummaryTable");
+    if (!wrap || !table || !table.classList.contains("pd-coeff-year-seg-table")) {
+        return;
+    }
+    var param =
+        table.querySelector("thead th.summary-parameter-col.pd-coeff-sticky-head-label") ||
+        table.querySelector("thead th.summary-parameter-col");
+    if (!param) {
+        return;
+    }
+    var wrapRect = wrap.getBoundingClientRect();
+    var edge = param.getBoundingClientRect().right - wrapRect.left;
+    if (!(edge > 0)) {
+        return;
+    }
+    var sel =
+        "thead th.power-demand-coeff-period-th, " +
+        "thead th.power-demand-coeff-mixin-group-th, " +
+        "thead th.summary-year-col, " +
+        "thead th.power-demand-coeff-mixin-th";
+    table.querySelectorAll(sel).forEach(function (th) {
+        var r = th.getBoundingClientRect();
+        var thLeft = r.left - wrapRect.left;
+        var cut = edge - thLeft;
+        if (cut <= 0.5) {
+            th.style.clipPath = "";
+            return;
+        }
+        if (cut >= r.width - 0.5) {
+            th.style.clipPath = "inset(0 0 0 100%)";
+            return;
+        }
+        th.style.clipPath = "inset(0 0 0 " + Math.ceil(cut) + "px)";
+    });
+};
+
+if (powerDemandSummaryScrollWrap) {
+    powerDemandSummaryScrollWrap.addEventListener(
+        "scroll",
+        function () {
+            if (typeof window.__pdCoeffClipStickyLeadHeaders === "function") {
+                window.__pdCoeffClipStickyLeadHeaders();
+            }
+        },
+        { passive: true }
+    );
+}
+window.addEventListener("resize", function () {
+    if (typeof window.__pdCoeffClipStickyLeadHeaders === "function") {
+        window.__pdCoeffClipStickyLeadHeaders();
+    }
+});
 
 function finishPowerDemandSummaryInitialRenderNow() {
     if (!powerDemandSummaryLoaderShell || powerDemandSummaryLoaderShell.dataset.ready === "1") {
@@ -1913,12 +1963,22 @@ function finishPowerDemandSummaryInitialRenderNow() {
                 if (window.armGsPageScrollRestore) {
                     var pdSummaryTable = document.getElementById("powerDemandSummaryTable");
                     if (pdSummaryTable) {
+                        var pdVScrollEl =
+                            (powerDemandSummaryScrollWrap
+                                && powerDemandSummaryScrollWrap.classList.contains(
+                                    "pd-coeff-summary-scroll-wrap"
+                                ))
+                                ? powerDemandSummaryScrollWrap
+                                : document.querySelector(".page-table-scroll");
                         window.armGsPageScrollRestore.restore(
                             window.armGsPageScrollRestore.defaultScope(pdSummaryTable),
                             {
                                 table: pdSummaryTable,
                                 hScrollEl: powerDemandSummaryScrollWrap,
-                                consume: true
+                                vScrollEl: pdVScrollEl || undefined,
+                                // Не consume здесь: optional-сегменты и финальная
+                                // видимость ещё могут сдвинуть layout (см. pd-summary-ui-settled).
+                                consume: false
                             }
                         );
                     }
@@ -2422,6 +2482,20 @@ if (summaryTable) {
             return null;
         }
         var nx = mwTr.nextElementSibling;
+        // На coeff «Проверка …» стоит сразу после расчётной строки, перед k.
+        while (
+            nx &&
+            nx.classList.contains("summary-row-param") &&
+            nx.classList.contains("pd-pd-verify-for-row")
+        ) {
+            var aKey = nx.getAttribute("data-pd-pd-verify-a") || "";
+            var vPk = nx.getAttribute("data-parameter-key") || "";
+            if (aKey === pk || vPk === "verify_for_" + pk) {
+                nx = nx.nextElementSibling;
+                continue;
+            }
+            break;
+        }
         if (nx && nx.classList.contains("summary-row-coeff-k")) {
             if ((nx.getAttribute("data-parameter-key") || "") === pk) {
                 return nx;
@@ -2465,17 +2539,12 @@ if (summaryTable) {
         if (window.__pdPdSummaryTerritoryCompactMode !== true) {
             return false;
         }
+        // Блок «Новые территории» (+НТ): в «Сводной таблице» видим при нажатом «+ НТ».
+        if (tr.getAttribute("data-pd-pd-nt-extra") === "1") {
+            return false;
+        }
         if (tr.getAttribute("data-pd-pd-territory-compact-hide") === "1") {
             return true;
-        }
-        if (tr.getAttribute("data-pd-pd-aggregation-level") === "1") {
-            var aggCell = tr.querySelector("td.summary-entity-cell");
-            if (
-                aggCell &&
-                (aggCell.textContent || "").trim() === "Новые территории"
-            ) {
-                return true;
-            }
         }
         return false;
     }
@@ -2497,7 +2566,8 @@ if (summaryTable) {
                         (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOnForEe) ||
                         pdSummaryTerritoryCompactShouldHideRow(tr) ||
                         (window.__pdPdSummaryTerritoryCompactMode === true &&
-                            tr.getAttribute("data-pd-pd-territory-detail") === "1");
+                            tr.getAttribute("data-pd-pd-territory-detail") === "1" &&
+                            tr.getAttribute("data-pd-pd-nt-extra") !== "1");
                     tr.classList.toggle("summary-row-hidden", hide);
                     var kRowEe = pdSummaryCoeffKRowForMwTr(tr);
                     if (kRowEe) {
@@ -2518,7 +2588,8 @@ if (summaryTable) {
                         (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntDetailOn) ||
                         pdSummaryTerritoryCompactShouldHideRow(tr) ||
                         (window.__pdPdSummaryTerritoryCompactMode === true &&
-                            tr.getAttribute("data-pd-pd-territory-detail") === "1");
+                            tr.getAttribute("data-pd-pd-territory-detail") === "1" &&
+                            tr.getAttribute("data-pd-pd-nt-extra") !== "1");
                     tr.classList.toggle("summary-row-hidden", hide);
                     var kRowChi = pdSummaryCoeffKRowForMwTr(tr);
                     if (kRowChi) {
@@ -2543,7 +2614,8 @@ if (summaryTable) {
                     (tr.getAttribute("data-pd-pd-nt-extra") === "1" && !ntOn2) ||
                     pdSummaryTerritoryCompactShouldHideRow(tr) ||
                     (window.__pdPdSummaryTerritoryCompactMode === true &&
-                        tr.getAttribute("data-pd-pd-territory-detail") === "1");
+                        tr.getAttribute("data-pd-pd-territory-detail") === "1" &&
+                        tr.getAttribute("data-pd-pd-nt-extra") !== "1");
                 tr.classList.toggle("summary-row-hidden", hide);
                 var kRow = pdSummaryCoeffKRowForMwTr(tr);
                 if (kRow) {
@@ -3059,7 +3131,8 @@ if (summaryTable) {
                 if (
                     show &&
                     window.__pdPdSummaryTerritoryCompactMode === true &&
-                    tr.getAttribute("data-pd-pd-territory-detail") === "1"
+                    tr.getAttribute("data-pd-pd-territory-detail") === "1" &&
+                    tr.getAttribute("data-pd-pd-nt-extra") !== "1"
                 ) {
                     show = false;
                 }
@@ -3199,7 +3272,6 @@ if (summaryTable) {
             return [
                 "calculated_max_power_mw",
                 "calculated_max_power_consumption_mw",
-                "calculated_max_sa_mw",
                 "calculated_combined_on_ees_mw",
                 "calculated_max_ees_via_oes_mw",
                 "calculated_max_ees_russia_mw",
@@ -3207,19 +3279,25 @@ if (summaryTable) {
             ];
         }
         if (view === "fo") {
-            var foCalcKeys = [
+            // Как на /summary/federal_districts/: расчётные ФО/ЦЗ + префикс ЕЭС/ЭЭС/СЗ.
+            return [
                 "calculated_max_power_mw",
+                "calculated_max_power_consumption_mw",
                 "calculated_combined_on_cz_mw",
+                "calculated_max_ees_via_oes_mw",
+                "calculated_max_ees_russia_mw",
+                "calculated_max_ees_via_es_mw",
+                "cz_calculated_max_cz_russia_mw",
             ];
-            if (routeVar === "coeff") {
-                foCalcKeys.push("calculated_max_fo_mw");
-            }
-            return foCalcKeys;
         }
         if (view === "ez") {
             return [
                 "calculated_max_power_mw",
+                "calculated_max_power_consumption_mw",
                 "calculated_combined_on_ees_mw",
+                "calculated_max_ees_via_oes_mw",
+                "calculated_max_ees_russia_mw",
+                "calculated_max_ees_via_es_mw",
             ];
         }
         return [];
@@ -3486,9 +3564,9 @@ if (summaryTable) {
 
     if (summaryView === "oes") {
         initPdSummaryRowPicker({
-            rowKeys: ["max_power", "calculated_max_power_mw", "peak_datetime", "calculated_max_power_consumption_mw", "avg_temp", "combined_on_oes", "combined_on_ees", "calculated_max_sa_mw", "calculated_combined_on_ees_mw", "calculated_max_ees_via_oes_mw", "calculated_max_ees_russia_mw", "calculated_max_ees_via_es_mw", "combined_on_es"],
+            rowKeys: ["max_power", "calculated_max_power_mw", "peak_datetime", "calculated_max_power_consumption_mw", "avg_temp", "combined_on_oes", "combined_on_ees", "calculated_combined_on_ees_mw", "calculated_max_ees_via_oes_mw", "calculated_max_ees_russia_mw", "calculated_max_ees_via_es_mw", "combined_on_es"],
             defaultHiddenKeys: rowPickerDefaultHidden,
-            storageKey: routeVariant === "coeff" ? "powerDemandSummaryOesCoeffVisibleRowKeysV2" : "powerDemandSummaryOesVisibleRowKeysV2",
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryOesCoeffVisibleRowKeysV2" : "powerDemandSummaryOesVisibleRowKeysV3",
             modalId: "powerDemandOesRowsModal",
             applyBtnId: "powerDemandOesRowsApply"
         });
@@ -3496,17 +3574,21 @@ if (summaryTable) {
         var foRowKeys = [
             "max_power",
             "calculated_max_power_mw",
+            "calculated_max_power_consumption_mw",
             "peak_datetime",
             "avg_temp",
-            {% if summary_route_variant == 'coeff' %}"calculated_max_fo_mw",{% endif %}
             "combined_on_cz",
             "calculated_combined_on_cz_mw",
             "combined_on_fo",
+            "calculated_max_ees_via_oes_mw",
+            "calculated_max_ees_russia_mw",
+            "calculated_max_ees_via_es_mw",
+            "cz_calculated_max_cz_russia_mw",
         ];
         initPdSummaryRowPicker({
             rowKeys: foRowKeys,
             defaultHiddenKeys: rowPickerDefaultHidden,
-            storageKey: routeVariant === "coeff" ? "powerDemandSummaryFoCoeffVisibleRowKeysV3" : "powerDemandSummaryFoVisibleRowKeys",
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryFoCoeffVisibleRowKeysV4" : "powerDemandSummaryFoVisibleRowKeysV2",
             modalId: "powerDemandFoRowsModal",
             applyBtnId: "powerDemandFoRowsApply"
         });
@@ -3515,14 +3597,18 @@ if (summaryTable) {
             rowKeys: [
                 "max_power",
                 "calculated_max_power_mw",
+                "calculated_max_power_consumption_mw",
                 "peak_datetime",
                 "avg_temp",
                 "combined_on_ez",
                 "combined_on_ees",
                 "calculated_combined_on_ees_mw",
+                "calculated_max_ees_via_oes_mw",
+                "calculated_max_ees_russia_mw",
+                "calculated_max_ees_via_es_mw",
             ],
             defaultHiddenKeys: rowPickerDefaultHidden,
-            storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeys" : "powerDemandSummaryEzVisibleRowKeys",
+            storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeysV2" : "powerDemandSummaryEzVisibleRowKeysV2",
             modalId: "powerDemandEzRowsModal",
             applyBtnId: "powerDemandEzRowsApply"
         });
@@ -3577,6 +3663,18 @@ if (summaryTable) {
                 reapplyPdPdNtDetailVisibilitySoon();
             }
         }
+        function syncPdPdNtDetailAfterRowsRendered() {
+            // Do not call ensureSegments here: merge of nt_extra dispatches
+            // pd-summary-rows-rendered and would remesh in an infinite loop.
+            if (pdPdNtDetailUiIsOn()) {
+                window.__pdPdSummaryNtDetailMode = true;
+                try {
+                    sessionStorage.setItem(pdPdNtStorageKey, "1");
+                } catch (eNtSyncRender) { /* */ }
+            }
+            syncPdPdNtDetailToggleUi();
+            reapplyPdPdNtDetailVisibilitySoon();
+        }
         if (pdPdNtDetailUiIsOn()) {
             window.__pdPdSummaryNtDetailMode = true;
         }
@@ -3589,7 +3687,10 @@ if (summaryTable) {
             syncPdPdNtDetailToggleUi();
             ensurePdPdNtDetailRowsVisible();
         });
-        document.addEventListener("pd-summary-rows-rendered", ensurePdPdNtDetailRowsVisible);
+        document.addEventListener(
+            "pd-summary-rows-rendered",
+            syncPdPdNtDetailAfterRowsRendered
+        );
         ensurePdPdNtDetailRowsVisible();
     }
 
@@ -3836,6 +3937,30 @@ if (summaryTable) {
     if (typeof window.pdSummarySyncAggregationLevelColspans === "function") {
         window.pdSummarySyncAggregationLevelColspans();
     }
+    // После optional-сегментов и финальной видимости — финальный scroll restore после save.
+    window.requestAnimationFrame(function () {
+        if (window.armGsPageScrollRestore) {
+            var settledTable = document.getElementById("powerDemandSummaryTable");
+            if (settledTable) {
+                var settledWrap = document.getElementById("powerDemandSummaryScrollWrap");
+                var settledVScroll =
+                    (settledWrap
+                        && settledWrap.classList.contains("pd-coeff-summary-scroll-wrap"))
+                        ? settledWrap
+                        : document.querySelector(".page-table-scroll");
+                window.armGsPageScrollRestore.restore(
+                    window.armGsPageScrollRestore.defaultScope(settledTable),
+                    {
+                        table: settledTable,
+                        hScrollEl: settledWrap || undefined,
+                        vScrollEl: settledVScroll || undefined,
+                        consume: true
+                    }
+                );
+            }
+        }
+        document.dispatchEvent(new CustomEvent("pd-summary-ui-settled"));
+    });
 
 }
 })();
@@ -3871,12 +3996,12 @@ if (summaryTable) {
 #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-chi-row:hover > td {
     background-color: #ecdece !important;
 }
-/* Строки «Потребление ЭЭ»: мягкий светло-красный фон (без «Энергосистема» и «Примечание»). */
-#powerDemandSummaryTable tbody tr.pd-pd-ee-row > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+/* Строки «Потребление ЭЭ»: мягкий светло-красный фон (без «Варианты периметра», «Энергосистема» и «Примечание»). */
+#powerDemandSummaryTable tbody tr.pd-pd-ee-row > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
     background-color: #f8e9e9 !important;
 }
-#powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell),
-#powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+#powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell),
+#powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
     background-color: #f0dede !important;
 }
 </style>
@@ -4126,31 +4251,91 @@ if (summaryTable) {
     .pd-coeff-year-seg-table td.summary-entity-cell {
         position: sticky;
         left: 0;
+        /* Bootstrap table-hover/striped: inset box-shadow и rgba-фон ломают липкие ячейки. */
+        --bs-table-bg-state: transparent;
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+        background-clip: padding-box;
     }
     .pd-coeff-year-seg-table th.summary-parameter-col,
     .pd-coeff-year-seg-table td.summary-parameter-cell {
         position: sticky;
         left: {{ summary_entity_col_w }};
+        --bs-table-bg-state: transparent;
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+        background-clip: padding-box;
     }
-    /* Шапка всегда над липкими ячейками тела (z по строкам ниже). */
-    .pd-coeff-year-seg-table thead th.summary-entity-col {
-        z-index: 1050;
-        background-color: #d1e7dd;
+    /*
+     * Шапка: липкие «Энергосистема»/«Наименование» выше period/year th.
+     * Важно: не ставить transform на thead th — ломает порядок отрисовки sticky.
+     * Специфичность с tr:nth-child — чтобы перебить style.css (z-index 50/49).
+     * Подписи без rowspan + пустые cont-ячейки во 2-й строке (иначе Chrome рисует period поверх).
+     */
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.summary-entity-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-entity-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-entity-col {
+        z-index: 1200 !important;
+        background-color: #d1e7dd !important;
+        background-image: none !important;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
     }
-    .pd-coeff-year-seg-table thead th.summary-parameter-col {
-        z-index: 1051;
-        background-color: #d1e7dd;
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.summary-parameter-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-parameter-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-parameter-col {
+        z-index: 1201 !important;
+        background-color: #d1e7dd !important;
+        background-image: none !important;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
+    }
+    /* Визуально одна ячейка на две строки шапки (вместо rowspan). */
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top th.pd-coeff-sticky-head-label.summary-entity-col,
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top th.pd-coeff-sticky-head-label.summary-parameter-col,
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top th.pd-coeff-sticky-head-label.summary-perimeter-variant-col {
+        border-bottom-color: #d1e7dd !important;
+        vertical-align: middle;
+    }
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-years th.pd-coeff-sticky-head-cont {
+        border-top-color: #d1e7dd !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        line-height: 0 !important;
+        font-size: 0 !important;
+        overflow: hidden;
+    }
+    /* Period/year/mixin в шапке: выше tbody (до ~350), но ниже липких левых th. */
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.power-demand-coeff-period-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.power-demand-coeff-mixin-group-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-year-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.power-demand-coeff-mixin-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.power-demand-coeff-period-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.power-demand-coeff-mixin-group-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-year-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.power-demand-coeff-mixin-th {
+        z-index: 400 !important;
+        background-color: #d1e7dd !important;
     }
     .pd-coeff-year-seg-table tbody td.summary-entity-cell {
-        z-index: calc(100 + var(--pd-row-stack, 0));
+        /* cap 50: не выше шапки годов (400), но выше ячеек годов той же/соседних строк */
+        z-index: calc(100 + min(var(--pd-row-stack, 0), 50)) !important;
         min-width: {{ summary_entity_col_w }};
         max-width: {{ summary_entity_col_w }};
+        background-color: #f8f9fa;
+        transform: translate3d(0, 0, 0) !important;
     }
     /* Непрозрачный фон: иначе при горизонтальном скролле «просвечивают» ячейки справа и текст выглядит наложенным. */
     .pd-coeff-year-seg-table tbody td.summary-parameter-cell {
-        z-index: calc(300 + var(--pd-row-stack, 0));
+        z-index: calc(300 + min(var(--pd-row-stack, 0), 50)) !important;
+        background-color: var(--bs-body-bg, #fff);
+        transform: translate3d(0, 0, 0) !important;
+    }
+    /* Ячейки справа всегда ниже липких левых (иначе Chrome рисует текст годов поверх sticky). */
+    .pd-coeff-year-seg-table tbody td.summary-year-cell,
+    .pd-coeff-year-seg-table tbody td.summary-coeff-mixin-cell {
+        position: relative;
+        z-index: 0 !important;
+    }
+    .pd-coeff-year-seg-table.table-hover > tbody > tr:hover > td.summary-year-cell,
+    .pd-coeff-year-seg-table.table-hover > tbody > tr:hover > td.summary-coeff-mixin-cell {
+        z-index: 0 !important;
     }
     /* Строки k (не «всегда видимые» показатели): серый фон по блоку entity */
     .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]) tbody tr.pd-entity-block-stripe-base > td {
@@ -4165,16 +4350,16 @@ if (summaryTable) {
     .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]).table-hover > tbody > tr.pd-entity-block-stripe-alt:hover > td {
         background-color: #dde8fc;
     }
-    /* Видимые строки показателя на coeff: тот же фон, что table-striped на /summary/oes/ */
+    /* Видимые строки показателя на coeff: непрозрачный фон (rgba от Bootstrap просвечивает под sticky). */
     #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param[data-ec-block-stripe="0"] > td {
-        background-color: var(--bs-table-striped-bg, rgba(0, 0, 0, 0.05)) !important;
+        background-color: #f2f2f2 !important;
     }
     #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param[data-ec-block-stripe="1"] > td {
-        background-color: var(--bs-table-bg, var(--bs-body-bg, #fff)) !important;
+        background-color: #ffffff !important;
     }
     #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param:hover > td,
     #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param:hover > td {
-        background-color: var(--bs-table-hover-bg, #e7ecf1) !important;
+        background-color: #e7ecf1 !important;
     }
     #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-verify-for-row > td {
         background-color: #e2ecf7 !important;
@@ -4197,11 +4382,11 @@ if (summaryTable) {
     #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-chi-row:hover > td {
         background-color: #ecdece !important;
     }
-    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-ee-row > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-ee-row > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
         background-color: #f8e9e9 !important;
     }
-    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell),
-    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-entity-cell):not(.summary-entity-note-cell) {
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell),
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
         background-color: #f0dede !important;
     }
     /* Строки k: единый светло-голубой фон на всех coeff-страницах (ОЭС / ФО / ЭЗ) */
@@ -4214,11 +4399,22 @@ if (summaryTable) {
     }
     {% endif %}
     .power-demand-summary-table.pd-coeff-year-seg-table {
+        /* separate: иначе sticky-столбцы в collapse плохо перекрывают ячейки справа (Chrome). */
+        border-collapse: separate;
+        border-spacing: 0;
         /* auto — столбцы годов по содержимому; min-width — горизонтальный скролл при широкой таблице */
         table-layout: auto;
         width: max-content;
         min-width: 100%;
         max-width: none;
+    }
+    /* Как /summary/oes/: в теле без вертикальных линий столбцов (separate даёт «двойные» L+R).
+       Горизонтальные границы строк и сетка шапки сохраняются. */
+    .power-demand-summary-table.pd-coeff-year-seg-table.table-bordered > tbody > tr > td {
+        border-left-width: 0;
+        border-right-width: 0;
+        border-top-width: var(--bs-border-width);
+        border-bottom-width: var(--bs-border-width);
     }
     .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th,
     .pd-coeff-year-seg-table td.summary-coeff-mixin-cell {
@@ -5232,12 +5428,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function getRoundingDigitsK() {
-            var raw = table.getAttribute("data-pd-rounding-digits-k") || table.getAttribute("data-pd-rounding-digits") || table.getAttribute("data-rounding-digits") || "1";
+            var raw = table.getAttribute("data-pd-rounding-digits-k") || "3";
             var n = parseInt(raw, 10);
             if (n === -1 || n === 0 || n === 1 || n === 2 || n === 3) {
                 return n;
             }
-            return getRoundingDigits();
+            return 3;
         }
 
         var COEFF_K_CALC_DECIMAL_PLACES = 6;
@@ -5283,29 +5479,56 @@ document.addEventListener("DOMContentLoaded", function () {
             return formatAvg(num, getRoundingDigits());
         }
 
-        /** k = МВт / макс. мощность: не более 6 знаков после запятой в расчёте. */
+        /** k = МВт / макс. мощность: не более 6 знаков после запятой (без float-хвоста вроде 0,998999999…). */
         function roundCoeffKCalc(n) {
             if (!Number.isFinite(n)) {
                 return n;
             }
-            var mult = Math.pow(10, COEFF_K_CALC_DECIMAL_PLACES);
-            return Math.round(n * mult) / mult;
+            return Number(n.toFixed(COEFF_K_CALC_DECIMAL_PLACES));
         }
 
-        /** Отображение коэффициента k: не более 6 знаков в расчёте, затем «Округл (k)». */
+        /** Строка k для title/value: ≤ 6 знаков, без хвостовых нулей (0,999 → «0,999», не «0,998999999…»). */
+        function formatCoeffKExactString(n) {
+            if (!Number.isFinite(n)) {
+                return "";
+            }
+            var s = roundCoeffKCalc(n).toFixed(COEFF_K_CALC_DECIMAL_PLACES);
+            if (s.indexOf(".") !== -1) {
+                s = s.replace(/0+$/, "").replace(/\.$/, "");
+            }
+            return s.replace(".", ",");
+        }
+
+        /** Отображение коэффициента k: не более 6 знаков, затем «Округл (k)». */
         function formatCoeffK(avg, rd) {
-            return formatAvg(roundCoeffKCalc(avg), rd);
+            var n = roundCoeffKCalc(avg);
+            if (!Number.isFinite(n)) {
+                return "—";
+            }
+            if (rd === 0) {
+                // «Не округлять» — до 6 знаков, без хвостовых нулей и без binary float.
+                return formatCoeffKExactString(n) || "—";
+            }
+            return formatAvg(n, rd);
         }
 
         function setCoeffKCellFullTitle(el, rawValue) {
-            if (!el || rawValue === null || rawValue === undefined || !Number.isFinite(rawValue)) {
-                setNumericCellFullTitle(el, rawValue);
+            if (!el) {
                 return;
             }
-            setNumericCellFullTitle(el, roundCoeffKCalc(rawValue));
+            if (rawValue === null || rawValue === undefined || !Number.isFinite(rawValue)) {
+                el.removeAttribute("title");
+                return;
+            }
+            var t = formatCoeffKExactString(rawValue);
+            if (t) {
+                el.setAttribute("title", t);
+            } else {
+                el.removeAttribute("title");
+            }
         }
 
-        /** Полное число для title (все значащие знаки, запятая как разделитель). */
+        /** Полное число для title (значащие знаки; без toFixed(20) — иначе 0,999 → 0,998999999…). */
         function formatNumberFullForTooltip(n) {
             if (n === null || n === undefined || !Number.isFinite(n)) {
                 return "";
@@ -5313,9 +5536,9 @@ document.addEventListener("DOMContentLoaded", function () {
             if (n === 0) {
                 return "0";
             }
-            var s = n.toFixed(20);
+            var s = n.toFixed(12);
             if (s.indexOf(".") !== -1) {
-                s = s.replace(/\.?0+$/, "");
+                s = s.replace(/0+$/, "").replace(/\.$/, "");
             }
             return s.replace(".", ",");
         }
@@ -5417,14 +5640,30 @@ document.addEventListener("DOMContentLoaded", function () {
             return rounded.toFixed(rd).replace(".", ",");
         }
 
-        /** Строка k, следующая сразу за строкой показателя МВт (отдельная <tr>). */
+        /** Строка k для показателя МВт (может идти после «Проверка …»). */
         function coeffKRowForMwTr(mwTr) {
             if (!mwTr) {
                 return null;
             }
+            var pk = mwTr.getAttribute("data-parameter-key") || "";
+            if (pk === "max_power") {
+                return null;
+            }
             var nx = mwTr.nextElementSibling;
+            while (
+                nx &&
+                nx.classList.contains("summary-row-param") &&
+                nx.classList.contains("pd-pd-verify-for-row")
+            ) {
+                var aKey = nx.getAttribute("data-pd-pd-verify-a") || "";
+                var vPk = nx.getAttribute("data-parameter-key") || "";
+                if (aKey === pk || vPk === "verify_for_" + pk) {
+                    nx = nx.nextElementSibling;
+                    continue;
+                }
+                break;
+            }
             if (nx && nx.classList.contains("summary-row-coeff-k")) {
-                var pk = mwTr.getAttribute("data-parameter-key") || "";
                 if ((nx.getAttribute("data-parameter-key") || "") === pk) {
                     return nx;
                 }
@@ -5441,9 +5680,24 @@ document.addEventListener("DOMContentLoaded", function () {
         function entityBlockFromRow(tr) {
             var row = tr;
             if (row && row.classList.contains("summary-row-coeff-k")) {
+                var kPk = row.getAttribute("data-parameter-key") || "";
                 var prevK = row.previousElementSibling;
-                if (prevK && prevK.matches("tr.summary-row-param")) {
-                    row = prevK;
+                while (prevK) {
+                    if (
+                        prevK.matches("tr.summary-row-param") &&
+                        (prevK.getAttribute("data-parameter-key") || "") === kPk
+                    ) {
+                        row = prevK;
+                        break;
+                    }
+                    if (
+                        prevK.classList.contains("summary-row-coeff-k") ||
+                        prevK.classList.contains("pd-pd-verify-for-row")
+                    ) {
+                        prevK = prevK.previousElementSibling;
+                        continue;
+                    }
+                    break;
                 }
             }
             while (row && row.matches("tr.summary-row-param")) {
@@ -5625,9 +5879,23 @@ document.addEventListener("DOMContentLoaded", function () {
         function mwTrFromCoeffControl(el) {
             var tr = el && el.closest ? el.closest("tr") : null;
             if (tr && tr.classList.contains("summary-row-coeff-k")) {
+                var kPk = tr.getAttribute("data-parameter-key") || "";
                 var prev = tr.previousElementSibling;
-                if (prev && prev.matches("tr.summary-row-param")) {
-                    return prev;
+                while (prev) {
+                    if (
+                        prev.matches("tr.summary-row-param") &&
+                        (prev.getAttribute("data-parameter-key") || "") === kPk
+                    ) {
+                        return prev;
+                    }
+                    if (
+                        prev.classList.contains("summary-row-coeff-k") ||
+                        prev.classList.contains("pd-pd-verify-for-row")
+                    ) {
+                        prev = prev.previousElementSibling;
+                        continue;
+                    }
+                    break;
                 }
             }
             return el && el.closest ? el.closest("tr.summary-row-param") : null;
@@ -5732,26 +6000,22 @@ document.addEventListener("DOMContentLoaded", function () {
                         if (kinp.getAttribute("data-pd-medium-k-override") === "1") {
                             return;
                         }
-                        /* Не затирать k из БД: иначе после reload «Сохранить» кажется сломанным
-                           (value ≠ data-initial → массовое «ложное» сохранение / откат UI). */
-                        if (kinp.getAttribute("data-pd-medium-k-stored") === "1") {
-                            return;
-                        }
                         if (document.activeElement === kinp) {
                             return;
                         }
+                        /* По умолчанию и при выборе в «используемый k» — значение из источника
+                           (СиПР 5 лет / период / ручной ввод), а не «сырой» k из БД. */
+                        kinp.removeAttribute("data-pd-medium-k-stored");
                         if (coeff === null) {
                             kinp.value = "";
+                            kinp.setAttribute("data-initial", "");
                             kinp.removeAttribute("title");
                             kCell.removeAttribute("title");
                         } else {
                             var coeffR = roundCoeffKCalc(coeff);
                             var coeffDisp = formatCoeffK(coeffR, rd);
                             kinp.value = coeffDisp;
-                            /* Пустой initial — только превью с источника; не считаем «изменением» для Save. */
-                            if (!(String(kinp.getAttribute("data-initial") || "").trim())) {
-                                kinp.setAttribute("data-initial", coeffDisp);
-                            }
+                            kinp.setAttribute("data-initial", coeffDisp);
                             setCoeffKCellFullTitle(kCell, coeffR);
                             setCoeffKCellFullTitle(kinp, coeffR);
                         }
@@ -6588,32 +6852,72 @@ document.addEventListener("DOMContentLoaded", function () {
                 params.set("rounding_digits_k", rdKSel.value);
             }
             var tableEl = document.getElementById("powerDemandSummaryTable");
-            if (tableEl && tableEl.getAttribute("data-ec-max-year-segments") === "1") {
+            if (tableEl) {
                 var evYears = [];
-                tableEl.querySelectorAll("thead th.summary-year-col[data-ec-summary-col-year]").forEach(function (th) {
+                var yearSeen = {};
+                tableEl.querySelectorAll("thead th.summary-year-col").forEach(function (th) {
                     if (th.classList.contains("pd-ec-year-col-hidden")) {
                         return;
                     }
-                    var yy = parseInt(th.getAttribute("data-ec-summary-col-year") || "", 10);
-                    if (!isNaN(yy)) {
-                        evYears.push(yy);
+                    var seg = th.getAttribute("data-coeff-year-segment");
+                    if (
+                        seg &&
+                        tableEl.classList.contains("pd-coeff-seg-hide-" + seg)
+                    ) {
+                        return;
                     }
+                    var yyRaw =
+                        th.getAttribute("data-ec-summary-col-year") ||
+                        th.getAttribute("data-summary-year") ||
+                        "";
+                    var yy = parseInt(yyRaw, 10);
+                    if (isNaN(yy) || yearSeen[yy]) {
+                        return;
+                    }
+                    yearSeen[yy] = true;
+                    evYears.push(yy);
                 });
                 if (evYears.length) {
                     params.set("export_years", evYears.join(","));
                 }
             }
-            var storageKey = button.getAttribute("data-pd-visible-rows-key") || "";
-            if (storageKey) {
-                try {
-                    var raw = sessionStorage.getItem(storageKey);
-                    if (raw) {
-                        var arr = JSON.parse(raw);
-                        if (Array.isArray(arr) && arr.length > 0) {
-                            params.set("visible_rows", arr.join(","));
-                        }
+            /* Строки как на экране: видимые parameter_key (кнопки ЭЭ/ЧЧИ/Проверка/макс., пикер, пустые). */
+            var domVisibleKeys = [];
+            var domKeySeen = {};
+            if (tableEl) {
+                tableEl.querySelectorAll("tbody tr.summary-row-param").forEach(function (tr) {
+                    if (
+                        tr.classList.contains("summary-row-hidden") ||
+                        tr.classList.contains("summary-row-empty-block-hidden")
+                    ) {
+                        return;
                     }
-                } catch (err) { /* */ }
+                    if (tr.getAttribute("data-pd-pd-aggregation-level") === "1") {
+                        return;
+                    }
+                    var pk = tr.getAttribute("data-parameter-key") || "";
+                    if (!pk || domKeySeen[pk]) {
+                        return;
+                    }
+                    domKeySeen[pk] = true;
+                    domVisibleKeys.push(pk);
+                });
+            }
+            if (domVisibleKeys.length) {
+                params.set("visible_rows", domVisibleKeys.join(","));
+            } else {
+                var storageKey = button.getAttribute("data-pd-visible-rows-key") || "";
+                if (storageKey) {
+                    try {
+                        var raw = sessionStorage.getItem(storageKey);
+                        if (raw) {
+                            var arr = JSON.parse(raw);
+                            if (Array.isArray(arr) && arr.length > 0) {
+                                params.set("visible_rows", arr.join(","));
+                            }
+                        }
+                    } catch (err) { /* */ }
+                }
             }
             var ntBtn = document.getElementById("pdPdSummaryNtDetailToggle");
             if (ntBtn && window.__pdPdSummaryNtDetailMode === true) {
@@ -6623,6 +6927,58 @@ document.addEventListener("DOMContentLoaded", function () {
             if (compactBtn && window.__pdPdSummaryTerritoryCompactMode === true) {
                 params.set("export_territory_compact", "1");
             }
+            if (window.__pdPdSummaryHistMode === true) {
+                params.set("export_hist", "1");
+            }
+            /* По умолчанию на экране пустые блоки скрыты — то же в Excel. */
+            if (window.__pdPdSummaryShowEmptyMode !== true) {
+                params.set("export_hide_empty", "1");
+            }
+
+            var entityLabels = {};
+            if (tableEl) {
+                tableEl
+                    .querySelectorAll(
+                        'tbody tr.summary-row-param[data-is-block-start="1"]'
+                    )
+                    .forEach(function (tr) {
+                        if (
+                            tr.classList.contains("summary-row-hidden") ||
+                            tr.classList.contains("summary-row-empty-block-hidden")
+                        ) {
+                            return;
+                        }
+                        var cell = tr.querySelector("td.summary-entity-cell");
+                        if (!cell) {
+                            return;
+                        }
+                        var clone = cell.cloneNode(true);
+                        clone.querySelectorAll(".pd-pd-dz-mark").forEach(function (el) {
+                            el.remove();
+                        });
+                        var text = String(clone.textContent || "")
+                            .replace(/\s+/g, " ")
+                            .trim();
+                        if (!text) {
+                            return;
+                        }
+                        var key = [
+                            tr.getAttribute("data-demand-model-name") || "",
+                            tr.getAttribute("data-parent-fk-column") || "",
+                            tr.getAttribute("data-parent-id") || "",
+                            tr.getAttribute("data-id-union-energy-system") || "",
+                            tr.getAttribute("data-id-regional-energy-system") || "",
+                            tr.getAttribute("data-id-regional-district") || "",
+                            tr.getAttribute("data-id-energy-unit") || "",
+                            tr.getAttribute("data-id-synchronous-area") || "",
+                            tr.getAttribute("data-id-energy-zone") || "",
+                            tr.getAttribute("data-perimeter-variant-code") || "",
+                            tr.getAttribute("data-pd-pd-nt-extra") || "0",
+                            tr.getAttribute("data-pd-pd-aggregation-level") || "0",
+                        ].join("\x1f");
+                        entityLabels[key] = text;
+                    });
+            }
 
             var exportUrl = form.action + (params.toString() ? "?" + params.toString() : "");
             var originalHtml = button.innerHTML;
@@ -6631,7 +6987,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Экспорт…';
             button.disabled = true;
 
-            fetch(exportUrl, { credentials: "same-origin", cache: "no-store" })
+            var fetchOpts = {
+                method: "POST",
+                credentials: "same-origin",
+                cache: "no-store",
+                headers: {
+                    Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/octet-stream, */*",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ export_entity_labels: entityLabels }),
+            };
+
+            fetch(exportUrl, fetchOpts)
                 .then(function (response) {
                     if (!response.ok) {
                         return response.text().then(function (text) {
@@ -6711,9 +7078,12 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
     const saveUrl = table.dataset.saveCellUrl;
-    const roundingDigits = parseInt(table.dataset.roundingDigits || "1", 10);
+    const roundingDigits = parseInt(
+        table.dataset.pdRoundingDigits || table.dataset.roundingDigits || "1",
+        10
+    );
     const roundingDigitsK = parseInt(
-        table.dataset.pdRoundingDigitsK || table.dataset.roundingDigits || "1",
+        table.dataset.pdRoundingDigitsK || "3",
         10
     );
 

@@ -1257,7 +1257,7 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ec_ez_mln_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается значение по энергозоне"></i></span>
                         {% elif active_summary == 'ez' and row.demand_model_name == 'EnergyZoneEnergyConsumptionParameter' and row.entity_kind == 'group' and row.parameter_key == 'energy_consumption_sipr_mln_kvt_ch' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ec_ez_sipr_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается значение по энергозоне"></i></span>
-                        {% elif active_summary == 'ez' and row.entity_kind == 'centralized_zone' and row.parameter_key == 'energy_consumption_mln_kvt_ch' %}
+                        {% elif active_summary == 'ez' and row.entity_kind == 'centralized_zone' and row.parameter_key == 'energy_consumption_mln_kvt_ch' and not row.get('pd_ec_cz_o1_with_nt_manual_row') %}
                         {% set _pd_ec_ez_ees_manual_db_row = row.demand_model_name == 'EesRussiaEnergyConsumptionParameter' %}
                         {% if _pd_ec_ez_ees_manual_db_row %}
                         <span class="text-wrap">{{ row.parameter_label }}</span>
@@ -1290,6 +1290,8 @@
                         {% set _pd_ec_gaes_adj_tt = _pd_ec_fo_gaes_adj_sum_res_formula %}
                         {% elif row.gaes_without_charge_formula_kind == 'rd' %}
                         {% set _pd_ec_gaes_adj_tt = _pd_ec_rd_gaes_adj_formula %}
+                        {% elif row.gaes_without_charge_formula_kind == 'south_ues_without_nt_without_gaes' %}
+                        {% set _pd_ec_gaes_adj_tt = _pd_ec_gaes_adj_south_ues_without_nt_without_gaes_formula %}
                         {% elif active_summary == 'fo' %}
                         {% set _pd_ec_gaes_adj_tt = _pd_ec_fo_gaes_adj_sum_res_formula %}
                         {% else %}
@@ -1365,9 +1367,7 @@
                     {% set _ec_with_gaes_charge_db_block = row.get('pd_ec_gaes_with_charge_db_block') and row.parameter_key != 'gaes_charge_consumption_mln_kvt_ch' and not row.get('pd_ec_formula_derived_row') %}
                     {% set _demand_name_ok = row.demand_model_name or _ec_gaes_charge_station_editable or _ec_with_gaes_charge_db_block %}
                     {% set _can_edit_slice = _demand_name_ok and (row.parent_fk_column is none or row.parent_id is not none) and (not _ec_row_is_gaes_synthetic or _ec_gaes_charge_station_editable or _ec_with_gaes_charge_db_block) %}
-                    {% set _ez_auto_ec = active_summary == 'ez' and row.demand_model_name == 'EnergyZoneEnergyConsumptionParameter' and row.entity_kind == 'group' and row.parameter_key in ('energy_consumption_mln_kvt_ch', 'energy_consumption_sipr_mln_kvt_ch') %}
-                    {% set _fo_auto_ec = active_summary == 'fo' and row.demand_model_name == 'FederalDistrictEnergyConsumptionParameter' and row.entity_kind == 'group' and row.parameter_key in ('energy_consumption_mln_kvt_ch', 'energy_consumption_sipr_mln_kvt_ch') %}
-                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) and (not row.get('pd_ec_formula_derived_row') or row.get('pd_ec_cz_o1_with_nt_manual_row')) and not _ez_auto_ec and not _fo_auto_ec and not _ec_ees_russia_composite_row %}
+                    {% set _can_edit_cell = can_edit_summary_cells and _can_edit_slice and (row.parameter_key not in pd_readonly_parameter_keys) and (not row.get('pd_ec_formula_derived_row') or row.get('pd_ec_cz_o1_with_nt_manual_row')) and not _ec_ees_russia_composite_row %}
                     {% set _can_edit_hist_cell = _can_edit_cell and not _ec_gaes_charge_station_editable %}
                     {% set _ues_readonly_coeff_display = summary_route_variant == 'coeff' and row.demand_model_name == 'UnionEnergySystemEnergyConsumptionParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') %}
                     {% if show_hist_col %}
@@ -1440,8 +1440,16 @@
                     {% set _pv_variant_year_out_of_range = _pv_from is not none and _yr < _pv_from %}
                     {% set _pv_variant_year_out_of_range = _pv_variant_year_out_of_range or (_pv_to is not none and _yr > _pv_to) %}
                     {% endif %}
-                    {% if _pv_variant_year_out_of_range %}{% set value = '—' %}{% endif %}
-                    {% set _can_edit_year_cell = _can_edit_cell and not _gaes_station_year_out_of_range and not _pv_variant_year_out_of_range %}
+                    {% set _sakha_through = row.get('sakha_membership_through_year') %}
+                    {% set _sakha_year_out_of_range = false %}
+                    {% if row.get('pd_ec_sakha_tites_through_year_row') and _sakha_through is not none %}
+                    {% set _sakha_year_out_of_range = _yr > _sakha_through %}
+                    {% elif row.get('pd_ec_sakha_oes_east_from_year_row') and _sakha_through is not none %}
+                    {% set _sakha_year_out_of_range = _yr <= _sakha_through %}
+                    {% endif %}
+                    {% set _year_membership_out_of_range = _pv_variant_year_out_of_range or _sakha_year_out_of_range %}
+                    {% if _year_membership_out_of_range %}{% set value = '—' %}{% endif %}
+                    {% set _can_edit_year_cell = _can_edit_cell and not _gaes_station_year_out_of_range and not _year_membership_out_of_range %}
                     {% if summary_route_variant == 'coeff' %}
                     {% set k_disp = row.year_k_values[ix] if row.year_k_values is defined and (row.year_k_values|length) > ix else '—' %}
                     {% set k_full_tt = (row.year_k_full_tooltips|default([]))[ix] if (row.year_k_full_tooltips|default([]))|length > ix else '' %}
@@ -1510,7 +1518,7 @@
                         {% endif %}
                     </td>
                     {% endif %}
-                    <td class="text-center summary-year-cell{% if summary_route_variant == 'coeff' %} summary-year-mw-cell{% endif %}{% if _plan_hide or _pv_variant_year_out_of_range %} summary-plan-empty{% endif %}{% if _pv_variant_year_out_of_range %} pd-ec-variant-year-out{% endif %}"
+                    <td class="text-center summary-year-cell{% if summary_route_variant == 'coeff' %} summary-year-mw-cell{% endif %}{% if _plan_hide or _year_membership_out_of_range %} summary-plan-empty{% endif %}{% if _year_membership_out_of_range %} pd-ec-variant-year-out{% endif %}"
                         {% if summary_route_variant == 'coeff' %}data-summary-year="{{ _yr }}"{% endif %}
                         {% if summary_route_variant == 'coeff' and coeff_base_year is defined %}
                         data-coeff-year-segment="{% if _yr >= coeff_base_year - 9 and _yr <= coeff_base_year %}reporting{% elif _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}medium{% else %}long{% endif %}"
@@ -1519,7 +1527,7 @@
                         {% if _cell_tt %}
                         title="{{ _cell_tt|e }}"
                         {% endif %}>
-                        {% if _plan_hide or _pv_variant_year_out_of_range %}
+                        {% if _plan_hide or _year_membership_out_of_range %}
                         {% elif row.get('pd_ec_verification_full_precision') %}
                         {% set _vz_red = row.get('pd_ec_verification_year_red') %}
                         {% set _cell_red_flag = (_vz_red[ix] if _vz_red and (_vz_red|length) > ix else false) %}
@@ -2783,7 +2791,6 @@ if (summaryTable) {
                 }
                 if (
                     show &&
-                    !isVerTr &&
                     tr.getAttribute("data-pd-ec-gaes-extra") === "1" &&
                     !gaesDetailOn &&
                     !(
@@ -2840,7 +2847,6 @@ if (summaryTable) {
                 }
                 if (
                     show &&
-                    !isVerTr &&
                     tr.getAttribute("data-pd-ec-summary-table-only") === "1" &&
                     window.__pdEcSummaryTerritoryCompactMode !== true
                 ) {
@@ -2861,7 +2867,6 @@ if (summaryTable) {
                 }
                 if (
                     show &&
-                    !isVerTr &&
                     !pdEcSummaryTableStandalone &&
                     window.__pdEcSummaryTerritoryCompactMode === true &&
                     tr.getAttribute("data-pd-ec-territory-compact-hide") === "1"

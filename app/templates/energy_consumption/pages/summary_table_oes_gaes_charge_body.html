@@ -1252,6 +1252,8 @@
                         {% set _pd_ec_gaes_adj_tt = _pd_ec_fo_gaes_adj_sum_res_formula %}
                         {% elif row.gaes_without_charge_formula_kind == 'rd' %}
                         {% set _pd_ec_gaes_adj_tt = _pd_ec_rd_gaes_adj_formula %}
+                        {% elif row.gaes_without_charge_formula_kind == 'south_ues_without_nt_without_gaes' %}
+                        {% set _pd_ec_gaes_adj_tt = _pd_ec_gaes_adj_south_ues_without_nt_without_gaes_formula %}
                         {% elif active_summary == 'fo' %}
                         {% set _pd_ec_gaes_adj_tt = _pd_ec_fo_gaes_adj_sum_res_formula %}
                         {% else %}
@@ -2584,7 +2586,6 @@ if (summaryTable) {
                 }
                 if (
                     show &&
-                    !isVerTr &&
                     tr.getAttribute("data-pd-ec-gaes-extra") === "1" &&
                     !gaesDetailOn
                 ) {
@@ -2615,7 +2616,6 @@ if (summaryTable) {
                 }
                 if (
                     show &&
-                    !isVerTr &&
                     !pdEcSummaryTableStandalone &&
                     window.__pdEcSummaryTerritoryCompactMode === true &&
                     tr.getAttribute("data-pd-ec-territory-compact-hide") === "1"

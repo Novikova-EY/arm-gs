@@ -1,6 +1,5 @@
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_group_model import StationGroup
-from app.generation.models.station.station_power_model import StationPower
 from app.generation.models.station.station_gaes_charge_consumption_model import StationGaesChargeConsumption
 
 from app.generation.models.machine.machine_model import Machine

@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import math
-from decimal import Decimal
 from io import BytesIO
 from typing import Any
 
@@ -12,6 +10,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from app.common.services.excel_numeric_cell import (
+    excel_number_format as _excel_number_format,
+    excel_numeric_cell_value as _excel_period_cell_value,
+)
 from app.common.services.help_services import format_decimal_for_display
 from app.energy_balance.services.station_ee_generation_page_services import (
     get_station_ee_generation_page_data,
@@ -44,61 +46,6 @@ STATIC_COLUMNS = [
 _PERIOD_COL_START = len(STATIC_COLUMNS) + 1
 
 
-def _excel_number_format(rounding_digits: int) -> str:
-    """Формат Excel: пробел — тысячи, запятая — дробная часть (как на экране)."""
-    if rounding_digits == -1:
-        return "# ##0"
-    if rounding_digits >= 1:
-        return "# ##0," + ("0" * rounding_digits)
-    return "# ##0,##########"
-
-
-def _parse_period_numeric(value) -> float | None:
-    """Приводит сырое или экранное значение выработки к float."""
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        x = float(value)
-        return x if math.isfinite(x) else None
-    if isinstance(value, Decimal):
-        x = float(value)
-        return x if math.isfinite(x) else None
-
-    s = str(value).strip()
-    if s in ("", "—", "-"):
-        return None
-    s = s.replace("\u2212", "-").replace("\u2013", "-").replace("\u2014", "-")
-    negative = s.startswith("-")
-    if negative:
-        s = s[1:].strip()
-    s = s.replace("\u00a0", "").replace(" ", "").replace(",", ".")
-    try:
-        x = float(s)
-    except ValueError:
-        return None
-    if not math.isfinite(x):
-        return None
-    return -x if negative else x
-
-
-def _excel_period_cell_value(
-    value,
-    *,
-    verification: bool = False,
-) -> tuple[Any, bool]:
-    """Возвращает (значение ячейки, нужен ли числовой формат)."""
-    parsed = _parse_period_numeric(value)
-    if parsed is None:
-        return "—", False
-    if parsed == 0:
-        if verification:
-            return 0.0, True
-        return "—", False
-    return parsed, True
-
-
 def _write_period_cell(
     ws,
     row_idx: int,
@@ -111,7 +58,9 @@ def _write_period_cell(
     fill=None,
     red: bool = False,
 ) -> None:
-    cell_value, is_numeric = _excel_period_cell_value(value, verification=verification)
+    cell_value, is_numeric = _excel_period_cell_value(
+        value, verification=verification, zero_as_dash=True
+    )
     cell = ws.cell(row=row_idx, column=col_idx, value=cell_value)
     cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
     if bold:
@@ -228,8 +177,11 @@ def _write_sign_group_rows(
     rounding_digits: int,
 ) -> int:
     stations = sign_group.get("stations") or []
+    svod_keys = set(sign_group.get("espp_svod_period_keys") or [])
+    svod_periods = sign_group.get("periods") or {}
+    start_row = row_idx
 
-    for station_row in stations:
+    for station_idx, station_row in enumerate(stations):
         station_periods = station_row.get("periods") or {}
         static_values = [
             station_row.get("kto_display") or "—",
@@ -241,9 +193,16 @@ def _write_sign_group_rows(
             station_row.get("primary_fuel") or "—",
             station_row.get("fuel_so") or "—",
         ]
-        period_values = [
-            station_periods.get(period_key) for period_key, _label in period_columns
-        ]
+        period_values = []
+        for period_key, _label in period_columns:
+            if period_key in svod_keys:
+                # Значение свода пишем только в первой строке группы; остальные
+                # ячейки объединяются ниже.
+                period_values.append(
+                    svod_periods.get(period_key) if station_idx == 0 else None
+                )
+            else:
+                period_values.append(station_periods.get(period_key))
         _write_data_row(
             ws,
             row_idx,
@@ -252,6 +211,22 @@ def _write_sign_group_rows(
             rounding_digits=rounding_digits,
         )
         row_idx += 1
+
+    if svod_keys and len(stations) > 1:
+        end_row = row_idx - 1
+        for offset, (period_key, _label) in enumerate(period_columns):
+            if period_key not in svod_keys:
+                continue
+            col_idx = _PERIOD_COL_START + offset
+            ws.merge_cells(
+                start_row=start_row,
+                start_column=col_idx,
+                end_row=end_row,
+                end_column=col_idx,
+            )
+            merged = ws.cell(row=start_row, column=col_idx)
+            merged.alignment = Alignment(horizontal="center", vertical="center")
+
     return row_idx
 
 

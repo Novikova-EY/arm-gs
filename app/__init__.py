@@ -274,7 +274,6 @@ def create_app():
         from app.generation.models.station import (
             station_model,
             station_group_model,
-            station_power_model,
         )
         from app.generation.models.machine import (
             machine_fuel_model,
@@ -542,6 +541,25 @@ def create_app():
                 app.logger.info("[CACHE REFRESH] Запущено периодическое обновление кэша")
             except Exception as e:
                 app.logger.warning(f"[CACHE] Не удалось запустить кэш: {e}")
+
+            # Фоновый импорт сводки потребления — daemon-поток; после рестарта/reloader он мёртв,
+            # а статус в Redis мог остаться «running» (UI зависает на N/M).
+            try:
+                from app.energy_consumption.services.energy_consumption_summary_import_jobs import (
+                    fail_orphaned_energy_consumption_summary_import_jobs,
+                )
+
+                with app.app_context():
+                    n_orphaned = fail_orphaned_energy_consumption_summary_import_jobs()
+                if n_orphaned:
+                    app.logger.warning(
+                        "[EC_SUMMARY_IMPORT] Помечено прерванных заданий импорта: %s",
+                        n_orphaned,
+                    )
+            except Exception as e:
+                app.logger.warning(
+                    "[EC_SUMMARY_IMPORT] Не удалось сбросить orphaned-задания: %s", e
+                )
 
     # Фильтр форматирования чисел
     from app.common.services.help_services import (

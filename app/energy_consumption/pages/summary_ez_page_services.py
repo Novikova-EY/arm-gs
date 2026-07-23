@@ -15,7 +15,7 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     _mark_summary_table_nt_on_gaes_off_variant_row_rules,
     apply_sipr_consumption_display_fallback_to_summary_rows,
     build_energy_zones_summary_context,
-    exclude_centralized_zone_russia_o1_summary_rows,
+    exclude_centralized_zone_russia_non_o1_summary_rows,
     get_demand_summary_filter_refdata,
     get_energy_consumption_ez_filter_cascade_data,
     inject_summary_table_cz_new_territories_reference_row,
@@ -25,7 +25,6 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     tag_ees_russia_sipr_integer_display_rows,
     tag_energy_consumption_summary_rows_before_energy_zone_blocks,
     tag_energy_consumption_summary_rows_for_territory_compact,
-    tag_summary_table_energy_zone_footer_rows,
 )
 
 PAGE_TEMPLATE = "energy_consumption/pages/summary_ez.html"
@@ -59,7 +58,7 @@ def build_summary_ez_page_context(
     context["page_title"] = "Потребление ЭЭ по энергозонам"
     context = remove_gaes_charge_rows_from_summary_context(context)
     out = dict(context)
-    out["summary_rows"] = exclude_centralized_zone_russia_o1_summary_rows(
+    out["summary_rows"] = exclude_centralized_zone_russia_non_o1_summary_rows(
         list(context.get("summary_rows") or [])
     )
     context = out
@@ -67,12 +66,13 @@ def build_summary_ez_page_context(
         years = list(context["years"])
         inject_summary_table_cz_new_territories_reference_row(
             context["summary_rows"],
-            years=years,
+            years,
             rounding_digits=rounding_digits,
         )
         mask_summary_rows_perimeter_variant_year_display(
             context["summary_rows"],
             years,
+            unrestricted_perimeter_variant_input=True,
         )
         apply_sipr_consumption_display_fallback_to_summary_rows(
             context["summary_rows"],
@@ -92,7 +92,7 @@ def build_summary_ez_page_context(
     tag_energy_consumption_summary_rows_before_energy_zone_blocks(
         context["summary_rows"]
     )
-    tag_summary_table_energy_zone_footer_rows(context["summary_rows"])
+    # Сибирь/Восток здесь — основные блоки энергозон, не footer сводной (как на ОЭС/ФО).
     context["summary_variant_toggle_default_off"] = True
     context.update(get_demand_summary_filter_refdata())
     context["pd_ez_filters_cascade"] = get_energy_consumption_ez_filter_cascade_data()

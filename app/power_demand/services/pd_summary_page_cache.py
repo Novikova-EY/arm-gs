@@ -13,7 +13,7 @@ from flask import request
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.aggregation_cache import get_redis_client
 
-PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 22
+PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 28
 _CACHE_TIMEOUT = timedelta(minutes=30)
 _memory_cache: dict[str, tuple[Any, datetime]] = {}
 # Поколение кэша: отсекает «опоздавшие» записи после clear (threaded/gunicorn).

@@ -232,7 +232,14 @@ def _parse_prom_sign_value(value) -> str | None:
 def _is_name_header(header_norm: str) -> bool:
     if "признак" in header_norm:
         return False
+    # «Наименование Энергосистемы» — колонка РЭС, не название объекта/показателя.
+    if "энергосистем" in header_norm:
+        return False
     if header_norm == "электростанция":
+        return True
+    if "название" in header_norm and (
+        "объект" in header_norm or "показател" in header_norm
+    ):
         return True
     if "наименование" in header_norm:
         return True
@@ -243,6 +250,11 @@ def _is_name_header(header_norm: str) -> bool:
 
 def _is_res_header(header_norm: str) -> bool:
     if "рэс" in header_norm:
+        return True
+    if "энергосистем" in header_norm:
+        # «Наименование Энергосистемы», «Региональная энергосистема» и т.п.
+        if header_norm.startswith("тип "):
+            return False
         return True
     return "региональн" in header_norm and "энергосистем" in header_norm
 
@@ -377,8 +389,13 @@ def _detect_column_layout(rows: Sequence[tuple]) -> GenerationColumnLayout:
             res_col = _infer_res_col(external_code_cols, period_cols)
         if sign_col is None:
             sign_col = _infer_sign_col(external_code_cols, res_col, period_cols)
+        if name_col is not None and name_col == res_col:
+            # Одна и та же колонка не может быть и РЭС, и названием объекта.
+            name_col = None
         if name_col is None:
-            used_cols = set(external_code_cols) | period_cols | {c for c in (res_col, sign_col) if c is not None}
+            used_cols = set(external_code_cols) | period_cols | {
+                c for c in (res_col, sign_col) if c is not None
+            }
             name_col = _infer_name_col(external_code_cols, used_cols, len(headers))
 
         if annual_col is None and not month_cols:

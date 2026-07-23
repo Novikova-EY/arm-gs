@@ -380,11 +380,10 @@ def get_energy_system_data(regional_district_id):
 @login_required
 @roles_required(["admin"])
 def clear_station_cache():
-    """Очищает кэш станций."""
+    """Очищает кэш станций (обратная совместимость для страниц станций/топлива)."""
     try:
         from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
         
-        # Очищаем кэш агрегаций и отсортированных списков станций
         clear_aggregation_cache()
         _render_machines_tbody_cached.cache_clear()
         
@@ -403,6 +402,49 @@ def clear_station_cache():
         return jsonify({
             'success': False,
             'message': 'Ошибка при очистке кэша'
+        }), 500
+
+
+@station_bp.route('/clear_all_caches', methods=['POST'])
+@login_required
+@roles_required(["admin"])
+def clear_all_caches():
+    """Очищает кэши всех модулей (станции, справочники, сводки, энергобаланс, экономика)."""
+    try:
+        from app.common.services.clear_all_caches import clear_all_application_caches
+
+        result = clear_all_application_caches()
+        cleared = result.get("cleared") or []
+        errors = result.get("errors") or []
+        if errors:
+            current_app.logger.warning(
+                "Очистка кэшей с предупреждениями: cleared=%s errors=%s",
+                cleared,
+                errors,
+            )
+            return jsonify({
+                "success": True,
+                "partial": True,
+                "message": (
+                    "Кэш очищен частично. Успешно: "
+                    + ", ".join(cleared)
+                    + ". Ошибки: "
+                    + "; ".join(errors)
+                ),
+                "cleared": cleared,
+                "errors": errors,
+            })
+        current_app.logger.info("Кэш всех модулей очищен администратором: %s", cleared)
+        return jsonify({
+            "success": True,
+            "message": "Кэш всех модулей очищен",
+            "cleared": cleared,
+        })
+    except Exception as exc:
+        current_app.logger.error(f"Ошибка при полной очистке кэшей: {exc}")
+        return jsonify({
+            "success": False,
+            "message": "Ошибка при очистке кэша",
         }), 500
 
 

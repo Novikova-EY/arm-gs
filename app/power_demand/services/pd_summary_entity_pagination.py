@@ -45,6 +45,7 @@ def _oes_suffix_block(block: list[dict[str, Any]]) -> bool:
 
 
 def _ez_suffix_block(block: list[dict[str, Any]]) -> bool:
+    """После энергозон — блок «Новые территории» (ТИТЭС на ЭЗ не показываем)."""
     if not block:
         return False
     head = block[0]
@@ -69,6 +70,7 @@ _SCOPE_SPECS: dict[str, _PaginationScopeSpec] = {
         id_field="id_federal_district",
         parent_fk_column="id_federal_district",
         section_entity_kinds=frozenset({"group", "perimeter_variant"}),
+        suffix_block=None,
     ),
     "ez": _PaginationScopeSpec(
         demand_model_name=EZ_DEMAND_MODEL_NAME,
@@ -251,7 +253,16 @@ def filter_segment_rows_to_pagination_page(
     page: int,
     page_size: int,
 ) -> list[dict[str, Any]]:
-    """Оставить строки ленивого сегмента (nt_extra и др.), относящиеся к секциям текущей страницы."""
+    """Оставить строки ленивого сегмента для текущей страницы пагинации.
+
+    - Строки с id секции (ОЭС / ФО / ЭЗ) — если секция на текущей странице.
+    - Префикс без id секции (ЦЗ / ЕЭС / синхронные зоны, в т.ч. 1-я СЗ) — на 1-й.
+    - Суффикс без id (ТИТЭС / «Новые территории» на ЭЗ) — на последней.
+
+    Раньше строки без id секции с ``pd_pd_nt_extra_row`` попадали только на
+    последнюю страницу (а without_nt отбрасывались) — клиент не находил блок
+    вверху и дописывал «Расчетное максимальное…» в конец tbody.
+    """
     if not segment_rows:
         return []
     if not boundary_rows or page_size <= 0:
@@ -272,8 +283,12 @@ def filter_segment_rows_to_pagination_page(
         if section_id is not None:
             visible_ids.add(section_id)
 
-    total_pages = int(meta.get("total_pages") or 1)
-    is_last_page = page >= total_pages
+    total_pages = max(1, int(meta.get("total_pages") or 1))
+    page = max(1, min(int(page), total_pages))
+    prefix, _sections, suffix = split_summary_rows_for_pagination(segment_rows, scope)
+    prefix_ids = {id(r) for r in prefix}
+    suffix_ids = {id(r) for r in suffix}
+
     out: list[dict[str, Any]] = []
     for row in segment_rows:
         section_id = _section_id_from_row(row, spec)
@@ -281,7 +296,11 @@ def filter_segment_rows_to_pagination_page(
             if section_id in visible_ids:
                 out.append(row)
             continue
-        if row.get("pd_pd_nt_extra_row") and is_last_page:
+        rid = id(row)
+        if rid in prefix_ids and page == 1:
+            out.append(row)
+            continue
+        if rid in suffix_ids and page >= total_pages:
             out.append(row)
     return out
 
@@ -388,7 +407,10 @@ def tag_summary_rows_before_section_blocks(
     rows: list[dict[str, Any]] | None,
     scope: str,
 ) -> None:
-    """Строки до блоков ОЭС/ФО/энергозон — только при нажатой «Сводная таблица»."""
+    """Строки до блоков ОЭС/ФО/энергозон — только при нажатой «Сводная таблица».
+
+    Блок ТИТЭС показывается только на сводке по ОЭС (не на ФО/энергозонах).
+    """
     if not rows or scope not in PAGINATION_SCOPES:
         return
     for row in rows:

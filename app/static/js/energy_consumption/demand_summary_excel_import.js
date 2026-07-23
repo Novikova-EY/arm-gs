@@ -66,9 +66,15 @@
                     if (data.status === "running") {
                         var done = data.versions_done || 0;
                         var total = data.versions_total || 0;
+                        var detail = data.progress_detail || "";
                         var label = "Импорт…";
                         if (total > 0) {
                             label = "Импорт… " + done + "/" + total;
+                            if (detail) {
+                                label += " — " + detail;
+                            }
+                        } else if (detail) {
+                            label = "Импорт… " + detail;
                         }
                         setBusy(true, label);
                         window.setTimeout(function () {

@@ -41,26 +41,14 @@
 
             <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
             <div class="col-12 col-lg-4 text-lg-end">
-                <!-- Кнопки управления кэшем (только для admin) -->
+                <!-- Кнопка очистки кэша всех модулей (только для admin) -->
                 {% if current_user.is_admin %}
                 <div class="d-inline-flex flex-wrap gap-2 justify-content-end">
-                    <button type="button" 
-                            class="btn btn-outline-danger fw-bold" 
-                            onclick="clearReferenceCache()" 
-                            title="Очистить кэш справочников">
-                        📚 Очистка кэша справочников
-                    </button>
-                    <button type="button" 
-                            class="btn btn-outline-warning fw-bold" 
-                            onclick="clearStationCache()" 
-                            title="Очистить кэш станций">
-                        🗑️ Очистить кэш станций
-                    </button>
-                    <button type="button" 
-                            class="btn btn-outline-info fw-bold" 
-                            onclick="refreshStationCache()" 
-                            title="Обновить кэш станций">
-                        🔄 Обновить кэш
+                    <button type="button"
+                            class="btn btn-outline-danger fw-bold"
+                            onclick="clearAllCaches()"
+                            title="Очистить кэш станций, справочников, сводок нагрузок/потребления, энергобаланса и экономики">
+                        🗑️ Очистить весь кэш
                     </button>
                 </div>
                 {% endif %}
@@ -610,11 +598,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<!-- Управление кэшем станций (для работы кнопок на этой странице) -->
+<!-- Управление кэшем (для работы кнопки на этой странице) -->
 <script>
-function clearStationCache() {
-    if (!confirm('Очистить кэш станций? Это может временно замедлить загрузку страниц.')) return;
-    fetch('{{ url_for("station_bp.clear_station_cache") }}', {
+function clearAllCaches() {
+    if (!confirm('Очистить кэш всех модулей (станции, справочники, сводки, энергобаланс, экономика)? Это может временно замедлить загрузку страниц.')) {
+        return;
+    }
+    fetch('{{ url_for("station_bp.clear_all_caches") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -624,52 +614,12 @@ function clearStationCache() {
     .then(r => r.json())
     .then(d => {
         if (d.success) {
-            alert('Кэш станций очищен');
+            alert(d.message || 'Кэш всех модулей очищен');
         } else {
             alert('Ошибка очистки кэша: ' + (d.message || ''));
         }
     })
     .catch(() => alert('Ошибка сети при очистке кэша'));
-}
-
-function refreshStationCache() {
-    if (!confirm('Обновить (перестроить) кэш станций? Это может занять некоторое время.')) return;
-    fetch('{{ url_for("station_bp.refresh_station_cache") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) {
-            alert('Кэш станций обновлен');
-        } else {
-            alert('Ошибка обновления кэша: ' + (d.message || ''));
-        }
-    })
-    .catch(() => alert('Ошибка сети при обновлении кэша'));
-}
-
-function clearReferenceCache() {
-    if (!confirm('Очистить кэш справочников?')) return;
-    fetch('{{ url_for("station_bp.clear_refdata_cache") }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        }
-    })
-    .then(r => r.json())
-    .then(d => {
-        if (d.success) {
-            alert('Кэш справочников очищен');
-        } else {
-            alert('Ошибка очистки кэша справочников: ' + (d.message || ''));
-        }
-    })
-    .catch(() => alert('Ошибка сети при очистке кэша справочников'));
 }
 </script>
 

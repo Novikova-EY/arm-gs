@@ -1,3 +1,5 @@
+{# Группа «не указано» — построчно; «ЭСПП» — до 2018 свод по РЭС (rowspan), с 2019 по станциям #}
+{% set espp_svod_period_keys = sign_group.espp_svod_period_keys|default([]) %}
 {% for station_row in sign_group.stations %}
 <tr class="text-center align-middle">
     <td>{{ station_row.kto_display }}</td>
@@ -17,8 +19,17 @@
     <td>{{ station_row.tes_machine_type }}</td>
     <td>{{ station_row.primary_fuel }}</td>
     <td>{{ station_row.fuel_so }}</td>
+    {% set is_first_station = loop.first %}
     {% for period_num, period_label in period_columns %}
-    <td>{{ format_generation_cell(station_row.periods.get(period_num)) }}</td>
+        {% if period_num in espp_svod_period_keys %}
+            {% if is_first_station %}
+            <td rowspan="{{ sign_group.rowspan }}" class="align-middle">
+                {{ format_generation_cell(sign_group.periods.get(period_num)) }}
+            </td>
+            {% endif %}
+        {% else %}
+            <td>{{ format_generation_cell(station_row.periods.get(period_num)) }}</td>
+        {% endif %}
     {% endfor %}
 </tr>
 {% endfor %}

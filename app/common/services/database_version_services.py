@@ -653,7 +653,6 @@ def _get_max_generation_data_year(version_id: int) -> Optional[int]:
     """
     q = text(f"""
         SELECT GREATEST(
-            COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_station_powers     WHERE database_version_id = :vid), 0),
             COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_machine_powers     WHERE database_version_id = :vid), 0),
             COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_pgu_machine_powers WHERE database_version_id = :vid), 0),
             COALESCE((SELECT MAX(year_number) FROM {SCHEMA_GENERATION}.gs_gen_machine_fuels      WHERE database_version_id = :vid), 0),
@@ -743,13 +742,6 @@ def extend_version_period_by_copying_last_year(
 
     # 3) Копируем данные последнего года (base_end_year) на каждый новый год
     copy_specs = [
-        # station_powers: мощности электростанции
-        {
-            "table": f"{SCHEMA_GENERATION}.gs_gen_station_powers",
-            "key_cols": ["id_station"],
-            "select_cols": ["id_station", "p_ust", "p_ogr", "p_rasp"],
-            "insert_cols": ["year_number", "id_station", "p_ust", "p_ogr", "p_rasp", "database_version_id"],
-        },
         # machine_powers: мощности агрегатов
         {
             "table": f"{SCHEMA_GENERATION}.gs_gen_machine_powers",
@@ -1352,13 +1344,6 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         stage6_tables = [
             {
                 'schema': gen_schema,
-                'table': 'gs_gen_station_powers',
-                'dependencies': [
-                    {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'}
-                ]
-            },
-            {
-                'schema': gen_schema,
                 'table': 'gs_gen_machines',
                 'dependencies': [
                     {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'},
@@ -1920,13 +1905,6 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         },
         {
             'schema': gen_schema,
-            'table': 'gs_gen_station_powers',
-            'dependencies': [
-                {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'}
-            ]
-        },
-        {
-            'schema': gen_schema,
             'table': 'gs_gen_machines',
             'dependencies': [
                 {'fk': 'id_station', 'ref_table': f'{gen_schema}.gs_gen_stations'},
@@ -2267,7 +2245,6 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
     generation_tables = [
         'gs_gen_station_groups',            # 1. Сначала группы станций (независимые)
         'gs_gen_stations',                  # 2. Затем электростанции (зависят от групп станций)
-        'gs_gen_station_powers',            # 5. Мощности станций (зависят от станций)
         'gs_gen_machines',                  # 6. Машины (зависят от станций)
         'gs_gen_machine_powers',            # 7. Мощности машин (зависят от машин)
         'gs_gen_machine_fuels',             # 8. Топливо машин (зависят от машин)
@@ -2668,12 +2645,6 @@ def _update_version_relationships(id_mappings, target_version_id, user):
             'foreign_key': 'id_station_group',
             'reference_table': 'gs_gen.gs_gen_station_groups'
         },
-        # 8. station_powers -> stations
-        {
-            'table': 'gs_gen.gs_gen_station_powers',
-            'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.gs_gen_stations'
-        },
         # 9. boilers -> stations
         {
             'table': 'gs_gen.gs_gen_boilers',
@@ -2829,12 +2800,6 @@ def _update_version_relationships_ultra_fast(id_mappings, target_version_id, use
             'foreign_key': 'id_station_group',
             'reference_table': 'gs_gen.gs_gen_station_groups'
         },
-        # 8. station_powers -> stations
-        {
-            'table': 'gs_gen.gs_gen_station_powers',
-            'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.gs_gen_stations'
-        },
         # 9. boilers -> stations
         {
             'table': 'gs_gen.gs_gen_boilers',
@@ -2988,12 +2953,6 @@ def _update_version_relationships_ultra_optimized(id_mappings, target_version_id
             'foreign_key': 'id_station_group',
             'reference_table': 'gs_gen.gs_gen_station_groups'
         },
-        # 8. station_powers -> stations
-        {
-            'table': 'gs_gen.gs_gen_station_powers',
-            'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.gs_gen_stations'
-        },
         # 9. boilers -> stations
         {
             'table': 'gs_gen.gs_gen_boilers',
@@ -3126,12 +3085,6 @@ def _update_version_relationships_fixed(id_mappings, target_version_id, user):
             'table': 'gs_gen.gs_gen_stations',
             'foreign_key': 'id_station_group',
             'reference_table': 'gs_gen.gs_gen_station_groups'
-        },
-        # 2. station_powers -> stations (мощности станций ссылаются на электростанции)
-        {
-            'table': 'gs_gen.gs_gen_station_powers',
-            'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.gs_gen_stations'
         },
         # 3. machines -> stations (машины ссылаются на электростанции)
         {
@@ -3343,12 +3296,6 @@ def _update_version_relationships_lightning_fast(id_mappings, target_version_id,
             'foreign_key': 'id_station_group',
             'reference_table': 'gs_gen.gs_gen_station_groups'
         },
-        # 8. station_powers -> stations
-        {
-            'table': 'gs_gen.gs_gen_station_powers',
-            'foreign_key': 'id_station',
-            'reference_table': 'gs_gen.gs_gen_stations'
-        },
         # 9. boilers -> stations
         {
             'table': 'gs_gen.gs_gen_boilers',
@@ -3515,7 +3462,6 @@ def _delete_version_data_staged(version_id, user):
     stage6_tables = [
         (SCHEMA_GENERATION, 'gs_gen_machines'),
         (SCHEMA_FUEL, 'gs_fue_equipment_group_fuel_param'),  # Параметры топлива групп оборудования
-        (SCHEMA_GENERATION, 'gs_gen_station_powers'),
         (SCHEMA_GENERATION, 'gs_gen_boilers')
     ]
     
@@ -3579,7 +3525,7 @@ def _delete_version_data_staged(version_id, user):
     all_stages = [
         ("ЭТАП 8", stage8_tables),  # gs_gen.gs_gen_pgu_machine_powers
         ("ЭТАП 7", stage7_tables),  # gs_gen.gs_gen_machine_powers, machine_fuels, machine_tes_types, pgu_machines
-        ("ЭТАП 6", stage6_tables),  # gs_gen.gs_gen_station_powers, machines, boilers
+        ("ЭТАП 6", stage6_tables),  # gs_gen.gs_gen_machines, boilers
         ("ЭТАП 5", stage5_tables),  # gs_gen.gs_gen_stations
         ("ЭТАП 4", stage4_tables),  # refdata.energy_areas, energy_units
         ("ЭТАП 3", stage3_tables),  # refdata.regional_districts, regional_energy_systems
@@ -3803,7 +3749,6 @@ def _delete_version_data(version_id, user):
         'gs_gen_pgu_machine_powers',  # Мощности ПГУ машин (зависят от ПГУ машин)
         'gs_gen_pgu_machines',        # ПГУ машины (зависят от машин)
         'gs_gen_machines',            # Машины (зависят от станций)
-        'gs_gen_station_powers',      # Мощности станций (зависят от станций)
         'gs_gen_boilers',             # Котлы (зависят от станций)
         'gs_gen_stations',            # электростанции (зависят от групп станций)
         'gs_gen_station_groups',      # Группы станций
@@ -4371,81 +4316,15 @@ def set_active_version(version_id, user):
     
     # ВАЖНО: Очищаем все кэши ПОСЛЕ установки версии в контекст
     try:
-        from app.generation.services.station_services.aggregation_cache import clear_aggregation_cache
-        from app.common.services.cache_services import CacheService
-        from app.common.services.choices_cache_service import ChoicesCacheService
-        from app.common.services.get_services.territories.regional_district_get_services import (
-            _get_regional_districts_map,
-            _get_rd_to_fd_id_map,
-            _get_rd_to_res_ids_map,
-            _get_rd_to_ues_ids_map,
-            _get_rd_to_est_ids_map,
-            invalidate_regional_district_lookups_cache,
+        from app.common.services.clear_all_caches import clear_all_application_caches
+
+        result = clear_all_application_caches()
+        current_app.logger.info(
+            "Все кэши очищены после активации версии %s: cleared=%s errors=%s",
+            version_id,
+            result.get("cleared"),
+            result.get("errors"),
         )
-        from app.common.services.get_services.territories.federal_district_get_services import (
-            get_federal_districts_map, get_fd_to_rd_ids_map, get_regional_district_to_fd_id_map
-        )
-        from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
-            get_union_energy_system_list_full,
-            get_union_energy_system_list,
-            get_union_energy_systems_map,
-            get_ues_to_res_ids_map,
-            get_res_to_ues_id_map,
-            get_ues_to_est_id_map,
-            get_ues_to_rd_ids_map,
-            get_ues_to_fd_ids_map,
-        )
-        from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
-            get_regional_energy_systems_map, get_res_to_ues_id_map as get_res_to_ues_id_map_res, 
-            get_ues_to_res_ids_map as get_ues_to_res_ids_map_res
-        )
-        
-        # ВАЖНО: Очищаем кэш агрегаций станций ПЕРВЫМ, чтобы очистить Redis и memory кэши
-        clear_aggregation_cache()
-        
-        # Очищаем базовые кэши справочников
-        CacheService.clear_cache()
-        
-        # Очищаем кэш выборок
-        ChoicesCacheService.clear_cache()
-        
-        # Очищаем кэши территорий
-        invalidate_regional_district_lookups_cache()
-        if hasattr(get_federal_districts_map, 'cache_clear'):
-            get_federal_districts_map.cache_clear()
-        if hasattr(get_fd_to_rd_ids_map, 'cache_clear'):
-            get_fd_to_rd_ids_map.cache_clear()
-        if hasattr(get_regional_district_to_fd_id_map, 'cache_clear'):
-            get_regional_district_to_fd_id_map.cache_clear()
-        
-        # Очищаем кэши энергосистем
-        if hasattr(get_union_energy_system_list_full, 'cache_clear'):
-            get_union_energy_system_list_full.cache_clear()
-        if hasattr(get_union_energy_system_list, 'cache_clear'):
-            get_union_energy_system_list.cache_clear()
-        if hasattr(get_union_energy_systems_map, 'cache_clear'):
-            get_union_energy_systems_map.cache_clear()
-        if hasattr(get_ues_to_res_ids_map, 'cache_clear'):
-            get_ues_to_res_ids_map.cache_clear()
-        if hasattr(get_res_to_ues_id_map, 'cache_clear'):
-            get_res_to_ues_id_map.cache_clear()
-        if hasattr(get_ues_to_est_id_map, 'cache_clear'):
-            get_ues_to_est_id_map.cache_clear()
-        if hasattr(get_ues_to_rd_ids_map, 'cache_clear'):
-            get_ues_to_rd_ids_map.cache_clear()
-        if hasattr(get_ues_to_fd_ids_map, 'cache_clear'):
-            get_ues_to_fd_ids_map.cache_clear()
-        if hasattr(get_regional_energy_systems_map, 'cache_clear'):
-            get_regional_energy_systems_map.cache_clear()
-        if hasattr(get_res_to_ues_id_map_res, 'cache_clear'):
-            get_res_to_ues_id_map_res.cache_clear()
-        if hasattr(get_ues_to_res_ids_map_res, 'cache_clear'):
-            get_ues_to_res_ids_map_res.cache_clear()
-        
-        # ДОПОЛНИТЕЛЬНО: Очищаем кэш агрегаций ЕЩЕ РАЗ для надежности
-        clear_aggregation_cache()
-        
-        current_app.logger.info(f"Все кэши очищены после активации версии {version_id}")
     except Exception as e:
         current_app.logger.error(f"Ошибка при очистке кэшей после активации версии: {e}")
     
@@ -4717,7 +4596,6 @@ def _build_version_id_mappings(version_id, user):
         'gs_gen.gs_gen_machine_powers',
         'gs_gen.gs_gen_machine_fuels',
         'gs_gen.gs_gen_machine_tes_types',
-        'gs_gen.gs_gen_station_powers',
         'gs_gen.gs_gen_pgu_machines',
         'gs_gen.gs_gen_pgu_machine_powers',
         'gs_gen.gs_gen_boilers'

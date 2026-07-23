@@ -307,11 +307,21 @@ def _parse_export_years_list(full_years: list[int]) -> list[int] | None:
 
 
 def _demand_summary_excel_response(context: dict, filename_prefix: str):
+    ui_opts = parse_energy_consumption_export_ui_options(
+        summary_table_page=bool(context.get("summary_table_page")),
+    )
     stream = build_demand_summary_excel_stream(
         summary_rows=context["summary_rows"],
         years=context["years"],
         sheet_title=context["page_title"],
         year_features=context.get("year_features") or {},
+        rounding_digits=int(
+            context.get("rounding_digits")
+            if context.get("rounding_digits") is not None
+            else 1
+        ),
+        sipr_on=bool(ui_opts.sipr_on),
+        summary_table_page=bool(ui_opts.summary_table_page),
     )
     fn = f"{filename_prefix}_{context['start_year']}_{context['end_year']}.xlsx"
     return send_file(
@@ -337,6 +347,7 @@ def _apply_ec_summary_export_filters(
         summary_table_page=summary_table_page
     )
     context = dict(context)
+    context["summary_table_page"] = summary_table_page
     context["summary_rows"] = finalize_summary_rows_for_excel_export(
         list(context.get("summary_rows") or []),
         visible_parameter_keys=visible,
@@ -592,6 +603,7 @@ def demand_summary_fo_ez_import_status(job_id: str):
             status="running",
             versions_done=job.get("versions_done") or 0,
             versions_total=job.get("versions_total") or 0,
+            progress_detail=job.get("progress_detail") or None,
         )
     if job.get("status") == "error":
         return jsonify(ok=False, status="error", error=job.get("error") or "Ошибка импорта."), 400

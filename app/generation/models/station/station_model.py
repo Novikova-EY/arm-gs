@@ -108,7 +108,6 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     station_type = db.relationship('StationType', back_populates='stations')
 
     # Children
-    station_powers = db.relationship('StationPower', back_populates='station_power', cascade="all, delete-orphan")
     station_energy_generations = db.relationship(
         'StationEnergyGeneration',
         back_populates='station',

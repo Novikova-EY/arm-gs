@@ -9,14 +9,17 @@
     const loaderStartedAt = Date.now();
     const LOADER_MIN_MS = 400;
 
+    function normalizePageFilterLine(value) {
+        // Старые закладки/разметка могли содержать «;» в конце подписи страницы.
+        return String(value || "").trim().replace(/;+\s*$/, "");
+    }
+
     function rowPageLines(row) {
         const raw = row.getAttribute("data-filter-page-lines") || "";
         if (!raw) {
             return [];
         }
-        return raw.split("||").map(function (s) {
-            return s.trim();
-        }).filter(Boolean);
+        return raw.split("||").map(normalizePageFilterLine).filter(Boolean);
     }
 
     function rowFilterValue(row, col) {
@@ -148,7 +151,7 @@
         const text = params.get("q") || "";
 
         [
-            { col: "page", values: pages },
+            { col: "page", values: pages.map(normalizePageFilterLine).filter(Boolean) },
             { col: "aggregation", values: aggs },
             { col: "cell", values: cells },
         ].forEach(function (item) {

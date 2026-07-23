@@ -142,24 +142,152 @@ def test_paginate_oes_last_page_includes_suffix():
     assert meta["has_next"] is False
 
 
-def test_filter_segment_rows_must_not_replace_core_pagination():
-    """filter_segment_rows_to_pagination_page не подставляет prefix/suffix — только для ленивых сегментов."""
+def test_filter_segment_rows_page1_includes_prefix_calc_not_other_sections():
+    """Ленивый calc_max префикса (1-я СЗ) — на 1-й странице, как core prefix."""
     rows = _sample_oes_rows()
-    page_rows = filter_segment_rows_to_pagination_page(
-        rows,
-        rows,
-        "oes",
-        page=2,
-        page_size=1,
-    )
-    labels = [r["entity_label"] for r in page_rows if r.get("show_entity_cell")]
-    assert not any("ТИТЭС" in (lbl or "") for lbl in labels)
+    # Добавим id секций, как в реальных строках ОЭС.
+    for r in rows:
+        if r.get("entity_label") == "ОЭС Центра":
+            r["id_union_energy_system"] = 1
+            r["demand_model_name"] = "UnionEnergySystemDemandParameter"
+        if r.get("entity_label") == "ОЭС Юга":
+            r["id_union_energy_system"] = 2
+            r["demand_model_name"] = "UnionEnergySystemDemandParameter"
 
-    paginated, _ = paginate_oes_summary_rows(rows, page=2, page_size=1)
-    paginated_labels = [
-        r["entity_label"] for r in paginated if r.get("show_entity_cell")
+    first_sa_calc = _block(
+        {
+            "entity_label": "Первая синхронная зона без НТ",
+            "entity_kind": "synchronous_area",
+            "demand_model_name": "SynchronousAreaDemandParameter",
+            "parent_fk_column": "id_synchronous_area",
+            "parent_id": 39,
+            "id_synchronous_area": 39,
+            "perimeter_variant_code": "without_nt",
+            "pd_pd_summary_table_only_row": True,
+            "parameter_key": "calculated_max_power_mw",
+        },
+        {"parameter_key": "calculated_max_sa_mw"},
+    )
+    first_sa_with_nt_calc = _block(
+        {
+            "entity_label": "Первая синхронная зона с НТ",
+            "entity_kind": "synchronous_area",
+            "demand_model_name": "SynchronousAreaDemandParameter",
+            "parent_fk_column": "id_synchronous_area",
+            "parent_id": 39,
+            "id_synchronous_area": 39,
+            "perimeter_variant_code": "with_nt",
+            "pd_pd_nt_extra_row": True,
+            "pd_pd_summary_table_only_row": True,
+            "parameter_key": "calculated_max_power_mw",
+        },
+        {"parameter_key": "calculated_max_sa_mw"},
+    )
+    oes_center_calc = _block(
+        {
+            "entity_label": "ОЭС Центра",
+            "entity_kind": "group",
+            "demand_model_name": "UnionEnergySystemDemandParameter",
+            "id_union_energy_system": 1,
+            "parameter_key": "calculated_max_power_mw",
+        },
+    )
+    oes_south_calc = _block(
+        {
+            "entity_label": "ОЭС Юга",
+            "entity_kind": "group",
+            "demand_model_name": "UnionEnergySystemDemandParameter",
+            "id_union_energy_system": 2,
+            "parameter_key": "calculated_max_power_mw",
+        },
+    )
+    calc_rows = first_sa_with_nt_calc + first_sa_calc + oes_center_calc + oes_south_calc
+
+    page1 = filter_segment_rows_to_pagination_page(
+        calc_rows, rows, "oes", page=1, page_size=1
+    )
+    labels1 = [r["entity_label"] for r in page1 if r.get("show_entity_cell")]
+    assert "Первая синхронная зона без НТ" in labels1
+    assert "Первая синхронная зона с НТ" in labels1
+    assert "ОЭС Центра" in labels1
+    assert "ОЭС Юга" not in labels1
+
+    page2 = filter_segment_rows_to_pagination_page(
+        calc_rows, rows, "oes", page=2, page_size=1
+    )
+    labels2 = [r["entity_label"] for r in page2 if r.get("show_entity_cell")]
+    assert "Первая синхронная зона без НТ" not in labels2
+    assert "Первая синхронная зона с НТ" not in labels2
+    assert "ОЭС Юга" in labels2
+    assert "ОЭС Центра" not in labels2
+
+
+def test_filter_segment_rows_last_page_includes_suffix_calc():
+    """Суффикс ленивого сегмента (ТИТЭС) — на последней странице, как у core."""
+    rows = _sample_oes_rows()
+    for r in rows:
+        if r.get("entity_label") == "ОЭС Центра":
+            r["id_union_energy_system"] = 1
+            r["demand_model_name"] = "UnionEnergySystemDemandParameter"
+        if r.get("entity_label") == "ОЭС Юга":
+            r["id_union_energy_system"] = 2
+            r["demand_model_name"] = "UnionEnergySystemDemandParameter"
+
+    tites_calc = _block(
+        {
+            "entity_label": "ТИТЭС и децентрализованная зона",
+            "entity_kind": "aggregation_level",
+            "pd_pd_aggregation_level_row": True,
+            "parameter_key": "calculated_max_power_mw",
+        },
+    )
+    # Суффикс определяется по блоку с «ТИТЭС» в подписи.
+    tites_calc[0]["parameter_key"] = ""
+    tites_entity = _block(
+        {
+            "entity_label": "ТИТЭС объект",
+            "entity_kind": "child",
+            "demand_model_name": "RegionalDistrictDemandParameter",
+            "parameter_key": "calculated_max_power_mw",
+        },
+    )
+    # Нужен заголовок ТИТЭС как suffix_block, затем строки внутри суффикса.
+    suffix_header = [
+        {
+            "entity_label": "ТИТЭС и децентрализованная зона",
+            "entity_kind": "aggregation_level",
+            "pd_pd_aggregation_level_row": True,
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "parameter_key": "",
+        }
     ]
-    assert any("ТИТЭС" in (lbl or "") for lbl in paginated_labels)
+    calc_rows = (
+        _block(
+            {
+                "entity_label": "ОЭС Юга",
+                "entity_kind": "group",
+                "demand_model_name": "UnionEnergySystemDemandParameter",
+                "id_union_energy_system": 2,
+                "parameter_key": "calculated_max_power_mw",
+            },
+        )
+        + suffix_header
+        + tites_entity
+    )
+
+    page2 = filter_segment_rows_to_pagination_page(
+        calc_rows, rows, "oes", page=2, page_size=1
+    )
+    labels = [r["entity_label"] for r in page2 if r.get("show_entity_cell")]
+    assert "ОЭС Юга" in labels
+    assert any("ТИТЭС" in (lbl or "") for lbl in labels)
+
+    page1 = filter_segment_rows_to_pagination_page(
+        calc_rows, rows, "oes", page=1, page_size=1
+    )
+    labels1 = [r["entity_label"] for r in page1 if r.get("show_entity_cell")]
+    assert not any("ТИТЭС" in (lbl or "") for lbl in labels1)
 
 
 def test_split_oes_does_not_treat_nt_aggregation_inside_ues_as_suffix():

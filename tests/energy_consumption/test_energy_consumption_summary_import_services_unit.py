@@ -55,6 +55,7 @@ def test_aggregate_sheet_labels_russia_with_nt_column_writes_without_nt_variant(
     assert ("Россия", 2026, "with_nt") not in acc
 
 
+
 @pytest.mark.parametrize(
     ("label", "variant_code"),
     [
@@ -342,3 +343,46 @@ def test_import_row_year_numeric_pairs_ees_gaes_sparse_trailing_years_right_alig
         (2030, Decimal("1174085.033")),
         (2031, Decimal("1161297.7021041")),
     ]
+
+
+def test_accumulator_skips_oes_without_gaes_injected_rows_that_share_base_pvc():
+    """Инжект «ОЭС … без заряда ГАЭС» (pvc=None) не должен попадать в запись в БД."""
+    from app.energy_consumption.models.energy_systems.union_energy_system_energy_consumption_parameter_model import (
+        UnionEnergySystemEnergyConsumptionParameter,
+    )
+
+    years = [2024, 2025]
+    base_row = {
+        "demand_model_name": UnionEnergySystemEnergyConsumptionParameter.__name__,
+        "parent_fk_column": "id_union_energy_system",
+        "parent_id": 117,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "perimeter_variant_code": None,
+        "pd_ec_formula_derived_row": True,
+        "year_values": ["268 464,8", "268 622,2"],
+    }
+    injected = dict(base_row)
+    injected["pd_ec_ues_without_gaes_injected_row"] = True
+    injected["entity_label"] = "ОЭС Центр без заряда ГАЭС"
+    injected["year_values"] = ["234 715,4", "235 936"]
+
+    acc = service._accumulator_from_formula_summary_rows(
+        [injected],
+        years,
+        field_name="energy_consumption_mln_kvt_ch",
+    )
+    assert acc == {}
+
+    # Без флага инжекта строка по-прежнему учитывается (реальные формульные ряды).
+    acc_real = service._accumulator_from_formula_summary_rows(
+        [base_row],
+        years,
+        field_name="energy_consumption_mln_kvt_ch",
+    )
+    model = UnionEnergySystemEnergyConsumptionParameter
+    assert acc_real[(model, "id_union_energy_system", 117, 2024, None)] == Decimal(
+        "268464.8"
+    )
+    assert acc_real[(model, "id_union_energy_system", 117, 2025, None)] == Decimal(
+        "268622.2"
+    )

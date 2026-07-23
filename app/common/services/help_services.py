@@ -157,6 +157,9 @@ def format_decimal_for_display(value, digits=None):
     # digits == -1 → округление до целого
     if digits == -1:
         value = value.to_integral_value(rounding=ROUND_HALF_UP)
+        # Decimal('-0') → '-0'; для ячеек сводки нужен обычный «0».
+        if value == 0:
+            return "0"
         return apply_thousand_grouping_to_display(str(value).replace(".", ","))
 
     # digits is None → округляем до 1 знака по умолчанию

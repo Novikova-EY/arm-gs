@@ -10,6 +10,7 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     _mark_summary_table_collapsed_nt_gaes_variant_row_rules,
     _mark_summary_table_nt_on_gaes_off_variant_row_rules,
     apply_federal_district_centralized_zone_values_from_summary_table_hub,
+    apply_energy_zone_formula_to_summary_rows,
     apply_federal_district_formula_to_summary_rows,
     apply_fo_rd_gaes_territory_entity_labels,
     apply_gaes_without_charge_formula_to_summary_rows,
@@ -37,6 +38,7 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     inject_south_ues_new_territories_summary_rows,
     inject_union_energy_system_without_gaes_summary_rows,
     keep_centralized_zone_rows_in_territory_compact,
+    mask_sakha_yakutia_tites_oes_east_year_membership,
     mask_summary_rows_perimeter_variant_year_display,
     tag_ees_russia_sipr_integer_display_rows,
     tag_energy_consumption_summary_rows_for_territory_compact,
@@ -84,6 +86,12 @@ def convert_context_to_summary_table_page(
             context["summary_rows"],
             source_rows=list(context["summary_rows"]),
             fo_res_sum_source_rows=fo_res_sum_source_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+    if context.get("active_summary") == "ez":
+        apply_energy_zone_formula_to_summary_rows(
+            context["summary_rows"],
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
@@ -152,6 +160,8 @@ def convert_context_to_summary_table_page(
     mask_summary_rows_perimeter_variant_year_display(
         context["summary_rows"],
         list(context.get("years") or []),
+        unrestricted_perimeter_variant_input=context.get("active_summary")
+        in ("oes", "fo", "ez"),
     )
     apply_sipr_consumption_display_fallback_to_summary_rows(
         context["summary_rows"],
@@ -194,6 +204,9 @@ def convert_context_to_summary_table_page(
 def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     """Варианты периметра и переключатели НТ/ГАЭС на страницах «максимумы» (/summary/...)."""
     summary_rows = list(context.get("summary_rows") or [])
+    years = list(context.get("years") or [])
+    if context.get("active_summary") == "oes" and summary_rows and years:
+        mask_sakha_yakutia_tites_oes_east_year_membership(summary_rows, years)
     eu_source_rows_for_tites = list(summary_rows)
     apply_energy_consumption_summary_table_variant_toggle_rows(summary_rows)
     if context.get("active_summary") in ("oes", "fo", "ez"):
@@ -232,6 +245,11 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
     if context.get("active_summary") == "ez":
+        apply_energy_zone_formula_to_summary_rows(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
         inject_east_energy_zone_o1_res_energy_unit_verification_rows(
             summary_rows,
             source_rows=list(summary_rows),
@@ -252,6 +270,12 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
             eu_source_rows_for_tites=eu_source_rows_for_tites,
+        )
+        # Те же проверки ЕЭС/первой СЗ, что на /summary/oes/ — общий верх сводной.
+        inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
         )
     if context.get("active_summary") == "oes":
         # На /summary/oes/ в режиме сводной таблицы значения «ЕЭС России» (тип ЭС)
@@ -322,6 +346,8 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     mask_summary_rows_perimeter_variant_year_display(
         summary_rows,
         list(context.get("years") or []),
+        unrestricted_perimeter_variant_input=context.get("active_summary")
+        in ("oes", "fo", "ez"),
     )
     apply_sipr_consumption_display_fallback_to_summary_rows(
         summary_rows,
@@ -371,6 +397,7 @@ def finalize_oes_max_summary_tites_formula(context: dict) -> dict:
     years = list(context.get("years") or [])
     if not summary_rows or not years:
         return context
+    mask_sakha_yakutia_tites_oes_east_year_membership(summary_rows, years)
     eu_source_rows = context.get("_eu_source_rows_for_tites") or summary_rows
     apply_oes_tites_root_formula_to_summary_rows(
         summary_rows,

@@ -12,15 +12,15 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     _mark_summary_table_expanded_nt_gaes_variant_row_rules,
     _mark_summary_table_nt_on_gaes_off_variant_row_rules,
     append_summary_table_hub_energy_zone_footer_rows,
-    apply_centralized_zone_with_nt_sum_formula,
-    apply_centralized_zone_without_nt_sum_formula,
     apply_sipr_consumption_display_fallback_to_summary_rows,
     build_oes_summary_context,
+    exclude_centralized_zone_russia_non_o1_summary_rows,
     filter_oes_max_summary_page_hidden_rows,
-    inject_summary_table_cz_new_territories_reference_row,
     get_demand_summary_filter_refdata,
     get_energy_consumption_oes_filter_cascade_data,
+    inject_summary_table_cz_new_territories_reference_row,
     keep_centralized_zone_rows_in_territory_compact,
+    mask_sakha_yakutia_tites_oes_east_year_membership,
     mask_summary_rows_perimeter_variant_year_display,
     recompute_sipr_growth_metrics_for_summary_rows,
     tag_ees_russia_sipr_integer_display_rows,
@@ -80,27 +80,25 @@ def build_summary_oes_page_context(
         filter_year_list=filter_year_list,
     )
     tag_summary_table_energy_zone_footer_rows(context["summary_rows"])
-    # «Россия» первая; формулы ЦЗ с/без НТ и справочная «СПРАВОЧНО. Новые территории.» (+НТ).
+    # «Россия» первая; на ЦЗ России остаются только варианты О-1 с/без НТ.
+    context["summary_rows"] = exclude_centralized_zone_russia_non_o1_summary_rows(
+        list(context.get("summary_rows") or [])
+    )
     if context.get("summary_rows") and context.get("years"):
         years = list(context["years"])
-        apply_centralized_zone_with_nt_sum_formula(
-            context["summary_rows"],
-            years=years,
-            rounding_digits=rounding_digits,
-        )
-        apply_centralized_zone_without_nt_sum_formula(
-            context["summary_rows"],
-            years=years,
-            rounding_digits=rounding_digits,
-        )
         inject_summary_table_cz_new_territories_reference_row(
             context["summary_rows"],
-            years=years,
+            years,
             rounding_digits=rounding_digits,
+        )
+        mask_sakha_yakutia_tites_oes_east_year_membership(
+            context["summary_rows"],
+            years,
         )
         mask_summary_rows_perimeter_variant_year_display(
             context["summary_rows"],
             years,
+            unrestricted_perimeter_variant_input=True,
         )
         apply_sipr_consumption_display_fallback_to_summary_rows(
             context["summary_rows"],

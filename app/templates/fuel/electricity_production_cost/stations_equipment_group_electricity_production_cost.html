@@ -226,7 +226,7 @@ document.addEventListener("DOMContentLoaded", function() {
             exportForm.submit();
             setTimeout(function() {
                 exportBtn.disabled = false;
-                exportBtn.textContent = "Выгрузка затрат ТЭС на производство ЭЭ и ТЭ";
+                exportBtn.innerHTML = '<i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel';
             }, 5000);
         });
     }
