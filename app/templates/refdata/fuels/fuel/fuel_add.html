@@ -26,11 +26,28 @@
             {% endif %}
         </div>
 
+
+        <div class="mb-3">
+            <label for="kod" class="form-label">Код</label>
+            {{ form.kod(class="form-control", id="kod") }}
+            {% if form.kod.errors %}
+                <div class="text-danger">{{ form.kod.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
         <div class="mb-3">
             <label for="fuel_type" class="form-label">Тип топлива</label>
             {{ form.fuel_type(class="form-select", id="fuel_type") }}
             {% if form.fuel_type.errors %}
                 <div class="text-danger">{{ form.fuel_type.errors|join(', ') }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label for="parent" class="form-label">Родительский вид</label>
+            {{ form.parent(class="form-select", id="parent") }}
+            {% if form.parent.errors %}
+                <div class="text-danger">{{ form.parent.errors|join(', ') }}</div>
             {% endif %}
         </div>
 

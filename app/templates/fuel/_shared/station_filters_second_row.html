@@ -32,6 +32,19 @@
                         <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
+                {% elif show_heat_and_tariffs_export|default(false) %}
+                <!-- Экспорт тепла и тарифов из СТ -->
+                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_heat_and_tariffs') }}" id="exportHeatAndTariffsForm">
+                    {% for key, value in request.args.items() %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                    <button type="button"
+                            id="exportHeatAndTariffsButton"
+                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                            style="white-space: nowrap;">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                    </button>
+                </form>
                 {% elif show_specific_fuel_cost_export|default(false) %}
                 <!-- Экспорт стоимости для групп оборудования -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_cost') }}" id="exportSpecificFuelCostForm">
@@ -328,6 +341,42 @@
                             if (yearSelect && yearInput) {
                                 yearInput.value = yearSelect.value;
                             }
+                            btn.disabled = true;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        });
+                    }
+                })();
+                </script>
+                {% elif show_heat_and_tariffs_import|default(false) %}
+                <form action="{{ import_heat_and_tariffs_action|default(url_for('fuel_bp.import_equipment_group_heat_and_tariffs')) }}"
+                    method="POST" enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2" id="importHeatAndTariffsForm">
+                    {{ form.csrf_token }}
+                    {% for key, value in request.args.items() %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importHeatAndTariffsFile" required>
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importHeatAndTariffsBtn" title="Загружаются все годы из файла">
+                        <i class="bi bi-upload"></i> Импорт из Excel
+                    </button>
+                </form>
+                <script>
+                (function() {
+                    var form = document.getElementById('importHeatAndTariffsForm');
+                    var btn = document.getElementById('importHeatAndTariffsBtn');
+                    var fileInput = document.getElementById('importHeatAndTariffsFile');
+                    if (form && btn && fileInput) {
+                        btn.addEventListener('click', function() {
+                            fileInput.click();
+                        });
+                        fileInput.addEventListener('change', function() {
+                            if (fileInput.files && fileInput.files.length > 0) {
+                                form.submit();
+                            }
+                        });
+                        form.addEventListener('submit', function() {
                             btn.disabled = true;
                             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
                         });

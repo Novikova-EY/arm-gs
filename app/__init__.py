@@ -243,7 +243,6 @@ def create_app():
         from app.refdata.models.fuels import (
             fuel_model, 
             fuel_type_model, 
-            fuel_category_model,
             )
         from app.refdata.models.gen_companies import (
             gen_company_model,

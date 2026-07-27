@@ -5934,7 +5934,11 @@ def _apply_first_sa_kaliningrad_es_subtract_from_year(
     *,
     year_included: Callable[[int], bool] | None = None,
 ) -> list[float | None]:
-    """Для вариантов с ``_kaliningrad`` вычесть combined_on_ees ЭС Калининграда начиная с «Год с»."""
+    """Для вариантов с ``_kaliningrad`` вычесть combined_on_ees ЭС Калининграда начиная с «Год с».
+
+    «Год с» — со страницы /perimeter_variants/. С этого года Калининград —
+    отдельная СЗ, поэтому его ЭС убираем из суммы ОЭС первой СЗ.
+    """
     if not _perimeter_variant_code_has_kaliningrad(perimeter_variant_code):
         return list(year_sums)
     if not kaliningrad_combined_on_ees:

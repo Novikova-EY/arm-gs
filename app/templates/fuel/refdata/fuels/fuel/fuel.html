@@ -136,7 +136,30 @@
                                 </a>
                             </th>
 
-                            <!-- Шапка таблицы. Столбец "Вид топлива" -->
+                            
+                            <!-- Шапка таблицы. Столбец "Код" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            fuel_filter=fuel_filter,
+                                            fuel_type_filter=fuel_type_filter,
+                                            nazvl_filter=nazvl_filter,
+                                            kmbur_filter=kmbur_filter,
+                                            sort_by='kod',
+                                            sort_dir='asc' if sort_by != 'kod' or sort_dir == 'desc' else 'desc') }}"
+                                            class="text-black">
+                                    Код
+                                    {% if sort_by == 'kod' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+<!-- Шапка таблицы. Столбец "Вид топлива" -->
                             <th class="text-center align-middle">
                                 <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_list', 
                                             page=pagination.page, 
@@ -227,7 +250,30 @@
                                 </div>
                             </th>
 
-                            <!-- Шапка таблицы. Столбец "Короткое наименование" -->
+                            
+                            <!-- Шапка таблицы. Столбец "Родительский вид" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            fuel_filter=fuel_filter,
+                                            fuel_type_filter=fuel_type_filter,
+                                            nazvl_filter=nazvl_filter,
+                                            kmbur_filter=kmbur_filter,
+                                            sort_by='parent',
+                                            sort_dir='asc' if sort_by != 'parent' or sort_dir == 'desc' else 'desc') }}"
+                                            class="text-black">
+                                    Родительский вид
+                                    {% if sort_by == 'parent' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+<!-- Шапка таблицы. Столбец "Короткое наименование" -->
                             <th class="text-center align-middle">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="mx-auto">
@@ -378,6 +424,13 @@
                                     <input type="hidden" name="fuel_ids[]" value="{{ fuel.id }}">
                                 </td>
 
+                                
+                                <!-- Строки таблицы. Столбец "Код" -->
+                                <td>
+                                    <input type="text" name="fuel_kods[]" class="form-control"
+                                           value="{{ fuel.kod if fuel.kod is not none else '' }}">
+                                </td>
+
                                 <!-- Строки таблицы. Столбец "Вид топлива" -->
                                 <td>
                                     <input type="text" name="fuel_names[]" class="form-control" value="{{ fuel.name }}">
@@ -395,7 +448,20 @@
                                     </select>
                                 </td>
 
-                                <!-- Строки таблицы. Столбец "Короткое наименование" -->
+                                
+                                <!-- Строки таблицы. Столбец "Родительский вид" -->
+                                <td>
+                                    <select name="fuel_parents[]" class="form-select">
+                                        {% for parent_id, parent_name in fuel_parents %}
+                                        <option value="{{ parent_id }}"
+                                            {% if (fuel.parent_id or 0) == parent_id %}selected{% endif %}>
+                                            {{ parent_name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+
+<!-- Строки таблицы. Столбец "Короткое наименование" -->
                                 <td>
                                     <input type="text" name="fuel_nazvl[]" class="form-control" value="{{ fuel.nazvl or '' }}">
                                 </td>
@@ -412,7 +478,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="6" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="8" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -448,7 +514,29 @@
                             </a>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Вид топлива" -->
+                            <!-- Шапка таблицы. Столбец "Код" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            fuel_filter=fuel_filter,
+                                            fuel_type_filter=fuel_type_filter,
+                                            nazvl_filter=nazvl_filter,
+                                            kmbur_filter=kmbur_filter,
+                                            sort_by='kod',
+                                            sort_dir='asc' if sort_by != 'kod' or sort_dir == 'desc' else 'desc') }}"
+                                            class="text-black">
+                                    Код
+                                    {% if sort_by == 'kod' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <!-- Шапка таблицы. Столбец "Вид топлива" -->
                         <th class="text-center align-middle">
                         <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_list', 
                                         page=pagination.page, 
@@ -539,7 +627,30 @@
                             </div>
                         </th>
 
-                        <!-- Шапка таблицы. Столбец "Короткое наименование" -->
+                        
+                            <!-- Шапка таблицы. Столбец "Родительский вид" -->
+                            <th class="text-center align-middle">
+                                <a href="{{ url_for('fuel_bp.fuel_refdata_fuel_list',
+                                            page=pagination.page,
+                                            per_page=per_page,
+                                            fuel_filter=fuel_filter,
+                                            fuel_type_filter=fuel_type_filter,
+                                            nazvl_filter=nazvl_filter,
+                                            kmbur_filter=kmbur_filter,
+                                            sort_by='parent',
+                                            sort_dir='asc' if sort_by != 'parent' or sort_dir == 'desc' else 'desc') }}"
+                                            class="text-black">
+                                    Родительский вид
+                                    {% if sort_by == 'parent' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+<!-- Шапка таблицы. Столбец "Короткое наименование" -->
                         <th class="text-center align-middle">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="mx-auto">
@@ -686,11 +797,17 @@
                                 {{ loop.index + (pagination.page - 1) * pagination.per_page }}
                             </td>
 
+                            <!-- Строки таблицы. Столбец "Код" -->
+                            <td class="text-center align-middle"> {{ fuel.kod if fuel.kod is not none else '—' }} </td>
+
                             <!-- Строки таблицы. Столбец "Вид топлива" -->
                             <td> {{ fuel.name }} </td>
 
                             <!-- Строки таблицы. Столбец "Тип топлива" -->
                             <td class="text-center align-middle"> {{ fuel.fuel_type.name }} </td>
+
+                            <!-- Строки таблицы. Столбец "Родительский вид" -->
+                            <td class="text-center align-middle"> {{ fuel.parent.name if fuel.parent else '—' }} </td>
 
                             <!-- Строки таблицы. Столбец "Короткое наименование" -->
                             <td> {{ fuel.nazvl or '' }} </td>
@@ -701,7 +818,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="7" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                     {% endfor %}
                 </tbody>

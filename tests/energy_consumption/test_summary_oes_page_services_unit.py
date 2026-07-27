@@ -196,7 +196,6 @@ def test_apply_max_fo_and_ez_inject_shared_top_verification(monkeypatch):
         "inject_federal_district_without_gaes_summary_rows",
         "inject_oes_territory_detail_without_gaes_summary_rows",
         "apply_gaes_without_charge_formula_to_summary_rows",
-        "inject_fo_summary_verification_rows",
         "inject_east_energy_zone_o1_res_energy_unit_verification_rows",
         "inject_east_energy_zone_o1_parent_verification_row",
         "apply_summary_table_formula_calculations",

@@ -12,6 +12,7 @@ from app.common.services.get_services.years.years_get_services import (
     get_year_list_full,
 )
 from app.power_demand.routes.power_demand_bp import power_demand_bp
+from app.power_demand.services.access_services import can_edit_power_demand
 from app.power_demand.services.demand_summary_export_services import (
     build_demand_summary_excel_stream,
 )
@@ -182,7 +183,7 @@ def _build_oes_max_summary_context(*, for_shell: bool, data_segments=None) -> di
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
         context["pd_oes_filters_cascade"] = get_power_demand_oes_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["can_edit_summary_cells"] = can_edit_power_demand(current_user)
     context["has_active_summary_filters"] = bool(
         args["ues_l"] or args["res_l"] or args["rd_l"] or args["eu_l"]
     )
@@ -236,7 +237,7 @@ def _build_fo_max_summary_context(*, for_shell: bool, data_segments=None) -> dic
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
         context["pd_fo_filters_cascade"] = get_power_demand_fo_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["can_edit_summary_cells"] = can_edit_power_demand(current_user)
     context["has_active_summary_filters"] = bool(args["f_fd"] or args["f_res"])
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
@@ -287,7 +288,7 @@ def _build_ez_max_summary_context(*, for_shell: bool, data_segments=None) -> dic
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
         context["pd_ez_filters_cascade"] = get_power_demand_ez_filter_cascade_data()
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["can_edit_summary_cells"] = can_edit_power_demand(current_user)
     context["has_active_summary_filters"] = bool(args["ez_l"] or args["res_l"])
     context["summary_route_variant"] = "max"
     context["coeff_base_year"] = _summary_period_base_year_n()
@@ -323,7 +324,7 @@ def _finalize_coeff_summary_context(
     context["rounding_digits_k"] = _parse_rounding_digits_k(
         fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
     )
-    context["can_edit_summary_cells"] = getattr(current_user, "has_admin", False)
+    context["can_edit_summary_cells"] = can_edit_power_demand(current_user)
     context["summary_route_variant"] = "coeff"
     context["coeff_base_year"] = coeff_n
     context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
@@ -993,7 +994,7 @@ def demand_summary_energy_zones_export_coeff():
 @power_demand_bp.route("/summary/cell", methods=["POST"])
 @login_required
 def demand_summary_save_cell():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_power_demand(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     try:
@@ -1079,7 +1080,7 @@ def demand_summary_save_cell():
 @power_demand_bp.route("/summary/perimeter_variant", methods=["POST"])
 @login_required
 def demand_summary_save_perimeter_variant():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_power_demand(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     demand_model_name = str(data.get("demand_model_name") or "").strip()
@@ -1135,7 +1136,7 @@ def demand_summary_save_perimeter_variant():
 @login_required
 def demand_summary_save_block_variant():
     """Назначает вариант периметра блоку строк сводки нагрузок."""
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_power_demand(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     demand_model_name = str(data.get("demand_model_name") or "").strip()

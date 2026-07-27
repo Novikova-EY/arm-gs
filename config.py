@@ -206,6 +206,9 @@ class Config:
     MAX_FORM_MEMORY_SIZE = int(
         os.getenv("MAX_FORM_MEMORY_SIZE", str(32 * 1024 * 1024))
     )
+    # multipart: лимит числа частей (по умолчанию 1000). Страницы с тысячами ячеек
+    # (электроёмкость ФО и т.п.) при полном POST легко его превышают.
+    MAX_FORM_PARTS = int(os.getenv("MAX_FORM_PARTS", str(100_000)))
     # Общий лимит тела запроса (None = без лимита на уровне Flask). Имеет смысл >= MAX_FORM_MEMORY_SIZE.
     MAX_CONTENT_LENGTH = (
         int(os.getenv("MAX_CONTENT_LENGTH"))

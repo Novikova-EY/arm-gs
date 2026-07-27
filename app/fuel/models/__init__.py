@@ -11,6 +11,7 @@ from app.fuel.models import fue_equipment_group_natural_fuel_model  # noqa: F401
 from app.fuel.models import fue_equipment_group_specific_fuel_consumption_model  # noqa: F401
 from app.fuel.models import fue_equipment_group_specific_fuel_cost_model  # noqa: F401
 from app.fuel.models import fue_equipment_group_electricity_production_cost_model  # noqa: F401
+from app.fuel.models import fue_equipment_group_heat_and_tariffs_model  # noqa: F401
 from app.fuel.models import fue_equipment_group_specific_fuel_price_model  # noqa: F401
 from app.fuel.models import fue_equipment_group_set_model  # noqa: F401
 from app.fuel.models import fue_equipment_group_set_station_model  # noqa: F401

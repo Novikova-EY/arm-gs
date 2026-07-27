@@ -238,12 +238,7 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
-        inject_fo_summary_verification_rows(
-            summary_rows,
-            source_rows=list(summary_rows),
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
-        )
+        # «Проверка для ФО» на /summary/federal_districts/ не показываем.
     if context.get("active_summary") == "ez":
         apply_energy_zone_formula_to_summary_rows(
             summary_rows,

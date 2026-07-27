@@ -4,6 +4,7 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
+{% set can_edit_power_demand = can_edit_power_demand | default(false) %}
 {% set show_oe = show_combined_oess_eess is not defined or show_combined_oess_eess %}
 {% set show_es = show_combined_on_es is defined and show_combined_on_es %}
 {% set show_ez = show_combined_on_ez is defined and show_combined_on_ez %}
@@ -33,7 +34,7 @@
         </div>
     </div>
 
-    {% if current_user.has_admin %}
+    {% if can_edit_power_demand %}
     <form method="POST" id="demand-params-form" data-require-oe="{{ '1' if show_oe else '0' }}" data-require-ez="{{ '1' if show_ez else '0' }}">
         {{ form.hidden_tag() }}
         <input type="hidden" name="rounding_digits" value="{{ rd }}">
@@ -181,7 +182,7 @@
         </div>
     </form>
     {% else %}
-    <div class="alert alert-info">Просмотр доступен. Редактирование — только для роли с правами администратора справочников.</div>
+    <div class="alert alert-info">Просмотр доступен. Редактирование — только для ролей «Нагрузки-админ» и «Нагрузки-редактор».</div>
     <div class="table-responsive">
         <table id="power-demand-view-table" class="table power-demand-params-table table-bordered">
             <thead>

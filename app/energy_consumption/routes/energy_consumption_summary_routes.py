@@ -11,6 +11,7 @@ from app.common.services.get_services.years.years_get_services import (
 from app.common.services.database_version_services import get_current_version
 from app.extensions import db
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
+from app.energy_consumption.services.access_services import can_edit_energy_consumption
 from app.energy_consumption.services.energy_consumption_summary_export_services import (
     build_demand_summary_excel_stream,
 )
@@ -385,7 +386,7 @@ def summary_table_hub():
         oes_territory_ordered=oes_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_TABLE_HUB_PAGE_TEMPLATE, context)
 
@@ -563,7 +564,7 @@ def demand_summary_fo_ez_import_xlsx():
 
     Данные записываются во все зарегистрированные версии БД.
     """
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     upload = request.files.get("file")
     if upload is None or upload.filename is None or str(upload.filename).strip() == "":
@@ -592,7 +593,7 @@ def demand_summary_fo_ez_import_xlsx():
 @energy_consumption_bp.route("/summary/fo_ez/import.xlsx/status/<job_id>", methods=["GET"])
 @login_required
 def demand_summary_fo_ez_import_status(job_id: str):
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     job = get_energy_consumption_summary_import_job(job_id)
     if job is None:
@@ -616,7 +617,7 @@ def demand_summary_fo_ez_import_status(job_id: str):
 @energy_consumption_bp.route("/summary/cell", methods=["POST"])
 @login_required
 def demand_summary_save_cell():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     try:
@@ -700,7 +701,7 @@ def demand_summary_save_cell():
 @login_required
 def demand_summary_persist_computed_rows():
     """После сохранения ячеек: пересчитать и записать все расчётные показатели сводки в БД."""
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     rounding_digits = data.get("rounding_digits", 1)
@@ -741,7 +742,7 @@ def demand_summary_persist_computed_rows():
 @energy_consumption_bp.route("/summary/perimeter_variant", methods=["POST"])
 @login_required
 def demand_summary_save_perimeter_variant():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     demand_model_name = str(data.get("demand_model_name") or "").strip()
@@ -796,7 +797,7 @@ def demand_summary_save_perimeter_variant():
 @login_required
 def demand_summary_save_block_variant():
     """Назначает вариант периметра блоку строк сводки (без переноса данных между вариантами)."""
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     demand_model_name = str(data.get("demand_model_name") or "").strip()
@@ -848,7 +849,7 @@ def demand_summary_save_block_variant():
 @energy_consumption_bp.route("/summary/persist_formula_block", methods=["POST"])
 @login_required
 def demand_summary_persist_formula_block():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     demand_model_name = str(data.get("demand_model_name") or "").strip()
@@ -975,7 +976,7 @@ def demand_summary_oes():
         oes_territory_ordered=oes_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_OES_PAGE_TEMPLATE, context)
 
@@ -1000,7 +1001,7 @@ def demand_summary_energy_zones():
         ez_territory_ordered=ez_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_EZ_PAGE_TEMPLATE, context)
 
@@ -1025,7 +1026,7 @@ def demand_summary_federal_districts():
         fo_filter_sets=fo_sets,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_FO_PAGE_TEMPLATE, context)
 
@@ -1050,7 +1051,7 @@ def demand_summary_oes_gaes_charge():
         oes_territory_ordered=oes_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_OES_GAES_CHARGE_PAGE_TEMPLATE, context)
 
@@ -1075,7 +1076,7 @@ def demand_summary_federal_districts_gaes_charge():
         fo_filter_sets=fo_sets,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_FO_GAES_CHARGE_PAGE_TEMPLATE, context)
 
@@ -1100,7 +1101,7 @@ def demand_summary_energy_zones_gaes_charge():
         ez_territory_ordered=ez_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_EZ_GAES_CHARGE_PAGE_TEMPLATE, context)
 
@@ -1126,7 +1127,7 @@ def demand_summary_table_oes():
         oes_territory_ordered=oes_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_TABLE_OES_PAGE_TEMPLATE, context)
 
@@ -1152,7 +1153,7 @@ def demand_summary_table_oes_gaes_charge():
         oes_territory_ordered=oes_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_TABLE_OES_GAES_CHARGE_PAGE_TEMPLATE, context)
 
@@ -1178,7 +1179,7 @@ def demand_summary_table_federal_districts():
         fo_filter_sets=fo_sets,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_TABLE_FO_PAGE_TEMPLATE, context)
 
@@ -1204,7 +1205,7 @@ def demand_summary_table_federal_districts_gaes_charge():
         fo_filter_sets=fo_sets,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_TABLE_FO_GAES_CHARGE_PAGE_TEMPLATE, context)
 
@@ -1230,7 +1231,7 @@ def demand_summary_table_energy_zones_gaes_charge():
         ez_territory_ordered=ez_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_TABLE_EZ_GAES_CHARGE_PAGE_TEMPLATE, context)
 
@@ -1256,6 +1257,6 @@ def demand_summary_table_energy_zones():
         ez_territory_ordered=ez_ordered,
         coeff_base_year=n,
         include_medium_years=include_medium,
-        can_edit_summary_cells=getattr(current_user, "has_admin", False),
+        can_edit_summary_cells=can_edit_energy_consumption(current_user),
     )
     return _render_ec_summary_page(SUMMARY_TABLE_EZ_PAGE_TEMPLATE, context)

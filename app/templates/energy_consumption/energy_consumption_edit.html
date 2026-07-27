@@ -4,6 +4,7 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
+{% set can_edit_energy_consumption = can_edit_energy_consumption | default(false) %}
 {% set view_ncols_readonly = 5 if show_perimeter_variant_column else 4 %}
 {% set rd = rounding_digits if rounding_digits is defined else 1 %}
 {% set hub_href = url_for('energy_consumption_bp.hub') %}
@@ -37,7 +38,7 @@
         </div>
     </div>
 
-    {% if current_user.has_admin %}
+    {% if can_edit_energy_consumption %}
     <form method="POST" id="demand-params-form">
         {{ form.hidden_tag() }}
         <input type="hidden" name="rounding_digits" value="{{ rd }}">
@@ -156,7 +157,7 @@
         </div>
     </form>
     {% else %}
-    <div class="alert alert-info">Просмотр доступен. Редактирование — только для роли с правами администратора справочников.</div>
+    <div class="alert alert-info">Просмотр доступен. Редактирование — только для ролей «Нагрузки-админ» и «Нагрузки-редактор».</div>
     <div class="table-responsive">
         <table id="power-demand-view-table" class="table power-demand-params-table table-bordered">
             <thead>

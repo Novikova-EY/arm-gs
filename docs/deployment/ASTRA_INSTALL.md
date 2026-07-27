@@ -444,11 +444,14 @@ GUNICORN_TIMEOUT=600
 ```nginx
 location / {
     proxy_pass http://127.0.0.1:8000;
+    client_max_body_size 32m;
     proxy_read_timeout 600s;
     proxy_connect_timeout 600s;
     proxy_send_timeout 600s;
 }
 ```
+
+`client_max_body_size` по умолчанию в nginx — **1m**. Страницы с крупными формами (электроёмкость ФО, топливные параметры, импорт Excel) без увеличения лимита дают нестабильное сохранение / обрыв POST.
 
 Проверьте конфиг: `sudo nginx -t`, затем: `sudo systemctl reload nginx`.
 

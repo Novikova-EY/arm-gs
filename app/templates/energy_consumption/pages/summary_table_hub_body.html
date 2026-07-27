@@ -2,7 +2,7 @@
 {% if current_user.is_authenticated %}
 {% set energy_consumption_gaes_charge_only_page = energy_consumption_gaes_charge_only_page | default(false) %}
 {% set can_edit_summary_cells = can_edit_summary_cells | default(false) %}
-{% set show_perimeter_variant_column = current_user.is_authenticated and current_user.has_admin %}
+{% set show_perimeter_variant_column = can_edit_summary_cells | default(false) %}
 {% set summary_route_variant = 'max' %}
 {% set show_hist_col = false %}
 {% set pd_readonly_parameter_keys = ('energy_consumption_yoy_growth_pct', 'energy_consumption_sipr_abs_growth_mln', 'energy_consumption_sipr_yoy_growth_pct') %}
@@ -427,7 +427,7 @@
                 Пустые строки
             </button>
             {% endif %}
-            {% if active_summary in ('oes', 'fo') %}
+            {% if can_edit_summary_cells and active_summary in ('oes', 'fo') %}
             <button type="button"
                     id="pdEcSummaryVerificationToggle"
                     class="btn btn-outline-info text-nowrap flex-shrink-0"

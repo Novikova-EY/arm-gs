@@ -170,6 +170,20 @@ from app.fuel.services.fuel_exports.export_stations_equipment_group_electricity_
 from app.fuel.services.fuel_imports.import_equipment_group_electricity_production_cost_services import (
     import_equipment_group_electricity_production_cost_from_excel,
 )
+from app.fuel.services.equipment_groups.equipment_group_heat_and_tariffs_services import (
+    get_equipment_groups_with_heat_and_tariffs_data,
+    build_equipment_group_heat_and_tariffs_hierarchy,
+    refresh_heat_and_tariffs_year_summaries,
+    HEAT_AND_TARIFFS_COLUMNS,
+    HEAT_AND_TARIFFS_IDENTITY_COLUMNS,
+    HEAT_AND_TARIFFS_METRIC_COLUMNS,
+)
+from app.fuel.services.fuel_exports.export_stations_equipment_group_heat_and_tariffs_services import (
+    export_stations_equipment_group_heat_and_tariffs_to_excel,
+)
+from app.fuel.services.fuel_imports.import_equipment_group_heat_and_tariffs_services import (
+    import_equipment_group_heat_and_tariffs_from_excel,
+)
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_services import (
     get_equipment_groups_with_specific_fuel_price_data,
     build_equipment_group_specific_fuel_price_hierarchy,
@@ -187,6 +201,7 @@ _SPECIFIC_FUEL_COST_SUMMARY_ATTRS = [a for a, _l, n in SPECIFIC_FUEL_COST_COLUMN
 _ELECTRICITY_PRODUCTION_COST_SUMMARY_ATTRS = [
     a for a, _l, n in ELECTRICITY_PRODUCTION_COST_COLUMNS if n
 ]
+_HEAT_AND_TARIFFS_SUMMARY_ATTRS = [a for a, _l, n in HEAT_AND_TARIFFS_COLUMNS if n]
 _SPECIFIC_FUEL_PRICE_SUMMARY_ATTRS = [a for a, _l, n in SPECIFIC_FUEL_PRICE_COLUMNS if n]
 
 from app.fuel.services.stations.stations_equipment_groups_services import (
@@ -568,6 +583,44 @@ def _get_single_year_filter_options():
         available_years = [fallback_year]
 
     return selected_year, available_years
+
+
+def _resolve_year_range_filter_options():
+    """
+    Диапазон лет из start_year/end_year (или устаревшего year) и список годов для селектов.
+    Без параметров в URL — один год get_filter_start_year() (как прежний single-year режим).
+    """
+    fallback_year = get_filter_start_year()
+    available_years = sorted(
+        {
+            int(year.number)
+            for year in get_year_list_full()
+            if getattr(year, "number", None) is not None
+        }
+    )
+    if not available_years:
+        available_years = [fallback_year]
+
+    start_year = request.args.get("start_year", type=int)
+    end_year = request.args.get("end_year", type=int)
+    legacy_year = request.args.get("year", type=int)
+
+    if start_year is None and end_year is None:
+        if legacy_year is not None:
+            start_year = end_year = legacy_year
+        else:
+            start_year = end_year = (
+                fallback_year if fallback_year in available_years else available_years[0]
+            )
+    elif start_year is None:
+        start_year = end_year
+    elif end_year is None:
+        end_year = start_year
+
+    if start_year > end_year:
+        start_year, end_year = end_year, start_year
+
+    return start_year, end_year, available_years
 
 
 def _export_year_range_for_station_fuel_lists():
@@ -3476,6 +3529,133 @@ def stations_equipment_group_electricity_production_cost():
     )
 
 
+@fuel_bp.route("/stations_equipment_group_heat_and_tariffs", methods=["GET", "POST"])
+@login_required
+def stations_equipment_group_heat_and_tariffs():
+    form = StationFilterForm()
+
+    if request.method == "POST":
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_heat_and_tariffs",
+                **extract_filters_from_form(request.form),
+            )
+        )
+
+    filters = extract_filters_from_args(request.args)
+    page = request.args.get("page", 1, type=int)
+    filters.pop("page", None)
+    filters.pop("start_year", None)
+    filters.pop("end_year", None)
+    per_page_param = request.args.get("per_page", "10")
+    show_all = str(per_page_param).lower() == "all"
+    per_page = "all" if show_all else int(per_page_param) if str(per_page_param).isdigit() else 10
+    start_year, end_year, filter_year_list = _resolve_year_range_filter_options()
+    selected_year = end_year
+
+    try:
+        rounding_digits = int(request.args.get("rounding_digits"))
+    except (ValueError, TypeError):
+        rounding_digits = 1
+
+    if rounding_digits is None or rounding_digits < 0:
+        rounding_digits = 1
+
+    heat_data = get_equipment_groups_with_heat_and_tariffs_data(
+        filters=filters,
+        per_page=per_page,
+        page=page,
+        start_year=start_year,
+        end_year=end_year,
+        show_all=show_all,
+    )
+
+    years = list(range(start_year, end_year + 1))
+    rows = heat_data.get("rows") or []
+    hierarchy_full = build_equipment_group_heat_and_tariffs_hierarchy(rows, years=years)
+    total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
+    if show_all:
+        equipment_group_heat_and_tariffs_hierarchy = hierarchy_full
+        total_pages = 1
+        current_page = 1
+    else:
+        (
+            equipment_group_heat_and_tariffs_hierarchy,
+            total_eg_count,
+            total_pages,
+            current_page,
+        ) = paginate_fuel_eg_station_hierarchy(
+            hierarchy_full,
+            page,
+            per_page,
+            _HEAT_AND_TARIFFS_SUMMARY_ATTRS,
+        )
+        refresh_heat_and_tariffs_year_summaries(
+            equipment_group_heat_and_tariffs_hierarchy, years
+        )
+
+    if (
+        not fuel_eg_station_hierarchy_nonempty(equipment_group_heat_and_tariffs_hierarchy)
+        and total_eg_count > 0
+        and page > 1
+    ):
+        target_page = max(1, current_page - 1)
+        args_multi = request.args.to_dict(flat=False)
+        args_multi["page"] = [str(target_page)]
+        redirect_args = {}
+        for key, values in args_multi.items():
+            if not values:
+                continue
+            if len(values) == 1:
+                redirect_args[key] = values[0]
+            else:
+                redirect_args[key] = values
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_heat_and_tariffs",
+                **redirect_args,
+            )
+        )
+
+    data = {
+        "stations": [],
+        "stations_grouped": {},
+        "station_ids": [],
+        "total_count": total_eg_count,
+        "total_pages": total_pages,
+        "page": current_page,
+        "per_page": per_page,
+        "show_headers": {},
+        "station_totals": {},
+        "show_p_ogr": False,
+        "show_p_rasp": False,
+    }
+
+    context = get_station_list_template_context(
+        form,
+        data,
+        rounding_digits,
+        {**filters, "start_year": start_year, "end_year": end_year},
+        show_all=show_all,
+        hierarchy_data=None,
+    )
+    context["filter_year_list"] = filter_year_list
+
+    has_active_filters = has_any_filters(request.args)
+
+    return render_template(
+        "fuel/heat_and_tariffs/stations_equipment_group_heat_and_tariffs.html",
+        has_active_filters=has_active_filters,
+        selected_year=selected_year,
+        equipment_group_heat_and_tariffs_rows=rows,
+        equipment_group_heat_and_tariffs_hierarchy=equipment_group_heat_and_tariffs_hierarchy,
+        heat_and_tariffs_identity_columns=HEAT_AND_TARIFFS_IDENTITY_COLUMNS,
+        heat_and_tariffs_metric_columns=HEAT_AND_TARIFFS_METRIC_COLUMNS,
+        years=years,
+        **context,
+    )
+
+
 @fuel_bp.route("/stations_equipment_group_specific_fuel_price", methods=["GET", "POST"])
 @login_required
 def stations_equipment_group_specific_fuel_price():
@@ -5208,6 +5388,91 @@ def import_equipment_group_electricity_production_cost():
     )
 
 
+@fuel_bp.route("/stations_equipment_group_heat_and_tariffs/import", methods=["POST"])
+@login_required
+def import_equipment_group_heat_and_tariffs():
+    """Загрузка данных EquipmentGroupHeatAndTariffs."""
+    user = session.get("username", "Неизвестный пользователь")
+    log_to_db(user, "Начата загрузка тепла и тарифов из СТ")
+    current_app.logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_HEAT_AND_TARIFFS] start user=%s filename=%s mimetype=%s remote_addr=%s",
+        user,
+        getattr(request.files.get("file"), "filename", None),
+        getattr(request.files.get("file"), "mimetype", None),
+        request.remote_addr,
+    )
+
+    redirect_args = {
+        k: v for k, v in request.form.items() if k not in ("file", "csrf_token")
+    }
+
+    if "file" not in request.files:
+        flash("Файл не найден.", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_heat_and_tariffs",
+                **redirect_args,
+            )
+        )
+
+    file = request.files["file"]
+    if file.mimetype not in [
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ]:
+        flash("Неверный формат файла.", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_heat_and_tariffs",
+                **redirect_args,
+            )
+        )
+
+    if not file.filename.endswith((".xlsx", ".xls")):
+        flash("Неверный формат файла.", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_heat_and_tariffs",
+                **redirect_args,
+            )
+        )
+
+    try:
+        result = import_equipment_group_heat_and_tariffs_from_excel(file, user)
+        flash(result["message"], "success")
+        clear_station_aggregation_cache("после импорта тепла и тарифов из СТ")
+        current_app.logger.info(
+            "[IMPORT_EQUIPMENT_GROUP_HEAT_AND_TARIFFS] done user=%s filename=%s created=%s updated=%s skipped=%s years=%s",
+            user,
+            getattr(file, "filename", None),
+            result.get("created"),
+            result.get("updated"),
+            result.get("skipped"),
+            result.get("years_loaded"),
+        )
+    except ValueError as e:
+        current_app.logger.warning(
+            "[IMPORT_EQUIPMENT_GROUP_HEAT_AND_TARIFFS] validation error user=%s filename=%s: %s",
+            user,
+            getattr(file, "filename", None),
+            str(e),
+            exc_info=True,
+        )
+        flash(str(e), "danger")
+    except Exception as e:
+        current_app.logger.exception(
+            "[IMPORT_EQUIPMENT_GROUP_HEAT_AND_TARIFFS] import failed"
+        )
+        flash(f"Ошибка загрузки данных: {str(e)}", "danger")
+
+    return redirect(
+        url_for(
+            "fuel_bp.stations_equipment_group_heat_and_tariffs",
+            **redirect_args,
+        )
+    )
+
+
 @fuel_bp.route("/stations_equipment_group_specific_fuel_price/import", methods=["POST"])
 @login_required
 def import_equipment_group_specific_fuel_price():
@@ -5596,6 +5861,65 @@ def export_stations_equipment_group_electricity_production_cost():
         return redirect(
             url_for(
                 "fuel_bp.stations_equipment_group_electricity_production_cost",
+                **request.args.to_dict(),
+            )
+        )
+
+
+@fuel_bp.route("/stations_equipment_group_heat_and_tariffs/export", methods=["GET"])
+@login_required
+def export_stations_equipment_group_heat_and_tariffs():
+    """Экспорт тепла и тарифов из СТ в Excel с учетом фильтров."""
+    try:
+        filters = extract_filters_from_args(request.args)
+        filters.pop("page", None)
+        filters.pop("start_year", None)
+        filters.pop("end_year", None)
+
+        start_year, end_year, _ = _resolve_year_range_filter_options()
+
+        try:
+            rounding_digits = int(request.args.get("rounding_digits", 1))
+        except (ValueError, TypeError):
+            rounding_digits = 1
+
+        excel_file = export_stations_equipment_group_heat_and_tariffs_to_excel(
+            filters,
+            start_year,
+            end_year,
+            per_page="all",
+            page=1,
+            show_all=True,
+            rounding_digits=rounding_digits,
+        )
+        if excel_file is None:
+            flash("Нет данных для экспорта.", "warning")
+            return redirect(
+                url_for(
+                    "fuel_bp.stations_equipment_group_heat_and_tariffs",
+                    **request.args.to_dict(),
+                )
+            )
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"Тепло_и_тарифы_из_СТ_{timestamp}.xlsx"
+
+        excel_file.seek(0)
+        return send_file(
+            excel_file,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Ошибка экспорта тепла и тарифов из СТ: {e}")
+        import traceback
+
+        current_app.logger.error(traceback.format_exc())
+        flash(f"Ошибка экспорта данных: {str(e)}", "danger")
+        return redirect(
+            url_for(
+                "fuel_bp.stations_equipment_group_heat_and_tariffs",
                 **request.args.to_dict(),
             )
         )

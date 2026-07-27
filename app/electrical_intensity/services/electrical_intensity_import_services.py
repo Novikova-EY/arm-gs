@@ -291,16 +291,5 @@ def import_electrical_intensity_from_xlsx_bytes(raw: bytes) -> dict[str, Any]:
 
     stats["territories"] = len(territories_seen)
     log_electrical_intensity_excel_import(user, stats, database_version_id=version_id)
-    if stats["cells_written"]:
-        from app.common.services.economics_fd_data_cache import (
-            invalidate_economics_fd_data_cache,
-        )
-
-        invalidate_economics_fd_data_cache(
-            version_id,
-            "ei_year",
-            "ei_coef",
-            "pop_ei_year",
-            "pop_ei_coef",
-        )
+    # Кэш сбрасываем в route после commit.
     return stats

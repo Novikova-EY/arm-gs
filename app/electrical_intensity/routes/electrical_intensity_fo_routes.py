@@ -29,6 +29,9 @@ from app.electrical_intensity.services.electrical_intensity_logging import (
     load_formatted_electrical_intensity_logs,
     load_electrical_intensity_logs_raw,
 )
+from app.common.services.economics_fd_data_cache import (
+    invalidate_economics_fd_data_cache,
+)
 from app.electrical_intensity.services.electrical_intensity_page_services import (
     parse_electrical_intensity_page_kwargs,
 )
@@ -39,6 +42,8 @@ from app.electrical_intensity.services.electrical_intensity_services import (
     save_electrical_intensity_from_post,
 )
 from app.logs.services.log_display_utils import format_logs_for_display
+
+_EI_CACHE_DATASETS = ("ei_year", "ei_coef", "pop_ei_year", "pop_ei_coef")
 
 
 @electrical_intensity_root_bp.route("/electrical_intensity_fo/", methods=["GET", "POST"])
@@ -57,6 +62,10 @@ def electrical_intensity():
         try:
             updated, skipped = save_electrical_intensity_from_post(request.form)
             db.session.commit()
+            if updated:
+                invalidate_economics_fd_data_cache(
+                    get_current_version(), *_EI_CACHE_DATASETS
+                )
             flash(f"Сохранено ячеек: {updated}. Пропущено: {skipped}.", "success")
         except Exception as exc:
             db.session.rollback()
@@ -110,6 +119,10 @@ def electrical_intensity_calculate_graph_points():
             population_filter_selected=page_kw["population_filter_selected"],
         )
         db.session.commit()
+        if updated:
+            invalidate_economics_fd_data_cache(
+                get_current_version(), "ei_year", "pop_ei_year"
+            )
         flash(
             f"Рассчитаны и сохранены точки графика: {updated}. Без изменений: {skipped}.",
             "success",
@@ -249,6 +262,10 @@ def electrical_intensity_import_xlsx():
     try:
         stats = import_electrical_intensity_from_xlsx_bytes(raw)
         db.session.commit()
+        if stats.get("cells_written"):
+            invalidate_economics_fd_data_cache(
+                get_current_version(), *_EI_CACHE_DATASETS
+            )
     except ValueError as exc:
         db.session.rollback()
         return jsonify(ok=False, error=str(exc)), 400

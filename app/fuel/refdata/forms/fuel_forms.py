@@ -21,11 +21,21 @@ class FuelFilterForm(FlaskForm):
             Length(min=2, max=255, message="Длина от 2 до 255 символов."),
         ],
     )
+    kod = StringField(
+        "Код",
+        validators=[Optional(), Length(max=20)],
+    )
     fuel_type = SelectField(
         "Вид топлива",
         choices=[],  # Наполняется в контроллере
         coerce=int,
         validators=[DataRequired(message="Выберите вид топлива.")],
+    )
+    parent = SelectField(
+        "Родительский вид",
+        choices=[],  # Наполняется в контроллере
+        coerce=int,
+        validators=[Optional()],
     )
 
     # Флаг удаления строки (в шаблоне как массив checkbox'ов)
@@ -63,11 +73,21 @@ class AddFuelForm(FlaskForm):
             Length(min=3, max=255, message="Длина от 3 до 255 символов."),
         ],
     )
+    kod = StringField(
+        "Код",
+        validators=[Optional(), Length(max=20)],
+    )
     fuel_type = SelectField(
         "Вид топлива",
         choices=[],  # Наполняется в контроллере
         coerce=int,
         validators=[DataRequired(message="Выберите вид топлива.")],
+    )
+    parent = SelectField(
+        "Родительский вид",
+        choices=[],  # Наполняется в контроллере
+        coerce=int,
+        validators=[Optional()],
     )
 
 

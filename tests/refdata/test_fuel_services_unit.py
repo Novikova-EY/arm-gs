@@ -40,6 +40,9 @@ def test_update_fuel_service_unique_violation_raises():
             self.id = 1
             self.name = "Old"
             self.id_fuel_type = None
+            self.nazvl = None
+            self.kmbur = None
+            self.parent_id = None
 
     class DummyQuery:
         def filter(self, *a, **k):
@@ -49,8 +52,13 @@ def test_update_fuel_service_unique_violation_raises():
             return True
 
     class DummyFuelModel:
-        def __init__(self):
-            self.query = DummyQuery()
+        query = DummyQuery()
+        name = object()
+        id = object()
+        nazvl = object()
+        kmbur = object()
+        parent_id = object()
+        id_fuel_type = object()
 
     class DummySession:
         def __init__(self):
@@ -62,8 +70,12 @@ def test_update_fuel_service_unique_violation_raises():
         def flush(self):
             pass
 
+        def __call__(self):
+            return self
+
     with patch("app.refdata.services.fuels.fuel_services.db.session", new=DummySession()), \
-         patch("app.refdata.services.fuels.fuel_services.Fuel", new=DummyFuelModel()):
+         patch("app.refdata.services.fuels.fuel_services.Fuel", new=DummyFuelModel()), \
+         patch("app.refdata.services.fuels.fuel_services.apply_version_filter", side_effect=lambda q, m: q):
         with pytest.raises(ValueError):
             update_fuel_service([{"fuel_id": 1, "name": "New"}], user="tester")
 

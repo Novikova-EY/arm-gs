@@ -4771,17 +4771,8 @@ def calculate_and_save_all_graph_points(
             else:
                 skipped += 1
 
-    if updated:
-        from app.common.services.economics_fd_data_cache import (
-            invalidate_economics_fd_data_cache,
-        )
-
-        invalidate_economics_fd_data_cache(
-            version_id,
-            "ei_year",
-            "pop_ei_year",
-        )
-
+    # Кэш сбрасываем в route после commit — иначе другой worker может
+    # снова положить в Redis устаревшие значения до фиксации транзакции.
     return updated, skipped
 
 
@@ -5534,19 +5525,7 @@ def save_electrical_intensity_from_post(form_data: Any) -> tuple[int, int]:
         )
         updated += 1
 
-    if updated:
-        from app.common.services.economics_fd_data_cache import (
-            invalidate_economics_fd_data_cache,
-        )
-
-        invalidate_economics_fd_data_cache(
-            version_id,
-            "ei_year",
-            "ei_coef",
-            "pop_ei_year",
-            "pop_ei_coef",
-        )
-
+    # Кэш сбрасываем в route после commit (см. calculate_and_save_all_graph_points).
     return updated, skipped
 
 

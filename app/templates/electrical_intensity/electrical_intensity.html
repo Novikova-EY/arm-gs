@@ -1425,6 +1425,22 @@ document.addEventListener("DOMContentLoaded", function () {
     var eiForm = document.getElementById("electrical-intensity-form");
     var eiSaveBtn = document.querySelector('button[type="submit"][form="electrical-intensity-form"]');
     if (eiForm && eiSaveBtn) {
+        function ltEiNormValue(v) {
+            return String(v == null ? "" : v).trim().replace(/\u00a0/g, "").replace(/\s+/g, "");
+        }
+        function ltEiIsDirty(inp) {
+            return ltEiNormValue(inp.value) !== ltEiNormValue(inp.defaultValue);
+        }
+        function ltEiDisableFdTotalKGroup(inp) {
+            var el = inp;
+            while (el) {
+                if (el.tagName === "INPUT" && el.name && el.name.indexOf("fd_total_k_") === 0) {
+                    el.disabled = true;
+                    if (el.name === "fd_total_k_territory_kind[]") break;
+                }
+                el = el.previousElementSibling;
+            }
+        }
         eiForm.addEventListener("keydown", function (e) {
             if (e.key !== "Enter" || e.isComposing) return;
             var t = e.target;
@@ -1432,7 +1448,8 @@ document.addEventListener("DOMContentLoaded", function () {
             e.preventDefault();
             eiSaveBtn.click();
         });
-        eiForm.addEventListener("submit", function () {
+        eiForm.addEventListener("submit", function (e) {
+            /* Очистка вычисленного graph_point: восстановить orig перед dirty-фильтром. */
             eiForm.querySelectorAll('input.fuel-param-input[name="cell_value[]"]').forEach(function (inp) {
                 var initial = (inp.getAttribute("data-initial-display") || "").trim();
                 if (!initial || inp.value.trim()) return;
@@ -1443,6 +1460,57 @@ document.addEventListener("DOMContentLoaded", function () {
                     origInp.value = initial;
                 }
             });
+
+            /*
+             * Полная таблица даёт POST ~1.2+ MiB / 30k+ полей — на nginx с
+             * client_max_body_size 1m сохранение падает «через раз».
+             * В POST уходят только изменённые ячейки/коэффициенты.
+             */
+            var dirtyCount = 0;
+            eiForm.querySelectorAll("td.summary-year-cell").forEach(function (td) {
+                var inp = td.querySelector('input.fuel-param-input[name="cell_value[]"]');
+                if (!inp) return;
+                if (ltEiIsDirty(inp)) {
+                    dirtyCount += 1;
+                    return;
+                }
+                td.querySelectorAll("input").forEach(function (el) { el.disabled = true; });
+            });
+            eiForm.querySelectorAll(".lt-ei-coef-inline").forEach(function (wrap) {
+                var inp = wrap.querySelector('input[name="coef_a[]"]');
+                if (!inp) return;
+                if (ltEiIsDirty(inp)) {
+                    dirtyCount += 1;
+                    return;
+                }
+                wrap.querySelectorAll('input[name^="coef_"]').forEach(function (el) {
+                    el.disabled = true;
+                });
+            });
+            eiForm.querySelectorAll('input[name="fd_total_k_value[]"]').forEach(function (inp) {
+                if (ltEiIsDirty(inp)) {
+                    dirtyCount += 1;
+                    return;
+                }
+                ltEiDisableFdTotalKGroup(inp);
+            });
+
+            if (dirtyCount === 0) {
+                e.preventDefault();
+                alert("Нет изменений для сохранения.");
+                eiForm.querySelectorAll("input[disabled]").forEach(function (el) {
+                    el.disabled = false;
+                });
+                return;
+            }
+            if (eiSaveBtn.disabled) {
+                e.preventDefault();
+                return;
+            }
+            eiSaveBtn.disabled = true;
+            var prevHtml = eiSaveBtn.innerHTML;
+            eiSaveBtn.dataset.ltEiPrevHtml = prevHtml;
+            eiSaveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Сохранение…';
         });
     }
 

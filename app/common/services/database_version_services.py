@@ -1032,7 +1032,6 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
         (ref_schema, 'gs_sys_economic_activity_types'),
         (ref_schema, 'gs_sys_technology_availabilities'),
         (ref_schema, 'gs_sys_energy_system_types'),
-        (ref_schema, 'gs_sys_fuel_categories'),
         (ref_schema, 'gs_sys_fuel_types'),
         (ref_schema, 'gs_sys_fuels'),
         (ref_schema, 'gs_sys_companies'),
@@ -1621,6 +1620,43 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
             not_mapped_cnt = db.session.execute(check_sql, {"target_version_id": target_version_id}).scalar()
             if not_mapped_cnt and not_mapped_cnt > 0:
                 current_app.logger.warning(f"  ⚠️ [STAGED] Осталось непривязанных строк в {ref_schema}.gs_sys_fuels: {not_mapped_cnt}")
+
+            # fuels.parent_id -> fuels (self-FK remapping)
+            fuels_mapping = id_mappings.get(f'{ref_schema}.gs_sys_fuels') or {}
+            updated_parent_rows = 0
+            if fuels_mapping:
+                current_app.logger.info("🔧 [STAGED] Перепривязка fuels.parent_id по маппингу ID fuels...")
+                temp_tbl_parent = f"tmp_map_fuel_parent_{target_version_id}"
+                db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl_parent}"))
+                db.session.execute(_text(
+                    f"CREATE TEMP TABLE {temp_tbl_parent} (old_id INTEGER PRIMARY KEY, new_id INTEGER NOT NULL)"
+                ))
+                parent_rows = [(old_id, new_id) for old_id, new_id in fuels_mapping.items()]
+                batch_size = 1000
+                for i in range(0, len(parent_rows), batch_size):
+                    batch = parent_rows[i:i + batch_size]
+                    db.session.execute(
+                        _text(
+                            f"INSERT INTO {temp_tbl_parent} (old_id, new_id) "
+                            f"VALUES (:old_id, :new_id) ON CONFLICT (old_id) DO NOTHING"
+                        ),
+                        [{"old_id": o, "new_id": n} for o, n in batch],
+                    )
+                result = db.session.execute(_text(
+                    f"""
+                    UPDATE {ref_schema}.gs_sys_fuels f
+                    SET parent_id = m.new_id
+                    FROM {temp_tbl_parent} m
+                    WHERE f.database_version_id = :target_version_id
+                      AND f.parent_id = m.old_id
+                      AND f.parent_id IS DISTINCT FROM m.new_id
+                    """
+                ), {"target_version_id": target_version_id})
+                updated_parent_rows += result.rowcount or 0
+                db.session.execute(_text(f"DROP TABLE IF EXISTS {temp_tbl_parent}"))
+            current_app.logger.info(
+                f"  ✓ [STAGED] Обновлено связей fuels.parent_id: {updated_parent_rows}"
+            )
             
             # union_energy_systems.id_energy_system_type -> energy_system_types (ID-мэппинг, затем резерв по name)
             updated_ues_rows_total = 0
@@ -1752,7 +1788,7 @@ def _copy_version_data_fixed(source_version_id, target_version_id, user, do_comm
         'electricity_production_cost_types',
         'technology_availabilities', 'equipment_groups', 'energy_system_types',
         'union_energy_systems', 'synchronous_areas', 'energy_zones', 
-        'federal_districts', 'gs_sys_companies', 'fuel_categories', 'fuel_types', 'fuels'
+        'federal_districts', 'gs_sys_companies', 'fuel_types', 'fuels'
     ]
     
     # Копируем независимые таблицы refdata
@@ -2285,7 +2321,6 @@ def _copy_version_data(source_version_id, target_version_id, user, do_commit=Tru
         # Генерирующие компании
         'gs_sys_companies',
         # Топливо
-        'fuel_categories',
         'fuel_types',
         'fuels',
         # Годы и год features теперь версионируются
@@ -3505,7 +3540,6 @@ def _delete_version_data_staged(version_id, user):
         (SCHEMA_REFDATA, 'gs_sys_technology_availabilities'),
         (SCHEMA_REFDATA, 'gs_sys_equipment_groups'),
         (SCHEMA_REFDATA, 'gs_sys_energy_system_types'),
-        (SCHEMA_REFDATA, 'gs_sys_fuel_categories'),
         (SCHEMA_REFDATA, 'gs_sys_fuel_types'),
         (SCHEMA_REFDATA, 'gs_sys_fuels'),
         (SCHEMA_REFDATA, 'gs_sys_companies'),
@@ -3784,7 +3818,6 @@ def _delete_version_data(version_id, user):
         # Генерирующие компании
         'gs_sys_companies',
         # Топливо
-        'fuel_categories',
         'fuel_types',
         'fuels',
         # Годы и год features теперь версионируются

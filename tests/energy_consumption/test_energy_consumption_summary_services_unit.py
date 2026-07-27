@@ -1468,6 +1468,80 @@ def test_all_verification_rows_use_six_decimal_places_independent_of_rounding_di
     assert ec_row["year_values"] == ["0,123457"]
 
 
+def test_sync_table_verification_rows_get_nt_gaes_toggle_compact_labels():
+    """«Проверка ЕЭС/СЗ …»: приписки НТ/ГАЭС только при нажатых кнопках — как у обычных строк."""
+    ees_rows = [
+        {
+            "entity_label": "Проверка ЕЭС России без НТ с зарядом ГАЭС",
+            "entity_kind": "oes_ees_sync_table_verification",
+            "show_entity_cell": True,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        }
+    ]
+    service._tag_sync_table_verification_rows_for_nt_gaes_toggles(
+        ees_rows,
+        perimeter_variant_code=service.CODE_WITHOUT_NT_WITH_GAES,
+    )
+    assert ees_rows[0]["pd_ec_entity_label_compact"] == "Проверка ЕЭС России без НТ"
+    assert (
+        ees_rows[0]["pd_ec_entity_label_compact_nt"]
+        == "Проверка ЕЭС России с зарядом ГАЭС"
+    )
+    assert ees_rows[0]["pd_ec_entity_label_compact_nt_gaes"] == "Проверка ЕЭС России"
+    assert (
+        service.export_entity_label_for_summary_row(
+            ees_rows[0],
+            service.EnergyConsumptionExportUiOptions(
+                sipr_on=False,
+                verification_on=True,
+                gaes_detail_on=False,
+                nt_detail_on=False,
+                isolated_energy_units_on=False,
+                territory_compact_on=True,
+            ),
+        )
+        == "Проверка ЕЭС России"
+    )
+    assert (
+        service.export_entity_label_for_summary_row(
+            ees_rows[0],
+            service.EnergyConsumptionExportUiOptions(
+                sipr_on=False,
+                verification_on=True,
+                gaes_detail_on=True,
+                nt_detail_on=True,
+                isolated_energy_units_on=False,
+                territory_compact_on=True,
+            ),
+        )
+        == "Проверка ЕЭС России без НТ с зарядом ГАЭС"
+    )
+
+    first_sa_rows = [
+        {
+            "entity_label": (
+                "Проверка первой синхронной зоны без НТ с зарядом ГАЭС "
+                "(без ЭС Калининградской области)"
+            ),
+            "entity_kind": "oes_ees_sync_table_verification",
+            "show_entity_cell": True,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+        }
+    ]
+    service._tag_sync_table_verification_rows_for_nt_gaes_toggles(
+        first_sa_rows,
+        perimeter_variant_code=service.CODE_WITHOUT_NT_WITH_GAES,
+    )
+    assert (
+        first_sa_rows[0]["pd_ec_entity_label_compact_nt_gaes"]
+        == "Проверка первой синхронной зоны"
+    )
+    assert (
+        first_sa_rows[0]["pd_ec_entity_label_compact"]
+        == "Проверка первой синхронной зоны без НТ"
+    )
+
+
 def test_consumption_mln_rows_respect_rounding_digits_from_url():
     class _DemandRow:
         def __init__(self, ec: Decimal, sipr: Decimal | None = None):

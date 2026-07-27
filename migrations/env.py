@@ -85,7 +85,6 @@ def import_all_models():
         "app.refdata.models.station_type_model",
         "app.refdata.models.tes_machine_type_model",
         "app.refdata.models.tes_type_model",
-        "app.refdata.models.fuel_category_model",
         "app.refdata.models.fuel_type_model",
         "app.refdata.models.fuel_model",
         "app.refdata.models.gen_company_model",

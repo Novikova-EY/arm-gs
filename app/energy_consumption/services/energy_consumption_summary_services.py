@@ -6224,6 +6224,45 @@ def _format_summary_table_entity_label_for_toggle_state(
     return f"{base}{nt_suffix}{gaes_suffix}".strip()
 
 
+def _tag_sync_table_verification_rows_for_nt_gaes_toggles(
+    verification_rows: list[dict[str, Any]],
+    *,
+    perimeter_variant_code: str,
+) -> None:
+    """Подписи «Проверка ЕЭС/СЗ …» — укорочение по кнопкам НТ/ГАЭС как у обычных строк."""
+    if not verification_rows:
+        return
+    code = str(perimeter_variant_code or "").strip()
+    if not code:
+        return
+    full = str(verification_rows[0].get("entity_label") or "").strip()
+    if not full:
+        return
+    base, _kal_suffix = _strip_summary_table_variant_suffixes_from_label(full)
+    compact = _format_summary_table_entity_label_for_toggle_state(
+        base,
+        code,
+        nt_detail_on=True,
+        gaes_detail_on=False,
+    )
+    compact_nt = _format_summary_table_entity_label_for_toggle_state(
+        base,
+        code,
+        nt_detail_on=False,
+        gaes_detail_on=True,
+    )
+    compact_both = _format_summary_table_entity_label_for_toggle_state(
+        base,
+        code,
+        nt_detail_on=False,
+        gaes_detail_on=False,
+    )
+    for row in verification_rows:
+        row["pd_ec_entity_label_compact"] = compact
+        row["pd_ec_entity_label_compact_nt"] = compact_nt
+        row["pd_ec_entity_label_compact_nt_gaes"] = compact_both
+
+
 def _format_summary_table_gaes_charge_entity_label(base_label: str, nt_group: str) -> str:
     base, _kal_suffix = _strip_summary_table_variant_suffixes_from_label(base_label)
     nt_suffix = ""
@@ -8240,7 +8279,7 @@ def _build_ees_russia_with_nt_with_gaes_kaliningrad_split_verification_rows(
 
     zero_ec = {int(year): Decimal(0) for year in years}
     zero_sipr = {int(year): Decimal(0) for year in years}
-    return _build_ec_summary_verification_rows(
+    rows = _build_ec_summary_verification_rows(
         entity_label=_EES_RUSSIA_WITH_NT_WITH_GAES_KALININGRAD_SPLIT_VERIFICATION_LABEL,
         entity_kind="oes_ees_sync_table_verification",
         entity_depth=entity_depth,
@@ -8253,6 +8292,11 @@ def _build_ees_russia_with_nt_with_gaes_kaliningrad_split_verification_rows(
         formula_tooltip=_EES_RUSSIA_WITH_NT_WITH_GAES_KALININGRAD_SPLIT_VERIFICATION_TOOLTIP,
         year_bounds_variant_code=CODE_WITHOUT_NT_WITH_KALININGRAD_ES,
     )
+    _tag_sync_table_verification_rows_for_nt_gaes_toggles(
+        rows,
+        perimeter_variant_code=CODE_WITH_NT_WITH_GAES,
+    )
+    return rows
 
 
 def _ees_russia_without_nt_with_gaes_verification_component_values(
@@ -8268,6 +8312,7 @@ def _ees_russia_without_nt_with_gaes_verification_component_values(
 
     Как у проверки «с НТ»: первая СЗ (строка сводки) + вторая СЗ + СЗ Калининграда.
     ТИТЭС входит в формулу «ЭЭС России», но не в «ЕЭС России».
+    СЗ Калининграда в сумме только с «Год с» (см. /perimeter_variants/).
     """
     first_sa_row = _find_sync_area_source_row(
         summary_rows,
@@ -8275,6 +8320,16 @@ def _ees_russia_without_nt_with_gaes_verification_component_values(
         base_label_prefix_cf=_FIRST_SYNC_AREA_BASE_LABEL_CF,
         variant_predicate=_is_without_nt_with_gaes_with_kaliningrad_variant_row,
     )
+    first_sa_code = (
+        str(first_sa_row.get("perimeter_variant_code") or "")
+        if first_sa_row is not None
+        else ""
+    )
+    if not first_sa_code:
+        first_sa_code = next(
+            iter(_FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_CODES),
+            "without_nt_with_gaes_kaliningrad",
+        )
     if first_sa_row is not None:
         first_sa_values = _raw_year_values_from_summary_row(
             first_sa_row,
@@ -8317,6 +8372,19 @@ def _ees_russia_without_nt_with_gaes_verification_component_values(
         years,
         parameter_key,
     )
+    # СЗ Калининграда учитываем только с «Год с» варианта ``_kaliningrad``.
+    fy, _ty = perimeter_variant_year_bounds_for_code(first_sa_code)
+    if fy is None:
+        fy, _ty = kaliningrad_sync_area_year_bounds()
+    if fy is not None:
+        kaliningrad_values = {
+            int(y): (
+                kaliningrad_values.get(int(y))
+                if int(y) >= int(fy)
+                else None
+            )
+            for y in years
+        }
     return first_sa_values, second_sa_values, kaliningrad_values
 
 
@@ -8398,7 +8466,7 @@ def _build_ees_russia_without_nt_with_gaes_kaliningrad_split_verification_rows(
 
     zero_ec = {int(year): Decimal(0) for year in years}
     zero_sipr = {int(year): Decimal(0) for year in years}
-    return _build_ec_summary_verification_rows(
+    rows = _build_ec_summary_verification_rows(
         entity_label=_EES_RUSSIA_WITHOUT_NT_WITH_GAES_KALININGRAD_SPLIT_VERIFICATION_LABEL,
         entity_kind="oes_ees_sync_table_verification",
         entity_depth=entity_depth,
@@ -8411,6 +8479,11 @@ def _build_ees_russia_without_nt_with_gaes_kaliningrad_split_verification_rows(
         formula_tooltip=_EES_RUSSIA_WITHOUT_NT_WITH_GAES_KALININGRAD_SPLIT_VERIFICATION_TOOLTIP,
         year_bounds_variant_code=None,
     )
+    _tag_sync_table_verification_rows_for_nt_gaes_toggles(
+        rows,
+        perimeter_variant_code=CODE_WITHOUT_NT_WITH_GAES,
+    )
+    return rows
 
 
 def _build_first_sa_without_nt_with_gaes_ues_verification_rows(
@@ -8536,7 +8609,7 @@ def _build_first_sa_without_nt_with_gaes_ues_verification_rows(
             exclude_ues_ids=exclude_ues_ids,
             ues_variant_code_for_ues_id=ues_variant_code_for_ues_id,
         )
-    return _build_ec_summary_verification_rows(
+    rows = _build_ec_summary_verification_rows(
         entity_label=entity_label,
         entity_kind="oes_ees_sync_table_verification",
         entity_depth=entity_depth,
@@ -8549,6 +8622,11 @@ def _build_first_sa_without_nt_with_gaes_ues_verification_rows(
         formula_tooltip=formula_tooltip,
         year_bounds_variant_code=year_bounds_variant_code,
     )
+    _tag_sync_table_verification_rows_for_nt_gaes_toggles(
+        rows,
+        perimeter_variant_code=first_sa_perimeter_variant_code,
+    )
+    return rows
 
 
 def inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
@@ -9234,7 +9312,11 @@ def _apply_first_sa_kaliningrad_es_subtract_from_year_values(
     kaliningrad_values: dict[int, Decimal | None],
     perimeter_variant_code: str | None,
 ) -> dict[int, Decimal | None]:
-    """Для вариантов с ``_kaliningrad`` вычесть ЭС Калининграда начиная с «Год с»."""
+    """Для вариантов с ``_kaliningrad`` вычесть ЭС Калининграда начиная с «Год с».
+
+    «Год с» — со страницы /perimeter_variants/. С этого года Калининград —
+    отдельная СЗ, поэтому его ЭС убираем из суммы ОЭС первой СЗ.
+    """
     if not _perimeter_variant_code_has_kaliningrad(perimeter_variant_code):
         return dict(year_sums)
     fy, _ty = perimeter_variant_year_bounds_for_code(str(perimeter_variant_code))
@@ -9245,6 +9327,7 @@ def _apply_first_sa_kaliningrad_es_subtract_from_year_values(
         if base is None:
             out[y] = None
             continue
+        # С «Год с»: ЭС Калининграда уже в отдельной СЗ — вычитаем из суммы ОЭС.
         subtract_here = fy is None or y >= int(fy)
         if not subtract_here:
             out[y] = base

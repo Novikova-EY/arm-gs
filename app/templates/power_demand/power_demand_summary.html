@@ -366,6 +366,7 @@
                     title="Показать строки «Расчетный максимум …» (зелёный фон)">
                 Расчетные максимумы
             </button>
+            {% if can_edit_summary_cells %}
             <button type="button"
                     id="pdPdSummaryVerificationToggle"
                     class="btn btn-outline-info text-nowrap flex-shrink-0"
@@ -373,6 +374,7 @@
                     title="Показать строки проверки (синий фон)">
                 Проверка
             </button>
+            {% endif %}
             {% endif %}
             {% if summary_route_variant == 'coeff' %}
             <button type="button"

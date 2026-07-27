@@ -12,6 +12,7 @@ from sqlalchemy import asc, not_
 from app.energy_consumption.forms.energy_consumption_parameter_forms import EmptyCSRFForm
 from app.energy_consumption.routes.energy_consumption_bp import energy_consumption_bp
 from app.energy_consumption.services import energy_consumption_parameter_services as dps
+from app.energy_consumption.services.access_services import can_edit_energy_consumption
 from app.energy_consumption.services.energy_consumption_summary_formula_registry import (
     PAGE_ELECTRICAL_INTENSITY,
 )
@@ -85,6 +86,11 @@ def _csrf():
     return EmptyCSRFForm()
 
 
+def _deny_energy_consumption_edit_html():
+    flash("Недостаточно прав для редактирования модуля «Спрос».", "danger")
+    return redirect(url_for("energy_consumption_bp.hub"))
+
+
 def _parse_energy_consumption_rounding_digits() -> int:
     """Знаки после запятой для отображения полей потребления (млн кВт·ч), как на страницах топлива."""
     raw = request.args.get("rounding_digits")
@@ -118,13 +124,16 @@ ENERGY_SYSTEM_TYPE_HUB_NAMES = ("ЕЭС России", "ТИТЭС")
 @energy_consumption_bp.route("/")
 @login_required
 def hub():
-    return render_template("energy_consumption/energy_consumption_start.html")
+    return render_template(
+        "energy_consumption/energy_consumption_start.html",
+        can_edit_energy_consumption=can_edit_energy_consumption(current_user),
+    )
 
 
 @energy_consumption_bp.route("/formulas/")
 @login_required
 def energy_consumption_formulas():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         flash("Недостаточно прав для редактирования текстов формул.", "danger")
         return redirect(url_for("energy_consumption_bp.hub"))
     return render_template(
@@ -144,7 +153,7 @@ def energy_consumption_summary_formulas():
 @energy_consumption_bp.route("/formulas/save", methods=["POST"])
 @login_required
 def energy_consumption_formulas_save():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     try:
@@ -162,7 +171,7 @@ def energy_consumption_formulas_save():
 @energy_consumption_bp.route("/formulas/reset", methods=["POST"])
 @login_required
 def energy_consumption_formulas_reset():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     key = str(data.get("formula_key") or "").strip()
@@ -191,6 +200,8 @@ def energy_consumption_summary_formulas_reset():
 def russia_demand():
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_energy_consumption(current_user):
+            return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -215,6 +226,7 @@ def russia_demand():
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
+        can_edit_energy_consumption=can_edit_energy_consumption(current_user),
         page_title="Нагрузки: Россия без НТ",
         parent_label="Россия без НТ",
         back_url=url_for("energy_consumption_bp.hub"),
@@ -239,6 +251,8 @@ def russia_with_nt_demand():
     """Россия с НТ — те же поля, что у /russia/, вариант периметра with_nt."""
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_energy_consumption(current_user):
+            return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -263,6 +277,7 @@ def russia_with_nt_demand():
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
+        can_edit_energy_consumption=can_edit_energy_consumption(current_user),
         page_title="Нагрузки: Россия с НТ",
         parent_label="Россия с НТ",
         back_url=url_for("energy_consumption_bp.hub"),
@@ -287,6 +302,8 @@ def ees_russia_demand():
     """ЕЭС России без НТ — отдельная таблица параметров нагрузки."""
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_energy_consumption(current_user):
+            return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -311,6 +328,7 @@ def ees_russia_demand():
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
+        can_edit_energy_consumption=can_edit_energy_consumption(current_user),
         page_title="Нагрузки: ЕЭС России без НТ",
         parent_label="ЕЭС России без НТ",
         back_url=url_for("energy_consumption_bp.hub"),
@@ -335,6 +353,8 @@ def ees_russia_with_nt_demand():
     """ЕЭС России с НТ — вариант периметра with_nt в общей таблице."""
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_energy_consumption(current_user):
+            return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -359,6 +379,7 @@ def ees_russia_with_nt_demand():
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
+        can_edit_energy_consumption=can_edit_energy_consumption(current_user),
         page_title="Нагрузки: ЕЭС России (с НТ)",
         parent_label="ЕЭС России (с НТ)",
         back_url=url_for("energy_consumption_bp.hub"),
@@ -383,6 +404,8 @@ def ees_demand():
     """ЭЭС — отдельная таблица параметров нагрузки (без FK на справочник)."""
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_energy_consumption(current_user):
+            return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -404,6 +427,7 @@ def ees_demand():
     return render_template(
         "energy_consumption/energy_consumption_edit.html",
         form=form,
+        can_edit_energy_consumption=can_edit_energy_consumption(current_user),
         page_title="Нагрузки: ЭЭС",
         parent_label="ЭЭС",
         back_url=url_for("energy_consumption_bp.hub"),
@@ -483,6 +507,8 @@ def _demand_detail(
     form = _csrf()
     parent_model.query.get_or_404(parent_id)
     if request.method == "POST":
+        if not can_edit_energy_consumption(current_user):
+            return _deny_energy_consumption_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -505,6 +531,7 @@ def _demand_detail(
     rd = _parse_energy_consumption_rounding_digits()
     ctx = dict(
         form=form,
+        can_edit_energy_consumption=can_edit_energy_consumption(current_user),
         page_title=page_title,
         parent_label=parent_label,
         back_url=url_for(back_list_endpoint),

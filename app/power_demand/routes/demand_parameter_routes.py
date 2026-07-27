@@ -13,6 +13,7 @@ from app.extensions import db
 from app.power_demand.forms.demand_parameter_forms import EmptyCSRFForm
 from app.power_demand.routes.power_demand_bp import power_demand_bp
 from app.power_demand.services import demand_parameter_services as dps
+from app.power_demand.services.access_services import can_edit_power_demand
 from app.power_demand.services.formula_text.power_demand_summary_formula_text_services import (
     list_formulas_for_admin,
     reset_formula_text_override,
@@ -86,6 +87,11 @@ def _csrf():
     return EmptyCSRFForm()
 
 
+def _deny_power_demand_edit_html():
+    flash("Недостаточно прав для редактирования модуля «Нагрузки».", "danger")
+    return redirect(url_for("power_demand_bp.hub"))
+
+
 def _parse_power_demand_rounding_digits() -> int:
     """Знаки после запятой для отображения/ввода Макс. потребления (как на страницах топлива)."""
     raw = request.args.get("rounding_digits")
@@ -119,13 +125,16 @@ ENERGY_SYSTEM_TYPE_HUB_NAMES = ("ЕЭС России", "ТИТЭС")
 @power_demand_bp.route("/")
 @login_required
 def hub():
-    return render_template("power_demand/power_demand_start.html")
+    return render_template(
+        "power_demand/power_demand_start.html",
+        can_edit_power_demand=can_edit_power_demand(current_user),
+    )
 
 
 @power_demand_bp.route("/formulas/")
 @login_required
 def power_demand_formulas():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_power_demand(current_user):
         flash("Недостаточно прав для редактирования текстов формул.", "danger")
         return redirect(url_for("power_demand_bp.hub"))
     return render_template(
@@ -144,7 +153,7 @@ def power_demand_summary_formulas():
 @power_demand_bp.route("/formulas/save", methods=["POST"])
 @login_required
 def power_demand_formulas_save():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_power_demand(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     try:
@@ -162,7 +171,7 @@ def power_demand_formulas_save():
 @power_demand_bp.route("/formulas/reset", methods=["POST"])
 @login_required
 def power_demand_formulas_reset():
-    if not getattr(current_user, "has_admin", False):
+    if not can_edit_power_demand(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
     key = str(data.get("formula_key") or "").strip()
@@ -191,6 +200,8 @@ def power_demand_summary_formulas_reset():
 def russia_demand():
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_power_demand(current_user):
+            return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -228,6 +239,7 @@ def russia_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        can_edit_power_demand=can_edit_power_demand(current_user),
     )
 
 
@@ -237,6 +249,8 @@ def russia_with_nt_demand():
     """Те же поля и логика, что у /russia/, отдельная таблица (сценарий с новыми территориями)."""
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_power_demand(current_user):
+            return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -274,6 +288,7 @@ def russia_with_nt_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        can_edit_power_demand=can_edit_power_demand(current_user),
     )
 
 
@@ -331,6 +346,8 @@ def ees_demand():
     """ЭЭС России без НТ — отдельная таблица параметров нагрузки (без FK на справочник)."""
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_power_demand(current_user):
+            return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -368,6 +385,7 @@ def ees_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        can_edit_power_demand=can_edit_power_demand(current_user),
     )
 
 
@@ -377,6 +395,8 @@ def ees_with_nt_demand():
     """ЭЭС России с НТ — те же поля, что у /ees/, вариант периметра with_nt."""
     form = _csrf()
     if request.method == "POST":
+        if not can_edit_power_demand(current_user):
+            return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -414,6 +434,7 @@ def ees_with_nt_demand():
         year_options=dps.year_dropdown_numbers(rows),
         show_combined_oess_eess=False,
         rounding_digits=rd,
+        can_edit_power_demand=can_edit_power_demand(current_user),
     )
 
 
@@ -480,6 +501,8 @@ def _demand_detail(
     form = _csrf()
     parent_model.query.get_or_404(parent_id)
     if request.method == "POST":
+        if not can_edit_power_demand(current_user):
+            return _deny_power_demand_edit_html()
         if not form.validate_on_submit():
             flash("Ошибка CSRF.", "danger")
             return redirect(request.url)
@@ -522,6 +545,7 @@ def _demand_detail(
         format_dt=dps.format_peak_datetime,
         year_options=dps.year_dropdown_numbers(rows),
         rounding_digits=rd,
+        can_edit_power_demand=can_edit_power_demand(current_user),
     )
     if show_combined_oess_eess is not None:
         ctx["show_combined_oess_eess"] = show_combined_oess_eess

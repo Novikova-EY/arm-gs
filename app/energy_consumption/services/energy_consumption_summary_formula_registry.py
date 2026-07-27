@@ -162,7 +162,7 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
     ),
     _def(
         "verify_for_fo",
-        pages=frozenset({PAGE_FO, PAGE_SUMMARY_TABLE}),
+        pages=frozenset({PAGE_SUMMARY_TABLE}),
         aggregation_level="Проверка",
         cell_name="Проверка для ФО",
         default_text=(
@@ -742,9 +742,9 @@ EC_SUMMARY_FORMULA_REGISTRY: tuple[EcSummaryFormulaDef, ...] = (
         cell_name="Проверка ЕЭС России без НТ с зарядом ГАЭС",
         default_text=(
             "Проверка = ЕЭС России без НТ с зарядом ГАЭС − "
-            "Первая синхронная зона без НТ с зарядом ГАЭС (с ЭС Калининградской области) − "
-            "Вторая синхронная зона − "
-            "ТИТЭС"
+            "(Первая синхронная зона без НТ с зарядом ГАЭС + "
+            "Вторая синхронная зона) − "
+            "Синхронная зона Калининградской области"
         ),
     ),
     _def(

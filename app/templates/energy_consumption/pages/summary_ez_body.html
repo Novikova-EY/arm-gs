@@ -422,7 +422,7 @@
                     title="Показать строки по данным СиПР (значения млн кВт·ч — СиПР; во всплывающей подсказке ячейки — потребление без СиПР)">
                 СиПР
             </button>
-            {% if active_summary in ('oes', 'fo', 'ez') %}
+            {% if can_edit_summary_cells and active_summary in ('oes', 'fo', 'ez') %}
             <button type="button"
                     id="pdEcSummaryVerificationToggle"
                     class="btn btn-outline-info text-nowrap flex-shrink-0"

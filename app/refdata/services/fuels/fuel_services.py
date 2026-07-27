@@ -2,7 +2,7 @@
 
 from app.extensions import db
 from sqlalchemy import or_, text
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload, selectinload, aliased
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 from io import BytesIO 
@@ -48,7 +48,7 @@ def fuel_query(
     """Базовый запрос для выборки топлива с фильтрацией и сортировкой."""
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "fuel_type", "nazvl", "kmbur"}
+    allowed_sort_by = {"id", "name", "fuel_type", "nazvl", "kmbur", "parent", "kod"}
     sort_by = sort_by if sort_by in allowed_sort_by else "id"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -83,10 +83,16 @@ def fuel_query(
     # Сортировка
     if sort_by == "name":
         sort_col = Fuel.name
+    elif sort_by == "kod":
+        sort_col = Fuel.kod
     elif sort_by == "nazvl":
         sort_col = Fuel.nazvl
     elif sort_by == "kmbur":
         sort_col = Fuel.kmbur
+    elif sort_by == "parent":
+        parent_alias = aliased(Fuel)
+        query = query.outerjoin(parent_alias, Fuel.parent_id == parent_alias.id)
+        sort_col = parent_alias.name
     elif sort_by == "fuel_type":
         if not ff:
             query = query.outerjoin(FuelType, Fuel.id_fuel_type == FuelType.id)
@@ -97,6 +103,30 @@ def fuel_query(
     query = query.order_by(sort_col.desc() if sort_dir == "desc" else sort_col.asc())
 
     return query
+
+
+def _assert_valid_fuel_parent(fuel_id, parent_id):
+    """Проверяет, что parent_id существует и не создаёт цикл."""
+    if parent_id is None:
+        return
+
+    parent_obj = db.session.get(Fuel, parent_id)
+    if not parent_obj:
+        raise ValueError(f"Родительский вид топлива с id={parent_id} не найден.")
+
+    if fuel_id is not None and int(parent_id) == int(fuel_id):
+        raise ValueError("Вид топлива не может быть родителем самого себя.")
+
+    seen = {int(fuel_id)} if fuel_id is not None else set()
+    current_id = int(parent_id)
+    while current_id is not None:
+        if current_id in seen:
+            raise ValueError("Обнаружена циклическая ссылка в иерархии видов топлива.")
+        seen.add(current_id)
+        current_obj = db.session.get(Fuel, current_id)
+        if not current_obj:
+            raise ValueError(f"Родительский вид топлива с id={current_id} не найден.")
+        current_id = current_obj.parent_id
 
 
 @no_autoflush
@@ -119,7 +149,7 @@ def get_fuel_list(
         kmbur_filter=kmbur_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,
-    )
+    ).options(joinedload(Fuel.fuel_type), joinedload(Fuel.parent))
 
     # Пагинация
     return query.paginate(page=page, per_page=per_page, error_out=False)
@@ -144,6 +174,7 @@ def update_fuel_service(data, user):
         for record in data:
             fuel_id = record.get("fuel_id")
             name = (record.get("name") or "").strip()
+            kod = _to_int_or_none(record.get("kod"), keep_zero=True)
             nazvl = (record.get("nazvl") or "").strip() or None
             kmbur = (record.get("kmbur") or "").strip() or None
 
@@ -175,6 +206,17 @@ def update_fuel_service(data, user):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "fuel"))
                 obj.name = name
 
+            if "kod" in record and kod != obj.kod:
+                changes.append(
+                    format_field_change(
+                        "kod",
+                        obj.kod if obj.kod is not None else "не указано",
+                        kod if kod is not None else "не указано",
+                        "fuel",
+                    )
+                )
+                obj.kod = kod
+
             if nazvl != obj.nazvl:
                 changes.append(
                     format_field_change(
@@ -196,6 +238,23 @@ def update_fuel_service(data, user):
                     )
                 )
                 obj.kmbur = kmbur
+
+            if "parent_id" in record:
+                new_parent_id = _to_int_or_none(record.get("parent_id"), keep_zero=False)
+                if new_parent_id != obj.parent_id:
+                    _assert_valid_fuel_parent(fuel_id, new_parent_id)
+                    prev_parent = (
+                        db.session.get(Fuel, obj.parent_id) if obj.parent_id else None
+                    )
+                    new_parent = (
+                        db.session.get(Fuel, new_parent_id) if new_parent_id else None
+                    )
+                    old_name = prev_parent.name if prev_parent else "не указано"
+                    new_name = new_parent.name if new_parent else "не указано"
+                    changes.append(
+                        format_field_change("parent_id", old_name, new_name, "fuel")
+                    )
+                    obj.parent_id = new_parent_id
 
             # Проверка наличия вида топлива
             if "fuel_type_id" in record:
@@ -274,6 +333,8 @@ def add_fuel_service(data, user):
             for record in data:
                 name = (record.get("name") or "").strip()
                 fuel_type_id = _to_int_or_none(record.get("fuel_type_id"), keep_zero=False)
+                parent_id = _to_int_or_none(record.get("parent_id"), keep_zero=False)
+                kod = _to_int_or_none(record.get("kod"), keep_zero=True)
 
                 if not name and not fuel_type_id:
                     log_to_db(
@@ -288,6 +349,8 @@ def add_fuel_service(data, user):
                 if not obj:
                     raise ValueError(f"Вид топлива с id={fuel_type_id} не найден.")
 
+                _assert_valid_fuel_parent(None, parent_id)
+
                 # Проверяем уникальность name
                 dup = (apply_version_filter(Fuel.query, Fuel)
                         .filter(Fuel.name == name)
@@ -298,17 +361,24 @@ def add_fuel_service(data, user):
                 # Создаем новую запись
                 obj = Fuel(
                     name=name,
+                    kod=kod,
                     id_fuel_type=fuel_type_id,
+                    parent_id=parent_id,
                 )
                 set_db_version_on_create(obj)
                 db.session.add(obj)
                 db.session.flush()  # получить id без полного коммита
 
+                parent_name = (
+                    db.session.get(Fuel, parent_id).name if parent_id else "не указано"
+                )
                 log_to_db(
                     user,
                     "Создан тип топлива",
                     f"Наименование: {name};"
-                    f"Вид топлива: {get_fuel_type_name(fuel_type_id)} ",
+                    f"Код: {kod if kod is not None else 'не указано'}; "
+                    f"Вид топлива: {get_fuel_type_name(fuel_type_id)}; "
+                    f"Родитель: {parent_name}",
                     entity_type="fuel", 
                     entity_id=obj.id)
 
@@ -496,8 +566,10 @@ def export_fuel_service(
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx,
+            "Код": o.kod if o.kod is not None else "—",
             "Вид топлива": _dash(o.name),
             "Тип топлива": getattr(o.fuel_type, "name", "Не указан") or "Не указан",
+            "Родительский вид": getattr(o.parent, "name", "Не указан") or "Не указан",
             "Наименование в БД Топливо": _dash(o.nazvl),
             "Тип угольного топлива": _dash(o.kmbur),
         })
@@ -556,21 +628,31 @@ def add_fuel_all_versions_service(data, user):
         nazvl = (record.get("nazvl") or "").strip() or None
         kmbur = (record.get("kmbur") or "").strip() or None
         fuel_type_id = _to_int_or_none(record.get("fuel_type_id"), keep_zero=False)
+        parent_id = _to_int_or_none(record.get("parent_id"), keep_zero=False)
+        kod = _to_int_or_none(record.get("kod"), keep_zero=True)
         if not name or not fuel_type_id:
             raise ValueError("Каждая запись должна содержать 'name' и 'fuel_type_id'.")
         return {
             "name": name,
+            "kod": kod,
             "nazvl": nazvl,
             "kmbur": kmbur,
             "fuel_type_id": fuel_type_id,
+            "parent_id": parent_id,
         }
 
     def resolve_for_version(clean, version_id):
         return {
             "name": clean["name"],
+            "kod": clean["kod"],
             "nazvl": clean["nazvl"],
             "kmbur": clean["kmbur"],
             "id_fuel_type": fk_id_for_version(FuelType, clean["fuel_type_id"], version_id),
+            "parent_id": (
+                fk_id_for_version(Fuel, clean["parent_id"], version_id)
+                if clean["parent_id"] is not None
+                else None
+            ),
         }
 
     return add_all_versions_records(
@@ -595,22 +677,32 @@ def update_fuel_all_versions_service(data, user):
         nazvl = (record.get("nazvl") or "").strip() or None
         kmbur = (record.get("kmbur") or "").strip() or None
         fuel_type_id = _to_int_or_none(record.get("fuel_type_id"), keep_zero=False)
+        parent_id = _to_int_or_none(record.get("parent_id"), keep_zero=False)
+        kod = _to_int_or_none(record.get("kod"), keep_zero=True)
         if not name:
             raise ValueError("Поле 'name' обязательно для заполнения.")
         return {
             "fuel_id": fuel_id,
             "name": name,
+            "kod": kod,
             "nazvl": nazvl,
             "kmbur": kmbur,
             "fuel_type_id": fuel_type_id,
+            "parent_id": parent_id,
         }
 
     def resolve_for_version(clean, version_id):
         return {
             "name": clean["name"],
+            "kod": clean["kod"],
             "nazvl": clean["nazvl"],
             "kmbur": clean["kmbur"],
             "id_fuel_type": fk_id_for_version(FuelType, clean["fuel_type_id"], version_id),
+            "parent_id": (
+                fk_id_for_version(Fuel, clean["parent_id"], version_id)
+                if clean["parent_id"] is not None
+                else None
+            ),
         }
 
     return update_all_versions_records(
@@ -621,7 +713,7 @@ def update_fuel_all_versions_service(data, user):
         pk_field="fuel_id",
         normalize_record=normalize_record,
         resolve_for_version=resolve_for_version,
-        tracked_fields=['name', 'nazvl', 'kmbur', 'id_fuel_type'],
+        tracked_fields=['name', 'kod', 'nazvl', 'kmbur', 'id_fuel_type', 'parent_id'],
         unique_fields=['name'],
         temp_fields=['name'],
         clear_fields=[]

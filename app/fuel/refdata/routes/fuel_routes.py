@@ -64,7 +64,9 @@ def fuel_refdata_fuel_list():
 
         fuel_ids = request.form.getlist("fuel_ids[]")
         fuel_names = request.form.getlist("fuel_names[]")
+        fuel_kods = request.form.getlist("fuel_kods[]")
         fuel_types = request.form.getlist("fuel_types[]")
+        fuel_parents = request.form.getlist("fuel_parents[]")
         fuel_nazvl = request.form.getlist("fuel_nazvl[]")
         fuel_kmbur = request.form.getlist("fuel_kmbur[]")
         fuel_delete = request.form.getlist("fuel_delete[]")
@@ -92,15 +94,17 @@ def fuel_refdata_fuel_list():
                                       sort_dir=sort_dir))
 
             fuel_data = []
-            for fuel_id, fuel_name, fuel_type, nazvl, kmbur in zip(
-                fuel_ids, fuel_names, fuel_types, fuel_nazvl, fuel_kmbur,
+            for fuel_id, fuel_name, fuel_kod, fuel_type, fuel_parent, nazvl, kmbur in zip(
+                fuel_ids, fuel_names, fuel_kods, fuel_types, fuel_parents, fuel_nazvl, fuel_kmbur,
             ):
                 if fuel_id and int(fuel_id) in deleted_ids:
                     continue
                 fuel_data.append({
                     "fuel_id": int(fuel_id) if fuel_id else None,
                     "name": fuel_name.strip(),
+                    "kod": fuel_kod,
                     "fuel_type_id": int(fuel_type) if fuel_type else None,
+                    "parent_id": int(fuel_parent) if fuel_parent else None,
                     "nazvl": (nazvl or "").strip(),
                     "kmbur": (kmbur or "").strip(),
                 })
@@ -168,6 +172,9 @@ def fuel_refdata_fuel_list():
     ]
 
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
+    form.parent.choices = choices_cache.get_choices_with_default(
+        Fuel, Fuel.id, default_text="— (корень)"
+    )
 
     return render_template(
         "fuel/refdata/fuels/fuel/fuel.html",
@@ -175,6 +182,7 @@ def fuel_refdata_fuel_list():
         fuel_list=pagination.items,
         pagination=pagination,
         fuel_types=form.fuel_type.choices,
+        fuel_parents=form.parent.choices,
         fuel_filter=fuel_filter,
         fuel_type_filter=fuel_type_filter,
         nazvl_filter=nazvl_filter,
@@ -207,12 +215,17 @@ def fuel_refdata_add_fuel():
     kmbur_filter = request.args.get("kmbur_filter", "").strip()
 
     form.fuel_type.choices = choices_cache.get_choices(FuelType, FuelType.id)
+    form.parent.choices = choices_cache.get_choices_with_default(
+        Fuel, Fuel.id, default_text="— (корень)"
+    )
 
     if request.method == "POST" and form.validate_on_submit():
         try:
             payload = [{
                 "name": (form.name.data or "").strip(),
+                "kod": form.kod.data,
                 "fuel_type_id": form.fuel_type.data,
+                "parent_id": form.parent.data,
             }]
             add_fuel_service(payload, user)
             flash("Новая запись успешно добавлена.", "success")

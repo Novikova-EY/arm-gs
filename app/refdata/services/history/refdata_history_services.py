@@ -22,7 +22,6 @@ from app.refdata.models.energy_systems.energy_zone_model import EnergyZone
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
-from app.refdata.models.fuels.fuel_category_model import FuelCategory
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.fuels.fuel_type_model import FuelType
 from app.refdata.models.gen_companies.gen_company_model import GenCompany
@@ -375,12 +374,6 @@ def _gen_company_payload(company: GenCompany) -> dict[str, Any]:
     }
 
 
-def _fuel_category_payload(category: FuelCategory) -> dict[str, Any]:
-    return {
-        "name": category.name,
-    }
-
-
 def _fuel_type_payload(fuel_type: FuelType) -> dict[str, Any]:
     return {
         "name": fuel_type.name,
@@ -390,7 +383,11 @@ def _fuel_type_payload(fuel_type: FuelType) -> dict[str, Any]:
 def _fuel_payload(fuel: Fuel) -> dict[str, Any]:
     return {
         "name": fuel.name,
+        "kod": fuel.kod,
         "id_fuel_type": fuel.id_fuel_type,
+        "parent_id": fuel.parent_id,
+        "nazvl": fuel.nazvl,
+        "kmbur": fuel.kmbur,
     }
 
 
@@ -418,7 +415,6 @@ REFDATA_HISTORY_MAPPINGS = {
     EconomicActivityType: ("economic_activity_type", _economic_activity_type_payload),
     TechnologyAvailability: ("technology_availability", _technology_availability_payload),
     EquipmentGroupType: ("equipment_group", _equipment_group_payload),
-    FuelCategory: ("fuel_category", _fuel_category_payload),
     FuelType: ("fuel_type", _fuel_type_payload),
     Fuel: ("fuel", _fuel_payload),
     GenCompany: ("gen_company", _gen_company_payload),
@@ -861,25 +857,6 @@ def snapshot_fuels(
             f"database_version_id={database_version_id}, year={year}",
             entity_type="refdata_history",
         )
-
-        fuel_categories = FuelCategory.query.filter_by(
-            database_version_id=database_version_id
-        ).all()
-        for category in fuel_categories:
-            entity = _get_or_create_refdata_entity(
-                entity_type="fuel_category",
-                entity_id=category.id,
-                database_version_id=database_version_id,
-                ref_uuid=category.ref_uuid,
-            )
-            is_created = _upsert_refdata_entity_year(
-                refdata_entity=entity,
-                year=year,
-                database_version_id=database_version_id,
-                payload=_fuel_category_payload(category),
-            )
-            created += 1 if is_created else 0
-            updated += 0 if is_created else 1
 
         fuel_types = FuelType.query.filter_by(database_version_id=database_version_id).all()
         for fuel_type in fuel_types:
