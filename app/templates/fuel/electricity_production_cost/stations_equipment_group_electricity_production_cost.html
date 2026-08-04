@@ -47,7 +47,7 @@
                 <th style="min-width: 140px;">Группа оборудования</th>
                 {% for attr, label, is_numeric in cost_columns %}
                 <th style="min-width: 80px;" class="epc-col-{{ attr }}" data-column="{{ attr }}">
-                    {{ label }}<br><span class="text-muted small">({{ attr }})</span>
+                    {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% endfor %}
             </tr>

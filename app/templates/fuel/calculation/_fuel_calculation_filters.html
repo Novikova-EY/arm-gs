@@ -5,34 +5,41 @@
 <div class="col-12 mb-0">
     <div class="mb-0 px-3 pt-3 pb-0" style="background: transparent; border: none;">
         <form method="GET" action="{{ url_for('fuel_bp.fuel_calculation_form') }}"
-              class="fuel-calc-filters-form">
+              id="fuelCalcFiltersForm" class="fuel-calc-filters-form">
             {% for key, values in request.args.lists() %}
-                {% if key not in ['union_energy_system_filter', 'tes_type_filter', 'start_year', 'distribution_parameter_id']
+                {% if key not in ['union_energy_system_filter', 'tes_type_filter', 'start_year', 'base_year', 'apply_restrictions', 'distribution_parameter_id']
                     and key not in _fcalc_drop_params %}
                     {% for v in values %}
                         <input type="hidden" name="{{ key }}" value="{{ v }}">
                     {% endfor %}
                 {% endif %}
             {% endfor %}
+            {% set _base_year_selected = base_year if base_year is defined and base_year is not none else none %}
             <div class="pb-1 fuel-calc-filters-strip-wrap overflow-visible">
                 <div class="d-flex flex-wrap align-items-end gap-3 fuel-calc-filter-strip w-100 justify-content-between">
                     <div class="d-flex flex-wrap align-items-end gap-3 flex-grow-1 min-width-0">
                         <div class="flex-shrink-0" style="flex: 0 0 17rem; max-width: 40vw;">
                             <label for="union_energy_system" class="form-label fw-semibold mb-1 text-nowrap">{{ dp_l.get('name', 'Объединенная энергосистема') }}</label>
                             <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2 w-100"
-                                    data-ues-placeholder="ОЭС">
-                                <option value="" {% if _ues_selected is none %}selected{% endif %}>Все ОЭС</option>
-                                {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
-                                    <option value="{{ ues.id }}" {% if _ues_selected is not none and ues.id == _ues_selected %}selected{% endif %}>{{ ues.name }}</option>
-                                {% endfor %}
+                                    data-ues-placeholder="Выберите ОЭС">
+                                <option value="" {% if _ues_selected is none %}selected{% endif %}>Выберите ОЭС</option>
                                 {% for ues in union_energy_system_list if ues.name|lower != 'не указано' %}
                                     <option value="{{ ues.id }}" {% if _ues_selected is not none and ues.id == _ues_selected %}selected{% endif %}>{{ ues.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="flex-shrink-0" style="flex: 0 0 7.5rem;">
-                            <label for="start_year" class="form-label fw-semibold mb-1 text-nowrap">{{ dp_l.get('year', 'Расчитываемый год') }}</label>
-                            <select name="start_year" id="start_year" class="form-select w-100">
+                            <label for="base_year" class="form-label fw-semibold mb-1 text-nowrap">{{ dp_l.get('byear', 'Базовый год') }}</label>
+                            <select name="base_year" id="base_year" class="form-select w-100" aria-label="Базовый год (byear)">
+                                <option value="" {% if _base_year_selected is none %}selected{% endif %}>не указано</option>
+                                {% for year in filter_year_list %}
+                                <option value="{{ year }}" {% if _base_year_selected is not none and _base_year_selected == year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex-shrink-0" style="flex: 0 0 7.5rem;">
+                            <label for="start_year" class="form-label fw-semibold mb-1 text-nowrap">{{ dp_l.get('year', 'Расчетный год') }}</label>
+                            <select name="start_year" id="start_year" class="form-select w-100" aria-label="Расчетный год (year)">
                                 <option value="" {% if start_year is none %}selected{% endif %}>не указано</option>
                                 {% for year in filter_year_list %}
                                 <option value="{{ year }}" {% if start_year is not none and start_year == year %}selected{% endif %}>{{ year }}</option>
@@ -55,10 +62,21 @@
                     <div class="flex-shrink-0 align-self-end ms-3">
                         {% set _dp_list_qs = request.query_string.decode('utf-8') if request.query_string else '' %}
                         <div class="d-flex flex-wrap align-items-center gap-2 justify-content-end">
-                        <a class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap"
-                           href="{{ url_for('fuel_bp.fuel_restrictions_list') }}{% if _dp_list_qs %}?{{ _dp_list_qs }}{% endif %}">
-                            <i class="bi bi-ui-checks-grid me-1"></i>Ограничения
-                        </a>
+                        <div class="d-flex flex-row align-items-center gap-2">
+                            <div class="form-check mb-0 px-1">
+                                <input class="form-check-input" type="checkbox" value="1"
+                                       name="apply_restrictions" id="apply_restrictions"
+                                       {% if apply_restrictions|default(false) %}checked{% endif %}>
+                                <label class="form-check-label small text-nowrap" for="apply_restrictions"
+                                       title="Аналог открытого окна «Анализ_по_областям» в Access: при включении в «Распред» применяется kobl по субъектам (emin/emax)">
+                                    Учитывать ограничения в расчетах
+                                </label>
+                            </div>
+                            <a class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap"
+                               href="{{ url_for('fuel_bp.fuel_restrictions_list') }}{% if _dp_list_qs %}?{{ _dp_list_qs }}{% endif %}">
+                                <i class="bi bi-ui-checks-grid me-1"></i>Ограничения
+                            </a>
+                        </div>
                         <a class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap"
                            href="{{ url_for('fuel_bp.distribution_parameters_list') }}{% if _dp_list_qs %}?{{ _dp_list_qs }}{% endif %}">
                             <i class="bi bi-sliders me-1"></i>Параметры распределения
@@ -71,63 +89,270 @@
 
         <hr class="my-3 border-secondary opacity-25">
 
-        <div class="row g-3 align-items-end">
-            <div class="col-12 col-md-6">
-                <div class="d-flex flex-column gap-3">
-                    <div>
-                        <div class="fw-semibold mb-1"><label class="mb-0" for="e_eraspred">{{ dp_l.get('e', 'e') }} <span class="text-muted small fw-normal">(e)</span></label></div>
-                        <input type="text" inputmode="decimal" class="form-control fuel-calc-num" id="e_eraspred"
-                               value="{% if selected_row and selected_row.e is not none %}{{ selected_row.e|format_decimal_trim(0) }}{% endif %}"
-                               autocomplete="off" {% if not selected_row %}disabled{% endif %}>
-                    </div>
-                    <div>
-                        <div class="fw-semibold text-secondary mb-1"><span class="mb-0">Е<sub>тек</sub></span></div>
-                        <input type="text" class="form-control fuel-calc-num bg-light" id="fuel_calc_e_tek" readonly tabindex="-1"
-                               value="{% if coeff_calc_year_display and coeff_calc_year_display.e_target is not none %}{{ coeff_calc_year_display.e_target|format_decimal_trim(0) }}{% elif selected_row and selected_row.e is not none %}{{ selected_row.e|format_decimal_trim(0) }}{% else %}—{% endif %}">
-                    </div>
-                </div>
+        {% set _matching = matching_distribution_parameters|default([]) %}
+        {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+        {% set _dp_headings = (distribution_param_headings|default([]))
+            |rejectattr('0', 'equalto', 'numb')|rejectattr('0', 'equalto', 'bkl')|list %}
+
+        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2">
+            <div class="d-flex flex-wrap align-items-baseline gap-2 min-width-0">
+                <h3 class="h5 fw-semibold mb-0">Параметры распределения</h3>
+                {% if selected_row and selected_row.filter_text %}
+                <span class="small text-muted">
+                    <span class="fw-semibold">Фильтр:</span>
+                    <code class="user-select-all">{{ selected_row.filter_text }}</code>
+                </span>
+                {% endif %}
             </div>
-            <div class="col-12 col-md-6">
-                <div class="d-flex flex-column gap-3">
-                    <div>
-                        <div class="fw-semibold text-secondary mb-1"><span class="mb-0">{{ dp_l.get('k', 'k') }} </span><span class="text-muted small fw-normal">(k)</span></div>
-                        <input type="text" class="form-control fuel-calc-num bg-light" id="fuel_calc_k" readonly tabindex="-1"
-                               value="{% if selected_row and selected_row.k is not none %}{{ selected_row.k|format_decimal_trim(0) }}{% else %}—{% endif %}">
-                    </div>
-                    <div>
-                        <div class="fw-semibold text-secondary mb-1"><span class="mb-0">{{ dp_l.get('doptim', 'doptim') }} </span><span class="text-muted small fw-normal">(doptim)</span></div>
-                        <input type="text" class="form-control fuel-calc-num bg-light" id="fuel_calc_doptim" readonly tabindex="-1"
-                               value="{% if selected_row and selected_row.doptim is not none %}{{ selected_row.doptim|format_decimal_trim(0) }}{% else %}—{% endif %}">
-                    </div>
-                </div>
-            </div>
+            {% if selected_row %}
+            <span class="small text-muted">
+                активный сценарий:
+                {{ selected_row.union_energy_system.name if selected_row.union_energy_system else 'ОЭС не указана' }}
+                · {{ selected_row.base_year.number if selected_row.base_year else '—' }}/{{ selected_row.year.number if selected_row.year else '—' }}
+            </span>
+            {% endif %}
         </div>
 
+        <div class="table-responsive mb-2">
+            <table class="table table-bordered align-middle mb-0 distribution-params-table fuel-calc-num" data-auto-export-excel="off">
+                <thead class="table-success">
+                    <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                        {% for attr, label in _dp_headings %}
+                            {% if attr == 'k' %}
+                            <th colspan="5" style="min-width: max-content;">
+                                Коэффициент загрузки
+                            </th>
+                            {% elif attr in ('kn', 'knps', 'kngt', 'knpg') %}
+                            {% elif attr == 'hnps' %}
+                            <th colspan="3" rowspan="2" style="min-width: max-content;">
+                                ЧЧИУМ нового оборудования
+                            </th>
+                            {% elif attr in ('hngt', 'hnpg') %}
+                            {% else %}
+                            <th rowspan="3" class="{% if loop.first %}dp-col-ues{% elif attr in ('byear', 'year') %}dp-col-year{% endif %}"
+                                style="{% if attr not in ('name', 'byear', 'year') %}min-width: 5.5rem;{% endif %}">
+                                {% if attr == 'doptim' %}
+                                {% set doptim_tooltip = "0.05 + 0.03 * (Nрасч − Nбаз). Nрасч и Nбаз — номер расчетного и базового годов" %}
+                                <span class="d-inline-block text-center">
+                                    {{ label|safe }} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ doptim_tooltip|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула doptim"></i><br>
+                                    <span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                                </span>
+                                {% else %}
+                                {{ label|safe }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                                {% endif %}
+                            </th>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                    <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                        <th rowspan="2" style="min-width: 5.5rem;">k<br><span class="text-muted small fw-normal">(k)</span></th>
+                        <th colspan="4" style="min-width: 22rem;">Коэффициент загрузки нового оборудования</th>
+                    </tr>
+                    <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                        <th style="min-width: 5.5rem;">Коэффициент загрузки<br><span class="text-muted small fw-normal">(kn)</span></th>
+                        <th style="min-width: 5.5rem;">паросиловое оборудование<br><span class="text-muted small fw-normal">(knps)</span></th>
+                        <th style="min-width: 5.5rem;">газотурбинное оборудование<br><span class="text-muted small fw-normal">(kngt)</span></th>
+                        <th style="min-width: 5.5rem;">парогазовое оборудование<br><span class="text-muted small fw-normal">(knpg)</span></th>
+                        <th style="min-width: 5.5rem;">паросиловое оборудование<br><span class="text-muted small fw-normal">(hnps)</span></th>
+                        <th style="min-width: 5.5rem;">газотурбинное оборудование<br><span class="text-muted small fw-normal">(hngt)</span></th>
+                        <th style="min-width: 5.5rem;">парогазовое оборудование<br><span class="text-muted small fw-normal">(hnpg)</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if _matching %}
+                    {% for row in _matching %}
+                    {% set _is_active = selected_row and selected_row.id == row.id %}
+                    <tr class="text-center align-middle">
+                        <td class="text-center text-break dp-col-ues">
+                            {% set _ues_name = row.union_energy_system.name if row.union_energy_system else (('ОЭС #' ~ row.id_union_energy_system) if row.id_union_energy_system else '—') %}
+                            {% if row.id_union_energy_system and row.year %}
+                            <a href="{{ url_for('fuel_bp.distribution_parameters_list', union_energy_system_filter=row.id_union_energy_system, start_year=row.year.number, base_year=(row.base_year.number if row.base_year else '')) }}"
+                               target="_blank" rel="noopener noreferrer"
+                               title="Открыть параметры распределения для этой ОЭС и года">{{ _ues_name }}</a>
+                            {% else %}
+                            {{ _ues_name }}
+                            {% endif %}
+                        </td>
+                        <td class="dp-col-year">{% if row.base_year %}{{ row.base_year.number }}{% elif row.id_base_year %}#{{ row.id_base_year }}{% else %}—{% endif %}</td>
+                        <td class="dp-col-year">{% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{ row.id_year }}{% else %}—{% endif %}</td>
+                        <td class="p-1">
+                            {% if _is_active %}
+                            <input type="text" inputmode="decimal" class="form-control form-control-sm text-center fuel-calc-num" id="e_eraspred"
+                                   value="{% if row.e is not none %}{{ row.e|format_decimal_trim(0)|replace(' ', '') }}{% endif %}"
+                                   autocomplete="off" aria-label="Выработка ТЭС (e)">
+                            {% else %}
+                            {{ render_numeric_or_dash(row.e) }}
+                            {% endif %}
+                        </td>
+                        <td>{{ render_numeric_or_dash(row.doptim) }}</td>
+                        <td>{% if row.k is not none %}{{ row.k|format_decimal(2) }}{% else %}—{% endif %}</td>
+                        <td>{% if row.kn is not none %}{{ row.kn|format_decimal(2) }}{% else %}—{% endif %}</td>
+                        <td>{% if row.knps is not none %}{{ row.knps|format_decimal(2) }}{% else %}—{% endif %}</td>
+                        <td>{% if row.kngt is not none %}{{ row.kngt|format_decimal(2) }}{% else %}—{% endif %}</td>
+                        <td>{% if row.knpg is not none %}{{ row.knpg|format_decimal(2) }}{% else %}—{% endif %}</td>
+                        <td>{{ render_numeric_or_dash(row.hnps) }}</td>
+                        <td>{{ render_numeric_or_dash(row.hngt) }}</td>
+                        <td>{{ render_numeric_or_dash(row.hnpg) }}</td>
+                        <td>
+                            {%- if row.lim is none -%}—
+                            {%- elif row.lim == 1 -%}да
+                            {%- elif row.lim == 0 -%}нет
+                            {%- else -%}{{ row.lim }}{%- endif -%}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="14" class="text-center text-muted py-4">
+                            {% if _ues_selected is none %}
+                            Выберите одну ОЭС — расчёт выполняется только по одной объединённой энергосистеме.
+                            {% elif start_year is none %}
+                            Задайте расчётный год — здесь появится строка параметра распределения.
+                            {% else %}
+                            Нет параметра распределения для выбранных ОЭС / базового / расчётного года.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if apply_restrictions|default(false) %}
+        {% set _fr_rows = restriction_rows|default([]) %}
+        {% set _fr_headings = restriction_headings|default([]) %}
+        {% set _oes_name_map = restriction_oes_name_map|default({}) %}
+        {% set _obl_name_map = restriction_obl_name_map|default({}) %}
+        {% set _rd = rounding_digits|default(1) %}
+        <div class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2 mt-4">
+            <div class="d-flex flex-wrap align-items-baseline gap-2 min-width-0">
+                <h3 class="h5 fw-semibold mb-0">Ограничения</h3>
+                <span class="small text-muted">учитываются в этапе «Распред»</span>
+            </div>
+            <a class="small text-decoration-none"
+               href="{{ url_for('fuel_bp.fuel_restrictions_list') }}{% if _dp_list_qs %}?{{ _dp_list_qs }}{% endif %}"
+               target="_blank" rel="noopener noreferrer">
+                Открыть полный список <i class="bi bi-box-arrow-up-right"></i>
+            </a>
+        </div>
+        <div class="table-responsive mb-2">
+            <table class="table table-bordered align-middle mb-0 distribution-params-table fuel-calc-num" data-auto-export-excel="off">
+                <thead class="table-success">
+                    <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                        {% for attr, label, field_code in _fr_headings %}
+                        <th style="min-width: {% if attr in ('restriction_name', 'oes', 'obl') %}8rem{% else %}5.5rem{% endif %};">
+                            {{ label }}<br><span class="text-muted small">({{ field_code|fuel_header_code }})</span>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if _fr_rows %}
+                    {% for row in _fr_rows %}
+                    <tr class="text-center align-middle">
+                        {% for attr, label, field_code in _fr_headings %}
+                        {% set v = row|attr(attr) if row else none %}
+                        <td class="{% if attr in ('oes', 'obl', 'restriction_name') %}text-start px-2{% endif %}">
+                            {% if v is none %}—
+                            {% elif attr == 'year' %}
+                            {{ v|int }}
+                            {% elif attr == 'oes' %}
+                            {% set ok = (v|int)|string %}
+                            {% set oname = _oes_name_map.get(ok) %}
+                            <span title="oes={{ ok }}">{% if oname %}{{ oname }}{% else %}{{ ok }}{% endif %}</span>
+                            {% elif attr == 'obl' %}
+                            {% set ok = (v|int)|string %}
+                            {% set oes_ok = (row.oes|int)|string if row.oes is not none else '' %}
+                            {% if ok and oes_ok and (ok|int) == ((oes_ok|int) + 100) %}
+                            <span title="obl={{ ok }} (прочие)">—</span>
+                            {% else %}
+                            {% set oname = _obl_name_map.get(ok) %}
+                            <span title="obl={{ ok }}">{% if oname %}{{ oname }}{% else %}{{ ok }}{% endif %}</span>
+                            {% endif %}
+                            {% elif attr in ('restriction_name', 'kcur') %}
+                            {% if v == '' %}—{% else %}{{ v }}{% endif %}
+                            {% else %}
+                            {{ v|format_decimal_trim(_rd) }}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="{{ _fr_headings|length if _fr_headings else 1 }}" class="text-center text-muted py-4">
+                            {% if _ues_selected is none %}
+                            Выберите ОЭС — здесь появятся ограничения для расчёта.
+                            {% elif start_year is none %}
+                            Задайте расчётный год — здесь появятся ограничения.
+                            {% else %}
+                            Нет ограничений для выбранных ОЭС / расчётного года.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if selected_row %}
+        <input type="hidden" name="distribution_parameter_id" form="fuelCalcFiltersForm" value="{{ selected_row.id }}">
+        {% endif %}
+
         {% set fuel_stage_blocked = selected_row and fuel_stage_readiness and not fuel_stage_readiness.ready %}
-        <div class="d-flex flex-wrap align-items-center fuel-calc-stage-buttons gap-3 mt-4 mb-0">
-            <form id="runCoeffForm" method="POST" action="{{ url_for('fuel_bp.run_coeff_stage') }}" class="d-inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="distribution_parameter_id" value="{{ selected_row.id if selected_row else '' }}">
-                <input type="hidden" name="e" id="runCoeffFormE" value="{% if selected_row and selected_row.e is not none %}{{ selected_row.e|format_decimal_trim(0) }}{% endif %}">
-                <button type="submit" class="btn btn-outline-primary" {% if not selected_row %}disabled{% endif %}>
-                    <i class="bi bi-calculator me-1"></i>Коэфф
-                </button>
-            </form>
-            <form id="runDistributionForm" method="POST" action="{{ url_for('fuel_bp.run_distribution_stage') }}" class="d-inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="distribution_parameter_id" value="{{ selected_row.id if selected_row else '' }}">
-                <input type="hidden" name="e" id="runDistributionFormE" value="{% if selected_row and selected_row.e is not none %}{{ selected_row.e|format_decimal_trim(0) }}{% endif %}">
-                <button type="submit" class="btn btn-outline-primary" {% if not selected_row %}disabled{% endif %}>
-                    <i class="bi bi-diagram-3 me-1"></i>Распред
-                </button>
-            </form>
-            <form method="POST" action="{{ url_for('fuel_bp.run_fuel_stage') }}" class="d-inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <input type="hidden" name="distribution_parameter_id" value="{{ selected_row.id if selected_row else '' }}">
-                <button type="submit" class="btn btn-outline-success" {% if not selected_row or fuel_stage_blocked %}disabled{% endif %}>
-                    <i class="bi bi-droplet-half me-1"></i>Топливо
-                </button>
-            </form>
+        {% set _equipment_group_fuel_params_edit_qs = calculation_edit_links_qs|default('') %}
+        {% set _equipment_group_fuel_params_edit_suffix = ('?' ~ _equipment_group_fuel_params_edit_qs) if _equipment_group_fuel_params_edit_qs else '' %}
+        {# ТЭП и формулы: Год начала = базовый, Год конца = расчётный; «Пустые строки» по умолчанию вкл. #}
+        {% set _tep_edit_qs = calculation_tep_edit_links_qs|default(_equipment_group_fuel_params_edit_qs) %}
+        {% set _tep_edit_suffix = ('?' ~ _tep_edit_qs) if _tep_edit_qs else '' %}
+        <div class="d-flex flex-wrap align-items-stretch justify-content-between fuel-calc-stage-buttons gap-3 mt-4 mb-0">
+            <div class="d-flex flex-wrap align-items-stretch gap-3">
+                <form id="runCoeffForm" method="POST" action="{{ url_for('fuel_bp.run_coeff_stage') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="distribution_parameter_id" value="{{ selected_row.id if selected_row else '' }}">
+                    <input type="hidden" name="e" id="runCoeffFormE" value="{% if selected_row and selected_row.e is not none %}{{ selected_row.e|format_decimal_trim(0)|replace(' ', '') }}{% endif %}">
+                    <button type="submit" class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap" {% if not selected_row %}disabled{% endif %}>
+                        <i class="bi bi-calculator me-1"></i>Коэфф
+                    </button>
+                </form>
+                <form id="runDistributionForm" method="POST" action="{{ url_for('fuel_bp.run_distribution_stage') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="distribution_parameter_id" value="{{ selected_row.id if selected_row else '' }}">
+                    <input type="hidden" name="e" id="runDistributionFormE" value="{% if selected_row and selected_row.e is not none %}{{ selected_row.e|format_decimal_trim(0)|replace(' ', '') }}{% endif %}">
+                    <input type="hidden" name="apply_restrictions" id="runDistributionApplyRestrictions" value="{% if apply_restrictions|default(false) %}1{% else %}0{% endif %}">
+                    <button type="submit" class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap" {% if not selected_row %}disabled{% endif %}>
+                        <i class="bi bi-diagram-3 me-1"></i>Распред
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('fuel_bp.run_fuel_stage') }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="distribution_parameter_id" value="{{ selected_row.id if selected_row else '' }}">
+                    <button type="submit" class="btn btn-outline-success btn-lg fs-5 px-4 py-2 text-nowrap" {% if not selected_row or fuel_stage_blocked %}disabled{% endif %}>
+                        <i class="bi bi-droplet-half me-1"></i>Топливо
+                    </button>
+                </form>
+            </div>
+            <div class="d-flex flex-wrap align-items-stretch gap-3 fuel-calc-edit-links">
+                <a
+                  href="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data') }}{{ _equipment_group_fuel_params_edit_suffix }}"
+                  class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap text-center"
+                >
+                  <i class="bi bi-pencil-square me-1"></i>Сведения о работе ТЭС
+                </a>
+                <a
+                  href="{{ url_for('fuel_bp.equipment_group_specific_fuel_consumption_edit_data') }}{{ _tep_edit_suffix }}"
+                  class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap text-center"
+                >
+                  <i class="bi bi-pencil-square me-1"></i>ТЭП групп оборудования
+                </a>
+                <a
+                  href="{{ url_for('fuel_bp.equipment_group_fuel_formulas_page') }}{{ _tep_edit_suffix }}"
+                  class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap text-center"
+                >
+                  <i class="bi bi-pencil-square me-1"></i>Структура топливного баланса
+                </a>
+            </div>
         </div>
         {% if fuel_stage_blocked %}
         <div class="small text-muted mt-2">

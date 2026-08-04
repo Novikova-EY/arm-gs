@@ -187,7 +187,7 @@ USER_FIELDS = {
 # Параметры распределения (DistributionParameter / fuel)
 DISTRIBUTION_PARAMETER_FIELDS = {
     "id_union_energy_system": "ОЭС",
-    "id_year": "Расчитываемый год",
+    "id_year": "Расчетный год",
     "id_base_year": "Базовый год (byear)",
     "e": "E (целевой Ераспред)",
     "kplus": "kplus",

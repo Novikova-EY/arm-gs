@@ -413,7 +413,7 @@ def equipment_group_fuel_batch_calculation_batch_api():
 def equipment_group_fuel_batch_fuel_params_tables_api():
     """
     HTML-фрагменты таблиц как на stations_equipment_group_fuel_params и
-    stations_equipment_group_extra_fuel_params для списка групп и года(лет).
+    Предпросмотр доп. топливных параметров для списка групп и года(лет).
 
     JSON-тело может содержать ``fuel_param_column_set``: ``full`` (по умолчанию) —
     все колонки как на полной выгрузке; ``calculation`` — только баланс энергии и

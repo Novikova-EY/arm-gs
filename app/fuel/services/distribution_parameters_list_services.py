@@ -68,6 +68,7 @@ def get_distribution_parameters_list(
             DistributionParameter.id_union_energy_system == UnionEnergySystem.id,
         )
     )
+    # Пока без фильтра по database_version_id — все версии (для отладки).
     if year_numbers:
         nums = sorted({int(n) for n in year_numbers})
         year_id_list = [

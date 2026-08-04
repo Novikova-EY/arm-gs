@@ -1026,6 +1026,9 @@ def _delete_equipment_groups_by_ids(group_ids: list[int]) -> dict:
     from app.fuel.models.fue_equipment_group_coefficient_result_model import (
         EquipmentGroupCoefficientResult,
     )
+    from app.fuel.models.fue_equipment_group_electricity_production_cost_model import (
+        EquipmentGroupElectricityProductionCost,
+    )
     from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (
         EquipmentGroupExtraFuelParam,
     )
@@ -1034,6 +1037,12 @@ def _delete_equipment_groups_by_ids(group_ids: list[int]) -> dict:
     )
     from app.fuel.models.fue_equipment_group_fuel_param_model import (
         EquipmentGroupFuelParam,
+    )
+    from app.fuel.models.fue_equipment_group_heat_and_tariffs_model import (
+        EquipmentGroupHeatAndTariffs,
+    )
+    from app.fuel.models.fue_equipment_group_natural_fuel_model import (
+        EquipmentGroupNaturalFuel,
     )
     from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
         EquipmentGroupSpecificFuelConsumption,
@@ -1054,9 +1063,13 @@ def _delete_equipment_groups_by_ids(group_ids: list[int]) -> dict:
             "deleted_related_rows": 0,
         }
 
+    # Все дочерние таблицы с ondelete=RESTRICT на equipment_group_id.
     detail_models = [
         EquipmentGroupFuelParam,
         EquipmentGroupExtraFuelParam,
+        EquipmentGroupNaturalFuel,
+        EquipmentGroupHeatAndTariffs,
+        EquipmentGroupElectricityProductionCost,
         EquipmentGroupSpecificFuelConsumption,
         EquipmentGroupSpecificFuelCost,
         EquipmentGroupSpecificFuelPrice,

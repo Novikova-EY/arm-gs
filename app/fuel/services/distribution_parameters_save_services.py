@@ -16,8 +16,6 @@ from app.refdata.models.years.year_model import Year
 
 _NUMERIC_ATTRS = (
     "e",
-    "kplus",
-    "kmin",
     "k",
     "bkl",
     "kn",
@@ -329,9 +327,15 @@ def apply_distribution_parameters_bulk_apply_from_payload(
     display_rounding_digits: int = 0,
 ) -> tuple[int, list[str]]:
     """
-    Сохраняет строки в БД в том же виде, что отдаёт build_distribution_parameters_bulk_copy_rows / период.
-    Вставка или обновление по паре (ОЭС, базовый год, расчётный год).
+    Сохраняет строки во **все версии БД** (как импорт / сохранение формы).
+    Вставка или обновление по ОЭС + базовый год + расчётный год.
     """
+    from app.fuel.services.distribution_parameters_all_versions_services import (
+        upsert_distribution_parameter_in_all_versions,
+        ues_ref_uuid_by_id,
+        year_number_by_id,
+    )
+
     errors: list[str] = []
     if not rows:
         return 0, ["Нет строк для сохранения."]
@@ -363,8 +367,6 @@ def apply_distribution_parameters_bulk_apply_from_payload(
 
     changed_count = 0
     row_audit_logs: list[tuple[int, list[str]]] = []
-    new_rows_for_audit: list[tuple[DistributionParameter, dict[str, Any]]] = []
-    version_id = get_current_db_version_id()
 
     for parsed in parsed_list:
         id_ues = parsed["id_ues"]
@@ -373,76 +375,41 @@ def apply_distribution_parameters_bulk_apply_from_payload(
         numeric = parsed["numeric"]
         lim_v = parsed["lim_v"]
 
-        dp = (
-            DistributionParameter.query.filter_by(
-                id_union_energy_system=id_ues,
-                id_base_year=id_base,
-                id_year=id_year,
-            ).first()
-        )
+        year_num = year_number_by_id(id_year)
+        byear_num = year_number_by_id(id_base)
+        ues_uuid = ues_ref_uuid_by_id(id_ues)
+        if year_num is None:
+            errors.append("Не удалось определить номер расчётного года.")
+            continue
 
-        if dp is not None:
-            if _distribution_row_changed(
-                dp,
-                id_ues=id_ues,
-                id_year=id_year,
-                id_base=id_base,
-                numeric=numeric,
-                lim_v=lim_v,
-                display_rounding_digits=display_rd,
-            ):
-                row_audit_logs.append(
-                    (
-                        dp.id,
-                        _distribution_parameter_change_lines(
-                            dp,
-                            id_ues=id_ues,
-                            id_year=id_year,
-                            id_base=id_base,
-                            numeric=numeric,
-                            lim_v=lim_v,
-                            display_rounding_digits=display_rd,
-                        ),
-                    )
-                )
-            for attr, val in numeric.items():
-                setattr(dp, attr, val)
-            dp.lim = lim_v
-            dp.id_union_energy_system = id_ues
-            dp.id_year = id_year
-            dp.id_base_year = id_base
-            changed_count += 1
-        else:
-            dp_new = DistributionParameter(database_version_id=version_id)
-            for attr, val in numeric.items():
-                setattr(dp_new, attr, val)
-            dp_new.lim = lim_v
-            dp_new.id_union_energy_system = id_ues
-            dp_new.id_year = id_year
-            dp_new.id_base_year = id_base
-            db.session.add(dp_new)
-            changed_count += 1
-            new_rows_for_audit.append((dp_new, parsed))
+        data = {attr: numeric.get(attr) for attr in _NUMERIC_ATTRS}
+        data["lim"] = lim_v
 
-    try:
-        db.session.flush()
-    except Exception as exc:
-        db.session.rollback()
-        return 0, [f"Ошибка сохранения в БД: {exc}"]
-
-    _blank = DistributionParameter()
-    for dp_row, parsed in new_rows_for_audit:
+        _blank = DistributionParameter()
         lines = _distribution_parameter_change_lines(
             _blank,
-            id_ues=parsed["id_ues"],
-            id_year=parsed["id_year"],
-            id_base=parsed["id_base"],
-            numeric=parsed["numeric"],
-            lim_v=parsed["lim_v"],
+            id_ues=id_ues,
+            id_year=id_year,
+            id_base=id_base,
+            numeric=numeric,
+            lim_v=lim_v,
             display_rounding_digits=display_rd,
         )
-        if lines and dp_row.id is not None:
-            row_audit_logs.append((dp_row.id, lines))
+
+        upsert_distribution_parameter_in_all_versions(
+            ref_uuid=None,
+            ues_ref_uuid=ues_uuid,
+            year_number=int(year_num),
+            base_year_number=int(byear_num) if byear_num is not None else None,
+            data=data,
+        )
+        changed_count += 1
+        if lines:
+            row_audit_logs.append((0, lines))
+
+    if errors:
+        db.session.rollback()
+        return 0, errors
 
     try:
         db.session.commit()
@@ -450,7 +417,9 @@ def apply_distribution_parameters_bulk_apply_from_payload(
         db.session.rollback()
         return 0, [f"Ошибка сохранения в БД: {exc}"]
 
-    _write_distribution_parameter_audit_logs(user, row_audit_logs)
+    _write_distribution_parameter_audit_logs(
+        user, [(rid, lines) for rid, lines in row_audit_logs if rid]
+    )
 
     return changed_count, []
 
@@ -461,14 +430,20 @@ def apply_distribution_parameters_save_from_form(
     user: Any | None = None,
 ) -> tuple[int, list[str]]:
     """
-    Обновляет строки по полям dp_<id>_<attr> и создаёт новые по dp_<new_n>_<attr>
-    (скрытое поле distribution_new_row_tokens).
-    Удаление отдельных строк — отдельный POST ``distribution_parameter_row_delete``.
+    Обновляет/создаёт строки с формы и **синхронизирует во все версии БД**
+    (общий ``ref_uuid``).
 
     Returns:
-        (число затронутых строк: изменённые + созданные, список ошибок).
-        При любой ошибке валидации — откат, 0 сохранений.
+        (число затронутых логических строк, список ошибок).
     """
+    from app.fuel.services.distribution_parameters_all_versions_services import (
+        DP_SYNC_DATA_ATTRS,
+        ensure_dp_ref_uuid,
+        upsert_distribution_parameter_in_all_versions,
+        ues_ref_uuid_by_id,
+        year_number_by_id,
+    )
+
     errors: list[str] = []
 
     ids_raw = (form.get("distribution_edit_row_ids") or "").strip()
@@ -503,7 +478,17 @@ def apply_distribution_parameters_save_from_form(
 
     changed_count = 0
     row_audit_logs: list[tuple[int, list[str]]] = []
-    new_rows_for_audit: list[tuple[DistributionParameter, dict[str, Any]]] = []
+
+    def _data_from_parsed(parsed: dict[str, Any], existing: DistributionParameter | None = None) -> dict[str, Any]:
+        data = {attr: parsed["numeric"].get(attr) for attr in _NUMERIC_ATTRS}
+        data["lim"] = parsed["lim_v"]
+        # filter_text / wname и пр. с формы сейчас не редактируются — сохраняем с якоря
+        if existing is not None:
+            for attr in DP_SYNC_DATA_ATTRS:
+                if attr in data:
+                    continue
+                data[attr] = getattr(existing, attr, None)
+        return data
 
     for rid in row_ids:
         dp = db.session.get(DistributionParameter, rid)
@@ -549,15 +534,23 @@ def apply_distribution_parameters_save_from_form(
             )
         )
 
-        changed_count += 1
-        for attr, val in numeric.items():
-            setattr(dp, attr, val)
-        dp.lim = lim_v
-        dp.id_union_energy_system = id_ues
-        dp.id_year = id_year
-        dp.id_base_year = id_base
+        ref = ensure_dp_ref_uuid(dp)
+        ues_uuid = ues_ref_uuid_by_id(id_ues)
+        year_num = year_number_by_id(id_year)
+        byear_num = year_number_by_id(id_base)
+        if year_num is None:
+            errors.append(f"Строка id={rid}: не удалось определить номер расчётного года.")
+            continue
 
-    version_id = get_current_db_version_id()
+        _ref, _a, _u, _warns = upsert_distribution_parameter_in_all_versions(
+            ref_uuid=ref,
+            ues_ref_uuid=ues_uuid,
+            year_number=int(year_num),
+            base_year_number=int(byear_num) if byear_num is not None else None,
+            data=_data_from_parsed(parsed, existing=dp),
+        )
+        changed_count += 1
+
     for token in new_tokens:
         parsed, row_errs = _parse_dp_row_from_form(
             form, token, label=f"новая строка ({token})"
@@ -567,29 +560,14 @@ def apply_distribution_parameters_save_from_form(
             continue
         assert parsed is not None
 
-        dp = DistributionParameter(database_version_id=version_id)
-        for attr, val in parsed["numeric"].items():
-            setattr(dp, attr, val)
-        dp.lim = parsed["lim_v"]
-        dp.id_union_energy_system = parsed["id_ues"]
-        dp.id_year = parsed["id_year"]
-        dp.id_base_year = parsed["id_base"]
-        db.session.add(dp)
-        changed_count += 1
-        new_rows_for_audit.append((dp, parsed))
+        ues_uuid = ues_ref_uuid_by_id(parsed["id_ues"])
+        year_num = year_number_by_id(parsed["id_year"])
+        byear_num = year_number_by_id(parsed["id_base"])
+        if year_num is None:
+            errors.append(f"Новая строка ({token}): не удалось определить номер расчётного года.")
+            continue
 
-    if errors:
-        db.session.rollback()
-        return 0, errors
-
-    try:
-        db.session.flush()
-    except Exception as exc:
-        db.session.rollback()
-        return 0, [f"Ошибка сохранения в БД: {exc}"]
-
-    _blank = DistributionParameter()
-    for dp, parsed in new_rows_for_audit:
+        _blank = DistributionParameter()
         lines = _distribution_parameter_change_lines(
             _blank,
             id_ues=parsed["id_ues"],
@@ -599,8 +577,22 @@ def apply_distribution_parameters_save_from_form(
             lim_v=parsed["lim_v"],
             display_rounding_digits=display_rd,
         )
-        if lines and dp.id is not None:
-            row_audit_logs.append((dp.id, lines))
+
+        _ref, _a, _u, _warns = upsert_distribution_parameter_in_all_versions(
+            ref_uuid=None,
+            ues_ref_uuid=ues_uuid,
+            year_number=int(year_num),
+            base_year_number=int(byear_num) if byear_num is not None else None,
+            data=_data_from_parsed(parsed),
+        )
+        changed_count += 1
+        # аудит по якорю текущей версии после flush
+        if lines:
+            row_audit_logs.append((0, lines))
+
+    if errors:
+        db.session.rollback()
+        return 0, errors
 
     try:
         db.session.commit()
@@ -608,6 +600,6 @@ def apply_distribution_parameters_save_from_form(
         db.session.rollback()
         return 0, [f"Ошибка сохранения в БД: {exc}"]
 
-    _write_distribution_parameter_audit_logs(user, row_audit_logs)
+    _write_distribution_parameter_audit_logs(user, [(rid, lines) for rid, lines in row_audit_logs if rid])
 
     return changed_count, []

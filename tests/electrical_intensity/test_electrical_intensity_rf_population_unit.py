@@ -145,7 +145,7 @@ def test_rf_summary_includes_household_from_fd_aggregate(app):
 
     assert summary is not None
     ref_by_kind = {r["row_kind"]: r for r in summary["reference_rows"]}
-    # 3800 (ВЭД без домашних хозяйств) + 400 (ФО) = 4200 млн кВт·ч → 4.2 млрд кВт·ч
+    # 3800 (ВЭД без домашних хозяйств) + 400 (ФО) = 4200 млн кВтч → 4.2 млрд кВтч
     assert ref_by_kind[REF_ROW_RF_VED_CONSUMPTION]["cells"][2020] == Decimal("4.2")
 
 

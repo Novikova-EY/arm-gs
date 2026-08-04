@@ -1,98 +1,138 @@
-{% extends 'base.html' %}
-{% block title %}Расчет топливных показателей на перспективный период{% endblock %}
-
-{# Числа: 0 показываем; None — тире. Запятая, без лишних нулей (digits=0 — без округления). #}
-{% macro num_cell(v) -%}
-{%- if v is not none -%}{{ v|format_decimal_trim(0) }}{%- else -%}—{%- endif -%}
-{%- endmacro %}
-{% macro num_cell_k(v) -%}
-{%- if v is not none -%}{{ v|format_decimal_trim(2) }}{%- else -%}—{%- endif -%}
-{%- endmacro %}
-{# Строка «Отношение»: ровно 2 знака после запятой (без обрезки нулей в конце дроби). #}
-{% macro num_cell_ratio2(v) -%}
-{%- if v is not none -%}{{ v|format_decimal(2) }}{%- else -%}—{%- endif -%}
-{%- endmacro %}
-{# Первая таблица «Коэфф»: Nуст, E, Eтп, Q, Qотр, %тп, Н — округление до целого (digits=-1). #}
-{% macro int_cell(v) -%}
-{%- if v is not none -%}{{ v|format_decimal_trim(-1) }}{%- else -%}—{%- endif -%}
-{%- endmacro %}
-{% macro cell_help(tip_key) -%}
-{%- set tips = coeff_cell_tooltips|default({}) -%}
-{%- set tip = tips.get(tip_key, '') -%}
-{%- if tip -%}
-<i class="bi bi-info-circle text-primary" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ tip }}" style="cursor: help; font-size: 0.9em;" aria-label="Справка по значению"></i>
-{%- endif -%}
-{%- endmacro %}
-{% macro int_with_tip(v, tip_key) -%}
-<div class="fuel-calc-cell-tip-wrap"><span class="fuel-calc-cell-num">{{ int_cell(v) }}</span><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span></div>
-{%- endmacro %}
-{% macro dash_with_tip(tip_key) -%}
-<div class="fuel-calc-cell-tip-wrap"><span class="fuel-calc-cell-num">—</span><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span></div>
-{%- endmacro %}
-{% macro num_with_tip(v, tip_key) -%}
-<div class="fuel-calc-cell-tip-wrap"><span class="fuel-calc-cell-num">{{ num_cell(v) }}</span><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span></div>
-{%- endmacro %}
-{% macro num_k_with_tip(v, tip_key) -%}
-<div class="fuel-calc-cell-tip-wrap"><span class="fuel-calc-cell-num">{{ num_cell_k(v) }}</span><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span></div>
-{%- endmacro %}
-{% macro num_ratio_with_tip(v, tip_key) -%}
-<div class="fuel-calc-cell-tip-wrap"><span class="fuel-calc-cell-num">{{ num_cell_ratio2(v) }}</span><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span></div>
-{%- endmacro %}
-{% macro tech_tip_key(prefix, label) -%}
-{%- if label == 'ПСУ' -%}{{ prefix }}_psu{%- elif label == 'ГТУ' -%}{{ prefix }}_gtu{%- elif label == 'ПГУ' -%}{{ prefix }}_pgu{%- else -%}{{ prefix }}_psu{%- endif -%}
-{%- endmacro %}
-{# Значение в input: как num_cell, десятичная точка #}
-{% macro dec_input_value(v) -%}
-{%- if v is not none -%}{{ v|format_decimal_trim(0)|replace(',', '.') }}{%- endif -%}
-{%- endmacro %}
-{% block content %}
-{% set dp_l = distribution_parameter_field_labels %}
-{% set _fcalc_drop_params = [
-    'energy_system_type_filter', 'regional_energy_system_filter',
-    'federal_district_filter', 'regional_district_filter', 'station_name_filter', 'gen_company_filter',
-    'end_year',
-] %}
+{% extends 'base.html' %} {% block title %}Расчет топливных показателей на
+перспективный период{% endblock %} {# Числа: 0 показываем; None — тире. Запятая,
+без лишних нулей (digits=0 — без округления). #} {% macro num_cell(v) -%} {%- if
+v is not none -%}{{ v|format_decimal_trim(0) }}{%- else -%}—{%- endif -%} {%-
+endmacro %} {% macro num_cell_k(v) -%} {%- if v is not none -%}{{
+v|format_decimal_trim(2) }}{%- else -%}—{%- endif -%} {%- endmacro %} {# Строка
+«Отношение»: ровно 2 знака после запятой (без обрезки нулей в конце дроби). #}
+{% macro num_cell_ratio2(v) -%} {%- if v is not none -%}{{ v|format_decimal(2)
+}}{%- else -%}—{%- endif -%} {%- endmacro %} {# Первая таблица «Коэфф»: Nуст, E,
+Eтп, Q, qotr, %тп, Н — округление до целого (digits=-1). #} {% macro int_cell(v)
+-%} {%- if v is not none -%}{{ v|format_decimal_trim(-1) }}{%- else -%}—{%-
+endif -%} {%- endmacro %} {% macro cell_help(tip_key) -%} {%- set tips =
+coeff_cell_tooltips|default({}) -%} {%- set tip = tips.get(tip_key, '') -%} {%-
+if tip -%}
+<i
+  class="bi bi-info-circle text-primary"
+  data-bs-toggle="tooltip"
+  data-bs-placement="top"
+  title="{{ tip }}"
+  style="cursor: help; font-size: 0.9em"
+  aria-label="Справка по значению"
+></i>
+{%- endif -%} {%- endmacro %} {% macro int_with_tip(v, tip_key) -%}
+<div class="fuel-calc-cell-tip-wrap">
+  <span class="fuel-calc-cell-num">{{ int_cell(v) }}</span
+  ><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span>
+</div>
+{%- endmacro %} {% macro dash_with_tip(tip_key) -%}
+<div class="fuel-calc-cell-tip-wrap">
+  <span class="fuel-calc-cell-num">—</span
+  ><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span>
+</div>
+{%- endmacro %} {% macro num_with_tip(v, tip_key) -%}
+<div class="fuel-calc-cell-tip-wrap">
+  <span class="fuel-calc-cell-num">{{ num_cell(v) }}</span
+  ><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span>
+</div>
+{%- endmacro %} {% macro num_k_with_tip(v, tip_key) -%}
+<div class="fuel-calc-cell-tip-wrap">
+  <span class="fuel-calc-cell-num">{{ num_cell_k(v) }}</span
+  ><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span>
+</div>
+{%- endmacro %} {% macro num_ratio_with_tip(v, tip_key) -%}
+<div class="fuel-calc-cell-tip-wrap">
+  <span class="fuel-calc-cell-num">{{ num_cell_ratio2(v) }}</span
+  ><span class="fuel-calc-cell-tip">{{ cell_help(tip_key) }}</span>
+</div>
+{%- endmacro %} {% macro tech_tip_key(prefix, label) -%} {%- if label == 'ПСУ'
+-%}{{ prefix }}_psu{%- elif label == 'ГТУ' -%}{{ prefix }}_gtu{%- elif label ==
+'ПГУ' -%}{{ prefix }}_pgu{%- else -%}{{ prefix }}_psu{%- endif -%} {%- endmacro
+%} {# Значение в input: без группировки тысяч, десятичная точка #} {% macro
+dec_input_value(v) -%} {%- if v is not none -%}{{
+v|format_decimal_trim(0)|replace(' ', '')|replace(',', '.') }}{%- endif -%} {%-
+endmacro %} {% block content %} {% set dp_l =
+distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
+'energy_system_type_filter', 'regional_energy_system_filter',
+'federal_district_filter', 'regional_district_filter', 'station_name_filter',
+'gen_company_filter', 'end_year', ] %}
 <style>
-/* Как на generation/stations/station_details.html */
-.station-info { font-size: 1.15rem; }
-.station-info .card-title { font-size: 1.25rem; }
-.station-info .row .fw-semibold { font-size: 1.05em; }
-.station-info .form-control { font-size: 1.05rem; }
-.station-info .form-select { font-size: 1.15rem; line-height: 1.4; }
-.fuel-calc-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
-/* Таблицы блока «Коэфф»: как .machines-table на generation/stations/station_details (агрегаты) */
-.fuel-calc-coeff-table {
+  /* Как на generation/stations/station_details.html */
+  .station-info {
+    font-size: 1.15rem;
+  }
+  .station-info .card-title {
+    font-size: 1.25rem;
+  }
+  .station-info .row .fw-semibold {
+    font-size: 1.05em;
+  }
+  .station-info .form-control {
+    font-size: 1.05rem;
+  }
+  .station-info .form-select {
+    font-size: 1.15rem;
+    line-height: 1.4;
+  }
+  .fuel-calc-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+  /* Таблицы блока «Коэфф»: как .machines-table на generation/stations/station_details (агрегаты) */
+  .fuel-calc-coeff-table {
     font-size: 1.05rem;
     min-width: 100%;
-}
-.fuel-calc-coeff-table thead th {
+  }
+  .fuel-calc-coeff-table thead th {
     font-size: 1.08rem;
-}
-.fuel-calc-coeff-table tbody td {
+  }
+  .fuel-calc-coeff-table tbody td {
     font-size: 1.15rem;
     padding: 10px 8px;
     vertical-align: middle;
-}
-/* Число по центру ячейки, иконка справки у правого края (как раньше по горизонтали). */
-.fuel-calc-cell-tip-wrap {
+  }
+  /* Числа с пробелами тысяч (71 799) не переносить на две строки */
+  .fuel-calc-coeff-table tbody td:not(:first-child) {
+    white-space: nowrap;
+  }
+  /* Результаты этапов: «Показатель» переносится, «Значение» — шире и в одну строку */
+  .fuel-calc-stage-result-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .fuel-calc-stage-result-table th:nth-child(1),
+  .fuel-calc-stage-result-table td:nth-child(1) {
+    width: 55%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .fuel-calc-stage-result-table th:nth-child(2),
+  .fuel-calc-stage-result-table td:nth-child(2) {
+    width: 45%;
+    white-space: nowrap;
+  }
+  /* Число по центру ячейки, иконка справки у правого края (как раньше по горизонтали). */
+  .fuel-calc-cell-tip-wrap {
     position: relative;
     width: 100%;
     min-height: 1.35em;
-}
-.fuel-calc-cell-tip-wrap .fuel-calc-cell-num {
+  }
+  .fuel-calc-cell-tip-wrap .fuel-calc-cell-num {
     display: block;
     text-align: center;
     padding-left: 1.35rem;
     padding-right: 1.35rem;
-}
-.fuel-calc-cell-tip-wrap .fuel-calc-cell-tip {
+    white-space: nowrap;
+  }
+  .fuel-calc-cell-tip-wrap .fuel-calc-cell-tip {
     position: absolute;
     right: 2px;
     top: 50%;
     transform: translateY(-50%);
     line-height: 1;
-}
-.fuel-calc-chchium-cell {
+  }
+  .fuel-calc-chchium-cell {
     position: relative;
     display: flex;
     align-items: center;
@@ -101,587 +141,982 @@
     padding-left: 1.35rem;
     padding-right: 1.35rem;
     width: 100%;
-}
-.fuel-calc-chchium-cell .fuel-calc-chchium-input {
+  }
+  .fuel-calc-chchium-cell .fuel-calc-chchium-input {
     font-size: 1.05rem;
     min-width: 4.5rem;
     max-width: 11rem;
     width: 100%;
     text-align: center;
     margin: 0 auto;
-}
-.fuel-calc-chchium-cell .bi-info-circle,
-.fuel-calc-chchium-cell > i.bi {
+  }
+  .fuel-calc-chchium-cell .bi-info-circle,
+  .fuel-calc-chchium-cell > i.bi {
     position: absolute;
     right: 2px;
     top: 50%;
     transform: translateY(-50%);
     flex-shrink: 0;
-}
-/* Выпадающие ОЭС / ТЭС не обрезаем контейнерами (Select2 / Bootstrap dropdown) */
-.fuel-calc-filters-strip-wrap, .fuel-calc-filters-form, .station-info { overflow: visible; }
-/* Верхняя панель: outline = прозрачный фон до наведения */
-.fuel-calc-top-actions .btn:disabled,
-.fuel-calc-stage-buttons .btn:disabled {
+  }
+  /* Выпадающие ОЭС / ТЭС не обрезаем контейнерами (Select2 / Bootstrap dropdown) */
+  .fuel-calc-filters-strip-wrap,
+  .fuel-calc-filters-form,
+  .station-info {
+    overflow: visible;
+  }
+  /* Верхняя панель: outline = прозрачный фон до наведения */
+  .fuel-calc-top-actions .btn:disabled,
+  .fuel-calc-stage-buttons .btn:disabled {
     opacity: 0.45;
-}
-/* Коэфф / Распред / Топливо: ~в 2 раза крупнее бывших btn-sm (~0.875rem → ~1.75rem) */
-.fuel-calc-stage-buttons .btn {
-    font-size: 1.75rem;
-    line-height: 1.35;
-    padding: 0.6rem 1.2rem;
-}
-.fuel-calc-stage-buttons .btn i {
-    font-size: 1.1em;
-    vertical-align: -0.1em;
-}
-.fuel-calc-formulas-btn-icon {
-    display: block;
-}
-/* Предпросмотр «Основные топливные параметры» — как на equipment_group_fuel_batch_calculation */
-.fuel-calc-main-fuel-params-section .batch-param-tables-mount .batch-param-table-hscroll {
-    overflow-x: auto;
-    overflow-y: visible;
-    -webkit-overflow-scrolling: touch;
-    max-width: 100%;
-}
-.fuel-calc-main-fuel-params-section .batch-param-tables-mount .batch-param-table-hscroll > .batch-fuel-preview-table,
-.fuel-calc-main-fuel-params-section .batch-param-tables-mount .batch-param-table-hscroll > .batch-extra-fuel-preview-table {
-    width: max-content;
-    min-width: 100%;
-    margin-bottom: 0;
-}
+  }
+  .fuel-calc-stage-buttons {
+    width: 100%;
+  }
+  .fuel-calc-stage-buttons .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  /* Таблица параметров распределения — как на /fuel/distribution_parameters */
+  .distribution-params-table {
+    font-size: 1.15rem;
+    vertical-align: middle;
+  }
+  .distribution-params-table thead th {
+    font-size: 1rem;
+  }
+  .distribution-params-table th.dp-col-year,
+  .distribution-params-table td.dp-col-year {
+    width: 7.25rem;
+    min-width: 7.25rem;
+    box-sizing: border-box;
+  }
+  .distribution-params-table th.dp-col-ues,
+  .distribution-params-table td.dp-col-ues {
+    width: auto;
+    min-width: max-content;
+    max-width: none;
+    box-sizing: border-box;
+  }
 </style>
 
 <div class="container-fluid mt-4 px-3">
-    <h2 class="text-center mb-4">Расчет топливных показателей на перспективный период</h2>
-    <div class="fuel-calc-top-actions d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3">
-        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры (основные)</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры (дополнительные)</a>
+  <h2 class="text-center mb-4">
+    Расчет топливных показателей на перспективный период
+  </h2>
+  <div
+    class="fuel-calc-top-actions d-flex flex-wrap align-items-center justify-content-end gap-2 mb-3"
+  >
+    <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"
+      ><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a
+    >
+    <a
+      href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
+      class="btn btn-secondary fs-5"
+      >Группы оборудования</a
+    >
+    <a
+      href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}"
+      class="btn btn-secondary fs-5"
+      >Топливные параметры (основные)</a
+    >
+  </div>
+
+  <div class="station-info">
+    <div class="row g-0">
+      {% include 'fuel/calculation/_fuel_calculation_filters.html' %}
     </div>
 
-    <div class="station-info">
-        <div class="row g-0">
-            {% include 'fuel/calculation/_fuel_calculation_filters.html' %}
-        </div>
+    {% if not selected_row %}
+    <div class="ms-3 me-3 mb-0">
+      <p class="small text-muted mb-0">
+        <i class="bi bi-info-circle me-1"></i>Нет параметра распределения для
+        выбранных <strong>{{ dp_l.get('byear', 'Базовый год') }}</strong> /
+        <strong>{{ dp_l.get('year', 'Расчетный год') }}</strong> и ОЭС — ввод
+        <strong>{{ dp_l.get('e', 'e') }}</strong> (поле e) и кнопки этапов
+        неактивны. Загрузите или заведите параметры в БД (список — по ссылке
+        «Параметры распределения»).
+      </p>
+    </div>
+    {% endif %}
 
-            {% if not selected_row %}
-            <div class="ms-3 me-3 mb-0">
-                <p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i>Нет параметра распределения для выбранного расчитываемого года и ОЭС — ввод <strong>{{ dp_l.get('e', 'e') }}</strong> (поле e) и кнопки этапов неактивны. Загрузите или заведите параметры в БД (список — по ссылке «Параметры распределения»).</p>
+    <hr class="my-3 border-secondary opacity-25" />
+
+    <div class="mb-4 p-3" style="background: transparent; border: none">
+      {% if not selected_row %}
+      <p class="small text-muted mb-2">
+        Таблицы без привязки к сценарию — задайте расчетный год и ОЭС, для
+        которых есть параметр распределения.
+      </p>
+      {% elif not coeff_summary and not coeff_calc_year_is_preview %}
+      <p class="small text-muted mb-2">
+        Строка «Базовый год» в первой таблице строится из данных БД при
+        загрузке. Строка «Расчётный год» и вторая таблица пусты: по фильтру
+        параметра нет строк топлива за расчётный год для суммирования (или
+        выполните «Коэфф» после появления данных).
+      </p>
+      {% elif coeff_calc_year_is_preview %}
+      <p class="small text-muted mb-2">
+        Строка «Расчётный год» и вторая таблица — предварительный расчёт по
+        данным БД (как при «Коэфф», без записи сводки). Нажмите «Коэфф», чтобы
+        зафиксировать результат и обновить строки топлива.
+      </p>
+      {% endif %}
+      <div class="row g-3 align-items-start">
+        <div class="col-lg-6">
+          <div class="table-responsive">
+            <table
+              class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100 fuel-calc-num fuel-calc-coeff-table"
+              data-auto-export-excel="off"
+            >
+              <thead class="table-success">
+                <tr class="align-middle">
+                  <th class="text-start" style="min-width: 10rem">Период</th>
+                  <th class="text-center">
+                    Суммарная установленная мощность, МВт<br /><span
+                      class="text-muted small fw-normal"
+                      >({{ 'nust'|fuel_header_code }})</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Выработка ЭЭ, тыс.кВтч<br /><span
+                      class="text-muted small fw-normal"
+                      >({{ 'e'|fuel_header_code }})</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Теплофикационная выработка ЭЭ, тыс.кВтч<br /><span
+                      class="text-muted small fw-normal"
+                      >({{ 'ewtp'|fuel_header_code }})</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Отпуск ТЭ, тыс.Гкал<br /><span class="text-muted small fw-normal"
+                      >({{ 'q'|fuel_header_code }})</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Тепловое потребление (отборов турбин), тыс.Гкал<br /><span
+                      class="text-muted small fw-normal"
+                      >({{ 'qotr'|fuel_header_code }})</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Доля тепла, %<br /><span class="text-muted small fw-normal"
+                      >(bptp / cptp)</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Удельные часы<br /><span class="text-muted small fw-normal"
+                      >({{ 'h'|fuel_header_code }})</span
+                    >
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-start fw-semibold">
+                    {% if not selected_row %} {{ dp_l['byear'] }}
+                    <span class="text-muted fw-normal">(нет параметра)</span> {%
+                    elif selected_row.base_year %} {{ dp_l['byear'] }} ({{
+                    selected_row.base_year.number }}) {% else %} {{
+                    dp_l['byear'] }}
+                    <span class="text-muted fw-normal">(не задан)</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_base_preview.bnust if
+                    coeff_base_preview else (coeff_summary.bnust if
+                    coeff_summary else none), 'b_nust') }}
+                  </td>
+                  {# Столбцы как в Access: E = ΣE, Eтп = Σewtp, Н = удельные часы
+                  (ΣE/ΣN·1000). #}
+                  <td>
+                    {{ int_with_tip(coeff_base_preview.be if coeff_base_preview
+                    else (coeff_summary.be if coeff_summary else none), 'b_e')
+                    }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_base_preview.betp if
+                    coeff_base_preview else (coeff_summary.betp if coeff_summary
+                    else none), 'b_etp') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_base_preview.bq if coeff_base_preview
+                    else (coeff_summary.bq if coeff_summary else none), 'b_q')
+                    }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_base_preview.bqotr if
+                    coeff_base_preview else (coeff_summary.bqotr if
+                    coeff_summary else none), 'b_qotr') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_base_preview.bptp if
+                    coeff_base_preview else (coeff_summary.bptp if coeff_summary
+                    else none), 'b_ptp') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_base_preview.bh if coeff_base_preview
+                    else (coeff_summary.bh if coeff_summary else none), 'b_h')
+                    }}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-start fw-semibold">
+                    {% if selected_row %} {{ dp_l.get('year', 'Расчетный год')
+                    }} ({{ selected_row.year.number if selected_row.year else
+                    'не указано' }}) {% else %} {{ dp_l.get('year', 'Расчетный
+                    год') }}
+                    <span class="text-muted fw-normal">(не указано)</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_calc_year_display.cnust if
+                    coeff_calc_year_display else none, 'c_nust') }}
+                  </td>
+                  <td>{{ dash_with_tip('c_e') }}</td>
+                  <td>
+                    {{ int_with_tip(coeff_calc_year_display.cetp if
+                    coeff_calc_year_display else none, 'c_etp') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_calc_year_display.cq if
+                    coeff_calc_year_display else none, 'c_q') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_calc_year_display.cqotr if
+                    coeff_calc_year_display else none, 'c_qotr') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_cptp_display if coeff_cptp_display is
+                    not none else (coeff_calc_year_display.cptp if
+                    coeff_calc_year_display else none), 'c_ptp') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_calc_year_display.ch if
+                    coeff_calc_year_display else none, 'c_h') }}
+                  </td>
+                </tr>
+                {% if coeff_ratio_row %}
+                <tr class="table-light">
+                  <td class="text-start fw-semibold">
+                    Отношение
+                    <span class="fw-normal text-muted">(расч./баз.)</span>
+                  </td>
+                  <td>{{ dash_with_tip('r_nust') }}</td>
+                  <td>{{ num_ratio_with_tip(coeff_ratio_row.pe, 'r_pe') }}</td>
+                  <td>
+                    {{ num_ratio_with_tip(coeff_ratio_row.petp, 'r_etp') }}
+                  </td>
+                  <td>{{ num_ratio_with_tip(coeff_ratio_row.pq, 'r_pq') }}</td>
+                  <td>
+                    {{ num_ratio_with_tip(coeff_ratio_row.potr, 'r_potr') }}
+                  </td>
+                  <td>{{ dash_with_tip('r_ptp') }}</td>
+                  <td>
+                    {{ num_ratio_with_tip(coeff_ratio_row.ph1, 'r_ph1') }}
+                  </td>
+                </tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="table-responsive">
+            <table
+              class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100 fuel-calc-num fuel-calc-coeff-table"
+              data-auto-export-excel="off"
+            >
+              <thead class="table-success">
+                <tr class="align-middle">
+                  <th class="text-start" style="min-width: 5rem">
+                    Тип ТЭС<br /><span class="text-muted small fw-normal"
+                      >({{ 'obor'|fuel_header_code }})</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Мощность новых агрегатов<br /><span
+                      class="text-muted small fw-normal"
+                      >(N<sub>нов</sub>)</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    ЧЧИУМ действующих агрегатов<br /><span
+                      class="text-muted small fw-normal"
+                      >(hd)</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    Коэффициент загрузки нового оборудования (расчётный)<br /><span
+                      class="text-muted small fw-normal"
+                      >(kn)</span
+                    >
+                  </th>
+                  <th class="text-center">
+                    ЧЧИУМ нового оборудования<br /><span
+                      class="text-muted small fw-normal"
+                      >(hn) — ввод; K<sub>нов</sub> пересчитывается</span
+                    >
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if coeff_tech_aggregate_row %}
+                <tr class="table-light">
+                  <td class="text-start"></td>
+                  <td>
+                    {{ num_with_tip(coeff_tech_aggregate_row.cnustn,
+                    'tech_agg_n') }}
+                  </td>
+                  <td>
+                    {{ int_with_tip(coeff_tech_aggregate_row.hd, 'tech_agg_hd')
+                    }}
+                  </td>
+                  <td>
+                    {{ num_k_with_tip(coeff_tech_aggregate_row.kn,
+                    'tech_agg_kn') }}
+                  </td>
+                  <td class="text-center p-1"></td>
+                </tr>
+                {% endif %} {% for tech_row in coeff_tech_rows %}
+                <tr>
+                  <td class="text-start fw-semibold">{{ tech_row.label }}</td>
+                  <td>{{ num_with_tip(tech_row.n, 'tech_n') }}</td>
+                  <td class="text-center">
+                    {% if tech_row.label in ['ГТУ', 'ПГУ'] %} {% elif
+                    tech_row.hd_col_ph is not none %} {{
+                    num_k_with_tip(tech_row.hd_col_ph, 'tech_hd_col_ph') }} {%
+                    else %} {{ dash_with_tip('tech_h_col_empty') }} {% endif %}
+                  </td>
+                  <td>
+                    {{ num_k_with_tip(tech_row.k, tech_tip_key('tech_k',
+                    tech_row.label)) }}
+                  </td>
+                  <td class="p-1">
+                    <div class="fuel-calc-chchium-cell">
+                      {% if selected_row %}
+                      <form
+                        method="post"
+                        action="{{ url_for('fuel_bp.fuel_calculation_update_tech_hn') }}"
+                        class="d-flex align-items-center justify-content-center w-100"
+                      >
+                        <input
+                          type="hidden"
+                          name="csrf_token"
+                          value="{{ csrf_token }}"
+                        />
+                        <input
+                          type="hidden"
+                          name="distribution_parameter_id"
+                          value="{{ selected_row.id }}"
+                        />
+                        <input
+                          type="hidden"
+                          name="h_field"
+                          value="{{ tech_row.h_field }}"
+                        />
+                        <input
+                          type="text"
+                          name="h_value"
+                          inputmode="decimal"
+                          autocomplete="off"
+                          aria-label="ЧЧИУМ hn"
+                          class="form-control form-control-sm text-center fuel-calc-chchium-input"
+                          value="{{ dec_input_value(tech_row.h) }}"
+                          title="ЧЧИУМ hn (hnps/hngt/hnpg): сохраняется в параметр распределения; затем пересчёт «Коэфф» (kn = hn/ch в сводке)"
+                          onchange="this.form.submit()"
+                        />
+                      </form>
+                      {{ cell_help(tech_tip_key('tech_ch', tech_row.label)) }}
+                      {% else %}
+                      <input
+                        type="text"
+                        inputmode="decimal"
+                        autocomplete="off"
+                        aria-label="ЧЧИУМ"
+                        class="form-control form-control-sm text-center fuel-calc-chchium-input"
+                        disabled
+                        value="{{ dec_input_value(tech_row.h) }}"
+                      />
+                      {{ cell_help(tech_tip_key('tech_ch', tech_row.label)) }}
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% else %}
+                <tr>
+                  <td class="text-start fw-semibold">ПСУ</td>
+                  <td>{{ dash_with_tip('tech_n') }}</td>
+                  <td>{{ dash_with_tip('tech_h_col_empty') }}</td>
+                  <td>{{ dash_with_tip('tech_k_psu') }}</td>
+                  <td class="p-1">
+                    <div class="fuel-calc-chchium-cell">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm text-center fuel-calc-chchium-input"
+                        value=""
+                        disabled
+                        aria-label="ЧЧИУМ"
+                      />{{ cell_help('tech_ch_psu') }}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-start fw-semibold">ГТУ</td>
+                  <td>{{ dash_with_tip('tech_n') }}</td>
+                  <td class="text-center"></td>
+                  <td>{{ dash_with_tip('tech_k_gtu') }}</td>
+                  <td class="p-1">
+                    <div class="fuel-calc-chchium-cell">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm text-center fuel-calc-chchium-input"
+                        value=""
+                        disabled
+                        aria-label="ЧЧИУМ"
+                      />{{ cell_help('tech_ch_gtu') }}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-start fw-semibold">ПГУ</td>
+                  <td>{{ dash_with_tip('tech_n') }}</td>
+                  <td class="text-center"></td>
+                  <td>{{ dash_with_tip('tech_k_pgu') }}</td>
+                  <td class="p-1">
+                    <div class="fuel-calc-chchium-cell">
+                      <input
+                        type="text"
+                        class="form-control form-control-sm text-center fuel-calc-chchium-input"
+                        value=""
+                        disabled
+                        aria-label="ЧЧИУМ"
+                      />{{ cell_help('tech_ch_pgu') }}
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {% set _missing_spec = missing_specific_groups|default(none) %}
+      {% set _missing_spec_count = (_missing_spec.missing_count if _missing_spec else 0) or 0 %}
+      {% set _missing_fuel_count = (_missing_spec.missing_fuel_count if _missing_spec else 0) or 0 %}
+      {% set _missing_spec_year = _missing_spec.year_number if _missing_spec else (coeff_stage_last_result.year_number if coeff_stage_last_result else start_year) %}
+      {% set _missing_spec_url = missing_specific_edit_url|default(none) %}
+      {% set _missing_fuel_url = missing_fuel_edit_url|default(none) %}
+
+      {% set _stage_ctx = fuel_stage_last_result or distribution_stage_last_result or coeff_stage_last_result %}
+      {% if coeff_stage_last_result or distribution_stage_last_result or fuel_stage_last_result or _missing_spec_count or _missing_fuel_count %}
+      <div class="my-3 pt-3 border-top border-secondary border-opacity-25">
+        <h5 class="h6 fw-semibold mb-2">Результаты этапов</h5>
+        {% if not coeff_stage_last_result and not distribution_stage_last_result and not fuel_stage_last_result %}
+        <p class="small text-muted mb-2">
+          Контроль данных до/после «Коэфф»: группы фильтра без строки топлива за расчётный год
+          или без удельника year ≤ расчётного (Skip в расчёте).
+        </p>
+        {% endif %}
+        {% set _srt_tbl = "table table-hover table-striped table-bordered
+        align-middle mb-0 w-100 fuel-calc-num fuel-calc-coeff-table
+        fuel-calc-stage-result-table" %}
+        <div class="row g-3 align-items-start">
+          {# Левый столбец: таблицы стеком — тот же gap, что и справа #}
+          <div class="col-12 col-md-6 d-flex flex-column gap-3">
+            {% if coeff_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">{{ dp_l['name'] }}</td>
+                    <td class="text-center">{{ coeff_stage_last_result.distribution_name }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">{{ dp_l.get('byear', 'Базовый год') }}</td>
+                    <td class="text-center">
+                      {{ coeff_stage_last_result.base_year_number if
+                      coeff_stage_last_result.base_year_number is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">{{ dp_l['year'] }}</td>
+                    <td class="text-center">
+                      {{ coeff_stage_last_result.year_number if
+                      coeff_stage_last_result.year_number is not none else '—' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {% elif _stage_ctx %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">{{ dp_l['name'] }}</td>
+                    <td class="text-center">{{ _stage_ctx.distribution_name }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">{{ dp_l['year'] }}</td>
+                    <td class="text-center">
+                      {{ _stage_ctx.year_number if _stage_ctx.year_number is not none else '—' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {% elif _missing_spec_count or _missing_fuel_count %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · контроль данных</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr{% if _missing_spec_count %} class="table-warning"{% endif %}>
+                    <td class="text-start">
+                      Не указаны ТЭП для периода до {{ _missing_spec_year if _missing_spec_year is not none else '—' }} года
+                    </td>
+                    <td class="text-center">
+                      {% if _missing_spec_count and _missing_spec_url %}
+                      <a href="{{ _missing_spec_url }}" target="_blank" rel="noopener noreferrer" title="Открыть ТЭП этих групп для заполнения удельных">{{ _missing_spec_count }}</a>
+                      {% elif _missing_spec is not none %}
+                      0
+                      {% else %}
+                      —
+                      {% endif %}
+                    </td>
+                  </tr>
+                  <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
+                    <td class="text-start">
+                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
+                    </td>
+                    <td class="text-center">
+                      {% if _missing_fuel_count and _missing_fuel_url %}
+                      <a href="{{ _missing_fuel_url }}" target="_blank" rel="noopener noreferrer" title="Открыть основные данные этих групп">{{ _missing_fuel_count }}</a>
+                      {% elif _missing_spec is not none %}
+                      0
+                      {% else %}
+                      —
+                      {% endif %}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
             {% endif %}
 
-            <hr class="my-3 border-secondary opacity-25">
-
-            <div class="mb-4 p-3" style="background: transparent; border: none;">
-                {% set _equipment_group_fuel_params_edit_qs = request.query_string.decode('utf-8') if request.query_string else '' %}
-                {% set _equipment_group_fuel_params_edit_suffix = ('?' ~ _equipment_group_fuel_params_edit_qs) if _equipment_group_fuel_params_edit_qs else '' %}
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                    <div class="d-flex flex-wrap align-items-center gap-2">
-                    <a href="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data') }}{{ _equipment_group_fuel_params_edit_suffix }}"
-                       class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap">
-                        <i class="bi bi-pencil-square me-1"></i>Редактировать данные
-                    </a>
-                    <a href="{{ url_for('fuel_bp.equipment_group_specific_fuel_consumption_edit_data') }}{{ _equipment_group_fuel_params_edit_suffix }}"
-                       class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap">
-                        <i class="bi bi-pencil-square me-1"></i>Редактировать удельные показатели
-                    </a>
-                    </div>
-                    <a href="{{ url_for('fuel_bp.equipment_group_fuel_formulas_page') }}"
-                       class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap d-inline-flex align-items-center">
-                        <svg class="fuel-calc-formulas-btn-icon me-1 flex-shrink-0" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                            <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
-                            <circle cx="9" cy="9" r="1.25" fill="currentColor"/>
-                            <circle cx="15" cy="9" r="1.25" fill="currentColor"/>
-                            <path d="M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                        Формулы топлива
-                    </a>
-                </div>
-                {% if not selected_row %}
-                <p class="small text-muted mb-2">Таблицы без привязки к сценарию — задайте расчетный год и ОЭС, для которых есть параметр распределения.</p>
-                {% elif not coeff_summary and not coeff_calc_year_is_preview %}
-                <p class="small text-muted mb-2">
-                    Строка «Базовый год» в первой таблице строится из данных БД при загрузке.
-                    Строка «Расчётный год» и вторая таблица пусты: по фильтру параметра нет строк топлива за расчётный год для суммирования (или выполните «Коэфф» после появления данных).
-                </p>
-                {% elif coeff_calc_year_is_preview %}
-                <p class="small text-muted mb-2">
-                    Строка «Расчётный год» и вторая таблица — предварительный расчёт по данным БД (как при «Коэфф», без записи сводки). Нажмите «Коэфф», чтобы зафиксировать результат и обновить строки топлива.
-                </p>
-                {% endif %}
-                <div class="row g-3 align-items-start">
-                    <div class="col-lg-6">
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100 fuel-calc-num fuel-calc-coeff-table" data-auto-export-excel="off">
-                                <thead class="table-success">
-                                    <tr class="align-middle">
-                                        <th class="text-start" style="min-width: 10rem;">Период</th>
-                                        <th class="text-center">Установленная мощность, МВт<br><span class="text-muted small fw-normal">(nust)</span></th>
-                                        <th class="text-center">Выработка электроэнергии<br><span class="text-muted small fw-normal">(e)</span></th>
-                                        <th class="text-center">Этц (теплофикационная выработка)<br><span class="text-muted small fw-normal">(ewtp)</span></th>
-                                        <th class="text-center">Отпуск тепла<br><span class="text-muted small fw-normal">(q)</span></th>
-                                        <th class="text-center">Тепло на отработку<br><span class="text-muted small fw-normal">(qotr)</span></th>
-                                        <th class="text-center">Доля тепла, %<br><span class="text-muted small fw-normal">(bptp / cptp)</span></th>
-                                        <th class="text-center">Удельные часы<br><span class="text-muted small fw-normal">(h)</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td class="text-start fw-semibold">
-                                            {% if not selected_row %}
-                                                {{ dp_l['byear'] }} <span class="text-muted fw-normal">(нет параметра)</span>
-                                            {% elif selected_row.base_year %}
-                                                {{ dp_l['byear'] }} ({{ selected_row.base_year.number }})
-                                            {% else %}
-                                                {{ dp_l['byear'] }} <span class="text-muted fw-normal">(не задан)</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ int_with_tip(coeff_base_preview.bnust if coeff_base_preview else (coeff_summary.bnust if coeff_summary else none), 'b_nust') }}</td>
-                                        {# Столбцы как в Access: E = ΣE, Eтп = ΣЭтц, Н = удельные часы (ΣE/ΣN·1000). #}
-                                        <td>{{ int_with_tip(coeff_base_preview.be if coeff_base_preview else (coeff_summary.be if coeff_summary else none), 'b_e') }}</td>
-                                        <td>{{ int_with_tip(coeff_base_preview.betp if coeff_base_preview else (coeff_summary.betp if coeff_summary else none), 'b_etp') }}</td>
-                                        <td>{{ int_with_tip(coeff_base_preview.bq if coeff_base_preview else (coeff_summary.bq if coeff_summary else none), 'b_q') }}</td>
-                                        <td>{{ int_with_tip(coeff_base_preview.bqotr if coeff_base_preview else (coeff_summary.bqotr if coeff_summary else none), 'b_qotr') }}</td>
-                                        <td>{{ int_with_tip(coeff_base_preview.bptp if coeff_base_preview else (coeff_summary.bptp if coeff_summary else none), 'b_ptp') }}</td>
-                                        <td>{{ int_with_tip(coeff_base_preview.bh if coeff_base_preview else (coeff_summary.bh if coeff_summary else none), 'b_h') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-start fw-semibold">
-                                            {% if selected_row %}
-                                                {{ dp_l.get('year', 'Расчитываемый год') }} ({{ selected_row.year.number if selected_row.year else 'не указано' }})
-                                            {% else %}
-                                                {{ dp_l.get('year', 'Расчитываемый год') }} <span class="text-muted fw-normal">(не указано)</span>
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ int_with_tip(coeff_calc_year_display.cnust if coeff_calc_year_display else none, 'c_nust') }}</td>
-                                        <td class="text-center"></td>
-                                        <td>{{ int_with_tip(coeff_calc_year_display.cetp if coeff_calc_year_display else none, 'c_etp') }}</td>
-                                        <td>{{ int_with_tip(coeff_calc_year_display.cq if coeff_calc_year_display else none, 'c_q') }}</td>
-                                        <td>{{ int_with_tip(coeff_calc_year_display.cqotr if coeff_calc_year_display else none, 'c_qotr') }}</td>
-                                        <td>{{ int_with_tip(coeff_cptp_display if coeff_cptp_display is not none else (coeff_calc_year_display.cptp if coeff_calc_year_display else none), 'c_ptp') }}</td>
-                                        <td>{{ int_with_tip(coeff_calc_year_display.ch if coeff_calc_year_display else none, 'c_h') }}</td>
-                                    </tr>
-                                    {% if coeff_ratio_row %}
-                                    <tr class="table-light">
-                                        <td class="text-start fw-semibold">
-                                            Отношение <span class="fw-normal text-muted">(расч./баз.)</span>
-                                        </td>
-                                        <td class="text-center"></td>
-                                        <td>{{ num_ratio_with_tip(coeff_ratio_row.pe, 'r_pe') }}</td>
-                                        <td>{{ num_ratio_with_tip(coeff_ratio_row.petp, 'r_etp') }}</td>
-                                        <td>{{ num_ratio_with_tip(coeff_ratio_row.pq, 'r_pq') }}</td>
-                                        <td>{{ num_ratio_with_tip(coeff_ratio_row.potr, 'r_potr') }}</td>
-                                        <td class="text-center"></td>
-                                        <td class="text-center"></td>
-                                    </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100 fuel-calc-num fuel-calc-coeff-table" data-auto-export-excel="off">
-                                <thead class="table-success">
-                                    <tr class="align-middle">
-                                        <th class="text-start" style="min-width: 5rem;">Тип ТЭС<br><span class="text-muted small fw-normal">(obor)</span></th>
-                                        <th class="text-center">Мощность новых агрегатов<br><span class="text-muted small fw-normal">(N<sub>нов</sub>)</span></th>
-                                        <th class="text-center">ЧЧИУМ действующих агрегатов<br><span class="text-muted small fw-normal">(hd)</span></th>
-                                        <th class="text-center">Коэффициент загрузки нового оборудования (расчётный)<br><span class="text-muted small fw-normal">(kn)</span></th>
-                                        <th class="text-center">ЧЧИУМ нового оборудования<br><span class="text-muted small fw-normal">(hn) — ввод; K<sub>нов</sub> пересчитывается</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% if coeff_tech_aggregate_row %}
-                                    <tr class="table-light">
-                                        <td class="text-start"></td>
-                                        <td>{{ num_with_tip(coeff_tech_aggregate_row.cnustn, 'tech_agg_n') }}</td>
-                                        <td>{{ int_with_tip(coeff_tech_aggregate_row.hd, 'tech_agg_hd') }}</td>
-                                        <td>{{ num_k_with_tip(coeff_tech_aggregate_row.kn, 'tech_agg_kn') }}</td>
-                                        <td class="text-center p-1"></td>
-                                    </tr>
-                                    {% endif %}
-                                    {% for tech_row in coeff_tech_rows %}
-                                    <tr>
-                                        <td class="text-start fw-semibold">{{ tech_row.label }}</td>
-                                        <td>{{ num_with_tip(tech_row.n, 'tech_n') }}</td>
-                                        <td class="text-center">
-                                            {% if tech_row.label in ['ГТУ', 'ПГУ'] %}
-                                            {% elif tech_row.hd_col_ph is not none %}
-                                                {{ num_k_with_tip(tech_row.hd_col_ph, 'tech_hd_col_ph') }}
-                                            {% else %}
-                                                {{ dash_with_tip('tech_h_col_empty') }}
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ num_k_with_tip(tech_row.k, tech_tip_key('tech_k', tech_row.label)) }}</td>
-                                        <td class="p-1">
-                                            <div class="fuel-calc-chchium-cell">
-                                                {% if selected_row %}
-                                                <form method="post" action="{{ url_for('fuel_bp.fuel_calculation_update_tech_hn') }}" class="d-flex align-items-center justify-content-center w-100">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                                    <input type="hidden" name="distribution_parameter_id" value="{{ selected_row.id }}">
-                                                    <input type="hidden" name="h_field" value="{{ tech_row.h_field }}">
-                                                    <input type="text" name="h_value" inputmode="decimal" autocomplete="off" aria-label="ЧЧИУМ hn"
-                                                           class="form-control form-control-sm text-center fuel-calc-chchium-input"
-                                                           value="{{ dec_input_value(tech_row.h) }}"
-                                                           title="hn (hnps / hngt / hnpg): после изменения сохраняется в параметр распределения и пересчитывается этап «Коэфф» (kn = hn/ch)"
-                                                           onchange="this.form.submit()">
-                                                </form>
-                                                {{ cell_help(tech_tip_key('tech_ch', tech_row.label)) }}
-                                                {% else %}
-                                                <input type="text" inputmode="decimal" autocomplete="off" aria-label="ЧЧИУМ"
-                                                       class="form-control form-control-sm text-center fuel-calc-chchium-input" disabled
-                                                       value="{{ dec_input_value(tech_row.h) }}">
-                                                {{ cell_help(tech_tip_key('tech_ch', tech_row.label)) }}
-                                                {% endif %}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    {% else %}
-                                    <tr>
-                                        <td class="text-start fw-semibold">ПСУ</td>
-                                        <td>{{ dash_with_tip('tech_n') }}</td>
-                                        <td>{{ dash_with_tip('tech_h_col_empty') }}</td>
-                                        <td>{{ dash_with_tip('tech_k_psu') }}</td>
-                                        <td class="p-1"><div class="fuel-calc-chchium-cell"><input type="text" class="form-control form-control-sm text-center fuel-calc-chchium-input" value="" disabled aria-label="ЧЧИУМ">{{ cell_help('tech_ch_psu') }}</div></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-start fw-semibold">ГТУ</td>
-                                        <td>{{ dash_with_tip('tech_n') }}</td>
-                                        <td class="text-center"></td>
-                                        <td>{{ dash_with_tip('tech_k_gtu') }}</td>
-                                        <td class="p-1"><div class="fuel-calc-chchium-cell"><input type="text" class="form-control form-control-sm text-center fuel-calc-chchium-input" value="" disabled aria-label="ЧЧИУМ">{{ cell_help('tech_ch_gtu') }}</div></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="text-start fw-semibold">ПГУ</td>
-                                        <td>{{ dash_with_tip('tech_n') }}</td>
-                                        <td class="text-center"></td>
-                                        <td>{{ dash_with_tip('tech_k_pgu') }}</td>
-                                        <td class="p-1"><div class="fuel-calc-chchium-cell"><input type="text" class="form-control form-control-sm text-center fuel-calc-chchium-input" value="" disabled aria-label="ЧЧИУМ">{{ cell_help('tech_ch_pgu') }}</div></td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {% if coeff_stage_extra_row %}
-                <div class="row g-3 mt-2">
-                    <div class="col-12">
-                        <h5 class="h6 fw-semibold mb-2">Сводка «Коэфф»: дополнительные показатели</h5>
-                        <p class="small text-muted mb-2">
-                            PH1, сумма ΣE по полю e за расчётный год (знаменатель для %тп при незаданном {{ dp_l.get('e', 'e') }}),
-                            из параметра: {{ dp_l['kplus'] }}, {{ dp_l['kmin'] }}, {{ dp_l['lim'] }} (копируются в сводку при «Коэфф»).
-                        </p>
-                        <div class="table-responsive">
-                            <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-2 w-100 fuel-calc-num fuel-calc-coeff-table" data-auto-export-excel="off">
-                                <thead class="table-success">
-                                    <tr class="align-middle">
-                                        <th class="text-center">PH1<br><span class="text-muted small fw-normal">(ph1 = ch/bh)</span></th>
-                                        <th class="text-center">ΣE, МВт·ч<br><span class="text-muted small fw-normal">(сумма e за расчётный год)</span></th>
-                                        <th class="text-center">{{ dp_l['kplus'] }}<br><span class="text-muted small fw-normal">(kplus)</span></th>
-                                        <th class="text-center">{{ dp_l['kmin'] }}<br><span class="text-muted small fw-normal">(kmin)</span></th>
-                                        <th class="text-center">{{ dp_l['lim'] }}<br><span class="text-muted small fw-normal">(lim)</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>{{ num_ratio_with_tip(coeff_stage_extra_row.ph1, 'extra_ph1') }}</td>
-                                        <td>{{ int_with_tip(coeff_stage_extra_row.sum_e_cyear, 'extra_sum_e') }}</td>
-                                        <td>{{ num_k_with_tip(coeff_stage_extra_row.kplus, 'extra_kplus') }}</td>
-                                        <td>{{ num_k_with_tip(coeff_stage_extra_row.kmin, 'extra_kmin') }}</td>
-                                        <td>{{ int_with_tip(coeff_stage_extra_row.lim, 'extra_lim') }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if distribution_stage_last_result %}
-                <div class="my-3 pt-3 border-top border-secondary border-opacity-25">
-                    <h5 class="h6 fw-semibold mb-2">Результат последнего этапа «Распред»</h5>
-                    <p class="small text-muted mb-2">
-                        Данные после нажатия «Распред» для текущего параметра распределения (год и ОЭС в фильтре выше).
-                    </p>
-                    {% set _dst_tbl = "table table-hover table-striped table-bordered align-middle mb-0 w-100 fuel-calc-num fuel-calc-coeff-table" %}
-                    <div class="row g-3 align-items-start">
-                        <div class="col-12 col-md-6 col-xl-3">
-                            <div class="table-responsive">
-                                <table class="{{ _dst_tbl }}" data-auto-export-excel="off">
-                                    <thead class="table-success">
-                                        <tr>
-                                            <th class="text-start text-nowrap" scope="col">Показатель</th>
-                                            <th class="text-center" scope="col">Значение</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="text-start text-nowrap">{{ dp_l['name'] }}</td>
-                                            <td class="text-center">{{ distribution_stage_last_result.distribution_name }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-start text-nowrap">{{ dp_l['year'] }}</td>
-                                            <td class="text-center">{{ distribution_stage_last_result.year_number if distribution_stage_last_result.year_number is not none else '—' }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 col-xl-3">
-                            <div class="table-responsive">
-                                <table class="{{ _dst_tbl }}" data-auto-export-excel="off">
-                                    <thead class="table-success">
-                                        <tr>
-                                            <th class="text-start text-nowrap" scope="col">Показатель</th>
-                                            <th class="text-center" scope="col">Значение</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="text-start text-nowrap">{{ dp_l['e'] }} (цель распределения), МВт·ч <span class="text-muted small fw-normal">(e)</span></td>
-                                            <td class="text-center">{{ distribution_stage_last_result.e_target }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-start text-nowrap">ΣE после распределения, МВт·ч</td>
-                                            <td class="text-center">{{ distribution_stage_last_result.total_distributed_e }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 col-xl-3">
-                            <div class="table-responsive">
-                                <table class="{{ _dst_tbl }}" data-auto-export-excel="off">
-                                    <thead class="table-success">
-                                        <tr>
-                                            <th class="text-start text-nowrap" scope="col">Показатель</th>
-                                            <th class="text-center" scope="col">Значение</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="text-start text-nowrap">Групп в фильтре</td>
-                                            <td class="text-center">{{ distribution_stage_last_result.selected_group_count if distribution_stage_last_result.selected_group_count is not none else '—' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-start text-nowrap">Обработано групп</td>
-                                            <td class="text-center">{{ distribution_stage_last_result.processed_group_count if distribution_stage_last_result.processed_group_count is not none else '—' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-start text-nowrap">Пропущено групп</td>
-                                            <td class="text-center">{{ distribution_stage_last_result.skipped_group_count if distribution_stage_last_result.skipped_group_count is not none else '—' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-start text-nowrap">Обновлено строк топлива</td>
-                                            <td class="text-center">{{ distribution_stage_last_result.updated_fuel_rows if distribution_stage_last_result.updated_fuel_rows is not none else '—' }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="col-12 col-md-6 col-xl-3">
-                            <div class="table-responsive">
-                                <table class="{{ _dst_tbl }}" data-auto-export-excel="off">
-                                    <thead class="table-success">
-                                        <tr>
-                                            <th class="text-start text-nowrap" scope="col">Показатель</th>
-                                            <th class="text-center" scope="col">Значение</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td class="text-start text-nowrap">Итераций подбора <i>k</i></td>
-                                            <td class="text-center">{{ distribution_stage_last_result.iterations if distribution_stage_last_result.iterations is not none else '—' }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-start text-nowrap">{{ dp_l['k'] }} (итог) <span class="text-muted small fw-normal">(k)</span></td>
-                                            <td class="text-center">{{ distribution_stage_last_result.final_k }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="text-start text-nowrap">{{ dp_l['kn'] }} (итог) <span class="text-muted small fw-normal">(kn)</span></td>
-                                            <td class="text-center">{{ distribution_stage_last_result.final_kn }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-
-                {% if selected_row and start_year is not none %}
-                <div class="my-3 pt-3 border-top border-secondary border-opacity-25 fuel-calc-main-fuel-params-section">
-                    <p class="small text-muted mb-2">
-                        Основные топливные параметры: группы по фильтру текущего параметра распределения, данные за расчётный год из фильтра выше.
-                        Показаны только столбцы, участвующие в расчёте этапов и итоговые показатели по строке (без долей по видам топлива).
-                        Колонка <i>y</i> — поле Y из актуальной строки удельных расходов топлива; у заголовка Этц кнопка «i» с формулой пересчёта.
-                    </p>
-                    {% if calc_equipment_group_ids %}
-                    <div id="fuelCalcParamTablesLoading" class="d-none mb-2 d-flex align-items-center gap-2 small text-muted">
-                        <span class="spinner-border spinner-border-sm" role="status"></span>
-                        <span>Загрузка таблицы…</span>
-                    </div>
-                    <div id="fuelCalcParamTablesError" class="alert alert-warning d-none small py-2"></div>
-                    <div id="fuelCalcParamTablesMount" class="batch-param-tables-mount"></div>
-                    {% else %}
-                    <p class="small text-muted mb-0">Нет групп оборудования по фильтру параметра распределения.</p>
-                    {% endif %}
-                </div>
-                {% endif %}
-
+            {% if distribution_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · Распред</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">
+                      {{ dp_l['e'] }} (цель распределения), тыс.кВтч
+                      <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
+                    </td>
+                    <td class="text-center">{{ distribution_stage_last_result.e_target }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">ΣE после распределения, тыс.кВтч</td>
+                    <td class="text-center">{{ distribution_stage_last_result.total_distributed_e }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Групп в фильтре</td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.selected_group_count if
+                      distribution_stage_last_result.selected_group_count is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Обработано групп</td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.processed_group_count if
+                      distribution_stage_last_result.processed_group_count is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Обновлено строк топлива</td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.updated_fuel_rows if
+                      distribution_stage_last_result.updated_fuel_rows is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
+                    <td class="text-start">
+                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
+                    </td>
+                    <td class="text-center">
+                      {% if _missing_fuel_count and _missing_fuel_url %}
+                      <a href="{{ _missing_fuel_url }}" target="_blank" rel="noopener noreferrer" title="Открыть основные данные этих групп">{{ _missing_fuel_count }}</a>
+                      {% elif _missing_spec is not none %}
+                      0
+                      {% else %}
+                      —
+                      {% endif %}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+            {% endif %}
+
+            {% if fuel_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · Топливо</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">
+                      {{ dp_l['e'] }} (контроль перед Топливо), тыс.кВтч
+                      <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
+                    </td>
+                    <td class="text-center">{{ fuel_stage_last_result.e_target }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">ΣE расчётного года, тыс.кВтч</td>
+                    <td class="text-center">{{ fuel_stage_last_result.sum_e_cyear }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">|Ераспред − ΣE|</td>
+                    <td class="text-center">{{ fuel_stage_last_result.delta_e }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">ΣB (расход топлива, всего)</td>
+                    <td class="text-center">{{ fuel_stage_last_result.total_fuel_b }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+          </div>
+
+          {# Правый столбец #}
+          <div class="col-12 col-md-6 d-flex flex-column gap-3">
+            {% if coeff_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · Коэфф</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">
+                      {{ dp_l['e'] }} (Ераспред), тыс.кВтч
+                      <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
+                    </td>
+                    <td class="text-center">{{ coeff_stage_last_result.e_target }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Сводка сохранена</td>
+                    <td class="text-center">
+                      {% if coeff_stage_last_result.summary_id %}да{% else %}—{% endif %}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Групп в фильтре</td>
+                    <td class="text-center">
+                      {{ coeff_stage_last_result.total_groups if
+                      coeff_stage_last_result.total_groups is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Обновлено ewtp (строк топлива)</td>
+                    <td class="text-center">
+                      {{ coeff_stage_last_result.updated_fuel_rows if
+                      coeff_stage_last_result.updated_fuel_rows is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr{% if _missing_spec_count %} class="table-warning"{% endif %}>
+                    <td class="text-start">
+                      Не указаны ТЭП для периода до {{ _missing_spec_year if _missing_spec_year is not none else '—' }} года
+                    </td>
+                    <td class="text-center">
+                      {% if _missing_spec_count and _missing_spec_url %}
+                      <a href="{{ _missing_spec_url }}" target="_blank" rel="noopener noreferrer" title="Открыть ТЭП этих групп для заполнения удельных">{{ _missing_spec_count }}</a>
+                      {% elif _missing_spec is not none %}
+                      0
+                      {% else %}
+                      —
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% if not distribution_stage_last_result %}
+                  <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
+                    <td class="text-start">
+                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
+                    </td>
+                    <td class="text-center">
+                      {% if _missing_fuel_count and _missing_fuel_url %}
+                      <a href="{{ _missing_fuel_url }}" target="_blank" rel="noopener noreferrer" title="Открыть основные данные этих групп">{{ _missing_fuel_count }}</a>
+                      {% elif _missing_spec is not none %}
+                      0
+                      {% else %}
+                      —
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+
+            {% if distribution_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · Распред (k)</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">
+                      Итераций подбора <i>k</i>
+                      <span class="text-muted small fw-normal">(max, до 16)</span>
+                    </td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.iterations if
+                      distribution_stage_last_result.iterations is not none else '—' }}
+                    </td>
+                  </tr>
+                  {% if distribution_stage_last_result.apply_restrictions %}
+                  <tr>
+                    <td class="text-start">
+                      Внешних итераций kobl
+                      <span class="text-muted small fw-normal">(до 14)</span>
+                    </td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.restriction_outer_iterations if
+                      distribution_stage_last_result.restriction_outer_iterations is not none else '—' }}
+                    </td>
+                  </tr>
+                  {% endif %}
+                  <tr>
+                    <td class="text-start">
+                      {{ dp_l['k'] }} (итог)
+                      <span class="text-muted small fw-normal">({{ 'k'|fuel_header_code }})</span>
+                    </td>
+                    <td class="text-center">{{ distribution_stage_last_result.final_k }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">
+                      {{ dp_l['kn'] }} (итог)
+                      <span class="text-muted small fw-normal">(kn)</span>
+                    </td>
+                    <td class="text-center">{{ distribution_stage_last_result.final_kn }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+
+            {% if fuel_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · Топливо (группы)</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">Групп в фильтре</td>
+                    <td class="text-center">
+                      {{ fuel_stage_last_result.selected_group_count if
+                      fuel_stage_last_result.selected_group_count is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Успешно</td>
+                    <td class="text-center">
+                      {{ fuel_stage_last_result.success_count if
+                      fuel_stage_last_result.success_count is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">С пересчётом EOTP/B</td>
+                    <td class="text-center">
+                      {{ fuel_stage_last_result.calculated_count if
+                      fuel_stage_last_result.calculated_count is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Ошибок</td>
+                    <td class="text-center">
+                      {{ fuel_stage_last_result.error_count if
+                      fuel_stage_last_result.error_count is not none else '—' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </div>
+  </div>
 </div>
 
-{# Минимум для station_filters_first_row.js: без списка ОЭС updateAllFilters очистит селект #}
+{# Минимум для station_filters_first_row.js: без списка ОЭС updateAllFilters
+очистит селект #}
 <script id="filters-data" type="application/json">
-    {{ {
-        'union_energy_system_list': union_energy_system_list,
-        'union_energy_system_filter': union_energy_system_filter,
-        'skip_territory_filter_cascade': True,
-    } | tojson | safe }}
+  {{ {
+      'union_energy_system_list': union_energy_system_list,
+      'union_energy_system_filter': union_energy_system_filter,
+      'skip_territory_filter_cascade': True,
+  } | tojson | safe }}
 </script>
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     if (typeof initializeStationFilters === "function") {
-        initializeStationFilters();
+      initializeStationFilters();
     }
     function syncFuelCalcStageE() {
-        var visible = document.getElementById("e_eraspred");
-        var value = visible ? visible.value : "";
-        ["runCoeffFormE", "runDistributionFormE"].forEach(function(id) {
-            var hidden = document.getElementById(id);
-            if (hidden) hidden.value = value;
-        });
+      var visible = document.getElementById("e_eraspred");
+      var value = visible ? visible.value : "";
+      ["runCoeffFormE", "runDistributionFormE"].forEach(function (id) {
+        var hidden = document.getElementById(id);
+        if (hidden) hidden.value = value;
+      });
     }
     syncFuelCalcStageE();
     var eInput = document.getElementById("e_eraspred");
     if (eInput) {
-        eInput.addEventListener("input", syncFuelCalcStageE);
-        eInput.addEventListener("change", syncFuelCalcStageE);
+      eInput.addEventListener("input", syncFuelCalcStageE);
+      eInput.addEventListener("change", syncFuelCalcStageE);
     }
-    ["runCoeffForm", "runDistributionForm"].forEach(function(id) {
-        var formEl = document.getElementById(id);
-        if (formEl) {
-            formEl.addEventListener("submit", syncFuelCalcStageE);
-        }
+    ["runCoeffForm", "runDistributionForm"].forEach(function (id) {
+      var formEl = document.getElementById(id);
+      if (formEl) {
+        formEl.addEventListener("submit", syncFuelCalcStageE);
+      }
     });
     if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
-        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-            new bootstrap.Tooltip(el);
+      document
+        .querySelectorAll('[data-bs-toggle="tooltip"]')
+        .forEach(function (el) {
+          new bootstrap.Tooltip(el);
         });
     }
     // Страница «Расчёт»: общий station_filters_first_row.js цепляет авто-submit только к collapse-формам
     // generation/stations. Здесь — отдельная GET-форма; Select2 не всегда вызывает inline onchange.
     function setupFuelCalculationFilterAutoReload() {
-        var form = document.querySelector(".fuel-calc-filters-form");
-        if (!form) return;
-        var timer = null;
-        function scheduleSubmit() {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(function() {
-                timer = null;
-                if (typeof form.requestSubmit === "function") {
-                    form.requestSubmit();
-                } else {
-                    form.submit();
-                }
-            }, 150);
-        }
-        var sy = document.getElementById("start_year");
-        if (sy) sy.addEventListener("change", scheduleSubmit);
-
-        // ОЭС и тип ТЭС — одиночные select: сразу после выбора подгружаем страницу.
-        ["union_energy_system", "tes_type_filter"].forEach(function(id) {
-            var el = document.getElementById(id);
-            if (!el) return;
-            el.addEventListener("change", scheduleSubmit);
-            if (typeof window.$ !== "undefined" && window.$.fn && window.$.fn.select2) {
-                var $el = window.$(el);
-                if ($el.length && $el.data("select2")) {
-                    $el.on("select2:select.fuelCalcFilters select2:clear.fuelCalcFilters", scheduleSubmit);
-                }
-            }
+      var form = document.querySelector(".fuel-calc-filters-form");
+      if (!form) return;
+      var timer = null;
+      function scheduleSubmit() {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function () {
+          timer = null;
+          if (typeof form.requestSubmit === "function") {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        }, 150);
+      }
+      var ar = document.getElementById("apply_restrictions");
+      if (ar) {
+        ar.addEventListener("change", function () {
+          var hidden = document.getElementById(
+            "runDistributionApplyRestrictions",
+          );
+          if (hidden) hidden.value = ar.checked ? "1" : "0";
+          scheduleSubmit();
         });
+      }
+
+      ["base_year", "start_year"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("change", function () {
+          // При смене расчётного года сбрасываем byear — иначе залипает чужой базовый год.
+          if (id === "start_year") {
+            var by = document.getElementById("base_year");
+            if (by) by.value = "";
+          }
+          clearDistributionParameterId();
+          scheduleSubmit();
+        });
+      });
+
+      function clearDistributionParameterId() {
+        // Не отправляем старый id: иначе при смене ОЭС/года может залипнуть чужой параметр.
+        document
+          .querySelectorAll('[name="distribution_parameter_id"]')
+          .forEach(function (el) {
+            el.disabled = true;
+          });
+      }
+
+      // ОЭС и тип ТЭС — одиночные select: сразу после выбора подгружаем страницу.
+      ["union_energy_system", "tes_type_filter"].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("change", function () {
+          if (id === "union_energy_system") clearDistributionParameterId();
+          scheduleSubmit();
+        });
+        if (
+          typeof window.$ !== "undefined" &&
+          window.$.fn &&
+          window.$.fn.select2
+        ) {
+          var $el = window.$(el);
+          if ($el.length && $el.data("select2")) {
+            $el.on(
+              "select2:select.fuelCalcFilters select2:clear.fuelCalcFilters",
+              function () {
+                if (id === "union_energy_system")
+                  clearDistributionParameterId();
+                scheduleSubmit();
+              },
+            );
+          }
+        }
+      });
     }
     setTimeout(setupFuelCalculationFilterAutoReload, 250);
-
-    (function loadFuelCalcMainFuelParams() {
-        var epTables = {{ url_for('fuel_bp.equipment_group_fuel_batch_fuel_params_tables_api')|tojson }};
-        var csrf = {{ csrf_token|tojson }};
-        var ids = {{ calc_equipment_group_ids|default([])|tojson }};
-        var year = {{ start_year|tojson }};
-        var mount = document.getElementById("fuelCalcParamTablesMount");
-        if (!mount || !ids || !ids.length || year === null || year === undefined) {
-            return;
-        }
-        var loading = document.getElementById("fuelCalcParamTablesLoading");
-        var errEl = document.getElementById("fuelCalcParamTablesError");
-        function showErr(msg) {
-            if (!errEl) return;
-            errEl.textContent = msg || "";
-            errEl.classList.toggle("d-none", !msg);
-        }
-        if (loading) loading.classList.remove("d-none");
-        var payload = {
-            equipment_group_ids: ids,
-            year_numbers: [year],
-            rounding_digits: 1,
-            fuel_param_column_set: "calculation",
-            disable_auto_export_excel: true
-        };
-        if (csrf) payload.csrf_token = csrf;
-        fetch(epTables, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "X-CSRF-Token": csrf || ""
-            },
-            body: JSON.stringify(payload)
-        })
-            .then(function (r) {
-                return r.json().then(function (data) {
-                    return { ok: r.ok, data: data };
-                });
-            })
-            .then(function (x) {
-                if (!x.ok || !x.data.ok) {
-                    showErr((x.data && x.data.error) ? x.data.error : "Не удалось загрузить таблицу.");
-                    return;
-                }
-                mount.innerHTML = "";
-                (x.data.sections || []).forEach(function (sec) {
-                    var wrap = document.createElement("div");
-                    wrap.className = "mb-5 pb-4 border-bottom";
-                    var hY = document.createElement("h5");
-                    hY.className = "mb-3 fw-bold";
-                    hY.textContent = "Год " + sec.year;
-                    wrap.appendChild(hY);
-                    var hMain = document.createElement("h6");
-                    hMain.className = "mt-2 mb-2";
-                    hMain.textContent = "Основные топливные параметры";
-                    wrap.appendChild(hMain);
-                    var divMain = document.createElement("div");
-                    divMain.innerHTML = sec.html_fuel_params;
-                    wrap.appendChild(divMain);
-                    mount.appendChild(wrap);
-                });
-            })
-            .catch(function () {
-                showErr("Не удалось загрузить таблицу.");
-            })
-            .finally(function () {
-                if (loading) loading.classList.add("d-none");
-            });
-    })();
-});
+  });
 </script>
 {% endblock %}

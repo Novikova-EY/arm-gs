@@ -16,12 +16,19 @@ from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
 )
+from app.common.services.get_services.years.year_feature_services import (
+    get_year_feature_dict_for_version,
+)
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
+from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
+    build_fuel_param_row_warn_sets,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     get_equipment_group_ids_for_fuel_params_filters,
+    get_equipment_groups_with_fuel_params_data,
 )
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_services import (
     build_equipment_group_specific_fuel_consumption_hierarchy,
@@ -29,9 +36,34 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumptio
 )
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_write_services import (
     CONSUMPTION_EDITABLE_ATTRS,
+    _sync_numb1120_from_equipment_group,
 )
 
-_COPY_SPECIFIC_ATTRS = list(CONSUMPTION_EDITABLE_ATTRS)
+# Как Access «Копирование_удельных» из архива: snk/btp/sntp/bk/y (+ поля VED), без k.
+# k копируется только в сценарии станция→группа, не при добавлении расчётного года.
+_COPY_SPECIFIC_ATTRS = [a for a in CONSUMPTION_EDITABLE_ATTRS if a != "k"]
+
+
+def _year_numbers_with_feature(feature_name: str) -> frozenset[int]:
+    """Годы с указанным признаком в текущей версии БД."""
+    version_id = get_current_db_version_id()
+    yf = get_year_feature_dict_for_version(version_id) or {}
+    needle = str(feature_name or "").strip().casefold()
+    return frozenset(
+        int(year)
+        for year, name in yf.items()
+        if year is not None and str(name or "").strip().casefold() == needle
+    )
+
+
+def _fact_year_numbers_for_current_version() -> frozenset[int]:
+    """Годы с признаком «факт» — входные y/btp/… только чтение."""
+    return _year_numbers_with_feature("факт")
+
+
+def _plan_year_numbers_for_current_version() -> frozenset[int]:
+    """Годы с признаком «план» — *_calc только расчёт (не редактируются)."""
+    return _year_numbers_with_feature("план")
 
 
 class _MissingYearSpecificFuelParam:
@@ -137,10 +169,26 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
     row_groups = _group_specific_rows_by_equipment_group(rows)
     hierarchy = build_equipment_group_specific_fuel_consumption_hierarchy(rows)
 
+    # Жёлтая подсветка строк при изменении Nуст — как на equipment_group_fuel_params_edit_data
+    fuel_params_data = get_equipment_groups_with_fuel_params_data(
+        filters=f,
+        per_page="all",
+        page=1,
+        start_year=start_year,
+        end_year=end_year,
+        show_all=True,
+    )
+    fuel_param_warn_sets = build_fuel_param_row_warn_sets(fuel_params_data.get("rows") or [])
+
     return {
         "equipment_group_specific_fuel_consumption_rows": rows,
         "equipment_group_specific_fuel_consumption_row_groups": row_groups,
         "equipment_group_specific_fuel_consumption_hierarchy": hierarchy,
+        "nust_changed_from_prev_year_rows": fuel_param_warn_sets[
+            "nust_changed_from_prev_year_rows"
+        ],
+        "fact_year_numbers": _fact_year_numbers_for_current_version(),
+        "plan_year_numbers": _plan_year_numbers_for_current_version(),
         "total_count": len(rows),
         "start_year": start_year,
         "end_year": end_year,
@@ -216,6 +264,7 @@ def copy_specific_fuel_consumption_between_years_for_filters(
         for key in _COPY_SPECIFIC_ATTRS:
             if hasattr(source, key):
                 setattr(target, key, getattr(source, key))
+        _sync_numb1120_from_equipment_group(target, eg_id)
         copied += 1
 
     return copied, skipped, len(eg_ids)

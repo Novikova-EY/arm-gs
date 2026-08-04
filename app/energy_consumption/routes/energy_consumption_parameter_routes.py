@@ -92,7 +92,7 @@ def _deny_energy_consumption_edit_html():
 
 
 def _parse_energy_consumption_rounding_digits() -> int:
-    """Знаки после запятой для отображения полей потребления (млн кВт·ч), как на страницах топлива."""
+    """Знаки после запятой для отображения полей потребления (млн кВтч), как на страницах топлива."""
     raw = request.args.get("rounding_digits")
     if request.method == "POST" and (raw is None or str(raw).strip() == ""):
         raw = request.form.get("rounding_digits")

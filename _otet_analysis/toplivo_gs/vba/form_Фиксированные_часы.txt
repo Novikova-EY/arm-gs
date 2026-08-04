@@ -1,0 +1,261 @@
+Version =19
+VersionRequired =19
+Checksum =440772197
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    FilterOn = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =6803
+    DatasheetFontHeight =10
+    ItemSuffix =18
+    Left =1428
+    Top =1716
+    Right =9588
+    Bottom =6000
+    DatasheetGridlinesColor =12632256
+    Filter ="(oes=3) and (ved=2 or ved=3)"
+    RecSrcDt = Begin
+        0x2ea9507174e5e140
+    End
+    GUID = Begin
+        0xf05b84fe09c7ec4e886da2fc8fbcf420
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Станции_с_фикс_часами"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =636
+            LabelX =-1701
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =4320
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xd1e08f3e437dde4086eabe30d9fbb0e3
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =85
+                    Top =75
+                    Width =3201
+                    ColumnWidth =3135
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    GUID = Begin
+                        0xfa1150913466e548a6804ba06b668292
+                    End
+                End
+                Begin Subform
+                    CanShrink = NotDefault
+                    OverlapFlags =87
+                    Left =113
+                    Top =510
+                    Width =4410
+                    Height =3289
+                    TabIndex =1
+                    Name ="Часы"
+                    SourceObject ="Form.Часы"
+                    LinkChildFields ="NUMB1120"
+                    LinkMasterFields ="NUMB"
+                    GUID = Begin
+                        0x86008fcd4e8c314cbf78e752ed97e2c4
+                    End
+                End
+                Begin Label
+                    OverlapFlags =93
+                    Left =113
+                    Top =3799
+                    Width =4365
+                    Height =405
+                    ForeColor =255
+                    Name ="Надпись14"
+                    Caption ="Внимание! Изменение выработки здесь не ведет к пересчету топлива."
+                    GUID = Begin
+                        0x7ea58e295ccff6459dd3c7a9f218d39f
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    TextFontFamily =18
+                    Left =5102
+                    Top =566
+                    Width =1035
+                    Height =450
+                    FontSize =10
+                    TabIndex =2
+                    Name ="Кнопка15"
+                    Caption ="Добавить"
+                    OnClick ="[Event Procedure]"
+                    FontName ="Times New Roman CYR"
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    GUID = Begin
+                        0xd1deae08bf70dd4c8bae1edad87f0ced
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Left =4818
+                    Top =3855
+                    Width =1140
+                    Height =284
+                    TabIndex =3
+                    Name ="fromlist"
+                    GUID = Begin
+                        0xb487c753b6af7341bac3ac4debf52c10
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    TextFontFamily =18
+                    Left =5102
+                    Top =1133
+                    Width =1020
+                    Height =420
+                    FontSize =10
+                    TabIndex =4
+                    Name ="Кнопка17"
+                    Caption ="Удалить"
+                    OnClick ="[Event Procedure]"
+                    FontName ="Times New Roman CYR"
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    GUID = Begin
+                        0xcc2ef40b4bcdb84b9501a8b4eeabdd9c
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Left =3798
+                    Top =56
+                    ColumnWidth =720
+                    TabIndex =5
+                    Name ="NUMB"
+                    ControlSource ="NUMB"
+                    GUID = Begin
+                        0xf73ad6853b995c4696d38f80820139f0
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Sub ПолеСоСписком4_AfterUpdate()
+    ' Поиск записи, соответствующей этому элементу управления.
+    Me.RecordsetClone.FindFirst "[NAME] = '" & Me![ПолеСоСписком4] & "'"
+    Me.Bookmark = Me.RecordsetClone.Bookmark
+End Sub
+
+
+Private Sub Form_Open(Cancel As Integer)
+With Forms("Расчет").Form
+Часы.Form.RecordSource = !wname
+'Список_станций.RowSourceType = "TABLE/QUERY"
+'Список_станций.RowSource = "select name,numb1120 as numb from [" & !wname & "] where year=" & !byear & " and (" & !filter1 & ") order by numb1;"
+End With
+End Sub
+
+
+Private Sub Кнопка15_Click()
+Dim db As Database, R As Recordset, f As Form, c As String
+Dim sqllist As String, r1 As Recordset
+With Forms("Расчет").Form
+sqllist = "select name,numb1120 as numb from [" & !wname & "] where year=" & !byear & " and (" & !filter1 & ") order by numb1;"
+DoCmd.OpenForm "Выбор_из_списка", , , , , acDialog, sqllist & "/Фиксированные_часы"
+End With
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set f = Часы.Form
+Debug.Print f.RecordSource
+Set R = db.OpenRecordset(f.RecordSource, DB_OPEN_DYNASET)
+c = "numb1120=" & fromlist
+Debug.Print c
+R.FindFirst c
+R.Edit
+R!HFIX = 1
+R.Update
+Requery
+Set r1 = RecordsetClone
+r1.FindFirst "numb=" & fromlist
+Bookmark = r1.Bookmark
+End Sub
+
+
+Private Sub Кнопка17_Click()
+Dim f As Form, sqlupd As String, r1 As Recordset, numbnext As Integer
+Set r1 = RecordsetClone
+r1.FindFirst "numb=" & numb
+r1.MoveNext
+numbnext = r1!numb
+Set f = Часы.Form
+sqlupd = "update [" & f.RecordSource & "] set hfix=0 where numb1120=" & numb & ";"
+DoCmd.RunSQL sqlupd
+Requery
+Set r1 = RecordsetClone
+r1.FindFirst "numb=" & numbnext
+Bookmark = r1.Bookmark
+End Sub

@@ -1,0 +1,288 @@
+Version =21
+VersionRequired =20
+Checksum =-628126005
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =5
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =7426
+    DatasheetFontHeight =10
+    ItemSuffix =14
+    Left =1128
+    Top =1416
+    Right =11028
+    Bottom =6516
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xfc47a513af05e240
+    End
+    GUID = Begin
+        0xd3264dfc471c5a4aaa4beb512224aa47
+    End
+    NameMap = Begin
+        0x0acc0e550000000037bade516b95cf429d313af186ead51f000000004d245c51 ,
+        0x7168e24000000000ddd3fc776d00610069006e00000000000000eb4151ec2485 ,
+        0x8f439800233224d2b918010000009c23187c9441e34007a9fc773d2200002104 ,
+        0x3f04380441043e043a045f003e0431044a0435043a0442043e04320400000000 ,
+        0x00000d8f248f1a373e48bae6e0509961475b010000009c23187c9441e34007a9 ,
+        0xfc773d22000021043f04380441043e043a045f003c0430043a04350442043e04 ,
+        0x32040000000000007f462448b4cc1a4daafca943ac956c15010000009c23187c ,
+        0x9441e34007a9fc773d22000021043f04380441043e043a045f00370430043f04 ,
+        0x40043e0441043e04320400000000000000000000000000000000000000000000 ,
+        0x0c000000050000000000000000000000000000000000
+    End
+    RecordSource ="main"
+    DatasheetFontName ="Arial Cyr"
+    FilterOnLoad =0
+    DatasheetGridlinesColor12 =12632256
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+            BorderLineStyle =0
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            BorderLineStyle =0
+            LabelX =230
+            LabelY =-30
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Subform
+            SpecialEffect =2
+            BorderLineStyle =0
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =4875
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x6e8d345f2e26634a81254ae26961b50d
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =6236
+                    Top =1700
+                    Width =1026
+                    Height =628
+                    Name ="Кнопка4"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x3b940dd13888e54c85624a2827be8309
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+                Begin Subform
+                    OverlapFlags =215
+                    Top =2551
+                    Width =2835
+                    Height =2268
+                    TabIndex =1
+                    Name ="Список_объектов"
+                    SourceObject ="Form.Список_объектов"
+                    GUID = Begin
+                        0x1b541275b2222f43afd0f9bd712cbfc2
+                    End
+
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Left =3174
+                    Top =113
+                    Width =2835
+                    Height =4146
+                    TabIndex =2
+                    Name ="Список_макетов"
+                    SourceObject ="Form.Список_макетов"
+                    GUID = Begin
+                        0xa9b61e90bae9534c88b3157d1bfcb9c4
+                    End
+
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Top =113
+                    Width =2835
+                    Height =2268
+                    TabIndex =3
+                    Name ="Список_запросов"
+                    SourceObject ="Form.Список_запросов"
+                    GUID = Begin
+                        0x233e6880f036624082ad9ab4e6b79eb0
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =3454
+                    Top =4410
+                    Width =3403
+                    Height =283
+                    TabIndex =4
+                    Name ="cond"
+                    GUID = Begin
+                        0xc969bff7b23c52499b19bb81a5283108
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Left =1980
+                            Top =4410
+                            Width =600
+                            Height =240
+                            Name ="Надпись10"
+                            Caption ="Поле9:"
+                            GUID = Begin
+                                0xa30e8c0005709b48890ceea78820a70c
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =6960
+                    Top =4410
+                    Width =360
+                    Height =300
+                    TabIndex =5
+                    Name ="Кнопка11"
+                    Caption ="..."
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x78dbb3e227147d48b238334f6993ab65
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Кнопка11_Click()
+DoCmd.OpenForm "Условие", , , , , acDialog, "Настройка_отчета"
+End Sub
+
+Private Sub Кнопка4_Click()
+Dim db As Database, so As Recordset, work As QueryDef, sm As Recordset, sq As Recordset
+Dim R As Report, swhere As String, join As String, w As QueryDef, D As QueryDef, i As Integer
+Dim sqlwork As String, qtmp As QueryDef, selstan As QueryDef
+Dim fr As QueryDef
+Set db = Application.DBEngine.Workspaces(0).Databases(0)
+Set sm = Список_макетов.Form.RecordsetClone
+sm.Bookmark = Список_макетов.Form.Bookmark
+l = 0
+swhere = ""
+If cond <> "" Then
+swhere = " where " & cond
+End If
+If z(sm!U) = 1 Then GoTo skipquery
+Set so = Список_объектов.Form.RecordsetClone
+so.Bookmark = Список_объектов.Form.Bookmark
+If z(sm!U) = 1.5 Then GoTo skipquery
+Set sq = Список_запросов.Form.RecordsetClone
+sq.Bookmark = Список_запросов.Form.Bookmark
+If z(sm!U) = 2 Then GoTo skipquery
+Set work = db.QueryDefs(sq!Name)
+Set fr = db.QueryDefs("для_отчета")
+sqlwork = work.SQL
+sqlwork = Replace(sqlwork, "Рабочий(станции)", so!Name)
+sqlwork = Replace(sqlwork, "Рабочий(доп_угли)", so!opt)
+If swhere <> "" Then sqlwork = Replace(sqlwork, "where", swhere & " and ")
+frold = fr.SQL
+fr.SQL = sqlwork
+DoCmd.OpenReport sm!Name, acViewPreview
+'l = Len(sqlwork)
+'If l > 2048 Then Set qtmp = db.CreateQueryDef("tmp001", sqlwork)
+'Application.DoCmd.OpenReport sm!NAME, acViewDesign
+'Set R = Reports(sm!NAME)
+'R.Visible = False
+'If l > 2048 Then R.RecordSource = "tmp001" Else R.RecordSource = sqlwork
+skipquery:
+If z(sm!U) = 2 Then
+Set w = db.QueryDefs("Рабочий(станции)")
+Set D = db.QueryDefs("Рабочий(доп_угли)")
+sqlw1 = w.SQL
+sqld1 = D.SQL
+sqlw = "select w.*,main from ([#w] as w left join [#d] as d on (w.numb1120=d.numb1120) "
+sqlw = sqlw & "and (w.year=d.year)) inner join имена_станций on w.numb1120=имена_станций.numb " & swhere & ";"
+sqlw = Replace(sqlw, "#w", so!Name)
+sqlw = Replace(sqlw, "#d", so!opt)
+sqld = "select d.*,w.oes,w.obl from ([#w] as w inner join [#d] as d on (w.numb1120=d.numb1120) "
+sqld = sqld & "and (w.year=d.year)) inner join имена_станций on w.numb1120=имена_станций.numb " & swhere & ";"
+sqld = Replace(sqld, "#w", so!Name)
+sqld = Replace(sqld, "#d", so!opt)
+w.SQL = sqlw
+D.SQL = sqld
+End If
+If z(sm!U) = 1.5 Then
+Set work = db.QueryDefs(sm!Q)
+sqlw = work.SQL
+sqlwork = work.SQL
+sqlwork = Replace(sqlwork, "Станции(макет)", so!Name)
+sqlwork = Replace(sqlwork, "Доп_угли(макет)", so!opt)
+If swhere <> "" Then sqlwork = Replace(sqlwork, "where", swhere & " and ")
+Debug.Print sqlwork
+work.SQL = sqlwork
+End If
+If z(sm!U) <> 1 Or (z(sm!U) = 1 And swhere = "") Then Application.DoCmd.OpenReport sm!Name, acViewPreview
+If z(sm!U) = 1 And swhere <> "" Then
+swhere = Replace(swhere, "w.", "")
+Application.DoCmd.OpenReport sm!Name, acViewPreview, , Mid(swhere, 7)
+'Reports(sm!name).filter = Mid(swhere, 7)
+'Reports(sm!name).FilterOn = True
+End If
+If l > 2048 Then db.QueryDefs.Delete ("tmp001")
+If z(sm!U) = 2 Then
+w.SQL = sqlw1
+D.SQL = sqld1
+End If
+If z(sm!U) = 1.5 Then work.SQL = sqlw
+If z(sm!U) <> 1 And z(sm!U) <> 1.5 And z(sm!U) <> 2 Then fr.SQL = frold
+End Sub

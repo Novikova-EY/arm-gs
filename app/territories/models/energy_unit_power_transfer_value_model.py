@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Значения перетока электроэнергии по годам (млн кВт·ч)."""
+"""Значения перетока электроэнергии по годам (млн кВтч)."""
 from sqlalchemy import Numeric, UniqueConstraint
 from sqlalchemy.sql import func
 

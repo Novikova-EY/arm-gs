@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-ESPPEnergyGeneration — сводная выработка ЭЭ по ЭСПП в разрезе РЭС (млн кВт·ч).
+ESPPEnergyGeneration — сводная выработка ЭЭ по ЭСПП в разрезе РЭС (млн кВтч).
 
 Данные хранятся по годам и, при необходимости, по месяцам:
 - year_number — календарный год (ссылка на Year.number вместе с database_version_id);
@@ -81,7 +81,7 @@ class ESPPEnergyGeneration(db.Model, AuditMixin):
         foreign_keys=[id_regional_energy_system],
     )
 
-    # Выработка, млн кВт·ч
+    # Выработка, млн кВтч
     electricity_generation = db.Column(Numeric(25, 16))
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

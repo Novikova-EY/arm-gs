@@ -75,11 +75,11 @@
 
             if (fieldNonempty(ecMln) && parseDecimal(ecMln.value) == null) {
                 issues.push(
-                    rowLabel + ': некорректное число в «Потребление электрической энергии, млн кВт·ч».'
+                    rowLabel + ': некорректное число в «Потребление электрической энергии, млн кВтч».'
                 );
             }
             if (fieldNonempty(ecSipr) && parseDecimal(ecSipr.value) == null) {
-                issues.push(rowLabel + ': некорректное число в «Потребление (СиПР), млн кВт·ч».');
+                issues.push(rowLabel + ': некорректное число в «Потребление (СиПР), млн кВтч».');
             }
         });
 

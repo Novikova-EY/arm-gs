@@ -537,7 +537,7 @@ def _build_ec_summary_import_payload(stats: dict) -> dict:
         msg += " Лист «СиПР» в файле отсутствует — данные для него не импортировались."
     if stats.get("mln_sheet_skipped_no_data_grid"):
         msg += (
-            " Лист «млн. кВт.ч» без таблицы (заглушка) — поля «млн. кВт·ч» из этого листа не обновлялись."
+            " Лист «млн. кВт.ч» без таблицы (заглушка) — поля «млн. кВтч» из этого листа не обновлялись."
         )
     extras = []
     um = stats.get("unmatched_labels_mln") or []

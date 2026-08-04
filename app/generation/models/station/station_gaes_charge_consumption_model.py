@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-StationGaesChargeConsumption — потребление электрической энергии ГАЭС на заряд по годам (млн кВт·ч).
+StationGaesChargeConsumption — потребление электрической энергии ГАЭС на заряд по годам (млн кВтч).
 year_number без FK: у справочника годов составной ключ (number, database_version_id).
 """
 from sqlalchemy.sql import func
@@ -34,7 +34,7 @@ class StationGaesChargeConsumption(db.Model, AuditMixin):
     )
     station = db.relationship("Station", back_populates="station_gaes_charge_consumptions")
 
-    # Потребление на заряд, млн кВт·ч
+    # Потребление на заряд, млн кВтч
     charge_consumption = db.Column(Numeric(25, 16))
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

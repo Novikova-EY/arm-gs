@@ -1,0 +1,16 @@
+SELECT *
+FROM [Затраты_2018]
+UNION ALL
+SELECT *
+FROM [Затраты_2019]
+UNION ALL
+SELECT *
+FROM [Затраты_2020]
+UNION ALL
+SELECT *
+FROM [Затраты_2021]
+UNION ALL
+SELECT *
+FROM [Затраты_2022]
+UNION ALL SELECT *
+FROM [Затраты_2023];

@@ -68,11 +68,11 @@ def get_fuel_calculation_write_reference() -> dict[str, Any]:
                     {
                         "table": t_main,
                         "columns": [
-                            {"column": "ewtp", "description": "Этц"},
-                            {"column": "eotp", "description": "отпуск э/э"},
+                            {"column": "ewtp", "description": "Теплофикационная выработка ЭЭ, тыс.кВтч"},
+                            {"column": "eotp", "description": "Отпуск ЭЭ, тыс.кВтч"},
                             {"column": "eust", "description": "расход условного топлива на э/э"},
-                            {"column": "eurt", "description": "удельный расход на э/э"},
-                            {"column": "tust", "description": "расход условного топлива на тепло"},
+                            {"column": "eurt", "description": "УРУТ на отпуск ЭЭ, г у.т./кВтч"},
+                            {"column": "tust", "description": "Расход усл. топлива на ТЭ, тыс. т у.т."},
                             {"column": "b", "description": "суммарный расход условного топлива (база для formtxt)"},
                         ],
                     }

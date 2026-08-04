@@ -142,10 +142,10 @@ def build_ei_section_scatter_chart(
 
     if section.get("is_population_section"):
         x_axis_label = "Накопленные денежные доходы населения, млн руб."
-        y_axis_label = "Потребление ЭЭ на душу населения, кВт·ч/тыс. руб."
+        y_axis_label = "Потребление ЭЭ на душу населения, кВтч/тыс. руб."
     else:
         x_axis_label = "Накопленные инвестиции, млн руб."
-        y_axis_label = "Электроемкость, кВт·ч/тыс. руб."
+        y_axis_label = "Электроемкость, кВтч/тыс. руб."
     payload: dict[str, Any] = {
         "fact": fact,
         "calc": calc,
@@ -176,7 +176,7 @@ def build_rf_scatter_chart(
     display_years: list[int],
     current_year: int | None,
     x_axis_label: str = "Накопленные инвестиции, млн руб.",
-    y_axis_label: str = "Электроемкость, кВт·ч/тыс. руб.",
+    y_axis_label: str = "Электроемкость, кВтч/тыс. руб.",
 ) -> dict[str, Any] | None:
     """
     Scatter для блока РФ (как свод ФО): факт ≤ текущего года;

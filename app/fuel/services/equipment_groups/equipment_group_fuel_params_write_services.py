@@ -25,7 +25,10 @@ import re
 from decimal import Decimal, InvalidOperation
 
 from app.common.services.database_version_filter import get_current_db_version_id, set_db_version_on_create
-from app.common.services.help_services import values_equal_by_display_precision
+from app.common.services.help_services import (
+    format_number_trim_trailing,
+    values_equal_by_display_precision,
+)
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.external_mapping.fue_em_business_unit_model import BusinessUnitExternalMapping
@@ -42,10 +45,14 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
 
 # Типы полей для парсинга формы / импорта (только write-слой)
 INTEGER_ATTRS = frozenset([
-    "obor", "ved", "ved_cyrillic", "ees", "numb1120", "numb1",
+    "obor", "ved", "ved_cyrillic", "ees", "numb1120", "numb1", "hfix",
 ])
 STRING_ATTRS = frozenset(["obl", "dep", "oes", "er", "gk", "be"])
-NUMERIC_ATTRS = frozenset(EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS + EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS)
+NUMERIC_ATTRS = frozenset(
+    a
+    for a in (EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS + EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS)
+    if a not in INTEGER_ATTRS
+)
 
 EXTERNAL_MAPPING_MODELS = {
     "obl": TerritoriesEnergyExternalMapping,
@@ -163,6 +170,12 @@ def _fuel_param_table_name(attr):
 def _format_val(v):
     if v is None:
         return "—"
+    if isinstance(v, bool):
+        return str(v)
+    if isinstance(v, (Decimal, int, float)):
+        return format_number_trim_trailing(v)
+    if isinstance(v, str):
+        return v.strip() or "—"
     return str(v)
 
 
@@ -215,13 +228,18 @@ def apply_equipment_group_fuel_params_bulk_save_from_form(
     end_year: int,
     rounding_digits_table1: int = 1,
     rounding_digits_table2: int = 1,
-) -> tuple[int, list[str]]:
+) -> tuple[int, list[str], dict[int, list[tuple]]]:
     """
     Сохраняет основные топливные параметры для набора групп (страница расчётного модуля).
-    Возвращает (число групп, в которых были изменения, список сообщений об ошибках).
+    Возвращает (
+      число групп, в которых были изменения,
+      список сообщений об ошибках,
+      словарь change_details по id группы: (table, year, attr, old, new),
+    ).
     """
     errs: list[str] = []
     changed_groups = 0
+    details_by_group: dict[int, list[tuple]] = {}
     for eg_id in equipment_group_ids:
         try:
             adapter = _BulkFuelParamFormAdapter(request_form, eg_id)
@@ -237,9 +255,10 @@ def apply_equipment_group_fuel_params_bulk_save_from_form(
             )
             if details:
                 changed_groups += 1
+                details_by_group[int(eg_id)] = list(details)
         except Exception as exc:
             errs.append(f"Группа оборудования id={eg_id}: {exc}")
-    return changed_groups, errs
+    return changed_groups, errs, details_by_group
 
 
 def update_equipment_group_fuel_params_from_form(

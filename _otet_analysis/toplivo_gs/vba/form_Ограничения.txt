@@ -1,0 +1,367 @@
+Version =20
+VersionRequired =20
+Checksum =-1192836277
+Begin Form
+    NavigationButtons = NotDefault
+    FilterOn = NotDefault
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =7428
+    DatasheetFontHeight =12
+    ItemSuffix =15
+    Left =1530
+    Top =1440
+    Right =8160
+    Bottom =3990
+    DatasheetGridlinesColor =12632256
+    Filter ="(oes=2) and (year=2023)"
+    OrderBy ="obl"
+    RecSrcDt = Begin
+        0x8b989dee7266e340
+    End
+    RecordSource ="Ограничения"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin FormHeader
+            Height =240
+            BackColor =-2147483633
+            Name ="ЗаголовокФормы"
+            GUID = Begin
+                0x1ec9346aa5f91a44beb58f68d2a2d9ff
+            End
+            Begin
+                Begin Label
+                    OverlapFlags =93
+                    TextAlign =2
+                    Left =2267
+                    Width =567
+                    Height =240
+                    Name ="Надпись3"
+                    Caption ="макс"
+                    GUID = Begin
+                        0x9aac0147e973f74a8ad603e7f11c8b5e
+                    End
+                End
+                Begin Label
+                    OverlapFlags =87
+                    TextAlign =2
+                    Left =1700
+                    Width =567
+                    Height =240
+                    Name ="Надпись4"
+                    Caption ="мин"
+                    GUID = Begin
+                        0x457044635fd32d45b85507a38b4704b7
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =2834
+                    Width =567
+                    Height =240
+                    Name ="Надпись5"
+                    Caption ="тек"
+                    GUID = Begin
+                        0x9cf40bc81ec14943b8a6dc7523ecb51b
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =3401
+                    Width =567
+                    Height =240
+                    Name ="Надпись6"
+                    Caption ="H"
+                    GUID = Begin
+                        0x05ee98b0e96457448bc91421b4db43a4
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =3968
+                    Width =567
+                    Height =240
+                    Name ="Надпись7"
+                    Caption ="распр"
+                    GUID = Begin
+                        0xad497cc8c3d4bc4095b2f673e1b1b19d
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =4535
+                    Width =567
+                    Height =240
+                    Name ="Надпись8"
+                    Caption ="H"
+                    GUID = Begin
+                        0x014fc31984b1914fb0cb37d5b7a56bb2
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =5102
+                    Width =567
+                    Height =240
+                    Name ="Надпись9"
+                    Caption ="Етп"
+                    GUID = Begin
+                        0x207e4cbaa75646478c4d7bfe0c24f5fa
+                    End
+                End
+                Begin Label
+                    OverlapFlags =87
+                    TextAlign =2
+                    Left =5669
+                    Width =567
+                    Height =240
+                    Name ="Надпись10"
+                    Caption ="K"
+                    GUID = Begin
+                        0x0ba37235d883164d8d1ccd78719c4fcd
+                    End
+                End
+            End
+        End
+        Begin Section
+            CanGrow = NotDefault
+            CanShrink = NotDefault
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x05bc270770e88848b44522e21bafb514
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Width =1701
+                    ColumnWidth =2112
+                    ColumnOrder =0
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x348a818db27f4e47a065dd8cef374f99
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =1701
+                    ColumnWidth =600
+                    ColumnOrder =1
+                    TabIndex =1
+                    Name ="emin"
+                    ControlSource ="emin"
+                    Format ="#"
+                    GUID = Begin
+                        0x6bfc69c16bbf404a9b01baf121c4f4a5
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2268
+                    ColumnWidth =660
+                    ColumnOrder =2
+                    TabIndex =2
+                    Name ="emax"
+                    ControlSource ="emax"
+                    Format ="#"
+                    GUID = Begin
+                        0x0348c627fcb81442af53c5452606579e
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2835
+                    ColumnWidth =720
+                    ColumnOrder =3
+                    TabIndex =3
+                    BackColor =8454143
+                    Name ="ecur"
+                    ControlSource ="ecur"
+                    Format ="#"
+                    GUID = Begin
+                        0xaf2e3148194fb444993423b968bfd3fa
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =5670
+                    ColumnWidth =552
+                    ColumnOrder =10
+                    TabIndex =4
+                    BackColor =12632256
+                    Name ="kobl"
+                    ControlSource ="kobl"
+                    GUID = Begin
+                        0xa5c33b26992c04498e637eed404bda53
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =3969
+                    ColumnWidth =840
+                    ColumnOrder =5
+                    TabIndex =5
+                    BackColor =16777088
+                    Name ="ecurdis"
+                    ControlSource ="ecurdis"
+                    Format ="#"
+                    GUID = Begin
+                        0x6625da99565066479b66626dadb392dc
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =3402
+                    ColumnWidth =600
+                    ColumnOrder =4
+                    TabIndex =6
+                    BackColor =8454143
+                    Name ="H"
+                    ControlSource ="H"
+                    Format ="#"
+                    GUID = Begin
+                        0x9d062e3d1c9cc541832ced7ee5501d2f
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =4536
+                    ColumnWidth =576
+                    ColumnOrder =6
+                    TabIndex =7
+                    BackColor =16777088
+                    Name ="Hdis"
+                    ControlSource ="Hdis"
+                    Format ="#"
+                    GUID = Begin
+                        0x4a8faca8ac1eb448b277a8740c3fb22f
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =5103
+                    ColumnWidth =444
+                    ColumnOrder =7
+                    TabIndex =8
+                    BackColor =16777088
+                    Name ="etp"
+                    ControlSource ="etp"
+                    Format ="#"
+                    GUID = Begin
+                        0xa5a616235388674ea370fed35c692290
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =6300
+                    ColumnWidth =420
+                    TabIndex =9
+                    Name ="obl"
+                    ControlSource ="obl"
+                    GUID = Begin
+                        0x392c50d0ca375347998016049ab0c917
+                    End
+                End
+            End
+        End
+        Begin FormFooter
+            Height =240
+            BackColor =-2147483633
+            Name ="ПримечаниеФормы"
+            GUID = Begin
+                0x46672951003f3846821006cda99007a2
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =2834
+                    BackColor =8454143
+                    Name ="Поле11"
+                    ControlSource ="=Sum([ecur])"
+                    GUID = Begin
+                        0x4ea0db9ef8196e4883f342cf0b95658b
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Width =1701
+                    Height =240
+                    Name ="Надпись12"
+                    Caption ="Итого ОЭС"
+                    GUID = Begin
+                        0x9b5e14b5bade2a49b9a14c58d531f3c6
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =3969
+                    TabIndex =1
+                    BackColor =16777088
+                    Name ="Поле13"
+                    ControlSource ="=Sum([ecurdis])"
+                    GUID = Begin
+                        0x0bdf9f96d0618044a98f1baf3ce0a238
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5102
+                    TabIndex =2
+                    BackColor =16777088
+                    Name ="Поле14"
+                    ControlSource ="=Sum([etp])"
+                    GUID = Begin
+                        0x2b4d63a52be9b14a83b4b52e6f760346
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Open(Cancel As Integer)
+Me.OrderBy = "obl"
+Me.OrderByOn = True
+End Sub

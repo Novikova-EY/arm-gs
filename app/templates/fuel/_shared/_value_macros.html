@@ -1,6 +1,6 @@
-{% macro render_numeric_or_dash(value) -%}
+{% macro render_numeric_or_dash(value, blank_zero=false) -%}
     {%- if value is none or value == 0 -%}
-        —
+        {%- if blank_zero -%}{%- else -%}—{%- endif -%}
     {%- else -%}
         {{- value|format_decimal_trim -}}
     {%- endif -%}

@@ -1,0 +1,467 @@
+Version =20
+VersionRequired =20
+Checksum =-1974924843
+Begin Form
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =55
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =11295
+    DatasheetFontHeight =10
+    ItemSuffix =67
+    Left =540
+    Top =492
+    Right =11460
+    Bottom =6876
+    DatasheetGridlinesColor =12632256
+    Filter ="оснгод=1"
+    OrderBy ="code, год"
+    RecSrcDt = Begin
+        0xf4c8f86dceb4e240
+    End
+    GUID = Begin
+        0x6762150ea8edb64fa96fdc7badc12343
+    End
+    NameMap = Begin
+        0x0acc0e55000000008e32eeb627f607469618e517676ef9650000000082df728d ,
+        0xb84ce540884ff7109e5e235c220435043f043b043e043f043e04420440043504 ,
+        0x31043b0435043d04380435045f0010041e040000000000009ae974b6175a7247 ,
+        0x8a66ff5aa0e948eb01000000c1beff73af84e340244ef710d471130013043e04 ,
+        0x40043e04340430040000000000001d51a3302d3cb743b1755a4c9d6ef3fc0000 ,
+        0x0000705d6c8cb84ce5400000000000008e0013043e0440043e04340430040000 ,
+        0x000000005b1a1c75c3b9984186d171f4ede04317070000001d51a3302d3cb743 ,
+        0xb1755a4c9d6ef3fc10041e04000000000000beae642535460049938d145491f6 ,
+        0xc469070000008e32eeb627f607469618e517676ef96563006f00640065000000 ,
+        0x00000000f1c069ac87021d41a4149a5375350b9c070000008e32eeb627f60746 ,
+        0x9618e517676ef9654e0061006d00650000000000000099151d5e32e1cc48bc94 ,
+        0x03d7f6acc5e8070000008e32eeb627f607469618e517676ef96533043e043404 ,
+        0x000000000000ae64dd73c15c3641b77a34879c0939b10100000069c783a9b84c ,
+        0xe54000003804000000001f0440043e043c045f003f043e044204400435043104 ,
+        0x3804420435043b0438040000000000006b68ab4a7c39994b99ecccca08dda76f ,
+        0x000000008c83d58cb84ce5408c6d1300000000001f043e044204400435043104 ,
+        0x3804420435043b0438045f00420435043f043b0430040000000000005b8b259d ,
+        0x794eb74eb9f95ecd5386a834070000006b68ab4a7c39994b99ecccca08dda76f ,
+        0x10041e04000000000000303624054b108f49ba3d158c8a5705f401000000f6b5 ,
+        0x7da9b84ce54000003804000000001804410442043e0447043d0438043a043804 ,
+        0x5f00420435043f043b043004000000000000691efc030433c64c8b7fcdaad86c ,
+        0xc1db00000000d0ab148db84ce54000000000000000002104420430043d044604 ,
+        0x380438043200300030003300000000000000c4d7c98b907e464fac4dcf86dd78 ,
+        0xad9307000000691efc030433c64c8b7fcdaad86cc1db5100000000000000a25d ,
+        0x1cfa96b0ba4784447f3a3a7f3a4400000000df26538eb84ce540000000000000 ,
+        0x000018043c0435043d0430045f004104420430043d0446043804390400000000 ,
+        0x000002ab3a21fe53c84990d5752ecf1aa65407000000a25d1cfa96b0ba478444 ,
+        0x7f3a3a7f3a444d00410049004e00000000000000638d2ca41dc82440828479fe ,
+        0xbcb4c85107000000a25d1cfa96b0ba4784447f3a3a7f3a441204350434043e04 ,
+        0x3c044104420432043e04000000000000d79c235de3d4f24794753dabeaf78cd6 ,
+        0x07000000a25d1cfa96b0ba4784447f3a3a7f3a444e0041004d00450000000000 ,
+        0x00004fd4a7c61d222a4299092bbc1d9cca0a07000000a25d1cfa96b0ba478444 ,
+        0x7f3a3a7f3a4463006f006400650067006f0072000000000000008b07923e01c2 ,
+        0x48468a69b5e34c817f2207000000a25d1cfa96b0ba4784447f3a3a7f3a444f00 ,
+        0x42004c000000000000009600a4bba9e82340bc6d1f65006dacd807000000a25d ,
+        0x1cfa96b0ba4784447f3a3a7f3a444e0055004d004200000000000000c51075cf ,
+        0x03f0d7428890310d8307436207000000691efc030433c64c8b7fcdaad86cc1db ,
+        0x4e0055004d00420031003100320030000000000000006173eabd38fde0438b1e ,
+        0x9335a7cbf58a01000000c1beff73af84e340000038040000000039002d001f04 ,
+        0x2104000000000000000000000000000000000000000000000c00000003000000 ,
+        0x0000000000000000000000000000
+    End
+    RecordSource ="Теплопотребление_АО"
+    OnCurrent ="[Event Procedure]"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin UnboundObjectFrame
+            SpecialEffect =2
+            OldBorderStyle =1
+            Width =4536
+            Height =2835
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =6973
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xafa071057ba272418824c4bfb0a7e3cf
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =2
+                    OverlapFlags =215
+                    Width =2265
+                    Height =240
+                    ColumnWidth =1635
+                    Name ="Name"
+                    ControlSource ="Name"
+                    GUID = Begin
+                        0x7b347c2c0d0fb742b1d1349ddd91a459
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =516
+                            Height =228
+                            Name ="Надпись0"
+                            Caption ="Name:"
+                            GUID = Begin
+                                0x5f06fc1dcf0e464c8de51810840a8d91
+                            End
+                        End
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    SpecialEffect =0
+                    Top =3925
+                    Width =5100
+                    Height =2835
+                    TabIndex =1
+                    Name ="Города"
+                    SourceObject ="Form.Города"
+                    LinkChildFields ="АО"
+                    LinkMasterFields ="code"
+                    GUID = Begin
+                        0xff562b18c45ad9468e469f71b52978a8
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =215
+                    SpecialEffect =0
+                    Left =5442
+                    Top =558
+                    Width =5832
+                    Height =2724
+                    TabIndex =2
+                    Name ="Пром_потребители"
+                    SourceObject ="Form.Пром_потребители"
+                    LinkChildFields ="АО"
+                    LinkMasterFields ="code"
+                    GUID = Begin
+                        0x4fc84e316a174347b06a778a05b791ab
+                    End
+                End
+                Begin Label
+                    OverlapFlags =93
+                    TextAlign =2
+                    Left =5442
+                    Top =50
+                    Width =1984
+                    Height =523
+                    Name ="Надпись30"
+                    Caption ="Крупные промышленные потребители"
+                    GUID = Begin
+                        0x242f56005647e946b05116e1f2e6699b
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =87
+                    SpecialEffect =0
+                    Left =5442
+                    Top =3912
+                    Width =5853
+                    Height =2835
+                    TabIndex =3
+                    Name ="Источники_тепла"
+                    SourceObject ="Form.Источники_тепла"
+                    LinkChildFields ="obl"
+                    LinkMasterFields ="code"
+                    GUID = Begin
+                        0x55df323001544344be7016c3d4743b53
+                    End
+                End
+                Begin OptionGroup
+                    SpecialEffect =0
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =7370
+                    Top =3514
+                    Width =3728
+                    Height =399
+                    TabIndex =4
+                    Name ="Фильтр1"
+                    AfterUpdate ="[Event Procedure]"
+                    GUID = Begin
+                        0x59d699fdbeff1242a1260bf3f369bf77
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =7600
+                            Top =3514
+                            OptionValue =1
+                            Name ="АО"
+                            OnGotFocus ="[Event Procedure]"
+                            GUID = Begin
+                                0x6a1559bb6aa49042a933bb5b5222a75c
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =7830
+                                    Top =3514
+                                    Width =285
+                                    Height =240
+                                    Name ="Надпись48"
+                                    Caption ="АО"
+                                    GUID = Begin
+                                        0x0dd8d63d89f7114099ddfa8310195388
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =8393
+                            Top =3514
+                            OptionValue =2
+                            Name ="Город"
+                            OnGotFocus ="[Event Procedure]"
+                            GUID = Begin
+                                0xf33656c7f46efd4a8ddfb873b01788e7
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =8623
+                                    Top =3514
+                                    Width =510
+                                    Height =240
+                                    Name ="Надпись50"
+                                    Caption ="Город"
+                                    GUID = Begin
+                                        0x9ef284d919848640a4e532fdf9dd6fd5
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =9240
+                            Top =3514
+                            OptionValue =3
+                            Name ="Переключатель65"
+                            GUID = Begin
+                                0xa8a76129623cef4d9a8ac3a96b87989e
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =9470
+                                    Top =3514
+                                    Width =1128
+                                    Height =228
+                                    Name ="Надпись66"
+                                    Caption ="Предприятие"
+                                    GUID = Begin
+                                        0xec049656907e4749ae053a485b1bd4ec
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+                Begin OptionGroup
+                    OverlapFlags =85
+                    Left =7596
+                    Top =113
+                    Width =3109
+                    Height =353
+                    TabIndex =5
+                    Name ="Фильтр2"
+                    AfterUpdate ="[Event Procedure]"
+                    GUID = Begin
+                        0x443878ec17ab1d42b3fdc9d4cccd7dac
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =7651
+                            Top =199
+                            OptionValue =1
+                            Name ="АО2"
+                            GUID = Begin
+                                0xde7b5553c23e164c81371e9cfa884457
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =7881
+                                    Top =169
+                                    Width =285
+                                    Height =240
+                                    Name ="Надпись53"
+                                    Caption ="АО"
+                                    GUID = Begin
+                                        0x062c51b02f4ccd44bfb647de841cf655
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =8617
+                            Top =199
+                            OptionValue =2
+                            Name ="Город2"
+                            GUID = Begin
+                                0x3e8476c37d80404cbd925d7226b2e498
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =8847
+                                    Top =169
+                                    Width =525
+                                    Height =240
+                                    Name ="Надпись55"
+                                    Caption ="Город"
+                                    GUID = Begin
+                                        0x13b9cebdc7543948b8ce3d05b7d3dd0f
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            Visible = NotDefault
+                            OverlapFlags =87
+                            Left =9637
+                            Top =199
+                            OptionValue =3
+                            Name ="Переключатель56"
+                            GUID = Begin
+                                0xf65f5ee435216f47aafb1939fe9fd8a1
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =9867
+                                    Top =169
+                                    Width =735
+                                    Height =240
+                                    Name ="Надпись57"
+                                    Caption ="Станция"
+                                    GUID = Begin
+                                        0x544f48d3e3d21741af77a6accba46365
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =3401
+                    Height =240
+                    ColumnWidth =570
+                    TabIndex =6
+                    Name ="год"
+                    ControlSource ="год"
+                    GUID = Begin
+                        0x95b241ce65e57046af090f09610dbc1e
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    OldBorderStyle =0
+                    SpecialEffect =0
+                    Top =396
+                    Width =5268
+                    Height =2892
+                    TabIndex =7
+                    Name ="9-ПС"
+                    SourceObject ="Form.9-ПС"
+                    LinkChildFields ="code;год"
+                    LinkMasterFields ="code;год"
+                    EventProcPrefix ="Ctl9_ПС"
+                    GUID = Begin
+                        0x619e5f6d79e7bb439f794517b93fc272
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Private Sub Form_Current()
+Фильтр1.Value = 1
+Источники_тепла.Form.Filter = "code=" & code
+Источники_тепла.Form.FilterOn = True
+Фильтр2.Value = 1
+Пром_потребители.Form.Filter = "code=" & code
+Пром_потребители.Form.FilterOn = True
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+Me.Filter = "оснгод=1"
+Me.FilterOn = True
+Me.OrderByOn = True
+End Sub
+
+Public Sub Фильтр1_AfterUpdate()
+If Фильтр1.Value = 1 Then
+Источники_тепла.Form.Filter = "code=" & code
+Источники_тепла.Form.FilterOn = True
+ElseIf Фильтр1.Value = 2 Then
+Источники_тепла.Form.Filter = "codegor=" & Города.Form!code
+Источники_тепла.Form.FilterOn = True
+Else
+Источники_тепла.Form.Filter = "numb=" & Пром_потребители.Form!codest
+Источники_тепла.Form.FilterOn = True
+End If
+End Sub
+
+Private Sub Фильтр2_AfterUpdate()
+If Фильтр2.Value = 1 Then
+Пром_потребители.Form.Filter = "code=" & code
+Пром_потребители.Form.FilterOn = True
+Else
+Пром_потребители.Form.Filter = "codegor=" & Города.Form!code
+Пром_потребители.Form.FilterOn = True
+End If
+End Sub

@@ -136,6 +136,24 @@
         if (!Number.isFinite(yr)) {
             return true;
         }
+        // ОЭС Юга с НТ: без ограничения «Год с» (раньше 2023) — пустота по сумме НТ.
+        if (
+            String(code).indexOf("with_nt") === 0 &&
+            String(tr.getAttribute("data-demand-model-name") || "") ===
+                "UnionEnergySystemDemandParameter"
+        ) {
+            var metaSouth = readLiveCalcMeta();
+            var southId = metaSouth.south_ues_id;
+            var uid = tr.getAttribute("data-id-union-energy-system");
+            if (
+                southId !== null &&
+                southId !== undefined &&
+                uid &&
+                String(uid) === String(southId)
+            ) {
+                return true;
+            }
+        }
         var fromYear = tr.getAttribute("data-perimeter-variant-from-year");
         var toYear = tr.getAttribute("data-perimeter-variant-to-year");
         if (fromYear != null && fromYear !== "" && yr < parseInt(fromYear, 10)) {
@@ -632,12 +650,11 @@
         return String(code || "").indexOf("with_nt") === 0;
     }
 
-    function southUesWithNtFormulaYear(y, meta) {
-        var fromYear = parseInt(String((meta || {}).new_territories_from_year || "2023"), 10);
-        return Number.isFinite(fromYear) && Number(y) >= fromYear;
+    function ntAddonIsNonzero(ntAdd) {
+        return ntAdd !== undefined && ntAdd !== null && Number(ntAdd) !== 0;
     }
 
-    function ntSubjectsCombinedOnEsSumByYear(southUesId, ntRdIds) {
+    function ntSubjectsCombinedOnOesSumByYear(southUesId, ntRdIds) {
         var out = {};
         if (!southUesId || !ntRdIds || !ntRdIds.length) {
             return out;
@@ -648,7 +665,7 @@
         });
         table
             .querySelectorAll(
-                'tr[data-demand-model-name="RegionalDistrictDemandParameter"][data-parameter-key="combined_on_es"]'
+                'tr[data-demand-model-name="RegionalDistrictDemandParameter"][data-parameter-key="combined_on_oes"]'
             )
             .forEach(function (rdTr) {
                 if (
@@ -722,9 +739,9 @@
         var ntRdIds = Array.isArray(meta.nt_regional_district_ids)
             ? meta.nt_regional_district_ids
             : [];
-        var ntCombinedOnEsByYear =
+        var ntCombinedOnOesByYear =
             southUesId !== null && southUesId !== undefined
-                ? ntSubjectsCombinedOnEsSumByYear(southUesId, ntRdIds)
+                ? ntSubjectsCombinedOnOesSumByYear(southUesId, ntRdIds)
                 : {};
         var ntCombinedOnEesByYear =
             southUesId !== null && southUesId !== undefined
@@ -811,19 +828,16 @@
                         if (!formulaYearAppliesToRow(uTr, y)) {
                             return;
                         }
-                        if (isSouthWithNt && !southUesWithNtFormulaYear(y, meta)) {
-                            return;
-                        }
                         var byYear = store[uid];
                         var total = byYear ? byYear[y] : undefined;
-                        if (isSouthWithNt && ntAddonByYear) {
-                            var ntAdd = ntAddonByYear[y];
-                            if (ntAdd !== undefined) {
-                                total =
-                                    total === undefined
-                                        ? ntAdd
-                                        : total + ntAdd;
+                        if (isSouthWithNt) {
+                            var ntAdd = ntAddonByYear ? ntAddonByYear[y] : undefined;
+                            if (!ntAddonIsNonzero(ntAdd)) {
+                                setYearCellDisplay(cell, "—", null);
+                                return;
                             }
+                            total =
+                                total === undefined ? Number(ntAdd) : total + Number(ntAdd);
                         }
                         if (total === undefined) {
                             setYearCellDisplay(cell, "—", null);
@@ -834,7 +848,7 @@
                 });
         }
 
-        applyUes("calculated_max_power_mw", sumsOes, ntCombinedOnEsByYear);
+        applyUes("calculated_max_power_mw", sumsOes, ntCombinedOnOesByYear);
         applyUes("calculated_combined_on_ees_mw", sumsEes, ntCombinedOnEesByYear);
     }
 

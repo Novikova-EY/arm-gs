@@ -1,0 +1,92 @@
+Version =19
+VersionRequired =19
+Checksum =-440772165
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    DividingLines = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =7483
+    DatasheetFontHeight =12
+    ItemSuffix =8
+    Left =1476
+    Top =2136
+    Right =8172
+    Bottom =6780
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x15e597177366e340
+    End
+    GUID = Begin
+        0xae278cbc8c271948a12563864d30c782
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =3401
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xc04ba47fc07ed54d927bd736222c1a64
+            End
+            Begin
+                Begin Subform
+                    CanShrink = NotDefault
+                    OverlapFlags =215
+                    Width =6912
+                    Height =2832
+                    Name ="Ограничения"
+                    SourceObject ="Form.Ограничения"
+                    GUID = Begin
+                        0x54e0ce41f441ea4c893f35087c11d8bf
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =984
+                            Height =228
+                            Name ="Ограничения Надпись"
+                            Caption ="Ограничения"
+                            EventProcPrefix ="Ограничения_Надпись"
+                            GUID = Begin
+                                0xcddf2fef2eeff54888fde857b725a149
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End

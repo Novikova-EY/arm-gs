@@ -1,0 +1,483 @@
+Version =20
+VersionRequired =20
+Checksum =950925562
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    OrderByOn = NotDefault
+    DefaultView =2
+    ScrollBars =0
+    TabularCharSet =204
+    GridX =5
+    GridY =5
+    Width =17352
+    ItemSuffix =8
+    Left =3816
+    Top =3912
+    Right =7092
+    Bottom =6804
+    RecSrcDt = Begin
+        0x7f893daa0f38e340
+    End
+    RecordSource ="Доп_угли(Схема)"
+    OnCurrent ="[Event Procedure]"
+    BeforeUpdate ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin TextBox
+            AutoLabel = NotDefault
+            TextFontCharSet =204
+            Width =576
+            LabelX =-1701
+        End
+        Begin Section
+            Height =240
+            Name ="ОбластьДанных0"
+            GUID = Begin
+                0x5d6801039b6d6c4698d6e2589486f46b
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    ColumnWidth =510
+                    ColumnOrder =0
+                    Name ="year"
+                    ControlSource ="year"
+                    Format ="#"
+                    GUID = Begin
+                        0x40be906555810b4d8f8273b67e191aaf
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =255
+                    ColumnWidth =570
+                    ColumnOrder =1
+                    TabIndex =1
+                    Name ="nazar"
+                    ControlSource ="nazar"
+                    Format ="#"
+                    GUID = Begin
+                        0xcd3cdf5573f3d544baafde275ee4c460
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =576
+                    Width =567
+                    ColumnWidth =450
+                    ColumnOrder =2
+                    TabIndex =2
+                    Name ="ibor"
+                    ControlSource ="ibor"
+                    Format ="#"
+                    GUID = Begin
+                        0x858787ef96f3454e9572584757185bc7
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =1143
+                    Width =567
+                    ColumnWidth =570
+                    ColumnOrder =3
+                    TabIndex =3
+                    Name ="berez"
+                    ControlSource ="berez"
+                    Format ="#"
+                    GUID = Begin
+                        0x369d29fd3f8677449417c26249e0bf19
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =15534
+                    Width =567
+                    ColumnWidth =975
+                    ColumnOrder =18
+                    TabIndex =4
+                    Name ="numb1120"
+                    ControlSource ="numb1120"
+                    Format ="#"
+                    GUID = Begin
+                        0x94ec2d83ebcd714d95e320737695bd20
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =2286
+                    ColumnWidth =615
+                    ColumnOrder =5
+                    TabIndex =5
+                    Name ="gusin"
+                    ControlSource ="gusin"
+                    Format ="#"
+                    GUID = Begin
+                        0xfde3c77c1831594cbcc1ce615c4cbcfb
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2862
+                    ColumnWidth =540
+                    ColumnOrder =6
+                    TabIndex =6
+                    Name ="tugn"
+                    ControlSource ="tugn"
+                    Format ="#"
+                    GUID = Begin
+                        0xde8dca1a2d891c44b372b5ddbc46bff1
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3438
+                    ColumnWidth =555
+                    ColumnOrder =7
+                    TabIndex =7
+                    Name ="azey"
+                    ControlSource ="azey"
+                    Format ="#"
+                    GUID = Begin
+                        0xe6d31432974f4343803c2bd82ab77c3a
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =4014
+                    ColumnWidth =540
+                    ColumnOrder =8
+                    TabIndex =8
+                    Name ="cher"
+                    ControlSource ="cher"
+                    Format ="#"
+                    GUID = Begin
+                        0x9d782fa32e177e4e93a4af3821573862
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =5166
+                    ColumnWidth =555
+                    ColumnOrder =9
+                    TabIndex =9
+                    Name ="vork"
+                    ControlSource ="vork"
+                    Format ="#"
+                    GUID = Begin
+                        0xb9a97704f0474e42a43dbf86529425c8
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =5742
+                    ColumnWidth =390
+                    ColumnOrder =10
+                    TabIndex =10
+                    Name ="intin"
+                    ControlSource ="intin"
+                    Format ="#"
+                    GUID = Begin
+                        0x536f434988cb2b4c874daf9b8fb5e26f
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =8622
+                    ColumnWidth =780
+                    ColumnOrder =14
+                    TabIndex =11
+                    Name ="kuzngd"
+                    ControlSource ="kuzngd"
+                    Format ="#"
+                    GUID = Begin
+                        0xfeac45725433ee449cc54759ec5eb8f3
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =9198
+                    ColumnWidth =630
+                    ColumnOrder =15
+                    TabIndex =12
+                    Name ="kuznt"
+                    ControlSource ="kuznt"
+                    Format ="#"
+                    GUID = Begin
+                        0xcabc8e405432354b8517a3433b77098d
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =9774
+                    ColumnWidth =750
+                    ColumnOrder =16
+                    TabIndex =13
+                    Name ="kuznss"
+                    ControlSource ="kuznss"
+                    Format ="#"
+                    GUID = Begin
+                        0xf4d09384f4363a449b21ff799631be44
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =10350
+                    ColumnWidth =780
+                    ColumnOrder =17
+                    TabIndex =14
+                    Name ="kuznun"
+                    ControlSource ="kuznun"
+                    Format ="#"
+                    GUID = Begin
+                        0xcee0b682b0992c4cb5be96a3e28af365
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =6318
+                    ColumnWidth =540
+                    ColumnOrder =11
+                    TabIndex =15
+                    Name ="sver"
+                    ControlSource ="sver"
+                    Format ="#"
+                    GUID = Begin
+                        0x567ea4ca63275e4fabfd8e9fcf248938
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =6894
+                    ColumnWidth =555
+                    ColumnOrder =12
+                    TabIndex =16
+                    Name ="chel"
+                    ControlSource ="chel"
+                    Format ="#"
+                    GUID = Begin
+                        0xbba433ea23911846959c4f76fbce460c
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =7470
+                    ColumnWidth =600
+                    ColumnOrder =13
+                    TabIndex =17
+                    Name ="kizel"
+                    ControlSource ="kizel"
+                    Format ="#"
+                    GUID = Begin
+                        0x5ba60e7a23a3f44cbb2ec97d36fe550d
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =119
+                    Left =1710
+                    ColumnWidth =435
+                    ColumnOrder =4
+                    TabIndex =18
+                    Name ="per"
+                    ControlSource ="per"
+                    Format ="#"
+                    GUID = Begin
+                        0xe80337e962710143b3deaffec9bf61b5
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =87
+                    Left =16101
+                    ColumnWidth =795
+                    TabIndex =19
+                    Name ="numb1"
+                    ControlSource ="numb1"
+                    GUID = Begin
+                        0xcfdb52a73c0a1e41b5ccac74d3423399
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =87
+                    Left =4590
+                    ColumnWidth =360
+                    TabIndex =20
+                    Name ="jer"
+                    ControlSource ="jer"
+                    GUID = Begin
+                        0x5f4afd000931234397ed450ac7d453f3
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =95
+                    Left =10926
+                    ColumnWidth =420
+                    TabIndex =21
+                    Name ="har"
+                    ControlSource ="har"
+                    GUID = Begin
+                        0xb0d698ef9e43fd419b18723a471eb8f5
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =95
+                    Left =11502
+                    ColumnWidth =375
+                    TabIndex =22
+                    Name ="urt"
+                    ControlSource ="urt"
+                    GUID = Begin
+                        0x56dddc316470b5438496ed668abf43d3
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =95
+                    Left =14958
+                    ColumnWidth =660
+                    TabIndex =23
+                    Name ="gazpp"
+                    ControlSource ="gazpp"
+                    GUID = Begin
+                        0x48066acf642d964a8e0ed9428353a7dd
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =95
+                    Left =12078
+                    ColumnWidth =1417
+                    TabIndex =24
+                    Name ="neru"
+                    ControlSource ="neru"
+                    GUID = Begin
+                        0x90f852cbb5e8804793f5412f52a90af9
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =95
+                    Left =12654
+                    TabIndex =25
+                    Name ="pyak"
+                    ControlSource ="pyak"
+                    GUID = Begin
+                        0xb53dbacbfa18094dae9da6304de89e6c
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =95
+                    Left =13230
+                    ColumnWidth =1417
+                    TabIndex =26
+                    Name ="rai"
+                    ControlSource ="rai"
+                    GUID = Begin
+                        0xda90f0993289ff4cb835c497cc5f9544
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =95
+                    Left =13806
+                    TabIndex =27
+                    Name ="erk"
+                    ControlSource ="erk"
+                    GUID = Begin
+                        0x5e8ebe7f5018f8489fd945dfd5b71e42
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =87
+                    Left =14382
+                    TabIndex =28
+                    Name ="svo"
+                    ControlSource ="svo"
+                    GUID = Begin
+                        0x1f60657ccebb8a4998a3634a62808dcc
+                    End
+                End
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =8046
+                    TabIndex =29
+                    Name ="sosv"
+                    ControlSource ="sosv"
+                    Format ="#"
+                    GUID = Begin
+                        0xac5de12f522627469f29aeeaabf2dccb
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Dim crdop As Integer, dopup As Boolean
+Private Sub Form_AfterUpdate()
+Dim w As Form, wr As DAO.Recordset, dopr As Recordset
+Set w = Parent!wform.Form
+Set wr = w.RecordsetClone
+wr.Bookmark = w.Bookmark
+ydop = year
+crdop = Me.Form.CurrentRecord
+dopup = True
+Do While wr!year <> ydop
+If wr!year < ydop Then wr.MoveNext Else wr.MovePrevious
+Loop
+w.Bookmark = wr.Bookmark
+w!NUST = w!NUST
+w.Refresh
+End Sub
+
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+If Me.NewRecord Then Me!numb1 = Parent!wform.Form!numb1
+End Sub

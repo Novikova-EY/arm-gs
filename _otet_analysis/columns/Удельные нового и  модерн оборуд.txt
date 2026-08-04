@@ -1,0 +1,5 @@
+TABLE: Удельные нового и  модерн оборуд
+1	Type	DBTYPE_WVARCHAR
+2	Topl	DBTYPE_WVARCHAR
+3	EURT	DBTYPE_R8
+4	SNk	DBTYPE_R8

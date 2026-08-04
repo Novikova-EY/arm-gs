@@ -11,6 +11,7 @@ Read/query/display для страницы «Цена для групп обор
 """
 
 from collections import defaultdict
+from decimal import Decimal
 from sqlalchemy import or_, and_
 
 from app.common.services.database_version_filter import get_current_db_version_id
@@ -22,6 +23,37 @@ from app.fuel.models.fue_equipment_group_specific_fuel_price_model import (
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_calc_services import (
     calc_specific_fuel_price_fields,
 )
+
+
+# Игнорировать микроразницу в 6–7-м знаке после запятой (округление Excel vs расчёт)
+CALC_MISMATCH_ABS_TOLERANCE = Decimal("0.00001")
+
+
+def _normalize_price_value(value):
+    """NULL и 0 на экране оба показываются как «—» — считаем эквивалентными."""
+    if value is None:
+        return None
+    try:
+        as_dec = Decimal(str(value))
+    except Exception:
+        return value
+    if as_dec == 0:
+        return None
+    return as_dec
+
+
+def _numeric_values_differ(left, right) -> bool:
+    """True, если значения различаются заметно (после нормализации NULL/0, |Δ| >= 1e-5)."""
+    left_n = _normalize_price_value(left)
+    right_n = _normalize_price_value(right)
+    if left_n is None and right_n is None:
+        return False
+    if left_n is None or right_n is None:
+        return True
+    try:
+        return abs(left_n - right_n) >= CALC_MISMATCH_ABS_TOLERANCE
+    except Exception:
+        return left_n != right_n
 
 
 # Базовые колонки (без _calc) — из них строим пары: (xxx_c, xxx_c_calc)
@@ -46,6 +78,8 @@ _SPECIFIC_FUEL_PRICE_BASE = [
     ("tvproch_c", "tvproch_c", True),
     ("szh_gaz_c", "szh_gaz_c", True),
     ("inoe_c", "inoe_c", True),
+    # Синтетический родитель для группировки углей (как ugol на странице стоимости)
+    ("ugol_c", "УГОЛЬ, всего", True),
     ("don_c", "DON_c", True),
     ("podm_c", "PODM_c", True),
     ("pech_c", "PECH_c", True),
@@ -114,17 +148,54 @@ _SPECIFIC_FUEL_PRICE_BASE = [
     ("bering_c", "bering_c", True),
     ("kamch_c", "KAMCH_c", True),
     ("sah_c", "SAH_c", True),
-    ("numb1120", "Код электростанции", False),
+    ("numb1120", "Код группы оборудования", False),
     ("sost", "sost", False),
     ("group", "group", False),
 ]
 
-# Колонки с парами: xxx_c (из БД/Excel) и xxx_c_calc (расчетные)
+# Колонки: сначала все xxx_c (из БД/Excel), затем блок xxx_c_calc (расчётные)
 SPECIFIC_FUEL_PRICE_COLUMNS = []
+_SPECIFIC_FUEL_PRICE_CALC_COLUMNS = []
 for attr, label, is_numeric in _SPECIFIC_FUEL_PRICE_BASE:
     SPECIFIC_FUEL_PRICE_COLUMNS.append((attr, label, is_numeric))
     if is_numeric and attr.endswith("_c"):
-        SPECIFIC_FUEL_PRICE_COLUMNS.append((f"{attr}_calc", f"{label} (расчет)", True))
+        _SPECIFIC_FUEL_PRICE_CALC_COLUMNS.append(
+            (f"{attr}_calc", f"{label} (расчет)", True)
+        )
+SPECIFIC_FUEL_PRICE_COLUMNS.extend(_SPECIFIC_FUEL_PRICE_CALC_COLUMNS)
+
+# Пары загруженное / расчётное для временного фильтра расхождений
+# (ugol_c — синтетический столбец без поля в БД / _price_calc)
+CALC_MISMATCH_BASE_ATTRS = tuple(
+    attr
+    for attr, _label, is_numeric in _SPECIFIC_FUEL_PRICE_BASE
+    if is_numeric and attr.endswith("_c") and attr != "ugol_c"
+)
+
+
+def price_has_calc_mismatch(param) -> bool:
+    """Есть ли хотя бы одна пара xxx_c / xxx_c_calc с расхождением."""
+    if param is None:
+        return False
+    price_calc = getattr(param, "_price_calc", None) or {}
+    for attr in CALC_MISMATCH_BASE_ATTRS:
+        if _numeric_values_differ(getattr(param, attr, None), price_calc.get(attr)):
+            return True
+    return False
+
+
+def get_price_calc_mismatch_attrs(param) -> set:
+    """Атрибуты (и xxx_c, и xxx_c_calc), у которых пара расходится."""
+    mismatched = set()
+    if param is None:
+        return mismatched
+    price_calc = getattr(param, "_price_calc", None) or {}
+    for attr in CALC_MISMATCH_BASE_ATTRS:
+        if _numeric_values_differ(getattr(param, attr, None), price_calc.get(attr)):
+            mismatched.add(attr)
+            mismatched.add(f"{attr}_calc")
+    return mismatched
+
 
 # Формулы для _calc столбцов (tooltip).
 # get_price_formulas(fuel_nazvl_to_name) — подставляет имена из Fuel.name
@@ -135,13 +206,132 @@ def get_price_formulas(fuel_nazvl_to_name=None):
     for attr, label, is_numeric in _SPECIFIC_FUEL_PRICE_BASE:
         if is_numeric and attr.endswith("_c"):
             base = attr[:-2]  # gaz_c -> gaz
-            fuel_name = nazvl_to_name.get(base, base)
+            fuel_name = (
+                nazvl_to_name.get(base.casefold())
+                or nazvl_to_name.get(base)
+                or base
+            )
             result[f"{attr}_calc"] = f"{attr} = стоимость.{fuel_name} / объем топлива"
     return result
 
 
 # Дефолтные формулы (без Fuel) — для обратной совместимости
 PRICE_FORMULAS = get_price_formulas()
+
+
+def _remap_price_fuel_hierarchy(hierarchy: dict, suffix: str) -> dict:
+    """Переносит иерархию с plain nazvl (gaz) на attrs со суффиксом (gaz_c / gaz_c_calc)."""
+
+    def _map_attr(attr: str) -> str:
+        return f"{attr}{suffix}"
+
+    ordered = []
+    for attr, label, is_numeric in hierarchy.get("fuel_param_columns") or []:
+        ordered.append((_map_attr(attr), label, is_numeric))
+
+    collapse_under = {
+        _map_attr(child): _map_attr(parent)
+        for child, parent in (hierarchy.get("collapse_under") or {}).items()
+    }
+    children_by_parent = {
+        _map_attr(parent): [_map_attr(c) for c in kids]
+        for parent, kids in (hierarchy.get("children_by_parent") or {}).items()
+    }
+    group_parents = [_map_attr(p) for p in (hierarchy.get("group_parents") or [])]
+    return {
+        "fuel_param_columns": ordered,
+        "group_parents": group_parents,
+        "collapse_under": collapse_under,
+        "children_by_parent": children_by_parent,
+    }
+
+
+def build_specific_fuel_price_column_hierarchy(
+    display_columns: list[tuple[str, str, bool]],
+) -> dict:
+    """
+    Иерархия столбцов цены: блок xxx_c и отдельный блок xxx_c_calc,
+    каждый упорядочен/свёрнут по Fuel.parent_id (как edit_data / стоимость).
+    """
+    from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
+        build_fuel_param_columns_hierarchy,
+    )
+
+    if not display_columns:
+        return {
+            "fuel_param_columns": [],
+            "group_parents": [],
+            "collapse_under": {},
+            "children_by_parent": {},
+            "metric_attrs": [],
+            "base_fuel_attrs": [],
+            "calc_fuel_attrs": [],
+        }
+
+    metrics: list[tuple[str, str, bool]] = []
+    base_fuels: list[tuple[str, str, bool]] = []
+    calc_fuels: list[tuple[str, str, bool]] = []
+    for col in display_columns:
+        attr = col[0]
+        if attr.endswith("_c_calc"):
+            calc_fuels.append(col)
+        elif attr.endswith("_c"):
+            base_fuels.append(col)
+        else:
+            metrics.append(col)
+
+    base_attrs = {c[0] for c in base_fuels}
+    if "ugol_c" not in base_attrs:
+        # Вставить перед don_c (или в конец топливного блока)
+        insert_at = next(
+            (i for i, c in enumerate(base_fuels) if c[0] == "don_c"),
+            len(base_fuels),
+        )
+        base_fuels.insert(insert_at, ("ugol_c", "УГОЛЬ, всего", True))
+
+    calc_attrs = {c[0] for c in calc_fuels}
+    if "ugol_c_calc" not in calc_attrs:
+        insert_at = next(
+            (i for i, c in enumerate(calc_fuels) if c[0] == "don_c_calc"),
+            len(calc_fuels),
+        )
+        calc_fuels.insert(insert_at, ("ugol_c_calc", "УГОЛЬ, всего (расчет)", True))
+
+    base_plain = [(a[:-2], label, is_num) for a, label, is_num in base_fuels]
+    calc_plain = [(a[:-7], label, is_num) for a, label, is_num in calc_fuels]
+
+    base_hier = _remap_price_fuel_hierarchy(
+        build_fuel_param_columns_hierarchy(base_plain),
+        "_c",
+    )
+    calc_hier = _remap_price_fuel_hierarchy(
+        build_fuel_param_columns_hierarchy(calc_plain),
+        "_c_calc",
+    )
+
+    base_ordered = base_hier["fuel_param_columns"]
+    calc_ordered = calc_hier["fuel_param_columns"]
+    ordered = list(metrics) + list(base_ordered) + list(calc_ordered)
+
+    collapse_under = {}
+    collapse_under.update(base_hier["collapse_under"])
+    collapse_under.update(calc_hier["collapse_under"])
+
+    children_by_parent = {}
+    children_by_parent.update(base_hier["children_by_parent"])
+    children_by_parent.update(calc_hier["children_by_parent"])
+
+    group_parents = list(base_hier["group_parents"]) + list(calc_hier["group_parents"])
+
+    return {
+        "fuel_param_columns": ordered,
+        "group_parents": group_parents,
+        "collapse_under": collapse_under,
+        "children_by_parent": children_by_parent,
+        "metric_attrs": [c[0] for c in metrics],
+        "base_fuel_attrs": [c[0] for c in base_ordered],
+        "calc_fuel_attrs": [c[0] for c in calc_ordered],
+    }
 
 
 def _apply_calculated_specific_fuel_prices(rows):
@@ -206,7 +396,7 @@ def _apply_calculated_specific_fuel_prices(rows):
 
 def get_equipment_groups_with_specific_fuel_price_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,

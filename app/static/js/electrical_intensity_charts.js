@@ -9,864 +9,652 @@
  */
 
 (function () {
+  "use strict";
 
-    "use strict";
+  var EXCEL = {
+    colorFact: "#4BACC6",
 
+    colorCalc: "#F79646",
 
+    fontFamily: "'Roboto', sans-serif",
 
-    var EXCEL = {
+    fontSize: 22,
 
-        colorFact: "#4BACC6",
+    lineWidthCalc: 2,
 
-        colorCalc: "#F79646",
+    pointRadiusFact: 5,
 
-        fontFamily: "'Roboto', sans-serif",
+    gridColor: "rgba(89, 89, 89, 0.28)",
 
-        fontSize: 22,
+    gridDash: [5, 5],
 
-        lineWidthCalc: 2,
+    axisColor: "#595959",
 
-        pointRadiusFact: 5,
+    legendChartGap: 24,
 
-        gridColor: "rgba(89, 89, 89, 0.28)",
+    legendSymbolWidth: 18,
 
-        gridDash: [5, 5],
+    legendSymbolHeight: 12,
 
-        axisColor: "#595959",
+    legendTextGap: "\u2002\u2002",
+  };
 
-        legendChartGap: 24,
+  var legendChartGapPlugin = {
+    id: "ltEiLegendChartGap",
 
-        legendSymbolWidth: 18,
+    beforeInit: function (chart) {
+      var legend = chart.legend;
 
-        legendSymbolHeight: 12,
+      if (!legend) return;
 
-        legendTextGap: "\u2002\u2002",
+      var originalFit = legend.fit.bind(legend);
 
-    };
+      legend.fit = function () {
+        originalFit();
 
-    var legendChartGapPlugin = {
-
-        id: "ltEiLegendChartGap",
-
-        beforeInit: function (chart) {
-
-            var legend = chart.legend;
-
-            if (!legend) return;
-
-            var originalFit = legend.fit.bind(legend);
-
-            legend.fit = function () {
-
-                originalFit();
-
-                if (this.options.position === "right") {
-
-                    this.width += EXCEL.legendChartGap;
-
-                }
-
-            };
-
-        },
-
-        afterLayout: function (chart) {
-
-            var legend = chart.legend;
-
-            if (!legend || !legend.options.display || legend.options.position !== "right") return;
-
-            legend.left += EXCEL.legendChartGap;
-
-        },
-
-    };
-
-
-
-    function parseChartPayload(host) {
-
-        var script = host.querySelector("script.lt-ei-chart-data");
-
-        if (!script || !script.textContent) return null;
-
-        try {
-
-            return JSON.parse(script.textContent);
-
-        } catch (e) {
-
-            return null;
-
+        if (this.options.position === "right") {
+          this.width += EXCEL.legendChartGap;
         }
+      };
+    },
 
+    afterLayout: function (chart) {
+      var legend = chart.legend;
+
+      if (
+        !legend ||
+        !legend.options.display ||
+        legend.options.position !== "right"
+      )
+        return;
+
+      legend.left += EXCEL.legendChartGap;
+    },
+  };
+
+  function parseChartPayload(host) {
+    var script = host.querySelector("script.lt-ei-chart-data");
+
+    if (!script || !script.textContent) return null;
+
+    try {
+      return JSON.parse(script.textContent);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function sortByX(points) {
+    return points.slice().sort(function (a, b) {
+      return a.x - b.x;
+    });
+  }
+
+  function formatAxisX(v) {
+    if (v === null || v === undefined || Number.isNaN(v)) return "";
+
+    return Number(v).toLocaleString("ru-RU", {
+      maximumFractionDigits: 0,
+
+      minimumFractionDigits: 0,
+    });
+  }
+
+  function formatAxisY(v) {
+    if (v === null || v === undefined || Number.isNaN(v)) return "";
+
+    return Number(v).toLocaleString("ru-RU", {
+      minimumFractionDigits: 1,
+
+      maximumFractionDigits: 1,
+    });
+  }
+
+  function formatNum(n) {
+    if (n === null || n === undefined || Number.isNaN(n)) return "—";
+
+    var abs = Math.abs(n);
+
+    if (abs >= 1e6 || (abs > 0 && abs < 0.001)) {
+      return n.toLocaleString("ru-RU", { maximumFractionDigits: 6 });
     }
 
+    return n.toLocaleString("ru-RU", { maximumFractionDigits: 4 });
+  }
 
+  function parseDecimalInput(raw) {
+    if (raw == null) return null;
 
-    function sortByX(points) {
+    var s = String(raw)
+      .trim()
+      .replace(/\u00a0/g, "")
+      .replace(/\s/g, "");
 
-        return points.slice().sort(function (a, b) {
+    if (!s || s === "—" || s === "-" || s === "–") return null;
 
-            return a.x - b.x;
+    s = s.replace(",", ".");
 
-        });
+    var n = parseFloat(s);
 
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function computeCalculatedY(accumX, coefA, coefX) {
+    if (accumX == null || coefA == null || coefX == null) return null;
+
+    if (!(accumX > 0) || !(coefA > 0)) return null;
+
+    var powered = Math.pow(accumX, coefX);
+
+    if (!Number.isFinite(powered)) return null;
+
+    var y = coefA * powered;
+
+    return Number.isFinite(y) ? y : null;
+  }
+
+  function buildCalcSeries(payload, coefA) {
+    var bases = payload.calc_bases;
+
+    var coefX = payload.coef_x;
+
+    if (!bases || !bases.length || coefX == null) return [];
+
+    var a = coefA;
+
+    if (a == null) a = payload.initial_coef_a_computed;
+
+    if (a == null) a = payload.initial_coef_a;
+
+    if (a == null) return [];
+
+    var out = [];
+
+    bases.forEach(function (b) {
+      var y = computeCalculatedY(b.x, a, coefX);
+
+      if (y == null) return;
+
+      out.push({ x: b.x, y: y, year: b.year });
+    });
+
+    return sortByX(out);
+  }
+
+  function destroyChart(host) {
+    if (host.__ltEiChartInstance) {
+      host.__ltEiChartInstance.destroy();
+
+      host.__ltEiChartInstance = null;
+    }
+  }
+
+  var pageFontFamilyCache = null;
+
+  function resolvePageFontFamily() {
+    if (pageFontFamilyCache) return pageFontFamilyCache;
+    var el = document.body || document.documentElement;
+    if (!el) return EXCEL.fontFamily;
+    var family = window.getComputedStyle(el).fontFamily;
+    pageFontFamilyCache = family || EXCEL.fontFamily;
+    return pageFontFamilyCache;
+  }
+
+  function chartFont() {
+    return { family: resolvePageFontFamily(), size: EXCEL.fontSize };
+  }
+
+  function buildDatasets(fact, calc) {
+    var datasets = [];
+
+    if (fact.length) {
+      datasets.push({
+        label: "Фактическая",
+
+        data: sortByX(fact),
+
+        type: "scatter",
+
+        showLine: false,
+
+        pointStyle: "circle",
+
+        pointRadius: EXCEL.pointRadiusFact,
+
+        pointHoverRadius: EXCEL.pointRadiusFact + 2,
+
+        backgroundColor: EXCEL.colorFact,
+
+        borderColor: EXCEL.colorFact,
+
+        borderWidth: 1,
+
+        order: 1,
+      });
     }
 
+    if (calc.length) {
+      datasets.push({
+        label: "Расчетная",
 
+        data: sortByX(calc),
 
-    function formatAxisX(v) {
+        type: "scatter",
 
-        if (v === null || v === undefined || Number.isNaN(v)) return "";
+        showLine: true,
 
-        return Number(v).toLocaleString("ru-RU", {
+        pointRadius: 0,
 
-            maximumFractionDigits: 0,
+        pointHoverRadius: 6,
 
-            minimumFractionDigits: 0,
+        pointHitRadius: 8,
 
-        });
+        backgroundColor: EXCEL.colorCalc,
 
+        borderColor: EXCEL.colorCalc,
+
+        borderWidth: EXCEL.lineWidthCalc,
+
+        order: 2,
+      });
     }
 
+    return datasets;
+  }
 
+  function renderChart(host, payload, calcData) {
+    var canvas = host.querySelector("canvas.lt-ei-scatter-chart-canvas");
 
-    function formatAxisY(v) {
+    if (!canvas || typeof Chart === "undefined") return;
 
-        if (v === null || v === undefined || Number.isNaN(v)) return "";
+    var fact = payload.fact || [];
 
-        return Number(v).toLocaleString("ru-RU", {
+    var calc =
+      calcData != null
+        ? calcData
+        : buildCalcSeries(payload, payload.initial_coef_a);
 
-            minimumFractionDigits: 1,
-
-            maximumFractionDigits: 1,
-
-        });
-
+    if (!calc.length && payload.calc && payload.calc.length) {
+      calc = payload.calc;
     }
 
+    if (!fact.length && !calc.length) return;
 
+    destroyChart(host);
 
-    function formatNum(n) {
+    host.__ltEiChartInstance = new Chart(canvas, {
+      type: "scatter",
 
-        if (n === null || n === undefined || Number.isNaN(n)) return "—";
+      data: { datasets: buildDatasets(fact, calc) },
 
-        var abs = Math.abs(n);
+      plugins: [legendChartGapPlugin],
 
-        if (abs >= 1e6 || (abs > 0 && abs < 0.001)) {
+      options: {
+        responsive: true,
 
-            return n.toLocaleString("ru-RU", { maximumFractionDigits: 6 });
+        maintainAspectRatio: false,
 
-        }
+        layout: { padding: { top: 4, right: 4, bottom: 2, left: 2 } },
 
-        return n.toLocaleString("ru-RU", { maximumFractionDigits: 4 });
+        plugins: {
+          legend: {
+            position: "right",
 
-    }
+            align: "center",
 
+            labels: {
+              usePointStyle: true,
 
+              pointStyle: "circle",
 
-    function parseDecimalInput(raw) {
+              boxWidth: EXCEL.legendSymbolWidth,
 
-        if (raw == null) return null;
+              boxHeight: EXCEL.legendSymbolHeight,
 
-        var s = String(raw).trim().replace(/\u00a0/g, "").replace(/\s/g, "");
+              pointStyleWidth: EXCEL.legendSymbolWidth,
 
-        if (!s || s === "—" || s === "-" || s === "–") return null;
+              padding: 12,
 
-        s = s.replace(",", ".");
+              font: chartFont(),
 
-        var n = parseFloat(s);
+              color: EXCEL.axisColor,
 
-        return Number.isFinite(n) ? n : null;
+              generateLabels: function (chart) {
+                var defaults =
+                  Chart.defaults.plugins.legend.labels.generateLabels(chart);
 
-    }
+                defaults.forEach(function (item) {
+                  item.text = EXCEL.legendTextGap + item.text;
 
+                  if (item.text.indexOf("Расчетная") >= 0) {
+                    item.pointStyle = "line";
 
+                    item.lineWidth = EXCEL.lineWidthCalc;
 
-    function computeCalculatedY(accumX, coefA, coefX) {
+                    item.strokeStyle = EXCEL.colorCalc;
 
-        if (accumX == null || coefA == null || coefX == null) return null;
+                    item.fillStyle = EXCEL.colorCalc;
+                  } else if (item.text.indexOf("Фактическая") >= 0) {
+                    item.fillStyle = EXCEL.colorFact;
 
-        if (!(accumX > 0) || !(coefA > 0)) return null;
-
-        var powered = Math.pow(accumX, coefX);
-
-        if (!Number.isFinite(powered)) return null;
-
-        var y = coefA * powered;
-
-        return Number.isFinite(y) ? y : null;
-
-    }
-
-
-
-    function buildCalcSeries(payload, coefA) {
-
-        var bases = payload.calc_bases;
-
-        var coefX = payload.coef_x;
-
-        if (!bases || !bases.length || coefX == null) return [];
-
-        var a = coefA;
-
-        if (a == null) a = payload.initial_coef_a_computed;
-
-        if (a == null) a = payload.initial_coef_a;
-
-        if (a == null) return [];
-
-        var out = [];
-
-        bases.forEach(function (b) {
-
-            var y = computeCalculatedY(b.x, a, coefX);
-
-            if (y == null) return;
-
-            out.push({ x: b.x, y: y, year: b.year });
-
-        });
-
-        return sortByX(out);
-
-    }
-
-
-
-    function destroyChart(host) {
-
-        if (host.__ltEiChartInstance) {
-
-            host.__ltEiChartInstance.destroy();
-
-            host.__ltEiChartInstance = null;
-
-        }
-
-    }
-
-
-
-    var pageFontFamilyCache = null;
-
-    function resolvePageFontFamily() {
-        if (pageFontFamilyCache) return pageFontFamilyCache;
-        var el = document.body || document.documentElement;
-        if (!el) return EXCEL.fontFamily;
-        var family = window.getComputedStyle(el).fontFamily;
-        pageFontFamilyCache = family || EXCEL.fontFamily;
-        return pageFontFamilyCache;
-    }
-
-    function chartFont() {
-        return { family: resolvePageFontFamily(), size: EXCEL.fontSize };
-    }
-
-
-
-    function buildDatasets(fact, calc) {
-
-        var datasets = [];
-
-        if (fact.length) {
-
-            datasets.push({
-
-                label: "Фактическая",
-
-                data: sortByX(fact),
-
-                type: "scatter",
-
-                showLine: false,
-
-                pointStyle: "circle",
-
-                pointRadius: EXCEL.pointRadiusFact,
-
-                pointHoverRadius: EXCEL.pointRadiusFact + 2,
-
-                backgroundColor: EXCEL.colorFact,
-
-                borderColor: EXCEL.colorFact,
-
-                borderWidth: 1,
-
-                order: 1,
-
-            });
-
-        }
-
-        if (calc.length) {
-
-            datasets.push({
-
-                label: "Расчетная",
-
-                data: sortByX(calc),
-
-                type: "scatter",
-
-                showLine: true,
-
-                pointRadius: 0,
-
-                pointHoverRadius: 6,
-
-                pointHitRadius: 8,
-
-                backgroundColor: EXCEL.colorCalc,
-
-                borderColor: EXCEL.colorCalc,
-
-                borderWidth: EXCEL.lineWidthCalc,
-
-                order: 2,
-
-            });
-
-        }
-
-        return datasets;
-
-    }
-
-
-
-    function renderChart(host, payload, calcData) {
-
-        var canvas = host.querySelector("canvas.lt-ei-scatter-chart-canvas");
-
-        if (!canvas || typeof Chart === "undefined") return;
-
-
-
-        var fact = payload.fact || [];
-
-        var calc = calcData != null ? calcData : buildCalcSeries(payload, payload.initial_coef_a);
-
-        if (!calc.length && payload.calc && payload.calc.length) {
-
-            calc = payload.calc;
-
-        }
-
-        if (!fact.length && !calc.length) return;
-
-
-
-        destroyChart(host);
-
-
-
-        host.__ltEiChartInstance = new Chart(canvas, {
-
-            type: "scatter",
-
-            data: { datasets: buildDatasets(fact, calc) },
-
-            plugins: [legendChartGapPlugin],
-
-            options: {
-
-                responsive: true,
-
-                maintainAspectRatio: false,
-
-                layout: { padding: { top: 4, right: 4, bottom: 2, left: 2 } },
-
-                plugins: {
-
-                    legend: {
-
-                        position: "right",
-
-                        align: "center",
-
-                        labels: {
-
-                            usePointStyle: true,
-
-                            pointStyle: "circle",
-
-                            boxWidth: EXCEL.legendSymbolWidth,
-
-                            boxHeight: EXCEL.legendSymbolHeight,
-
-                            pointStyleWidth: EXCEL.legendSymbolWidth,
-
-                            padding: 12,
-
-                            font: chartFont(),
-
-                            color: EXCEL.axisColor,
-
-                            generateLabels: function (chart) {
-
-                                var defaults = Chart.defaults.plugins.legend.labels.generateLabels(chart);
-
-                                defaults.forEach(function (item) {
-
-                                    item.text = EXCEL.legendTextGap + item.text;
-
-                                    if (item.text.indexOf("Расчетная") >= 0) {
-
-                                        item.pointStyle = "line";
-
-                                        item.lineWidth = EXCEL.lineWidthCalc;
-
-                                        item.strokeStyle = EXCEL.colorCalc;
-
-                                        item.fillStyle = EXCEL.colorCalc;
-
-                                    } else if (item.text.indexOf("Фактическая") >= 0) {
-
-                                        item.fillStyle = EXCEL.colorFact;
-
-                                        item.strokeStyle = EXCEL.colorFact;
-
-                                    }
-
-                                });
-
-                                return defaults;
-
-                            },
-
-                        },
-
-                    },
-
-                    tooltip: {
-
-                        titleFont: chartFont(),
-
-                        bodyFont: chartFont(),
-
-                        callbacks: {
-
-                            label: function (ctx) {
-
-                                var raw = ctx.raw || {};
-
-                                var year = raw.year != null ? raw.year : "";
-
-                                var x = formatNum(ctx.parsed.x);
-
-                                var y = formatNum(ctx.parsed.y);
-
-                                var prefix = ctx.dataset.label || "";
-
-                                return (
-
-                                    prefix +
-
-                                    (year ? " (" + year + ")" : "") +
-
-                                    ": " +
-
-                                    x +
-
-                                    " → " +
-
-                                    y +
-
-                                    " кВт·ч/тыс. руб."
-
-                                );
-
-                            },
-
-                        },
-
-                    },
-
-                },
-
-                scales: {
-
-                    x: {
-
-                        type: "linear",
-
-                        position: "bottom",
-
-                        title: {
-
-                            display: true,
-
-                            text: payload.x_axis_label || "Накопленные инвестиции, млн руб.",
-
-                            font: chartFont(),
-
-                            color: EXCEL.axisColor,
-
-                            padding: { top: 6 },
-
-                        },
-
-                        ticks: {
-
-                            font: chartFont(),
-
-                            color: EXCEL.axisColor,
-
-                            maxTicksLimit: 8,
-
-                            callback: function (v) {
-
-                                return formatAxisX(v);
-
-                            },
-
-                        },
-
-                        grid: {
-
-                            color: EXCEL.gridColor,
-
-                            borderDash: EXCEL.gridDash,
-
-                            drawOnChartArea: true,
-
-                        },
-
-                        border: { color: EXCEL.axisColor },
-
-                    },
-
-                    y: {
-
-                        title: {
-
-                            display: true,
-
-                            text: payload.y_axis_label || "Электроемкость, кВт·ч/тыс. руб.",
-
-                            font: chartFont(),
-
-                            color: EXCEL.axisColor,
-
-                            padding: { bottom: 6 },
-
-                        },
-
-                        ticks: {
-
-                            font: chartFont(),
-
-                            color: EXCEL.axisColor,
-
-                            callback: function (v) {
-
-                                return formatAxisY(v);
-
-                            },
-
-                        },
-
-                        grid: {
-
-                            color: "rgba(89, 89, 89, 0.18)",
-
-                            drawOnChartArea: true,
-
-                        },
-
-                        border: { color: EXCEL.axisColor },
-
-                    },
-
-                },
-
-            },
-
-        });
-
-        host.dataset.ltEiChartReady = "1";
-
-    }
-
-
-
-    function findCoefRowForChartHost(host) {
-
-        var key = host.getAttribute("data-lt-ei-chart-key");
-
-        if (!key) return null;
-
-        var rows = document.querySelectorAll("tr.lt-ei-coef-row[data-lt-ei-coef-chart]");
-
-        for (var i = 0; i < rows.length; i++) {
-
-            if (rows[i].getAttribute("data-lt-ei-chart-key") === key) {
-
-                return rows[i];
-
-            }
-
-        }
-
-        return null;
-
-    }
-
-
-
-    function calcSeriesForHost(host, payload, coefRow) {
-
-        if (!payload) return [];
-
-        if (payload.calc_bases && payload.calc_bases.length) {
-
-            var coefA = payload.initial_coef_a;
-
-            if (coefRow) {
-
-                var inp = coefRow.querySelector('input.lt-ei-coef-input[name="coef_a[]"]');
-
-                coefA = inp ? parseDecimalInput(inp.value) : null;
-
-                if (coefA == null) {
-
-                    coefA = parseDecimalInput(
-
-                        inp && inp.getAttribute("data-db-full") ? inp.getAttribute("data-db-full") : null
-
-                    );
-
-                }
-
-                if (coefA == null) {
-
-                    var computedEl = coefRow.querySelector(".lt-ei-coef-a-computed");
-
-                    coefA = parseDecimalInput(
-
-                        computedEl && computedEl.getAttribute("title")
-
-                            ? computedEl.getAttribute("title")
-
-                            : null
-
-                    );
-
-                }
-
-                if (coefA == null) coefA = payload.initial_coef_a_computed;
-
-                if (coefA == null) coefA = payload.initial_coef_a;
-
-            }
-
-            return buildCalcSeries(payload, coefA);
-
-        }
-
-        return payload.calc || [];
-
-    }
-
-
-
-    function initHost(host) {
-
-        var payload = parseChartPayload(host);
-
-        if (!payload) return;
-
-        host.__ltEiChartPayload = payload;
-
-        var coefRow = findCoefRowForChartHost(host);
-
-        renderChart(host, payload, calcSeriesForHost(host, payload, coefRow));
-
-    }
-
-
-
-    function findChartHost(coefRow) {
-
-        var key = coefRow.getAttribute("data-lt-ei-chart-key");
-
-        if (!key) return null;
-
-        var hosts = document.querySelectorAll(".lt-ei-scatter-chart-host");
-
-        for (var i = 0; i < hosts.length; i++) {
-
-            if (hosts[i].getAttribute("data-lt-ei-chart-key") === key) {
-
-                return hosts[i];
-
-            }
-
-        }
-
-        return null;
-
-    }
-
-
-
-    function refreshChartForCoefRow(coefRow) {
-
-        var host = findChartHost(coefRow);
-
-        if (!host) return;
-
-        var payload = host.__ltEiChartPayload || parseChartPayload(host);
-
-        if (!payload) return;
-
-        host.__ltEiChartPayload = payload;
-
-        renderChart(host, payload, calcSeriesForHost(host, payload, coefRow));
-
-    }
-
-
-
-    function bindCoefAInputs() {
-
-        document.querySelectorAll("tr.lt-ei-coef-row[data-lt-ei-coef-chart]").forEach(function (coefRow) {
-
-            var inp = coefRow.querySelector('input.lt-ei-coef-input[name="coef_a[]"]');
-
-            if (!inp || inp.dataset.ltEiCoefChartBound === "1") return;
-
-            inp.dataset.ltEiCoefChartBound = "1";
-
-            var handler = function () {
-
-                refreshChartForCoefRow(coefRow);
-
-            };
-
-            inp.addEventListener("input", handler);
-
-            inp.addEventListener("change", handler);
-
-        });
-
-    }
-
-
-
-    function initAll() {
-
-        var hosts = document.querySelectorAll(".lt-ei-scatter-chart-host");
-
-        if (!hosts.length) return;
-
-        if (typeof Chart === "undefined") return;
-
-
-
-        function onHostReady(host) {
-
-            initHost(host);
-
-        }
-
-
-
-        if (!("IntersectionObserver" in window)) {
-
-            hosts.forEach(onHostReady);
-
-            bindCoefAInputs();
-
-            return;
-
-        }
-
-
-
-        var observer = new IntersectionObserver(
-
-            function (entries) {
-
-                entries.forEach(function (entry) {
-
-                    if (!entry.isIntersecting) return;
-
-                    var host = entry.target;
-
-                    observer.unobserve(host);
-
-                    onHostReady(host);
-
+                    item.strokeStyle = EXCEL.colorFact;
+                  }
                 });
 
+                return defaults;
+              },
+            },
+          },
+
+          tooltip: {
+            titleFont: chartFont(),
+
+            bodyFont: chartFont(),
+
+            callbacks: {
+              label: function (ctx) {
+                var raw = ctx.raw || {};
+
+                var year = raw.year != null ? raw.year : "";
+
+                var x = formatNum(ctx.parsed.x);
+
+                var y = formatNum(ctx.parsed.y);
+
+                var prefix = ctx.dataset.label || "";
+
+                return (
+                  prefix +
+                  (year ? " (" + year + ")" : "") +
+                  ": " +
+                  x +
+                  " → " +
+                  y +
+                  " кВтч/тыс. руб."
+                );
+              },
+            },
+          },
+        },
+
+        scales: {
+          x: {
+            type: "linear",
+
+            position: "bottom",
+
+            title: {
+              display: true,
+
+              text: payload.x_axis_label || "Накопленные инвестиции, млн руб.",
+
+              font: chartFont(),
+
+              color: EXCEL.axisColor,
+
+              padding: { top: 6 },
             },
 
-            { root: null, rootMargin: "120px 0px", threshold: 0.01 }
+            ticks: {
+              font: chartFont(),
 
+              color: EXCEL.axisColor,
+
+              maxTicksLimit: 8,
+
+              callback: function (v) {
+                return formatAxisX(v);
+              },
+            },
+
+            grid: {
+              color: EXCEL.gridColor,
+
+              borderDash: EXCEL.gridDash,
+
+              drawOnChartArea: true,
+            },
+
+            border: { color: EXCEL.axisColor },
+          },
+
+          y: {
+            title: {
+              display: true,
+
+              text: payload.y_axis_label || "Электроемкость, кВтч/тыс. руб.",
+
+              font: chartFont(),
+
+              color: EXCEL.axisColor,
+
+              padding: { bottom: 6 },
+            },
+
+            ticks: {
+              font: chartFont(),
+
+              color: EXCEL.axisColor,
+
+              callback: function (v) {
+                return formatAxisY(v);
+              },
+            },
+
+            grid: {
+              color: "rgba(89, 89, 89, 0.18)",
+
+              drawOnChartArea: true,
+            },
+
+            border: { color: EXCEL.axisColor },
+          },
+        },
+      },
+    });
+
+    host.dataset.ltEiChartReady = "1";
+  }
+
+  function findCoefRowForChartHost(host) {
+    var key = host.getAttribute("data-lt-ei-chart-key");
+
+    if (!key) return null;
+
+    var rows = document.querySelectorAll(
+      "tr.lt-ei-coef-row[data-lt-ei-coef-chart]",
+    );
+
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].getAttribute("data-lt-ei-chart-key") === key) {
+        return rows[i];
+      }
+    }
+
+    return null;
+  }
+
+  function calcSeriesForHost(host, payload, coefRow) {
+    if (!payload) return [];
+
+    if (payload.calc_bases && payload.calc_bases.length) {
+      var coefA = payload.initial_coef_a;
+
+      if (coefRow) {
+        var inp = coefRow.querySelector(
+          'input.lt-ei-coef-input[name="coef_a[]"]',
         );
 
+        coefA = inp ? parseDecimalInput(inp.value) : null;
 
+        if (coefA == null) {
+          coefA = parseDecimalInput(
+            inp && inp.getAttribute("data-db-full")
+              ? inp.getAttribute("data-db-full")
+              : null,
+          );
+        }
 
-        hosts.forEach(function (host) {
+        if (coefA == null) {
+          var computedEl = coefRow.querySelector(".lt-ei-coef-a-computed");
 
-            observer.observe(host);
+          coefA = parseDecimalInput(
+            computedEl && computedEl.getAttribute("title")
+              ? computedEl.getAttribute("title")
+              : null,
+          );
+        }
 
-        });
+        if (coefA == null) coefA = payload.initial_coef_a_computed;
 
+        if (coefA == null) coefA = payload.initial_coef_a;
+      }
 
-
-        setTimeout(function () {
-
-            hosts.forEach(function (host) {
-
-                if (host.dataset.ltEiChartReady !== "1") {
-
-                    onHostReady(host);
-
-                }
-
-            });
-
-        }, 800);
-
-
-
-        bindCoefAInputs();
-
+      return buildCalcSeries(payload, coefA);
     }
 
+    return payload.calc || [];
+  }
 
+  function initHost(host) {
+    var payload = parseChartPayload(host);
 
-    function bindScrollWrapResize() {
-        var wrap = document.getElementById("powerDemandSummaryScrollWrap");
-        if (!wrap) return;
-        var scrollEl = wrap.closest(".page-table-scroll") || wrap;
-        var resizeCharts = function () {
-            document.querySelectorAll(".lt-ei-scatter-chart-host").forEach(function (host) {
-                if (host.__ltEiChartInstance) {
-                    host.__ltEiChartInstance.resize();
-                }
-            });
+    if (!payload) return;
+
+    host.__ltEiChartPayload = payload;
+
+    var coefRow = findCoefRowForChartHost(host);
+
+    renderChart(host, payload, calcSeriesForHost(host, payload, coefRow));
+  }
+
+  function findChartHost(coefRow) {
+    var key = coefRow.getAttribute("data-lt-ei-chart-key");
+
+    if (!key) return null;
+
+    var hosts = document.querySelectorAll(".lt-ei-scatter-chart-host");
+
+    for (var i = 0; i < hosts.length; i++) {
+      if (hosts[i].getAttribute("data-lt-ei-chart-key") === key) {
+        return hosts[i];
+      }
+    }
+
+    return null;
+  }
+
+  function refreshChartForCoefRow(coefRow) {
+    var host = findChartHost(coefRow);
+
+    if (!host) return;
+
+    var payload = host.__ltEiChartPayload || parseChartPayload(host);
+
+    if (!payload) return;
+
+    host.__ltEiChartPayload = payload;
+
+    renderChart(host, payload, calcSeriesForHost(host, payload, coefRow));
+  }
+
+  function bindCoefAInputs() {
+    document
+      .querySelectorAll("tr.lt-ei-coef-row[data-lt-ei-coef-chart]")
+      .forEach(function (coefRow) {
+        var inp = coefRow.querySelector(
+          'input.lt-ei-coef-input[name="coef_a[]"]',
+        );
+
+        if (!inp || inp.dataset.ltEiCoefChartBound === "1") return;
+
+        inp.dataset.ltEiCoefChartBound = "1";
+
+        var handler = function () {
+          refreshChartForCoefRow(coefRow);
         };
-        scrollEl.addEventListener("scroll", resizeCharts, { passive: true });
-        window.addEventListener("resize", resizeCharts);
+
+        inp.addEventListener("input", handler);
+
+        inp.addEventListener("change", handler);
+      });
+  }
+
+  function initAll() {
+    var hosts = document.querySelectorAll(".lt-ei-scatter-chart-host");
+
+    if (!hosts.length) return;
+
+    if (typeof Chart === "undefined") return;
+
+    function onHostReady(host) {
+      initHost(host);
     }
 
-    function boot() {
-        initAll();
-        bindScrollWrapResize();
+    if (!("IntersectionObserver" in window)) {
+      hosts.forEach(onHostReady);
+
+      bindCoefAInputs();
+
+      return;
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", boot);
-    } else {
-        boot();
-    }
+    var observer = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
 
+          var host = entry.target;
+
+          observer.unobserve(host);
+
+          onHostReady(host);
+        });
+      },
+
+      { root: null, rootMargin: "120px 0px", threshold: 0.01 },
+    );
+
+    hosts.forEach(function (host) {
+      observer.observe(host);
+    });
+
+    setTimeout(function () {
+      hosts.forEach(function (host) {
+        if (host.dataset.ltEiChartReady !== "1") {
+          onHostReady(host);
+        }
+      });
+    }, 800);
+
+    bindCoefAInputs();
+  }
+
+  function bindScrollWrapResize() {
+    var wrap = document.getElementById("powerDemandSummaryScrollWrap");
+    if (!wrap) return;
+    var scrollEl = wrap.closest(".page-table-scroll") || wrap;
+    var resizeCharts = function () {
+      document
+        .querySelectorAll(".lt-ei-scatter-chart-host")
+        .forEach(function (host) {
+          if (host.__ltEiChartInstance) {
+            host.__ltEiChartInstance.resize();
+          }
+        });
+    };
+    scrollEl.addEventListener("scroll", resizeCharts, { passive: true });
+    window.addEventListener("resize", resizeCharts);
+  }
+
+  function boot() {
+    initAll();
+    bindScrollWrapResize();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();
-
-

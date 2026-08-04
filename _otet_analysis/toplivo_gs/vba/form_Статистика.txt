@@ -1,0 +1,147 @@
+Version =19
+VersionRequired =19
+Checksum =-440772131
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =8504
+    DatasheetFontHeight =12
+    ItemSuffix =3
+    Left =588
+    Top =1944
+    Right =9096
+    Bottom =5904
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x89c17380ec5ae340
+    End
+    GUID = Begin
+        0xf1b985234fb8574497f2892e9c9db013
+    End
+    NameMap = Begin
+        0x0acc0e5500000000a1bae6901cf66243b0fcf865cc85d73e010000009460bf24 ,
+        0xf45ae34060ca1200f760083012044b0431043e0440043a043004200040043004 ,
+        0x41044704350442040000
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =3972
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x430460378d6bc441ac84f017a4a417a7
+            End
+            Begin
+                Begin Subform
+                    OverlapFlags =215
+                    Width =6696
+                    Height =3972
+                    Name ="Sres"
+                    SourceObject ="Form.Выборка расчет"
+                    GUID = Begin
+                        0xddfb3005e7e8b942b79ac23ba95674da
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =1788
+                            Height =228
+                            Name ="Выборка распределений Надпись"
+                            Caption ="Выборка распределений"
+                            EventProcPrefix ="Выборка_распределений_Надпись"
+                            GUID = Begin
+                                0xa063ac34ce54fd4e925c8947202127f6
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =7143
+                    Top =566
+                    Width =576
+                    Height =576
+                    TabIndex =1
+                    Name ="Диаграмма"
+                    Caption ="Кнопка2"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadada00000000000000000ad0c010d0c010da ,
+                        0x0da0c010a0c010ad0ad0c010d0c010da0da0c010a0c010ad0ad0c010d0c010da ,
+                        0x0da0c000a0c010ad0ad0c0dad0c010da0da0c0ada00010ad0ad0c0dadad010da ,
+                        0x0da000adada010ad0adadadadad010da0dadadadada010ad0adadadadad000da ,
+                        0xadadadadadadadad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0x86caef15c48ddb4f8a22440f751eef43
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+
+
+Private Sub Диаграмма_Click()
+DoCmd.OpenForm "Диаграмма_расчет"
+rs = "select year,e from [" & Forms("Расчет").Form!wname & "] where (numb1120=" & Sres.Form!numb1120 & ")"
+Debug.Print rs
+Forms("Диаграмма_расчет").Form!diagr.RowSource = rs
+
+End Sub

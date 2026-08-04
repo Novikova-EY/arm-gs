@@ -257,14 +257,23 @@ def import_equipment_group_specific_fuel_consumption_from_excel(
                     year_number=year,
                     database_version_id=version_id,
                     k=k_val,
+                    numb1120=_safe_int(eg.numb),
                 )
                 set_db_version_on_create(consumption)
                 db.session.add(consumption)
                 db.session.flush()
                 created += 1
-            elif consumption.k != k_val:
-                consumption.k = k_val
-                updated += 1
+            else:
+                changed = False
+                if consumption.k != k_val:
+                    consumption.k = k_val
+                    changed = True
+                eg_numb = _safe_int(eg.numb)
+                if eg_numb is not None and consumption.numb1120 != eg_numb:
+                    consumption.numb1120 = eg_numb
+                    changed = True
+                if changed:
+                    updated += 1
 
     try:
         if updated or created:
@@ -305,18 +314,47 @@ def import_equipment_group_specific_fuel_consumption_from_excel(
 
 # --- Загрузка расчетных значений удельных показателей (y, btp, sntp, bk, snk) ---
 
-CALC_IMPORT_FIELDS = ["numb1120", "name", "year_number", "k", "y", "btp", "sntp", "bk", "snk"]
+CALC_IMPORT_FIELDS = [
+    "numb1120", "name", "year_number", "k", "y", "btp", "sntp", "bk", "snk",
+    "snbas", "ksn", "bbas", "kh",
+]
 
 CALC_COLUMN_ALIASES = {
     "numb1120": ["numb1120", "numb", "NUMB", "num1120", "номер1120", "NUMB1120", "ном1120"],
     "name": ["name", "NAME", "наименование"],
     "year_number": ["year_number", "year", "Year", "YEAR", "год"],
     "k": ["k", "K", "коэффициент", "koeff"],
-    "y": ["y", "Y", "удельная выработка"],
-    "btp": ["btp", "BTP", "удельный расход теплофик"],
-    "sntp": ["sntp", "SNTP", "собственные нужды теплофик"],
-    "bk": ["bk", "BK", "удельный расход конд"],
+    "y": [
+        "y",
+        "Y",
+        "удельная выработка",
+        "удельная выработка ээ на тепловом потреблении",
+        "удельная выработка эл.эн. на тепловом потреблении",
+    ],
+    "btp": [
+        "btp",
+        "BTP",
+        "удельный расход теплофик",
+        "урут на отпуск ээ в теплофикационном режиме",
+        "удельный расход усл.топлива на отпуск эл.эн. в теплофик.режиме",
+    ],
+    "sntp": [
+        "sntp",
+        "SNTP",
+        "коэффициент отпуска ээ в теплофикационном режиме",
+        "собственные нужды теплофик",
+    ],
+    "bk": [
+        "bk",
+        "BK",
+        "удельный расход конд",
+        "урут на отпуск ээ в конденсационном режиме",
+    ],
     "snk": ["snk", "SNK", "собственные нужды"],
+    "snbas": ["snbas", "SNBAS", "Snbas"],
+    "ksn": ["ksn", "KSN", "Ksn"],
+    "bbas": ["bbas", "BBAS", "Bbas"],
+    "kh": ["kh", "KH", "Kh"],
 }
 
 
@@ -429,13 +467,33 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
         sntp_val = _safe_decimal(_extract_cell_value(row, "sntp"))
         bk_val = _safe_decimal(_extract_cell_value(row, "bk"))
         snk_val = _safe_decimal(_extract_cell_value(row, "snk"))
+        snbas_val = _safe_decimal(_extract_cell_value(row, "snbas"))
+        ksn_val = _safe_decimal(_extract_cell_value(row, "ksn"))
+        bbas_val = _safe_decimal(_extract_cell_value(row, "bbas"))
+        kh_val = _safe_decimal(_extract_cell_value(row, "kh"))
 
-        if k_val is None and y_val is None and btp_val is None and sntp_val is None and bk_val is None and snk_val is None:
+        if (
+            k_val is None
+            and y_val is None
+            and btp_val is None
+            and sntp_val is None
+            and bk_val is None
+            and snk_val is None
+            and snbas_val is None
+            and ksn_val is None
+            and bbas_val is None
+            and kh_val is None
+        ):
             continue
 
         numb1120_val = _safe_int(_extract_cell_value(row, "numb1120"))
 
         for equipment_group_id, eg_database_version_id in equipment_groups:
+            eg = db.session.get(EquipmentGroup, equipment_group_id)
+            # Всегда берём numb из группы; Excel — только запасной вариант
+            eg_numb = _safe_int(getattr(eg, "numb", None)) if eg is not None else None
+            resolved_numb1120 = eg_numb if eg_numb is not None else numb1120_val
+
             param = EquipmentGroupSpecificFuelConsumption.query.filter_by(
                 equipment_group_id=equipment_group_id,
                 year_number=row_year,
@@ -446,7 +504,7 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
                     equipment_group_id=equipment_group_id,
                     year_number=row_year,
                     database_version_id=eg_database_version_id,
-                    numb1120=numb1120_val,
+                    numb1120=resolved_numb1120,
                     name=name_str,
                     k=k_val,
                     y=y_val,
@@ -454,6 +512,10 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
                     sntp=sntp_val,
                     bk=bk_val,
                     snk=snk_val,
+                    snbas=snbas_val,
+                    ksn=ksn_val,
+                    bbas=bbas_val,
+                    kh=kh_val,
                 )
                 db.session.add(param)
                 db.session.flush()
@@ -481,8 +543,20 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
                 if snk_val is not None and param.snk != snk_val:
                     param.snk = snk_val
                     changed = True
-                if numb1120_val is not None and param.numb1120 != numb1120_val:
-                    param.numb1120 = numb1120_val
+                if snbas_val is not None and param.snbas != snbas_val:
+                    param.snbas = snbas_val
+                    changed = True
+                if ksn_val is not None and param.ksn != ksn_val:
+                    param.ksn = ksn_val
+                    changed = True
+                if bbas_val is not None and param.bbas != bbas_val:
+                    param.bbas = bbas_val
+                    changed = True
+                if kh_val is not None and param.kh != kh_val:
+                    param.kh = kh_val
+                    changed = True
+                if resolved_numb1120 is not None and param.numb1120 != resolved_numb1120:
+                    param.numb1120 = resolved_numb1120
                     changed = True
 
                 if changed:

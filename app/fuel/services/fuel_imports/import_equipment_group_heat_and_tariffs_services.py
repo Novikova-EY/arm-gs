@@ -205,32 +205,54 @@ def _numb1120_for_match(value) -> str | None:
     return s if s else None
 
 
-def _resolve_equipment_group_from_numb(numb1120_val):
+def _resolve_equipment_groups_from_numb(numb1120_val):
     """
-    Одна группа оборудования на NUMB1120: сначала текущая версия БД, иначе любая.
-    Нельзя создавать запись на каждую версию EG — уникальный ключ таблицы этого не допускает.
+    Список (equipment_group_id, database_version_id) по NUMB1120 = EquipmentGroup.numb
+    для всех версий БД (как в остальных fuel-импортах).
     """
-    from app.common.services.database_version_filter import get_current_db_version_id
-
     numb1120_str = _numb1120_for_match(numb1120_val)
     if not numb1120_str:
-        return None, None
+        return []
 
-    base = EquipmentGroup.query.filter(
-        cast(EquipmentGroup.numb, String) == numb1120_str
+    groups = (
+        EquipmentGroup.query.filter(cast(EquipmentGroup.numb, String) == numb1120_str)
+        .order_by(EquipmentGroup.id)
+        .all()
     )
-    current_version_id = get_current_db_version_id()
-    if current_version_id is not None:
-        eg = base.filter(
-            EquipmentGroup.database_version_id == current_version_id
-        ).order_by(EquipmentGroup.id).first()
-        if eg is not None:
-            return eg.id, eg.database_version_id
+    return [(g.id, g.database_version_id) for g in groups]
 
-    eg = base.order_by(EquipmentGroup.id).first()
-    if eg is None:
-        return None, None
-    return eg.id, eg.database_version_id
+
+def _targets_for_row(numb1120_val):
+    """
+    Цели записи для всех версий БД:
+    - для каждой EG с тем же numb1120 — (equipment_group_id, database_version_id);
+    - для версий без такой EG — (None, database_version_id).
+    """
+    from app.refdata.services.refdata_all_versions_common import (
+        all_database_version_ids_for_refdata,
+    )
+
+    eg_targets = _resolve_equipment_groups_from_numb(numb1120_val)
+    covered_version_ids = {
+        version_id for _, version_id in eg_targets if version_id is not None
+    }
+
+    targets = list(eg_targets)
+    for version_id in all_database_version_ids_for_refdata():
+        if version_id not in covered_version_ids:
+            targets.append((None, version_id))
+    return targets
+
+
+def _year_exists_for_version(year_number: int, database_version_id) -> bool:
+    from app.refdata.models.years.year_model import Year
+
+    year_query = Year.query.filter_by(number=year_number)
+    if database_version_id is not None:
+        year_query = year_query.filter_by(database_version_id=database_version_id)
+    else:
+        year_query = year_query.filter(Year.database_version_id.is_(None))
+    return year_query.first() is not None
 
 
 def _year_columns(df: pd.DataFrame) -> list[str]:
@@ -341,6 +363,8 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
     Загружает тепло/тарифы из Excel в EquipmentGroupHeatAndTariffs.
     Годы берутся только из файла (столбец year / Year или столбцы-годы широкого формата Access).
     Выбранный на странице год на импорт не влияет.
+    Для каждой строки создаётся/обновляется запись во всех версиях БД
+    (по группам с тем же numb1120 или по всем database_version_id без EG).
     """
     logger = _get_logger()
     t0 = time.perf_counter()
@@ -368,11 +392,10 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
             "или широкий формат Access со столбцами-годами и dannie (Q/TARIF)."
         )
 
-    from app.common.services.database_version_filter import get_current_db_version_id
-
     created = 0
     updated = 0
     skipped_no_year = 0
+    skipped_no_year_version = 0
     skipped_empty = 0
     years_loaded: set[int] = set()
 
@@ -410,48 +433,53 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
             skipped_empty += 1
             continue
 
-        equipment_group_id, eg_database_version_id = _resolve_equipment_group_from_numb(
-            row_values.get("numb1120")
-        )
-        db_version_id = eg_database_version_id
-        if db_version_id is None:
-            db_version_id = get_current_db_version_id()
+        targets = _targets_for_row(row_values.get("numb1120"))
+        row_written = False
 
-        param = _find_existing_record(
-            kod_goroda=row_values.get("kod_goroda"),
-            name_eto=row_values.get("name_eto"),
-            numb1120=row_values.get("numb1120"),
-            var_razv=row_values.get("var_razv"),
-            year_number=row_year,
-            database_version_id=db_version_id,
-            ndv_st=row_values.get("ndv_st"),
-        )
-        is_new = param is None
-        if is_new:
-            param = EquipmentGroupHeatAndTariffs(
-                equipment_group_id=equipment_group_id,
+        for equipment_group_id, db_version_id in targets:
+            # FK: (year_number, database_version_id) должен быть в gs_sys_years
+            if not _year_exists_for_version(row_year, db_version_id):
+                skipped_no_year_version += 1
+                continue
+
+            param = _find_existing_record(
+                kod_goroda=row_values.get("kod_goroda"),
+                name_eto=row_values.get("name_eto"),
+                numb1120=row_values.get("numb1120"),
+                var_razv=row_values.get("var_razv"),
                 year_number=row_year,
                 database_version_id=db_version_id,
+                ndv_st=row_values.get("ndv_st"),
             )
-            db.session.add(param)
-            created += 1
+            is_new = param is None
+            if is_new:
+                param = EquipmentGroupHeatAndTariffs(
+                    equipment_group_id=equipment_group_id,
+                    year_number=row_year,
+                    database_version_id=db_version_id,
+                )
+                db.session.add(param)
+                created += 1
 
-        changed = False
-        for field, val in row_values.items():
-            if hasattr(param, field) and field != "year_number":
-                cur = getattr(param, field)
-                if cur != val:
-                    setattr(param, field, val)
-                    changed = True
-        if param.equipment_group_id != equipment_group_id:
-            param.equipment_group_id = equipment_group_id
-            changed = True
-        if param.database_version_id != db_version_id:
-            param.database_version_id = db_version_id
-            changed = True
-        if changed and not is_new:
-            updated += 1
-        years_loaded.add(row_year)
+            changed = False
+            for field, val in row_values.items():
+                if hasattr(param, field) and field != "year_number":
+                    cur = getattr(param, field)
+                    if cur != val:
+                        setattr(param, field, val)
+                        changed = True
+            if param.equipment_group_id != equipment_group_id:
+                param.equipment_group_id = equipment_group_id
+                changed = True
+            if param.database_version_id != db_version_id:
+                param.database_version_id = db_version_id
+                changed = True
+            if changed and not is_new:
+                updated += 1
+            row_written = True
+
+        if row_written:
+            years_loaded.add(row_year)
 
     try:
         if created or updated:
@@ -472,25 +500,30 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
         else "—"
     )
     message = (
-        "Загрузка данных в EquipmentGroupHeatAndTariffs завершена. "
+        "Загрузка данных в EquipmentGroupHeatAndTariffs завершена "
+        "(во все версии БД). "
         "Годы из файла: {years_txt}. "
         "Создано: {created}, обновлено: {updated}, "
         "пропущено (нет Q/TARIF): {skipped_empty}, "
-        "пропущено (нет года в строке): {skipped_no_year}."
+        "пропущено (нет года в строке): {skipped_no_year}, "
+        "пропущено (нет года в версии БД): {skipped_no_year_version}."
     ).format(
         years_txt=years_txt,
         created=created,
         updated=updated,
         skipped_empty=skipped_empty,
         skipped_no_year=skipped_no_year,
+        skipped_no_year_version=skipped_no_year_version,
     )
     logger.info(
         "[IMPORT_EQUIPMENT_GROUP_HEAT_AND_TARIFFS] done created=%s updated=%s "
-        "skipped_empty=%s skipped_no_year=%s years=%s elapsed=%.2fs",
+        "skipped_empty=%s skipped_no_year=%s skipped_no_year_version=%s "
+        "years=%s elapsed=%.2fs",
         created,
         updated,
         skipped_empty,
         skipped_no_year,
+        skipped_no_year_version,
         sorted(years_loaded),
         elapsed,
     )
@@ -501,5 +534,6 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
         "updated": updated,
         "skipped": skipped_empty,
         "skipped_no_year": skipped_no_year,
+        "skipped_no_year_version": skipped_no_year_version,
         "years_loaded": sorted(years_loaded),
     }

@@ -1,0 +1,145 @@
+Version =21
+VersionRequired =20
+Checksum =-957285819
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =7
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =3195
+    DatasheetFontHeight =10
+    ItemSuffix =3
+    Left =5460
+    Top =2445
+    Right =8655
+    Bottom =4500
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xa3b765ed4f45e240
+    End
+    DatasheetFontName ="Arial Cyr"
+    FilterOnLoad =0
+    DatasheetGridlinesColor12 =12632256
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+            BorderLineStyle =0
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =2070
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x137c4879360f0b488f5f69664d7b446d
+            End
+            Begin
+                Begin ListBox
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    MultiSelect =1
+                    Left =105
+                    Top =60
+                    Width =1440
+                    Height =1845
+                    Name ="годы"
+                    RowSourceType ="Value List"
+                    RowSource ="\"Все\";2018;2019;2020;2021;2022;2023;2024;2025;2026;2027;2028;2029"
+                    ColumnWidths ="1440"
+                    DefaultValue ="\"Все\""
+                    GUID = Begin
+                        0x4c05cb7bfdd89f4c8cd9694c3c44be0e
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1875
+                    Top =600
+                    Width =795
+                    Height =510
+                    TabIndex =1
+                    Name ="OK"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x361ab0cadc5ea5479555e7be4bd73db5
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub OK_Click()
+With Forms("Редактирование")!wform.Form
+stcode = !numb1120
+f = .filter
+i1 = InStr(f, " and (year=")
+If i1 = 0 Then GoTo Skip
+i2 = InStr(i1, f, ")")
+f = Left(f, i1 - 1) & Mid(f, i2 + 1)
+Skip:
+If Not годы.Selected(0) Then
+fy = "("
+For Each i In годы.ItemsSelected
+If fy <> "(" Then fy = fy & " or "
+fy = fy & "year=" & годы.Column(0, i)
+Next i
+fy = fy & ")"
+'fy = fy & " or year=" & Form_Редактирование.byear & ")"
+f = "(" & f & ") and " & fy
+End If
+.filter = f
+.FilterOn = True
+.Form.OrderBy = "numb1,year"
+.OrderByOn = True
+If InStr(f, "year") > 0 And InStr(f, Form_Редактирование.byear) = 0 Then
+!name1.ColumnHidden = False
+!Name.ColumnHidden = True
+Else
+!name1.ColumnHidden = True
+!Name.ColumnHidden = False
+End If
+.RecordsetClone.FindFirst "numb1120=" & stcode
+.Bookmark = .RecordsetClone.Bookmark
+End With
+End Sub

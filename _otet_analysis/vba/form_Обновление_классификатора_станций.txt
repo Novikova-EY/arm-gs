@@ -1,0 +1,92 @@
+Version =20
+VersionRequired =20
+Checksum =667313632
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =10770
+    DatasheetFontHeight =10
+    ItemSuffix =8
+    Left =600
+    Top =1896
+    Right =11028
+    Bottom =6492
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xe83a3fb88d36e240
+    End
+    GUID = Begin
+        0x099e575e7e7f294fa322f7421fc1c186
+    End
+    NameMap = Begin
+        0x0acc0e550000000037bade516b95cf429d313af186ead51f0000000046b4588c ,
+        0xb84ce540a817f7109e5e235c6d00610069006e0000000000000068dc601ac00e ,
+        0x0344a8fdc79c30e46848010000008af97da8b84ce5403416f710d47113001a04 ,
+        0x3b043004410441043804440438043a04300442043e0440045f00410442043004 ,
+        0x3d04460438043904000000000000000000000000000000000000000000000c00 ,
+        0x0000030000000000000000000000000000000000
+    End
+    RecordSource ="main"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =6375
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x4523fd050f2c2447aceefc5b9880a4bd
+            End
+            Begin
+                Begin Subform
+                    OverlapFlags =85
+                    Width =10335
+                    Height =5085
+                    Name ="class"
+                    SourceObject ="Form.Классификатор_станций"
+                    GUID = Begin
+                        0x5005eb2c7ffcd5418f3ce6c45c7d1a11
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Open(Cancel As Integer)
+Dim turb As Form
+DoCmd.OpenForm "Турбины", acFormDS, , "numb1120=" & class.Form!NUMB
+End Sub

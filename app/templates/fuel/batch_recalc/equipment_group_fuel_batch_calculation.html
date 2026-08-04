@@ -1,822 +1,1165 @@
-{% extends 'base.html' %}
-
-{% block title %}Пакетный пересчет топлива{% endblock %}
-
-{% block content %}
-{% if current_user.is_authenticated %}
+{% extends 'base.html' %} {% block title %}Пакетный пересчет топлива{% endblock
+%} {% block content %} {% if current_user.is_authenticated %}
 
 <style>
-/* Текст после заголовка страницы — крупнее обычного */
-.fuel-batch-recalc-content {
+  /* Текст после заголовка страницы — крупнее обычного */
+  .fuel-batch-recalc-content {
     font-size: 1.2rem;
     line-height: 1.45;
-}
-.fuel-batch-recalc-content .station-info { font-size: inherit; }
-.fuel-batch-recalc-content .station-info .card-title { font-size: 1.35rem; }
-.fuel-batch-recalc-content .station-info .row .fw-semibold { font-size: 1.05em; }
-.fuel-batch-recalc-content .station-info .form-control,
-.fuel-batch-recalc-content .station-info .form-select { font-size: 1.05em; }
-.fuel-batch-recalc-content .small { font-size: 0.95em !important; }
-.fuel-batch-recalc-content pre.small,
-.fuel-batch-recalc-content #jsonOut.small { font-size: 0.9em !important; }
-/* Единый стиль секций: форма параметров и «Что считает пакет…» */
-.fuel-batch-recalc-content .fuel-batch-recalc-section {
+  }
+  .fuel-batch-recalc-content .station-info {
+    font-size: inherit;
+  }
+  .fuel-batch-recalc-content .station-info .card-title {
+    font-size: 1.35rem;
+  }
+  .fuel-batch-recalc-content .station-info .row .fw-semibold {
+    font-size: 1.05em;
+  }
+  .fuel-batch-recalc-content .station-info .form-control,
+  .fuel-batch-recalc-content .station-info .form-select {
+    font-size: 1.05em;
+  }
+  .fuel-batch-recalc-content .small {
+    font-size: 0.95em !important;
+  }
+  .fuel-batch-recalc-content pre.small,
+  .fuel-batch-recalc-content #jsonOut.small {
+    font-size: 0.9em !important;
+  }
+  /* Единый стиль секций: форма параметров и «Что считает пакет…» */
+  .fuel-batch-recalc-content .fuel-batch-recalc-section {
     font-size: 1.3rem;
     line-height: 1.5;
-}
-.fuel-batch-recalc-content .fuel-batch-recalc-section .card-title {
+  }
+  .fuel-batch-recalc-content .fuel-batch-recalc-section .card-title {
     font-size: 1.55rem;
-}
-.fuel-batch-recalc-content .fuel-batch-recalc-section .table {
+  }
+  .fuel-batch-recalc-content .fuel-batch-recalc-section .table {
     font-size: inherit;
-}
-.fuel-batch-recalc-content .fuel-batch-recalc-section .table thead th {
+  }
+  .fuel-batch-recalc-content .fuel-batch-recalc-section .table thead th {
     font-weight: 600;
-}
-.fuel-batch-recalc-content .fuel-batch-recalc-section .table code {
+  }
+  .fuel-batch-recalc-content .fuel-batch-recalc-section .table code {
     font-size: 0.92em;
-}
-/* Заголовок «Год …» в предпросмотре — как у секций с .fuel-batch-recalc-section */
-.fuel-batch-recalc-content .batch-param-tables-mount h4.card-title {
+  }
+  /* Заголовок «Год …» в предпросмотре — как у секций с .fuel-batch-recalc-section */
+  .fuel-batch-recalc-content .batch-param-tables-mount h4.card-title {
     font-size: 1.55rem;
     line-height: 1.5;
-}
-/* Горизонтальный скролл для широких таблиц предпросмотра (осн. / доп. параметры) */
-.batch-param-tables-mount .batch-param-table-hscroll {
+  }
+  /* Горизонтальный скролл для широких таблиц предпросмотра (осн. / доп. параметры) */
+  .batch-param-tables-mount .batch-param-table-hscroll {
     overflow-x: auto;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
-}
-.batch-param-tables-mount .batch-param-table-hscroll > .batch-fuel-preview-table,
-.batch-param-tables-mount .batch-param-table-hscroll > .batch-extra-fuel-preview-table {
+  }
+  .batch-param-tables-mount
+    .batch-param-table-hscroll
+    > .batch-fuel-preview-table,
+  .batch-param-tables-mount
+    .batch-param-table-hscroll
+    > .batch-extra-fuel-preview-table {
     width: max-content;
     min-width: 100%;
     margin-bottom: 0;
-}
+  }
 </style>
 
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('fuel_bp.fuel_batch_recalc_hub') }}" class="btn btn-secondary fs-5">Меню пакетного пересчета</a>
-        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left"></i> Модуль «Топливо»</a>
-    </div>
+  <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+    <a
+      href="{{ url_for('fuel_bp.fuel_batch_recalc_hub') }}"
+      class="btn btn-secondary fs-5"
+      >Меню пакетного пересчета</a
+    >
+    <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"
+      ><i class="bi bi-arrow-left"></i> Модуль «Топливо»</a
+    >
+  </div>
 
-    <div class="d-flex align-items-center mb-4">
-        <h2 class="mb-0 ms-3">Расчет топливных показателей на перспективный период</h2>
-    </div>
+  <div class="d-flex align-items-center mb-4">
+    <h2 class="mb-0 ms-3">
+      Расчет топливных показателей на перспективный период
+    </h2>
+  </div>
 
-    <div class="fuel-batch-recalc-content">
+  <div class="fuel-batch-recalc-content">
     <div class="station-info mb-5">
-        <div class="mb-4 p-3" style="background: transparent; border: none;">
+      <div class="mb-4 p-3" style="background: transparent; border: none">
+        <h4 class="card-title text-decoration-underline mb-3">
+          <strong
+            >Выбор параметров для расчета топливных показателей на перспективный
+            период</strong
+          >
+        </h4>
 
-            <h4 class="card-title text-decoration-underline mb-3"><strong>Выбор параметров для расчета топливных показателей на перспективный период</strong></h4>
-
-            <div class="mt-2 mb-3" id="filtersCollapse">
-                {% include 'fuel/batch_recalc/_batch_territorial_filters.html' %}
-            </div>
-
-            <div class="row g-3 mb-3 align-items-start">
-                <div class="col-12 col-md-6 col-xl-4">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold mb-1" for="batchYear">Год расчёта</label>
-                        <select class="form-select" id="batchYear">
-                            {% for y in years %}
-                            <option value="{{ y }}" {% if y == default_year %}selected{% endif %}>{{ y }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label fw-semibold mb-1" for="batchVariant">Вариант формулы</label>
-                        <input type="number" class="form-control" id="batchVariant" value="0">
-                    </div>
-                </div>
-                <div class="col-12 col-md-6 col-xl-4">
-                    <h6 class="text-muted text-uppercase small mb-2">2. Режим запуска</h6>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="batchCommitEach" checked>
-                        <label class="form-check-label" for="batchCommitEach">commit_each (коммит после каждой группы)</label>
-                    </div>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="batchFinalCommit" checked>
-                        <label class="form-check-label" for="batchFinalCommit">final_commit (один коммит в конце)</label>
-                    </div>
-                    <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="batchStrictFormulaValidation">
-                        <label class="form-check-label" for="batchStrictFormulaValidation">strict_formula_validation (строгая проверка формул)</label>
-                    </div>
-                    <div class="form-check mb-0">
-                        <input class="form-check-input" type="checkbox" id="batchStopOnError">
-                        <label class="form-check-label" for="batchStopOnError">stop_on_error (остановить при первой ошибке группы)</label>
-                    </div>
-                </div>
-                <div class="col-12 col-xl-4">
-                    <h6 class="text-muted text-uppercase small mb-2">3. Технические настройки</h6>
-                    <label class="form-label fw-semibold mb-1" for="batchChunk">chunk_size (размер порции)</label>
-                    <input type="number" class="form-control" id="batchChunk" value="200" min="1">
-                </div>
-            </div>
-            <button type="button" class="btn btn-primary btn-lg" id="btnBatchRun">
-                <span class="spinner-border spinner-border-sm d-none" id="batchSpinner" role="status"></span>
-                Запустить расчет топливных показателей
-            </button>
+        <div class="mt-2 mb-3" id="filtersCollapse">
+          {% include 'fuel/batch_recalc/_batch_territorial_filters.html' %}
         </div>
+
+        <div class="row g-3 mb-3 align-items-start">
+          <div class="col-12 col-md-6 col-xl-4">
+            <div class="mb-3">
+              <label class="form-label fw-semibold mb-1" for="batchYear"
+                >Год расчёта</label
+              >
+              <select class="form-select" id="batchYear">
+                {% for y in years %}
+                <option
+                  value="{{ y }}"
+                  {%
+                  if
+                  y=""
+                  ="default_year"
+                  %}selected{%
+                  endif
+                  %}
+                >
+                  {{ y }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-0">
+              <label class="form-label fw-semibold mb-1" for="batchVariant"
+                >Вариант формулы</label
+              >
+              <input
+                type="number"
+                class="form-control"
+                id="batchVariant"
+                value="0"
+              />
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-4">
+            <h6 class="text-muted text-uppercase small mb-2">
+              2. Режим запуска
+            </h6>
+            <div class="form-check mb-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="batchCommitEach"
+                checked
+              />
+              <label class="form-check-label" for="batchCommitEach"
+                >commit_each (коммит после каждой группы)</label
+              >
+            </div>
+            <div class="form-check mb-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="batchFinalCommit"
+                checked
+              />
+              <label class="form-check-label" for="batchFinalCommit"
+                >final_commit (один коммит в конце)</label
+              >
+            </div>
+            <div class="form-check mb-2">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="batchStrictFormulaValidation"
+              />
+              <label class="form-check-label" for="batchStrictFormulaValidation"
+                >strict_formula_validation (строгая проверка формул)</label
+              >
+            </div>
+            <div class="form-check mb-0">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="batchStopOnError"
+              />
+              <label class="form-check-label" for="batchStopOnError"
+                >stop_on_error (остановить при первой ошибке группы)</label
+              >
+            </div>
+          </div>
+          <div class="col-12 col-xl-4">
+            <h6 class="text-muted text-uppercase small mb-2">
+              3. Технические настройки
+            </h6>
+            <label class="form-label fw-semibold mb-1" for="batchChunk"
+              >chunk_size (размер порции)</label
+            >
+            <input
+              type="number"
+              class="form-control"
+              id="batchChunk"
+              value="200"
+              min="1"
+            />
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary btn-lg" id="btnBatchRun">
+          <span
+            class="spinner-border spinner-border-sm d-none"
+            id="batchSpinner"
+            role="status"
+          ></span>
+          Запустить расчет топливных показателей
+        </button>
+      </div>
     </div>
 
     <div class="station-info mb-5" id="batchResultTablesSection">
-        <div class="mb-3 p-3" style="background: transparent; border: none;">
-            <div id="batchParamTablesLoading" class="d-none mb-2 d-flex align-items-center gap-2 small text-muted">
-                <span class="spinner-border spinner-border-sm" id="batchTablesSpinner" role="status"></span>
-                <span>Загрузка таблиц…</span>
-            </div>
-            <div id="batchParamTablesError" class="alert alert-warning d-none small py-2"></div>
-            <div id="batchParamTablesMount" class="batch-param-tables-mount"></div>
+      <div class="mb-3 p-3" style="background: transparent; border: none">
+        <div
+          id="batchParamTablesLoading"
+          class="d-none mb-2 d-flex align-items-center gap-2 small text-muted"
+        >
+          <span
+            class="spinner-border spinner-border-sm"
+            id="batchTablesSpinner"
+            role="status"
+          ></span>
+          <span>Загрузка таблиц…</span>
         </div>
+        <div
+          id="batchParamTablesError"
+          class="alert alert-warning d-none small py-2"
+        ></div>
+        <div id="batchParamTablesMount" class="batch-param-tables-mount"></div>
+      </div>
     </div>
 
     <div class="station-info mb-5">
-        <div class="mb-3 p-3 fuel-batch-recalc-section" style="background: transparent; border: none;">
-            <h4 class="card-title text-decoration-underline mb-3"><strong>Что считает пакет и что записывается в БД</strong></h4>
-            <p class="text-muted mb-3">
-                Для каждой отобранной группы вызывается <code>EquipmentGroupFuelCalculationService.calculate_group_year</code>
-                (логика из Access-модуля). Запись в таблицах <code>gs_fue_equipment_group_fuel_param</code> и
-                <code>gs_fue_equipment_group_extra_fuel_param</code> по паре <strong>группа + год расчета</strong>.
-                На вход берутся уже сохраненные <strong>удельный расход</strong>
-                (строка с <strong>наибольшим</strong> <code>year_number</code> среди записей группы, у которых <code>year_number</code> ≤ году расчёта;
-                это <strong>не</strong> означает обязательный выбор «предыдущего календарного года»: если, например, для 2032 в таблице нет строки за 2031, подставится последняя имеющаяся по году — за 2030, 2025 и т.д.),
-                <strong>формула топлива</strong> <code>formtxt</code> (вариант из формы; версия БД — по умолчанию) и поля энергобаланса
-                из строки параметров топлива: <code>e</code> (Выработка эл.эн.), <code>q</code> (Отпуск тепл.эн.),
-                <code>qotr</code> (Отраб тепл.эн.), <code>turt</code> (Уд.расх тепл.эн.) — подписи как в шапках таблицы
-                «Рассчитанные параметры» / основные топливные параметры на этой странице.
-            </p>
-            <p class="text-muted mb-3">
-                Кратко: строка <strong>удельных показателей</strong> (<code>EquipmentGroupSpecificFuelConsumption</code>) выбирается как последняя запись с <code>year_number</code> ≤ году расчёта;
-                строка <strong>формулы</strong> (<code>EquipmentGroupFuelFormula</code>) — как последняя с <code>year_number</code> ≤ году расчёта для выбранного <code>variant_number</code> (с учётом версии БД).
-                Сам расчёт выполняется через <code>EquipmentGroupFuelCalculationService.calculate_group_year</code>.
-                По умолчанию в этом интерфейсе включён <code>commit_each</code> (коммит после каждой группы); ошибка по одной группе не останавливает остальные, пока не включён <code>stop_on_error</code>.
-            </p>
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col" style="width: 22%;">Этап</th>
-                            <th scope="col" style="width: 38%;">Что считается</th>
-                            <th scope="col" style="width: 40%;">Куда пишется (поля модели)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Энергетический блок</td>
-                            <td>
-                                <p class="mb-2">Берётся строка удельного расхода (<code>EquipmentGroupSpecificFuelConsumption</code>) с <strong>максимальным</strong> <code>year_number</code> среди строк этой группы, где <code>year_number</code> ≤ году расчёта
-                                (в коде — <code>ORDER BY year_number DESC LIMIT 1</code>; это не «всегда год расчёта минус один», а фактически последняя заведённая строка, не превышающая год расчёта). Поля из неё:
-                                <code>y</code> (удельная выработка эл.эн. на тепловом потреблении),
-                                <code>snk</code> (собственные нужды на выработку электроэнергии), <code>sntp</code> (эл.энергия на собственные нужды в теплофик.режиме),
-                                <code>bk</code> (удельный расход усл.топлива на отпуск эл.эн. в конд.режиме), <code>btp</code> (удельный расход усл.топлива на отпуск эл.эн. в теплофик.режиме) — те же подписи, что в шапке таблицы «Удельные показатели групп оборудования».
-                                И уже сохранённые поля энергобаланса из параметров топлива для этого года:
-                                <code>qotr</code> (Отраб тепл.эн.), <code>e</code> (Выработка эл.эн.), <code>q</code> (Отпуск тепл.эн.), <code>turt</code> (Уд.расх тепл.эн.).</p>
-                                <p class="mb-2">Далее по логике Access-модуля (<code>_calculate_energy_part</code>):</p>
-                                <ul class="mb-2 ps-3">
-                                    <li><code>ewtp</code> (Этц) = <code>qotr</code> (Отраб тепл.эн.)·<code>y</code> / 1000;</li>
-                                    <li><code>eotp</code> (Отпуск эл.эн.) = <code>ekotp</code> + <code>etpotp</code>, где <code>ekotp</code> = (<code>e</code> (Выработка эл.эн.) − <code>ewtp</code> (Этц))·(1 − <code>snk</code>/100), <code>etpotp</code> = <code>ewtp</code>·<code>sntp</code>;</li>
-                                    <li><code>eust</code> (Расх топ эл.эн.) = (<code>ekotp</code>·<code>bk</code> + <code>etpotp</code>·<code>btp</code>) / 1000 (<code>bk</code>, <code>btp</code> — из строки удельного расхода, см. подписи выше);</li>
-                                    <li><code>eurt</code> (Уд.расх эл.эн.) = (<code>eust</code> / <code>eotp</code>)·1000 (при <code>eotp</code> ≠ 0, иначе 0);</li>
-                                    <li><code>tust</code> (Расх топ тепл.эн.) = <code>q</code> (Отпуск тепл.эн.)·<code>turt</code> (Уд.расх тепл.эн.) / 1000;</li>
-                                    <li><code>b</code> (Расх топл.) = <code>eust</code> + <code>tust</code> — база для разложения по <code>formtxt</code> на следующем этапе.</li>
-                                </ul>
-                                <p class="mb-0 text-muted">Рассчитанные показатели в таблице на этой странице совпадают с колонками Этц, Отпуск эл.эн., Уд.расх эл.эн., Расх топ эл.эн., Расх топ тепл.эн., Расх топл.</p>
-                            </td>
-                            <td>
-                                <p class="mb-2"><code>EquipmentGroupFuelParam</code> (перезапись рассчитанными значениями) — в строку с тем же <code>year_number</code>, что и <strong>год расчёта</strong> в форме пакета (колонка <code>year_number</code> в <code>gs_fue_equipment_group_fuel_param</code>: одна запись на пару «группа оборудования + этот год»).</p>
-                                <ul class="mb-0 ps-3">
-                                    <li><code>ewtp</code> — Этц</li>
-                                    <li><code>eotp</code> — Отпуск эл.эн.</li>
-                                    <li><code>eust</code> — Расх топ эл.эн.</li>
-                                    <li><code>eurt</code> — Уд.расх эл.эн.</li>
-                                    <li><code>tust</code> — Расх топ тепл.эн.</li>
-                                    <li><code>b</code> — Расх топл. (сумма эл.эн. и тепла)</li>
-                                </ul>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Распределение по видам топлива</td>
-                            <td>
-                                <p class="mb-2">Перед разбором формулы вызываются <code>_reset_main_fuel_fields</code> и <code>_reset_extra_fuel_fields</code>: в ноль сбрасываются рассчитанные ранее колонки топлива на
-                                <code>EquipmentGroupFuelParam</code> (объединение наборов <code>TOPLS</code> и <code>UGLI</code> — газ/мазут/прочее и углеводородные агрегаты) и детальные поля «доп.&nbsp;углей»
-                                на <code>EquipmentGroupExtraFuelParam</code> (набор <code>UGLI1</code>).</p>
-                                <p class="mb-2">Строка <code>formtxt</code> берётся из подходящей записи <code>EquipmentGroupFuelFormula</code> (год ≤ году расчёта, нужный <code>variant_number</code>, учёт версии БД при выборе строки формулы). Разбор — <code>_parse_formtxt</code>:</p>
-                                <ul class="mb-2 ps-3">
-                                    <li>фрагменты через «<code>;</code>»;</li>
-                                    <li>вид <code>имя=доля</code> — доля в % от <code>b</code> (база по умолчанию — полный <code>b</code>; префикс «<code>/</code>» у имени — доля от <strong>остатка</strong> после предыдущих долей);</li>
-                                    <li>последний фрагмент <strong>без</strong> «<code>=</code>» — остаток <code>b</code> целиком на этот вид (резерв);</li>
-                                    <li>имена в нижнем регистре; если имя входит в <code>UGLI1</code>, значение пишется в <code>EquipmentGroupExtraFuelParam</code>, иначе — в поле с тем же именем на <code>EquipmentGroupFuelParam</code> (<code>_apply_parsed_values</code>).</li>
-                                </ul>
-                                <p class="mb-0 text-muted">На странице
-                                <a href="{{ url_for('fuel_bp.equipment_group_fuel_formulas_page') }}" target="_blank" rel="noopener">формул топлива</a> задаётся тот же <code>formtxt</code>, что участвует в расчёте.</p>
-                            </td>
-                            <td>
-                                <p class="mb-2"><code>EquipmentGroupFuelParam</code> — основные и углеводородные показатели (в т.ч. <code>gaz</code> (Газ), <code>mazut</code> (Мазут), <code>don</code> (Дон), <code>kuzn</code> (Кузбасс), …); подписи столбцов — как в шапке таблицы «Рассчитанные параметры» / основные топливные параметры на этой странице и на
-                                <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" target="_blank" rel="noopener">странице основных параметров</a>.</p>
-                                <p class="mb-0"><code>EquipmentGroupExtraFuelParam</code> — детальные поля «доп.&nbsp;углей» и прочие из набора формулы; для каждого <code>nazvl</code> в шапке таблицы «доп.&nbsp;параметры» на этой странице показывается наименование из справочника топлива (как на
-                                <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" target="_blank" rel="noopener">дополнительных топливных параметрах</a>).</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Агрегирование</td>
-                            <td>
-                                <p class="mb-2">После подстановки долей вызывается <code>_aggregate_main_fuels</code> по словарю <code>GROUPS</code> в коде сервиса: для каждого родителя (например <code>pech</code> (Печ), <code>kuzn</code> (Кузбасс), <code>gaz</code> (Газ), <code>mazut</code> (Мазут)) в соответствующее поле
-                                <code>EquipmentGroupFuelParam</code> записывается <strong>сумма</strong> дочерних полей с <code>EquipmentGroupExtraFuelParam</code> (например для <code>pech</code> — <code>intin</code> + <code>vork</code>; для <code>gaz</code> — <code>gaz_prir</code> + <code>gazpp</code> — подписи дочерних колонок в шапке таблицы доп.&nbsp;параметров).</p>
-                                <p class="mb-2">Поле <code>ugol</code> (Уголь) на основной записи задаётся отдельно: это сумма всех полей из набора <code>UGLI</code> на <code>EquipmentGroupFuelParam</code>, <strong>кроме</strong> самого <code>ugol</code> (все агрегаты углей и родственные колонки, участвующие в разложении).</p>
-                                <p class="mb-0 text-muted">Итог совпадает с колонками групп и «угля» на той же странице основных параметров, что и после ручного ввода формулы.</p>
-                            </td>
-                            <td>
-                                <p class="mb-2">Снова <code>EquipmentGroupFuelParam</code>: обновляются групповые поля по правилам <code>GROUPS</code> — <code>pech</code> (Печ), <code>kan</code> (Канск), <code>kuzn</code> (Кузбасс), <code>ural</code> (Урал), <code>gaz</code> (Газ), <code>mazut</code> (Мазут), … — и итог <code>ugol</code> (Уголь); подписи как в шапке основной таблицы на этой странице.</p>
-                                <p class="mb-0">Дочерние значения берутся из <code>EquipmentGroupExtraFuelParam</code> (колонки доп.&nbsp;параметров с теми же именами полей и подписями из справочника, см.
-                                <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" target="_blank" rel="noopener">доп.&nbsp;параметры</a>).</p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>Сохранение</td>
-                            <td>При стандартных настройках — один коммит транзакции в конце пакета (<code>final_commit</code>); при <code>commit_each</code> — после каждой группы.</td>
-                            <td>Те же строки БД для выбранного <code>year_number</code> (год в таблицах «Рассчитанные параметры» на этой странице; колонки годов совпадают с фильтром года на страницах основных и доп.&nbsp;топливных параметров)</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+      <div
+        class="mb-3 p-3 fuel-batch-recalc-section"
+        style="background: transparent; border: none"
+      >
+        <h4 class="card-title text-decoration-underline mb-3">
+          <strong>Что считает пакет и что записывается в БД</strong>
+        </h4>
+        <p class="text-muted mb-3">
+          Для каждой отобранной группы вызывается
+          <code>EquipmentGroupFuelCalculationService.calculate_group_year</code>
+          (логика из Access-модуля). Запись в таблицах
+          <code>gs_fue_equipment_group_fuel_param</code> и
+          <code>gs_fue_equipment_group_extra_fuel_param</code> по паре
+          <strong>группа + год расчета</strong>. На вход берутся уже сохраненные
+          <strong>удельный расход</strong> (строка с <strong>наибольшим</strong>
+          <code>year_number</code> среди записей группы, у которых
+          <code>year_number</code> ≤ году расчёта; это
+          <strong>не</strong> означает обязательный выбор «предыдущего
+          календарного года»: если, например, для 2032 в таблице нет строки за
+          2031, подставится последняя имеющаяся по году — за 2030, 2025 и т.д.),
+          <strong>формула топлива</strong> <code>formtxt</code> (вариант из
+          формы; версия БД — по умолчанию) и поля энергобаланса из строки
+          параметров топлива: <code>e</code> (Выработка ЭЭ, тыс.кВтч),
+          <code>q</code> (Отпуск ТЭ, тыс.Гкал), <code>qotr</code> (Тепловое потребление (отборов турбин), тыс.Гкал),
+          <code>turt</code> (УРУТ на отпуск ТЭ, кг у.т./⁠Гкал) — подписи как в шапках таблицы
+          «Рассчитанные параметры» / основные топливные параметры на этой
+          странице.
+        </p>
+        <p class="text-muted mb-3">
+          Кратко: строка
+          <strong>удельных показателей</strong>
+          (<code>EquipmentGroupSpecificFuelConsumption</code>) выбирается как
+          последняя запись с <code>year_number</code> ≤ году расчёта; строка
+          <strong>формулы</strong> (<code>EquipmentGroupFuelFormula</code>) —
+          как последняя с <code>year_number</code> ≤ году расчёта для выбранного
+          <code>variant_number</code> (с учётом версии БД). Сам расчёт
+          выполняется через
+          <code>EquipmentGroupFuelCalculationService.calculate_group_year</code
+          >. По умолчанию в этом интерфейсе включён
+          <code>commit_each</code> (коммит после каждой группы); ошибка по одной
+          группе не останавливает остальные, пока не включён
+          <code>stop_on_error</code>.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th scope="col" style="width: 22%">Этап</th>
+                <th scope="col" style="width: 38%">Что считается</th>
+                <th scope="col" style="width: 40%">
+                  Куда пишется (поля модели)
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Энергетический блок</td>
+                <td>
+                  <p class="mb-2">
+                    Берётся строка удельного расхода
+                    (<code>EquipmentGroupSpecificFuelConsumption</code>) с
+                    <strong>максимальным</strong> <code>year_number</code> среди
+                    строк этой группы, где <code>year_number</code> ≤ году
+                    расчёта (в коде —
+                    <code>ORDER BY year_number DESC LIMIT 1</code>; это не
+                    «всегда год расчёта минус один», а фактически последняя
+                    заведённая строка, не превышающая год расчёта). Поля из неё:
+                    <code>y</code> (удельная выработка ЭЭ на тепловом
+                    потреблении, кВтч/⁠Гкал), <code>snk</code> (СН на выработку ЭЭ, %), <code>sntp</code> (коэффициент отпуска ЭЭ
+                    в теплофикационном режиме),
+                    <code>bk</code> (УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч), <code>btp</code> (УРУТ на отпуск ЭЭ
+                    в теплофикационном режиме, г у.т./кВтч) — те же
+                    подписи, что в шапке таблицы «Удельные показатели групп
+                    оборудования». И уже сохранённые поля энергобаланса из
+                    параметров топлива для этого года: <code>qotr</code> (Тепловое потребление (отборов турбин), тыс.Гкал),
+                    <code>e</code> (Выработка ЭЭ, тыс.кВтч),
+                    <code>q</code> (Отпуск ТЭ, тыс.Гкал), <code>turt</code> (УРУТ на отпуск ТЭ, кг у.т./⁠Гкал).
+                  </p>
+                  <p class="mb-2">
+                    Далее по логике Access-модуля
+                    (<code>_calculate_energy_part</code>):
+                  </p>
+                  <ul class="mb-2 ps-3">
+                    <li>
+                      <code>ewtp</code> (Теплофикационная выработка ЭЭ, тыс.кВтч) = <code>qotr</code> (Тепловое потребление (отборов турбин), тыс.Гкал)·<code>y</code> / 1000;
+                    </li>
+                    <li>
+                      <code>eotp</code> (Отпуск ЭЭ, тыс.кВтч) = <code>ekotp</code> +
+                      <code>etpotp</code>, где <code>ekotp</code> = (<code
+                        >e</code
+                      >
+                      (Выработка ЭЭ, тыс.кВтч) − <code>ewtp</code> (Теплофикационная выработка ЭЭ, тыс.кВтч))·(1 −
+                      <code>snk</code>/100), <code>etpotp</code> =
+                      <code>ewtp</code>·<code>sntp</code>;
+                    </li>
+                    <li>
+                      <code>eust</code> (Расх топ эл.эн.) =
+                      (<code>ekotp</code>·<code>bk</code> +
+                      <code>etpotp</code>·<code>btp</code>) / 1000
+                      (<code>bk</code>, <code>btp</code> — из строки удельного
+                      расхода, см. подписи выше);
+                    </li>
+                    <li>
+                      <code>eurt</code> (УРУТ на отпуск ЭЭ, г у.т./кВтч) = (<code>eust</code> /
+                      <code>eotp</code>)·1000 (при <code>eotp</code> ≠ 0, иначе
+                      0);
+                    </li>
+                    <li>
+                      <code>tust</code> (Расход усл. топлива на ТЭ, тыс. т у.т.) =
+                      <code>q</code> (Отпуск ТЭ, тыс.Гкал)·<code>turt</code>
+                      (УРУТ на отпуск ТЭ, кг у.т./⁠Гкал) / 1000;
+                    </li>
+                    <li>
+                      <code>b</code> (Расход топлива, всего) =
+                      <code>eust</code> + <code>tust</code> — база для
+                      разложения по <code>formtxt</code> на следующем этапе.
+                    </li>
+                  </ul>
+                  <p class="mb-0 text-muted">
+                    Рассчитанные показатели в таблице на этой странице совпадают
+                    с колонками Теплофикационная выработка ЭЭ, тыс.кВтч, Отпуск ЭЭ, тыс.кВтч, УРУТ на отпуск ЭЭ, г у.т./кВтч, Расх топ
+                    эл.эн., Расход усл. топлива на ТЭ, тыс. т у.т., Расход топлива, всего.
+                  </p>
+                </td>
+                <td>
+                  <p class="mb-2">
+                    <code>EquipmentGroupFuelParam</code> (перезапись
+                    рассчитанными значениями) — в строку с тем же
+                    <code>year_number</code>, что и
+                    <strong>год расчёта</strong> в форме пакета (колонка
+                    <code>year_number</code> в
+                    <code>gs_fue_equipment_group_fuel_param</code>: одна запись
+                    на пару «группа оборудования + этот год»).
+                  </p>
+                  <ul class="mb-0 ps-3">
+                    <li><code>ewtp</code> — Теплофикационная выработка ЭЭ, тыс.кВтч</li>
+                    <li><code>eotp</code> — Отпуск ЭЭ, тыс.кВтч</li>
+                    <li><code>eust</code> — Расх топ эл.эн.</li>
+                    <li><code>eurt</code> — УРУТ на отпуск ЭЭ, г у.т./кВтч</li>
+                    <li><code>tust</code> — Расход усл. топлива на ТЭ, тыс. т у.т.</li>
+                    <li><code>b</code> — Расход топлива, всего</li>
+                  </ul>
+                </td>
+              </tr>
+              <tr>
+                <td>Распределение по видам топлива</td>
+                <td>
+                  <p class="mb-2">
+                    Перед разбором формулы вызываются
+                    <code>_reset_main_fuel_fields</code> и
+                    <code>_reset_extra_fuel_fields</code>: в ноль сбрасываются
+                    рассчитанные ранее колонки топлива на
+                    <code>EquipmentGroupFuelParam</code> (объединение наборов
+                    <code>TOPLS</code> и <code>UGLI</code> — газ/мазут/прочее и
+                    углеводородные агрегаты) и детальные поля «доп.&nbsp;углей»
+                    на <code>EquipmentGroupExtraFuelParam</code> (набор
+                    <code>UGLI1</code>).
+                  </p>
+                  <p class="mb-2">
+                    Строка <code>formtxt</code> берётся из подходящей записи
+                    <code>EquipmentGroupFuelFormula</code> (год ≤ году расчёта,
+                    нужный <code>variant_number</code>, учёт версии БД при
+                    выборе строки формулы). Разбор —
+                    <code>_parse_formtxt</code>:
+                  </p>
+                  <ul class="mb-2 ps-3">
+                    <li>фрагменты через «<code>;</code>»;</li>
+                    <li>
+                      вид <code>имя=доля</code> — доля в % от
+                      <code>b</code> (база по умолчанию — полный <code>b</code>;
+                      префикс «<code>/</code>» у имени — доля от
+                      <strong>остатка</strong> после предыдущих долей);
+                    </li>
+                    <li>
+                      последний фрагмент <strong>без</strong> «<code>=</code>» —
+                      остаток <code>b</code> целиком на этот вид (резерв);
+                    </li>
+                    <li>
+                      имена в нижнем регистре; если имя входит в
+                      <code>UGLI1</code>, значение пишется в
+                      <code>EquipmentGroupExtraFuelParam</code>, иначе — в поле
+                      с тем же именем на
+                      <code>EquipmentGroupFuelParam</code>
+                      (<code>_apply_parsed_values</code>).
+                    </li>
+                  </ul>
+                  <p class="mb-0 text-muted">
+                    На странице
+                    <a
+                      href="{{ url_for('fuel_bp.equipment_group_fuel_formulas_page') }}"
+                      target="_blank"
+                      rel="noopener"
+                      >формул топлива</a
+                    >
+                    задаётся тот же <code>formtxt</code>, что участвует в
+                    расчёте.
+                  </p>
+                </td>
+                <td>
+                  <p class="mb-2">
+                    <code>EquipmentGroupFuelParam</code> — основные и
+                    углеводородные показатели (в т.ч. <code>gaz</code> (Газ),
+                    <code>mazut</code> (Мазут), <code>don</code> (Дон),
+                    <code>kuzn</code> (Кузбасс), …); подписи столбцов — как в
+                    шапке таблицы «Рассчитанные параметры» / основные топливные
+                    параметры на этой странице и на
+                    <a
+                      href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}"
+                      target="_blank"
+                      rel="noopener"
+                      >странице основных параметров</a
+                    >.
+                  </p>
+                  <p class="mb-0">
+                    <code>EquipmentGroupExtraFuelParam</code> — детальные поля
+                    «доп.&nbsp;углей» и прочие из набора формулы; для каждого
+                    <code>nazvl</code> в шапке таблицы «доп.&nbsp;параметры» на
+                    этой странице показывается наименование из справочника
+                    топлива (как на странице редактирования
+                    <a
+                      href="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data') }}"
+                      target="_blank"
+                      rel="noopener"
+                      >топливных параметров</a
+                    >).
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td>Агрегирование</td>
+                <td>
+                  <p class="mb-2">
+                    После подстановки долей вызывается
+                    <code>_aggregate_main_fuels</code> по словарю
+                    <code>GROUPS</code> в коде сервиса: для каждого родителя
+                    (например <code>pech</code> (Печ),
+                    <code>kuzn</code> (Кузбасс), <code>gaz</code> (Газ),
+                    <code>mazut</code> (Мазут)) в соответствующее поле
+                    <code>EquipmentGroupFuelParam</code> записывается
+                    <strong>сумма</strong> дочерних полей с
+                    <code>EquipmentGroupExtraFuelParam</code> (например для
+                    <code>pech</code> — <code>intin</code> + <code>vork</code>;
+                    для <code>gaz</code> — <code>gaz_prir</code> +
+                    <code>gazpp</code> — подписи дочерних колонок в шапке
+                    таблицы доп.&nbsp;параметров).
+                  </p>
+                  <p class="mb-2">
+                    Поле <code>ugol</code> (Уголь) на основной записи задаётся
+                    отдельно: это сумма всех полей из набора
+                    <code>UGLI</code> на <code>EquipmentGroupFuelParam</code>,
+                    <strong>кроме</strong> самого <code>ugol</code> (все
+                    агрегаты углей и родственные колонки, участвующие в
+                    разложении).
+                  </p>
+                  <p class="mb-0 text-muted">
+                    Итог совпадает с колонками групп и «угля» на той же странице
+                    основных параметров, что и после ручного ввода формулы.
+                  </p>
+                </td>
+                <td>
+                  <p class="mb-2">
+                    Снова <code>EquipmentGroupFuelParam</code>: обновляются
+                    групповые поля по правилам <code>GROUPS</code> —
+                    <code>pech</code> (Печ), <code>kan</code> (Канск),
+                    <code>kuzn</code> (Кузбасс), <code>ural</code> (Урал),
+                    <code>gaz</code> (Газ), <code>mazut</code> (Мазут), … — и
+                    итог <code>ugol</code> (Уголь); подписи как в шапке основной
+                    таблицы на этой странице.
+                  </p>
+                  <p class="mb-0">
+                    Дочерние значения берутся из
+                    <code>EquipmentGroupExtraFuelParam</code> (колонки
+                    доп.&nbsp;параметров с теми же именами полей и подписями из
+                    справочника, см.
+                    <a
+                      href="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data') }}"
+                      target="_blank"
+                      rel="noopener"
+                      >редактирование топливных параметров</a
+                    >).
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td>Сохранение</td>
+                <td>
+                  При стандартных настройках — один коммит транзакции в конце
+                  пакета (<code>final_commit</code>); при
+                  <code>commit_each</code> — после каждой группы.
+                </td>
+                <td>
+                  Те же строки БД для выбранного <code>year_number</code> (год в
+                  таблицах «Рассчитанные параметры» на этой странице; колонки
+                  годов совпадают с фильтром года на страницах основных и
+                  доп.&nbsp;топливных параметров)
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </div>
     </div>
 
     <div class="station-info mb-5">
-        <div class="mb-3 p-3 fuel-batch-recalc-section" style="background: transparent; border: none;">
-            <h4 class="card-title text-decoration-underline mb-3"><strong>Сверка с карточкой группы и разделом «Расчёт»</strong></h4>
-            <ul class="mb-0 ps-3">
-                <li class="mb-2"><strong>Пакетный расчёт на этой странице</strong> обновляет строки <code>EquipmentGroupFuelParam</code> и <code>EquipmentGroupExtraFuelParam</code> для выбранного <strong>года расчёта</strong> по формуле <code>formtxt</code> и энергобалансу (см. таблицу выше). Он <strong>не</strong> подменяет вручную введённые на карточке группы поля удельных показателей <code>y</code>, <code>btp</code>, <code>sntp</code>, <code>bk</code>, <code>snk</code>, <code>k</code> — они задаются на странице
-                <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" target="_blank" rel="noopener">групп оборудования</a> / редактирование группы.</li>
-                <li class="mb-2">Расчётные поля удельных <code>*_calc</code> на карточке группы <strong>только для просмотра</strong>; их пересчёт выполняется сервисом после сохранения (по параметрам топлива и вводимым удельным), а не этим пакетом.</li>
-                <li class="mb-2"><strong>Цена</strong> (<code>xxx_c</code>) на карточке группы — производная от стоимости и количеств топлива; при сохранении карточки пересчитывается отдельным шагом, не пакетом на этой странице.</li>
-                <li class="mb-0">Предпросмотр таблиц ниже (основные / доп. параметры после расчёта) соответствует данным, которые пакет записал в БД для выбранных групп и года.</li>
-            </ul>
-        </div>
+      <div
+        class="mb-3 p-3 fuel-batch-recalc-section"
+        style="background: transparent; border: none"
+      >
+        <h4 class="card-title text-decoration-underline mb-3">
+          <strong>Сверка с карточкой группы и разделом «Расчёт»</strong>
+        </h4>
+        <ul class="mb-0 ps-3">
+          <li class="mb-2">
+            <strong>Пакетный расчёт на этой странице</strong> обновляет строки
+            <code>EquipmentGroupFuelParam</code> и
+            <code>EquipmentGroupExtraFuelParam</code> для выбранного
+            <strong>года расчёта</strong> по формуле <code>formtxt</code> и
+            энергобалансу (см. таблицу выше). Он <strong>не</strong> подменяет
+            вручную введённые на карточке группы поля удельных показателей
+            <code>y</code>, <code>btp</code>, <code>sntp</code>,
+            <code>bk</code>, <code>snk</code>, <code>k</code> — они задаются на
+            странице
+            <a
+              href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
+              target="_blank"
+              rel="noopener"
+              >групп оборудования</a
+            >
+            / редактирование группы.
+          </li>
+          <li class="mb-2">
+            Расчётные поля удельных <code>*_calc</code> на карточке группы
+            <strong>только для просмотра</strong>; их пересчёт выполняется
+            сервисом после сохранения (по параметрам топлива и вводимым
+            удельным), а не этим пакетом.
+          </li>
+          <li class="mb-2">
+            <strong>Цена</strong> (<code>xxx_c</code>) на карточке группы —
+            производная от стоимости и количеств топлива; при сохранении
+            карточки пересчитывается отдельным шагом, не пакетом на этой
+            странице.
+          </li>
+          <li class="mb-0">
+            Предпросмотр таблиц ниже (основные / доп. параметры после расчёта)
+            соответствует данным, которые пакет записал в БД для выбранных групп
+            и года.
+          </li>
+        </ul>
+      </div>
     </div>
 
     <!-- Результат (JSON) — в конце страницы -->
     <div class="station-info mb-5">
-        <div class="mb-3 p-3" style="background: transparent; border: none;">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                <h4 class="card-title text-decoration-underline mb-0"><strong>Результат (JSON)</strong></h4>
-                <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-outline-secondary" id="btnClearOut">Очистить</button>
-                    <button type="button" class="btn btn-outline-secondary" id="btnCopyJsonOut" title="Скопировать весь текст из поля ниже">Скопировать весь текст</button>
-                </div>
-            </div>
-            <pre id="jsonOut" class="mb-0 p-3 bg-light border rounded small" style="max-height: 420px; overflow: auto;"></pre>
+      <div class="mb-3 p-3" style="background: transparent; border: none">
+        <div
+          class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"
+        >
+          <h4 class="card-title text-decoration-underline mb-0">
+            <strong>Результат (JSON)</strong>
+          </h4>
+          <div class="d-flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              id="btnClearOut"
+            >
+              Очистить
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              id="btnCopyJsonOut"
+              title="Скопировать весь текст из поля ниже"
+            >
+              Скопировать весь текст
+            </button>
+          </div>
         </div>
+        <pre
+          id="jsonOut"
+          class="mb-0 p-3 bg-light border rounded small"
+          style="max-height: 420px; overflow: auto"
+        ></pre>
+      </div>
     </div>
-    </div>
+  </div>
 </div>
 
 <script id="filters-data" type="application/json">
-{{ territorial_filters_data | tojson | safe }}
+  {{ territorial_filters_data | tojson | safe }}
 </script>
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener("DOMContentLoaded", function () {
     window.stationFiltersInitialized = false;
-    if (typeof initializeStationFilters === 'function') {
-        initializeStationFilters();
+    if (typeof initializeStationFilters === "function") {
+      initializeStationFilters();
     }
-    if (typeof window.initFuelBatchFilterPersistence === 'function') {
-        window.initFuelBatchFilterPersistence();
+    if (typeof window.initFuelBatchFilterPersistence === "function") {
+      window.initFuelBatchFilterPersistence();
     }
-});
+  });
 </script>
 
 <script>
-(function () {
-    const csrf = {{ csrf_token|tojson }};
-    const epBatch = {{ url_for('fuel_bp.equipment_group_fuel_batch_calculation_batch_api')|tojson }};
-    const epResolve = {{ url_for('fuel_bp.equipment_group_fuel_batch_calculation_resolve_group_ids')|tojson }};
-    const epTables = {{ url_for('fuel_bp.equipment_group_fuel_batch_fuel_params_tables_api')|tojson }};
-    const currentDatabaseVersion = {{ {
-        'id': current_db_version.id if current_db_version else none,
-        'version_number': current_db_version.version_number if current_db_version else none,
-        'description': (current_db_version.description or '') if current_db_version else none,
-    } | tojson }};
-    const calculationWriteReference = {{ calculation_write_reference | tojson }};
+  (function () {
+      const csrf = {{ csrf_token|tojson }};
+      const epBatch = {{ url_for('fuel_bp.equipment_group_fuel_batch_calculation_batch_api')|tojson }};
+      const epResolve = {{ url_for('fuel_bp.equipment_group_fuel_batch_calculation_resolve_group_ids')|tojson }};
+      const epTables = {{ url_for('fuel_bp.equipment_group_fuel_batch_fuel_params_tables_api')|tojson }};
+      const currentDatabaseVersion = {{ {
+          'id': current_db_version.id if current_db_version else none,
+          'version_number': current_db_version.version_number if current_db_version else none,
+          'description': (current_db_version.description or '') if current_db_version else none,
+      } | tojson }};
+      const calculationWriteReference = {{ calculation_write_reference | tojson }};
 
-    const out = document.getElementById('jsonOut');
-    let lastEquipmentGroupIds = null;
+      const out = document.getElementById('jsonOut');
+      let lastEquipmentGroupIds = null;
 
-    function showJson(obj) {
-        const base = {
-            current_database_version: currentDatabaseVersion,
-            calculation_write_reference: calculationWriteReference
-        };
-        var merged;
-        if (obj !== undefined && obj !== null && typeof obj === 'object' && !Array.isArray(obj)) {
-            merged = Object.assign({}, base, obj);
-        } else {
-            merged = Object.assign({}, base, { body: obj });
-        }
-        out.textContent = JSON.stringify(merged, null, 2);
-    }
+      function showJson(obj) {
+          const base = {
+              current_database_version: currentDatabaseVersion,
+              calculation_write_reference: calculationWriteReference
+          };
+          var merged;
+          if (obj !== undefined && obj !== null && typeof obj === 'object' && !Array.isArray(obj)) {
+              merged = Object.assign({}, base, obj);
+          } else {
+              merged = Object.assign({}, base, { body: obj });
+          }
+          out.textContent = JSON.stringify(merged, null, 2);
+      }
 
-    async function postJson(url, body) {
-        const payload = Object.assign({}, body);
-        if (csrf) payload.csrf_token = csrf;
-        const r = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-CSRF-Token': csrf || ''
-            },
-            body: JSON.stringify(payload)
-        });
-        const data = await r.json().catch(() => ({}));
-        if (!r.ok) {
-            showJson({ http_status: r.status, response: data });
-            return null;
-        }
-        showJson(data);
-        return data;
-    }
+      async function postJson(url, body) {
+          const payload = Object.assign({}, body);
+          if (csrf) payload.csrf_token = csrf;
+          const r = await fetch(url, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'X-CSRF-Token': csrf || ''
+              },
+              body: JSON.stringify(payload)
+          });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) {
+              showJson({ http_status: r.status, response: data });
+              return null;
+          }
+          showJson(data);
+          return data;
+      }
 
-    function showTableErr(msg) {
-        const el = document.getElementById('batchParamTablesError');
-        if (!el) return;
-        el.textContent = msg || '';
-        el.classList.toggle('d-none', !msg);
-    }
+      function showTableErr(msg) {
+          const el = document.getElementById('batchParamTablesError');
+          if (!el) return;
+          el.textContent = msg || '';
+          el.classList.toggle('d-none', !msg);
+      }
 
-    function selectedPreviewYears() {
-        const y = parseBatchYear();
-        return y === null ? [] : [y];
-    }
+      function selectedPreviewYears() {
+          const y = parseBatchYear();
+          return y === null ? [] : [y];
+      }
 
-    async function loadParamTables() {
-        showTableErr('');
-        const mount = document.getElementById('batchParamTablesMount');
-        if (!mount) return;
-        if (!lastEquipmentGroupIds || !lastEquipmentGroupIds.length) {
-            showTableErr('Нет списка групп: сначала успешно выполните расчёт по кнопке выше.');
-            return;
-        }
-        const years = selectedPreviewYears();
-        if (!years.length) {
-            showTableErr('Выберите год расчёта в списке «Год расчета».');
-            return;
-        }
-        const loadingWrap = document.getElementById('batchParamTablesLoading');
-        if (loadingWrap) loadingWrap.classList.remove('d-none');
-        try {
-            const payload = {
-                equipment_group_ids: lastEquipmentGroupIds,
-                year_numbers: years,
-                rounding_digits: 1
-            };
-            if (csrf) payload.csrf_token = csrf;
-            const r = await fetch(epTables, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-CSRF-Token': csrf || ''
-                },
-                body: JSON.stringify(payload)
-            });
-            const data = await r.json().catch(() => ({}));
-            if (!r.ok || !data.ok) {
-                showTableErr((data && data.error) ? data.error : 'Не удалось загрузить таблицы.');
-                return;
-            }
-            mount.innerHTML = '';
-            (data.sections || []).forEach(function (sec) {
-                const wrap = document.createElement('div');
-                wrap.className = 'mb-5 pb-4 border-bottom';
-                const h = document.createElement('h5');
-                h.className = 'mb-3 fw-bold';
-                h.textContent = 'Год ' + sec.year;
-                wrap.appendChild(h);
-                const hMain = document.createElement('h6');
-                hMain.className = 'mt-2 mb-2';
-                hMain.textContent = 'Основные топливные параметры';
-                wrap.appendChild(hMain);
-                const divMain = document.createElement('div');
-                divMain.innerHTML = sec.html_fuel_params;
-                wrap.appendChild(divMain);
-                const hEx = document.createElement('h6');
-                hEx.className = 'mt-4 mb-2';
-                hEx.textContent = 'Дополнительные топливные параметры';
-                wrap.appendChild(hEx);
-                const divEx = document.createElement('div');
-                divEx.innerHTML = sec.html_extra_fuel_params;
-                wrap.appendChild(divEx);
-                mount.appendChild(wrap);
-            });
-        } finally {
-            if (loadingWrap) loadingWrap.classList.add('d-none');
-        }
-    }
+      async function loadParamTables() {
+          showTableErr('');
+          const mount = document.getElementById('batchParamTablesMount');
+          if (!mount) return;
+          if (!lastEquipmentGroupIds || !lastEquipmentGroupIds.length) {
+              showTableErr('Нет списка групп: сначала успешно выполните расчёт по кнопке выше.');
+              return;
+          }
+          const years = selectedPreviewYears();
+          if (!years.length) {
+              showTableErr('Выберите год расчёта в списке «Год расчета».');
+              return;
+          }
+          const loadingWrap = document.getElementById('batchParamTablesLoading');
+          if (loadingWrap) loadingWrap.classList.remove('d-none');
+          try {
+              const payload = {
+                  equipment_group_ids: lastEquipmentGroupIds,
+                  year_numbers: years,
+                  rounding_digits: 1
+              };
+              if (csrf) payload.csrf_token = csrf;
+              const r = await fetch(epTables, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json',
+                      'X-CSRF-Token': csrf || ''
+                  },
+                  body: JSON.stringify(payload)
+              });
+              const data = await r.json().catch(() => ({}));
+              if (!r.ok || !data.ok) {
+                  showTableErr((data && data.error) ? data.error : 'Не удалось загрузить таблицы.');
+                  return;
+              }
+              mount.innerHTML = '';
+              (data.sections || []).forEach(function (sec) {
+                  const wrap = document.createElement('div');
+                  wrap.className = 'mb-5 pb-4 border-bottom';
+                  const h = document.createElement('h5');
+                  h.className = 'mb-3 fw-bold';
+                  h.textContent = 'Год ' + sec.year;
+                  wrap.appendChild(h);
+                  const hMain = document.createElement('h6');
+                  hMain.className = 'mt-2 mb-2';
+                  hMain.textContent = 'Основные топливные параметры';
+                  wrap.appendChild(hMain);
+                  const divMain = document.createElement('div');
+                  divMain.innerHTML = sec.html_fuel_params;
+                  wrap.appendChild(divMain);
+                  const hEx = document.createElement('h6');
+                  hEx.className = 'mt-4 mb-2';
+                  hEx.textContent = 'Дополнительные топливные параметры';
+                  wrap.appendChild(hEx);
+                  const divEx = document.createElement('div');
+                  divEx.innerHTML = sec.html_extra_fuel_params;
+                  wrap.appendChild(divEx);
+                  mount.appendChild(wrap);
+              });
+          } finally {
+              if (loadingWrap) loadingWrap.classList.add('d-none');
+          }
+      }
 
-    function numOrEmpty(id) {
-        const el = document.getElementById(id);
-        if (!el) return null;
-        const v = el.value.trim();
-        if (v === '') return null;
-        const n = Number(v);
-        return Number.isFinite(n) ? n : null;
-    }
+      function numOrEmpty(id) {
+          const el = document.getElementById(id);
+          if (!el) return null;
+          const v = el.value.trim();
+          if (v === '') return null;
+          const n = Number(v);
+          return Number.isFinite(n) ? n : null;
+      }
 
-    function selValues(selId) {
-        const el = document.getElementById(selId);
-        if (!el) return [];
-        return Array.from(el.selectedOptions).map(function (o) { return parseInt(o.value, 10); })
-            .filter(function (n) { return !Number.isNaN(n); });
-    }
+      function selValues(selId) {
+          const el = document.getElementById(selId);
+          if (!el) return [];
+          return Array.from(el.selectedOptions).map(function (o) { return parseInt(o.value, 10); })
+              .filter(function (n) { return !Number.isNaN(n); });
+      }
 
-    function collectTerritorialFilters() {
-        const nameEl = document.getElementById('batchEquipmentGroupNameFilter');
-        const name = nameEl ? nameEl.value.trim() : '';
-        const o = {
-            energy_system_type_filter: selValues('energy_system_type'),
-            union_energy_system_filter: selValues('union_energy_system'),
-            regional_energy_system_filter: selValues('regional_energy_system'),
-            federal_district_filter: selValues('federal_district'),
-            regional_district_filter: selValues('regional_district')
-        };
-        if (name) {
-            o.equipment_group_name_filter = name;
-        }
-        return o;
-    }
+      function collectTerritorialFilters() {
+          const nameEl = document.getElementById('batchEquipmentGroupNameFilter');
+          const name = nameEl ? nameEl.value.trim() : '';
+          const o = {
+              energy_system_type_filter: selValues('energy_system_type'),
+              union_energy_system_filter: selValues('union_energy_system'),
+              regional_energy_system_filter: selValues('regional_energy_system'),
+              federal_district_filter: selValues('federal_district'),
+              regional_district_filter: selValues('regional_district')
+          };
+          if (name) {
+              o.equipment_group_name_filter = name;
+          }
+          return o;
+      }
 
-    function parseBatchYear() {
-        const el = document.getElementById('batchYear');
-        if (!el || el.value === '') {
-            return null;
-        }
-        const y = parseInt(el.value, 10);
-        return Number.isFinite(y) ? y : null;
-    }
+      function parseBatchYear() {
+          const el = document.getElementById('batchYear');
+          if (!el || el.value === '') {
+              return null;
+          }
+          const y = parseInt(el.value, 10);
+          return Number.isFinite(y) ? y : null;
+      }
 
-    function hasAnyTerritorialFilter(filters) {
-        if (filters.equipment_group_name_filter) {
-            return true;
-        }
-        return ['energy_system_type_filter', 'union_energy_system_filter', 'regional_energy_system_filter',
-            'federal_district_filter', 'regional_district_filter'].some(function (k) {
-            return (filters[k] && filters[k].length);
-        });
-    }
+      function hasAnyTerritorialFilter(filters) {
+          if (filters.equipment_group_name_filter) {
+              return true;
+          }
+          return ['energy_system_type_filter', 'union_energy_system_filter', 'regional_energy_system_filter',
+              'federal_district_filter', 'regional_district_filter'].some(function (k) {
+              return (filters[k] && filters[k].length);
+          });
+      }
 
-    var FUEL_BATCH_RECALC_STORAGE_KEY = 'arm_gs_fuel_batch_recalc_filters_v1';
-    var isRestoringFuelBatchFilters = false;
+      var FUEL_BATCH_RECALC_STORAGE_KEY = 'arm_gs_fuel_batch_recalc_filters_v1';
+      var isRestoringFuelBatchFilters = false;
 
-    function buildFuelBatchRecalcPersistState() {
-        return {
-            v: 1,
-            energy_system_type_filter: selValues('energy_system_type'),
-            union_energy_system_filter: selValues('union_energy_system'),
-            regional_energy_system_filter: selValues('regional_energy_system'),
-            federal_district_filter: selValues('federal_district'),
-            regional_district_filter: selValues('regional_district'),
-            equipment_group_name_filter: (function () {
-                var el = document.getElementById('batchEquipmentGroupNameFilter');
-                return el ? el.value.trim() : '';
-            })(),
-            batchFilterStartYear: (function () {
-                var el = document.getElementById('batchFilterStartYear');
-                return el ? el.value : '';
-            })(),
-            batchFilterEndYear: (function () {
-                var el = document.getElementById('batchFilterEndYear');
-                return el ? el.value : '';
-            })(),
-            batchYear: (function () {
-                var el = document.getElementById('batchYear');
-                return el ? el.value : '';
-            })(),
-            batchVariant: (function () {
-                var el = document.getElementById('batchVariant');
-                return el ? el.value : '';
-            })(),
-            batchChunk: (function () {
-                var el = document.getElementById('batchChunk');
-                return el ? el.value : '';
-            })(),
-            batchCommitEach: (function () {
-                var el = document.getElementById('batchCommitEach');
-                return el ? el.checked : false;
-            })(),
-            batchFinalCommit: (function () {
-                var el = document.getElementById('batchFinalCommit');
-                return el !== null ? el.checked : true;
-            })(),
-            batchStrictFormulaValidation: (function () {
-                var el = document.getElementById('batchStrictFormulaValidation');
-                return el ? el.checked : false;
-            })(),
-            batchStopOnError: (function () {
-                var el = document.getElementById('batchStopOnError');
-                return el ? el.checked : false;
-            })()
-        };
-    }
+      function buildFuelBatchRecalcPersistState() {
+          return {
+              v: 1,
+              energy_system_type_filter: selValues('energy_system_type'),
+              union_energy_system_filter: selValues('union_energy_system'),
+              regional_energy_system_filter: selValues('regional_energy_system'),
+              federal_district_filter: selValues('federal_district'),
+              regional_district_filter: selValues('regional_district'),
+              equipment_group_name_filter: (function () {
+                  var el = document.getElementById('batchEquipmentGroupNameFilter');
+                  return el ? el.value.trim() : '';
+              })(),
+              batchFilterStartYear: (function () {
+                  var el = document.getElementById('batchFilterStartYear');
+                  return el ? el.value : '';
+              })(),
+              batchFilterEndYear: (function () {
+                  var el = document.getElementById('batchFilterEndYear');
+                  return el ? el.value : '';
+              })(),
+              batchYear: (function () {
+                  var el = document.getElementById('batchYear');
+                  return el ? el.value : '';
+              })(),
+              batchVariant: (function () {
+                  var el = document.getElementById('batchVariant');
+                  return el ? el.value : '';
+              })(),
+              batchChunk: (function () {
+                  var el = document.getElementById('batchChunk');
+                  return el ? el.value : '';
+              })(),
+              batchCommitEach: (function () {
+                  var el = document.getElementById('batchCommitEach');
+                  return el ? el.checked : false;
+              })(),
+              batchFinalCommit: (function () {
+                  var el = document.getElementById('batchFinalCommit');
+                  return el !== null ? el.checked : true;
+              })(),
+              batchStrictFormulaValidation: (function () {
+                  var el = document.getElementById('batchStrictFormulaValidation');
+                  return el ? el.checked : false;
+              })(),
+              batchStopOnError: (function () {
+                  var el = document.getElementById('batchStopOnError');
+                  return el ? el.checked : false;
+              })()
+          };
+      }
 
-    function saveFuelBatchRecalcFilters() {
-        if (isRestoringFuelBatchFilters) return;
-        try {
-            localStorage.setItem(FUEL_BATCH_RECALC_STORAGE_KEY, JSON.stringify(buildFuelBatchRecalcPersistState()));
-        } catch (e) { /* quota / private mode */ }
-    }
+      function saveFuelBatchRecalcFilters() {
+          if (isRestoringFuelBatchFilters) return;
+          try {
+              localStorage.setItem(FUEL_BATCH_RECALC_STORAGE_KEY, JSON.stringify(buildFuelBatchRecalcPersistState()));
+          } catch (e) { /* quota / private mode */ }
+      }
 
-    function applyTerritorySelectValues(selectId, values) {
-        if (!values || !Array.isArray(values)) return;
-        var el = document.getElementById(selectId);
-        if (!el) return;
-        var want = new Set(values.map(function (x) { return parseInt(x, 10); }).filter(function (n) { return !Number.isNaN(n); }));
-        Array.from(el.options).forEach(function (o) {
-            o.selected = want.has(parseInt(o.value, 10));
-        });
-        if (typeof window.$ !== 'undefined' && window.$ && window.$(el).data('select2')) {
-            window.$(el).val(values.map(String)).trigger('change');
-        } else {
-            el.dispatchEvent(new Event('change', { bubbles: true }));
-            if (typeof el._multiDropdownRender === 'function') {
-                el._multiDropdownRender();
-            }
-        }
-    }
+      function applyTerritorySelectValues(selectId, values) {
+          if (!values || !Array.isArray(values)) return;
+          var el = document.getElementById(selectId);
+          if (!el) return;
+          var want = new Set(values.map(function (x) { return parseInt(x, 10); }).filter(function (n) { return !Number.isNaN(n); }));
+          Array.from(el.options).forEach(function (o) {
+              o.selected = want.has(parseInt(o.value, 10));
+          });
+          if (typeof window.$ !== 'undefined' && window.$ && window.$(el).data('select2')) {
+              window.$(el).val(values.map(String)).trigger('change');
+          } else {
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+              if (typeof el._multiDropdownRender === 'function') {
+                  el._multiDropdownRender();
+              }
+          }
+      }
 
-    function setSelectOptionByValue(selectId, val) {
-        var el = document.getElementById(selectId);
-        if (!el) return;
-        var str = val === null || val === undefined ? '' : String(val);
-        for (var i = 0; i < el.options.length; i++) {
-            if (String(el.options[i].value) === str) {
-                el.selectedIndex = i;
-                return;
-            }
-        }
-    }
+      function setSelectOptionByValue(selectId, val) {
+          var el = document.getElementById(selectId);
+          if (!el) return;
+          var str = val === null || val === undefined ? '' : String(val);
+          for (var i = 0; i < el.options.length; i++) {
+              if (String(el.options[i].value) === str) {
+                  el.selectedIndex = i;
+                  return;
+              }
+          }
+      }
 
-    function restoreFuelBatchRecalcFilters() {
-        var raw;
-        try {
-            raw = localStorage.getItem(FUEL_BATCH_RECALC_STORAGE_KEY);
-        } catch (e) { return; }
-        if (!raw) return;
-        var s;
-        try {
-            s = JSON.parse(raw);
-        } catch (e) { return; }
-        if (!s || s.v !== 1) return;
+      function restoreFuelBatchRecalcFilters() {
+          var raw;
+          try {
+              raw = localStorage.getItem(FUEL_BATCH_RECALC_STORAGE_KEY);
+          } catch (e) { return; }
+          if (!raw) return;
+          var s;
+          try {
+              s = JSON.parse(raw);
+          } catch (e) { return; }
+          if (!s || s.v !== 1) return;
 
-        isRestoringFuelBatchFilters = true;
-        try {
-            applyTerritorySelectValues('energy_system_type', s.energy_system_type_filter || []);
-            applyTerritorySelectValues('union_energy_system', s.union_energy_system_filter || []);
-            applyTerritorySelectValues('regional_energy_system', s.regional_energy_system_filter || []);
-            applyTerritorySelectValues('federal_district', s.federal_district_filter || []);
-            applyTerritorySelectValues('regional_district', s.regional_district_filter || []);
+          isRestoringFuelBatchFilters = true;
+          try {
+              applyTerritorySelectValues('energy_system_type', s.energy_system_type_filter || []);
+              applyTerritorySelectValues('union_energy_system', s.union_energy_system_filter || []);
+              applyTerritorySelectValues('regional_energy_system', s.regional_energy_system_filter || []);
+              applyTerritorySelectValues('federal_district', s.federal_district_filter || []);
+              applyTerritorySelectValues('regional_district', s.regional_district_filter || []);
 
-            var nameEl = document.getElementById('batchEquipmentGroupNameFilter');
-            if (nameEl && typeof s.equipment_group_name_filter === 'string') {
-                nameEl.value = s.equipment_group_name_filter;
-            }
+              var nameEl = document.getElementById('batchEquipmentGroupNameFilter');
+              if (nameEl && typeof s.equipment_group_name_filter === 'string') {
+                  nameEl.value = s.equipment_group_name_filter;
+              }
 
-            if (s.batchFilterStartYear !== undefined) {
-                setSelectOptionByValue('batchFilterStartYear', s.batchFilterStartYear);
-            }
-            if (s.batchFilterEndYear !== undefined) {
-                setSelectOptionByValue('batchFilterEndYear', s.batchFilterEndYear);
-            }
-            if (s.batchYear !== undefined && s.batchYear !== null && s.batchYear !== '') {
-                setSelectOptionByValue('batchYear', s.batchYear);
-            }
-            var bv = document.getElementById('batchVariant');
-            if (bv && s.batchVariant !== undefined && s.batchVariant !== null && s.batchVariant !== '') {
-                bv.value = s.batchVariant;
-            }
-            var bc = document.getElementById('batchChunk');
-            if (bc && s.batchChunk !== undefined && s.batchChunk !== null && s.batchChunk !== '') {
-                bc.value = s.batchChunk;
-            }
-            var bce = document.getElementById('batchCommitEach');
-            if (bce && typeof s.batchCommitEach === 'boolean') {
-                bce.checked = s.batchCommitEach;
-            }
-            var bfc = document.getElementById('batchFinalCommit');
-            if (bfc && typeof s.batchFinalCommit === 'boolean') {
-                bfc.checked = s.batchFinalCommit;
-            }
-            var bsfv = document.getElementById('batchStrictFormulaValidation');
-            if (bsfv && typeof s.batchStrictFormulaValidation === 'boolean') {
-                bsfv.checked = s.batchStrictFormulaValidation;
-            }
-            var bsoe = document.getElementById('batchStopOnError');
-            if (bsoe && typeof s.batchStopOnError === 'boolean') {
-                bsoe.checked = s.batchStopOnError;
-            }
-        } finally {
-            isRestoringFuelBatchFilters = false;
-        }
-    }
+              if (s.batchFilterStartYear !== undefined) {
+                  setSelectOptionByValue('batchFilterStartYear', s.batchFilterStartYear);
+              }
+              if (s.batchFilterEndYear !== undefined) {
+                  setSelectOptionByValue('batchFilterEndYear', s.batchFilterEndYear);
+              }
+              if (s.batchYear !== undefined && s.batchYear !== null && s.batchYear !== '') {
+                  setSelectOptionByValue('batchYear', s.batchYear);
+              }
+              var bv = document.getElementById('batchVariant');
+              if (bv && s.batchVariant !== undefined && s.batchVariant !== null && s.batchVariant !== '') {
+                  bv.value = s.batchVariant;
+              }
+              var bc = document.getElementById('batchChunk');
+              if (bc && s.batchChunk !== undefined && s.batchChunk !== null && s.batchChunk !== '') {
+                  bc.value = s.batchChunk;
+              }
+              var bce = document.getElementById('batchCommitEach');
+              if (bce && typeof s.batchCommitEach === 'boolean') {
+                  bce.checked = s.batchCommitEach;
+              }
+              var bfc = document.getElementById('batchFinalCommit');
+              if (bfc && typeof s.batchFinalCommit === 'boolean') {
+                  bfc.checked = s.batchFinalCommit;
+              }
+              var bsfv = document.getElementById('batchStrictFormulaValidation');
+              if (bsfv && typeof s.batchStrictFormulaValidation === 'boolean') {
+                  bsfv.checked = s.batchStrictFormulaValidation;
+              }
+              var bsoe = document.getElementById('batchStopOnError');
+              if (bsoe && typeof s.batchStopOnError === 'boolean') {
+                  bsoe.checked = s.batchStopOnError;
+              }
+          } finally {
+              isRestoringFuelBatchFilters = false;
+          }
+      }
 
-    function wireFuelBatchRecalcFilterPersistence() {
-        var root = document.querySelector('.fuel-batch-recalc-content');
-        if (root) {
-            root.addEventListener('change', function () {
-                saveFuelBatchRecalcFilters();
-            });
-        }
-        var nameEl = document.getElementById('batchEquipmentGroupNameFilter');
-        if (nameEl) {
-            var nameTimer = null;
-            nameEl.addEventListener('input', function () {
-                if (isRestoringFuelBatchFilters) return;
-                clearTimeout(nameTimer);
-                nameTimer = setTimeout(saveFuelBatchRecalcFilters, 300);
-            });
-        }
-    }
+      function wireFuelBatchRecalcFilterPersistence() {
+          var root = document.querySelector('.fuel-batch-recalc-content');
+          if (root) {
+              root.addEventListener('change', function () {
+                  saveFuelBatchRecalcFilters();
+              });
+          }
+          var nameEl = document.getElementById('batchEquipmentGroupNameFilter');
+          if (nameEl) {
+              var nameTimer = null;
+              nameEl.addEventListener('input', function () {
+                  if (isRestoringFuelBatchFilters) return;
+                  clearTimeout(nameTimer);
+                  nameTimer = setTimeout(saveFuelBatchRecalcFilters, 300);
+              });
+          }
+      }
 
-    function initFuelBatchFilterPersistence() {
-        restoreFuelBatchRecalcFilters();
-        wireFuelBatchRecalcFilterPersistence();
-    }
+      function initFuelBatchFilterPersistence() {
+          restoreFuelBatchRecalcFilters();
+          wireFuelBatchRecalcFilterPersistence();
+      }
 
-    window.initFuelBatchFilterPersistence = initFuelBatchFilterPersistence;
+      window.initFuelBatchFilterPersistence = initFuelBatchFilterPersistence;
 
-    function resetBatchFilters() {
-        var territoryIds = ['energy_system_type', 'union_energy_system', 'regional_energy_system', 'federal_district', 'regional_district'];
-        territoryIds.forEach(function (id) {
-            var el = document.getElementById(id);
-            if (!el) return;
-            Array.from(el.options).forEach(function (o) { o.selected = false; });
-            if (el.dataset) delete el.dataset.skipAutoselect;
-            if (typeof window.$ !== 'undefined' && window.$ && window.$(el).data('select2')) {
-                window.$(el).val(null).trigger('change');
-            } else {
-                el.dispatchEvent(new Event('change', { bubbles: true }));
-                if (typeof el._multiDropdownRender === 'function') {
-                    el._multiDropdownRender();
-                }
-            }
-        });
-        var nameEl = document.getElementById('batchEquipmentGroupNameFilter');
-        if (nameEl) nameEl.value = '';
-        var defWrap = document.getElementById('batchFilterYearDefaults');
-        var startY = defWrap && defWrap.getAttribute('data-start-year');
-        var endY = defWrap && defWrap.getAttribute('data-end-year');
-        function setYearSelectByValue(id, val) {
-            var sel = document.getElementById(id);
-            if (!sel || val === null || val === undefined || val === '') {
-                return;
-            }
-            var s = String(val);
-            for (var i = 0; i < sel.options.length; i++) {
-                if (String(sel.options[i].value) === s) {
-                    sel.selectedIndex = i;
-                    return;
-                }
-            }
-        }
-        setYearSelectByValue('batchFilterStartYear', startY);
-        setYearSelectByValue('batchFilterEndYear', endY);
-    }
+      function resetBatchFilters() {
+          var territoryIds = ['energy_system_type', 'union_energy_system', 'regional_energy_system', 'federal_district', 'regional_district'];
+          territoryIds.forEach(function (id) {
+              var el = document.getElementById(id);
+              if (!el) return;
+              Array.from(el.options).forEach(function (o) { o.selected = false; });
+              if (el.dataset) delete el.dataset.skipAutoselect;
+              if (typeof window.$ !== 'undefined' && window.$ && window.$(el).data('select2')) {
+                  window.$(el).val(null).trigger('change');
+              } else {
+                  el.dispatchEvent(new Event('change', { bubbles: true }));
+                  if (typeof el._multiDropdownRender === 'function') {
+                      el._multiDropdownRender();
+                  }
+              }
+          });
+          var nameEl = document.getElementById('batchEquipmentGroupNameFilter');
+          if (nameEl) nameEl.value = '';
+          var defWrap = document.getElementById('batchFilterYearDefaults');
+          var startY = defWrap && defWrap.getAttribute('data-start-year');
+          var endY = defWrap && defWrap.getAttribute('data-end-year');
+          function setYearSelectByValue(id, val) {
+              var sel = document.getElementById(id);
+              if (!sel || val === null || val === undefined || val === '') {
+                  return;
+              }
+              var s = String(val);
+              for (var i = 0; i < sel.options.length; i++) {
+                  if (String(sel.options[i].value) === s) {
+                      sel.selectedIndex = i;
+                      return;
+                  }
+              }
+          }
+          setYearSelectByValue('batchFilterStartYear', startY);
+          setYearSelectByValue('batchFilterEndYear', endY);
+      }
 
-    document.getElementById('btnBatchResetFilters').addEventListener('click', function () {
-        resetBatchFilters();
-        saveFuelBatchRecalcFilters();
-    });
+      document.getElementById('btnBatchResetFilters').addEventListener('click', function () {
+          resetBatchFilters();
+          saveFuelBatchRecalcFilters();
+      });
 
-    document.getElementById('btnClearOut').addEventListener('click', function () {
-        showJson({ message: 'Очищено.' });
-    });
+      document.getElementById('btnClearOut').addEventListener('click', function () {
+          showJson({ message: 'Очищено.' });
+      });
 
-    document.getElementById('btnCopyJsonOut').addEventListener('click', function () {
-        const btn = this;
-        const text = (out && out.textContent) ? out.textContent : '';
-        function fallbackCopy(str) {
-            try {
-                var ta = document.createElement('textarea');
-                ta.value = str;
-                ta.setAttribute('readonly', '');
-                ta.style.position = 'fixed';
-                ta.style.left = '-9999px';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-            } catch (e) { /* ignore */ }
-        }
-        function flashLabel() {
-            var prev = btn.textContent;
-            btn.textContent = 'Скопировано';
-            btn.disabled = true;
-            setTimeout(function () {
-                btn.textContent = prev;
-                btn.disabled = false;
-            }, 1500);
-        }
-        if (!text) {
-            return;
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(flashLabel).catch(function () {
-                fallbackCopy(text);
-                flashLabel();
-            });
-        } else {
-            fallbackCopy(text);
-            flashLabel();
-        }
-    });
+      document.getElementById('btnCopyJsonOut').addEventListener('click', function () {
+          const btn = this;
+          const text = (out && out.textContent) ? out.textContent : '';
+          function fallbackCopy(str) {
+              try {
+                  var ta = document.createElement('textarea');
+                  ta.value = str;
+                  ta.setAttribute('readonly', '');
+                  ta.style.position = 'fixed';
+                  ta.style.left = '-9999px';
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+              } catch (e) { /* ignore */ }
+          }
+          function flashLabel() {
+              var prev = btn.textContent;
+              btn.textContent = 'Скопировано';
+              btn.disabled = true;
+              setTimeout(function () {
+                  btn.textContent = prev;
+                  btn.disabled = false;
+              }, 1500);
+          }
+          if (!text) {
+              return;
+          }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(flashLabel).catch(function () {
+                  fallbackCopy(text);
+                  flashLabel();
+              });
+          } else {
+              fallbackCopy(text);
+              flashLabel();
+          }
+      });
 
-    document.getElementById('btnBatchResolve').addEventListener('click', async function () {
-        const btn = this;
-        btn.disabled = true;
-        try {
-            const y = parseBatchYear();
-            if (y === null) {
-                showJson({ ok: false, error: 'Выберите год расчета в списке.' });
-                return;
-            }
-            const tf = collectTerritorialFilters();
-            if (!hasAnyTerritorialFilter(tf)) {
-                showJson({ ok: false, error: 'Задайте фильтр территории или часть названия группы оборудования.' });
-                return;
-            }
-            const body = Object.assign({
-                year_number: y,
-                filter_start_year: numOrEmpty('batchFilterStartYear'),
-                filter_end_year: numOrEmpty('batchFilterEndYear')
-            }, tf);
-            const res = await postJson(epResolve, body);
-            if (res && res.ok && res.equipment_group_ids && res.equipment_group_ids.length) {
-                lastEquipmentGroupIds = res.equipment_group_ids;
-            }
-        } finally {
-            btn.disabled = false;
-        }
-    });
+      document.getElementById('btnBatchResolve').addEventListener('click', async function () {
+          const btn = this;
+          btn.disabled = true;
+          try {
+              const y = parseBatchYear();
+              if (y === null) {
+                  showJson({ ok: false, error: 'Выберите год расчета в списке.' });
+                  return;
+              }
+              const tf = collectTerritorialFilters();
+              if (!hasAnyTerritorialFilter(tf)) {
+                  showJson({ ok: false, error: 'Задайте фильтр территории или часть названия группы оборудования.' });
+                  return;
+              }
+              const body = Object.assign({
+                  year_number: y,
+                  filter_start_year: numOrEmpty('batchFilterStartYear'),
+                  filter_end_year: numOrEmpty('batchFilterEndYear')
+              }, tf);
+              const res = await postJson(epResolve, body);
+              if (res && res.ok && res.equipment_group_ids && res.equipment_group_ids.length) {
+                  lastEquipmentGroupIds = res.equipment_group_ids;
+              }
+          } finally {
+              btn.disabled = false;
+          }
+      });
 
-    document.getElementById('btnBatchRun').addEventListener('click', async function () {
-        const btn = this;
-        const sp = document.getElementById('batchSpinner');
-        if (sp) sp.classList.remove('d-none');
-        btn.disabled = true;
-        try {
-            const y = parseBatchYear();
-            if (y === null) {
-                showJson({ ok: false, error: 'Выберите год расчета в списке.' });
-                return;
-            }
-            const tf = collectTerritorialFilters();
-            if (!hasAnyTerritorialFilter(tf)) {
-                showJson({ ok: false, error: 'Задайте фильтр территории или часть названия группы оборудования.' });
-                return;
-            }
-            const elCommit = document.getElementById('batchCommitEach');
-            const elFinal = document.getElementById('batchFinalCommit');
-            const elStrict = document.getElementById('batchStrictFormulaValidation');
-            const elStop = document.getElementById('batchStopOnError');
-            const base = Object.assign({
-                year_number: y,
-                variant_number: Number(document.getElementById('batchVariant').value || 0),
-                chunk_size: Number(document.getElementById('batchChunk').value || 200),
-                commit_each: !!(elCommit && elCommit.checked),
-                final_commit: !!(elFinal && elFinal.checked),
-                strict_formula_validation: !!(elStrict && elStrict.checked),
-                stop_on_error: !!(elStop && elStop.checked),
-                filter_start_year: numOrEmpty('batchFilterStartYear'),
-                filter_end_year: numOrEmpty('batchFilterEndYear')
-            }, tf);
-            const res = await postJson(epBatch, base);
-            if (res && res.ok && res.equipment_group_ids && res.equipment_group_ids.length) {
-                lastEquipmentGroupIds = (res.batch && res.batch.ok_ids && res.batch.ok_ids.length)
-                    ? res.batch.ok_ids
-                    : res.equipment_group_ids;
-                const mountTab = document.getElementById('batchParamTablesMount');
-                if (mountTab) mountTab.innerHTML = '';
-                showTableErr('');
-                try {
-                    await loadParamTables();
-                } catch (e) {
-                    showTableErr((e && e.message) ? String(e.message) : 'Не удалось загрузить таблицы.');
-                }
-            }
-        } finally {
-            if (sp) sp.classList.add('d-none');
-            btn.disabled = false;
-        }
-    });
+      document.getElementById('btnBatchRun').addEventListener('click', async function () {
+          const btn = this;
+          const sp = document.getElementById('batchSpinner');
+          if (sp) sp.classList.remove('d-none');
+          btn.disabled = true;
+          try {
+              const y = parseBatchYear();
+              if (y === null) {
+                  showJson({ ok: false, error: 'Выберите год расчета в списке.' });
+                  return;
+              }
+              const tf = collectTerritorialFilters();
+              if (!hasAnyTerritorialFilter(tf)) {
+                  showJson({ ok: false, error: 'Задайте фильтр территории или часть названия группы оборудования.' });
+                  return;
+              }
+              const elCommit = document.getElementById('batchCommitEach');
+              const elFinal = document.getElementById('batchFinalCommit');
+              const elStrict = document.getElementById('batchStrictFormulaValidation');
+              const elStop = document.getElementById('batchStopOnError');
+              const base = Object.assign({
+                  year_number: y,
+                  variant_number: Number(document.getElementById('batchVariant').value || 0),
+                  chunk_size: Number(document.getElementById('batchChunk').value || 200),
+                  commit_each: !!(elCommit && elCommit.checked),
+                  final_commit: !!(elFinal && elFinal.checked),
+                  strict_formula_validation: !!(elStrict && elStrict.checked),
+                  stop_on_error: !!(elStop && elStop.checked),
+                  filter_start_year: numOrEmpty('batchFilterStartYear'),
+                  filter_end_year: numOrEmpty('batchFilterEndYear')
+              }, tf);
+              const res = await postJson(epBatch, base);
+              if (res && res.ok && res.equipment_group_ids && res.equipment_group_ids.length) {
+                  lastEquipmentGroupIds = (res.batch && res.batch.ok_ids && res.batch.ok_ids.length)
+                      ? res.batch.ok_ids
+                      : res.equipment_group_ids;
+                  const mountTab = document.getElementById('batchParamTablesMount');
+                  if (mountTab) mountTab.innerHTML = '';
+                  showTableErr('');
+                  try {
+                      await loadParamTables();
+                  } catch (e) {
+                      showTableErr((e && e.message) ? String(e.message) : 'Не удалось загрузить таблицы.');
+                  }
+              }
+          } finally {
+              if (sp) sp.classList.add('d-none');
+              btn.disabled = false;
+          }
+      });
 
-    showJson({ message: 'Ожидание запуска…' });
-})();
+      showJson({ message: 'Ожидание запуска…' });
+  })();
 </script>
 
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

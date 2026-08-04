@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-StationEnergyGeneration — выработка электроэнергии электростанцией (млн кВт·ч).
+StationEnergyGeneration — выработка электроэнергии электростанцией (млн кВтч).
 
 Данные хранятся по годам и, при необходимости, по месяцам:
 - year_number — календарный год (ссылка на Year.number вместе с database_version_id);
@@ -75,7 +75,7 @@ class StationEnergyGeneration(db.Model, AuditMixin):
     )
     station = db.relationship("Station", back_populates="station_energy_generations")
 
-    # Выработка, млн кВт·ч
+    # Выработка, млн кВтч
     electricity_generation = db.Column(Numeric(25, 16))
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

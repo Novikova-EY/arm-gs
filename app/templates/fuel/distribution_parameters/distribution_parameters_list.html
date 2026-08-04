@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
 
 {% block title %}Параметры распределения{% endblock %}
@@ -15,31 +15,12 @@
 .distribution-params-table thead th {
     font-size: 1rem;
 }
-.distribution-params-table .form-control-lg,
-.distribution-params-table .form-select-lg {
-    font-size: 1.1rem;
-    min-height: calc(1.5em + 1rem + 2px);
-    padding-top: 0.35rem;
-    padding-bottom: 0.35rem;
-}
-/* Одинаковая ширина столбцов «Базовый год» и «Расчитываемый год» */
+/* Одинаковая ширина столбцов «Базовый год» и «Расчетный год» */
 .distribution-params-table th.dp-col-year,
 .distribution-params-table td.dp-col-year {
     width: 7.25rem;
     min-width: 7.25rem;
     box-sizing: border-box;
-}
-.distribution-params-table td.dp-col-year .form-select {
-    width: 100%;
-    max-width: 100%;
-}
-/* Тот же размер шрифта и высота, что у select ОЭС в первой колонке (form-select-lg). */
-.distribution-params-table td.dp-col-year .form-select.form-select-lg {
-    font-size: 1.1rem;
-    line-height: 1.5;
-    min-height: calc(1.5em + 1rem + 2px);
-    padding-top: 0.35rem;
-    padding-bottom: 0.35rem;
 }
 /* ОЭС: ширина по самому длинному содержимому (select + кнопка «×»), без обрезки текста */
 .distribution-params-table th.dp-col-ues,
@@ -54,6 +35,45 @@
     min-width: 12rem;
     width: auto;
     max-width: none;
+}
+/* Редактируемые ячейки: как на /fuel/stations_equipment_group_fuel_params */
+.distribution-params-table.distribution-params-edit-table tbody td {
+    font-size: 1.1rem;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
+.distribution-params-table.distribution-params-edit-table tbody td:has(> .fuel-param-input),
+.distribution-params-table.distribution-params-edit-table tbody td.dp-col-ues:has(.fuel-param-input) {
+    padding: 0 !important;
+    vertical-align: middle;
+}
+.distribution-params-table.distribution-params-edit-table tbody td.dp-col-ues:has(.fuel-param-input) > .d-flex {
+    min-height: 2.5rem;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
+}
+.distribution-params-table.distribution-params-edit-table .fuel-param-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.5rem;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.2rem 0.35rem;
+    font-size: 1.1rem !important;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    background-color: transparent;
+    background-clip: padding-box;
+}
+.distribution-params-table.distribution-params-edit-table .fuel-param-input:focus {
+    box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+    outline: 0;
+    z-index: 1;
+    position: relative;
 }
 /* Фильтры в шапке: как на station_list — dropdown с .filter-button */
 .distribution-params-table .filter-button {
@@ -82,6 +102,43 @@
 .dp-row-delete-existing {
     display: none !important;
 }
+/* Импорт/Экспорт + кнопки действий: остаются видимыми при скролле */
+.distribution-sticky-controls {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background-color: var(--bs-body-bg, #fff);
+    padding-top: 0.25rem;
+    /* Сохраняет mb-2 последней строки кнопок внутри панели (как на edit_data) */
+    display: flow-root;
+}
+.distribution-sticky-controls .power-demand-import-export-collapse,
+.distribution-sticky-controls #distributionImportExportCollapse {
+    overflow: visible !important;
+}
+/* overflow на .table-responsive ломает sticky у thead относительно .page-table-scroll */
+#distributionParamsTableContainer.table-responsive {
+    overflow: visible !important;
+}
+/* Трёхстрочная шапка липнет под панелью кнопок/импорта */
+#distributionParamsTableContainer .distribution-params-table thead tr:nth-child(1) th {
+    top: calc(var(--distribution-controls-sticky-height, 0px) + var(--sticky-thead-row1-top, 0px));
+    z-index: 50;
+}
+#distributionParamsTableContainer .distribution-params-table thead tr:nth-child(2) th {
+    top: calc(
+        var(--distribution-controls-sticky-height, 0px) +
+            var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px))
+    );
+    z-index: 49;
+}
+#distributionParamsTableContainer .distribution-params-table thead tr:nth-child(3) th {
+    top: calc(
+        var(--distribution-controls-sticky-height, 0px) +
+            var(--sticky-thead-row3-top, var(--sticky-thead-row3-offset, 0px))
+    );
+    z-index: 48;
+}
 </style>
 
 {% set dp_new_placeholder = '__NEW__' %}
@@ -89,83 +146,75 @@
 {# suffix: id существующей строки (int) или dp_new_placeholder для шаблона новой строки #}
 {% macro distribution_param_edit_row(suffix, row=None) %}
             <tr class="text-center align-middle{% if row is none %} dp-js-new-row{% endif %}" data-dp-row-suffix="{{ suffix }}"{% if row is none %} data-dp-new-row="1"{% endif %}>
-                <td class="text-start p-2 dp-col-ues">
-                    <div class="d-flex align-items-center flex-nowrap gap-1">
+                <td class="text-center dp-col-ues{% if row is not none %} px-2{% endif %}">
+                    <div class="d-flex align-items-center justify-content-center flex-nowrap gap-1">
                     {% if row is not none %}
                     <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 dp-row-delete-existing" data-dp-delete-row-id="{{ row.id }}" title="Пометить строку на удаление">×</button>
-                    {% endif %}
-                    {% if row is none %}
+                    <span class="text-break" title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} — {{ row.union_energy_system.name|e }}{% endif %}">{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% elif row.id_union_energy_system %}ОЭС #{{ row.id_union_energy_system }}{% else %}—{% endif %}</span>
+                    <input type="hidden" name="dp_{{ suffix }}_id_union_energy_system" value="{% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}">
+                    {% else %}
                     <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0 dp-remove-new-row" title="Удалить добавленную строку">×</button>
-                    {% endif %}
-                    <select name="dp_{{ suffix }}_id_union_energy_system" class="form-select form-select-lg" aria-label="ОЭС (name)"
-                            {% if row %}title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} — {{ row.union_energy_system.name|e }}{% endif %}"{% endif %}>
-                        <option value="" {% if (row and not row.id_union_energy_system) or (row is none and not prefill_union_energy_system_id) %}selected{% endif %}>—</option>
-                        {% if row and row.id_union_energy_system %}
-                        {% set ues_choice_ids = union_energy_system_list|map(attribute='id')|list %}
-                        {% if row.id_union_energy_system not in ues_choice_ids %}
-                        <option value="{{ row.id_union_energy_system }}" selected>{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% else %}ОЭС id={{ row.id_union_energy_system }}{% endif %}</option>
-                        {% endif %}
-                        {% endif %}
+                    <select name="dp_{{ suffix }}_id_union_energy_system" class="form-select form-select-lg fuel-param-input" aria-label="ОЭС (name)">
+                        <option value="" {% if not prefill_union_energy_system_id %}selected{% endif %}>—</option>
                         {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
-                        <option value="{{ ues.id }}" {% if row and row.id_union_energy_system == ues.id %}selected{% elif row is none and prefill_union_energy_system_id is not none and prefill_union_energy_system_id == ues.id %}selected{% endif %}>{{ ues.name }}</option>
+                        <option value="{{ ues.id }}" {% if prefill_union_energy_system_id is not none and prefill_union_energy_system_id == ues.id %}selected{% endif %}>{{ ues.name }}</option>
                         {% endfor %}
                         {% for ues in union_energy_system_list if ues.name|lower != 'не указано' %}
-                        <option value="{{ ues.id }}" {% if row and row.id_union_energy_system == ues.id %}selected{% elif row is none and prefill_union_energy_system_id is not none and prefill_union_energy_system_id == ues.id %}selected{% endif %}>{{ ues.name }}</option>
+                        <option value="{{ ues.id }}" {% if prefill_union_energy_system_id is not none and prefill_union_energy_system_id == ues.id %}selected{% endif %}>{{ ues.name }}</option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                     </div>
                 </td>
-                <td class="p-2 dp-col-year">
-                    <select name="dp_{{ suffix }}_id_base_year" class="form-select form-select-lg" aria-label="Базовый год (byear)"
-                            {% if row %}title="В БД: id_base_year={% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}{% if row.base_year %} — номер {{ row.base_year.number }}{% endif %}"{% endif %}>
-                        <option value="" {% if not row or not row.id_base_year %}selected{% endif %}>—</option>
-                        {% if row and row.id_base_year %}
-                        {% set year_edit_ids = year_list_for_edit|map(attribute='id')|list %}
-                        {% if row.id_base_year not in year_edit_ids %}
-                        <option value="{{ row.id_base_year }}" selected>{% if row.base_year %}{{ row.base_year.number }}{% else %}Год id={{ row.id_base_year }}{% endif %}</option>
-                        {% endif %}
-                        {% endif %}
+                <td class="dp-col-year{% if row is not none %} px-2{% endif %}">
+                    {% if row is not none %}
+                    <span title="В БД: id_base_year={% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}{% if row.base_year %} — номер {{ row.base_year.number }}{% endif %}">{% if row.base_year %}{{ row.base_year.number }}{% elif row.id_base_year %}#{{ row.id_base_year }}{% else %}—{% endif %}</span>
+                    <input type="hidden" name="dp_{{ suffix }}_id_base_year" value="{% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}">
+                    {% else %}
+                    <select name="dp_{{ suffix }}_id_base_year" class="form-select form-select-lg text-center fuel-param-input" aria-label="Базовый год (byear)">
+                        <option value="" selected>—</option>
                         {% for y in year_list_for_edit %}
-                        <option value="{{ y.id }}" {% if row and row.base_year and row.base_year.id == y.id %}selected{% endif %}>{{ y.number }}</option>
+                        <option value="{{ y.id }}">{{ y.number }}</option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                 </td>
-                <td class="p-2 dp-col-year">
-                    <select name="dp_{{ suffix }}_id_year" class="form-select form-select-lg" required aria-label="Расчитываемый год (year)"
-                            {% if row %}title="В БД: id_year={{ row.id_year }}{% if row.year %} — номер {{ row.year.number }}{% endif %}"{% endif %}>
-                        {% if row and row.id_year %}
-                        {% set year_edit_ids_y = year_list_for_edit|map(attribute='id')|list %}
-                        {% if row.id_year not in year_edit_ids_y %}
-                        <option value="{{ row.id_year }}" selected>{% if row.year %}{{ row.year.number }}{% else %}Год id={{ row.id_year }}{% endif %}</option>
-                        {% endif %}
-                        {% endif %}
+                <td class="dp-col-year{% if row is not none %} px-2{% endif %}">
+                    {% if row is not none %}
+                    <span title="В БД: id_year={{ row.id_year }}{% if row.year %} — номер {{ row.year.number }}{% endif %}">{% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{ row.id_year }}{% else %}—{% endif %}</span>
+                    <input type="hidden" name="dp_{{ suffix }}_id_year" value="{{ row.id_year }}">
+                    {% else %}
+                    <select name="dp_{{ suffix }}_id_year" class="form-select form-select-lg text-center fuel-param-input" required aria-label="Расчетный год (year)">
                         {% for y in year_list_for_edit %}
-                        <option value="{{ y.id }}" {% if row and row.year and row.year.id == y.id %}selected{% elif row is none and loop.first %}selected{% endif %}>{{ y.number }}</option>
+                        <option value="{{ y.id }}" {% if loop.first %}selected{% endif %}>{{ y.number }}</option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                 </td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_e" value="{% if row and row.e is not none %}{{ row.e|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.e is not none %}title="{{ (row.e|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_kplus" value="{% if row and row.kplus is not none %}{{ row.kplus|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.kplus is not none %}title="{{ (row.kplus|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_kmin" value="{% if row and row.kmin is not none %}{{ row.kmin|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.kmin is not none %}title="{{ (row.kmin|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_k" value="{% if row and row.k is not none %}{{ row.k|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.k is not none %}title="{{ (row.k|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_kn" value="{% if row and row.kn is not none %}{{ row.kn|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.kn is not none %}title="{{ (row.kn|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_knps" value="{% if row and row.knps is not none %}{{ row.knps|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.knps is not none %}title="{{ (row.knps|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_kngt" value="{% if row and row.kngt is not none %}{{ row.kngt|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.kngt is not none %}title="{{ (row.kngt|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_knpg" value="{% if row and row.knpg is not none %}{{ row.knpg|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.knpg is not none %}title="{{ (row.knpg|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_hnps" value="{% if row and row.hnps is not none %}{{ row.hnps|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.hnps is not none %}title="{{ (row.hnps|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_hngt" value="{% if row and row.hngt is not none %}{{ row.hngt|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.hngt is not none %}title="{{ (row.hngt|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_hnpg" value="{% if row and row.hnpg is not none %}{{ row.hnpg|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.hnpg is not none %}title="{{ (row.hnpg|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_doptim" value="{% if row and row.doptim is not none %}{{ row.doptim|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.doptim is not none %}title="{{ (row.doptim|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2">
-                    <select name="dp_{{ suffix }}_lim" class="form-select form-select-lg text-center" aria-label="Наличие ограничений по выработке для РЭС (lim)"
-                            {% if row and row.lim is not none %}title="В БД: lim={{ row.lim }}"{% endif %}>
-                        <option value="" {% if row is none or row.lim is none or (row.lim is not none and row.lim not in (0, 1)) %}selected{% endif %}>—</option>
-                        <option value="0" {% if row and row.lim == 0 %}selected{% endif %}>нет</option>
-                        <option value="1" {% if row and row.lim == 1 %}selected{% endif %}>да</option>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_e" value="{% if row and row.e is not none %}{{ row.e|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.e is not none %}title="{{ (row.e|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_doptim" value="{% if row and row.doptim is not none %}{{ row.doptim|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.doptim is not none %}title="{{ (row.doptim|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_k" value="{% if row and row.k is not none %}{{ row.k|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.k is not none %}title="{{ (row.k|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_kn" value="{% if row and row.kn is not none %}{{ row.kn|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.kn is not none %}title="{{ (row.kn|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_knps" value="{% if row and row.knps is not none %}{{ row.knps|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.knps is not none %}title="{{ (row.knps|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_kngt" value="{% if row and row.kngt is not none %}{{ row.kngt|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.kngt is not none %}title="{{ (row.kngt|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_knpg" value="{% if row and row.knpg is not none %}{{ row.knpg|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.knpg is not none %}title="{{ (row.knpg|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_hnps" value="{% if row and row.hnps is not none %}{{ row.hnps|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.hnps is not none %}title="{{ (row.hnps|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_hngt" value="{% if row and row.hngt is not none %}{{ row.hngt|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.hngt is not none %}title="{{ (row.hngt|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_hnpg" value="{% if row and row.hnpg is not none %}{{ row.hnpg|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.hnpg is not none %}title="{{ (row.hnpg|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td{% if row is not none %} class="px-2"{% endif %}>
+                    {% if row is not none %}
+                    <span class="dp-lim-display" {% if row.lim is not none %}title="В БД: lim={{ row.lim }}"{% endif %}>{%- if row.lim is none -%}—{%- elif row.lim == 1 -%}да{%- elif row.lim == 0 -%}нет{%- else -%}{{ row.lim }}{%- endif -%}</span>
+                    <input type="hidden" name="dp_{{ suffix }}_lim" value="{% if row.lim is not none %}{{ row.lim }}{% endif %}">
+                    {% else %}
+                    <select name="dp_{{ suffix }}_lim" class="form-select form-select-lg text-center fuel-param-input" aria-label="Наличие ограничений по выработке для РЭС (lim)">
+                        <option value="" selected>—</option>
+                        <option value="0">нет</option>
+                        <option value="1">да</option>
                     </select>
+                    {% endif %}
                 </td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_numb" value="{% if row and row.numb is not none %}{{ row.numb|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.numb is not none %}title="{{ (row.numb|format_decimal_trim(0))|e }}"{% endif %}></td>
-                <td class="p-2"><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center" name="dp_{{ suffix }}_bkl" value="{% if row and row.bkl is not none %}{{ row.bkl|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.bkl is not none %}title="{{ (row.bkl|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_numb" value="{% if row and row.numb is not none %}{{ row.numb|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.numb is not none %}title="{{ (row.numb|format_decimal_trim(0))|e }}"{% endif %}></td>
+                <td><input type="text" inputmode="decimal" autocomplete="off" class="form-control form-control-lg text-center fuel-param-input" name="dp_{{ suffix }}_bkl" value="{% if row and row.bkl is not none %}{{ row.bkl|format_decimal_trim(rounding_digits) }}{% endif %}" {% if row and row.bkl is not none %}title="{{ (row.bkl|format_decimal_trim(0))|e }}"{% endif %}></td>
             </tr>
 {% endmacro %}
 
@@ -174,120 +223,148 @@
         <thead class="table-success">
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                 {% for attr, label in distribution_param_headings %}
-                <th class="{% if loop.first %}dp-col-ues{% elif attr in ('byear', 'year') %}dp-col-year{% endif %}" style="{% if loop.first %}{% elif attr in ('byear', 'year') %}{% elif can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">
-                    {% if attr == 'name' %}
-                    <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                                    data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
-                                <span class="d-inline-block text-center">
-                                    <strong>{{ label|safe }}</strong><br><span class="text-muted small fw-normal">({{ attr }})</span>
-                                </span>
-                                {% if (union_energy_system_filter|default([]))|length > 0 %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                            </button>
-                            <ul class="dropdown-menu dp-thead-filter-menu dp-dist-thead-ues-menu text-start" style="width: min(22rem, 90vw);">
-                                {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
-                                <li>
-                                    <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
-                                        <input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" form="dpListFilterForm"
-                                               {% if ues.id|string in (union_energy_system_filter|default([]))|map('string') %}checked{% endif %}>
-                                        <span>{{ ues.name }}</span>
-                                    </label>
-                                </li>
-                                {% endfor %}
-                                {% for ues in union_energy_system_list if ues.name|lower != 'не указано' %}
-                                <li>
-                                    <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
-                                        <input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" form="dpListFilterForm"
-                                               {% if ues.id|string in (union_energy_system_filter|default([]))|map('string') %}checked{% endif %}>
-                                        <span>{{ ues.name }}</span>
-                                    </label>
-                                </li>
-                                {% endfor %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li class="px-3 pb-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 filter-reset-btn" data-filter-name="union_energy_system_filter">Сбросить фильтр ОЭС</button>
-                                </li>
-                            </ul>
-                        </div>
-                        {% if (union_energy_system_filter|default([]))|length > 0 %}
-                        <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="union_energy_system_filter"
-                                title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
-                        {% endif %}
-                    </div>
-                    {% elif attr == 'byear' %}
-                    <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                                    data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
-                                <span class="d-inline-block text-center">
-                                    <strong>{{ label|safe }}</strong><br><span class="text-muted small fw-normal">({{ attr }})</span>
-                                </span>
-                                {% if base_year_filter is not none %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                            </button>
-                            <div class="dropdown-menu dp-thead-filter-menu p-0">
-                                <ul class="list-unstyled mb-0 dp-thead-year-scroll text-start small">
+                    {% if attr == 'k' %}
+                    <th colspan="5" style="min-width: max-content;">
+                        Коэффициент загрузки
+                    </th>
+                    {% elif attr in ('kn', 'knps', 'kngt', 'knpg') %}
+                        {# Эти атрибуты входят в групповой заголовок Коэффициент загрузки #}
+                    {% elif attr == 'hnps' %}
+                    <th colspan="3" rowspan="2" style="min-width: max-content;">
+                        ЧЧИУМ нового оборудования
+                    </th>
+                    {% elif attr in ('hngt', 'hnpg') %}
+                        {# Эти атрибуты входят в групповой заголовок ЧЧИУМ #}
+                    {% else %}
+                    <th rowspan="3" class="{% if loop.first %}dp-col-ues{% elif attr in ('byear', 'year') %}dp-col-year{% endif %}"
+                        style="{% if loop.first %}{% elif attr in ('byear', 'year') %}{% elif can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">
+                        {% if attr == 'name' %}
+                        <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                    <span class="d-inline-block text-center">
+                                        <strong>{{ label|safe }}</strong><br><span class="text-muted small fw-normal">({{ attr|fuel_header_code }})</span>
+                                    </span>
+                                    {% if (union_energy_system_filter|default([]))|length > 0 %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu dp-thead-filter-menu dp-dist-thead-ues-menu text-start" style="width: min(22rem, 90vw);">
+                                    {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
                                     <li>
-                                        <button type="button" class="dropdown-item py-1 dp-thead-year-nav{% if base_year_filter is none %} active{% endif %}"
-                                                data-dp-filter-param="base_year" data-dp-filter-value="">Все года</button>
-                                    </li>
-                                    {% for year in filter_year_list %}
-                                    <li>
-                                        <button type="button" class="dropdown-item py-1 dp-thead-year-nav{% if base_year_filter is not none and base_year_filter == year %} active{% endif %}"
-                                                data-dp-filter-param="base_year" data-dp-filter-value="{{ year }}">{{ year }}</button>
+                                        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+                                            <input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" form="dpListFilterForm"
+                                                   {% if ues.id|string in (union_energy_system_filter|default([]))|map('string') %}checked{% endif %}>
+                                            <span>{{ ues.name }}</span>
+                                        </label>
                                     </li>
                                     {% endfor %}
+                                    {% for ues in union_energy_system_list if ues.name|lower != 'не указано' %}
+                                    <li>
+                                        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+                                            <input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" form="dpListFilterForm"
+                                                   {% if ues.id|string in (union_energy_system_filter|default([]))|map('string') %}checked{% endif %}>
+                                            <span>{{ ues.name }}</span>
+                                        </label>
+                                    </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 pb-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 filter-reset-btn" data-filter-name="union_energy_system_filter">Сбросить фильтр ОЭС</button>
+                                    </li>
                                 </ul>
                             </div>
+                            {% if (union_energy_system_filter|default([]))|length > 0 %}
+                            <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="union_energy_system_filter"
+                                    title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
+                            {% endif %}
                         </div>
-                        {% if base_year_filter is not none %}
-                        <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="base_year"
-                                title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
-                        {% endif %}
-                    </div>
-                    {% elif attr == 'year' %}
-                    <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
-                                    data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
-                                <span class="d-inline-block text-center">
-                                    <strong>{{ label|safe }}</strong><br><span class="text-muted small fw-normal">({{ attr }})</span>
-                                </span>
-                                {% if (start_year_filter|default([]))|length > 0 %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                            </button>
-                            <ul class="dropdown-menu dp-thead-filter-menu dp-dist-thead-start-year-menu text-start" style="width: min(14rem, 90vw);">
-                                {% for year in filter_year_list %}
-                                <li>
-                                    <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
-                                        <input type="checkbox" name="start_year" value="{{ year }}" form="dpListFilterForm"
-                                               {% if year in (start_year_filter|default([])) %}checked{% endif %}>
-                                        <span>{{ year }}</span>
-                                    </label>
-                                </li>
-                                {% endfor %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li class="px-3 pb-2 d-flex justify-content-between gap-2">
-                                    <button type="button" class="btn btn-sm btn-outline-secondary filter-reset-btn" data-filter-name="start_year">Сбросить</button>
-                                    <button type="button" class="btn btn-sm btn-primary filter-apply-btn" data-filter-name="start_year">Ок</button>
-                                </li>
-                            </ul>
+                        {% elif attr == 'byear' %}
+                        <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                    <span class="d-inline-block text-center">
+                                        <strong>{{ label|safe }}</strong><br><span class="text-muted small fw-normal">({{ attr|fuel_header_code }})</span>
+                                    </span>
+                                    {% if base_year_filter is not none %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <div class="dropdown-menu dp-thead-filter-menu p-0">
+                                    <ul class="list-unstyled mb-0 dp-thead-year-scroll text-start small">
+                                        <li>
+                                            <button type="button" class="dropdown-item py-1 dp-thead-year-nav{% if base_year_filter is none %} active{% endif %}"
+                                                    data-dp-filter-param="base_year" data-dp-filter-value="">Все года</button>
+                                        </li>
+                                        {% for year in filter_year_list %}
+                                        <li>
+                                            <button type="button" class="dropdown-item py-1 dp-thead-year-nav{% if base_year_filter is not none and base_year_filter == year %} active{% endif %}"
+                                                    data-dp-filter-param="base_year" data-dp-filter-value="{{ year }}">{{ year }}</button>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                            {% if base_year_filter is not none %}
+                            <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="base_year"
+                                    title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
+                            {% endif %}
                         </div>
-                        {% if (start_year_filter|default([]))|length > 0 %}
-                        <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="start_year"
-                                title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
+                        {% elif attr == 'year' %}
+                        <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false">
+                                    <span class="d-inline-block text-center">
+                                        <strong>{{ label|safe }}</strong><br><span class="text-muted small fw-normal">({{ attr|fuel_header_code }})</span>
+                                    </span>
+                                    {% if (start_year_filter|default([]))|length > 0 %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                                </button>
+                                <ul class="dropdown-menu dp-thead-filter-menu dp-dist-thead-start-year-menu text-start" style="width: min(14rem, 90vw);">
+                                    {% for year in filter_year_list %}
+                                    <li>
+                                        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+                                            <input type="checkbox" name="start_year" value="{{ year }}" form="dpListFilterForm"
+                                                   {% if year in (start_year_filter|default([])) %}checked{% endif %}>
+                                            <span>{{ year }}</span>
+                                        </label>
+                                    </li>
+                                    {% endfor %}
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary filter-reset-btn" data-filter-name="start_year">Сбросить</button>
+                                        <button type="button" class="btn btn-sm btn-primary filter-apply-btn" data-filter-name="start_year">Ок</button>
+                                    </li>
+                                </ul>
+                            </div>
+                            {% if (start_year_filter|default([]))|length > 0 %}
+                            <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="start_year"
+                                    title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
+                            {% endif %}
+                        </div>
+                        {% elif attr == 'doptim' %}
+                        {% set doptim_tooltip = "0.05 + 0.03 * (Nрасч − Nбаз). Nрасч и Nбаз — номер расчетного и базового годов" %}
+                        <span class="d-inline-block text-center">
+                            {{ label|safe }} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ doptim_tooltip|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула doptim"></i><br>
+                            <span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                        </span>
+                        {% else %}
+                        {{ label|safe }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                         {% endif %}
-                    </div>
-                    {% elif attr == 'doptim' %}
-                    {% set doptim_tooltip = "0.05 + 0.03 * (Nрасч − Nбаз). Nрасч и Nбаз — номер расчитываемого и базового годов" %}
-                    <span class="d-inline-block text-center">
-                        {{ label|safe }} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ doptim_tooltip|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула doptim"></i><br>
-                        <span class="text-muted small">({{ attr }})</span>
-                    </span>
-                    {% else %}
-                    {{ label|safe }}<br><span class="text-muted small">({{ attr }})</span>
+                    </th>
                     {% endif %}
-                </th>
                 {% endfor %}
+            </tr>
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th rowspan="2" style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">k<br><span class="text-muted small fw-normal">(k)</span></th>
+                <th colspan="4" style="{% if can_edit_dp %}min-width: 26rem;{% else %}min-width: 22rem;{% endif %}">Коэффициент загрузки нового оборудования</th>
+            </tr>
+            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                <th style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">Коэффициент загрузки<br><span class="text-muted small fw-normal">(kn)</span></th>
+                <th style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">паросиловое оборудование<br><span class="text-muted small fw-normal">(knps)</span></th>
+                <th style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">газотурбинное оборудование<br><span class="text-muted small fw-normal">(kngt)</span></th>
+                <th style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">парогазовое оборудование<br><span class="text-muted small fw-normal">(knpg)</span></th>
+                <th style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">паросиловое оборудование<br><span class="text-muted small fw-normal">(hnps)</span></th>
+                <th style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">газотурбинное оборудование<br><span class="text-muted small fw-normal">(hngt)</span></th>
+                <th style="{% if can_edit_dp %}min-width: 6.5rem;{% else %}min-width: 5.5rem;{% endif %}">парогазовое оборудование<br><span class="text-muted small fw-normal">(hnpg)</span></th>
             </tr>
         </thead>
         <tbody id="distributionParamsTbody">
@@ -296,12 +373,11 @@
             {{ distribution_param_edit_row(row.id, row) }}
             {% else %}
             <tr class="text-center align-middle">
-                <td class="text-start text-break dp-col-ues" title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} — {{ row.union_energy_system.name|e }}{% endif %}">{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% elif row.id_union_energy_system %}ОЭС #{{ row.id_union_energy_system }}{% else %}—{% endif %}</td>
+                <td class="text-center text-break dp-col-ues" title="В БД: id_union_energy_system={% if row.id_union_energy_system is not none %}{{ row.id_union_energy_system }}{% endif %}{% if row.union_energy_system %} — {{ row.union_energy_system.name|e }}{% endif %}">{% if row.union_energy_system %}{{ row.union_energy_system.name }}{% elif row.id_union_energy_system %}ОЭС #{{ row.id_union_energy_system }}{% else %}—{% endif %}</td>
                 <td class="dp-col-year" title="В БД: id_base_year={% if row.id_base_year is not none %}{{ row.id_base_year }}{% endif %}{% if row.base_year %} — номер {{ row.base_year.number }}{% endif %}">{% if row.base_year %}{{ row.base_year.number }}{% elif row.id_base_year %}#{{ row.id_base_year }}{% else %}—{% endif %}</td>
                 <td class="dp-col-year" title="В БД: id_year={{ row.id_year }}{% if row.year %} — номер {{ row.year.number }}{% endif %}">{% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{ row.id_year }}{% else %}—{% endif %}</td>
                 <td {% if row.e is not none %}title="{{ (row.e|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.e) }}</td>
-                <td {% if row.kplus is not none %}title="{{ (row.kplus|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.kplus) }}</td>
-                <td {% if row.kmin is not none %}title="{{ (row.kmin|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.kmin) }}</td>
+                <td {% if row.doptim is not none %}title="{{ (row.doptim|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.doptim) }}</td>
                 <td {% if row.k is not none %}title="{{ (row.k|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.k) }}</td>
                 <td {% if row.kn is not none %}title="{{ (row.kn|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.kn) }}</td>
                 <td {% if row.knps is not none %}title="{{ (row.knps|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.knps) }}</td>
@@ -310,7 +386,6 @@
                 <td {% if row.hnps is not none %}title="{{ (row.hnps|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.hnps) }}</td>
                 <td {% if row.hngt is not none %}title="{{ (row.hngt|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.hngt) }}</td>
                 <td {% if row.hnpg is not none %}title="{{ (row.hnpg|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.hnpg) }}</td>
-                <td {% if row.doptim is not none %}title="{{ (row.doptim|format_decimal_trim(0))|e }}"{% endif %}>{{ render_numeric_or_dash(row.doptim) }}</td>
                 <td {% if row.lim is not none %}title="В БД: lim={{ row.lim }}"{% endif %}>
                     {%- if row.lim is none -%}—
                     {%- elif row.lim == 1 -%}да
@@ -323,7 +398,7 @@
             {% endif %}
             {% else %}
             <tr id="distributionParamsEmptyHintRow">
-                <td colspan="18" class="text-center text-muted py-4">
+                <td colspan="16" class="text-center text-muted py-4">
                     {% if can_edit_dp %}
                     По фильтру нет строк. Нажмите «Добавить год», выберите годы в окне и «Сохранить».
                     {% else %}
@@ -345,49 +420,23 @@
         <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Основные топливные параметры</a>
     </div>
 
-    <div class="col-12 mb-2">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="d-flex gap-2">
-                <h2 class="text-center mb-4">Параметры распределения</h2>
-            </div>
-        </div>
-    </div>
+    <h2 class="text-center mb-3">Параметры распределения</h2>
 
-    <!-- Как на stations_equipment_group_fuel_params: кнопки «Фильтры» / «Импорт» -->
+    <div id="distributionStickyControls" class="distribution-sticky-controls">
+    <!-- Импорт / Экспорт -->
     <div class="col-12 mb-2">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
-            <div class="d-flex justify-content-start align-items-center flex-wrap gap-2">
-                <button id="distributionFiltersToggleBtn"
-                        class="btn {% if has_active_filters|default(false) %}btn-warning{% else %}btn-primary{% endif %} text-white"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#distributionFiltersCollapse"
-                        aria-expanded="true"
-                        aria-controls="distributionFiltersCollapse">
-                    🔍 Фильтры / Поиск
-                </button>
-                {% if current_user.is_authenticated and current_user.has_admin %}
-                <button id="distributionImportExportToggleBtn"
-                        class="btn btn-outline-secondary text-dark"
-                        type="button"
-                        data-bs-toggle="collapse"
-                        data-bs-target="#distributionImportExportCollapse"
-                        aria-expanded="false"
-                        aria-controls="distributionImportExportCollapse">
-                    📁 Импорт / Экспорт
-                </button>
-                {% endif %}
-            </div>
-            <div class="d-flex align-items-center gap-1 ms-auto">
-                <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
-                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
-                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
-                </select>
-            </div>
+        <div class="d-flex justify-content-start align-items-center flex-wrap gap-2 w-100">
+            {% if current_user.is_authenticated and current_user.has_admin %}
+            <button id="distributionImportExportToggleBtn"
+                    class="btn btn-outline-secondary text-dark"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#distributionImportExportCollapse"
+                    aria-expanded="false"
+                    aria-controls="distributionImportExportCollapse">
+                📁 Импорт / Экспорт
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -411,7 +460,7 @@
                           class="d-flex align-items-center flex-wrap gap-2" id="distributionParametersImportForm">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="file" name="file" class="d-none" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" id="distributionParametersImportFile" required>
-                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="distributionParametersImportBtn">
+                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="distributionParametersImportBtn" title="Файл Access «Параметры-распределения.xlsx» или экспорт с этой страницы">
                             <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     </form>
@@ -442,21 +491,35 @@
     </div>
     {% endif %}
 
-    <div class="collapse show mt-2 mb-2" id="distributionFiltersCollapse">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 w-100 mb-2">
-            <div class="flex-grow-1 min-w-0">
-                {% include 'fuel/distribution_parameters/_distribution_parameters_list_filters.html' %}
-            </div>
+    {% include 'fuel/distribution_parameters/_distribution_parameters_list_filters.html' %}
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <div class="flex-shrink-0 d-flex flex-wrap gap-2 align-items-center">
+            <a href="{{ url_for('fuel_bp.distribution_parameters_list') }}"
+               class="btn btn-outline-danger"
+               id="distributionFiltersResetBtn"
+               title="Сбросить все фильтры">Сбросить</a>
+        </div>
+        <div class="d-flex align-items-center flex-wrap gap-2 flex-shrink-0 ms-auto">
             {% if current_user.has_admin %}
-            <div class="flex-shrink-0 d-flex flex-wrap gap-2 align-items-center">
-                <button type="button" class="btn btn-outline-primary" id="distributionBulkAddOpenBtn" data-bs-toggle="modal" data-bs-target="#distributionBulkAddModal">Добавить год</button>
-                <button type="button" class="btn btn-outline-primary" id="distributionBulkPeriodOpenBtn" data-bs-toggle="modal" data-bs-target="#distributionBulkAddPeriodModal">Добавить период</button>
-                <button type="button" class="btn btn-outline-danger" id="distributionToggleDeleteModeBtn" aria-pressed="false" title="Показать крестики для удаления строк">Удалить строки</button>
-                <button type="submit" class="btn btn-outline-primary fs-5" form="distributionParamsEditForm">Сохранить</button>
-            </div>
+            <button type="button" class="btn btn-outline-success" id="distributionBulkAddOpenBtn" data-bs-toggle="modal" data-bs-target="#distributionBulkAddModal">Добавить год</button>
+            <button type="button" class="btn btn-outline-success" id="distributionBulkPeriodOpenBtn" data-bs-toggle="modal" data-bs-target="#distributionBulkAddPeriodModal">Добавить период</button>
+            <button type="button" class="btn btn-outline-danger" id="distributionToggleDeleteModeBtn" aria-pressed="false" title="Показать крестики для удаления строк">Удалить строки</button>
+            <button type="submit" class="btn btn-outline-primary" form="distributionParamsEditForm">Сохранить</button>
             {% endif %}
+            <div class="d-flex align-items-center gap-1" style="min-width: 16rem;">
+                <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
+                <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 140px;">
+                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+            </div>
         </div>
     </div>
+    </div><!-- /#distributionStickyControls -->
 
     {# Шапка: подписи из модели DistributionParameter (DISTRIBUTION_PARAMETER_LIST_COLUMN_HEADINGS) + (attr) мелким серым #}
     {% set can_edit_dp = current_user.is_authenticated and current_user.has_admin %}
@@ -468,7 +531,7 @@
         <input type="hidden" name="distribution_save_return_qs" value="{{ request.query_string.decode('utf-8')|e }}">
         <input type="hidden" name="distribution_save_rounding_digits" value="{{ rounding_digits }}">
         <div class="table-responsive border rounded" id="distributionParamsTableContainer">
-        <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-0 distribution-params-table" id="distributionParamsTable">
+        <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-0 distribution-params-table distribution-params-edit-table" id="distributionParamsTable">
         {{ distribution_params_table_inner() }}
         </table>
         </div>
@@ -495,8 +558,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="distributionBulkAddTargetYear">Расчитываемый год</label>
-                        <select id="distributionBulkAddTargetYear" class="form-select form-select-lg" aria-label="Расчитываемый год для массового добавления" required>
+                        <label class="form-label" for="distributionBulkAddTargetYear">Расчетный год</label>
+                        <select id="distributionBulkAddTargetYear" class="form-select form-select-lg" aria-label="Расчетный год для массового добавления" required>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -529,16 +592,16 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="distributionBulkPeriodYearFrom">Расчитываемый год с</label>
-                        <select id="distributionBulkPeriodYearFrom" class="form-select form-select-lg" aria-label="Начало периода (расчитываемый год)" required>
+                        <label class="form-label" for="distributionBulkPeriodYearFrom">Расчетный год с</label>
+                        <select id="distributionBulkPeriodYearFrom" class="form-select form-select-lg" aria-label="Начало периода (Расчетный год)" required>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="distributionBulkPeriodYearTo">Расчитываемый год по</label>
-                        <select id="distributionBulkPeriodYearTo" class="form-select form-select-lg" aria-label="Конец периода (расчитываемый год)" required>
+                        <label class="form-label" for="distributionBulkPeriodYearTo">Расчетный год по</label>
+                        <select id="distributionBulkPeriodYearTo" class="form-select form-select-lg" aria-label="Конец периода (Расчетный год)" required>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -820,7 +883,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 yrSel.value = String(prefill.id_year);
             }
             var numeric = prefill.numeric || {};
-            ["e", "kplus", "kmin", "k", "kn", "knps", "kngt", "knpg", "hnps", "hngt", "hnpg", "doptim", "numb", "bkl"].forEach(function(attr) {
+            ["e", "k", "kn", "knps", "kngt", "knpg", "hnps", "hngt", "hnpg", "doptim", "numb", "bkl"].forEach(function(attr) {
                 var inp = tr.querySelector("[name$=\"_" + attr + "\"]");
                 if (inp && Object.prototype.hasOwnProperty.call(numeric, attr)) {
                     inp.value = numeric[attr] == null ? "" : String(numeric[attr]);
@@ -842,9 +905,9 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!tr || tr.id === "distributionParamsEmptyHintRow") {
                 return null;
             }
-            var ues = tr.querySelector("select[name$=\"_id_union_energy_system\"]");
-            var base = tr.querySelector("select[name$=\"_id_base_year\"]");
-            var yr = tr.querySelector("select[name$=\"_id_year\"]");
+            var ues = tr.querySelector("[name$=\"_id_union_energy_system\"]");
+            var base = tr.querySelector("[name$=\"_id_base_year\"]");
+            var yr = tr.querySelector("[name$=\"_id_year\"]");
             if (!ues || !base || !yr) {
                 return null;
             }
@@ -872,31 +935,41 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!tr || !prefill) {
                 return;
             }
-            var uesSel = tr.querySelector("select[name$=\"_id_union_energy_system\"]");
+            var uesSel = tr.querySelector("[name$=\"_id_union_energy_system\"]");
             if (uesSel && prefill.id_union_energy_system != null) {
                 uesSel.value = String(prefill.id_union_energy_system);
             }
-            var baseSel = tr.querySelector("select[name$=\"_id_base_year\"]");
+            var baseSel = tr.querySelector("[name$=\"_id_base_year\"]");
             if (baseSel) {
                 baseSel.value = String(prefill.id_base_year);
             }
-            var yrSel = tr.querySelector("select[name$=\"_id_year\"]");
+            var yrSel = tr.querySelector("[name$=\"_id_year\"]");
             if (yrSel) {
                 yrSel.value = String(prefill.id_year);
             }
             var numeric = prefill.numeric || {};
-            ["e", "kplus", "kmin", "k", "kn", "knps", "kngt", "knpg", "hnps", "hngt", "hnpg", "doptim", "numb", "bkl"].forEach(function(attr) {
+            ["e", "k", "kn", "knps", "kngt", "knpg", "hnps", "hngt", "hnpg", "doptim", "numb", "bkl"].forEach(function(attr) {
                 var inp = tr.querySelector("[name$=\"_" + attr + "\"]");
                 if (inp && Object.prototype.hasOwnProperty.call(numeric, attr)) {
                     inp.value = numeric[attr] == null ? "" : String(numeric[attr]);
                 }
             });
-            var limSel = tr.querySelector("select[name$=\"_lim\"]");
-            if (limSel) {
+            var limEl = tr.querySelector("[name$=\"_lim\"]");
+            if (limEl) {
                 if (prefill.lim === 0 || prefill.lim === 1) {
-                    limSel.value = String(prefill.lim);
+                    limEl.value = String(prefill.lim);
                 } else {
-                    limSel.value = "";
+                    limEl.value = "";
+                }
+                var limDisplay = tr.querySelector(".dp-lim-display");
+                if (limDisplay) {
+                    if (prefill.lim === 1) {
+                        limDisplay.textContent = "да";
+                    } else if (prefill.lim === 0) {
+                        limDisplay.textContent = "нет";
+                    } else {
+                        limDisplay.textContent = "—";
+                    }
                 }
             }
         }
@@ -1151,7 +1224,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 var baseId = (bulkBaseSel.value || "").trim();
                 var targetId = (bulkTargetSel.value || "").trim();
                 if (!baseId || !targetId) {
-                    window.alert("Выберите базовый и расчитываемый год.");
+                    window.alert("Выберите базовый и Расчетный год.");
                     return;
                 }
                 var rdEl = document.getElementById("rounding_digits");
@@ -1255,6 +1328,42 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     })();
 });
+</script>
+
+<script>
+(function () {
+    function updateDistributionStickyHeights() {
+        var controls = document.getElementById("distributionStickyControls");
+        var h = controls
+            ? Math.ceil(controls.getBoundingClientRect().height || controls.offsetHeight || 0)
+            : 0;
+        document.documentElement.style.setProperty("--distribution-controls-sticky-height", h + "px");
+        if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+            window.armGsApplyStickyTheadOffsets();
+        }
+    }
+
+    function bind() {
+        updateDistributionStickyHeights();
+        var controls = document.getElementById("distributionStickyControls");
+        if (controls && typeof ResizeObserver !== "undefined") {
+            var ro = new ResizeObserver(function () {
+                updateDistributionStickyHeights();
+            });
+            ro.observe(controls);
+        }
+        document.addEventListener("shown.bs.collapse", updateDistributionStickyHeights);
+        document.addEventListener("hidden.bs.collapse", updateDistributionStickyHeights);
+        window.addEventListener("resize", updateDistributionStickyHeights);
+        window.addEventListener("load", updateDistributionStickyHeights);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bind);
+    } else {
+        bind();
+    }
+})();
 </script>
 
 {% endif %}

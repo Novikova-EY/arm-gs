@@ -1048,11 +1048,11 @@ def validate_energy_consumption_post_complete(
         if not skip_mln_sipr_validation:
             if _field_nonempty(ec_m) and parse_decimal(ec_m) is None:
                 issues.append(
-                    f"{row_label}: некорректное число в «Потребление электрической энергии, млн кВт·ч»."
+                    f"{row_label}: некорректное число в «Потребление электрической энергии, млн кВтч»."
                 )
             if _field_nonempty(ec_s) and parse_decimal(ec_s) is None:
                 issues.append(
-                    f"{row_label}: некорректное число в «Потребление (СиПР), млн кВт·ч»."
+                    f"{row_label}: некорректное число в «Потребление (СиПР), млн кВтч»."
                 )
 
     if issues:
@@ -1202,6 +1202,11 @@ def save_energy_consumption_rows_from_post(
     except IntegrityError:
         db.session.rollback()
         raise
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
+    )
+
+    invalidate_energy_consumption_display_caches()
     return saved, deleted_n
 
 
@@ -1510,7 +1515,7 @@ def _apply_summary_field_to_row(
         s = str(raw_value or "").strip()
         if s and parse_decimal(s) is None:
             raise ValueError(
-                "Некорректное число в поле «Потребление электрической энергии, млн кВт·ч»."
+                "Некорректное число в поле «Потребление электрической энергии, млн кВтч»."
             )
         old_shown = (
             format_decimal_trim_for_display(row.energy_consumption_mln_kvt_ch, digits=rounding_digits)
@@ -1530,7 +1535,7 @@ def _apply_summary_field_to_row(
     elif parameter_key == "energy_consumption_sipr_mln_kvt_ch":
         s = str(raw_value or "").strip()
         if s and parse_decimal(s) is None:
-            raise ValueError("Некорректное число в поле «Потребление (СиПР), млн кВт·ч».")
+            raise ValueError("Некорректное число в поле «Потребление (СиПР), млн кВтч».")
         old_shown = (
             format_decimal_trim_for_display(row.energy_consumption_sipr_mln_kvt_ch, digits=rounding_digits)
             if row.energy_consumption_sipr_mln_kvt_ch is not None
@@ -1601,8 +1606,8 @@ def _diff_tri_snap_for_log(
 ) -> list[str]:
     """Только поля, которые пользователь менял по запросу (без автосинхронизации СиПР с млн)."""
     labels = {
-        "mln": "Потребление, млн кВт·ч",
-        "sipr": "Потребление (СиПР), млн кВт·ч",
+        "mln": "Потребление, млн кВтч",
+        "sipr": "Потребление (СиПР), млн кВтч",
         "note": "Примечание",
     }
     pk = (parameter_key or "").strip()
@@ -1786,7 +1791,7 @@ def _save_gaes_charge_summary_cell(
     else:
         if parse_decimal(s) is None:
             raise ValueError(
-                "Некорректное число в поле «Потребление электрической энергии ГАЭС на заряд, млн кВт·ч»."
+                "Некорректное число в поле «Потребление электрической энергии ГАЭС на заряд, млн кВтч»."
             )
         old_shown = (
             format_decimal_trim_for_display(row.charge_consumption, digits=rounding_digits)
@@ -1817,11 +1822,11 @@ def _save_gaes_charge_summary_cell(
         db.session.rollback()
         raise ValueError("Не удалось сохранить (конфликт данных).") from None
 
-    from app.energy_consumption.services.energy_consumption_summary_services import (
-        clear_gaes_charge_summary_cache,
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
     )
 
-    clear_gaes_charge_summary_cache()
+    invalidate_energy_consumption_display_caches()
 
     year_n = getattr(row, "year_number", None)
     if (
@@ -1991,6 +1996,11 @@ def save_demand_summary_cell(
         except IntegrityError:
             db.session.rollback()
             raise ValueError("Не удалось сохранить (конфликт данных).") from None
+        from app.energy_consumption.services.ec_display_cache import (
+            invalidate_energy_consumption_display_caches,
+        )
+
+        invalidate_energy_consumption_display_caches()
         _maybe_log_ec_summary_cell(
             summary_log_scope,
             demand_model_name=demand_model_name,
@@ -2125,11 +2135,11 @@ def save_demand_summary_cell(
         db.session.rollback()
         raise ValueError("Не удалось сохранить (конфликт данных).") from None
 
-    from app.power_demand.services.pd_ec_consumption_index_cache import (
-        invalidate_pd_ec_consumption_index_cache,
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
     )
 
-    invalidate_pd_ec_consumption_index_cache()
+    invalidate_energy_consumption_display_caches()
 
     _maybe_log_ec_summary_cell(
         summary_log_scope,
@@ -2444,11 +2454,11 @@ def _commit_summary_perimeter_variant_change() -> None:
         raise ValueError(
             "Не удалось сохранить вариант периметра (конфликт данных по году)."
         ) from exc
-    from app.energy_consumption.services.energy_consumption_summary_services import (
-        clear_gaes_charge_summary_cache,
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
     )
 
-    clear_gaes_charge_summary_cache()
+    invalidate_energy_consumption_display_caches()
 
 
 def _maybe_log_ec_summary_perimeter_variant_change(

@@ -1,0 +1,2176 @@
+Version =21
+VersionRequired =20
+Checksum =886587613
+Begin Form
+    AllowFilters = NotDefault
+    AllowDeletions = NotDefault
+    DefaultView =2
+    AllowUpdating =1
+    TabularCharSet =204
+    GridX =5
+    GridY =5
+    Width =31680
+    RowHeight =285
+    ItemSuffix =10
+    Left =285
+    Right =11040
+    Bottom =4545
+    FrozenColumns =4
+    RecSrcDt = Begin
+        0xbc09483ff485e440
+    End
+    RecordSource ="SELECT w.*, c.NAME AS name1, [main] FROM [Станции(Схема)] AS w INNER JOIN Имена_"
+        "станций AS c ON w.NUMB1120=c.NUMB;"
+    OnCurrent ="[Event Procedure]"
+    BeforeUpdate ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    OnOpen ="[Event Procedure]"
+    PrtMip = Begin
+        0x00000000000000000000000000000000000000001b7b0000f000000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x00ea31170100000007000000d35f3317443c1b00f169e964010000001b6ae964 ,
+        0x010403069c00d40543ff8007010009009a0b3408640001000f00580202000100 ,
+        0x5802030000004134005f3317ec6ce96400000000cc3c1b00f8f2401c743c1b00 ,
+        0x0aadeb6401000000000000000000000000000000010000000000000001000000 ,
+        0x0200000001000000000000000000000000000000000000000000000050524956 ,
+        0x4220000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000180000000000102710271027 ,
+        0x000010270000000000000000b000a40300000000000000000000000000000000 ,
+        0x0000000000000000030000000000000030021000503403002888040000000000 ,
+        0x00000000000000000000000000000000000000000000000046469ff205000000 ,
+        0x04000000ff00ff00010000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0100000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000b0000000534d544a000000001000a000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x3002000045424441000001000100000001000000010000000100000000000000 ,
+        0x5300740061006e00640061007200640000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000001000000
+    End
+    PrtDevNames = Begin
+        0x08001c0026000100000000000000000000000000000000000000000000000000 ,
+        0x000000000000446f63756d656e74735c2a2e706466000000000000000000
+    End
+    FilterOnLoad =255
+    AllowLayoutView =0
+    PrtDevModeW = Begin
+        0x00001000e27814019c0b001f48bd1c0017a2b500f4aba6ce28911c00b1ab3301 ,
+        0xffffffff9ba7b50073cefd0044aaa6ce48bd1c00b006001f488d76004c904124 ,
+        0x01040306dc00d40543ff8007010009009a0b3408640001000f00580202000100 ,
+        0x5802030000004100340000000000001f2000000000084f0000004f008403f076 ,
+        0x209e412400007600000000000000000000000000549c1c000200000064000000 ,
+        0x1802001a783d0000000000000000000000000000010000000000000001000000 ,
+        0x0200000001000000000000000000000000000000000000000000000050524956 ,
+        0x4220000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000180000000000102710271027 ,
+        0x000010270000000000000000b000a40300000000000000000000000000000000 ,
+        0x0000000000000000030000000000000030021000503403002888040000000000 ,
+        0x00000000000000000000000000000000000000000000000046469ff205000000 ,
+        0x04000000ff00ff00010000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0100000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000b0000000534d544a000000001000a000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x3002000045424441000001000100000001000000010000000100000000000000 ,
+        0x5300740061006e00640061007200640000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000001000000
+    End
+    PrtDevNamesW = Begin
+        0x0400180022000100000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000044006f00630075006d0065006e00740073005c002a002e0070006400 ,
+        0x6600000000000000000000000000000000000000
+    End
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin CommandButton
+            TextFontCharSet =204
+            TextFontFamily =2
+            Width =1701
+            Height =283
+            BorderLineStyle =0
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =561
+            LabelX =-1701
+        End
+        Begin FormHeader
+            Height =340
+            Name ="ЗаголовокФормы"
+            GUID = Begin
+                0xc333ac496d7d0e4abd71de5210eb488c
+            End
+            Begin
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =1140
+                    Width =567
+                    Height =284
+                    Name ="sumnust"
+                    ControlSource ="=Sum([nust])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x7ad063d79a6a7d4988ce6244520c7951
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =1707
+                    Width =567
+                    Height =284
+                    TabIndex =1
+                    Name ="sumnr"
+                    ControlSource ="=Sum([nr])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x534bc592f287d24dac56cd2d2a17c981
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =2274
+                    Width =567
+                    Height =284
+                    TabIndex =2
+                    Name ="sume"
+                    ControlSource ="=Sum([e])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x2cf26e714b6c02478caac8ed9f91c99d
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =2841
+                    Width =567
+                    Height =284
+                    TabIndex =3
+                    Name ="sumewtp"
+                    ControlSource ="=Sum([ewtp])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x0d34bfe1bcc59f4ea11e0ab62ad959f8
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =3408
+                    Width =567
+                    Height =284
+                    TabIndex =4
+                    Name ="sumeurt"
+                    ControlSource ="=Sum([eurt])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xe19a706b92873e428e0910ba7d706c4e
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =3975
+                    Width =567
+                    Height =284
+                    TabIndex =5
+                    Name ="sumq"
+                    ControlSource ="=Sum([q])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x7b59a833b3e1dd49b089a193584986f5
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =4542
+                    Width =567
+                    Height =284
+                    TabIndex =6
+                    Name ="sumqotr"
+                    ControlSource ="=Sum([qotr])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x6d8779a097ef9146880e47fad0fc7336
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =5109
+                    Width =567
+                    Height =284
+                    TabIndex =7
+                    Name ="sumnt"
+                    ControlSource ="=Sum([nt])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xa66ad1aaf73f9f48a5aa173203eb58fb
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =5676
+                    Width =567
+                    Height =284
+                    TabIndex =8
+                    Name ="sumturt"
+                    ControlSource ="=Sum([turt])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xc66f9bc5d82f3542817aec859d6f3d5d
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =6243
+                    Width =567
+                    Height =284
+                    TabIndex =9
+                    Name ="sumeotp"
+                    ControlSource ="=Sum([eotp])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x07bba4cda31b804fb75bdcb18ed6c2e3
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =6810
+                    Width =567
+                    Height =284
+                    TabIndex =10
+                    Name ="sumeust"
+                    ControlSource ="=Sum([eust])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x9ec704402f076c43a429aad39a940f32
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =7377
+                    Width =567
+                    Height =284
+                    TabIndex =11
+                    Name ="sumtust"
+                    ControlSource ="=Sum([tust])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x365866a91b28b2449fdcb998cca14bb4
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =7944
+                    Width =567
+                    Height =284
+                    TabIndex =12
+                    Name ="sumb"
+                    ControlSource ="=Sum([b])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xaadad814de818c459d10ffc748c4cfee
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =8511
+                    Width =567
+                    Height =284
+                    TabIndex =13
+                    Name ="sumgaz"
+                    ControlSource ="=Sum([gaz])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xd870195822926a47b8632d184c2cda77
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =9078
+                    Width =567
+                    Height =284
+                    TabIndex =14
+                    Name ="summazut"
+                    ControlSource ="=Sum([mazut])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xb7a81d1709601e4791d6a90b0440c348
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =9645
+                    Width =567
+                    Height =284
+                    TabIndex =15
+                    Name ="sumtorf"
+                    ControlSource ="=Sum([torf])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xcfd7e88373307243ae19eb044c6508b5
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =255
+                    Left =10122
+                    Width =567
+                    Height =284
+                    TabIndex =16
+                    Name ="sumslan"
+                    ControlSource ="=Sum([slan])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x1b86fd459a31df46afbc2e6b6fc66ac2
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =247
+                    Left =10656
+                    Width =567
+                    Height =284
+                    TabIndex =17
+                    Name ="sumproch"
+                    ControlSource ="=Sum([proch])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x728a2c6884f91746afe3ddc39d12e620
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =11256
+                    Width =567
+                    Height =284
+                    TabIndex =18
+                    Name ="sumugol"
+                    ControlSource ="=Sum([ugol])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x5546f09725dcc646bdb782167a5b2204
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =11823
+                    Width =567
+                    Height =284
+                    TabIndex =19
+                    Name ="sumdon"
+                    ControlSource ="=Sum([don])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xd6b5530037e67c4ea12cc3a8a7de5731
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =12390
+                    Width =567
+                    Height =284
+                    TabIndex =20
+                    Name ="sumpodm"
+                    ControlSource ="=Sum([podm])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x9fb044ed8028014c85e7cab22f5ddb6a
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =12957
+                    Width =567
+                    Height =284
+                    TabIndex =21
+                    Name ="sumpech"
+                    ControlSource ="=Sum([pech])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x689d240ca327a349a0625ba9272085d0
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =15760
+                    Width =567
+                    Height =284
+                    TabIndex =22
+                    Name ="sumalt"
+                    ControlSource ="=Sum([alt])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xe5713ff61b1bb045acefcb7277ffdaba
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =13524
+                    Width =567
+                    Height =284
+                    TabIndex =23
+                    Name ="sumkuzn"
+                    ControlSource ="=Sum([kuzn])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x2d97b485b50fb746bb310c9ccfe4abd3
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =14091
+                    Width =567
+                    Height =284
+                    TabIndex =24
+                    Name ="sumural"
+                    ControlSource ="=Sum([ural])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xefc36f708248364eb9315c0d2cb72be6
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =14658
+                    Width =567
+                    Height =284
+                    TabIndex =25
+                    Name ="sumbashk"
+                    ControlSource ="=Sum([bashk])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x38bdbb2a1eb86b46bf8fdabcef859c57
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =247
+                    Left =15225
+                    Width =567
+                    Height =284
+                    TabIndex =26
+                    Name ="sumkazah"
+                    ControlSource ="=Sum([kazah])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x953a60499c7afb4dbc0c94b941611897
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =24944
+                    Width =567
+                    Height =284
+                    TabIndex =27
+                    Name ="sumchukot"
+                    ControlSource ="=Sum([chukot])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xf95890800fc48e4ebdf9d60e325897d4
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =255
+                    Left =16255
+                    Width =567
+                    Height =284
+                    TabIndex =28
+                    Name ="sumkan"
+                    ControlSource ="=Sum([kan])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xfffe8ea0c36cad468737939ec2806181
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =17383
+                    Width =567
+                    Height =284
+                    TabIndex =29
+                    Name ="sumirkut"
+                    ControlSource ="=Sum([irkut])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x34e06bf55a8c7b40bc59a3e97213a391
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =17950
+                    Width =567
+                    Height =284
+                    TabIndex =30
+                    Name ="sumhak"
+                    ControlSource ="=Sum([hak])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xb0586748c2f00447886caa160f4843cb
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =18517
+                    Width =567
+                    Height =284
+                    TabIndex =31
+                    Name ="sumtuv"
+                    ControlSource ="=Sum([tuv])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x02d5dbe6cf833143bcf37b9dcca1ff1e
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =19084
+                    Width =567
+                    Height =284
+                    TabIndex =32
+                    Name ="sumbur"
+                    ControlSource ="=Sum([bur])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x7ddde97679521d42983dfdc6727cf3d8
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =87
+                    Left =19651
+                    Width =567
+                    Height =284
+                    TabIndex =33
+                    Name ="sumchit"
+                    ControlSource ="=Sum([chit])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xba287b7f1e0d7748b953a90fd4c17f19
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =23244
+                    Width =567
+                    Height =284
+                    TabIndex =34
+                    Name ="sumner"
+                    ControlSource ="=Sum([yakut])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xb239c35340a3d84abb5e12e467486b72
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =20862
+                    Width =567
+                    Height =284
+                    TabIndex =35
+                    Name ="sumamur"
+                    ControlSource ="=Sum([AMUR])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xdad160caa965dd43b42b0037c61d67a0
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =21429
+                    Width =567
+                    Height =284
+                    TabIndex =36
+                    Name ="sumurg"
+                    ControlSource ="=Sum([urg])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xd261e4f3e1033b488f7aca03f06ccdd1
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =22563
+                    Width =675
+                    Height =284
+                    TabIndex =37
+                    Name ="sumprim"
+                    ControlSource ="=Sum([prim])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x226f1c3cb15e0d458cc19e41f55116a1
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =23811
+                    Width =567
+                    Height =284
+                    TabIndex =38
+                    Name ="summag"
+                    ControlSource ="=Sum([mag])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x5bcb25f10033224b8c89bcd9cf6d8347
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =87
+                    Left =25511
+                    Width =567
+                    Height =284
+                    TabIndex =39
+                    Name ="sumsah"
+                    ControlSource ="=Sum([sah])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x0c3e2697adb0954496e27fa77a6be61f
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =87
+                    Left =24377
+                    Width =567
+                    Height =284
+                    TabIndex =40
+                    Name ="sumkamch"
+                    ControlSource ="=Sum([kamch])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x4b8e7df48b0da441ac1b0e6daf85114f
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =119
+                    Left =16816
+                    Width =567
+                    Height =284
+                    TabIndex =41
+                    Name ="sumtung"
+                    ControlSource ="=Sum([tung])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0x19637dc7bdd7944db368ffec19d4a4e2
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =87
+                    Left =20308
+                    Width =555
+                    Height =284
+                    TabIndex =42
+                    Name ="sumtal"
+                    ControlSource ="=Sum([tal])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xd9396a1b1d601e4ba375bad717c68d6f
+                    End
+                    AsianLineBreak =255
+
+                End
+                Begin TextBox
+                    FELineBreak = NotDefault
+                    OldBorderStyle =0
+                    OverlapFlags =87
+                    Left =21996
+                    Width =567
+                    Height =284
+                    TabIndex =43
+                    Name ="sumushum"
+                    ControlSource ="=Sum([ushum])"
+                    FontName ="Tahoma"
+                    GUID = Begin
+                        0xeee7094d9a5544429fba8fc1d4df6dc7
+                    End
+                    AsianLineBreak =255
+
+                End
+            End
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =240
+            Name ="ОбластьДанных0"
+            GUID = Begin
+                0xdc075f4623048d45b3e4c8929d2508d7
+            End
+            Begin
+                Begin TextBox
+                    ColumnHidden = NotDefault
+                    OverlapFlags =93
+                    Width =1146
+                    ColumnWidth =2535
+                    ColumnOrder =1
+                    TabIndex =53
+                    Name ="name1"
+                    ControlSource ="name1"
+                    GUID = Begin
+                        0xb0800db07b131742b7fff22b9717f295
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    Width =558
+                    ColumnWidth =2670
+                    ColumnOrder =0
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    Tag ="key"
+                    GUID = Begin
+                        0x92c0734ac36d90459df0704c2f70c2ce
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    Left =566
+                    ColumnWidth =870
+                    ColumnOrder =2
+                    TabIndex =1
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    Tag ="key"
+                    GUID = Begin
+                        0xdd78eef716bd774fbb0debe1980a2da3
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =255
+                    Left =1122
+                    Width =585
+                    ColumnWidth =870
+                    ColumnOrder =3
+                    TabIndex =2
+                    Name ="NUST"
+                    ControlSource ="NUST"
+                    Format ="#"
+                    GUID = Begin
+                        0x25671913d0bba34eb0158ebc0587430d
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    Left =2268
+                    ColumnWidth =870
+                    ColumnOrder =5
+                    TabIndex =3
+                    Name ="E"
+                    ControlSource ="E"
+                    Format ="#"
+                    GUID = Begin
+                        0xa65d1f6d3e8f5147b43b2c8bdc35bfa1
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =2829
+                    ColumnWidth =870
+                    ColumnOrder =6
+                    TabIndex =4
+                    Name ="EWTP"
+                    ControlSource ="EWTP"
+                    Format ="#"
+                    GUID = Begin
+                        0x859800bb8cd9334e935dbdc61bb6ddb0
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =3390
+                    ColumnWidth =870
+                    ColumnOrder =7
+                    TabIndex =5
+                    Name ="EURT"
+                    ControlSource ="EURT"
+                    Format ="#"
+                    GUID = Begin
+                        0x88f921e87f39194ebbab271111aa62ff
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =3951
+                    ColumnWidth =870
+                    ColumnOrder =8
+                    TabIndex =6
+                    Name ="Q"
+                    ControlSource ="Q"
+                    Format ="#"
+                    GUID = Begin
+                        0xca17057729009e48b1b94ffbe7f539c9
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =4512
+                    ColumnWidth =870
+                    ColumnOrder =9
+                    TabIndex =7
+                    Name ="QOTR"
+                    ControlSource ="QOTR"
+                    Format ="#"
+                    GUID = Begin
+                        0x4e077c5c0cf1e84a867ea97919b6863e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =5073
+                    ColumnWidth =870
+                    ColumnOrder =10
+                    TabIndex =8
+                    Name ="NT"
+                    ControlSource ="NT"
+                    Format ="#"
+                    GUID = Begin
+                        0x49d6c30fd5295045950ab764071d2ac8
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =5634
+                    ColumnWidth =870
+                    ColumnOrder =11
+                    TabIndex =9
+                    Name ="TURT"
+                    ControlSource ="TURT"
+                    Format ="#"
+                    GUID = Begin
+                        0x78c3cd6743fb4842982f9dfc0f0297b0
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =6195
+                    ColumnWidth =870
+                    ColumnOrder =12
+                    TabIndex =10
+                    Name ="EOTP"
+                    ControlSource ="EOTP"
+                    Format ="#"
+                    GUID = Begin
+                        0x36e5fa206ac0cb45bcccb3d6d9b1e6ac
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =6756
+                    ColumnWidth =870
+                    ColumnOrder =13
+                    TabIndex =11
+                    Name ="EUST"
+                    ControlSource ="EUST"
+                    Format ="#"
+                    GUID = Begin
+                        0xf00a8fd37346264882c6273c4e571998
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =7317
+                    ColumnWidth =870
+                    ColumnOrder =14
+                    TabIndex =12
+                    Name ="TUST"
+                    ControlSource ="TUST"
+                    Format ="#"
+                    GUID = Begin
+                        0xd73ba01c28d1394f920df3302e34e6e3
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =7878
+                    ColumnWidth =870
+                    ColumnOrder =15
+                    TabIndex =13
+                    Name ="B"
+                    ControlSource ="B"
+                    Format ="#"
+                    GUID = Begin
+                        0x0dbf6636f1a81a469c17d2d0a79401c1
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =8439
+                    ColumnWidth =870
+                    ColumnOrder =16
+                    TabIndex =14
+                    Name ="GAZ"
+                    ControlSource ="GAZ"
+                    Format ="#"
+                    GUID = Begin
+                        0xf84ecda70cee0a43a044d0ed8f9357b0
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =9000
+                    ColumnWidth =870
+                    ColumnOrder =17
+                    TabIndex =15
+                    Name ="MAZUT"
+                    ControlSource ="MAZUT"
+                    Format ="#"
+                    GUID = Begin
+                        0x50a184f82a3a234080cc3ff2407fdd0f
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =9561
+                    ColumnWidth =870
+                    ColumnOrder =18
+                    TabIndex =16
+                    Name ="TORF"
+                    ControlSource ="TORF"
+                    Format ="#"
+                    GUID = Begin
+                        0xdaeff007e0c50b44ab0c3a1415d05190
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =10122
+                    ColumnWidth =870
+                    ColumnOrder =19
+                    TabIndex =17
+                    Name ="SLAN"
+                    ControlSource ="SLAN"
+                    Format ="#"
+                    GUID = Begin
+                        0x3d8bf44283eeab4788de3604eca2beea
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =10683
+                    ColumnWidth =870
+                    ColumnOrder =20
+                    TabIndex =18
+                    Name ="PROCH"
+                    ControlSource ="PROCH"
+                    Format ="#"
+                    GUID = Begin
+                        0xbe4ec9e6ca9d1c46993e140c4625af34
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =11244
+                    ColumnWidth =870
+                    ColumnOrder =21
+                    TabIndex =19
+                    Name ="UGOL"
+                    ControlSource ="UGOL"
+                    Format ="#"
+                    GUID = Begin
+                        0xad36c558aa718d4fa9d7ae50fe581d80
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =11805
+                    ColumnWidth =870
+                    ColumnOrder =22
+                    TabIndex =20
+                    Name ="DON"
+                    ControlSource ="DON"
+                    Format ="#"
+                    GUID = Begin
+                        0xc1e53e31ad61404bbbb616608d1b68ff
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =12366
+                    ColumnWidth =870
+                    ColumnOrder =23
+                    TabIndex =21
+                    Name ="PODM"
+                    ControlSource ="PODM"
+                    Format ="#"
+                    GUID = Begin
+                        0x283332a410215d428fdefd0b90abf4fb
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =12927
+                    ColumnWidth =870
+                    ColumnOrder =24
+                    TabIndex =22
+                    Name ="PECH"
+                    ControlSource ="PECH"
+                    Format ="#"
+                    GUID = Begin
+                        0xb20eb9794bfcc54d95759a3c682e4ee5
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =13488
+                    ColumnWidth =870
+                    ColumnOrder =25
+                    TabIndex =23
+                    Name ="KUZN"
+                    ControlSource ="KUZN"
+                    Format ="#"
+                    GUID = Begin
+                        0x07962aedfc6eec4986dc1e26d9705ecb
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =14049
+                    ColumnWidth =870
+                    ColumnOrder =26
+                    TabIndex =24
+                    Name ="URAL"
+                    ControlSource ="URAL"
+                    Format ="#"
+                    GUID = Begin
+                        0x3ad67d3786e22745900c407018ba27bc
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =14610
+                    ColumnWidth =870
+                    ColumnOrder =27
+                    TabIndex =25
+                    Name ="BASHK"
+                    ControlSource ="BASHK"
+                    Format ="#"
+                    GUID = Begin
+                        0xfe45ca82f07186408135db020c37fa61
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =15171
+                    Width =597
+                    ColumnWidth =870
+                    ColumnOrder =28
+                    TabIndex =26
+                    Name ="KAZAH"
+                    ControlSource ="KAZAH"
+                    Format ="#"
+                    GUID = Begin
+                        0xafe1f058e5e6ae42876118f8e84a68d3
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =24944
+                    ColumnWidth =870
+                    ColumnOrder =44
+                    TabIndex =27
+                    Name ="CHUKOT"
+                    ControlSource ="CHUKOT"
+                    Format ="#"
+                    GUID = Begin
+                        0x5bc3fb0b4e43f9448c4289300c7cf91e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =16321
+                    ColumnWidth =870
+                    ColumnOrder =30
+                    TabIndex =28
+                    Name ="KAN"
+                    ControlSource ="KAN"
+                    Format ="#"
+                    GUID = Begin
+                        0xfcbc82022b19f04f9515fb9cb8c33494
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =17443
+                    ColumnWidth =870
+                    ColumnOrder =32
+                    TabIndex =29
+                    Name ="IRKUT"
+                    ControlSource ="IRKUT"
+                    Format ="#"
+                    GUID = Begin
+                        0xf842890169f96e49998942729ad13045
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =18004
+                    ColumnWidth =870
+                    ColumnOrder =33
+                    TabIndex =30
+                    Name ="HAK"
+                    ControlSource ="HAK"
+                    Format ="#"
+                    GUID = Begin
+                        0x6c5b9cacc8763b4f9cc71c99e8765ea6
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =18565
+                    ColumnWidth =870
+                    ColumnOrder =34
+                    TabIndex =31
+                    Name ="TUV"
+                    ControlSource ="TUV"
+                    Format ="#"
+                    GUID = Begin
+                        0x1173ca9c8353fc4e8849b4e7a1214ce4
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =19126
+                    ColumnWidth =870
+                    ColumnOrder =35
+                    TabIndex =32
+                    Name ="BUR"
+                    ControlSource ="BUR"
+                    Format ="#"
+                    GUID = Begin
+                        0x684468150027014ba79b75b542853619
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =19687
+                    ColumnWidth =870
+                    ColumnOrder =36
+                    TabIndex =33
+                    Name ="CHIT"
+                    ControlSource ="CHIT"
+                    Format ="#"
+                    GUID = Begin
+                        0xcb916652820a1e46be41d967b27a7b21
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =23244
+                    ColumnWidth =870
+                    ColumnOrder =42
+                    TabIndex =34
+                    Name ="YAKUT"
+                    ControlSource ="YAKUT"
+                    Format ="#"
+                    GUID = Begin
+                        0x01b64f78642f5946a6078f5d014aeafa
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =85
+                    Left =20862
+                    ColumnWidth =870
+                    ColumnOrder =38
+                    TabIndex =35
+                    Name ="AMUR"
+                    ControlSource ="AMUR"
+                    Format ="#"
+                    GUID = Begin
+                        0x66460b7b3fc97b4daa921c5d0a6b2a2d
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =21429
+                    ColumnWidth =870
+                    ColumnOrder =39
+                    TabIndex =36
+                    Name ="URG"
+                    ControlSource ="URG"
+                    Format ="#"
+                    GUID = Begin
+                        0xde531b22646382448adfe56a9e5553a9
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =85
+                    Left =22569
+                    Width =669
+                    ColumnWidth =870
+                    ColumnOrder =41
+                    TabIndex =37
+                    Name ="PRIM"
+                    ControlSource ="PRIM"
+                    Format ="#"
+                    GUID = Begin
+                        0xd06f58683e998147ae82d4697a628c13
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =23811
+                    ColumnWidth =870
+                    ColumnOrder =43
+                    TabIndex =38
+                    Name ="MAG"
+                    ControlSource ="MAG"
+                    Format ="#"
+                    GUID = Begin
+                        0x1bfc535fc8cdae4c9c9f2e6812922842
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =85
+                    Left =25511
+                    ColumnWidth =870
+                    ColumnOrder =46
+                    TabIndex =39
+                    Name ="SAH"
+                    ControlSource ="SAH"
+                    Format ="#"
+                    GUID = Begin
+                        0x984310f1443f8b42a9f1c52cf177c88e
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =26078
+                    ColumnWidth =870
+                    ColumnOrder =48
+                    TabIndex =40
+                    Name ="OBOR"
+                    ControlSource ="OBOR"
+                    Tag ="key"
+                    GUID = Begin
+                        0x95ff927fc4864a48ba5aae454bb3412a
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    Left =26078
+                    ColumnWidth =870
+                    ColumnOrder =49
+                    TabIndex =41
+                    Name ="H"
+                    ControlSource ="H"
+                    Tag ="key"
+                    GUID = Begin
+                        0x7130d58da74a4846855c14bc56ed7be2
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    Left =26627
+                    ColumnWidth =870
+                    ColumnOrder =50
+                    TabIndex =42
+                    Name ="HFIX"
+                    ControlSource ="HFIX"
+                    Tag ="key"
+                    GUID = Begin
+                        0x9ca3955816b42042b9a190fb45f5d320
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    Left =27188
+                    Width =368
+                    ColumnWidth =870
+                    ColumnOrder =51
+                    TabIndex =43
+                    Name ="VED"
+                    ControlSource ="VED"
+                    Tag ="key"
+                    GUID = Begin
+                        0x52031b83e9414d45874bf4d48817b8a7
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    Left =27552
+                    Width =416
+                    ColumnWidth =870
+                    ColumnOrder =52
+                    TabIndex =44
+                    Name ="OBL"
+                    ControlSource ="OBL"
+                    Tag ="key"
+                    GUID = Begin
+                        0x58a4b0474635f04e8c579879dc21a949
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =28006
+                    Width =356
+                    ColumnWidth =870
+                    ColumnOrder =53
+                    TabIndex =45
+                    Name ="DEP"
+                    ControlSource ="DEP"
+                    Tag ="key"
+                    GUID = Begin
+                        0x19c8102faa672c40be7e42016def606e
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    Left =28346
+                    Width =416
+                    ColumnWidth =870
+                    ColumnOrder =54
+                    TabIndex =46
+                    Name ="OES"
+                    ControlSource ="OES"
+                    Tag ="key"
+                    GUID = Begin
+                        0x87237724f245dd4993c39fba27cde8f8
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    Left =28686
+                    Width =344
+                    ColumnWidth =870
+                    ColumnOrder =55
+                    TabIndex =47
+                    Name ="ER"
+                    ControlSource ="ER"
+                    Tag ="key"
+                    GUID = Begin
+                        0x1c53f450877b154ab12f79fb47c46d9f
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    Left =29026
+                    ColumnWidth =1065
+                    ColumnOrder =56
+                    TabIndex =48
+                    Name ="NUMB1120"
+                    ControlSource ="NUMB1120"
+                    Tag ="key"
+                    GUID = Begin
+                        0xb7f91b4692699546b295621bb408e00a
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =29593
+                    ColumnWidth =720
+                    ColumnOrder =57
+                    TabIndex =49
+                    Name ="numb1"
+                    ControlSource ="numb1"
+                    Tag ="key"
+                    GUID = Begin
+                        0x8c3f845a0a5dc44b9789730febc631c4
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =119
+                    Left =1707
+                    ColumnWidth =870
+                    ColumnOrder =4
+                    TabIndex =50
+                    Name ="NR"
+                    ControlSource ="NR"
+                    Format ="#"
+                    GUID = Begin
+                        0xa045e24043d376449d931dc4c326e18c
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =30727
+                    Width =453
+                    ColumnWidth =255
+                    ColumnOrder =58
+                    TabIndex =51
+                    Name ="v"
+                    ControlSource ="v"
+                    Tag ="key"
+                    GUID = Begin
+                        0x48ef0fb51157fd47a83e6755109278ab
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =24377
+                    ColumnWidth =870
+                    ColumnOrder =45
+                    TabIndex =52
+                    Name ="KAMCH"
+                    ControlSource ="KAMCH"
+                    Format ="#"
+                    GUID = Begin
+                        0x97286e2c5dbba84e89c2b49424411e0e
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =21996
+                    ColumnWidth =870
+                    ColumnOrder =40
+                    TabIndex =54
+                    Name ="USHUM"
+                    ControlSource ="USHUM"
+                    GUID = Begin
+                        0xcc0ca9173c9ff34a9f85246a190dbaca
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    Left =26078
+                    ColumnWidth =870
+                    ColumnOrder =47
+                    TabIndex =55
+                    Name ="NTsum"
+                    ControlSource ="NTsum"
+                    GUID = Begin
+                        0x6aff149fb780f54582e5c6c070034e16
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =30160
+                    Width =499
+                    ColumnWidth =780
+                    ColumnOrder =59
+                    TabIndex =56
+                    Name ="MAIN"
+                    ControlSource ="MAIN"
+                    GUID = Begin
+                        0xe0660cc5e995e040b0518707d836537e
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =20296
+                    ColumnWidth =870
+                    ColumnOrder =37
+                    TabIndex =57
+                    Name ="TAL"
+                    ControlSource ="TAL"
+                    GUID = Begin
+                        0x29d471ee71eaba4291a70a19ffab130e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =15772
+                    Width =549
+                    ColumnWidth =870
+                    ColumnOrder =29
+                    TabIndex =58
+                    Name ="ALT"
+                    ControlSource ="ALT"
+                    Format ="#"
+                    GUID = Begin
+                        0x0b40b9431c296342971edb3f987f010f
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =16882
+                    ColumnWidth =870
+                    ColumnOrder =31
+                    TabIndex =59
+                    Name ="TUNG"
+                    ControlSource ="TUNG"
+                    Format ="#"
+                    GUID = Begin
+                        0xb5bfbb9d51d899479e144731b2d8e12a
+                    End
+
+                End
+            End
+        End
+        Begin FormFooter
+            Height =0
+            Name ="ПримечаниеФормы"
+            GUID = Begin
+                0x1fd36dc19930914bba5483be197f0439
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Public msgstanu, msgstant
+
+Private Sub Form_AfterUpdate()
+For i = 0 To Forms.Count - 1
+If Forms(i).Name = "Итог" Then Forms("Итог").Requery
+Next i
+End Sub
+
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+Dim uf As Form, toplf As Form, dopform As Form, mf As Form
+Dim db As Database, w As Form, U As DAO.Recordset, topl As DAO.Recordset, marks As DAO.Recordset
+Dim dop As DAO.Recordset
+Dim bm As String, bm1 As String
+Dim j As Integer, j1 As Integer, j2 As Integer, j3 As Integer, j4 As Integer, j5 As Integer
+Dim ekotp As Double, etpotp As Double, sumtopl As Double, sumug As Double, pt As Double
+Dim namet As String, nameb As String, ugli As String, ugli1 As String
+If Form_Редактирование.byear = 0 Then Form_Редактирование.byear = Form_Редактирование.byearf
+Debug.Print "byear="; Form_Редактирование.byear
+Parent!fchange = 1
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set w = Parent![wform].Form
+Set uf = Parent![uform].Form
+Set toplf = Parent![toplform].Form
+Set dopform = Parent![dopform].Form
+Set U = uf.RecordsetClone
+Set topl = toplf.RecordsetClone
+Set dop = db.OpenRecordset(dopform.RecordSource, DB_OPEN_TABLE)
+If (w.year = Form_Редактирование.byear) Or (z(w.VED) = 0) Then GoTo endcalc
+If w.QOTR > 0 Then
+If w.NT > 0 Then
+If w.QOTR / w.NT * 1000 > 8760 Then bmsg = MsgBox("Число часов превышает 8760", vbOKOnly)
+Else
+bmsg = MsgBox("Нет тепловой мощности", vbOKOnly)
+End If
+End If
+dop.Index = "numb1"
+If U.RecordCount = 0 Then
+If msgstanu <> w!numb1120 Then
+bmsg = MsgBox("Отсутствуют удельные", vbOKOnly)
+msgstanu = w!numb1120
+End If
+GoTo skipu
+End If
+U.MoveFirst
+Do Until (U.EOF)
+If U!year > w.year Then GoTo endu
+If U!year <= w.year Then bm = U.Bookmark
+U.MoveNext
+Loop
+endu: U.Bookmark = bm
+w.EWTP = z(w.QOTR) * z(U!y) / 1000
+If (w.VED = 1 Or w.VED = 4) And U!Ksn > 0 And w.NUST > 0 Then
+ekotp = (z(w.E) - z(w.EWTP)) * (1 - (U!snbas - ((w.E / w.NUST) / 8.76) * U!Ksn) / 100)
+Else
+ekotp = (z(w.E) - z(w.EWTP)) * (1 - z(U("snk")) / 100)
+End If
+etpotp = z(w.EWTP) * z(U("sntp"))
+w.EOTP = ekotp + etpotp
+If (w.VED = 1 Or w.VED = 4) And U!Kh > 0 And w.NUST > 0 Then
+w.EUST = w.EOTP * (U!bbas - ((w.E / w.NUST) / 8.76) * U!Kh) / 1000
+Else
+w.EUST = (ekotp * z(U("bk")) + etpotp * z(U("btp"))) / 1000
+End If
+If w.EOTP > 0 Then w.EURT = w.EUST / w.EOTP * 1000 Else w.EURT = 0
+skipu:
+'If z(U!fbt) = 0 And (w.OBOR = 90 Or w.OBOR = 91) And z(w.Q) > 0 Then w.TURT = (130 * z(w.QOTR) + 160 * (z(w.Q) - z(w.QOTR))) / z(w.Q)
+If z(w.Q) > 0 And z(w.TURT) = 0 And z(w.OBOR) <> 23 Then bmsg = MsgBox("Отсутствует bt", vbOKOnly)
+w.TUST = z(w.Q) * z(w.TURT) / 1000
+w.B = w.EUST + w.TUST
+If topl.RecordCount = 0 Then
+If msgstant <> w!numb1120 Then
+bmsg = MsgBox("Отсутствуют формулы топлива", vbOKOnly)
+msgstant = w!numb1120
+End If
+GoTo endcalc
+End If
+topl.MoveFirst
+Do Until (topl.EOF)
+If topl!year > w.year Then GoTo endtop
+If topl!year <= w.year Then bm1 = topl.Bookmark
+topl.MoveNext
+Loop
+endtop: topl.Bookmark = bm1
+'новые формулы
+topls = ",gaz,mazut,torf,slan,gtt,proch,"
+ugli = ",ugol,kuzn,kan,hak,tung,tuv,irkut,kazah,bur,chit,don,podm,pech,alt,ural,bashk,karag,amur,urg,prim,luch,yakut,chukot,sah,mag,kamch,ushum,tal,"
+ugli1 = ",nazar,ibor,berez,per,irbei,kansk,gusin,tugn,okino,azey,cher,jer,karab,mug,har,urt,tataur,tarbag,zab_kam,vork,intin,sver,chel,kizel,sosv,neru,zyryan,pyak,rai,erk,svo,bikin,razdol,hankai,bering,anad,ekib,maikub,kuznt,kuzngd,kuznss,kuznun,gazpp,koksdom,prochgaz,tvproch,"
+bdop = False
+If Not (IsNull(topl("formtxt"))) Then
+ost = w!B
+at = split(topl!formtxt & ";", ";")
+sumugol1 = 0
+lev = 0
+bpech = False
+bkuzn = False
+bkan = False
+btung = False
+bural = False
+birkut = False
+bbur = False
+bchit = False
+byakut = False
+bamur = False
+bprim = False
+bkazah = False
+bchukot = False
+bgazpp = False
+bproch = False
+usedt = ","
+For i = 0 To UBound(at) - 1
+dopugol = False
+ie = InStr(at(i), "=")
+If ie > 0 Then
+namet = Mid(at(i), 1, ie - 1)
+If Mid(namet, 1, 1) = "/" Then
+lev = 1
+namet = Mid(namet, 2)
+End If
+Else
+namet = at(i)
+nametost = namet
+End If
+usedt = usedt & namet & ","
+If namet = "intin" Or namet = "vork" Then bpech = True
+If namet = "kuznt" Or namet = "kuznss" Or namet = "kuzngd" Or namet = "kuznun" Then bkuzn = True
+If namet = "nazar" Or namet = "ibor" Or namet = "berez" Or namet = "per" Or namet = "irbei" Or namet = "kansk" Then bkan = True
+If namet = "sver" Or namet = "chel" Or namet = "kizel" Or namet = "sosv" Then bural = True
+If namet = "azey" Or namet = "cher" Or namet = "mug" Then birkut = True
+If namet = "gusin" Or namet = "tugn" Or namet = "okino" Then bbur = True
+If namet = "har" Or namet = "urt" Or namet = "tataur" Or namet = "tarbag" Or namet = "zab_kam" Then bchit = True
+If namet = "neru" Or namet = "zyryan" Or namet = "pyak" Then byakut = True
+If namet = "rai" Or namet = "erk" Or namet = "svo" Then bamur = True
+If namet = "gazpp" Then bgazpp = True
+If namet = "koksdom" Or namet = "prochgaz" Or namet = "tvproch" Then bproch = True
+If namet = "jer" Or namet = "karab" Then btung = True
+If namet = "bikin" Or namet = "razdol" Or namet = "hankai" Then bprim = True
+If namet = "bering" Or namet = "anad" Then bchukot = True
+If namet = "ekib" Or namet = "maikub" Then bkazah = True
+If InStr(ugli1, "," & namet & ",") > 0 Then 'доп угли
+dopugol = True
+dopform(namet).ColumnHidden = False
+If Not bdop Then
+dop.Seek "=", w("numb1"), w!v, w!year
+If dop.NoMatch Then
+dop.AddNew
+dop!numb1 = w.numb1
+dop!numb1120 = w.numb1120
+dop!year = w.year
+dop.Update
+dop.Move 0, dop.LastModified
+End If
+dop.Edit
+bdop = True
+End If ' not bdop
+End If 'доп угли
+If ie > 0 Then
+ptvalue = CDbl(Mid(at(i), ie + 1))
+If ptvalue >= 0 Then 'проценты
+If lev = 0 Then tvalue = w!B * ptvalue / 100 Else tvalue = ost * ptvalue / 100
+Else
+If dopugol Then tvalue = z(dop(namet)) Else tvalue = z(w(namet))
+End If 'проценты или абсолютн
+ost = ost - tvalue
+If Not dopugol Then 'основные угли
+w(namet) = tvalue
+Else 'доп угли
+dop(namet) = tvalue
+End If 'доп угли
+End If ' ie>0
+Next i
+If InStr(ugli1, "," & nametost & ",") > 0 Then dop(nametost) = ost Else w(nametost) = ost
+If Not bdop Then
+dop.Seek "=", w("numb1"), w!v, w!year
+If dop.NoMatch Then GoTo sumdop
+dop.Edit
+End If
+For i = 0 To dop.Fields.Count - 1
+fname = dop.Fields(i).Name
+If InStr(1, ugli1, "," & fname & ",", vbTextCompare) > 0 And InStr(1, usedt, "," & fname & ",", vbTextCompare) = 0 Then dop(fname) = 0
+Next i
+dop.Update
+sumdop:
+If bpech Then
+w("pech") = dop("intin") + dop("vork")
+usedt = usedt & "pech,"
+End If
+If bkuzn Then
+w("kuzn") = dop("kuznt") + dop("kuznss") + dop("kuzngd") + dop("kuznun")
+usedt = usedt & "kuzn,"
+End If
+If bkan Then
+w("kan") = dop("nazar") + dop("ibor") + dop("berez") + dop("per") + dop("irbei") + dop("kansk")
+usedt = usedt & "kan,"
+End If
+If bural Then
+w("ural") = dop("sver") + dop("chel") + dop("kizel") + dop("sosv")
+usedt = usedt & "ural,"
+End If
+If birkut Then
+w("irkut") = dop("azey") + dop("cher") + dop("mug")
+usedt = usedt & "irkut,"
+End If
+If bbur Then
+w("bur") = dop("gusin") + dop("tugn") + dop("okino")
+usedt = usedt & "bur,"
+End If
+If bchit Then
+w("chit") = dop("har") + dop("urt") + dop("tataur") + dop("tarbag") + dop("zab_kam")
+usedt = usedt & "chit,"
+End If
+If byakut Then
+w("yakut") = dop("neru") + dop("pyak") + dop("zyryan")
+usedt = usedt & "yakut,"
+End If
+If bamur Then
+w("amur") = dop("rai") + dop("erk") + dop("svo")
+usedt = usedt & "amur,"
+End If
+If bgazpp Then
+w("gaz") = w("gaz") + dop("gazpp")
+usedt = usedt & "gaz,"
+End If
+If bproch Then
+w("proch") = dop("koksdom") + dop("prochgaz") + dop("tvproch")
+usedt = usedt & "proch,"
+End If
+If btung Then
+w("tung") = dop("jer") + dop("karab")
+usedt = usedt & "tung,"
+End If
+If bprim Then
+w("prim") = dop("bikin") + dop("razdol") + dop("hankai")
+usedt = usedt & "prim,"
+End If
+If bchukot Then
+w("chukot") = dop("bering") + dop("anad")
+usedt = usedt & "chukot,"
+End If
+If bkazah Then
+w("kazah") = dop("ekib") + dop("maikub")
+usedt = usedt & "kazah,"
+End If
+For i = 0 To w.Controls.Count - 1
+fname = w.Controls(i).Name
+fname1 = fname
+If fname = "yakut" Then fname1 = "yakut"
+If InStr(1, topls & ugli, "," & fname & ",", vbTextCompare) > 0 And InStr(1, usedt, "," & fname & ",", vbTextCompare) = 0 Then w(fname) = 0
+If InStr(1, ugli, "," & fname & ",", vbTextCompare) > 0 And fname <> "ugol" Then sumugol1 = sumugol1 + w(fname)
+Next i
+w("ugol") = sumugol1
+GoTo endcalc
+End If
+'  новые формулы конец
+endcalc:
+End Sub
+
+Private Sub Form_Current()
+Dim dop As Form, U As Form, R As DAO.Recordset, db As Database, rnconf As DAO.Recordset, stan As Double
+If NT > 0 Then Forms("Редактирование").Form!Ht = QOTR / NT * 1000
+If z(Parent!link) & z(Parent!v) <> Me!numb1120 & Me!v Then
+Parent!link = Me!numb1120
+Parent!v = Me!v
+If InStr(Me.RecordSource, "Станции(макет)") = 0 Then
+Set dop = Parent!dopform.Form
+Set U = Parent!uform.Form
+If VED = 1 Or VED = 4 Then
+U.Controls("sntp").ColumnHidden = True
+U.Controls("btp").ColumnHidden = True
+U.Controls("Kh").ColumnHidden = False
+U.Controls("bbas").ColumnHidden = False
+U.Controls("Ksn").ColumnHidden = False
+U.Controls("snbas").ColumnHidden = False
+Else
+U.Controls("sntp").ColumnHidden = False
+U.Controls("btp").ColumnHidden = False
+U.Controls("Kh").ColumnHidden = True
+U.Controls("bbas").ColumnHidden = True
+U.Controls("Ksn").ColumnHidden = True
+U.Controls("snbas").ColumnHidden = True
+End If
+sumtxt = "select "
+ugli1 = "nazar,ibor,berez,per,irbei,kansk,gusin,tugn,okino,azey,cher,mug,karab,vork,intin,sver,chel,kizel,kuznt,kuzngd,kuznss,kuznun,jer,har,urt,tataur,tarbag,zab_kam,bikin,razdol,hankai,neru,zyryan,pyak,rai,erk,svo,bering,anad,ekib,maikub,koksdom,prochgaz,tvproch"
+augli1 = split(ugli1, ",")
+For i = 0 To UBound(augli1)
+sumtxt = sumtxt & "sum(d." & augli1(i) & ") as " & IIf(augli1(i) = "intin", "[" & augli1(i) & "]", augli1(i))
+If i < UBound(augli1) Then sumtxt = sumtxt & ","
+Next i
+sumtxt = sumtxt & ",sum(d.gazpp) as gazpp"
+Debug.Print sumtxt
+sumtxt = sumtxt & " from [" & dop.RecordSource & "] as d where numb1120=" & Me!numb1120 & ";"
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set R = db.OpenRecordset(sumtxt)
+R.MoveFirst
+For j = 0 To R.Fields.Count - 1
+fname = R.Fields(j).Name
+'If fname = "[intin]" Then fname = "intin"
+fh = IIf(z(R.Fields(j).Value) > 0, False, True)
+dop.Controls(fname).ColumnHidden = fh
+Next j
+End If
+For i = 0 To Forms.Count - 1
+If Forms(i).Name = "Диаграмма" Then
+DoCmd.OpenForm "Диаграмма", , , "numb=" & Me!numb1120
+End If
+If Forms(i).Name = "Турбины" Then
+If InStr(Forms(i).filter, "ur=") > 0 Then agrur = True Else agrur = False
+If z(VED) > 0 Then sf = "grcode=" Else sf = "stcode="
+Forms(i).filter = sf & numb1120 & IIf(agrur, " and ur=1 ", "")
+Forms(i).FilterOn = True
+End If
+If Forms(i).Name = "Справка_для_редактирования" Then
+Forms(i).filter = "numb1120=" & numb1120
+Forms(i).FilterOn = True
+End If
+If Forms(i).Name = "Конфигурация(справка)" Then
+stan = IIf(z(MAIN) = 0, numb1120, MAIN)
+If z(MAIN) > 0 Then
+sqlnconf = "SELECT Count([станция-конфигурация].conf) AS nconf FROM [станция-конфигурация] INNER JOIN Имена_станций ON [станция-конфигурация].stan = Имена_станций.NUMB GROUP BY main HAVING main=" & stan & ";"
+Set rnconf = CurrentDb.OpenRecordset(sqlnconf)
+If rnconf.RecordCount > 0 Then
+If rnconf!nconf > 1 Then stan = numb1120
+End If
+End If
+Forms(i).filter = "stan=" & stan
+Forms(i).FilterOn = True
+End If
+If Forms(i).Name = "Пром_потребители" Then
+Forms(i).filter = "codest=" & IIf(z(MAIN) = 0, numb1120, MAIN)
+Forms(i).FilterOn = True
+End If
+Next i
+End If
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+For i = 0 To Section(0).Controls.Count - 1
+'Section(0).Controls(i).ColumnHidden = False
+Next i
+End Sub

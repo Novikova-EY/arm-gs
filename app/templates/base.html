@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/loaders.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/table_headers.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -91,7 +92,8 @@
     <!-- Сообщения об ошибках -->
     {% with messages = get_flashed_messages(with_categories=True) %}
     {% if messages %}
-        <div class="position-fixed top-0 start-50 translate-middle-x mt-5 z-3" style="max-width: 1500px; width: 90%;">
+        {# z-index выше липких панелей страниц (например fuel-calc-edit sticky z=40..42), иначе текст flash перекрывается #}
+        <div class="position-fixed top-0 start-50 translate-middle-x mt-5" style="max-width: 1500px; width: 90%; z-index: 1080;">
         {% for category, message in messages %}
             <div class="alert {% if category == 'danger-duplicate' %}alert-danger fs-2 text-uppercase{% else %}alert-{{ category }} fs-5{% endif %} fw-bold text-center shadow-lg p-4 alert-dismissible fade show" role="alert">
             {{ message }}
@@ -109,7 +111,7 @@
 
     <!-- Подключаем Bootstrap JS -->
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/common/arm_gs_page_scroll_restore.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='js/common/arm_gs_page_scroll_restore.js') }}?v=3"></script>
 
     <script>
         (function () {
@@ -366,12 +368,14 @@
                 if (!document.querySelector('.pd-ec-summary-sticky-stack')) return;
                 updatePageTableScrollMaxHeight();
                 updatePdSummaryControlsStickyHeight();
+                updatePdCoeffTableHostMaxHeight();
                 applyStickyTheadOffsets();
             });
             document.addEventListener('hidden.bs.collapse', function () {
                 if (!document.querySelector('.pd-ec-summary-sticky-stack')) return;
                 updatePageTableScrollMaxHeight();
                 updatePdSummaryControlsStickyHeight();
+                updatePdCoeffTableHostMaxHeight();
                 applyStickyTheadOffsets();
             });
         })();
@@ -455,12 +459,13 @@
             width: 100%;
         }
         .searchable-select-list {
-            max-height: 260px;
+            max-height: 280px;
             overflow: auto;
         }
         .searchable-select-item {
             cursor: pointer;
             user-select: none;
+            white-space: nowrap;
         }
         .searchable-select-item,
         .searchable-select-item.text-primary {
@@ -615,9 +620,10 @@
 
             function positionOverlay(selectEl) {
                 var r = selectEl.getBoundingClientRect();
+                var width = Math.max(r.width, 280);
                 overlay.style.left = (r.left + window.scrollX) + 'px';
                 overlay.style.top = (r.bottom + window.scrollY + 4) + 'px';
-                overlay.style.width = r.width + 'px';
+                overlay.style.width = width + 'px';
             }
 
             function openOverlay(selectEl, initialText) {
@@ -717,11 +723,12 @@
                 }
             });
 
-            // Точки применения: все select генкомпаний
-            function isGenCompanySelect(el) {
+            // Точки применения: генкомпании и любые select с классом searchable-select
+            function isSearchableSelect(el) {
                 if (!el || el.tagName !== 'SELECT') return false;
                 if (el.id === 'id_gen_company') return true;
                 if (el.classList && el.classList.contains('gen-company-select')) return true;
+                if (el.classList && el.classList.contains('searchable-select')) return true;
                 return false;
             }
 
@@ -744,7 +751,7 @@
             // Открываем "поиск" по клику (не по focus), чтобы после выбора не оставалось поле "Поиск..."
             document.addEventListener('mousedown', function (e) {
                 var el = e.target;
-                if (!isGenCompanySelect(el)) return;
+                if (!isSearchableSelect(el)) return;
                 if (isSelect2Enhanced(el)) return; // если работает Select2 — не мешаем
                 // не открываем нативный select, используем наш список
                 e.preventDefault();
@@ -755,7 +762,7 @@
             // Если пользователь начинает печатать, когда фокус на select — тоже открываем поиск
             document.addEventListener('keydown', function (e) {
                 var el = e.target;
-                if (!isGenCompanySelect(el)) return;
+                if (!isSearchableSelect(el)) return;
                 if (isSelect2Enhanced(el)) return;
                 if (e.ctrlKey || e.metaKey || e.altKey) return;
                 if (e.key.length !== 1) return; // только "печатаемые" символы

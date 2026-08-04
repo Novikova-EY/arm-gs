@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-RegionalEnergySystemTransfer — перетоки электроэнергии между энергосистемами (млн кВт·ч).
+RegionalEnergySystemTransfer — перетоки электроэнергии между энергосистемами (млн кВтч).
 
 Источник перетока — RegionalEnergySystem или RegionalDistrict (субъект РФ), ровно одна связь.
 Получатель — RegionalEnergySystem, ForeignBorderCountry, RegionalDistrict или EnergyUnit

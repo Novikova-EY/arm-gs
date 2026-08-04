@@ -1,0 +1,265 @@
+Version =19
+VersionRequired =19
+Checksum =412984946
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    TabularCharSet =204
+    TabularFamily =55
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =4308
+    DatasheetFontHeight =10
+    ItemSuffix =4
+    Left =288
+    Top =3696
+    Right =5136
+    Bottom =6276
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x51a8940ccfb4e240
+    End
+    GUID = Begin
+        0xc37f253da9f37746be1cc4d17dfe7215
+    End
+    NameMap = Begin
+        0x0acc0e550000000068067c8cbf3da14d9da7ede0ac67ba05000000000f9ded53 ,
+        0xcf39e340000000000000000013043e0440043e0434043004000000000000aa69 ,
+        0x35871f273b4ba7e9e978382d6b670700000068067c8cbf3da14d9da7ede0ac67 ,
+        0xba054e0061006d00650000000000000005ff2c09c13fbc4f95a2d60967624b80 ,
+        0x0700000068067c8cbf3da14d9da7ede0ac67ba053d043004410435043b043504 ,
+        0x3d0438043504000000000000f865bb6077f17542abc598bfe3e087f007000000 ,
+        0x68067c8cbf3da14d9da7ede0ac67ba0534043f0440043e043c0410041e040000 ,
+        0x0000000056cf986e484fad498e518190083c4ec90700000068067c8cbf3da14d ,
+        0x9da7ede0ac67ba05340436043a04450410041e04000000000000115bbf3daaa1 ,
+        0xcb4989db4009138641400700000068067c8cbf3da14d9da7ede0ac67ba056300 ,
+        0x6f006d000000
+    End
+    RecordSource ="Города"
+    OnCurrent ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin BoundObjectFrame
+            SpecialEffect =2
+            Width =4536
+            Height =2835
+            LabelX =-1701
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin FormHeader
+            Height =288
+            BackColor =-2147483633
+            Name ="ЗаголовокФормы"
+            GUID = Begin
+                0xbe26b49b02493f4cafa1fc4e58c65413
+            End
+            Begin
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =93
+                    TextAlign =2
+                    Left =1700
+                    Width =567
+                    Height =284
+                    Name ="Надпись4"
+                    Caption ="насел."
+                    GUID = Begin
+                        0x38cb15cd911e454498e2661bca3e6fb6
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =2267
+                    Width =567
+                    Height =284
+                    Name ="Надпись5"
+                    Caption ="пром."
+                    GUID = Begin
+                        0xa05001effccd4441b7dab0ce930fde84
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =2834
+                    Width =567
+                    Height =288
+                    Name ="Надпись6"
+                    Caption ="жкх*)"
+                    GUID = Begin
+                        0xa327eed2fb676648ad530d9b8adeb7d7
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =87
+                    TextAlign =2
+                    Left =3401
+                    Width =907
+                    Height =283
+                    Name ="Надпись8"
+                    Caption ="подробнее"
+                    GUID = Begin
+                        0xa4be1ad25081f047b68d876d6849405f
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =87
+                    Width =1701
+                    Height =284
+                    Name ="Надпись3"
+                    Caption ="Города"
+                    GUID = Begin
+                        0x33377dee9c33ec4f94e08de1b9407f7e
+                    End
+                End
+            End
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x49d69f4228010f449bc810b7158dbc54
+            End
+            Begin
+                Begin TextBox
+                    OldBorderStyle =1
+                    OverlapFlags =223
+                    Width =1701
+                    ColumnWidth =1740
+                    Name ="Name"
+                    ControlSource ="Name"
+                    GUID = Begin
+                        0x8992d861f2585349be4f7a96b90fa517
+                    End
+                    Begin
+                        Begin Label
+                            OldBorderStyle =1
+                            OverlapFlags =93
+                            Width =516
+                            Height =228
+                            Name ="Надпись0"
+                            Caption ="Name:"
+                            GUID = Begin
+                                0x68341daff4828642afe28fe59b108560
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    Left =1701
+                    ColumnWidth =816
+                    TabIndex =1
+                    Name ="население"
+                    ControlSource ="население"
+                    Format ="#"
+                    GUID = Begin
+                        0xf2a35cc8e120564688265c279cea68f1
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    Left =2268
+                    ColumnWidth =690
+                    TabIndex =2
+                    Name ="дпромАО"
+                    ControlSource ="дпромАО"
+                    Format ="#"
+                    GUID = Begin
+                        0x591b49c4bb2eba48b2b8133976d31dbf
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    Left =2835
+                    ColumnWidth =555
+                    TabIndex =3
+                    Name ="джкхАО"
+                    ControlSource ="джкхАО"
+                    Format ="#"
+                    GUID = Begin
+                        0x47850c085f46e64aaa3c1082bc288c5b
+                    End
+                End
+                Begin BoundObjectFrame
+                    SpecialEffect =0
+                    OverlapFlags =247
+                    Left =3401
+                    Width =907
+                    Height =284
+                    TabIndex =4
+                    Name ="com"
+                    ControlSource ="com"
+                    GUID = Begin
+                        0x76118cab339e4c40b9771c098a5e3f5b
+                    End
+                End
+            End
+        End
+        Begin FormFooter
+            Height =227
+            BackColor =-2147483633
+            Name ="ПримечаниеФормы"
+            GUID = Begin
+                0x3d664c8b9e25d84888997a0e40d32682
+            End
+            Begin
+                Begin Label
+                    OverlapFlags =85
+                    Width =3458
+                    Height =227
+                    Name ="Надпись7"
+                    Caption ="*) % от отпуска АО"
+                    GUID = Begin
+                        0x556352662e67554bb37e1630233fb3fb
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Current()
+If Parent!Фильтр1 = 2 Then
+Parent.Form!Источники_тепла.Form.filter = "codegor=" & code
+Parent.Form!Источники_тепла.Form.FilterOn = True
+End If
+If Parent!Фильтр2 = 2 Then
+Parent.Form!Пром_потребители.Form.filter = "codegor=" & code
+Parent.Form!Пром_потребители.Form.FilterOn = True
+End If
+End Sub

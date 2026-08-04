@@ -2,9 +2,11 @@
 """
 Write/update-слой для EquipmentGroupSpecificFuelConsumption.
 
-Ручной ввод только полей k, y, btp, sntp, bk, snk (consumption_param_{year}_{attr}).
-Расчётные y_calc, btp_calc, sntp_calc, bk_calc, snk_calc не принимаются из формы —
-только пересчёт (equipment_group_specific_fuel_consumption_recalc_services).
+Ручной ввод полей k, y, btp, sntp, bk, snk (и др.) с карточки группы.
+На странице расчётного модуля edit_data — k и *_calc;
+numb1120 только просмотр, при сохранении = EquipmentGroup.numb;
+годы «факт» — *_calc только чтение; для остальных признаков (в т.ч. «план»)
+*_calc редактируются. Входные y/btp/sntp/bk/snk на этой странице скрыты.
 
 Справочно: полный список колонок таблицы — SPECIFIC_FUEL_CONSUMPTION_COLUMNS в
 equipment_group_specific_fuel_consumption_services.
@@ -17,8 +19,12 @@ from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
 )
-from app.common.services.help_services import values_equal_by_display_precision
+from app.common.services.help_services import (
+    format_number_trim_trailing,
+    values_equal_by_display_precision,
+)
 from app.extensions import db
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
@@ -27,7 +33,9 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumptio
 )
 
 # Ручной ввод с equipment_group_details / equipment_group_edit (только эти поля; не *_calc).
-CONSUMPTION_EDITABLE_ATTRS = ["k", "y", "btp", "sntp", "bk", "snk", "numb1120"]
+CONSUMPTION_EDITABLE_ATTRS = [
+    "k", "y", "btp", "sntp", "bk", "snk", "snbas", "ksn", "bbas", "kh", "numb1120",
+]
 CONSUMPTION_FORM_INPUT_ATTRS = CONSUMPTION_EDITABLE_ATTRS
 SPECIFIC_FUEL_CONSUMPTION_EDITABLE_ATTRS = CONSUMPTION_EDITABLE_ATTRS
 
@@ -40,12 +48,18 @@ INTEGER_ATTRS = frozenset(["k", "numb1120"])
 
 NUMERIC_DECIMAL_ATTRS = frozenset(
     a for a in CONSUMPTION_FORM_INPUT_ATTRS if a not in INTEGER_ATTRS
-)
+) | frozenset(SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS)
 
 
 def _format_val(value):
     if value is None:
         return "—"
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (Decimal, int, float)):
+        return format_number_trim_trailing(value)
+    if isinstance(value, str):
+        return value.strip() or "—"
     return str(value)
 
 
@@ -125,7 +139,29 @@ def get_or_create_specific_fuel_consumption(
     set_db_version_on_create(row)
     db.session.add(row)
     db.session.flush()
+    _sync_numb1120_from_equipment_group(row, equipment_group_id)
     return row
+
+
+def _sync_numb1120_from_equipment_group(
+    row: EquipmentGroupSpecificFuelConsumption,
+    equipment_group_id: int,
+) -> dict:
+    """Подставляет numb1120 = EquipmentGroup.numb. Возвращает change_details или {}."""
+    eg = db.session.get(EquipmentGroup, equipment_group_id)
+    if eg is None or eg.numb is None:
+        return {}
+    new_value = int(eg.numb)
+    old_value = getattr(row, "numb1120", None)
+    if old_value == new_value:
+        return {}
+    row.numb1120 = new_value
+    return {
+        "numb1120": {
+            "old": _format_val(old_value),
+            "new": _format_val(new_value),
+        }
+    }
 
 
 def update_specific_fuel_consumption_fields(
@@ -133,14 +169,19 @@ def update_specific_fuel_consumption_fields(
     row: EquipmentGroupSpecificFuelConsumption,
     values: dict,
     rounding_digits: int = 1,
+    allow_calc_attrs: bool = False,
 ) -> dict:
     """
     Обновляет поля строки и возвращает change_details {attr: {old, new}}.
-    Учитываются только ключи из CONSUMPTION_FORM_INPUT_ATTRS.
+    По умолчанию — только CONSUMPTION_FORM_INPUT_ATTRS;
+    при allow_calc_attrs — также SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS.
     """
     change_details = {}
+    allowed_attrs = list(CONSUMPTION_FORM_INPUT_ATTRS)
+    if allow_calc_attrs:
+        allowed_attrs = allowed_attrs + list(SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS)
 
-    for attr_name in CONSUMPTION_FORM_INPUT_ATTRS:
+    for attr_name in allowed_attrs:
         if attr_name not in values:
             continue
         if not hasattr(row, attr_name):
@@ -174,6 +215,7 @@ def save_specific_fuel_consumption_for_year(
     database_version_id: int | None = None,
     commit: bool = False,
     rounding_digits: int = 1,
+    allow_calc_attrs: bool = False,
 ) -> tuple[EquipmentGroupSpecificFuelConsumption | None, dict]:
     """
     Создаёт/обновляет строку за год.
@@ -190,13 +232,16 @@ def save_specific_fuel_consumption_for_year(
         ).first()
     )
 
-    filtered = {k: v for k, v in values.items() if k in CONSUMPTION_FORM_INPUT_ATTRS}
+    allowed = set(CONSUMPTION_FORM_INPUT_ATTRS)
+    if allow_calc_attrs:
+        allowed.update(SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS)
+    filtered = {k: v for k, v in values.items() if k in allowed}
+    # numb1120 не из формы/values — всегда EquipmentGroup.numb при сохранении строки
+    filtered.pop("numb1120", None)
 
     if row is None:
         has_any = False
-        for attr in CONSUMPTION_FORM_INPUT_ATTRS:
-            if attr not in filtered:
-                continue
+        for attr in filtered:
             if _parse_specific_fuel_consumption_value(attr, filtered.get(attr)) is not None:
                 has_any = True
                 break
@@ -223,7 +268,9 @@ def save_specific_fuel_consumption_for_year(
         row=row,
         values=filtered,
         rounding_digits=rounding_digits,
+        allow_calc_attrs=allow_calc_attrs,
     )
+    change_details.update(_sync_numb1120_from_equipment_group(row, equipment_group_id))
 
     if commit:
         db.session.commit()
@@ -263,6 +310,34 @@ def save_specific_fuel_consumption_bulk(
     return result
 
 
+# Поля ручного ввода на странице расчётного модуля.
+# Входные (кроме годов «факт»); *_calc — для всех признаков, кроме «план».
+CALC_EDIT_PAGE_FORM_INPUT_ATTRS = ("k", "y", "btp", "sntp", "bk", "snk")
+CALC_EDIT_PAGE_CALC_ATTRS = tuple(SPECIFIC_FUEL_CONSUMPTION_CALC_ATTRS)
+
+
+def _year_numbers_with_feature(version_id: int | None, feature_name: str) -> frozenset[int]:
+    from app.common.services.get_services.years.year_feature_services import (
+        get_year_feature_dict_for_version,
+    )
+
+    yf = get_year_feature_dict_for_version(version_id) or {}
+    needle = str(feature_name or "").strip().casefold()
+    return frozenset(
+        int(year)
+        for year, name in yf.items()
+        if year is not None and str(name or "").strip().casefold() == needle
+    )
+
+
+def _fact_year_numbers(version_id: int | None) -> frozenset[int]:
+    return _year_numbers_with_feature(version_id, "факт")
+
+
+def _plan_year_numbers(version_id: int | None) -> frozenset[int]:
+    return _year_numbers_with_feature(version_id, "план")
+
+
 def apply_specific_fuel_consumption_bulk_save_from_form(
     request_form,
     *,
@@ -272,19 +347,29 @@ def apply_specific_fuel_consumption_bulk_save_from_form(
     rounding_digits: int = 1,
 ) -> tuple[int, list[str]]:
     """
-    Массовое сохранение удельных показателей (k, y, btp, sntp, bk, snk) с страницы расчётного модуля.
+    Массовое сохранение удельных показателей со страницы расчётного модуля.
+    Входные k — кроме годов «факт».
+    *_calc — кроме годов «факт» (для «план» и прочих признаков — редактируются).
+    numb1120 подставляется из EquipmentGroup.numb.
     Поля формы: g{id}_specific_fc_{year}_{attr}.
     """
     errs: list[str] = []
     changed_groups = 0
     effective_db_version = get_current_db_version_id()
+    fact_years = _fact_year_numbers(effective_db_version)
 
     for eg_id in equipment_group_ids:
         group_changed = False
         try:
             for year in range(start_year, end_year + 1):
+                if year in fact_years:
+                    continue
                 values: dict = {}
-                for attr in CONSUMPTION_FORM_INPUT_ATTRS:
+                for attr in CALC_EDIT_PAGE_FORM_INPUT_ATTRS:
+                    key = f"g{eg_id}_specific_fc_{year}_{attr}"
+                    if key in request_form:
+                        values[attr] = request_form.get(key)
+                for attr in CALC_EDIT_PAGE_CALC_ATTRS:
                     key = f"g{eg_id}_specific_fc_{year}_{attr}"
                     if key in request_form:
                         values[attr] = request_form.get(key)
@@ -297,6 +382,7 @@ def apply_specific_fuel_consumption_bulk_save_from_form(
                     database_version_id=effective_db_version,
                     commit=False,
                     rounding_digits=rounding_digits,
+                    allow_calc_attrs=True,
                 )
                 if change_details:
                     group_changed = True

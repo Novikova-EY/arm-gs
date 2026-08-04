@@ -1,0 +1,77 @@
+Version =19
+VersionRequired =19
+Checksum =454403686
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2826
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xd1538189300ce240
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Список_условий"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =270
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xab4b64110916d51193970080ad7e28b1
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =215
+                    Left =15
+                    Top =15
+                    Width =2811
+                    ColumnWidth =2115
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0xaf4b64110916d51193970080ad7e28b1
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Top =15
+                            Width =525
+                            Height =240
+                            Name ="Надпись0"
+                            Caption ="name:"
+                            GUID = Begin
+                                0xb04b64110916d51193970080ad7e28b1
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End

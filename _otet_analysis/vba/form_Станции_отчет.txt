@@ -1,0 +1,2390 @@
+Version =21
+VersionRequired =20
+Checksum =546803360
+Begin Form
+    AllowDeletions = NotDefault
+    AllowAdditions = NotDefault
+    KeyPreview = NotDefault
+    AllowDesignChanges = NotDefault
+    SubdatasheetExpanded = NotDefault
+    DefaultView =2
+    AllowUpdating =1
+    TabularCharSet =204
+    TabularFamily =18
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =31680
+    DatasheetFontHeight =12
+    ItemSuffix =57
+    Left =340
+    Top =820
+    Right =16560
+    Bottom =7370
+    FrozenColumns =3
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xc219c1fcfb47e640
+    End
+    GUID = Begin
+        0xf91666d47501164a83baa4126be1e3e8
+    End
+    NameMap = Begin
+        0x0acc0e5500000000ab7810332b1d2048898484ad56f5ebe0000000002a042395 ,
+        0x1e6fe64000000000000000002104420430043d04460438043804320030003200 ,
+        0x32000000000000004ada86280d612541ac9b1a5902b46332000000008f4b2f14 ,
+        0x9560e640000000000000000038043c0435043d0430045f004104420430043d04 ,
+        0x4604380439040000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000077000000000000005b60938c47969f48 ,
+        0xa8badfe6327d984a070000004ada86280d612541ac9b1a5902b463324d004100 ,
+        0x49004e00000000000000395300086eec08408a6ef5e86beb0d3b070000004ada ,
+        0x86280d612541ac9b1a5902b4633244043e0440044d043c040000000000007d68 ,
+        0x7b4b1c6c3643a91d073d505a0a8407000000ab7810332b1d2048898484ad56f5 ,
+        0xebe04e0055004d00420031003100320030000000000000006244a50b22f48245 ,
+        0xaeb5293565693cdf070000004ada86280d612541ac9b1a5902b463324e005500 ,
+        0x4d00420000000000000060760b2b0a29634fb962bca7932934fc07000000ab78 ,
+        0x10332b1d2048898484ad56f5ebe06e0075006d0062003100000000000000436a ,
+        0x750fe1fc5741a860de85a2bc3a0d07000000ab7810332b1d2048898484ad56f5 ,
+        0xebe05900650061007200000000000000781be4e78059b74bb2d724db5a2b6690 ,
+        0x06000000f91666d47501164a83baa4126be1e3e84e0043044104420400000000 ,
+        0x0000f737082dd1bdf74aab33802cd4e4f81f06000000f91666d47501164a83ba ,
+        0xa4126be1e3e84e004004300441043f0400000000000042a5d2986ce4c54087c5 ,
+        0x06d280c0b78a06000000f91666d47501164a83baa4126be1e3e8450000000000 ,
+        0x00005f3ee724bf377b428164e9188eeed82c06000000f91666d47501164a83ba ,
+        0xa4126be1e3e845003e0442043f04000000000000f2f04a9cb30510458b652140 ,
+        0xa9ca728206000000f91666d47501164a83baa4126be1e3e862004d0400000000 ,
+        0x0000818a685682943945bdf16546d3da331806000000f91666d47501164a83ba ,
+        0xa4126be1e3e812044d040000000000007d8fe966c949c6409ed9ae7277937c16 ,
+        0x06000000f91666d47501164a83baa4126be1e3e851000000000000002ee610b2 ,
+        0x3ea612479bf08bfadcadae5706000000f91666d47501164a83baa4126be1e3e8 ,
+        0x62004204000000000000d8a121d065e4fe4993cf484b095fed1e06000000f916 ,
+        0x66d47501164a83baa4126be1e3e8120442040000000000009f03c2c9ffe6c14c ,
+        0x82d90dbe201733ed06000000f91666d47501164a83baa4126be1e3e842000000 ,
+        0x000000007c29405b4ca5484a8a9e9a167d4388ed06000000f91666d47501164a ,
+        0x83baa4126be1e3e8470041005a000000000000001113055f44593848b8ec8cde ,
+        0x143b56ef06000000f91666d47501164a83baa4126be1e3e84d0041005a005500 ,
+        0x54000000000000001a184351f371d247b273c0514fe6192e06000000f91666d4 ,
+        0x7501164a83baa4126be1e3e854004f0052004600000000000000218b00644ac2 ,
+        0x4f44b68dce61c9aef52306000000f91666d47501164a83baa4126be1e3e85300 ,
+        0x4c0041004e00000000000000ffe710d58ef6b349b3cda13279600a6306000000 ,
+        0xf91666d47501164a83baa4126be1e3e8500052004f0043004800000000000000 ,
+        0x56d71a995c260c468da1bca70bbae53e06000000f91666d47501164a83baa412 ,
+        0x6be1e3e8550047004f004c000000000000008364ef85756f7c4494d07ecbca26 ,
+        0xdb8c06000000f91666d47501164a83baa4126be1e3e844004f004e0000000000 ,
+        0x000015f1310eb34bbb4bb98f78e236025c1206000000f91666d47501164a83ba ,
+        0xa4126be1e3e850004f0044004d0000000000000098292180f6edba4ab4cd011e ,
+        0x8dc87cdb06000000f91666d47501164a83baa4126be1e3e85000450043004800 ,
+        0x00000000000024e2d9f9fd89474ba28e73006415078906000000f91666d47501 ,
+        0x164a83baa4126be1e3e84b0055005a004e0000000000000002336f5399d0184f ,
+        0x802e976b665acb1806000000f91666d47501164a83baa4126be1e3e855005200 ,
+        0x41004c00000000000000898fd228b2055f48ace6c1a815ef329006000000f916 ,
+        0x66d47501164a83baa4126be1e3e842004100530048004b00000000000000a9f2 ,
+        0x3be4c6a3fe4f8a1a03ed750324a806000000f91666d47501164a83baa4126be1 ,
+        0xe3e84b0041005a0041004800000000000000aafdc4180b3b654fb4871c0e1560 ,
+        0x77c106000000f91666d47501164a83baa4126be1e3e84b0041004e0000000000 ,
+        0x00007241cb43add3b84eb59458d3beb7a1bf06000000f91666d47501164a83ba ,
+        0xa4126be1e3e8490052004b0055005400000000000000487f4b6f3fad4941a1df ,
+        0x4eef314ddfba06000000f91666d47501164a83baa4126be1e3e8480041004b00 ,
+        0x000000000000f03ae6b8617c56409ce2663df566d0ef06000000f91666d47501 ,
+        0x164a83baa4126be1e3e85400550056000000000000006e1b848f4fc3c94b9dd2 ,
+        0xcd4c6735f2e606000000f91666d47501164a83baa4126be1e3e8420055005200 ,
+        0x0000000000003ed2d927b939b14188a4f902534b778206000000f91666d47501 ,
+        0x164a83baa4126be1e3e843004800490054000000000000002a65b03dcbaa724c ,
+        0xa522166d512401d006000000f91666d47501164a83baa4126be1e3e859004100 ,
+        0x4b0055005400000000000000db7de31dd70d4f4687b07e2d31fe39d706000000 ,
+        0xf91666d47501164a83baa4126be1e3e841004d00550052000000000000004149 ,
+        0xe1426373854d8964c7de30e7216006000000f91666d47501164a83baa4126be1 ,
+        0xe3e8550052004700000000000000d8fce8880b50de47b2d48f8e9c3f58060600 ,
+        0x0000f91666d47501164a83baa4126be1e3e85000520049004d00000000000000 ,
+        0x2a44ca577fe3d44b9753892f1a5c99cb06000000f91666d47501164a83baa412 ,
+        0x6be1e3e84300480055004b004f005400000000000000440ad6a60cfbdc4d8308 ,
+        0x94626865986c06000000f91666d47501164a83baa4126be1e3e84d0041004700 ,
+        0x0000000000007e3e8250623acc428c8171b96b46dd4d06000000f91666d47501 ,
+        0x164a83baa4126be1e3e8530041004800000000000000f9b132d0d801da49acd3 ,
+        0xa3b251f5a51706000000f91666d47501164a83baa4126be1e3e851003e044204 ,
+        0x400400000000000038fee94699390f48a90a44b8387925ad06000000f91666d4 ,
+        0x7501164a83baa4126be1e3e853004e004b0000000000000057c7214717837040 ,
+        0x99a856be007f3f9506000000f91666d47501164a83baa4126be1e3e853004e00 ,
+        0x74000000000000003464f5f1cba0f64482592b03ee9e3fc806000000f91666d4 ,
+        0x7501164a83baa4126be1e3e8450042044604000000000000b8305f0b536c074b ,
+        0xac4f67161d8a1e7506000000f91666d47501164a83baa4126be1e3e84e005400 ,
+        0x0000000000006ea1c14008596741896c88312c9cc8f106000000f91666d47501 ,
+        0x164a83baa4126be1e3e84b0041004d0043004800000000000000c5134fceef4b ,
+        0x184eae327cf0c3d858b506000000f91666d47501164a83baa4126be1e3e85500 ,
+        0x5300480055004d000000000000006008974a36e33c47b5f915be798003ad0600 ,
+        0x0000f91666d47501164a83baa4126be1e3e8540055004e004700000000000000 ,
+        0x95991beac6b3f840a4a8ec97a6f66e5206000000f91666d47501164a83baa412 ,
+        0x6be1e3e8490053004b005f00470041005a00000000000000b506ba1baa043249 ,
+        0x91048cf19638bc2e07000000ab7810332b1d2048898484ad56f5ebe04e004100 ,
+        0x4d0045000000000000003ccfc813b889a04c991ce6dab1ab685d07000000ab78 ,
+        0x10332b1d2048898484ad56f5ebe04e00550053005400000000000000f1d36d06 ,
+        0xf1734440b29345c17edb162207000000ab7810332b1d2048898484ad56f5ebe0 ,
+        0x45000000000000008184b8edeca29e48a19103d40f54639007000000ab781033 ,
+        0x2b1d2048898484ad56f5ebe045004f0054005000000000000000b02fa2b4d8ca ,
+        0x35469ec7ab96dd89407607000000ab7810332b1d2048898484ad56f5ebe04500 ,
+        0x550052005400000000000000a1e6f07613697d47a50c167c9c9c6e5a07000000 ,
+        0xab7810332b1d2048898484ad56f5ebe0450055005300540000000000000040e0 ,
+        0xea1db9baf04a961b19e81ffd4c5907000000ab7810332b1d2048898484ad56f5 ,
+        0xebe05100000000000000ebc7014035d2754f8805524532c401b307000000ab78 ,
+        0x10332b1d2048898484ad56f5ebe05400550052005400000000000000543c64e2 ,
+        0x79e19a4ca7a557d5593ad66507000000ab7810332b1d2048898484ad56f5ebe0 ,
+        0x5400550053005400000000000000d4a8d9277202434c875b1b10b74740910700 ,
+        0x0000ab7810332b1d2048898484ad56f5ebe04200000000000000b718edd26a8b ,
+        0x484489f11fae281bbf6907000000ab7810332b1d2048898484ad56f5ebe04700 ,
+        0x41005a00000000000000f0696937e527a548bbb1bd9c5e81e22407000000ab78 ,
+        0x10332b1d2048898484ad56f5ebe04d0041005a005500540000000000000074fb ,
+        0x43604e3f3642a342c7f58b47e15d07000000ab7810332b1d2048898484ad56f5 ,
+        0xebe054004f0052004600000000000000f9ee46879bde804e9884df430fd28117 ,
+        0x07000000ab7810332b1d2048898484ad56f5ebe053004c0041004e0000000000 ,
+        0x000054e52f4f3502134b8fd7d8d355277a9507000000ab7810332b1d20488984 ,
+        0x84ad56f5ebe0500052004f0043004800000000000000706c47c175043d4dae85 ,
+        0x513762776b4107000000ab7810332b1d2048898484ad56f5ebe0550047004f00 ,
+        0x4c000000000000001655f13c9944e04ab43c255b25d14eea07000000ab781033 ,
+        0x2b1d2048898484ad56f5ebe044004f004e00000000000000e555c1b98ed8344a ,
+        0xbd904044add363ae07000000ab7810332b1d2048898484ad56f5ebe050004f00 ,
+        0x44004d00000000000000b063881c49e42a4c8080c66a1bea599007000000ab78 ,
+        0x10332b1d2048898484ad56f5ebe050004500430048000000000000009ad62a36 ,
+        0x37bc254387fdfef6c2e3351d07000000ab7810332b1d2048898484ad56f5ebe0 ,
+        0x4b0055005a004e000000000000002a298b0a79235448b813f9fb30e2b5590700 ,
+        0x0000ab7810332b1d2048898484ad56f5ebe05500520041004c00000000000000 ,
+        0x8240c74ab5f05748a7f3f4c3b6ca4ffd07000000ab7810332b1d2048898484ad ,
+        0x56f5ebe042004100530048004b000000000000008fcb9481da59a24e99ba567a ,
+        0x7f4a9e5d07000000ab7810332b1d2048898484ad56f5ebe04b0041005a004100 ,
+        0x48000000000000005c10eecc89c2c64d9cc69117896c5fcf07000000ab781033 ,
+        0x2b1d2048898484ad56f5ebe04b0041004e00000000000000e01362daaa3f5d49 ,
+        0x8214b87e10d8891a07000000ab7810332b1d2048898484ad56f5ebe049005200 ,
+        0x4b00550054000000000000005ec6e1a0e20bd346a1e530da96c08e0007000000 ,
+        0xab7810332b1d2048898484ad56f5ebe0480041004b000000000000002161ea1b ,
+        0x1dea1941bdb4817d6ba0922b07000000ab7810332b1d2048898484ad56f5ebe0 ,
+        0x54005500560000000000000084731eb1b4d72e4a806b54b80030083007000000 ,
+        0xab7810332b1d2048898484ad56f5ebe0420055005200000000000000f9a5710e ,
+        0x7f08094f9c5d58340d05239307000000ab7810332b1d2048898484ad56f5ebe0 ,
+        0x4300480049005400000000000000c5d832c683873d4d993bde143bc1f7470700 ,
+        0x0000ab7810332b1d2048898484ad56f5ebe0590041004b005500540000000000 ,
+        0x0000309ccd498f93184a86f187f93c08caa407000000ab7810332b1d20488984 ,
+        0x84ad56f5ebe041004d0055005200000000000000c8f0f37ed1f09644bfd627f5 ,
+        0x309bf38607000000ab7810332b1d2048898484ad56f5ebe05500520047000000 ,
+        0x000000008e650b8b1978bd45a52226c63714d26407000000ab7810332b1d2048 ,
+        0x898484ad56f5ebe05000520049004d000000000000007d041686b7f08142a55d ,
+        0xf0bbb391d0e507000000ab7810332b1d2048898484ad56f5ebe0430048005500 ,
+        0x4b004f00540000000000000059e8d0659e25274fba5ebfea7bb72a9907000000 ,
+        0xab7810332b1d2048898484ad56f5ebe04d004100470000000000000075756267 ,
+        0x1753054f8223117c11b3a35a07000000ab7810332b1d2048898484ad56f5ebe0 ,
+        0x53004100480000000000000079ac7788896fab4384a9b5c13f1d5c7e07000000 ,
+        0xab7810332b1d2048898484ad56f5ebe051004f00540052000000000000003db8 ,
+        0xeace22d5f1449ed54ed3665aedd407000000ab7810332b1d2048898484ad56f5 ,
+        0xebe053004e004b00000000000000deb6eb2e61eb154e8ea4ef29d4976a010700 ,
+        0x0000ab7810332b1d2048898484ad56f5ebe053004e0074000000000000007343 ,
+        0xec66ed08eb45bcae1a361a412b9a07000000ab7810332b1d2048898484ad56f5 ,
+        0xebe045005700540050000000000000003afe7881d695ca4d94a829c834c40be0 ,
+        0x07000000ab7810332b1d2048898484ad56f5ebe04e005400000000000000c63b ,
+        0x6d4ceba32d4e89d372c14672d58307000000ab7810332b1d2048898484ad56f5 ,
+        0xebe06e007200000000000000a1fd90f7927f7e4b820cda8fc164e17307000000 ,
+        0xab7810332b1d2048898484ad56f5ebe04b0041004d0043004800000000000000 ,
+        0x8964b2dfbe80d043b2283ac35330c81f07000000ab7810332b1d2048898484ad ,
+        0x56f5ebe055005300480055004d00000000000000e5c946590800bb498b6052e0 ,
+        0x8882ad9e07000000ab7810332b1d2048898484ad56f5ebe04e00540073007500 ,
+        0x6d0000000000000083987d1e198388469608b23db50c4b7d07000000ab781033 ,
+        0x2b1d2048898484ad56f5ebe07600650064000000000000004437264f75a4c64f ,
+        0xae005075ae02a81207000000ab7810332b1d2048898484ad56f5ebe04f004200 ,
+        0x4f0052000000000000007cc9d2e9b4e50e41b28b1f49d060ab9207000000ab78 ,
+        0x10332b1d2048898484ad56f5ebe0540055004e004700000000000000d8760f87 ,
+        0x8e87ce479e56ff76f51be92707000000ab7810332b1d2048898484ad56f5ebe0 ,
+        0x490053004b005f00470041005a00000000000000000000000000000000000000 ,
+        0x000000000c000000050000000000000000000000000000000000
+    End
+    RecordSource ="SELECT w.*, имена_станций.MAIN, имена_станций.форэм FROM Станции2022 AS w INNER "
+        "JOIN имена_станций ON w.NUMB1120 = имена_станций.NUMB ORDER BY w.numb1, w.Year;"
+    OnCurrent ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Times New Roman CYR"
+    PrtMip = Begin
+        0x6801000068010000680100006801000000000000201c0000e010000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x00736de001000000000000004440587503000000200593191447d20118af3001 ,
+        0x010403069c00d40553ef8001010009009a0b3408640001000f00c80001000100 ,
+        0xc80002000100413400c7dbe1020000001447d20153182cc1ec46d201aac7dbe1 ,
+        0xa448d2017de80000000000000000000000000000010000000000000001000000 ,
+        0x0200000001000000000000000000000000000000000000000000000050524956 ,
+        0x4220000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000180000000000102710271027 ,
+        0x000010270000000000000000b000a40300000000000000000000000000000000 ,
+        0x0000000000000000030000000000000030021000503403002888040000000000 ,
+        0x00000000000000000000000000000000000000000000000046469ff205000000 ,
+        0x04000000ff00ff00010000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0100000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000b0000000534d544a000000001000a000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x3002000045424441000001000100000001000000010000000100000000000000 ,
+        0x5300740061006e00640061007200640000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000001000000
+    End
+    PrtDevNames = Begin
+        0x08001c0026000100000000000000000000000000000000000000000000000000 ,
+        0x000000000000446f63756d656e74735c2a2e70646600
+    End
+    OnKeyDown ="[Event Procedure]"
+    FilterOnLoad =255
+    ShowPageMargins =0
+    DatasheetGridlinesColor12 =12632256
+    PrtDevModeW = Begin
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x01040306dc00d40553ef8001010009009a0b3408640001000f00c80001000100 ,
+        0xc800020001004100340000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000010000000000000001000000 ,
+        0x0200000001000000000000000000000000000000000000000000000050524956 ,
+        0x4220000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000180000000000102710271027 ,
+        0x000010270000000000000000b000a40300000000000000000000000000000000 ,
+        0x0000000000000000030000000000000030021000503403002888040000000000 ,
+        0x00000000000000000000000000000000000000000000000046469ff205000000 ,
+        0x04000000ff00ff00010000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0100000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000b0000000534d544a000000001000a000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x3002000045424441000001000100000001000000010000000100000000000000 ,
+        0x5300740061006e00640061007200640000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000001000000
+    End
+    PrtDevNamesW = Begin
+        0x0400180022000100000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000044006f00630075006d0065006e00740073005c002a002e0070006400 ,
+        0x66000000
+    End
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+            BorderLineStyle =0
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            BorderLineStyle =0
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            BorderLineStyle =0
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            BorderLineStyle =0
+            Width =1701
+            Height =1701
+        End
+        Begin FormHeader
+            Height =688
+            BackColor =-2147483633
+            Name ="ЗаголовокФормы"
+            GUID = Begin
+                0x48563e25e846a84e9c32227bd440067b
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =3405
+                    FontSize =10
+                    Name ="sumnust"
+                    ControlSource ="=Sum([Nуст])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x696a3d1765705744b8ee2dca168737c4
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =3972
+                    FontSize =10
+                    TabIndex =1
+                    Name ="sumnr"
+                    ControlSource ="=Sum([Nрасп])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xb094bce9e257aa428014a48278fdd286
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =4539
+                    FontSize =10
+                    TabIndex =2
+                    Name ="sume"
+                    ControlSource ="=Sum([E])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xea31bcde5b015c499839b459c7f01929
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =5106
+                    FontSize =10
+                    TabIndex =3
+                    Name ="sumeotp"
+                    ControlSource ="=Sum([Eотп])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x6713417af875c44db8b2917a59f9f95f
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =5673
+                    FontSize =10
+                    TabIndex =4
+                    Name ="sumeurt"
+                    ControlSource ="=Sum([bэ])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x1dc56f86f90ac24fa1c6758cf080eebd
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =6240
+                    FontSize =10
+                    TabIndex =5
+                    Name ="sumeust"
+                    ControlSource ="=Sum([Вэ])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xebf81b20b98e0f43b5256b7caa7e1a76
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =6807
+                    FontSize =10
+                    TabIndex =6
+                    Name ="sumq"
+                    ControlSource ="=Sum([Q])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xe1c9c8f8498d3a4789e4c44e1af9866b
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =7374
+                    FontSize =10
+                    TabIndex =7
+                    Name ="sumturt"
+                    ControlSource ="=Sum([bт])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xa435b56af210bd47849a8e16683d8872
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =7941
+                    FontSize =10
+                    TabIndex =8
+                    Name ="sumtust"
+                    ControlSource ="=Sum([Вт])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x0684ea70e59c7a46a4bf68bdb2fbdf75
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =8508
+                    FontSize =10
+                    TabIndex =9
+                    Name ="sumb"
+                    ControlSource ="=Sum([b])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xe7ff5fa0bd97e8429dc9499d127379b5
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    TextFontFamily =18
+                    Left =9070
+                    FontSize =10
+                    TabIndex =10
+                    Name ="sumgaz"
+                    ControlSource ="=Sum([gaz])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x215123a3eb77084991c6aaaa00f8ac36
+                    End
+
+                    LayoutCachedLeft =9070
+                    LayoutCachedWidth =9637
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =10204
+                    FontSize =10
+                    TabIndex =11
+                    Name ="summazut"
+                    ControlSource ="=Sum([mazut])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xd1c266be54905a4d98e95de8bc56a3c4
+                    End
+
+                    LayoutCachedLeft =10204
+                    LayoutCachedWidth =10771
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =10771
+                    FontSize =10
+                    TabIndex =12
+                    Name ="sumtorf"
+                    ControlSource ="=Sum([torf])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xeac4a513e2b1774fb15eec6f9eca1f9c
+                    End
+
+                    LayoutCachedLeft =10771
+                    LayoutCachedWidth =11338
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =11335
+                    FontSize =10
+                    TabIndex =13
+                    Name ="sumslan"
+                    ControlSource ="=Sum([slan])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x86900683f3690646ac5c82ec00dbaf05
+                    End
+
+                    LayoutCachedLeft =11335
+                    LayoutCachedWidth =11902
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =11905
+                    FontSize =10
+                    TabIndex =14
+                    Name ="sumproch"
+                    ControlSource ="=Sum([proch])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x2c8d36ee36d92f40ba22860cff08031b
+                    End
+
+                    LayoutCachedLeft =11905
+                    LayoutCachedWidth =12472
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =12472
+                    FontSize =10
+                    TabIndex =15
+                    Name ="sumugol"
+                    ControlSource ="=Sum([ugol])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x95553a6f8d21974daf1752198381d4a4
+                    End
+
+                    LayoutCachedLeft =12472
+                    LayoutCachedWidth =13039
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =13039
+                    FontSize =10
+                    TabIndex =16
+                    Name ="sumdon"
+                    ControlSource ="=Sum([don])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xd50876a1e44dd2448903a69af2aaca45
+                    End
+
+                    LayoutCachedLeft =13039
+                    LayoutCachedWidth =13606
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =13606
+                    FontSize =10
+                    TabIndex =17
+                    Name ="sumpodm"
+                    ControlSource ="=Sum([podm])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x16430311fcd97449bd0b4179cff32b0d
+                    End
+
+                    LayoutCachedLeft =13606
+                    LayoutCachedWidth =14173
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =14173
+                    FontSize =10
+                    TabIndex =18
+                    Name ="sumpech"
+                    ControlSource ="=Sum([pech])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x209bfa0faf11494199504269a1041e9d
+                    End
+
+                    LayoutCachedLeft =14173
+                    LayoutCachedWidth =14740
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =14738
+                    FontSize =10
+                    TabIndex =19
+                    Name ="sumkuzn"
+                    ControlSource ="=Sum([kuzn])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x4f727d1b1ffb264caf281f636280fba2
+                    End
+
+                    LayoutCachedLeft =14738
+                    LayoutCachedWidth =15305
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =15305
+                    FontSize =10
+                    TabIndex =20
+                    Name ="sumural"
+                    ControlSource ="=Sum([ural])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x9a646cf4675fc5419889b76d32787af9
+                    End
+
+                    LayoutCachedLeft =15305
+                    LayoutCachedWidth =15872
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =15872
+                    FontSize =10
+                    TabIndex =21
+                    Name ="sumbashk"
+                    ControlSource ="=Sum([bashk])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xa086e67574339043b14baa9480992150
+                    End
+
+                    LayoutCachedLeft =15872
+                    LayoutCachedWidth =16439
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =16441
+                    FontSize =10
+                    TabIndex =22
+                    Name ="sumkazah"
+                    ControlSource ="=Sum([kazah])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x5a2079ffa0f9e44dabd6b17ffbb6e16a
+                    End
+
+                    LayoutCachedLeft =16441
+                    LayoutCachedWidth =17008
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    TextFontFamily =18
+                    Left =17003
+                    FontSize =10
+                    TabIndex =23
+                    Name ="sumkan"
+                    ControlSource ="=Sum([kan])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x6d76eed40c7d64449de52d56449684ef
+                    End
+
+                    LayoutCachedLeft =17003
+                    LayoutCachedWidth =17570
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =18140
+                    FontSize =10
+                    TabIndex =24
+                    Name ="sumirkut"
+                    ControlSource ="=Sum([irkut])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x5d9ec60dfa86464caba23343d987563a
+                    End
+
+                    LayoutCachedLeft =18140
+                    LayoutCachedWidth =18707
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =18707
+                    FontSize =10
+                    TabIndex =25
+                    Name ="sumhak"
+                    ControlSource ="=Sum([hak])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x2a8ddfcc5da90a48968b20fdfd6bc787
+                    End
+
+                    LayoutCachedLeft =18707
+                    LayoutCachedWidth =19274
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =19274
+                    FontSize =10
+                    TabIndex =26
+                    Name ="sumtuv"
+                    ControlSource ="=Sum([tuv])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x0e4df321a063cd4b825a906236204e71
+                    End
+
+                    LayoutCachedLeft =19274
+                    LayoutCachedWidth =19841
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =19841
+                    FontSize =10
+                    TabIndex =27
+                    Name ="sumbur"
+                    ControlSource ="=Sum([bur])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x3abeff583fd48c4e8c5684feee1a1216
+                    End
+
+                    LayoutCachedLeft =19841
+                    LayoutCachedWidth =20408
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =20408
+                    FontSize =10
+                    TabIndex =28
+                    Name ="sumchit"
+                    ControlSource ="=Sum([chit])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x632b6cb6a8a4a345b719e2bde65cb696
+                    End
+
+                    LayoutCachedLeft =20408
+                    LayoutCachedWidth =20975
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =23242
+                    FontSize =10
+                    TabIndex =29
+                    Name ="sumyakut"
+                    ControlSource ="=Sum([YAKUT])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x7d32688fb00f0d40b1b38a85f34dc07f
+                    End
+
+                    LayoutCachedLeft =23242
+                    LayoutCachedWidth =23809
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    TextFontFamily =18
+                    Left =20974
+                    FontSize =10
+                    TabIndex =30
+                    Name ="sumamur"
+                    ControlSource ="=Sum([AMUR])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x0a1123e7b503f14dafbccc8f81ef88b1
+                    End
+
+                    LayoutCachedLeft =20974
+                    LayoutCachedWidth =21541
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =22108
+                    FontSize =10
+                    TabIndex =31
+                    Name ="sumurg"
+                    ControlSource ="=Sum([urg])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x152d0658c1e6854495901ab4ca87d43e
+                    End
+
+                    LayoutCachedLeft =22108
+                    LayoutCachedWidth =22675
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    TextFontFamily =18
+                    Left =21541
+                    FontSize =10
+                    TabIndex =32
+                    Name ="sumprim"
+                    ControlSource ="=Sum([prim])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x4955b7557fe51041a16664e77f88ce8d
+                    End
+
+                    LayoutCachedLeft =21541
+                    LayoutCachedWidth =22108
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =24376
+                    FontSize =10
+                    TabIndex =33
+                    Name ="sumluch"
+                    ControlSource ="=Sum([CHUKOT])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x2de57be6234d804988f5f27c6763e0e1
+                    End
+
+                    LayoutCachedLeft =24376
+                    LayoutCachedWidth =24943
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =23809
+                    FontSize =10
+                    TabIndex =34
+                    Name ="summag"
+                    ControlSource ="=Sum([mag])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x46d799153c4345459a203afd89a207b0
+                    End
+
+                    LayoutCachedLeft =23809
+                    LayoutCachedWidth =24376
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =24942
+                    FontSize =10
+                    TabIndex =35
+                    Name ="sumsah"
+                    ControlSource ="=Sum([sah])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xb4f9890137ee7c49b9b01946ea249b5b
+                    End
+
+                    LayoutCachedLeft =24942
+                    LayoutCachedWidth =25509
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =26077
+                    FontSize =10
+                    TabIndex =36
+                    Name ="sumqotr"
+                    ControlSource ="=Sum([Qотр])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x655fc7d3bc85a049be855d0e2e7d184a
+                    End
+
+                    LayoutCachedLeft =26077
+                    LayoutCachedWidth =26644
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =26644
+                    FontSize =10
+                    TabIndex =37
+                    Name ="sumsnk"
+                    ControlSource ="=Sum([snk])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xa881af21bf0a214eb46aae501c2db2c8
+                    End
+
+                    LayoutCachedLeft =26644
+                    LayoutCachedWidth =27211
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =27211
+                    FontSize =10
+                    TabIndex =38
+                    Name ="sumsnt"
+                    ControlSource ="=Sum([snt])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x09820075de46c74aba2dfe57710ce389
+                    End
+
+                    LayoutCachedLeft =27211
+                    LayoutCachedWidth =27778
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =27778
+                    FontSize =10
+                    TabIndex =39
+                    Name ="sumewtp"
+                    ControlSource ="=Sum([Eтц])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x9b62bcbfc7cdc349b6deb8b2af0f249b
+                    End
+
+                    LayoutCachedLeft =27778
+                    LayoutCachedWidth =28345
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =28345
+                    FontSize =10
+                    TabIndex =40
+                    Name ="sumnt"
+                    ControlSource ="=Sum([nt])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x48392c96b99b474caf6e9d210945b8ad
+                    End
+
+                    LayoutCachedLeft =28345
+                    LayoutCachedWidth =28912
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =25509
+                    FontSize =10
+                    TabIndex =41
+                    Name ="sumkamch"
+                    ControlSource ="=Sum([kamch])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x379850e104eedf4bb74ebd4017aece56
+                    End
+
+                    LayoutCachedLeft =25509
+                    LayoutCachedWidth =26076
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =22675
+                    FontSize =10
+                    TabIndex =42
+                    Name ="sumushum"
+                    ControlSource ="=Sum([ushum])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x1c9a7ea5c06a254592de5d444b33f69c
+                    End
+
+                    LayoutCachedLeft =22675
+                    LayoutCachedWidth =23242
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    TextFontFamily =18
+                    Left =17570
+                    FontSize =10
+                    TabIndex =43
+                    Name ="sumtung"
+                    ControlSource ="=Sum([tung])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x0166ba4df4334a4cadc67e3e1501e641
+                    End
+
+                    LayoutCachedLeft =17570
+                    LayoutCachedWidth =18137
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    TextFontFamily =0
+                    Left =9637
+                    FontSize =10
+                    TabIndex =44
+                    Name ="Поле54"
+                    ControlSource ="=Sum([ISK_GAZ])"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xcdc4f7a8c01bdb488117058e5aabd3bf
+                    End
+
+                    LayoutCachedLeft =9637
+                    LayoutCachedWidth =10204
+                    LayoutCachedHeight =284
+                End
+            End
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =624
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x265e03c003fa0b42afe89b9732e279e2
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Width =2835
+                    ColumnWidth =3555
+                    ColumnOrder =0
+                    FontSize =10
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x8156a784cbc9b64ea04c4cee522af69c
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =3402
+                    ColumnWidth =675
+                    ColumnOrder =2
+                    FontSize =10
+                    TabIndex =1
+                    Name ="Nуст"
+                    ControlSource ="NUST"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x781be4e78059b74bb2d724db5a2b6690
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =2835
+                    ColumnWidth =600
+                    ColumnOrder =1
+                    FontSize =10
+                    TabIndex =2
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xb79178fe9a205544a57b20c15f58dc30
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =4536
+                    ColumnWidth =690
+                    ColumnOrder =5
+                    FontSize =10
+                    TabIndex =3
+                    Name ="E"
+                    ControlSource ="E"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x42a5d2986ce4c54087c506d280c0b78a
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =5103
+                    ColumnWidth =675
+                    ColumnOrder =7
+                    FontSize =10
+                    TabIndex =4
+                    Name ="Eотп"
+                    ControlSource ="EOTP"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x5f3ee724bf377b428164e9188eeed82c
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =5670
+                    ColumnWidth =660
+                    ColumnOrder =8
+                    FontSize =10
+                    TabIndex =5
+                    Name ="bэ"
+                    ControlSource ="EURT"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xf2f04a9cb30510458b652140a9ca7282
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =6237
+                    ColumnWidth =660
+                    ColumnOrder =9
+                    FontSize =10
+                    TabIndex =6
+                    Name ="Вэ"
+                    ControlSource ="EUST"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x818a685682943945bdf16546d3da3318
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =6804
+                    ColumnWidth =990
+                    ColumnOrder =10
+                    FontSize =10
+                    TabIndex =7
+                    Name ="Q"
+                    ControlSource ="Q"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x7d8fe966c949c6409ed9ae7277937c16
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =7371
+                    ColumnWidth =660
+                    ColumnOrder =12
+                    FontSize =10
+                    TabIndex =8
+                    Name ="bт"
+                    ControlSource ="TURT"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x2ee610b23ea612479bf08bfadcadae57
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =7938
+                    ColumnWidth =750
+                    ColumnOrder =13
+                    FontSize =10
+                    TabIndex =9
+                    Name ="Вт"
+                    ControlSource ="TUST"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xd8a121d065e4fe4993cf484b095fed1e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =8505
+                    ColumnWidth =1140
+                    ColumnOrder =14
+                    FontSize =10
+                    TabIndex =10
+                    Name ="B"
+                    ControlSource ="B"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x9f03c2c9ffe6c14c82d90dbe201733ed
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =9072
+                    ColumnWidth =860
+                    ColumnOrder =15
+                    FontSize =10
+                    TabIndex =11
+                    Name ="GAZ"
+                    ControlSource ="GAZ"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x7c29405b4ca5484a8a9e9a167d4388ed
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =10204
+                    ColumnWidth =930
+                    ColumnOrder =17
+                    FontSize =10
+                    TabIndex =13
+                    Name ="MAZUT"
+                    ControlSource ="MAZUT"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x1113055f44593848b8ec8cde143b56ef
+                    End
+
+                    LayoutCachedLeft =10204
+                    LayoutCachedWidth =10771
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =10771
+                    ColumnWidth =810
+                    ColumnOrder =18
+                    FontSize =10
+                    TabIndex =14
+                    Name ="TORF"
+                    ControlSource ="TORF"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x1a184351f371d247b273c0514fe6192e
+                    End
+
+                    LayoutCachedLeft =10771
+                    LayoutCachedWidth =11338
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =11338
+                    ColumnWidth =672
+                    ColumnOrder =19
+                    FontSize =10
+                    TabIndex =15
+                    Name ="SLAN"
+                    ControlSource ="SLAN"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x218b00644ac24f44b68dce61c9aef523
+                    End
+
+                    LayoutCachedLeft =11338
+                    LayoutCachedWidth =11905
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =11905
+                    ColumnWidth =840
+                    ColumnOrder =21
+                    FontSize =10
+                    TabIndex =16
+                    Name ="PROCH"
+                    ControlSource ="PROCH"
+                    Format ="#"
+                    BeforeUpdate ="[Event Procedure]"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xffe710d58ef6b349b3cda13279600a63
+                    End
+
+                    LayoutCachedLeft =11905
+                    LayoutCachedWidth =12472
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =12472
+                    ColumnWidth =960
+                    ColumnOrder =22
+                    FontSize =10
+                    TabIndex =17
+                    Name ="UGOL"
+                    ControlSource ="UGOL"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x56d71a995c260c468da1bca70bbae53e
+                    End
+
+                    LayoutCachedLeft =12472
+                    LayoutCachedWidth =13039
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =13039
+                    ColumnWidth =756
+                    ColumnOrder =23
+                    FontSize =10
+                    TabIndex =18
+                    Name ="DON"
+                    ControlSource ="DON"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x8364ef85756f7c4494d07ecbca26db8c
+                    End
+
+                    LayoutCachedLeft =13039
+                    LayoutCachedWidth =13606
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =13606
+                    ColumnWidth =756
+                    ColumnOrder =24
+                    FontSize =10
+                    TabIndex =19
+                    Name ="PODM"
+                    ControlSource ="PODM"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x15f1310eb34bbb4bb98f78e236025c12
+                    End
+
+                    LayoutCachedLeft =13606
+                    LayoutCachedWidth =14173
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =14173
+                    ColumnWidth =756
+                    ColumnOrder =25
+                    FontSize =10
+                    TabIndex =20
+                    Name ="PECH"
+                    ControlSource ="PECH"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x98292180f6edba4ab4cd011e8dc87cdb
+                    End
+
+                    LayoutCachedLeft =14173
+                    LayoutCachedWidth =14740
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =14738
+                    ColumnWidth =924
+                    ColumnOrder =26
+                    FontSize =10
+                    TabIndex =21
+                    Name ="KUZN"
+                    ControlSource ="KUZN"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x24e2d9f9fd89474ba28e730064150789
+                    End
+
+                    LayoutCachedLeft =14738
+                    LayoutCachedWidth =15305
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =15305
+                    ColumnWidth =756
+                    ColumnOrder =27
+                    FontSize =10
+                    TabIndex =22
+                    Name ="URAL"
+                    ControlSource ="URAL"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x02336f5399d0184f802e976b665acb18
+                    End
+
+                    LayoutCachedLeft =15305
+                    LayoutCachedWidth =15872
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =15872
+                    ColumnWidth =825
+                    ColumnOrder =28
+                    FontSize =10
+                    TabIndex =23
+                    Name ="BASHK"
+                    ControlSource ="BASHK"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x898fd228b2055f48ace6c1a815ef3290
+                    End
+
+                    LayoutCachedLeft =15872
+                    LayoutCachedWidth =16439
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =16439
+                    ColumnWidth =888
+                    ColumnOrder =29
+                    FontSize =10
+                    TabIndex =24
+                    Name ="KAZAH"
+                    ControlSource ="KAZAH"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xa9f23be4c6a3fe4f8a1a03ed750324a8
+                    End
+
+                    LayoutCachedLeft =16439
+                    LayoutCachedWidth =17006
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =255
+                    TextFontFamily =18
+                    Left =17003
+                    ColumnWidth =852
+                    ColumnOrder =30
+                    FontSize =10
+                    TabIndex =25
+                    Name ="KAN"
+                    ControlSource ="KAN"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xaafdc4180b3b654fb4871c0e156077c1
+                    End
+
+                    LayoutCachedLeft =17003
+                    LayoutCachedWidth =17570
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =18137
+                    ColumnWidth =735
+                    ColumnOrder =32
+                    FontSize =10
+                    TabIndex =26
+                    Name ="IRKUT"
+                    ControlSource ="IRKUT"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x7241cb43add3b84eb59458d3beb7a1bf
+                    End
+
+                    LayoutCachedLeft =18137
+                    LayoutCachedWidth =18704
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =18704
+                    ColumnWidth =720
+                    ColumnOrder =33
+                    FontSize =10
+                    TabIndex =27
+                    Name ="HAK"
+                    ControlSource ="HAK"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x487f4b6f3fad4941a1df4eef314ddfba
+                    End
+
+                    LayoutCachedLeft =18704
+                    LayoutCachedWidth =19271
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =19271
+                    ColumnWidth =720
+                    ColumnOrder =34
+                    FontSize =10
+                    TabIndex =28
+                    Name ="TUV"
+                    ControlSource ="TUV"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xf03ae6b8617c56409ce2663df566d0ef
+                    End
+
+                    LayoutCachedLeft =19271
+                    LayoutCachedWidth =19838
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =19838
+                    ColumnWidth =720
+                    ColumnOrder =35
+                    FontSize =10
+                    TabIndex =29
+                    Name ="BUR"
+                    ControlSource ="BUR"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x6e1b848f4fc3c94b9dd2cd4c6735f2e6
+                    End
+
+                    LayoutCachedLeft =19838
+                    LayoutCachedWidth =20405
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =20405
+                    ColumnWidth =720
+                    ColumnOrder =36
+                    FontSize =10
+                    TabIndex =30
+                    Name ="CHIT"
+                    ControlSource ="CHIT"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x3ed2d927b939b14188a4f902534b7782
+                    End
+
+                    LayoutCachedLeft =20405
+                    LayoutCachedWidth =20972
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =23242
+                    ColumnWidth =744
+                    ColumnOrder =37
+                    FontSize =10
+                    TabIndex =31
+                    Name ="YAKUT"
+                    ControlSource ="YAKUT"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x2a65b03dcbaa724ca522166d512401d0
+                    End
+
+                    LayoutCachedLeft =23242
+                    LayoutCachedWidth =23809
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =20974
+                    ColumnWidth =750
+                    ColumnOrder =38
+                    FontSize =10
+                    TabIndex =32
+                    Name ="AMUR"
+                    ControlSource ="AMUR"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xdb7de31dd70d4f4687b07e2d31fe39d7
+                    End
+
+                    LayoutCachedLeft =20974
+                    LayoutCachedWidth =21541
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =22108
+                    ColumnWidth =744
+                    ColumnOrder =39
+                    FontSize =10
+                    TabIndex =33
+                    Name ="URG"
+                    ControlSource ="URG"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x4149e1426373854d8964c7de30e72160
+                    End
+
+                    LayoutCachedLeft =22108
+                    LayoutCachedWidth =22675
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =21541
+                    ColumnWidth =744
+                    ColumnOrder =40
+                    FontSize =10
+                    TabIndex =34
+                    Name ="PRIM"
+                    ControlSource ="PRIM"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xd8fce8880b50de47b2d48f8e9c3f5806
+                    End
+
+                    LayoutCachedLeft =21541
+                    LayoutCachedWidth =22108
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =24376
+                    ColumnWidth =744
+                    ColumnOrder =41
+                    FontSize =10
+                    TabIndex =35
+                    Name ="CHUKOT"
+                    ControlSource ="CHUKOT"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x2a44ca577fe3d44b9753892f1a5c99cb
+                    End
+
+                    LayoutCachedLeft =24376
+                    LayoutCachedWidth =24943
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =23809
+                    ColumnWidth =744
+                    ColumnOrder =42
+                    FontSize =10
+                    TabIndex =36
+                    Name ="MAG"
+                    ControlSource ="MAG"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x440ad6a60cfbdc4d830894626865986c
+                    End
+
+                    LayoutCachedLeft =23809
+                    LayoutCachedWidth =24376
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =24942
+                    ColumnWidth =744
+                    ColumnOrder =43
+                    FontSize =10
+                    TabIndex =37
+                    Name ="SAH"
+                    ControlSource ="SAH"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x7e3e8250623acc428c8171b96b46dd4d
+                    End
+
+                    LayoutCachedLeft =24942
+                    LayoutCachedWidth =25509
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =26076
+                    ColumnWidth =825
+                    ColumnOrder =11
+                    FontSize =10
+                    TabIndex =38
+                    Name ="Qотр"
+                    ControlSource ="QOTR"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xf9b132d0d801da49acd3a3b251f5a517
+                    End
+
+                    LayoutCachedLeft =26076
+                    LayoutCachedWidth =26643
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =26643
+                    ColumnWidth =555
+                    ColumnOrder =47
+                    FontSize =10
+                    TabIndex =39
+                    Name ="SNK"
+                    ControlSource ="SNK"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x38fee94699390f48a90a44b8387925ad
+                    End
+
+                    LayoutCachedLeft =26643
+                    LayoutCachedWidth =27210
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =27210
+                    ColumnWidth =525
+                    ColumnOrder =48
+                    FontSize =10
+                    TabIndex =40
+                    Name ="SNt"
+                    ControlSource ="SNt"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x57c721471783704099a856be007f3f95
+                    End
+
+                    LayoutCachedLeft =27210
+                    LayoutCachedWidth =27777
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =27777
+                    ColumnWidth =720
+                    ColumnOrder =6
+                    FontSize =10
+                    TabIndex =41
+                    Name ="Eтц"
+                    ControlSource ="EWTP"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x3464f5f1cba0f64482592b03ee9e3fc8
+                    End
+
+                    LayoutCachedLeft =27777
+                    LayoutCachedWidth =28344
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =28344
+                    ColumnWidth =570
+                    ColumnOrder =4
+                    FontSize =10
+                    TabIndex =42
+                    Name ="NT"
+                    ControlSource ="NT"
+                    Format ="#"
+                    AfterUpdate ="[Event Procedure]"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xb8305f0b536c074bac4f67161d8a1e75
+                    End
+
+                    LayoutCachedLeft =28344
+                    LayoutCachedWidth =28911
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =3969
+                    ColumnWidth =600
+                    ColumnOrder =3
+                    FontSize =10
+                    TabIndex =43
+                    Name ="Nрасп"
+                    ControlSource ="nr"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xf737082dd1bdf74aab33802cd4e4f81f
+                    End
+
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =30603
+                    ColumnWidth =645
+                    ColumnOrder =50
+                    FontSize =10
+                    TabIndex =44
+                    Name ="main"
+                    ControlSource ="main"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xa7c49067324eef40b2fbe5bc62ae1d2b
+                    End
+
+                    LayoutCachedLeft =30603
+                    LayoutCachedWidth =31170
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =25509
+                    ColumnWidth =855
+                    ColumnOrder =44
+                    FontSize =10
+                    TabIndex =45
+                    Name ="KAMCH"
+                    ControlSource ="KAMCH"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x6ea1c14008596741896c88312c9cc8f1
+                    End
+
+                    LayoutCachedLeft =25509
+                    LayoutCachedWidth =26076
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =22675
+                    ColumnWidth =855
+                    ColumnOrder =45
+                    FontSize =10
+                    TabIndex =46
+                    Name ="USHUM"
+                    ControlSource ="USHUM"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0xc5134fceef4b184eae327cf0c3d858b5
+                    End
+
+                    LayoutCachedLeft =22675
+                    LayoutCachedWidth =23242
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =29478
+                    ColumnWidth =795
+                    ColumnOrder =49
+                    FontSize =10
+                    TabIndex =47
+                    Name ="NTsum"
+                    ControlSource ="NTsum"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x1b15475502f0ec4bad57858da108df02
+                    End
+
+                    LayoutCachedLeft =29478
+                    LayoutCachedWidth =30045
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    TextFontFamily =18
+                    Left =30045
+                    ColumnWidth =495
+                    ColumnOrder =51
+                    FontSize =10
+                    TabIndex =48
+                    Name ="ved"
+                    ControlSource ="ved"
+                    Format ="General Number"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x4d829db65afc52479d95fd69d7550892
+                    End
+
+                    LayoutCachedLeft =30045
+                    LayoutCachedWidth =30612
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =28911
+                    ColumnWidth =588
+                    ColumnOrder =46
+                    FontSize =10
+                    TabIndex =49
+                    Name ="obor"
+                    ControlSource ="OBOR"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x5f6e8aaac62b6d4eb54fd924e6aae48a
+                    End
+
+                    LayoutCachedLeft =28911
+                    LayoutCachedWidth =29478
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =119
+                    TextFontFamily =18
+                    Left =17570
+                    ColumnWidth =780
+                    ColumnOrder =31
+                    FontSize =10
+                    TabIndex =50
+                    Name ="TUNG"
+                    ControlSource ="TUNG"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x6008974a36e33c47b5f915be798003ad
+                    End
+
+                    LayoutCachedLeft =17570
+                    LayoutCachedWidth =18137
+                    LayoutCachedHeight =284
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =87
+                    TextFontFamily =0
+                    Left =9637
+                    ColumnWidth =1100
+                    ColumnOrder =16
+                    FontSize =10
+                    TabIndex =12
+                    Name ="ISK_GAZ"
+                    ControlSource ="ISK_GAZ"
+                    Format ="#"
+                    FontName ="Times New Roman CYR"
+                    GUID = Begin
+                        0x95991beac6b3f840a4a8ec97a6f66e52
+                    End
+
+                    LayoutCachedLeft =9637
+                    LayoutCachedWidth =10204
+                    LayoutCachedHeight =284
+                End
+            End
+        End
+        Begin FormFooter
+            Height =113
+            BackColor =-2147483633
+            Name ="ПримечаниеФормы"
+            GUID = Begin
+                0xd1692e90e264564a91ab15acc59cbd7e
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Text
+Public Sub Form_AfterUpdate()
+Dim df As Form, st As Form
+Parent!fchange = 1
+Set df = Forms("Доп_угли")
+df.Requery
+If YEAR = 1990 Or YEAR = 2014 Or YEAR >= 2018 Then 'добавила
+    delta = z(B) - z(Вэ) - z(Вт)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс Bэ+Bт " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(B) - z(GAZ) - z(ISK_GAZ) - z(MAZUT) - z(torf) - z(SLAN) - z(PROCH) - z(UGOL)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс топлива " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(GAZ) - z(df!gaz_prir) - z(df!gazpp)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  газа " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(ISK_GAZ) - z(df!domen_g) - z(df!koks_g) - z(df!prochgaz)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  искусственного газа " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(MAZUT) - z(df!disel) - z(df!maztop) - z(df!nft_proch) - z(df!GTT)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  нефтетоплива " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(UGOL) - z(don) - z(podm) - z(pech) - z(ALT) - z(kuzn) - z(ural) - z(BASHK) - z(KAZAH) - z(KAN) - z(tung) - z(IRKUT) - z(HAK) - z(TUV) - z(BUR) - z(chit) - z(YAKUT) - z(AMUR) - z(prim) - z(urg) - z(mag) - z(sah) - z(KAMCH) - z(CHUKOT) - z(USHUM)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(pech) - z(df!vork) - z(df!intin)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  печорских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(ural) - z(df!sver) - z(df!chel) - z(df!kizel)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  уральских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(kuzn) - z(df!kuzngd) - z(df!kuznt) - z(df!kuznss) - z(df!kuznun)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс кузнецких углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(KAZAH) - z(df!ekib) - z(df!maikub) - z(df!karag) - z(df!karajyra) - z(df!teniz)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  казахстанских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(KAN) - z(df!nazar) - z(df!ibor) - z(df!berez) - z(df!per) - z(df!irbei) - z(df!kansk)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс КАУ " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(tung) - z(df!jer) - z(df!karab)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  тунгусских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(IRKUT) - z(df!azey) - z(df!cher) - z(df!mug)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  иркутских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(BUR) - z(df!gusin) - z(df!tugn) - z(df!okino)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  бурятских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(chit) - z(df!har) - z(df!urt) - z(df!tataur) - z(df!tarbag) - z(df!zab_kam)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  читинских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(AMUR) - z(df!rai) - z(df!erk) - z(df!ogodj) - z(df!svo)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  амурских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(prim) - z(df!bikin) - z(df!razdol) - z(df!hankai)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  приморских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(CHUKOT) - z(df!bering) - z(df!anad)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  чукотских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(YAKUT) - z(df!neru) - z(df!pyak) - z(df!zyryan)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  якутских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(PROCH) - z(df!tvproch) - z(df!szh_gaz) - z(df!inoe)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс прочего топлива " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+ElseIf YEAR >= 2010 And YEAR < 2018 Then
+    delta = z(B) - z(Вэ) - z(Вт)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс Bэ+Bт " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(B) - z(GAZ) - z(MAZUT) - z(torf) - z(SLAN) - z(PROCH) - z(UGOL)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс топлива " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(GAZ) - z(df!gaz_prir) - z(df!gazpp)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  газа " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(MAZUT) - z(df!disel) - z(df!maztop) - z(df!nft_proch) - z(df!GTT)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  нефтетоплива " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(UGOL) - z(don) - z(podm) - z(pech) - z(ALT) - z(kuzn) - z(ural) - z(BASHK) - z(KAZAH) - z(KAN) - z(tung) - z(IRKUT) - z(HAK) - z(TUV) - z(BUR) - z(chit) - z(YAKUT) - z(AMUR) - z(prim) - z(urg) - z(mag) - z(sah) - z(KAMCH) - z(CHUKOT) - z(USHUM)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(pech) - z(df!vork) - z(df!intin)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  печорских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(ural) - z(df!sver) - z(df!chel) - z(df!kizel)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  уральских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(kuzn) - z(df!kuzngd) - z(df!kuznt) - z(df!kuznss) - z(df!kuznun)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс кузнецких углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(KAZAH) - z(df!ekib) - z(df!maikub) - z(df!karag) - z(df!karajyra) - z(df!teniz)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  казахстанских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(KAN) - z(df!nazar) - z(df!ibor) - z(df!berez) - z(df!per) - z(df!irbei) - z(df!kansk)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс КАУ " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(tung) - z(df!jer) - z(df!karab)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  тунгусских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(IRKUT) - z(df!azey) - z(df!cher) - z(df!mug)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  иркутских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(BUR) - z(df!gusin) - z(df!tugn) - z(df!okino)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  бурятских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(chit) - z(df!har) - z(df!urt) - z(df!tataur) - z(df!tarbag) - z(df!zab_kam)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  читинских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(AMUR) - z(df!rai) - z(df!erk) - z(df!ogodj) - z(df!svo)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  амурских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(prim) - z(df!bikin) - z(df!razdol) - z(df!hankai)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  приморских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(CHUKOT) - z(df!bering) - z(df!anad)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  чукотских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(YAKUT) - z(df!neru) - z(df!pyak) - z(df!zyryan)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  якутских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(PROCH) - z(df!koksdom) - z(df!prochgaz) - z(df!tvproch)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс прочего топлива " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+Else
+    delta = z(B) - z(Вэ) - z(Вт)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс Bэ+Bт " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(B) - z(GAZ) - z(MAZUT) - z(torf) - z(SLAN) - z(GTT) - z(PROCH) - z(UGOL)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс топлива " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(UGOL) - z(don) - z(podm) - z(pech) - z(ARKT) - z(kuzn) - z(ural) - z(BASHK) - z(ekib) - z(karag) - z(KAN) - z(IRKUT) - z(HAK) - z(TUV) - z(BUR) - z(chit) - z(YAKUT) - z(AMUR) - z(prim) - z(urg) - z(luch) - z(mag) - z(sah) - z(KAMCH) - z(USHUM)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(pech) - z(df!vork) - z(df!intin)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  печорских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(ural) - z(df!sver) - z(df!chel) - z(df!kizel)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  уральских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(KAN) - z(df!nazar) - z(df!ibor) - z(df!berez) - z(df!per)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс КАУ " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(tung) - z(df!jer) - z(df!karab)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  тунгусских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(IRKUT) - z(df!azey) - z(df!cher) - z(df!mug)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  иркутских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(BUR) - z(df!gusin) - z(df!tugn)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  бурятских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(chit) - z(df!har) - z(df!urt)
+    If Abs(delta) >= 0.01 Then msg = MsgBox("Небаланс  читинских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(AMUR) - z(df!rai) - z(df!erk)
+    If Abs(delta) >= 0.01 And YEAR > 2001 Then msg = MsgBox("Небаланс  амурских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(YAKUT) - z(df!neru) - z(df!pyak)
+    If Abs(delta) >= 0.01 And YEAR > 2001 Then msg = MsgBox("Небаланс  якутских углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+    delta = z(kuzn) - z(df!kuzngd) - z(df!kuznt) - z(df!kuznss) - z(df!kuznun)
+    If Abs(delta) >= 0.01 And YEAR > 2001 Then msg = MsgBox("Небаланс кузнецких углей " & " Дельта=" & Format(delta, "#.##"), vbOKOnly)
+End If
+'добавила
+Set st = Forms("Стоимость")
+st.Requery
+End Sub
+
+
+
+
+
+Private Sub Form_Current()
+dopopen = 0
+For i = 0 To Forms.Count - 1
+If Forms(i).Name = "Доп_угли" Then
+dopopen = 1
+Forms(i).Filter = "numb1120=" & NUMB1120 & " and year=" & YEAR
+Forms(i).FilterOn = True
+End If
+'добавила
+If Forms(i).Name = "Стоимость" Then
+Forms(i).Filter = "numb1120=" & NUMB1120 & " and year=" & YEAR
+Forms(i).FilterOn = True
+End If
+'конец
+If Forms(i).Name = "Турбины" Then
+If z(MAIN) > 0 Then sf = "grcode=" Else sf = "numb1120="
+Forms(i).Filter = sf & NUMB1120
+Forms(i).FilterOn = True
+Forms(i).OrderByOn = True
+End If
+If Forms(i).Name = "Конфигурация(справка)" Then
+Forms(i).Filter = "stan=" & NUMB1120
+Forms(i).FilterOn = True
+End If
+If Forms(i).Name = "Пром_потребители" Then
+Forms(i).Filter = "codest=" & NUMB1120
+Forms(i).FilterOn = True
+End If
+If Forms(i).Name = "Диалог_для_справки" Then
+DoCmd.Close acForm, "Диалог_для_справки"
+DoCmd.OpenForm ("Диалог_для_справки"), , , , , , NUMB1120
+End If
+Next i
+For i = 0 To Forms.Count - 1
+If Forms(i).Name = "Диаграмма" Then
+DoCmd.OpenForm "Диаграмма", , , "numb=" & NUMB1120
+End If
+Next i
+Parent!linkcode = NUMB1120
+Parent!linkyear = YEAR
+If dopopen = 1 Then
+    With Forms("Редактирование_отчетных_данных")!nat.Form
+        For i = 0 To .Controls.Count - 1
+        fname = .Controls(i).Name
+        If .Controls(i).Tag = "w" Then
+            If Me(fname) > 0 Then .Controls(i).ColumnHidden = False Else .Controls(i).ColumnHidden = True
+        Else
+        If Forms("Доп_угли")(fname) > 0 Then .Controls(i).ColumnHidden = False Else .Controls(i).ColumnHidden = True
+        End If
+        Next i
+    End With
+End If
+End Sub
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+If KeyCode = 114 Then
+Form_Редактирование_отчетных_данных.ac = Screen.ActiveControl.Name
+Parent!nat1.SetFocus
+End If
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+For i = 0 To Section(0).Controls.Count - 1
+Section(0).Controls(i).ColumnHidden = False
+Next i
+End Sub
+
+Public Sub nt_AfterUpdate()
+Call verifynt(NT, NUMB1120)
+End Sub
+
+Public Sub verifynt(NT As Double, NUMB1120 As Double)
+If YEAR >= 2000 Then
+sqlnt = "select sum(турбины.nt) as nt from турбины where " & IIf(z(MAIN) > 0, "grcode=", "numb1120=") & NUMB1120 & " and (dem is null or dem>" & YEAR & ") and yearin<=" & YEAR & " group by numb1120;"
+Set db = Workspaces(0).Databases(0)
+Set sumnt1 = db.OpenRecordset(sqlnt)
+Debug.Print sqlnt
+If sumnt1.RecordCount > 0 Then
+sumnt1.MoveFirst
+delta = NT - sumnt1!NT
+If Abs(delta) >= 1 Then
+For i = 0 To Forms.Count - 1
+If Forms(i).Name = "Турбины" Then GoTo lmsg
+Next i
+Application.DoCmd.OpenForm "Турбины", acFormDS, , "numb1120=" & NUMB1120
+lmsg:
+msg = MsgBox("Небаланс тепловой мощности  " & " Дельта=" & Format(delta, "#"), vbOKOnly)
+End If
+End If
+End If
+End Sub
+
+Private Sub PROCH_BeforeUpdate(Cancel As Integer)
+
+End Sub

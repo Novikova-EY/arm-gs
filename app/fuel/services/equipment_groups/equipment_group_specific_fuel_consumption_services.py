@@ -9,6 +9,7 @@ equipment_group_specific_fuel_consumption_write_services.py
 """
 
 from collections import defaultdict
+from decimal import Decimal
 from sqlalchemy import or_, and_
 
 from app.common.services.database_version_filter import get_current_db_version_id
@@ -17,23 +18,97 @@ from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
+from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+    normalize_equipment_group_ids_filter,
+)
+
+# Пары загруженное / расчётное для временного фильтра расхождений
+CALC_MISMATCH_FIELD_PAIRS = (
+    ("y", "y_calc"),
+    ("btp", "btp_calc"),
+    ("sntp", "sntp_calc"),
+    ("bk", "bk_calc"),
+    ("snk", "snk_calc"),
+)
+
+# Игнорировать микроразницу в 6–7-м знаке после запятой (округление Excel vs расчёт)
+CALC_MISMATCH_ABS_TOLERANCE = Decimal("0.00001")
+
+
+def _normalize_consumption_value(value):
+    """NULL и 0 на экране оба показываются как «—» — считаем эквивалентными."""
+    if value is None:
+        return None
+    try:
+        as_dec = Decimal(str(value))
+    except Exception:
+        return value
+    if as_dec == 0:
+        return None
+    return as_dec
+
+
+def _numeric_values_differ(left, right) -> bool:
+    """True, если значения различаются заметно (после нормализации NULL/0, |Δ| >= 1e-5)."""
+    left_n = _normalize_consumption_value(left)
+    right_n = _normalize_consumption_value(right)
+    if left_n is None and right_n is None:
+        return False
+    if left_n is None or right_n is None:
+        return True
+    try:
+        return abs(left_n - right_n) >= CALC_MISMATCH_ABS_TOLERANCE
+    except Exception:
+        return left_n != right_n
+
+
+def consumption_has_calc_mismatch(param) -> bool:
+    """Есть ли хотя бы одна пара поле / поле_calc с расхождением."""
+    if param is None:
+        return False
+    for loaded_attr, calc_attr in CALC_MISMATCH_FIELD_PAIRS:
+        if _numeric_values_differ(
+            getattr(param, loaded_attr, None),
+            getattr(param, calc_attr, None),
+        ):
+            return True
+    return False
+
+
+def get_calc_mismatch_attrs(param) -> set:
+    """Атрибуты (и loaded, и _calc), у которых пара расходится."""
+    mismatched = set()
+    if param is None:
+        return mismatched
+    for loaded_attr, calc_attr in CALC_MISMATCH_FIELD_PAIRS:
+        if _numeric_values_differ(
+            getattr(param, loaded_attr, None),
+            getattr(param, calc_attr, None),
+        ):
+            mismatched.add(loaded_attr)
+            mismatched.add(calc_attr)
+    return mismatched
 
 
 SPECIFIC_FUEL_CONSUMPTION_COLUMNS = [
     ("name", "Наименование", False),
     ("year_number", "Year", False),
     ("k", "K", True),
-    ("y", "Y", True),
-    ("btp", "BTP", True),
-    ("sntp", "SNTP", True),
-    ("bk", "BK", True),
-    ("numb1120", "NUMB1120", False),
-    ("snk", "SNK", True),
-    ("y_calc", "Y (расчет)", True),
-    ("btp_calc", "BTP (расчет)", True),
-    ("sntp_calc", "SNTP (расчет)", True),
-    ("bk_calc", "BK (расчет)", True),
-    ("snk_calc", "SNK (расчет)", True),
+    ("y", EquipmentGroupSpecificFuelConsumption.Y_COLUMN_LABEL, True),
+    ("btp", EquipmentGroupSpecificFuelConsumption.BTP_COLUMN_LABEL, True),
+    ("sntp", EquipmentGroupSpecificFuelConsumption.SNTP_COLUMN_LABEL, True),
+    ("bk", EquipmentGroupSpecificFuelConsumption.BK_COLUMN_LABEL, True),
+    ("numb1120", "Код группы оборудования", False),
+    ("snk", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
+    ("snbas", "SNBAS", True),
+    ("ksn", "KSN", True),
+    ("bbas", "BBAS", True),
+    ("kh", "KH", True),
+    ("y_calc", EquipmentGroupSpecificFuelConsumption.Y_COLUMN_LABEL, True),
+    ("btp_calc", EquipmentGroupSpecificFuelConsumption.BTP_COLUMN_LABEL, True),
+    ("sntp_calc", EquipmentGroupSpecificFuelConsumption.SNTP_COLUMN_LABEL, True),
+    ("bk_calc", EquipmentGroupSpecificFuelConsumption.BK_COLUMN_LABEL, True),
+    ("snk_calc", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
 ]
 
 # Суммы в иерархии: все числовые колонки, кроме k (не суммируем)
@@ -45,7 +120,7 @@ SPECIFIC_FUEL_CONSUMPTION_SUMMARY_NUMERIC_ATTRS = [
 
 def get_equipment_groups_with_specific_fuel_consumption_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,
@@ -114,7 +189,10 @@ def get_equipment_groups_with_specific_fuel_consumption_data(
         if k not in ("page", "start_year", "end_year")
     }
     equipment_group_name_filter = (_filters.get("equipment_group_name_filter") or "").strip() or None
-    if any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:
+    id_list = normalize_equipment_group_ids_filter(_filters.get("equipment_group_ids"))
+    if id_list:
+        base_query = base_query.filter(EquipmentGroup.id.in_(id_list))
+    elif any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:
         from app.fuel.services.stations.stations_equipment_groups_services import (
             get_filtered_equipment_group_ids,
             get_filtered_standalone_equipment_group_ids,

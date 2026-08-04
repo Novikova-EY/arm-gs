@@ -35,7 +35,7 @@ def test_ec_summary_excel_writes_full_precision_float_with_number_format():
                 "entity_label": "ОЭС Центра",
                 "entity_kind": "default",
                 "parameter_key": "energy_consumption_mln_kvt_ch",
-                "parameter_label": "Потребление электрической энергии, млн кВт·ч",
+                "parameter_label": "Потребление электрической энергии, млн кВтч",
                 "year_values": ["12,3"],
                 "year_numeric_tooltips": ["12,3456"],
             }

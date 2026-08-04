@@ -1,4 +1,6 @@
 <!-- Одна строка с двумя кнопками управления -->
+{# Диагностические query-параметры (ссылка «Без удельника») не тащим в формы фильтров #}
+{% set _fuel_transient_query_keys = ['equipment_group_ids', 'show_empty_rows'] %}
 <div class="col-12 mb-2">
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
 
@@ -26,23 +28,25 @@
         </div>
 
         <!-- Центр: Найдено элементов -->
+        {% if not hide_total_count|default(false) %}
         <div class="flex-grow-1 d-flex justify-content-center align-items-center">
             <p class="mb-0 fw-bold">Найдено {{ total_count_label | default('станций') }}: {{ total_count }}</p>
         </div>
+        {% endif %}
 
         <!-- Правая группа ВНУТРИ формы -->
         <form method="get" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" id="stationFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
 
             <!-- Скрытые фильтры -->
-            {% for key, value in request.args.items() %}
-                {% if key not in ['show_p_ogr', 'show_p_rasp'] %}
+            {% for key, value in request.args.items(multi=True) %}
+                {% if key not in ['show_p_ogr', 'show_p_rasp'] and key not in _fuel_transient_query_keys %}
                     {% if not (hide_year_range|default(false) and key in ['year', 'start_year', 'end_year']) %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endif %}
             {% endfor %}
 
-            {% if show_fuel_params_import|default(false) or show_extra_fuel_params_import|default(false) or show_natural_fuel_import|default(false) or show_specific_fuel_consumption_import|default(false) or show_specific_fuel_cost_import|default(false) or show_electricity_production_cost_import|default(false) or show_heat_and_tariffs_import|default(false) or show_specific_fuel_price_import|default(false) or show_rounding_digits|default(false) %}
+            {% if show_fuel_params_import|default(false) or show_natural_fuel_import|default(false) or show_specific_fuel_consumption_import|default(false) or show_specific_fuel_cost_import|default(false) or show_electricity_production_cost_import|default(false) or show_heat_and_tariffs_import|default(false) or show_specific_fuel_price_import|default(false) or show_rounding_digits|default(false) %}
             <!-- Выбор знаков после запятой (страницы топливных параметров) -->
             <div class="d-flex align-items-center gap-1">
                 <label for="rounding_digits" class="mb-0" style="white-space: nowrap; min-width: 90px;">Округл:</label>

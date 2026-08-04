@@ -189,35 +189,35 @@ class ProspectivePlaceGaesTepSourceEditForm(FlaskForm):
         validators=[Optional()],
     )
     generation_average_multiyear_million_kwh = StringField(
-        "Годовая выработка электроэнергии, млн кВт·ч",
+        "Годовая выработка электроэнергии, млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     generation_average_multiyear_million_kwh_stage_1 = StringField(
-        "Годовая выработка электроэнергии, 1 очередь, млн кВт·ч",
+        "Годовая выработка электроэнергии, 1 очередь, млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     generation_average_multiyear_million_kwh_stage_2 = StringField(
-        "Годовая выработка электроэнергии, 2 очередь, млн кВт·ч",
+        "Годовая выработка электроэнергии, 2 очередь, млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     generation_medium_water_50pct_million_kwh = StringField(
-        "Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду), млн кВт·ч",
+        "Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду), млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     generation_low_water_95pct_million_kwh = StringField(
-        "Выработка электроэнергии при маловодных условиях (95% обеспеченности по каскаду), млн кВт·ч",
+        "Выработка электроэнергии при маловодных условиях (95% обеспеченности по каскаду), млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     annual_charging_electricity_consumption_million_kwh = StringField(
-        "Годовое потребление электрической энергии ГАЭС на заряд, млн кВт·ч",
+        "Годовое потребление электрической энергии ГАЭС на заряд, млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     annual_charging_electricity_consumption_million_kwh_stage_1 = StringField(
-        "Годовое потребление электрической энергии ГАЭС на заряд, 1 очередь, млн кВт·ч",
+        "Годовое потребление электрической энергии ГАЭС на заряд, 1 очередь, млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     annual_charging_electricity_consumption_million_kwh_stage_2 = StringField(
-        "Годовое потребление электрической энергии ГАЭС на заряд, 2 очередь, млн кВт·ч",
+        "Годовое потребление электрической энергии ГАЭС на заряд, 2 очередь, млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     specific_capital_investment_thous_rub_per_kw = StringField(

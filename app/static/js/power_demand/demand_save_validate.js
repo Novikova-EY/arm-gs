@@ -19,6 +19,10 @@
         return Number.isFinite(n) ? n : null;
     }
 
+    function expandTwoDigitYear(yy) {
+        return yy <= 68 ? 2000 + yy : 1900 + yy;
+    }
+
     function normalizePeakDatetimeText(val) {
         var text = String(val == null ? "" : val)
             .replace(/\u00a0/g, " ")
@@ -33,9 +37,60 @@
         }
         var s = parts.length ? parts.join(" ") : text.trim();
         s = s.replace(/\s+/g, " ").trim();
-        if (s.length >= 2 && s.charAt(0) === s.charAt(s.length - 1) && "\"'«»".indexOf(s.charAt(0)) >= 0) {
+        var qmarks = "\"'«»“”";
+        while (
+            s.length >= 2 &&
+            s.charAt(0) === s.charAt(s.length - 1) &&
+            qmarks.indexOf(s.charAt(0)) >= 0
+        ) {
             s = s.slice(1, -1).trim();
         }
+        s = s.replace(/^["'«»“”]+|["'«»“”]+$/g, "").trim();
+        // «10.01.23 18-00» → время через двоеточие
+        s = s.replace(
+            /((?:\d{1,2}\.){2}\d{2,4})\s+(\d{1,2})-(\d{2})(?::(\d{2}))?/,
+            function (_m, datePart, hh, mm, ss) {
+                var out =
+                    datePart +
+                    " " +
+                    String(parseInt(hh, 10)).padStart(2, "0") +
+                    ":" +
+                    mm;
+                if (ss) {
+                    out += ":" + ss;
+                }
+                return out;
+            }
+        );
+        // Двузначный год и выравнивание ДД.ММ
+        s = s.replace(/\b(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})\b/, function (_m, d, mo, yRaw) {
+            var y = parseInt(yRaw, 10);
+            if (yRaw.length === 2) {
+                y = expandTwoDigitYear(y);
+            }
+            return (
+                String(parseInt(d, 10)).padStart(2, "0") +
+                "." +
+                String(parseInt(mo, 10)).padStart(2, "0") +
+                "." +
+                String(y).padStart(4, "0")
+            );
+        });
+        s = s.replace(
+            /((?:\d{2}\.){2}\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/,
+            function (_m, datePart, hh, mm, ss) {
+                var out =
+                    datePart +
+                    " " +
+                    String(parseInt(hh, 10)).padStart(2, "0") +
+                    ":" +
+                    mm;
+                if (ss) {
+                    out += ":" + ss;
+                }
+                return out;
+            }
+        );
         return s;
     }
 

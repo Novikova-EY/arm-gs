@@ -1,0 +1,391 @@
+Version =21
+VersionRequired =20
+Checksum =-2066300596
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =5
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =9630
+    DatasheetFontHeight =10
+    ItemSuffix =19
+    Left =1125
+    Top =990
+    Right =10770
+    Bottom =6510
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xfc47a513af05e240
+    End
+    GUID = Begin
+        0x8f16409df4f5ef489374a3c918bcf268
+    End
+    RecordSource ="main"
+    DatasheetFontName ="Arial Cyr"
+    PrtMip = Begin
+        0x89050000890500008905000089050000000000009e2500007e19000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevNames = Begin
+        0x080011002a00010077696e73706f6f6c004850204465736b4a65742031313235 ,
+        0x43205072696e746572004c5054313a0000000000000000000000000000000000 ,
+        0x00000000
+    End
+    FilterOnLoad =0
+    DatasheetGridlinesColor12 =12632256
+    PrtDevModeW = Begin
+        0x4800500020004400650073006b004a0065007400200031003100320035004300 ,
+        0x20005000720069006e007400650072000000a30d480000002015a30d0000a30d ,
+        0x01040340dc0082040fff001e02000900990b33086400010001002c0102000100 ,
+        0x2c01030000004100340020002800320031003000200078002000320039003700 ,
+        0x20003c043c04290020000000353616f25903005a2c528f015903005a9896b51c ,
+        0x00000000749f0000000000000000000000000000000000000000000001000000 ,
+        0x0300000001000000010000000000000000000000000000000000000059381202 ,
+        0x00000100008c00000000020002000000000000000000000000002c012c01cb00 ,
+        0x1901b009b30db009b30d27000c00ae09b30d0100000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000200010000000800 ,
+        0x000000000000000000000000000000000000000000000000000000000100ffff ,
+        0xffff00004d005300410043004300450053005300000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000010000002c012c010000000059381202
+    End
+    PrtDevNamesW = Begin
+        0x04000d0026000100770069006e00730070006f006f006c000000480050002000 ,
+        0x4400650073006b004a0065007400200031003100320035004300200050007200 ,
+        0x69006e0074006500720000004c005000540031003a0000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000
+    End
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+            BorderLineStyle =0
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            BorderLineStyle =0
+            LabelX =230
+            LabelY =-30
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            BorderLineStyle =0
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =6525
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x6926240559f7874695041d00b5ab4c9a
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =7320
+                    Top =2475
+                    Width =1026
+                    Height =628
+                    Name ="Кнопка4"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x37ff2a8cbc027742982a199851b39631
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+                Begin Subform
+                    OverlapFlags =215
+                    Top =2551
+                    Width =2835
+                    Height =2268
+                    TabIndex =1
+                    Name ="Список_объектов"
+                    SourceObject ="Form.Список_объектов"
+                    GUID = Begin
+                        0x4ea298293114004bb5dcd152105f0153
+                    End
+
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Left =3174
+                    Top =113
+                    Width =2835
+                    Height =4146
+                    TabIndex =2
+                    Name ="Список_макетов"
+                    SourceObject ="Form.Список_макетов"
+                    GUID = Begin
+                        0xc9dd9c19e10488499fa21cda5b5c70ed
+                    End
+
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Top =113
+                    Width =2835
+                    Height =2268
+                    TabIndex =3
+                    Name ="Список_запросов"
+                    SourceObject ="Form.Список_запросов"
+                    GUID = Begin
+                        0x70eed5940bb8c04aa50f324a8123edd8
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =3454
+                    Top =4410
+                    Width =3403
+                    Height =283
+                    TabIndex =4
+                    Name ="cond"
+                    GUID = Begin
+                        0x81184b12a134f44b838ac82d9c7e438b
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Left =1980
+                            Top =4410
+                            Width =600
+                            Height =240
+                            Name ="Надпись10"
+                            Caption ="Поле9:"
+                            GUID = Begin
+                                0x02254a2ad038b74fab607d6aa7ff1225
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =6960
+                    Top =4410
+                    Width =360
+                    Height =300
+                    TabIndex =5
+                    Name ="Кнопка11"
+                    Caption ="..."
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x216c96c36316b94baeb7dc0176a7fbf0
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+                Begin Subform
+                    CanShrink = NotDefault
+                    OverlapFlags =85
+                    OldBorderStyle =0
+                    SpecialEffect =0
+                    Left =6240
+                    Top =150
+                    Width =2745
+                    Height =1410
+                    TabIndex =6
+                    Name ="param"
+                    GUID = Begin
+                        0x07a640b86b3dde4f9810d7fe7701b916
+                    End
+
+                End
+                Begin ComboBox
+                    Visible = NotDefault
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    ListWidth =1440
+                    Left =6240
+                    Top =1695
+                    TabIndex =7
+                    GUID = Begin
+                        0x954b2108a7a6f8498c06565c73d26fb8
+                    End
+                    Name ="listvar"
+                    RowSourceType ="Value List"
+                    ColumnWidths ="1441"
+                    DefaultValue ="1"
+
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Кнопка11_Click()
+DoCmd.OpenForm "Условие", , , , , acDialog, "Настройка_отчета"
+End Sub
+
+Private Sub Кнопка18_Click()
+param1.Visible = False
+End Sub
+
+Private Sub Кнопка4_Click()
+Dim db As Database, so As DAO.Recordset, work As QueryDef, sm As DAO.Recordset, sq As DAO.Recordset
+Dim R As Report, swhere As String, join As String, w As QueryDef, D As QueryDef, i As Integer
+Dim sqlwork As String, qtmp As QueryDef, selstan As QueryDef
+Dim fr As QueryDef
+Set db = Application.DBEngine.Workspaces(0).Databases(0)
+Set sm = Список_макетов.Form.RecordsetClone
+sm.Bookmark = Список_макетов.Form.Bookmark
+l = 0
+swhere = ""
+If cond <> "" Then
+swhere = " where " & cond
+End If
+If z(sm!U) = 1 Then GoTo skipquery
+Set so = Список_объектов.Form.RecordsetClone
+so.Bookmark = Список_объектов.Form.Bookmark
+If z(sm!U) = 1.5 Then GoTo skipquery
+Set sq = Список_запросов.Form.RecordsetClone
+sq.Bookmark = Список_запросов.Form.Bookmark
+If z(sm!U) = 2 Then GoTo skipquery
+If so!vars <> "no" Then
+If listvar <> "Все" Or listvar = "Все" And sq!sum = 1 Then
+If swhere <> "" Then swhere = swhere & " and " Else swhere = "where "
+If sq!sum <> 1 Then swhere = swhere & "(w.v=0 or w.v=" & listvar & ")" Else swhere = swhere & "(w.v=0 or w.v=1)"
+End If
+End If
+Set work = db.QueryDefs(sq!Name)
+Set fr = db.QueryDefs("для_отчета")
+sqlwork = work.SQL
+sqlwork = Replace(sqlwork, "Рабочий(станции)", so!Name)
+sqlwork = Replace(sqlwork, "Рабочий(доп_угли)", so!opt)
+If swhere <> "" Then sqlwork = Replace(sqlwork, "where", swhere & " and ")
+If listvar = "Все" And sq!sum = 1 Then
+vars = split(Replace(listvar.RowSource, ";Все", ""), ";")
+sqlwork1 = sqlwork
+sqlwork = Replace(sqlwork, "0 as v", "1 as v")
+For i = 1 To UBound(vars)
+sqlwork2 = Replace(sqlwork1, "0 as v", vars(i) & " as v")
+sqlwork2 = Replace(sqlwork2, "v=1", "v=" & vars(i))
+sqlwork = Replace(sqlwork, ";", " UNION " & sqlwork2)
+Next i
+End If
+frold = fr.SQL
+fr.SQL = sqlwork
+DoCmd.OpenReport sm!Name, acViewPreview
+skipquery:
+If z(sm!U) = 2 Then
+Set w = db.QueryDefs("Рабочий(станции)")
+Set D = db.QueryDefs("Рабочий(доп_угли)")
+sqlw1 = w.SQL
+sqld1 = D.SQL
+sqlw = "select w.* from ([#w] as w left join [#d] as d on (w.numb1120=d.numb1120) "
+sqlw = sqlw & "and (w.year=d.year)) inner join имена_станций on w.numb1120=имена_станций.numb " & swhere & ";"
+sqlw = Replace(sqlw, "#w", so!Name)
+sqlw = Replace(sqlw, "#d", so!opt)
+sqld = "select d.*,w.oes,w.obl from ([#w] as w inner join [#d] as d on (w.numb1120=d.numb1120) "
+sqld = sqld & "and (w.year=d.year)) inner join имена_станций on w.numb1120=имена_станций.numb " & swhere & ";"
+sqld = Replace(sqld, "#w", so!Name)
+sqld = Replace(sqld, "#d", so!opt)
+w.SQL = sqlw
+D.SQL = sqld
+End If
+If z(sm!U) = 1.5 Then
+Set work = db.QueryDefs(sm!Q)
+sqlw = work.SQL
+sqlwork = work.SQL
+sqlwork = Replace(sqlwork, "Рабочий(станции)", so!Name)
+sqlwork = Replace(sqlwork, "Рабочий(доп_угли)", so!opt)
+If swhere <> "" Then sqlwork = Replace(sqlwork, "where", swhere & " and ")
+Debug.Print sqlwork
+work.SQL = sqlwork
+End If
+If z(sm!U) <> 1 Or (z(sm!U) = 1 And swhere = "") Then Application.DoCmd.OpenReport sm!Name, acViewPreview
+If z(sm!U) = 1 And swhere <> "" Then
+swhere = Replace(swhere, "w.", "")
+Application.DoCmd.OpenReport sm!Name, acViewPreview, , Mid(swhere, 7)
+'Reports(sm!name).filter = Mid(swhere, 7)
+'Reports(sm!name).FilterOn = True
+End If
+'If l > 2048 Then db.QueryDefs.Delete ("tmp001")
+If z(sm!U) = 2 Then
+w.SQL = sqlw1
+D.SQL = sqld1
+End If
+If z(sm!U) = 1.5 Then work.SQL = sqlw
+If z(sm!U) <> 1 And z(sm!U) <> 1.5 And z(sm!U) <> 2 Then fr.SQL = frold
+End Sub

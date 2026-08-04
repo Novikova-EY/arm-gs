@@ -1,361 +1,2216 @@
-{% extends 'base.html' %}
-{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
-
-{% block title %}Сведения о работе ТЭС{% endblock %}
-
-{% block content %}
-{% if current_user.is_authenticated %}
+{% extends 'base.html' %} {% from 'fuel/_shared/_value_macros.html' import
+render_numeric_or_dash %} {% from 'fuel/_shared/fuel_param_edit_macros.html'
+import fuel_param_edit_or_view, fuel_param_data_cell_content,
+fuel_param_tooltip_title %} {% block title %}Сведения о работе ТЭС{% endblock %}
+{% block content %} {% if current_user.is_authenticated %} {% set can_edit_bulk
+= current_user.is_authenticated and current_user.has_admin %}
 
 <!-- Индикатор загрузки для per_page=all -->
-<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-    <div class="text-center">
-        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-            <span class="visually-hidden">Загрузка...</span>
-        </div>
-        <p class="mt-3 h4">Загрузка данных...</p>
-        <p class="text-muted">Это может занять некоторое время</p>
+<div
+  id="loading-overlay"
+  style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  "
+>
+  <div class="text-center">
+    <div
+      class="spinner-border text-primary"
+      role="status"
+      style="width: 3rem; height: 3rem"
+    >
+      <span class="visually-hidden">Загрузка...</span>
     </div>
+    <p class="mt-3 h4">Загрузка данных...</p>
+    <p class="text-muted">Это может занять некоторое время</p>
+  </div>
 </div>
 
-<div class="container-fluid mt-2">
-    <div class="table-responsive" id="stationsTableContainer">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-    </div>
-
-    <div class="col-12 mb-2">
-        <h2 class="text-center mb-4">Сведения о работе ТЭС</h2>
-        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-            <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
-                ➕ Добавить электростанцию
-            </a>
-            <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
-                ➕ Добавить группу оборудования
-            </a>
+{# Оболочка как на equipment_group_fuel_params_edit_data: верх прокручивается,
+внизу две подтаблицы #}
+<div class="fuel-params-shell d-flex flex-column">
+  <div
+    class="fuel-params-top d-flex flex-column"
+    style="flex: 1 1 0; min-height: 0"
+  >
+    <div class="fuel-params-pane-content fuel-params-top-pane w-100 mt-2 px-0">
+      {# При прокрутке уходит только заголовок; кнопки и фильтры остаются
+      липкими #}
+      <div class="fuel-params-sticky-stack fuel-params-sticky-nav bg-body">
+        <div
+          class="d-flex justify-content-end align-items-center flex-wrap gap-2 px-2 py-1"
+        >
+          <a
+            href="{{ url_for('fuel_bp.fuel_start') }}"
+            class="btn btn-secondary fs-5"
+            ><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a
+          >
+          <a
+            href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
+            class="btn btn-secondary fs-5"
+            >Группы оборудования</a
+          >
+          <a
+            href="{{ url_for('station_bp.station_list') }}"
+            class="btn btn-secondary fs-5"
+            >Электростанции РФ</a
+          >
         </div>
-    </div>
+      </div>
+      <!-- /.fuel-params-sticky-nav -->
 
-    <!-- Фильтры -->
-    {% include 'fuel/fuel_params/stations_equipment_group_fuel_params_filters.html' %}
+      <div class="col-12 mb-2 px-2 fuel-params-page-title">
+        <h2 class="text-center mb-4">Сведения о работе ТЭС</h2>
+        <div
+          class="d-flex justify-content-end align-items-center flex-wrap gap-2"
+        >
+          <a
+            href="{{ url_for('station_bp.add_station') }}"
+            class="btn btn-outline-success text-dark"
+          >
+            ➕ Добавить электростанцию
+          </a>
+          <a
+            href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}"
+            class="btn btn-outline-primary text-dark"
+          >
+            ➕ Добавить группу оборудования
+          </a>
+        </div>
+      </div>
 
+      <div
+        class="fuel-params-sticky-stack fuel-params-sticky-filters bg-body px-2"
+      >
+        <!-- Фильтры -->
+        {% include
+        'fuel/fuel_params/stations_equipment_group_fuel_params_filters.html' %}
+      </div>
+      <!-- /.fuel-params-sticky-filters -->
 
-{% set fuel_param_columns = [
-    ('numb1120', 'Код электростанции', false),
-    ('nust', 'Руст', true), ('nr', 'Ррасп', true),
-    ('e', 'Выработка эл.эн.', true), ('ewtp', 'Этц', true), ('eotp', 'Отпуск эл.эн.', true), ('eurt', 'Уд.расх эл.эн.', true), ('eust', 'Расх топ эл.эн.', true), ('snk', 'СН, %', true),
-    ('q', 'Отпуск тепл.эн.', true), ('qotr', 'Отраб тепл.эн.', true), ('turt', 'Уд.расх тепл.эн.', true), ('tust', 'Расх топ тепл.эн.', true), ('sn_t', 'СН, кВтч/Гкал', true),
-    ('b', 'Расх топл.', true),
-    ('gaz', 'Газ', true), ('isk_gaz', 'Иск. газ', true), ('mazut', 'Мазут', true), ('torf', 'Торф', true), ('slan', 'Сланцы', true),
-    ('proch', 'Прочее', true), ('ugol', 'Уголь', true), ('don', 'Дон', true), ('podm', 'Подм', true), ('pech', 'Печ', true),
-    ('arkt', 'Арктикуголь', true), ('kuzn', 'Кузбасс', true), ('ural', 'Урал', true), ('bashk', 'Башкортостан', true), ('kazah', 'Казахстан', true),
-    ('kan', 'Канск', true), ('tung', 'Тунгусск', true), ('irkut', 'Иркутск', true), ('hak', 'Хакасия', true), ('tuv', 'Тува', true),
-    ('bur', 'Бурятия', true), ('chit', 'Чита', true), ('yakut', 'Якутия', true), ('amur', 'Амур', true), ('urg', 'Юрга', true),
-    ('ushum', 'Ушумун', true), ('prim', 'Приморье', true), ('mag', 'Магадан', true), ('chukot', 'Чукотка', true), ('kamch', 'Камчатка', true),
-    ('sah', 'Сахалин', true),
-    ('nt', 'Тепл. мощн. отборов', true), ('nt_sum', 'Сумма NT', true)
-] %}
-{% set column_count = fuel_param_columns|length + 1 %}
-{% set collapsible_ugol_attrs = ['don', 'podm', 'pech', 'arkt', 'kuzn', 'ural', 'bashk', 'kazah', 'kan', 'tung', 'irkut', 'hak', 'tuv', 'bur', 'chit', 'yakut', 'amur', 'urg', 'ushum', 'prim', 'mag', 'chukot', 'kamch', 'sah'] %}
-
-    <table class="table table-hover table-striped table-bordered table-responsive" id="fuelParamsTable">
-        <thead class="table-success">
-            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                <th style="width: 120px;">Группа оборудования</th>
-                {% for attr, label, is_numeric in fuel_param_columns %}
-                <th style="width: 80px;" class="fuel-param-col-{{ attr }}" data-column="{{ attr }}"
-                    {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>
-                    {{ fuel_nazvl_to_name.get(attr, label) }}<br><span class="text-muted small">({{ attr }})</span>
-                    {% if attr == 'ugol' %}
-                    <span id="ugolGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть столбцы углей по маркам" aria-label="Группировка столбцов угля">
-                        <i class="bi bi-plus-square ugol-group-icon" data-state="collapsed"></i>
-                    </span>
-                    {% endif %}
+      <div class="fuel-params-top-table-wrap" id="stationsTableContainer">
+        {# Метрики вне группы «Расход топлива». b — под «Расход топлива», но с
+        фиксированной подписью. Группы шапки — как на
+        equipment_group_fuel_params_edit_data. Столбцы h/hfix («Часы») на этой
+        странице не показываем. #} {% set fuel_header_metric_cols = ('numb1120',
+        'nust', 'nr', 'e', 'ewtp', 'eotp', 'eust', 'eurt', 'snk', 'nt',
+        'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t') %} {# nust+nr: первая
+        строка шапки — «Электрическая мощность» (colspan=2), вторая —
+        подписи столбцов. #} {% set fuel_power_metric_cols = ('nust', 'nr') %}
+        {# e…snk: первая строка шапки — «Электрические показатели» (colspan=6),
+        вторая — подписи столбцов. #} {% set fuel_electric_metric_cols = ('e',
+        'ewtp', 'eotp', 'eust', 'eurt', 'snk') %} {# nt+nt_sum: первая строка
+        шапки — «Тепловая мощность» (colspan=2), вторая — подписи
+        столбцов. #} {% set fuel_heat_power_metric_cols = ('nt', 'nt_sum') %} {#
+        q…sn_t: первая строка шапки — «Тепловые показатели» (colspan=5), вторая
+        — подписи столбцов. #} {% set fuel_thermal_metric_cols = ('q', 'qotr',
+        'turt', 'tust', 'sn_t') %} {% set fuel_param_header_use_fixed_label =
+        fuel_header_metric_cols + ('b',) %} {# Две строки шапки всегда: группы
+        мощности/эл./тепл. показателей + при наличии «Расход топлива». #} {% set
+        fuel_header_rowspan = 2 %} {# Столбцы и группировка по Fuel.parent_id
+        (как на equipment_group_fuel_params_edit_data) #} {% set _fuel_hier =
+        fuel_param_column_hierarchy|default({}) %} {% set fuel_param_columns =
+        _fuel_hier.get('fuel_param_columns') if
+        _fuel_hier.get('fuel_param_columns') else [ ('numb1120', 'Код группы оборудования', false), ('nust', 'Суммарная установленная мощность, МВт', true),
+        ('nr', 'Суммарная располагаемая мощность, МВт', true), ('e', 'Выработка ЭЭ, тыс.кВтч',
+        true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true),
+        ('eotp', 'Отпуск ЭЭ, тыс.кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true),
+        ('snk', 'СН на выработку ЭЭ, %', true), ('nt', 'Тепловая мощность отборов, Гкал/ч',
+        true), ('nt_sum', 'Сумма тепловых мощностей, Гкал/ч', true), ('q', 'Отпуск ТЭ, тыс.Гкал', true), ('qotr', 'Тепловое потребление (отборов турбин), тыс.Гкал', true), ('turt',
+        'УРУТ на отпуск ТЭ, кг у.т./⁠Гкал', true), ('tust', 'Расход усл. топлива на ТЭ, тыс. т у.т.', true), ('sn_t',
+        'СН, кВтч/⁠Гкал', true), ('b', 'Всего', true), ('gaz', 'Газ', true),
+        ('isk_gaz', 'Иск. газ', true), ('mazut', 'Мазут', true), ('torf',
+        'Торф', true), ('slan', 'Сланцы', true), ('proch', 'Прочее', true),
+        ('ugol', 'Уголь', true), ('don', 'Дон', true), ('podm', 'Подм', true),
+        ('pech', 'Печ', true), ('arkt', 'Арктикуголь', true), ('kuzn',
+        'Кузбасс', true), ('ural', 'Урал', true), ('bashk', 'Башкортостан',
+        true), ('kazah', 'Казахстан', true), ('kan', 'Канск', true), ('tung',
+        'Тунгусск', true), ('irkut', 'Иркутск', true), ('hak', 'Хакасия', true),
+        ('tuv', 'Тува', true), ('bur', 'Бурятия', true), ('chit', 'Чита', true),
+        ('yakut', 'Якутия', true), ('amur', 'Амур', true), ('urg', 'Юрга',
+        true), ('ushum', 'Ушумун', true), ('prim', 'Приморье', true), ('mag',
+        'Магадан', true), ('chukot', 'Чукотка', true), ('kamch', 'Камчатка',
+        true), ('sah', 'Сахалин', true) ] %} {% set fuel_group_parents =
+        _fuel_hier.get('group_parents') if _fuel_hier.get('group_parents') is
+        not none else ['ugol'] %} {% set fuel_collapse_under =
+        _fuel_hier.get('collapse_under') if _fuel_hier.get('collapse_under') is
+        not none else {} %} {% set fuel_children_by_parent =
+        _fuel_hier.get('children_by_parent') if
+        _fuel_hier.get('children_by_parent') is not none else {} %} {#
+        Родительские столбцы иерархии и «Всего (b)» — только суммы, без
+        редактирования. #} {% set fuel_hier_sum_attrs = fuel_group_parents +
+        (['b'] if 'b' not in fuel_group_parents else []) %} {% set
+        fuel_extra_attrs = fuel_extra_column_attrs|default([]) %} {% set
+        extra_by_gy = extra_fuel_param_by_group_year|default({}) %} {% set
+        fuel_detail_non_coal_columns = fuel_detail_non_coal_columns|default([])
+        %} {% set fuel_detail_coal_columns =
+        fuel_detail_coal_columns|default([]) %} {% set column_count =
+        fuel_param_columns|length + 1 %} {% set fuel_type_col_count =
+        namespace(n=0) %} {% for attr, label, is_numeric in fuel_param_columns
+        %} {% if attr not in fuel_header_metric_cols %} {% set
+        fuel_type_col_count.n = fuel_type_col_count.n + 1 %} {% endif %} {%
+        endfor %} {% set fuel_detail_non_coal_count =
+        fuel_detail_non_coal_columns|length %} {% set fuel_detail_coal_count =
+        fuel_detail_coal_columns|length %} {% set ugol_group_label =
+        fuel_nazvl_to_name.get('ugol', 'Уголь, в т.ч.') %} {% if can_edit_bulk
+        %}
+        <form
+          method="POST"
+          action="{{ url_for('fuel_bp.stations_equipment_group_fuel_params_save') }}"
+          id="fuelParamsBulkEditForm"
+          class="mb-0"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <input
+            type="hidden"
+            name="save_return_qs"
+            value="{{ request.query_string.decode('utf-8')|e }}"
+          />
+          <input type="hidden" name="start_year" value="{{ start_year }}" />
+          <input type="hidden" name="end_year" value="{{ end_year }}" />
+          <input
+            type="hidden"
+            name="rounding_digits"
+            value="{{ rounding_digits }}"
+          />
+          <input
+            type="hidden"
+            name="bulk_edit_group_ids"
+            value="{{ bulk_edit_equipment_group_ids|default([])|join(',') }}"
+          />
+          {% endif %}
+          <table
+            class="table table-hover table-striped table-bordered{% if can_edit_bulk %} fuel-params-edit-table{% endif %}"
+            id="fuelParamsTable"
+          >
+            <thead class="table-success">
+              <tr
+                class="text-center align-middle"
+                style="
+                  word-wrap: break-word;
+                  text-align: center;
+                  vertical-align: middle;
+                "
+              >
+                <th rowspan="{{ fuel_header_rowspan }}" style="width: 120px">
+                  Группа оборудования
                 </th>
-                {% endfor %}
-            </tr>
-        </thead>
+                {% for attr, label, is_numeric in fuel_param_columns %} {% if
+                attr in fuel_header_metric_cols %} {% if attr == 'nust' %}
+                <th
+                  colspan="{{ fuel_power_metric_cols|length }}"
+                  class="fuel-power-group-header"
+                >
+                  Электрическая<br />мощность
+                </th>
+                {% elif attr in fuel_power_metric_cols %} {# nr и др. — покрыты
+                colspan группы мощности #} {% elif attr == 'e' %}
+                <th
+                  colspan="{{ fuel_electric_metric_cols|length }}"
+                  class="fuel-electric-group-header"
+                >
+                  Электрические показатели
+                </th>
+                {% elif attr in fuel_electric_metric_cols %} {# ewtp…snk —
+                покрыты colspan группы электрических показателей #} {% elif attr
+                == 'nt' %}
+                <th
+                  colspan="{{ fuel_heat_power_metric_cols|length }}"
+                  class="fuel-thermal-group-header"
+                >
+                  Тепловая<br />мощность
+                </th>
+                {% elif attr in fuel_heat_power_metric_cols %} {# nt_sum —
+                покрыт colspan группы тепловой мощности #} {% elif attr == 'q'
+                %}
+                <th
+                  colspan="{{ fuel_thermal_metric_cols|length }}"
+                  class="fuel-thermal-group-header"
+                >
+                  Тепловые показатели
+                </th>
+                {% elif attr in fuel_thermal_metric_cols %} {# qotr…sn_t —
+                покрыты colspan группы тепловых показателей #} {% else %}
+                <th
+                  rowspan="{{ fuel_header_rowspan }}"
+                  style="width: 80px"
+                  class="fuel-param-col-{{ attr }}"
+                  data-column="{{ attr }}"
+                >
+                  {{ label }}<br /><span class="text-muted small"
+                    >({{ attr|fuel_header_code }})</span
+                  >
+                </th>
+                {% endif %} {% endif %} {% endfor %} {% if fuel_type_col_count.n
+                %}
+                <th
+                  colspan="{{ fuel_type_col_count.n }}"
+                  class="fuel-types-group-header"
+                >
+                  Расход топлива, тут
+                </th>
+                {% endif %}
+              </tr>
+              <tr
+                class="text-center align-middle fuel-types-header-row"
+                style="
+                  word-wrap: break-word;
+                  text-align: center;
+                  vertical-align: middle;
+                "
+              >
+                {% for attr, label, is_numeric in fuel_param_columns %} {% if
+                attr in fuel_power_metric_cols %}
+                <th
+                  style="width: 80px"
+                  class="fuel-param-col-{{ attr }} fuel-power-col-header"
+                  data-column="{{ attr }}"
+                >
+                  {{ label }}<br /><span class="text-muted small"
+                    >({{ attr|fuel_header_code }})</span
+                  >
+                </th>
+                {% elif attr in fuel_electric_metric_cols %}
+                <th
+                  style="width: 80px"
+                  class="fuel-param-col-{{ attr }} fuel-electric-col-header"
+                  data-column="{{ attr }}"
+                >
+                  {{ label }}<br /><span class="text-muted small"
+                    >({{ attr|fuel_header_code }})</span
+                  >
+                </th>
+                {% elif attr in fuel_heat_power_metric_cols %}
+                <th
+                  style="width: 80px"
+                  class="fuel-param-col-{{ attr }} fuel-thermal-col-header"
+                  data-column="{{ attr }}"
+                >
+                  {{ label }}<br /><span class="text-muted small"
+                    >({{ attr|fuel_header_code }})</span
+                  >
+                </th>
+                {% elif attr in fuel_thermal_metric_cols %}
+                <th
+                  style="width: 80px"
+                  class="fuel-param-col-{{ attr }} fuel-thermal-col-header"
+                  data-column="{{ attr }}"
+                >
+                  {{ label }}<br /><span class="text-muted small"
+                    >({{ attr|fuel_header_code }})</span
+                  >
+                </th>
+                {% elif attr not in fuel_header_metric_cols %}
+                <th
+                  style="width: 80px"
+                  class="fuel-param-col-{{ attr }}{% if attr in fuel_group_parents %} fuel-hier-parent-header{% else %} fuel-hier-leaf-header{% endif %}"
+                  data-column="{{ attr }}"
+                  {%
+                  if
+                  fuel_collapse_under.get(attr)
+                  %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"
+                  {%
+                  endif
+                  %}
+                >
+                  {% if attr in fuel_param_header_use_fixed_label %}{{ label
+                  }}{% else %}{{ fuel_nazvl_to_name.get(attr, label) }}{% endif
+                  %}<br /><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                  {% if attr in fuel_group_parents %}
+                  <span
+                    class="ms-1 cursor-pointer fuel-hier-toggle"
+                    data-fuel-hier-parent="{{ attr }}"
+                    title="Показать/скрыть дочерние виды топлива"
+                    aria-label="Группировка столбцов: {{ attr }}"
+                  >
+                    <i
+                      class="bi bi-plus-square fuel-hier-icon"
+                      data-state="collapsed"
+                    ></i>
+                  </span>
+                  {% endif %}
+                </th>
+                {% endif %} {% endfor %}
+              </tr>
+            </thead>
 
-        <tbody>
-            {% if equipment_group_fuel_params_hierarchy and equipment_group_fuel_params_hierarchy|length > 0 %}
-            {% for est_block in equipment_group_fuel_params_hierarchy %}
-                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
-                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
-                </tr>
-                {% for ues_block in est_block.ues_list %}
-                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
-                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
-                    </tr>
-                    {% for res_block in ues_block.res_list %}
-                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
-                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
-                        </tr>
-                        {% for station_block in res_block.station_blocks %}
-                        {% for group_block in station_block.group_blocks %}
-                                {% set group_entity = group_block.equipment_group %}
-                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
-                                {% for row in group_block.rows %}
-                                    {% set param = row[1] %}
-                                    <tr class="text-center align-middle">
-                                        <td>
-                                            {% if group_entity and group_entity.id %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                                                {{ group_name }}
-                                            </a>
-                                            {% else %}
-                                                {{ group_name }}
-                                            {% endif %}
-                                        </td>
-                                        {% for attr, label, is_numeric in fuel_param_columns %}
-                                        <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
-                                        {% endfor %}
-                                    </tr>
-                                {% endfor %}
-                        {% endfor %}
-                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') and not station_block.get('suppress_station_summary') %}
-                        <tr class="text-center align-middle table-warning" style="font-weight: bold;">
-                            <td>{{ station_block.station_name }}, всего</td>
-                            {% for attr, label, is_numeric in fuel_param_columns %}
-                            <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if is_numeric and station_block.station_summary and attr in station_block.station_summary %}{{ render_numeric_or_dash(station_block.station_summary[attr]) }}{% else %}—{% endif %}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                        {% if res_block.group_blocks %}
-                        <tr class="text-center align-middle table-info" style="font-weight: bold;">
-                            <td>{{ res_block.res_name }}, всего</td>
-                            {% for attr, label, is_numeric in fuel_param_columns %}
-                            <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if is_numeric and res_block.res_summary and attr in res_block.res_summary %}{{ render_numeric_or_dash(res_block.res_summary[attr]) }}{% else %}—{% endif %}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endif %}
-                    {% endfor %}
+            <tbody>
+              {% if equipment_group_fuel_params_hierarchy and
+              equipment_group_fuel_params_hierarchy|length > 0 %} {% for
+              est_block in equipment_group_fuel_params_hierarchy %}
+              <tr
+                class="table-light text-center"
+                style="vertical-align: middle; font-weight: bold"
+              >
+                <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+              </tr>
+              {% for ues_block in est_block.ues_list %}
+              <tr
+                class="table-primary text-center"
+                style="vertical-align: middle; font-weight: bold"
+              >
+                <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+              </tr>
+              {% for res_block in ues_block.res_list %}
+              <tr
+                class="table-secondary text-center"
+                style="vertical-align: middle; font-weight: bold"
+              >
+                <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+              </tr>
+              {% for station_block in res_block.station_blocks %} {% for
+              group_block in station_block.group_blocks %} {% set group_entity =
+              group_block.equipment_group %} {% set group_name =
+              (group_entity.name if group_entity and group_entity.name else
+              (group_entity.name_ext if group_entity and group_entity.name_ext
+              else '—')) %} {% set gid = group_entity.id if group_entity and
+              group_entity.id else 0 %} {% for row in group_block.rows %} {% set
+              param = row[1] %} {% set ynum = param.year_number if param is not
+              none and param.year_number is not none else '' %} {% set
+              can_row_edit = can_edit_bulk and gid %} {% set prev_cmp =
+              (fuel_param_prev_compare or {}).get(gid ~ ':' ~ ynum) if
+              fuel_param_prev_compare is defined else none %}
+              <tr
+                class="text-center align-middle fuel-param-detail-row"
+                data-fuel-detail-year="{{ ynum }}"
+                {%
+                if
+                gid
+                %}
+                data-fuel-detail-group-id="{{ gid }}"
+                data-fuel-detail-group-name="{{ group_name|e }}"
+                {%
+                endif
+                %}{%
+                if
+                prev_cmp
+                is
+                not
+                none
+                %}
+                data-prev-nust="{{ prev_cmp.nust if prev_cmp.nust is not none else '' }}"
+                data-prev-qotr="{{ prev_cmp.qotr if prev_cmp.qotr is not none else '' }}"
+                {%
+                endif
+                %}
+              >
+                <td>
+                  {% if group_entity and group_entity.id %}
+                  <a
+                    href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}"
+                    class="text-decoration-none"
+                  >
+                    {{ group_name }}
+                  </a>
+                  {% else %} {{ group_name }} {% endif %}
+                </td>
+                {% for attr, label, is_numeric in fuel_param_columns %} {% set
+                cell_param = extra_by_gy.get(gid ~ ':' ~ ynum) if attr in
+                fuel_extra_attrs else param %} {% set row_warn_key = gid ~ ':' ~
+                ynum %} {% set qotr_nt_warn = attr == 'qotr' and
+                qotr_nt_ratio_warn_rows is defined and row_warn_key in
+                qotr_nt_ratio_warn_rows %} {% set q_sum_nt_warn = attr == 'q'
+                and q_nt_sum_ratio_warn_rows is defined and row_warn_key in
+                q_nt_sum_ratio_warn_rows %} {% set qotr_nust_warn = attr ==
+                'qotr' and qotr_composition_warn_rows is defined and
+                row_warn_key in qotr_composition_warn_rows %} {% set
+                cell_danger_warn = qotr_nt_warn or q_sum_nt_warn or
+                qotr_nust_warn %} {% set warn_ns = namespace(msgs=[]) %} {% if
+                qotr_nt_warn %}{% set _ = warn_ns.msgs.append('Число часов
+                использования установленной тепловой мощности больше 8000 часов!
+                Проверьте значение!') %}{% endif %} {% if q_sum_nt_warn %}{% set
+                _ = warn_ns.msgs.append('Число часов использования установленной
+                тепловой мощности больше 8000 часов! Проверьте значение!') %}{%
+                endif %} {% if qotr_nust_warn %}{% set _ =
+                warn_ns.msgs.append('Произошло изменение состава агрегатов!
+                Проверьте значение!') %}{% endif %} {% set _default_ttd =
+                fuel_param_tooltip_title(attr, is_numeric, cell_param)|trim %}
+                {% set _ttd = (warn_ns.msgs|join(' ') if warn_ns.msgs else
+                _default_ttd) %} {% set is_hier_sum = attr in
+                fuel_hier_sum_attrs %}
+                <td
+                  class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}{% if cell_danger_warn %} table-danger fuel-param-cell-warn{% endif %}"
+                  data-column="{{ attr }}"
+                  {%
+                  if
+                  fuel_collapse_under.get(attr)
+                  %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"
+                  {%
+                  endif
+                  %}{%
+                  if
+                  _default_ttd
+                  %}
+                  data-default-title="{{ _default_ttd|e }}"
+                  {%
+                  endif
+                  %}{%
+                  if
+                  _ttd
+                  %}
+                  title="{{ _ttd|e }}"
+                  {%
+                  endif
+                  %}
+                >
+                  {% if attr == 'numb1120' %}{{
+                  fuel_param_data_cell_content(attr, label, is_numeric,
+                  cell_param) }}{% elif is_hier_sum %}{% if can_row_edit %}{%
+                  set _sum_raw = cell_param|get_attr(attr) if cell_param is not
+                  none else none %}{% if _sum_raw is none or (is_numeric and
+                  _sum_raw == 0) %}{% set _sum_display = '' %}{% elif is_numeric
+                  %}{% set _sum_display =
+                  _sum_raw|format_decimal_trim(rounding_digits) %}{% else %}{%
+                  set _sum_display = _sum_raw|string %}{% endif %}<input
+                    type="hidden"
+                    name="g{{ gid }}_fuel_param_{{ ynum }}_{{ attr }}"
+                    class="fuel-hier-sum-input"
+                    value="{{ _sum_display }}"
+                    data-initial="{{ _sum_display|e }}"
+                  />{% endif %}<span class="fuel-hier-sum-value"
+                    >{{ fuel_param_data_cell_content(attr, label, is_numeric,
+                    cell_param) }}</span
+                  >{% elif can_row_edit %}{{ fuel_param_edit_or_view(attr,
+                  label, is_numeric, cell_param, gid, ynum, true,
+                  rounding_digits, _ttd if cell_danger_warn else '') }}{% else
+                  %}{{ fuel_param_data_cell_content(attr, label, is_numeric,
+                  cell_param) }}{% endif %}
+                </td>
                 {% endfor %}
-            {% endfor %}
-            {% else %}
-            {% for row in equipment_group_fuel_param_rows|default([]) %}
-                {% set group_entity = row[0] %}
-                {% set param = row[1] %}
-                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
-                <tr class="text-center align-middle">
-                    <td>
-                        {% if group_entity and group_entity.id %}
-                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                            {{ group_name }}
-                        </a>
-                        {% else %}
-                            {{ group_name }}
-                        {% endif %}
-                    </td>
-                    {% for attr, label, is_numeric in fuel_param_columns %}
-                    <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
-                    {% endfor %}
-                </tr>
-            {% endfor %}
-            {% endif %}
-        </tbody>
-    </table>
+              </tr>
+              {% endfor %} {% endfor %} {% if station_block.group_blocks|length
+              > 1 and not station_block.get('is_virtual') and not
+              station_block.get('suppress_station_summary') %} {# Итоги по
+              станции — формульные, не редактируются #}
+              <tr
+                class="text-center align-middle table-warning fuel-param-detail-row fuel-param-summary-row"
+                style="font-weight: bold"
+                data-fuel-detail-year="{{ selected_year|default('') }}"
+              >
+                <td>{{ station_block.station_name }}, всего</td>
+                {% for attr, label, is_numeric in fuel_param_columns %} {% set
+                is_hier_sum = attr in fuel_hier_sum_attrs %}
+                <td
+                  class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}"
+                  data-column="{{ attr }}"
+                  {%
+                  if
+                  fuel_collapse_under.get(attr)
+                  %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"
+                  {%
+                  endif
+                  %}
+                >
+                  {% if is_hier_sum %}<span class="fuel-hier-sum-value"
+                    >{% if is_numeric and station_block.station_summary and attr
+                    in station_block.station_summary %}{{
+                    render_numeric_or_dash(station_block.station_summary[attr],
+                    true) }}{% else %}{% endif %}</span
+                  >{% elif is_numeric and station_block.station_summary and attr
+                  in station_block.station_summary %}{{
+                  render_numeric_or_dash(station_block.station_summary[attr],
+                  true) }}{% else %}{% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endif %} {% endfor %} {% if res_block.group_blocks %} {# Итоги
+              по РЭС — формульные, не редактируются #}
+              <tr
+                class="text-center align-middle table-info fuel-param-detail-row fuel-param-summary-row"
+                style="font-weight: bold"
+                data-fuel-detail-year="{{ selected_year|default('') }}"
+              >
+                <td>{{ res_block.res_name }}, всего</td>
+                {% for attr, label, is_numeric in fuel_param_columns %} {% set
+                is_hier_sum = attr in fuel_hier_sum_attrs %}
+                <td
+                  class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}"
+                  data-column="{{ attr }}"
+                  {%
+                  if
+                  fuel_collapse_under.get(attr)
+                  %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"
+                  {%
+                  endif
+                  %}
+                >
+                  {% if is_hier_sum %}<span class="fuel-hier-sum-value"
+                    >{% if is_numeric and res_block.res_summary and attr in
+                    res_block.res_summary %}{{
+                    render_numeric_or_dash(res_block.res_summary[attr], true)
+                    }}{% else %}{% endif %}</span
+                  >{% elif is_numeric and res_block.res_summary and attr in
+                  res_block.res_summary %}{{
+                  render_numeric_or_dash(res_block.res_summary[attr], true) }}{%
+                  else %}{% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endif %} {% endfor %} {% endfor %} {% endfor %} {% else %} {%
+              for row in equipment_group_fuel_param_rows|default([]) %} {% set
+              group_entity = row[0] %} {% set param = row[1] %} {% set
+              group_name = (group_entity.name if group_entity and
+              group_entity.name else (group_entity.name_ext if group_entity and
+              group_entity.name_ext else '—')) %} {% set gid = group_entity.id
+              if group_entity and group_entity.id else 0 %} {% set ynum =
+              param.year_number if param is not none and param.year_number is
+              not none else '' %} {% set can_row_edit = can_edit_bulk and gid %}
+              {% set prev_cmp = (fuel_param_prev_compare or {}).get(gid ~ ':' ~
+              ynum) if fuel_param_prev_compare is defined else none %}
+              <tr
+                class="text-center align-middle fuel-param-detail-row"
+                data-fuel-detail-year="{{ ynum }}"
+                {%
+                if
+                gid
+                %}
+                data-fuel-detail-group-id="{{ gid }}"
+                data-fuel-detail-group-name="{{ group_name|e }}"
+                {%
+                endif
+                %}{%
+                if
+                prev_cmp
+                is
+                not
+                none
+                %}
+                data-prev-nust="{{ prev_cmp.nust if prev_cmp.nust is not none else '' }}"
+                data-prev-qotr="{{ prev_cmp.qotr if prev_cmp.qotr is not none else '' }}"
+                {%
+                endif
+                %}
+              >
+                <td>
+                  {% if group_entity and group_entity.id %}
+                  <a
+                    href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}"
+                    class="text-decoration-none"
+                  >
+                    {{ group_name }}
+                  </a>
+                  {% else %} {{ group_name }} {% endif %}
+                </td>
+                {% for attr, label, is_numeric in fuel_param_columns %} {% set
+                cell_param = extra_by_gy.get(gid ~ ':' ~ ynum) if attr in
+                fuel_extra_attrs else param %} {% set row_warn_key = gid ~ ':' ~
+                ynum %} {% set qotr_nt_warn = attr == 'qotr' and
+                qotr_nt_ratio_warn_rows is defined and row_warn_key in
+                qotr_nt_ratio_warn_rows %} {% set q_sum_nt_warn = attr == 'q'
+                and q_nt_sum_ratio_warn_rows is defined and row_warn_key in
+                q_nt_sum_ratio_warn_rows %} {% set qotr_nust_warn = attr ==
+                'qotr' and qotr_composition_warn_rows is defined and
+                row_warn_key in qotr_composition_warn_rows %} {% set
+                cell_danger_warn = qotr_nt_warn or q_sum_nt_warn or
+                qotr_nust_warn %} {% set warn_ns = namespace(msgs=[]) %} {% if
+                qotr_nt_warn %}{% set _ = warn_ns.msgs.append('Число часов
+                использования установленной тепловой мощности больше 8000 часов!
+                Проверьте значение!') %}{% endif %} {% if q_sum_nt_warn %}{% set
+                _ = warn_ns.msgs.append('Число часов использования установленной
+                тепловой мощности больше 8000 часов! Проверьте значение!') %}{%
+                endif %} {% if qotr_nust_warn %}{% set _ =
+                warn_ns.msgs.append('Произошло изменение состава агрегатов!
+                Проверьте значение!') %}{% endif %} {% set _default_ttd =
+                fuel_param_tooltip_title(attr, is_numeric, cell_param)|trim %}
+                {% set _ttd = (warn_ns.msgs|join(' ') if warn_ns.msgs else
+                _default_ttd) %} {% set is_hier_sum = attr in
+                fuel_hier_sum_attrs %}
+                <td
+                  class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}{% if cell_danger_warn %} table-danger fuel-param-cell-warn{% endif %}"
+                  data-column="{{ attr }}"
+                  {%
+                  if
+                  fuel_collapse_under.get(attr)
+                  %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"
+                  {%
+                  endif
+                  %}{%
+                  if
+                  _default_ttd
+                  %}
+                  data-default-title="{{ _default_ttd|e }}"
+                  {%
+                  endif
+                  %}{%
+                  if
+                  _ttd
+                  %}
+                  title="{{ _ttd|e }}"
+                  {%
+                  endif
+                  %}
+                >
+                  {% if attr == 'numb1120' %}{{
+                  fuel_param_data_cell_content(attr, label, is_numeric,
+                  cell_param) }}{% elif is_hier_sum %}{% if can_row_edit %}{%
+                  set _sum_raw = cell_param|get_attr(attr) if cell_param is not
+                  none else none %}{% if _sum_raw is none or (is_numeric and
+                  _sum_raw == 0) %}{% set _sum_display = '' %}{% elif is_numeric
+                  %}{% set _sum_display =
+                  _sum_raw|format_decimal_trim(rounding_digits) %}{% else %}{%
+                  set _sum_display = _sum_raw|string %}{% endif %}<input
+                    type="hidden"
+                    name="g{{ gid }}_fuel_param_{{ ynum }}_{{ attr }}"
+                    class="fuel-hier-sum-input"
+                    value="{{ _sum_display }}"
+                    data-initial="{{ _sum_display|e }}"
+                  />{% endif %}<span class="fuel-hier-sum-value"
+                    >{{ fuel_param_data_cell_content(attr, label, is_numeric,
+                    cell_param) }}</span
+                  >{% elif can_row_edit %}{{ fuel_param_edit_or_view(attr,
+                  label, is_numeric, cell_param, gid, ynum, true,
+                  rounding_digits, _ttd if cell_danger_warn else '') }}{% else
+                  %}{{ fuel_param_data_cell_content(attr, label, is_numeric,
+                  cell_param) }}{% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %} {% endif %}
+            </tbody>
+          </table>
+          {% if can_edit_bulk %}
+        </form>
+        {% endif %}
 
         <!-- Пагинация (как на stations_equipment_groups) -->
-        <div class="mt-2">
-            {% if per_page is not none %}
-                {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_fuel_params' %}
-                {% include 'generation/includes/pagination_station.html' %}
-            {% endif %}
+        <div class="mt-2 px-2">
+          {% if per_page is not none %} {% set pagination_endpoint =
+          'fuel_bp.stations_equipment_group_fuel_params' %} {% include
+          'generation/includes/pagination_station.html' %} {% endif %}
         </div>
-
+      </div>
+      <!-- /#stationsTableContainer -->
     </div>
+    <!-- /.fuel-params-pane-content -->
+  </div>
+  <!-- /.fuel-params-top -->
+
+  {# Нижняя панель: две подтаблицы «Детализация топлива» (кроме угля / Уголь, в
+  т.ч.) #}
+  <div
+    class="fuel-params-bottom d-flex flex-column border-top bg-body-secondary flex-shrink-0 mt-1 mb-1"
+    id="fuelParamsBottomPanel"
+    style="flex: 0 0 auto; min-height: 0"
+  >
+    <div class="fuel-params-pane-content w-100 px-0 pb-1">
+      <div class="fuel-params-bottom-panels-grid w-100">
+        <div
+          class="d-flex flex-column border-bottom fuel-params-bottom-col"
+          style="min-width: 0"
+        >
+          <div
+            class="px-2 py-1 bg-light border-bottom fw-semibold text-muted d-flex align-items-center gap-2 flex-shrink-0 fuel-params-bottom-section-title"
+          >
+            <span
+              >Детализация топлива<span id="fuelDetailGroupNameSuffix"></span
+            ></span>
+          </div>
+          <div class="fuel-params-bottom-table-wrap" id="fuelDetailNonCoalWrap">
+            <table
+              class="table table-sm table-bordered mb-0 fuel-params-bottom-data-table"
+              id="fuelDetailNonCoalTable"
+              data-auto-export-excel="off"
+            >
+              <thead class="table-light">
+                {% if fuel_detail_non_coal_count %}
+                <tr class="text-center align-middle fuel-types-header-row">
+                  {% for attr, label, is_numeric in fuel_detail_non_coal_columns
+                  %}
+                  <th
+                    class="text-center fuel-param-col-{{ attr }}{% if attr in fuel_group_parents and attr != 'ugol' %} fuel-hier-parent-header{% else %} fuel-hier-leaf-header{% endif %}"
+                    data-column="{{ attr }}"
+                    {%
+                    if
+                    fuel_collapse_under.get(attr)
+                    %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"
+                    {%
+                    endif
+                    %}
+                  >
+                    <div class="fuel-params-bottom-th-inner">
+                      {% if attr in fuel_param_header_use_fixed_label %}{{ label
+                      }}{% else %}{{ fuel_nazvl_to_name.get(attr, label) }}{%
+                      endif %}<br /><span class="text-muted small"
+                        >({{ attr|fuel_header_code }})</span
+                      >
+                      {% if attr in fuel_group_parents and attr != 'ugol' %}
+                      <span
+                        class="ms-1 cursor-pointer fuel-hier-toggle fuel-detail-hier-toggle"
+                        data-fuel-hier-parent="{{ attr }}"
+                        title="Показать/скрыть дочерние виды топлива"
+                        aria-label="Группировка столбцов: {{ attr }}"
+                      >
+                        <i
+                          class="bi bi-plus-square fuel-hier-icon"
+                          data-state="collapsed"
+                        ></i>
+                      </span>
+                      {% endif %}
+                    </div>
+                  </th>
+                  {% endfor %}
+                </tr>
+                {% endif %}
+              </thead>
+              <tbody id="fuelDetailNonCoalBody" class="text-center">
+                <tr>
+                  <td
+                    colspan="{{ fuel_detail_non_coal_count or 1 }}"
+                    class="text-muted"
+                  >
+                    Выберите группу оборудования
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div
+          class="d-flex flex-column fuel-params-bottom-col"
+          style="min-width: 0"
+        >
+          <div class="fuel-params-bottom-table-wrap" id="fuelDetailCoalWrap">
+            <table
+              class="table table-sm table-bordered mb-0 fuel-params-bottom-data-table"
+              id="fuelDetailCoalTable"
+              data-auto-export-excel="off"
+            >
+              <thead class="table-light">
+                {% if fuel_detail_coal_count %}
+                <tr class="text-center align-middle fuel-types-header-row">
+                  {% for attr, label, is_numeric in fuel_detail_coal_columns %}
+                  <th
+                    class="text-center fuel-param-col-{{ attr }}{% if attr in fuel_group_parents %} fuel-hier-parent-header{% else %} fuel-hier-leaf-header{% endif %}"
+                    data-column="{{ attr }}"
+                    {%
+                    if
+                    fuel_collapse_under.get(attr)
+                    %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"
+                    {%
+                    endif
+                    %}
+                  >
+                    <div class="fuel-params-bottom-th-inner">
+                      {% if attr in fuel_param_header_use_fixed_label %}{{ label
+                      }}{% else %}{{ fuel_nazvl_to_name.get(attr, label) }}{%
+                      endif %}<br /><span class="text-muted small"
+                        >({{ attr|fuel_header_code }})</span
+                      >
+                      {% if attr in fuel_group_parents %}
+                      <span
+                        class="ms-1 cursor-pointer fuel-hier-toggle fuel-detail-hier-toggle"
+                        data-fuel-hier-parent="{{ attr }}"
+                        title="Показать/скрыть дочерние виды топлива"
+                        aria-label="Группировка столбцов: {{ attr }}"
+                      >
+                        <i
+                          class="bi bi-plus-square fuel-hier-icon"
+                          data-state="collapsed"
+                        ></i>
+                      </span>
+                      {% endif %}
+                    </div>
+                  </th>
+                  {% endfor %}
+                </tr>
+                {% endif %}
+              </thead>
+              <tbody id="fuelDetailCoalBody" class="text-center">
+                <tr>
+                  <td
+                    colspan="{{ fuel_detail_coal_count or 1 }}"
+                    class="text-muted"
+                  >
+                    Выберите группу оборудования
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /#fuelParamsBottomPanel -->
 </div>
+<!-- /.fuel-params-shell -->
 
 <!-- Данные фильтров (для первой строки) -->
 <script id="filters-data" type="application/json">
-    {{ {
-        'energy_system_type_list': energy_system_type_list,
-        'union_energy_system_list': union_energy_system_list,
-        'regional_energy_system_list': regional_energy_system_list,
-        'federal_district_list': federal_district_list,
-        'regional_district_list': regional_district_list,
-        'energy_system_type_filter': energy_system_type_filter,
-        'union_energy_system_filter': union_energy_system_filter,
-        'regional_energy_system_filter': regional_energy_system_filter,
-        'federal_district_filter': federal_district_filter,
-        'regional_district_filter': regional_district_filter,
-        'regional_energy_system_mapping': regional_energy_system_mapping,
-        'regional_district_mapping': regional_district_mapping,
-        'est_to_ues_mapping': est_to_ues_mapping,
-        'est_to_res_mapping': est_to_res_mapping,
-        'est_to_rd_mapping': est_to_rd_mapping,
-        'est_to_fd_mapping': est_to_fd_mapping,
-        'ues_to_est_mapping': ues_to_est_mapping,
-        'ues_to_res_mapping': ues_to_res_mapping,
-        'ues_to_rd_mapping': ues_to_rd_mapping,
-        'ues_to_fd_mapping': ues_to_fd_mapping,
-        'res_to_est_mapping': res_to_est_mapping,
-        'res_to_ues_mapping_one': res_to_ues_mapping_one,
-        'res_to_rd_mapping': res_to_rd_mapping,
-        'res_to_fd_mapping': res_to_fd_mapping,
-        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
-        'rd_to_res_mapping': rd_to_res_mapping,
-        'rd_to_ues_mapping': rd_to_ues_mapping,
-        'rd_to_est_mapping': rd_to_est_mapping,
-        'fd_to_rd_mapping': fd_to_rd_mapping,
-        'fd_to_res_mapping': fd_to_res_mapping,
-        'fd_to_ues_mapping': fd_to_ues_mapping,
-        'fd_to_est_mapping': fd_to_est_mapping
-    } | tojson | safe }}
+  {{ {
+      'energy_system_type_list': energy_system_type_list,
+      'union_energy_system_list': union_energy_system_list,
+      'regional_energy_system_list': regional_energy_system_list,
+      'federal_district_list': federal_district_list,
+      'regional_district_list': regional_district_list,
+      'energy_system_type_filter': energy_system_type_filter,
+      'union_energy_system_filter': union_energy_system_filter,
+      'regional_energy_system_filter': regional_energy_system_filter,
+      'federal_district_filter': federal_district_filter,
+      'regional_district_filter': regional_district_filter,
+      'regional_energy_system_mapping': regional_energy_system_mapping,
+      'regional_district_mapping': regional_district_mapping,
+      'est_to_ues_mapping': est_to_ues_mapping,
+      'est_to_res_mapping': est_to_res_mapping,
+      'est_to_rd_mapping': est_to_rd_mapping,
+      'est_to_fd_mapping': est_to_fd_mapping,
+      'ues_to_est_mapping': ues_to_est_mapping,
+      'ues_to_res_mapping': ues_to_res_mapping,
+      'ues_to_rd_mapping': ues_to_rd_mapping,
+      'ues_to_fd_mapping': ues_to_fd_mapping,
+      'res_to_est_mapping': res_to_est_mapping,
+      'res_to_ues_mapping_one': res_to_ues_mapping_one,
+      'res_to_rd_mapping': res_to_rd_mapping,
+      'res_to_fd_mapping': res_to_fd_mapping,
+      'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+      'rd_to_res_mapping': rd_to_res_mapping,
+      'rd_to_ues_mapping': rd_to_ues_mapping,
+      'rd_to_est_mapping': rd_to_est_mapping,
+      'fd_to_rd_mapping': fd_to_rd_mapping,
+      'fd_to_res_mapping': fd_to_res_mapping,
+      'fd_to_ues_mapping': fd_to_ues_mapping,
+      'fd_to_est_mapping': fd_to_est_mapping
+  } | tojson | safe }}
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     if (typeof initializeStationFilters === "function") {
-        initializeStationFilters();
+      initializeStationFilters();
     }
-});
+  });
 </script>
 
 <style>
-    .cursor-pointer { cursor: pointer; }
-    .ugol-group-icon { font-size: 1rem; color: var(--bs-primary); }
-    .ugol-group-icon:hover { opacity: 0.8; }
-    /* Скрытые столбцы группировки UGOL (don … sah) — по умолчанию скрыты */
-    #fuelParamsTable th[data-collapsible-ugol="1"],
-    #fuelParamsTable td[data-collapsible-ugol="1"] {
-        display: none;
-    }
-    #fuelParamsTable.ugol-group-expanded th[data-collapsible-ugol="1"],
-    #fuelParamsTable.ugol-group-expanded td[data-collapsible-ugol="1"] {
-        display: table-cell;
-    }
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  .fuel-hier-icon {
+    font-size: 1rem;
+    color: var(--bs-primary);
+  }
+  .fuel-hier-icon:hover {
+    opacity: 0.8;
+  }
+  #fuelParamsTable td.fuel-hier-sum-cell {
+    background-color: rgba(13, 110, 253, 0.04);
+    font-size: 1.1rem;
+    line-height: 1.3;
+    font-weight: inherit;
+    color: inherit;
+  }
+  /* Итоговые строки: единый фон table-info/table-warning, без «дыр» от fuel-hier-sum-cell */
+  #fuelParamsTable tr.fuel-param-summary-row > td,
+  #fuelParamsTable tr.fuel-param-summary-row > td.fuel-hier-sum-cell {
+    background-color: var(--bs-table-bg) !important;
+    font-weight: bold;
+    font-size: inherit;
+    color: inherit;
+  }
+  #fuelParamsTable.table-striped > tbody > tr.fuel-param-summary-row > * {
+    --bs-table-accent-bg: transparent;
+  }
+  #fuelDetailNonCoalTable td.fuel-hier-sum-cell,
+  #fuelDetailCoalTable td.fuel-hier-sum-cell {
+    background-color: rgba(13, 110, 253, 0.04);
+    font-size: 1rem;
+    line-height: 1.3;
+    font-weight: inherit;
+    color: inherit;
+  }
+  /* Нижние таблицы «Детализация топлива»: более контрастные границы ячеек
+     (у расчётных с голубым фоном стандартные #dee2e6 почти не видны). */
+  #fuelParamsBottomPanel .fuel-params-bottom-data-table {
+    --bs-table-border-color: #adb5bd;
+    border-color: #adb5bd;
+  }
+  #fuelParamsBottomPanel
+    .fuel-params-bottom-data-table
+    > :not(caption)
+    > *
+    > * {
+    border-color: #adb5bd;
+  }
+  /* Виды топлива: с «+» группировки — жирный, входящие в группу без своих детей — обычный */
+  #fuelParamsTable thead th.fuel-hier-leaf-header,
+  #fuelDetailNonCoalTable thead th.fuel-hier-leaf-header,
+  #fuelDetailCoalTable thead th.fuel-hier-leaf-header {
+    font-weight: 400;
+  }
+  #fuelParamsTable thead th.fuel-hier-parent-header,
+  #fuelDetailNonCoalTable thead th.fuel-hier-parent-header,
+  #fuelDetailCoalTable thead th.fuel-hier-parent-header {
+    font-weight: 700;
+  }
+  /* Шапка table-success: границы/заливка — в table_headers.css (весь проект) */
+  #fuelParamsTable > thead.table-success > tr > th {
+    vertical-align: middle !important;
+    padding: 0.5rem !important;
+    text-align: center;
+    color: var(--bs-table-color, inherit);
+  }
+  #fuelParamsTable tbody td {
+    white-space: nowrap;
+  }
+  #fuelParamsTable th[data-fuel-hier-under],
+  #fuelParamsTable td[data-fuel-hier-under],
+  #fuelDetailNonCoalTable th[data-fuel-hier-under],
+  #fuelDetailNonCoalTable td[data-fuel-hier-under],
+  #fuelDetailCoalTable th[data-fuel-hier-under],
+  #fuelDetailCoalTable td[data-fuel-hier-under] {
+    display: none;
+  }
+  #fuelParamsTable th[data-fuel-hier-under].fuel-hier-col-visible,
+  #fuelParamsTable td[data-fuel-hier-under].fuel-hier-col-visible,
+  #fuelDetailNonCoalTable th[data-fuel-hier-under].fuel-hier-col-visible,
+  #fuelDetailNonCoalTable td[data-fuel-hier-under].fuel-hier-col-visible,
+  #fuelDetailCoalTable th[data-fuel-hier-under].fuel-hier-col-visible,
+  #fuelDetailCoalTable td[data-fuel-hier-under].fuel-hier-col-visible {
+    display: table-cell;
+  }
+  #fuelParamsTable tbody tr.fuel-param-detail-row {
+    cursor: pointer;
+  }
+  #fuelParamsTable
+    tbody
+    tr.fuel-param-detail-row.fuel-detail-group-selected
+    > td {
+    background-color: rgba(13, 110, 253, 0.12);
+  }
+
+  .fuel-params-shell {
+    height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+    max-height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  /* Не даём широким таблицам раздувать body — скролл только у обёрток */
+  body:has(.fuel-params-shell) {
+    overflow-x: hidden;
+  }
+  /*
+      Верх: X+Y скролл у .fuel-params-top (как .fuel-calc-edit-top на edit_data).
+      Глобальный #stationsTableContainer { max-height: 100vh } ломал layout и прятал H-скролл.
+      Кнопки/фильтры и шапка таблицы — sticky при вертикальном скролле.
+    */
+  .fuel-params-top {
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: auto;
+    box-sizing: border-box;
+  }
+  .fuel-params-shell .fuel-params-top-pane {
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+    box-sizing: border-box;
+  }
+  .fuel-params-shell .fuel-params-sticky-stack {
+    position: sticky;
+    left: 0;
+    z-index: 40;
+    width: var(--fuel-params-top-scrollport-width, 100%);
+    max-width: var(--fuel-params-top-scrollport-width, 100%);
+    box-sizing: border-box;
+    background-color: var(--bs-body-bg, #fff);
+  }
+  .fuel-params-shell .fuel-params-sticky-nav {
+    top: 0;
+    z-index: 42;
+  }
+  .fuel-params-shell .fuel-params-sticky-filters {
+    top: var(--fuel-params-nav-sticky-height, 0px);
+    z-index: 41;
+    display: flow-root;
+  }
+  .fuel-params-shell .fuel-params-sticky-filters .power-demand-filters-collapse,
+  .fuel-params-shell
+    .fuel-params-sticky-filters
+    .power-demand-import-export-collapse {
+    overflow: visible !important;
+  }
+  .fuel-params-shell .fuel-params-pane-content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .fuel-params-shell #stationsTableContainer.fuel-params-top-table-wrap {
+    display: block;
+    height: auto !important;
+    max-height: none !important;
+    width: max-content;
+    max-width: none;
+    min-width: var(--fuel-params-top-scrollport-width, 100%);
+    overflow: visible !important;
+    box-sizing: border-box;
+  }
+  #fuelParamsTable {
+    width: max-content !important;
+    max-width: none !important;
+    min-width: 100%;
+    table-layout: auto;
+  }
+  /* Липкая шапка таблицы под кнопками/фильтрами (две строки) */
+  .fuel-params-top
+    #stationsTableContainer
+    #fuelParamsTable
+    thead
+    tr:nth-child(1)
+    th {
+    position: sticky;
+    top: var(--fuel-params-controls-sticky-height, 0px);
+    z-index: 35;
+    background-color: var(--bs-success-bg-subtle, #d1e7dd);
+    box-shadow: inset 0 -1px 0
+      var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+  }
+  .fuel-params-top
+    #stationsTableContainer
+    #fuelParamsTable
+    thead
+    tr:nth-child(2)
+    th {
+    position: sticky;
+    top: calc(
+      var(--fuel-params-controls-sticky-height, 0px) +
+        var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px))
+    );
+    z-index: 34;
+    background-color: var(--bs-success-bg-subtle, #d1e7dd);
+    box-shadow: inset 0 -1px 0
+      var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+  }
+  #fuelParamsBottomPanel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .fuel-params-bottom-panels-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    align-items: stretch;
+    box-sizing: border-box;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-col {
+    min-width: 0;
+    min-height: 0;
+    max-width: 100%;
+    width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  /* Независимые горизонтальные скроллы нижних подтаблиц (как на edit_data) */
+  .fuel-params-bottom-table-wrap {
+    display: block;
+    width: var(--fuel-params-bottom-scrollport-width, 100%);
+    max-width: var(--fuel-params-bottom-scrollport-width, 100%);
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+  }
+  #fuelDetailNonCoalTable,
+  #fuelDetailCoalTable {
+    width: max-content !important;
+    max-width: none !important;
+    min-width: 100%;
+    table-layout: auto;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-data-table > thead > tr > th,
+  #fuelParamsBottomPanel .fuel-params-bottom-data-table > tbody > tr > td {
+    min-width: 5.5rem;
+    box-sizing: border-box;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-section-title {
+    font-size: 1.15rem;
+    min-height: 2.75rem;
+    height: 2.75rem;
+    box-sizing: border-box;
+    flex-shrink: 0;
+  }
+  #fuelParamsBottomPanel .table thead th {
+    font-size: 1rem;
+  }
+  #fuelParamsBottomPanel .table thead th .text-muted.small {
+    font-size: 0.9em;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-data-table tbody tr {
+    height: 2.4rem;
+    min-height: 2.4rem;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-data-table tbody td {
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-data-table > thead > tr > th {
+    padding: 0.3rem 0.25rem;
+    text-align: center;
+    vertical-align: middle;
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-th-inner {
+    display: inline-block;
+    max-width: 8rem;
+    vertical-align: middle;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-align: center;
+    word-wrap: break-word;
+    word-break: break-word;
+    hyphens: auto;
+    white-space: normal;
+  }
+  /* Верхняя таблица: поле ввода на всю ячейку (как на equipment_group_fuel_params_edit_data) */
+  #fuelParamsTable.fuel-params-edit-table
+    tbody
+    td:has(> input.fuel-param-input) {
+    padding: 0 !important;
+    vertical-align: middle;
+  }
+  #fuelParamsTable.fuel-params-edit-table .fuel-param-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.5rem;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.2rem 0.35rem;
+    font-size: 1.1rem;
+    line-height: 1.3;
+    background-color: transparent;
+    background-clip: padding-box;
+  }
+  #fuelParamsTable.fuel-params-edit-table .fuel-param-input:focus {
+    box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+    outline: 0;
+    z-index: 1;
+    position: relative;
+  }
+  #fuelParamsTable.fuel-params-edit-table
+    tbody
+    td.table-danger.fuel-param-cell-warn
+    .fuel-param-input,
+  #fuelParamsTable.fuel-params-edit-table
+    tbody
+    td.fuel-param-cell-warn
+    .fuel-param-input {
+    background-color: transparent;
+  }
+  #fuelParamsTable tbody td.table-danger.fuel-param-cell-warn,
+  #fuelParamsTable tbody td.fuel-param-cell-warn {
+    --bs-table-bg: var(--bs-danger-bg-subtle, #f8d7da);
+    --bs-table-border-color: var(--bs-danger-border-subtle, #c6acae);
+    background-color: var(--bs-danger-bg-subtle, #f8d7da) !important;
+  }
+  /* Нижние панели «Детализация топлива»: те же поля ввода на всю ячейку */
+  #fuelParamsBottomPanel
+    .fuel-params-bottom-data-table
+    tbody
+    td:has(> input.fuel-param-input) {
+    padding: 0 !important;
+    vertical-align: middle;
+  }
+  #fuelParamsBottomPanel .fuel-params-bottom-data-table .fuel-param-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.4rem;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.15rem 0.3rem;
+    font-size: 1rem;
+    line-height: 1.3;
+    background-color: transparent;
+    background-clip: padding-box;
+  }
+  #fuelParamsBottomPanel
+    .fuel-params-bottom-data-table
+    .fuel-param-input:focus {
+    box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+    outline: 0;
+    z-index: 1;
+    position: relative;
+  }
 </style>
 
+<script src="{{ url_for('static', filename='js/fuel/fuel_param_cell_warnings.js') }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
+  document.addEventListener('DOMContentLoaded', function () {
+      const loadingOverlay = document.getElementById('loading-overlay');
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
 
-        // Группировка столбцов UGOL (don … sah) — как на stations_equipment_group_specific_fuel_cost
-        const table = document.getElementById('fuelParamsTable');
-        const ugolToggle = document.getElementById('ugolGroupToggle');
-        const ugolIcon = ugolToggle?.querySelector('.ugol-group-icon');
-        const UGOL_STORAGE_KEY = 'fuelParams_ugolGroupExpanded';
+      const table = document.getElementById('fuelParamsTable');
+      const nonCoalTable = document.getElementById('fuelDetailNonCoalTable');
+      const coalTable = document.getElementById('fuelDetailCoalTable');
+      const nonCoalBody = document.getElementById('fuelDetailNonCoalBody');
+      const coalBody = document.getElementById('fuelDetailCoalBody');
+      const nonCoalAttrs = [{% for attr, label, is_numeric in fuel_detail_non_coal_columns %}"{{ attr }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+      const coalAttrs = [{% for attr, label, is_numeric in fuel_detail_coal_columns %}"{{ attr }}"{% if not loop.last %}, {% endif %}{% endfor %}];
+      const fuelChildrenByParent = {{ fuel_children_by_parent|tojson }};
+      const fuelCollapseUnder = {{ fuel_collapse_under|tojson }};
+      const fuelGroupParents = {{ fuel_group_parents|list|tojson }};
+      const fuelHierSumAttrList = {{ fuel_hier_sum_attrs|list|tojson }};
+      const fuelHierSumAttrSet = {};
+      fuelHierSumAttrList.forEach(function (a) { fuelHierSumAttrSet[a] = true; });
+      const fuelTypeAttrs = [
+          {% for attr, label, is_numeric in fuel_param_columns %}{% if attr not in fuel_header_metric_cols %}"{{ attr }}",
+          {% endif %}{% endfor %}
+      ];
+      const fuelTopLevelForB = fuelTypeAttrs.filter(function (a) {
+          return a !== 'b' && !fuelCollapseUnder[a];
+      });
+      const roundingDigits = {{ rounding_digits|default(1)|int }};
 
-        function updateUgolGroupState(expanded) {
-            if (expanded) {
-                table?.classList.add('ugol-group-expanded');
-                if (ugolIcon) {
-                    ugolIcon.classList.remove('bi-plus-square');
-                    ugolIcon.classList.add('bi-dash-square');
-                    ugolIcon.setAttribute('data-state', 'expanded');
-                }
-            } else {
-                table?.classList.remove('ugol-group-expanded');
-                if (ugolIcon) {
-                    ugolIcon.classList.remove('bi-dash-square');
-                    ugolIcon.classList.add('bi-plus-square');
-                    ugolIcon.setAttribute('data-state', 'collapsed');
-                }
-            }
-            try { localStorage.setItem(UGOL_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
-        }
+      function parseFuelNum(raw) {
+          if (raw == null) return null;
+          var s = String(raw).replace(/\s+/g, '').replace(',', '.').trim();
+          if (!s || s === '—' || s === '-' || s.toLowerCase() === 'none') return null;
+          var n = Number(s);
+          return isFinite(n) ? n : null;
+      }
 
-        if (ugolToggle && table) {
-            const ugolSaved = typeof localStorage !== 'undefined' && localStorage.getItem(UGOL_STORAGE_KEY) === '1';
-            if (ugolSaved) updateUgolGroupState(true);
+      function formatFuelHierSum(n) {
+          if (n == null || !isFinite(n) || n === 0) return '';
+          var rd = roundingDigits;
+          var sign = n < 0 ? '-' : '';
+          var abs = Math.abs(n);
+          var s;
+          if (rd < 0) {
+              s = String(Math.round(abs));
+          } else if (rd === 0) {
+              s = String(abs);
+              if (/e/i.test(s)) s = abs.toFixed(12);
+          } else {
+              s = abs.toFixed(rd);
+          }
+          var intPart;
+          var fracPart = null;
+          var dot = s.indexOf('.');
+          if (dot >= 0) {
+              intPart = s.slice(0, dot);
+              fracPart = s.slice(dot + 1).replace(/0+$/, '');
+              if (!fracPart) fracPart = null;
+          } else {
+              intPart = s;
+          }
+          intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+          var out = sign + intPart + (fracPart != null ? ',' + fracPart : '');
+          return !out || out === '-' || out === '-0' || out === '0' ? '' : out;
+      }
 
-            ugolToggle.addEventListener('click', function() {
-                const expanded = table.classList.contains('ugol-group-expanded');
-                updateUgolGroupState(!expanded);
-            });
-        }
+      function formatFuelHierSumInput(n) {
+          if (n == null || !isFinite(n) || n === 0) return '';
+          var text = formatFuelHierSum(n);
+          return text === '—' ? '' : text;
+      }
 
-        // Округл: перезагрузка при изменении количества знаков после запятой (как на station_list)
-        document.getElementById('rounding_digits')?.addEventListener('change', function() {
-            const selectedRounding = this.value;
-            const url = new URL(window.location.href);
-            url.searchParams.set('rounding_digits', selectedRounding);
-            window.location.href = url.toString();
-        });
-    });
+      function fuelAttrDepth(attr) {
+          var d = 0;
+          var cur = attr;
+          var seen = {};
+          while (fuelCollapseUnder[cur] && !seen[cur]) {
+              seen[cur] = true;
+              cur = fuelCollapseUnder[cur];
+              d += 1;
+          }
+          return d;
+      }
+
+      const fuelParentsDeepestFirst = fuelGroupParents.slice().sort(function (a, b) {
+          return fuelAttrDepth(b) - fuelAttrDepth(a);
+      });
+
+      function readFuelAttrNumber(row, attr, memo) {
+          if (memo && Object.prototype.hasOwnProperty.call(memo, attr)) {
+              return memo[attr];
+          }
+          var td = row.querySelector('td[data-column="' + attr + '"]');
+          if (!td) {
+              if (memo) memo[attr] = null;
+              return null;
+          }
+          var inp = td.querySelector('input.fuel-param-input[name], input.fuel-detail-sync-input');
+          var n;
+          if (inp) {
+              n = parseFuelNum(inp.value);
+          } else {
+              var span = td.querySelector('.fuel-hier-sum-value');
+              var raw = span ? span.textContent : td.textContent;
+              var s = (raw == null ? '' : String(raw)).replace(/\s+/g, '').trim();
+              /* Пустая ячейка в «Расход топлива» = 0; прочерк = нет данных */
+              if (!s) {
+                  n = 0;
+              } else {
+                  n = parseFuelNum(raw);
+              }
+          }
+          if (memo) memo[attr] = n;
+          return n;
+      }
+
+      function writeFuelHierSumCell(td, n) {
+          if (!td) return;
+          var text = formatFuelHierSum(n);
+          var span = td.querySelector('.fuel-hier-sum-value');
+          if (span) {
+              span.textContent = text;
+          } else if (!td.querySelector('input.fuel-param-input, input.fuel-detail-sync-input')) {
+              td.textContent = text;
+          }
+          var hidden = td.querySelector('input.fuel-hier-sum-input');
+          if (hidden) {
+              hidden.value = formatFuelHierSumInput(n);
+          }
+          if (text && text !== '—') {
+              td.title = text;
+          } else {
+              td.removeAttribute('title');
+          }
+      }
+
+      function recalcFuelHierSumsForRow(row) {
+          if (!row) return;
+          var memo = {};
+          fuelParentsDeepestFirst.forEach(function (parent) {
+              var kids = fuelChildrenByParent[parent] || [];
+              var total = null;
+              kids.forEach(function (child) {
+                  var v = readFuelAttrNumber(row, child, memo);
+                  if (v == null) return;
+                  total = total == null ? v : total + v;
+              });
+              memo[parent] = total;
+              writeFuelHierSumCell(row.querySelector('td[data-column="' + parent + '"]'), total);
+          });
+          if (fuelHierSumAttrSet.b) {
+              var bTotal = null;
+              fuelTopLevelForB.forEach(function (attr) {
+                  var v = readFuelAttrNumber(row, attr, memo);
+                  if (v == null) return;
+                  bTotal = bTotal == null ? v : bTotal + v;
+              });
+              memo.b = bTotal;
+              writeFuelHierSumCell(row.querySelector('td[data-column="b"]'), bTotal);
+          }
+      }
+
+      function recalcAllFuelHierSums() {
+          if (!table) return;
+          table.querySelectorAll('tbody tr.fuel-param-detail-row').forEach(recalcFuelHierSumsForRow);
+          clearFuelConsumptionDashes();
+      }
+
+      /** В разделе «Расход топлива» прочерк не показываем — пустая ячейка.
+       *  В итоговых строках — прочерки убираем во всех числовых ячейках. */
+      function clearFuelConsumptionDashes() {
+          if (!table) return;
+          table.querySelectorAll('tbody tr.fuel-param-detail-row').forEach(function (row) {
+              var isSummary = row.classList.contains('fuel-param-summary-row');
+              var attrs = isSummary
+                  ? Array.prototype.map.call(row.querySelectorAll('td[data-column]'), function (td) {
+                      return td.getAttribute('data-column');
+                  })
+                  : fuelTypeAttrs;
+              if (!attrs || !attrs.length) return;
+              attrs.forEach(function (attr) {
+                  if (!attr) return;
+                  var td = row.querySelector('td[data-column="' + attr + '"]');
+                  if (!td) return;
+                  var inp = td.querySelector('input.fuel-param-input[name], input.fuel-detail-sync-input');
+                  if (inp) return;
+                  var span = td.querySelector('.fuel-hier-sum-value');
+                  var node = span || td;
+                  var text = (node.textContent || '').trim();
+                  if (text === '—' || text === '–' || text === '-') {
+                      node.textContent = '';
+                      td.removeAttribute('title');
+                  }
+              });
+          });
+      }
+
+      function syncHierSumsToDetail(mainRow) {
+          if (!mainRow) return;
+          fuelHierSumAttrList.forEach(function (attr) {
+              var mainTd = mainRow.querySelector('td[data-column="' + attr + '"]');
+              if (!mainTd) return;
+              var span = mainTd.querySelector('.fuel-hier-sum-value');
+              var text = span ? (span.textContent || '').trim() : (mainTd.textContent || '').trim();
+              [nonCoalBody, coalBody].forEach(function (tbody) {
+                  if (!tbody) return;
+                  var td = tbody.querySelector('td[data-column="' + attr + '"]');
+                  if (!td) return;
+                  td.classList.add('fuel-hier-sum-cell');
+                  var detailSpan = td.querySelector('.fuel-hier-sum-value');
+                  if (detailSpan) {
+                      detailSpan.textContent = text;
+                  } else {
+                      td.textContent = text;
+                  }
+              });
+          });
+      }
+
+      function mainRowForLeafInput(inp) {
+          if (!inp || !table) return null;
+          if (inp.classList.contains('fuel-detail-sync-input')) {
+              var syncName = inp.getAttribute('data-sync-name');
+              if (!syncName) return null;
+              var mainInp = table.querySelector('input.fuel-param-input[name="' + syncName.replace(/"/g, '\\"') + '"]');
+              return mainInp ? mainInp.closest('tr.fuel-param-detail-row') : null;
+          }
+          return inp.closest('tr.fuel-param-detail-row');
+      }
+
+      function onFuelLeafValueChanged(inp) {
+          var row = mainRowForLeafInput(inp);
+          if (!row) return;
+          recalcFuelHierSumsForRow(row);
+          syncHierSumsToDetail(row);
+          if (typeof refreshFuelParamCellWarningsForRow === 'function') {
+              refreshFuelParamCellWarningsForRow(table, row);
+          }
+      }
+
+      function syncFuelTypesGroupColspan(targetTable) {
+          if (!targetTable) return;
+          const groupTh = targetTable.querySelector('thead th.fuel-types-group-header');
+          if (!groupTh) return;
+          let visible = 0;
+          targetTable.querySelectorAll('thead tr.fuel-types-header-row th[data-column]').forEach(function (th) {
+              if (th.classList.contains('fuel-power-col-header') || th.classList.contains('fuel-electric-col-header') || th.classList.contains('fuel-thermal-col-header')) {
+                  return;
+              }
+              if (th.hasAttribute('data-fuel-hier-under') && !th.classList.contains('fuel-hier-col-visible')) {
+                  return;
+              }
+              visible += 1;
+          });
+          if (visible < 1) {
+              groupTh.style.display = 'none';
+              return;
+          }
+          groupTh.style.display = '';
+          groupTh.colSpan = visible;
+      }
+
+      /**
+       * Независимый контроллер группировок столбцов для набора таблиц.
+       * Верхняя и нижние панели не делят состояние раскрытия.
+       */
+      function createFuelHierController(tables, storageKey, opts) {
+          opts = opts || {};
+          const tableList = (tables || []).filter(Boolean);
+          const expandedMap = {};
+          const toggles = tableList.flatMap(function (t) {
+              return Array.from(t.querySelectorAll('.fuel-hier-toggle[data-fuel-hier-parent]'));
+          });
+
+          function findColumnTh(attr) {
+              for (var i = 0; i < tableList.length; i++) {
+                  var th = tableList[i].querySelector('thead th[data-column="' + attr + '"]');
+                  if (th) return th;
+              }
+              return null;
+          }
+
+          function isAncestorChainExpanded(attr) {
+              let under = null;
+              const th = findColumnTh(attr);
+              if (th) under = th.getAttribute('data-fuel-hier-under');
+              const seen = {};
+              while (under) {
+                  if (seen[under]) break;
+                  seen[under] = true;
+                  if (!expandedMap[under]) return false;
+                  const parentTh = findColumnTh(under);
+                  under = parentTh ? parentTh.getAttribute('data-fuel-hier-under') : null;
+              }
+              return true;
+          }
+
+          function isUnderVisible(attr) {
+              const th = findColumnTh(attr);
+              const under = th ? th.getAttribute('data-fuel-hier-under') : null;
+              if (!under) return true;
+              return !!expandedMap[under] && isAncestorChainExpanded(under);
+          }
+
+          function load() {
+              var hadStored = false;
+              try {
+                  const raw = localStorage.getItem(storageKey);
+                  if (raw) {
+                      const parsed = JSON.parse(raw);
+                      if (parsed && typeof parsed === 'object') {
+                          hadStored = true;
+                          Object.keys(parsed).forEach(function (k) {
+                              if (parsed[k]) expandedMap[k] = true;
+                          });
+                      }
+                  }
+              } catch (_) {}
+              if (opts.migrateUgolLegacy) {
+                  try {
+                      if (localStorage.getItem('fuelParams_ugolGroupExpanded') === '1') {
+                          expandedMap['ugol'] = true;
+                      }
+                  } catch (_) {}
+              }
+              if (!hadStored && opts.defaultExpandAll) {
+                  toggles.forEach(function (btn) {
+                      const parent = btn.getAttribute('data-fuel-hier-parent');
+                      if (parent) expandedMap[parent] = true;
+                  });
+              }
+              (opts.forceExpand || []).forEach(function (k) {
+                  expandedMap[k] = true;
+              });
+          }
+
+          function save() {
+              try {
+                  localStorage.setItem(storageKey, JSON.stringify(expandedMap));
+              } catch (_) {}
+          }
+
+          function refresh() {
+              tableList.forEach(function (t) {
+                  t.querySelectorAll('[data-fuel-hier-under]').forEach(function (el) {
+                      const parent = el.getAttribute('data-fuel-hier-under');
+                      const show = !!expandedMap[parent] && isAncestorChainExpanded(parent);
+                      el.classList.toggle('fuel-hier-col-visible', show);
+                  });
+                  syncFuelTypesGroupColspan(t);
+              });
+              toggles.forEach(function (btn) {
+                  const parent = btn.getAttribute('data-fuel-hier-parent');
+                  const icon = btn.querySelector('.fuel-hier-icon');
+                  const expanded = !!expandedMap[parent];
+                  if (icon) {
+                      icon.classList.toggle('bi-plus-square', !expanded);
+                      icon.classList.toggle('bi-dash-square', expanded);
+                      icon.setAttribute('data-state', expanded ? 'expanded' : 'collapsed');
+                  }
+              });
+              if (typeof opts.onAfterRefresh === 'function') {
+                  opts.onAfterRefresh();
+              }
+          }
+
+          function setParentExpanded(parent, expanded) {
+              if (expanded) {
+                  expandedMap[parent] = true;
+              } else {
+                  delete expandedMap[parent];
+                  toggles.forEach(function (btn) {
+                      const p = btn.getAttribute('data-fuel-hier-parent');
+                      if (!p || p === parent) return;
+                      const th = findColumnTh(p);
+                      let under = th ? th.getAttribute('data-fuel-hier-under') : null;
+                      const seen = {};
+                      while (under) {
+                          if (under === parent) {
+                              delete expandedMap[p];
+                              break;
+                          }
+                          if (seen[under]) break;
+                          seen[under] = true;
+                          const pth = findColumnTh(under);
+                          under = pth ? pth.getAttribute('data-fuel-hier-under') : null;
+                      }
+                  });
+              }
+              save();
+              refresh();
+          }
+
+          function bindToggles() {
+              if (!toggles.length) {
+                  tableList.forEach(syncFuelTypesGroupColspan);
+                  if (typeof opts.onAfterRefresh === 'function') {
+                      opts.onAfterRefresh();
+                  }
+                  return;
+              }
+              load();
+              refresh();
+              toggles.forEach(function (btn) {
+                  btn.addEventListener('click', function (ev) {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+                      const parent = btn.getAttribute('data-fuel-hier-parent');
+                      if (!parent) return;
+                      setParentExpanded(parent, !expandedMap[parent]);
+                  });
+              });
+          }
+
+          return {
+              bindToggles: bindToggles,
+              refresh: refresh,
+              findColumnTh: findColumnTh,
+              isUnderVisible: isUnderVisible
+          };
+      }
+
+      var bottomPanel = document.getElementById('fuelParamsBottomPanel');
+      var shellEl = document.querySelector('.fuel-params-shell');
+      var topTableWrap = document.getElementById('stationsTableContainer');
+      var topPort = document.querySelector('.fuel-params-top');
+      var stickyNav = document.querySelector('.fuel-params-sticky-nav');
+      var stickyFilters = document.querySelector('.fuel-params-sticky-filters');
+      var bottomScrollWraps = [
+          document.getElementById('fuelDetailNonCoalWrap'),
+          document.getElementById('fuelDetailCoalWrap')
+      ].filter(Boolean);
+
+      function updateFuelParamsStickyHeights() {
+          if (!topPort) return;
+          var navH = stickyNav
+              ? Math.ceil(stickyNav.getBoundingClientRect().height || stickyNav.offsetHeight || 0)
+              : 0;
+          var filtersH = stickyFilters
+              ? Math.ceil(stickyFilters.getBoundingClientRect().height || stickyFilters.offsetHeight || 0)
+              : 0;
+          var thead = table ? table.tHead : null;
+          var gap = 0;
+          if (stickyFilters && thead) {
+              if (topPort.scrollTop <= 1) {
+                  gap = Math.max(0, Math.round(
+                      thead.getBoundingClientRect().top - stickyFilters.getBoundingClientRect().bottom
+                  ));
+                  topPort.dataset.fuelParamsTheadGap = String(gap);
+              } else {
+                  gap = parseInt(topPort.dataset.fuelParamsTheadGap || '0', 10) || 0;
+              }
+          }
+          topPort.style.setProperty('--fuel-params-nav-sticky-height', navH + 'px');
+          topPort.style.setProperty('--fuel-params-controls-sticky-height', (navH + filtersH + gap) + 'px');
+          if (typeof window.armGsApplyStickyTheadOffsets === 'function') {
+              window.armGsApplyStickyTheadOffsets();
+          }
+      }
+
+      function syncScrollPorts() {
+          if (topPort) {
+              var topW = Math.max(0, Math.floor(topPort.clientWidth));
+              topPort.style.setProperty('--fuel-params-top-scrollport-width', topW + 'px');
+          }
+          var bottomW = Math.max(
+              0,
+              Math.floor((bottomPanel && bottomPanel.clientWidth) || (shellEl && shellEl.clientWidth) || 0)
+          );
+          if (bottomPanel) {
+              bottomPanel.style.setProperty('--fuel-params-bottom-scrollport-width', bottomW + 'px');
+          }
+          bottomScrollWraps.forEach(function (wrap) {
+              wrap.style.width = bottomW + 'px';
+              wrap.style.maxWidth = bottomW + 'px';
+          });
+          updateFuelParamsStickyHeights();
+      }
+
+      function updateWrapXScroll(wrap, tableEl) {
+          if (!wrap) return;
+          var t = tableEl || wrap.querySelector('table');
+          if (!t) {
+              wrap.classList.remove('has-x-scroll');
+              return;
+          }
+          var needsX = (t.scrollWidth - wrap.clientWidth) > 1;
+          wrap.classList.toggle('has-x-scroll', needsX);
+      }
+
+      function updateAllIndependentXScroll() {
+          /* Верхний H-скролл — у .fuel-params-top (overflow:auto), класс на обёртке не нужен */
+          if (topTableWrap) {
+              topTableWrap.classList.remove('has-x-scroll');
+          }
+          bottomScrollWraps.forEach(function (wrap) {
+              updateWrapXScroll(wrap);
+          });
+      }
+
+      function refreshIndependentScrolls() {
+          syncScrollPorts();
+          requestAnimationFrame(function () {
+              updateAllIndependentXScroll();
+          });
+      }
+
+      (function initFuelDetailPanelsToggle() {
+          var toggleBtn = document.getElementById('fuelDetailPanelsToggle');
+          if (!toggleBtn || !bottomPanel) return;
+
+          function applyFuelDetailPanelsVisibility(visible) {
+              bottomPanel.classList.toggle('d-none', !visible);
+              toggleBtn.setAttribute('aria-pressed', visible ? 'true' : 'false');
+              toggleBtn.classList.toggle('btn-primary', visible);
+              toggleBtn.classList.toggle('btn-outline-primary', !visible);
+              refreshIndependentScrolls();
+          }
+
+          /* По умолчанию активна — нижние таблицы видны */
+          applyFuelDetailPanelsVisibility(true);
+
+          toggleBtn.addEventListener('click', function () {
+              var visible = toggleBtn.getAttribute('aria-pressed') !== 'true';
+              applyFuelDetailPanelsVisibility(visible);
+          });
+      })();
+
+      const mainHier = createFuelHierController([table], 'fuelParams_fuelHierExpanded', {
+          migrateUgolLegacy: true,
+          onAfterRefresh: refreshIndependentScrolls
+      });
+      const bottomHier = createFuelHierController([nonCoalTable, coalTable], 'fuelParams_fuelDetailHierExpanded_v2', {
+          forceExpand: ['ugol'],
+          /* Первая нижняя таблица: все группы раскрыты → появляется независимый H-скролл */
+          defaultExpandAll: true,
+          onAfterRefresh: refreshIndependentScrolls
+      });
+      mainHier.bindToggles();
+      bottomHier.bindToggles();
+      refreshIndependentScrolls();
+
+      var scrollResizeT = null;
+      window.addEventListener('resize', function () {
+          clearTimeout(scrollResizeT);
+          scrollResizeT = setTimeout(function () {
+              refreshIndependentScrolls();
+          }, 100);
+      });
+      document.addEventListener('shown.bs.collapse', function () {
+          refreshIndependentScrolls();
+      });
+      document.addEventListener('hidden.bs.collapse', function () {
+          refreshIndependentScrolls();
+      });
+      if (topPort) {
+          topPort.addEventListener('scroll', function () {
+              if (topPort.scrollTop <= 1) {
+                  updateFuelParamsStickyHeights();
+              }
+          }, { passive: true });
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+          var stickyRo = new ResizeObserver(function () {
+              updateFuelParamsStickyHeights();
+          });
+          if (stickyNav) stickyRo.observe(stickyNav);
+          if (stickyFilters) stickyRo.observe(stickyFilters);
+          if (topPort) stickyRo.observe(topPort);
+      }
+
+      function cellInfoFromRow(row, attr) {
+          const td = row.querySelector('td[data-column="' + attr + '"]');
+          if (!td) return { text: '', input: null, isSum: !!fuelHierSumAttrSet[attr] };
+          if (fuelHierSumAttrSet[attr]) {
+              const span = td.querySelector('.fuel-hier-sum-value');
+              const text = ((span ? span.textContent : td.textContent) || '').trim();
+              return { text: text === '—' || text === '-' || text === '–' ? '' : text, input: null, isSum: true };
+          }
+          const inp = td.querySelector('input.fuel-param-input[name]');
+          if (inp) {
+              return { text: inp.value, input: inp, isSum: false };
+          }
+          const text = (td.textContent || '').trim();
+          return { text: text === '—' || text === '-' || text === '–' ? '' : text, input: null, isSum: false };
+      }
+
+      function fillDetailBody(tbody, attrs, sourceRow) {
+          if (!tbody) return;
+          tbody.innerHTML = '';
+          const tr = document.createElement('tr');
+          const canSyncEdit = !!(sourceRow && sourceRow.getAttribute('data-fuel-detail-group-id') && !sourceRow.classList.contains('fuel-param-summary-row'));
+          attrs.forEach(function (attr) {
+              const td = document.createElement('td');
+              td.className = 'text-center fuel-param-col-' + attr;
+              td.setAttribute('data-column', attr);
+              const underTh = bottomHier.findColumnTh(attr);
+              const under = underTh ? underTh.getAttribute('data-fuel-hier-under') : null;
+              if (under) {
+                  td.setAttribute('data-fuel-hier-under', under);
+                  if (bottomHier.isUnderVisible(attr)) {
+                      td.classList.add('fuel-hier-col-visible');
+                  }
+              }
+              const info = sourceRow ? cellInfoFromRow(sourceRow, attr) : { text: '', input: null, isSum: !!fuelHierSumAttrSet[attr] };
+              if (info.isSum || fuelHierSumAttrSet[attr]) {
+                  td.classList.add('fuel-hier-sum-cell');
+                  const span = document.createElement('span');
+                  span.className = 'fuel-hier-sum-value';
+                  span.textContent = info.text != null ? info.text : '';
+                  td.appendChild(span);
+              } else if (canSyncEdit && info.input) {
+                  const inp = document.createElement('input');
+                  inp.type = 'text';
+                  inp.inputMode = info.input.inputMode || 'decimal';
+                  inp.autocomplete = 'off';
+                  inp.className = 'form-control form-control-sm text-center fuel-param-input fuel-detail-sync-input';
+                  inp.value = info.input.value;
+                  inp.setAttribute('data-sync-name', info.input.name);
+                  if (info.input.title) inp.title = info.input.title;
+                  td.appendChild(inp);
+              } else {
+                  td.textContent = info.text;
+              }
+              tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+      }
+
+      function updateFuelDetailGroupTitle(groupName) {
+          const suffix = document.getElementById('fuelDetailGroupNameSuffix');
+          if (!suffix) return;
+          const name = (groupName || '').trim();
+          suffix.textContent = name ? ' (' + name + ')' : '';
+      }
+
+      function groupNameFromDetailRow(row) {
+          if (!row) return '';
+          const fromAttr = row.getAttribute('data-fuel-detail-group-name');
+          if (fromAttr) return fromAttr;
+          const td = row.querySelector('td:first-child');
+          return td ? (td.textContent || '').trim() : '';
+      }
+
+      function showDetailPlaceholder() {
+          updateFuelDetailGroupTitle('');
+          if (nonCoalBody) {
+              nonCoalBody.innerHTML = '';
+              const tr = document.createElement('tr');
+              const td = document.createElement('td');
+              td.colSpan = Math.max(1, nonCoalAttrs.length);
+              td.className = 'text-muted text-center';
+              td.textContent = 'Выберите группу оборудования';
+              tr.appendChild(td);
+              nonCoalBody.appendChild(tr);
+          }
+          if (coalBody) {
+              coalBody.innerHTML = '';
+              const tr = document.createElement('tr');
+              const td = document.createElement('td');
+              td.colSpan = Math.max(1, coalAttrs.length);
+              td.className = 'text-muted text-center';
+              td.textContent = 'Выберите группу оборудования';
+              tr.appendChild(td);
+              coalBody.appendChild(tr);
+          }
+      }
+
+      var currentDetailGroupId = null;
+
+      function markSelectedGroup(gid) {
+          if (!table) return;
+          const gidStr = gid == null || gid === '' ? '' : String(gid);
+          table.querySelectorAll('tbody tr.fuel-param-detail-row').forEach(function (tr) {
+              const rowGid = tr.getAttribute('data-fuel-detail-group-id') || '';
+              tr.classList.toggle('fuel-detail-group-selected', !!gidStr && rowGid === gidStr);
+          });
+      }
+
+      /** Как на equipment_group_fuel_params_edit_data: нижние панели — по выбранной группе. */
+      function selectGroupAndLoad(gid, preferredRow) {
+          if (!table || !gid) return;
+          const gidStr = String(gid);
+          let sourceRow = preferredRow || null;
+          if (!sourceRow || sourceRow.getAttribute('data-fuel-detail-group-id') !== gidStr) {
+              sourceRow = table.querySelector(
+                  'tbody tr.fuel-param-detail-row[data-fuel-detail-group-id="' + gidStr.replace(/"/g, '\\"') + '"]'
+              );
+          }
+          if (!sourceRow) {
+              showDetailPlaceholder();
+              markSelectedGroup(null);
+              currentDetailGroupId = null;
+              return;
+          }
+          currentDetailGroupId = gidStr;
+          markSelectedGroup(gidStr);
+          updateFuelDetailGroupTitle(groupNameFromDetailRow(sourceRow));
+          recalcFuelHierSumsForRow(sourceRow);
+          fillDetailBody(nonCoalBody, nonCoalAttrs, sourceRow);
+          fillDetailBody(coalBody, coalAttrs, sourceRow);
+          bottomHier.refresh();
+      }
+
+      /** Двусторонняя синхронизация верх ↔ низ для одних и тех же полей. */
+      function syncDetailToMain(syncInp) {
+          if (!syncInp || !table) return;
+          const name = syncInp.getAttribute('data-sync-name');
+          if (!name) return;
+          const main = table.querySelector('input.fuel-param-input[name="' + name.replace(/"/g, '\\"') + '"]');
+          if (main && main.value !== syncInp.value) {
+              main.value = syncInp.value;
+          }
+      }
+
+      function syncMainToDetail(mainInp) {
+          if (!mainInp || !mainInp.name) return;
+          document.querySelectorAll('.fuel-detail-sync-input[data-sync-name="' + mainInp.name.replace(/"/g, '\\"') + '"]').forEach(function (m) {
+              if (m.value !== mainInp.value) {
+                  m.value = mainInp.value;
+              }
+          });
+      }
+
+      function flushAllDetailSyncToMain() {
+          document.querySelectorAll('.fuel-detail-sync-input[data-sync-name]').forEach(syncDetailToMain);
+          recalcAllFuelHierSums();
+      }
+
+      if (bottomPanel) {
+          bottomPanel.addEventListener('input', function (ev) {
+              const syncInp = ev.target && ev.target.closest ? ev.target.closest('.fuel-detail-sync-input[data-sync-name]') : null;
+              if (syncInp) {
+                  syncDetailToMain(syncInp);
+                  onFuelLeafValueChanged(syncInp);
+              }
+          });
+          bottomPanel.addEventListener('change', function (ev) {
+              const syncInp = ev.target && ev.target.closest ? ev.target.closest('.fuel-detail-sync-input[data-sync-name]') : null;
+              if (syncInp) {
+                  syncDetailToMain(syncInp);
+                  onFuelLeafValueChanged(syncInp);
+              }
+          });
+      }
+      if (table) {
+          table.addEventListener('input', function (ev) {
+              const mainInp = ev.target && ev.target.closest ? ev.target.closest('input.fuel-param-input[name]') : null;
+              if (mainInp) {
+                  syncMainToDetail(mainInp);
+                  onFuelLeafValueChanged(mainInp);
+              }
+          });
+          table.addEventListener('change', function (ev) {
+              const mainInp = ev.target && ev.target.closest ? ev.target.closest('input.fuel-param-input[name]') : null;
+              if (mainInp) {
+                  syncMainToDetail(mainInp);
+                  onFuelLeafValueChanged(mainInp);
+              }
+          });
+      }
+
+      if (table) {
+          recalcAllFuelHierSums();
+          if (typeof bindFuelParamCellWarnings === 'function') {
+              bindFuelParamCellWarnings(table, { listen: false });
+          }
+          /* Как на calculation: клик по строке группы (в т.ч. по ячейке с input) — обновить нижние панели. */
+          table.addEventListener('click', function (ev) {
+              if (ev.target.closest('a') || ev.target.closest('button') || ev.target.closest('.fuel-hier-toggle')) {
+                  return;
+              }
+              const row = ev.target.closest('tr[data-fuel-detail-group-id]');
+              if (!row || !table.contains(row)) return;
+              const gid = row.getAttribute('data-fuel-detail-group-id');
+              if (!gid) return;
+              selectGroupAndLoad(gid, row);
+          });
+          const firstDetail = table.querySelector('tbody tr[data-fuel-detail-group-id]');
+          if (firstDetail) {
+              const gidFirst = firstDetail.getAttribute('data-fuel-detail-group-id');
+              if (gidFirst) {
+                  selectGroupAndLoad(gidFirst, firstDetail);
+              } else {
+                  showDetailPlaceholder();
+              }
+          } else {
+              showDetailPlaceholder();
+          }
+      }
+
+      function normForCompare(s) {
+          return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().replace(',', '.');
+      }
+
+      const bulkForm = document.getElementById('fuelParamsBulkEditForm');
+
+      function prepareBulkSaveOrAbort() {
+          if (!bulkForm) return false;
+          flushAllDetailSyncToMain();
+          const inputs = bulkForm.querySelectorAll('input.fuel-param-input[name], input.fuel-hier-sum-input[name]');
+          let anyE = false;
+          inputs.forEach(function (inp) {
+              if (normForCompare(inp.getAttribute('data-initial') || '') !== normForCompare(inp.value)) {
+                  anyE = true;
+                  inp.disabled = false;
+              } else {
+                  inp.disabled = true;
+              }
+          });
+          if (!anyE) {
+              inputs.forEach(function (inp) { inp.disabled = false; });
+              alert('Нет изменений для сохранения.');
+              return false;
+          }
+          return true;
+      }
+
+      function runBulkSave() {
+          if (!bulkForm) return;
+          /* requestSubmit вызывает submit-обработчик (prepare + abort при отсутствии изменений) */
+          if (typeof bulkForm.requestSubmit === 'function') {
+              bulkForm.requestSubmit();
+          } else if (prepareBulkSaveOrAbort()) {
+              bulkForm.submit();
+          }
+      }
+
+      if (bulkForm) {
+          bulkForm.addEventListener('submit', function (ev) {
+              if (!prepareBulkSaveOrAbort()) {
+                  ev.preventDefault();
+              }
+          });
+      }
+
+      /* Enter в верхней или нижней таблице — сохранить (как на machine_details / edit_data). */
+      function isFuelEditInput(el) {
+          return !!(el && el.classList && (
+              el.classList.contains('fuel-param-input') ||
+              el.classList.contains('fuel-detail-sync-input')
+          ));
+      }
+      function onFuelEditEnter(ev) {
+          if (ev.key !== 'Enter') return;
+          if (!isFuelEditInput(ev.target)) return;
+          ev.preventDefault();
+          runBulkSave();
+      }
+      if (table) {
+          table.addEventListener('keydown', onFuelEditEnter);
+      }
+      if (bottomPanel) {
+          bottomPanel.addEventListener('keydown', onFuelEditEnter);
+      }
+
+      document.getElementById('rounding_digits')?.addEventListener('change', function() {
+          const selectedRounding = this.value;
+          const url = new URL(window.location.href);
+          url.searchParams.set('rounding_digits', selectedRounding);
+          window.location.href = url.toString();
+      });
+  });
 </script>
 
 <!-- Скрипт для обработки экспорта на странице stations_equipment_group_fuel_params
      по аналогии со страницей stations_equipment_groups: крутится только кнопка. -->
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     const exportButton = document.getElementById("exportFuelParamsButton");
     const form = document.getElementById("exportFuelParamsForm");
     if (!exportButton || !form) {
-        return;
+      return;
     }
 
-    // Пересоздаем кнопку, чтобы сбросить возможные обработчики
     const newButton = exportButton.cloneNode(true);
     exportButton.parentNode.replaceChild(newButton, exportButton);
 
-    newButton.addEventListener("click", function(e) {
-        e.preventDefault();
-        e.stopPropagation();
+    newButton.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
 
-        const button = this;
-        const originalHtml = button.innerHTML;
+      const button = this;
+      const originalHtml = button.innerHTML;
 
-        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
-        button.disabled = true;
+      button.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+      button.disabled = true;
 
-        const currentUrl = new URL(window.location.href);
-        const params = new URLSearchParams(currentUrl.search);
-        params.set('per_page', 'all');
-        params.delete('page');
-        // Учитываем отображаемое количество знаков при выгрузке (из селекта «Округл»)
-        const roundingEl = document.getElementById('rounding_digits');
-        if (roundingEl) {
-            params.set('rounding_digits', roundingEl.value);
-        }
-        const exportUrl = form.action + (params.toString() ? '?' + params.toString() : '');
+      const currentUrl = new URL(window.location.href);
+      const params = new URLSearchParams(currentUrl.search);
+      params.set("per_page", "all");
+      params.delete("page");
+      const roundingEl = document.getElementById("rounding_digits");
+      if (roundingEl) {
+        params.set("rounding_digits", roundingEl.value);
+      }
+      const exportUrl =
+        form.action + (params.toString() ? "?" + params.toString() : "");
 
-        fetch(exportUrl, {
-            method: 'GET',
-            credentials: 'same-origin'
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => {
-                    throw new Error('Ошибка сервера (' + response.status + '): ' + text.substring(0, 200));
-                });
-            }
-
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/vnd.openxmlformats')) {
-                return response.blob().then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    const timestamp = new Date().toISOString().slice(0, 10);
-                    a.download = 'Топливные_параметры_групп_оборудования_' + timestamp + '.xlsx';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                });
-            }
-
-            return response.text().then(() => {
-                throw new Error('Получен неожиданный тип ответа от сервера');
+      fetch(exportUrl, {
+        method: "GET",
+        credentials: "same-origin",
+      })
+        .then((response) => {
+          if (!response.ok) {
+            return response.text().then((text) => {
+              throw new Error(
+                "Ошибка сервера (" +
+                  response.status +
+                  "): " +
+                  text.substring(0, 200),
+              );
             });
+          }
+
+          const contentType = response.headers.get("content-type") || "";
+          if (contentType.includes("application/vnd.openxmlformats")) {
+            return response.blob().then((blob) => {
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              const timestamp = new Date().toISOString().slice(0, 10);
+              a.download =
+                "Топливные_параметры_групп_оборудования_" + timestamp + ".xlsx";
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+            });
+          }
+
+          return response.text().then(() => {
+            throw new Error("Получен неожиданный тип ответа от сервера");
+          });
         })
-        .catch(error => {
-            console.error('[EXPORT fuel_params] Ошибка при экспорте:', error);
-            alert('Ошибка при экспорте данных: ' + error.message + '\n\nПроверьте консоль браузера (F12) для подробностей.');
+        .catch((error) => {
+          console.error("[EXPORT fuel_params] Ошибка при экспорте:", error);
+          alert(
+            "Ошибка при экспорте данных: " +
+              error.message +
+              "\n\nПроверьте консоль браузера (F12) для подробностей.",
+          );
         })
         .finally(() => {
-            button.innerHTML = originalHtml;
-            button.disabled = false;
+          button.innerHTML = originalHtml;
+          button.disabled = false;
         });
     });
-});
+  });
 </script>
 
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

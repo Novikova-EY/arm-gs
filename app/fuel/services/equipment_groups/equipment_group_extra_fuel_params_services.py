@@ -8,6 +8,7 @@ equipment_group_extra_fuel_params_write_services.
 """
 
 from collections import defaultdict
+from decimal import Decimal, InvalidOperation
 from sqlalchemy import or_, and_
 
 from app.common.services.database_version_filter import get_current_db_version_id
@@ -52,9 +53,65 @@ EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS = [
 ]
 
 
+def resolve_extra_fuel_param_value(param, attr: str, children_by_parent: dict | None = None):
+    """
+    Значение ячейки доп. параметров.
+
+    У ExtraFuelParam есть только «листовые» поля (gaz_prir, kuzngd, …).
+    Родительские столбцы иерархии (gaz, ugol, kuzn, …) в модели отсутствуют —
+    для них считаем сумму потомков по children_by_parent из build_fuel_param_columns_hierarchy.
+    """
+    if param is None or not attr:
+        return None
+
+    if hasattr(param, attr):
+        direct = getattr(param, attr, None)
+        if direct is not None:
+            return direct
+
+    kids = (children_by_parent or {}).get(attr) or []
+    if not kids:
+        return None
+
+    total = None
+    for child in kids:
+        child_val = resolve_extra_fuel_param_value(param, child, children_by_parent)
+        if child_val is None:
+            continue
+        try:
+            dec = child_val if isinstance(child_val, Decimal) else Decimal(str(child_val))
+        except (InvalidOperation, ValueError, TypeError):
+            continue
+        total = dec if total is None else total + dec
+    return total
+
+
+def sum_extra_fuel_attrs_for_rows(
+    rows,
+    attr_names: list[str],
+    children_by_parent: dict | None = None,
+) -> dict:
+    """Суммы по атрибутам (с учётом родительских столбцов-агрегатов) для строк (eg, param)."""
+    summary: dict[str, Decimal] = {}
+    for attr in attr_names:
+        total = Decimal(0)
+        any_value = False
+        for _eg, param in rows or []:
+            val = resolve_extra_fuel_param_value(param, attr, children_by_parent)
+            if val is None:
+                continue
+            try:
+                total += val if isinstance(val, Decimal) else Decimal(str(val))
+                any_value = True
+            except (InvalidOperation, ValueError, TypeError):
+                pass
+        summary[attr] = total if any_value else Decimal(0)
+    return summary
+
+
 def get_equipment_groups_with_extra_fuel_params_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,
@@ -171,11 +228,14 @@ def get_equipment_groups_with_extra_fuel_params_data(
     }
 
 
-def build_equipment_group_extra_fuel_params_hierarchy(rows):
+def build_equipment_group_extra_fuel_params_hierarchy(rows, children_by_parent=None):
     """
     Строит иерархию как на stations_equipment_group_fuel_params:
     energy_system_type → UES → РЭС → станция → группа оборудования.
     Группировка по regional_energy_system_id и по одной электростанции.
+
+    children_by_parent — карта из build_fuel_param_columns_hierarchy: для родительских
+    столбцов (gaz/ugol/…) итоги считаются как сумма листовых полей ExtraFuelParam.
     """
     from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
         get_energy_system_type_map,
@@ -192,6 +252,11 @@ def build_equipment_group_extra_fuel_params_hierarchy(rows):
         _equipment_group_station_sort_key,
         _get_equipment_group_station_mapping_with_display_order,
         should_suppress_fuel_params_station_summary_row,
+    )
+
+    _children_by_parent = children_by_parent or {}
+    _summary_attrs = list(EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS) + list(
+        _children_by_parent.keys()
     )
 
     est_names = dict(get_energy_system_type_map())
@@ -244,20 +309,9 @@ def build_equipment_group_extra_fuel_params_hierarchy(rows):
         return (1 if rid == -1 else 0, res_names.get(rid, ""))
 
     def _compute_summary(rows_to_sum):
-        from decimal import Decimal
-
-        summary = {}
-        for attr in EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS:
-            total = Decimal(0)
-            for _eg, param in rows_to_sum:
-                val = getattr(param, attr, None)
-                if val is not None:
-                    try:
-                        total += Decimal(str(val))
-                    except (TypeError, ValueError):
-                        pass
-            summary[attr] = total
-        return summary
+        return sum_extra_fuel_attrs_for_rows(
+            rows_to_sum, _summary_attrs, _children_by_parent
+        )
 
     def _get_primary_station(eg_id):
         stations = eg_to_stations.get(eg_id, [])

@@ -70,7 +70,7 @@ class EquipmentGroup(db.Model):
     # Признак электростанции, разбитой на группы оборудования
     comp = db.Column(db.Integer, nullable=True)
 
-    # Код электростанции, в которую входит группа оборудования
+    # Код группы оборудования, в которую входит данная группа
     main = db.Column(db.Integer, nullable=True)
 
     # Признак действующей электростанции
@@ -166,7 +166,7 @@ class EquipmentGroup(db.Model):
         uselist=False,
     )
 
-    # Код электростанции
+    # Код группы оборудования
     numb = db.Column(db.Integer, nullable=True)
 
     # Название типов турбин, которое соответствует коду (необязательное)

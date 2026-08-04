@@ -1,0 +1,3 @@
+SELECT Имена_станций.NAME, u.NUMB1120, u.YEAR, u.topl, u.pertop, u.rtop, n.koeff, Классификтор_топлива.koeff AS avkoeff, [rtop]/IIf(n.koeff>0,n.koeff,[avkoeff]) AS rtopn, IIf([ved]>0,0,1) AS sost, IIf([main]>0,1,0) AS [group], Имена_станций.OBL, Имена_станций.OES, Имена_областей.NAME AS oblname, Имена_ОЭС.name AS oesname
+FROM ((((Станции_по_углям_2_2004 AS u LEFT JOIN [Станции_по_углям_2(натура)] AS n ON (u.NUMB1120=n.NUMB1120) AND (u.YEAR=n.YEAR) AND (u.topl=n.topl)) LEFT JOIN Классификтор_топлива ON u.topl=Классификтор_топлива.name) INNER JOIN Имена_станций ON u.NUMB1120=Имена_станций.NUMB) INNER JOIN Имена_областей ON Имена_станций.OBL=Имена_областей.OBL) INNER JOIN Имена_ОЭС ON Имена_станций.OES=Имена_ОЭС.oes
+WHERE (((u.YEAR)>1998) AND ((u.topl)<>"газ"));

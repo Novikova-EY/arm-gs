@@ -1,0 +1,138 @@
+Version =20
+VersionRequired =20
+Checksum =-1940551850
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2846
+    DatasheetFontHeight =10
+    ItemSuffix =7
+    Left =1776
+    Top =2616
+    Right =4620
+    Bottom =3564
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xf0753fdcaedee240
+    End
+    GUID = Begin
+        0x5446d7a12767c044b8d6f3b37b8d28f0
+    End
+    NameMap = Begin
+        0x0acc0e5500000000000000000000000000000000000000000c00000003000000 ,
+        0x0000000000000000000000000000
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            Height =963
+            BackColor =15269840
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x262660d3b1f0f64f9e0b9694166bc94b
+            End
+            Begin
+                Begin OptionGroup
+                    OverlapFlags =85
+                    Width =2846
+                    Height =943
+                    Name ="Dialog"
+                    AfterUpdate ="[Event Procedure]"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xfb209a4da83f7a4ca472ab2302bacdd6
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =186
+                            Top =238
+                            OptionValue =1
+                            Name ="Conf"
+                            GUID = Begin
+                                0x5d03d7d1ca60c445afb26f990716b421
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =416
+                                    Top =210
+                                    Width =1824
+                                    Height =228
+                                    Name ="Надпись4"
+                                    Caption ="Конфигурация ГТУ и ПГУ"
+                                    GUID = Begin
+                                        0xef609f13229c824996b8c7b6c3c7ef39
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =186
+                            Top =568
+                            OptionValue =2
+                            Name ="Q"
+                            GUID = Begin
+                                0xa3dbad5999867e47bd616dad8f8db791
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =416
+                                    Top =540
+                                    Width =1428
+                                    Height =228
+                                    Name ="Надпись6"
+                                    Caption ="Потребители тепла"
+                                    GUID = Begin
+                                        0x7e5f7304d3610b4e9227951684b593a8
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Dialog_AfterUpdate()
+If Dialog = 1 Then
+DoCmd.OpenForm ("Конфигурация(справка)"), , , "stan=" & OpenArgs
+Else
+DoCmd.OpenForm ("Пром_потребители"), acFormDS, , "codest=" & OpenArgs
+End If
+End Sub

@@ -42,8 +42,17 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Детализация топлива
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_electricity_production_cost') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Сведения о затратах ТЭС на производство ЭЭ и ТЭ
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_natural_fuel') }}" class="btn btn-primary fs-4 w-100 py-4">
+                            Калорийные эквиваленты топлива
                         </a>
                     </div>
                 </div>
@@ -69,24 +78,6 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.stations_equipment_group_electricity_production_cost') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Сведения о затратах ТЭС на производство ЭЭ и ТЭ
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.stations_equipment_group_natural_fuel') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Калорийные эквиваленты топлива
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
                         <a href="{{ url_for('fuel_bp.stations_equipment_group_heat_and_tariffs') }}" class="btn btn-primary fs-4 w-100 py-4">
                             Тепло и тарифы из СТ
                         </a>
@@ -99,7 +90,7 @@
 
         <h4 class="text-center mb-4">Расчетные значения</h4>
 
-        <div class="row g-4 justify-content-center">
+        <div class="row g-4 justify-content-center{% if not current_user.is_admin %} pb-4{% endif %}">
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
@@ -121,8 +112,8 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_price') }}" class="btn btn-success fs-4 w-100 py-4">
-                            Цена сожженного топлива
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Технико-экономические показатели групп оборудования
                         </a>
                     </div>
                 </div>
@@ -130,14 +121,15 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}" class="btn btn-success fs-4 w-100 py-4">
-                            Технико-экономические показатели групп оборудования
+                        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_price') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Цена сожженного топлива
                         </a>
                     </div>
                 </div>
             </div>
         </div>
 
+        {% if current_user.is_admin %}
         <hr class="my-4 border-secondary border-2 opacity-50">
 
         <div class="row g-4 justify-content-center pb-4">
@@ -151,6 +143,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 

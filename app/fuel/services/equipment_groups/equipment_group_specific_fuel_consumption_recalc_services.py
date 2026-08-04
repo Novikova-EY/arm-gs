@@ -28,6 +28,9 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumptio
     calc_sntp_calc,
     calc_bk_calc,
 )
+from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_write_services import (
+    _sync_numb1120_from_equipment_group,
+)
 
 
 def recalculate_all_specific_fuel_consumption_calc(
@@ -37,6 +40,7 @@ def recalculate_all_specific_fuel_consumption_calc(
     start_year: int | None = None,
     end_year: int | None = None,
     commit: bool = True,
+    all_versions: bool = False,
 ) -> int:
     """
     Пересчитывает y_calc, btp_calc, sntp_calc, bk_calc, snk_calc
@@ -52,10 +56,10 @@ def recalculate_all_specific_fuel_consumption_calc(
         (year не должен быть задан; можно задать start_year/end_year)
     :param start_year, end_year: вместе с equipment_group_id — диапазон лет
     :param commit: False при вызове из orchestrator до общего commit
+    :param all_versions: если True — пересчёт по всем версиям БД (без фильтра
+        текущей версии); иначе только текущая активная версия
     :return: количество созданных/обновленных записей
     """
-    current_version_id = get_current_db_version_id()
-
     query = EquipmentGroupFuelParam.query
     if year is not None:
         query = query.filter(EquipmentGroupFuelParam.year_number == year)
@@ -69,23 +73,25 @@ def recalculate_all_specific_fuel_consumption_calc(
         if end_year is not None:
             query = query.filter(EquipmentGroupFuelParam.year_number <= end_year)
 
-    if current_version_id is not None:
-        query = query.filter(
-            EquipmentGroupFuelParam.database_version_id == current_version_id
-        )
-    else:
-        query = query.filter(
-            EquipmentGroupFuelParam.database_version_id.is_(None)
-        )
+    if not all_versions:
+        current_version_id = get_current_db_version_id()
+        if current_version_id is not None:
+            query = query.filter(
+                EquipmentGroupFuelParam.database_version_id == current_version_id
+            )
+        else:
+            query = query.filter(
+                EquipmentGroupFuelParam.database_version_id.is_(None)
+            )
 
     params = query.all()
     if not params:
         return 0
 
-    # Группировка по ключу записи удельных
+    # UQ: (equipment_group_id, year_number) — без database_version_id
     by_key = defaultdict(list)
     for p in params:
-        key = (p.equipment_group_id, p.year_number, p.database_version_id)
+        key = (p.equipment_group_id, p.year_number)
         by_key[key].append(p)
 
     updates_count = 0
@@ -100,69 +106,74 @@ def recalculate_all_specific_fuel_consumption_calc(
         except (InvalidOperation, TypeError):
             return val
 
-    for (equipment_group_id, year_number, version_id), param_list in by_key.items():
-        # По uq дубликатов быть не должно, берем первую запись
-        param = param_list[0]
+    # no_autoflush: не сбрасывать pending INSERT до поиска по UQ
+    with db.session.no_autoflush:
+        for (equipment_group_id, year_number), param_list in by_key.items():
+            param = param_list[0]
+            version_id = param.database_version_id
 
-        consumption = EquipmentGroupSpecificFuelConsumption.query.filter_by(
-            equipment_group_id=equipment_group_id,
-            year_number=year_number,
-            database_version_id=version_id,
-        ).first()
-
-        coeff_k = (
-            consumption.k
-            if (consumption is not None and consumption.k is not None)
-            else None
-        )
-
-        y_calc_val = calc_y_calc(param)
-        btp_calc_val = calc_btp_calc(param, coeff_k)
-        sntp_calc_val = calc_sntp_calc(param)
-        bk_calc_val = calc_bk_calc(param, btp_calc_val, sntp_calc_val)
-        snk_calc_val = getattr(param, "snk", None)
-
-        y_calc_val = q6(y_calc_val)
-        btp_calc_val = q6(btp_calc_val)
-        sntp_calc_val = q6(sntp_calc_val)
-        bk_calc_val = q6(bk_calc_val)
-        snk_calc_val = q6(snk_calc_val) if snk_calc_val is not None else None
-
-        if consumption is None:
-            consumption = EquipmentGroupSpecificFuelConsumption(
+            # Поиск строго по UQ, без фильтра версии (см. get_or_create_*)
+            consumption = EquipmentGroupSpecificFuelConsumption.query.filter_by(
                 equipment_group_id=equipment_group_id,
                 year_number=year_number,
-                database_version_id=version_id,
-                y_calc=y_calc_val,
-                btp_calc=btp_calc_val,
-                sntp_calc=sntp_calc_val,
-                bk_calc=bk_calc_val,
-                snk_calc=snk_calc_val,
+            ).first()
+
+            coeff_k = (
+                consumption.k
+                if (consumption is not None and consumption.k is not None)
+                else None
             )
-            set_db_version_on_create(consumption)
-            db.session.add(consumption)
-            updates_count += 1
-        else:
-            changed = False
 
-            if consumption.y_calc != y_calc_val:
-                consumption.y_calc = y_calc_val
-                changed = True
-            if consumption.btp_calc != btp_calc_val:
-                consumption.btp_calc = btp_calc_val
-                changed = True
-            if consumption.sntp_calc != sntp_calc_val:
-                consumption.sntp_calc = sntp_calc_val
-                changed = True
-            if consumption.bk_calc != bk_calc_val:
-                consumption.bk_calc = bk_calc_val
-                changed = True
-            if consumption.snk_calc != snk_calc_val:
-                consumption.snk_calc = snk_calc_val
-                changed = True
+            y_calc_val = calc_y_calc(param)
+            btp_calc_val = calc_btp_calc(param, coeff_k)
+            sntp_calc_val = calc_sntp_calc(param)
+            bk_calc_val = calc_bk_calc(param, btp_calc_val, sntp_calc_val)
+            snk_calc_val = getattr(param, "snk", None)
 
-            if changed:
+            y_calc_val = q6(y_calc_val)
+            btp_calc_val = q6(btp_calc_val)
+            sntp_calc_val = q6(sntp_calc_val)
+            bk_calc_val = q6(bk_calc_val)
+            snk_calc_val = q6(snk_calc_val) if snk_calc_val is not None else None
+
+            if consumption is None:
+                consumption = EquipmentGroupSpecificFuelConsumption(
+                    equipment_group_id=equipment_group_id,
+                    year_number=year_number,
+                    database_version_id=version_id,
+                    y_calc=y_calc_val,
+                    btp_calc=btp_calc_val,
+                    sntp_calc=sntp_calc_val,
+                    bk_calc=bk_calc_val,
+                    snk_calc=snk_calc_val,
+                )
+                set_db_version_on_create(consumption)
+                db.session.add(consumption)
+                _sync_numb1120_from_equipment_group(consumption, equipment_group_id)
                 updates_count += 1
+            else:
+                changed = False
+
+                if consumption.y_calc != y_calc_val:
+                    consumption.y_calc = y_calc_val
+                    changed = True
+                if consumption.btp_calc != btp_calc_val:
+                    consumption.btp_calc = btp_calc_val
+                    changed = True
+                if consumption.sntp_calc != sntp_calc_val:
+                    consumption.sntp_calc = sntp_calc_val
+                    changed = True
+                if consumption.bk_calc != bk_calc_val:
+                    consumption.bk_calc = bk_calc_val
+                    changed = True
+                if consumption.snk_calc != snk_calc_val:
+                    consumption.snk_calc = snk_calc_val
+                    changed = True
+                if _sync_numb1120_from_equipment_group(consumption, equipment_group_id):
+                    changed = True
+
+                if changed:
+                    updates_count += 1
 
     if updates_count and commit:
         db.session.commit()

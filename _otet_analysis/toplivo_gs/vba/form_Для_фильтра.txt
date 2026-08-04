@@ -1,0 +1,101 @@
+Version =19
+VersionRequired =19
+Checksum =-440772131
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    KeyPreview = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =10
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2835
+    DatasheetFontHeight =10
+    ItemSuffix =2
+    Left =4056
+    Top =3108
+    Right =6888
+    Bottom =5328
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x1a906ff2745ae240
+    End
+    GUID = Begin
+        0xbe5e9a3bbd5b1c4e865a64b88dcc7de2
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    Caption ="Станции"
+    DatasheetFontName ="Arial Cyr"
+    OnKeyUp ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =2235
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x84ab0f4220af7f498e29ca959f1a4dda
+            End
+            Begin
+                Begin ListBox
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    MultiSelect =2
+                    ColumnCount =2
+                    Width =2835
+                    Height =2235
+                    Name ="список"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT Имена_станций.NAME, Имена_станций.NUMB FROM Имена_станций;"
+                    ColumnWidths ="2835;567"
+                    OnKeyDown ="[Event Procedure]"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xc06c4bad67f7f14abff4d3a02cdd217d
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_KeyUp(KeyCode As Integer, Shift As Integer)
+If KeyCode = 38 Or KeyCode = 40 Then Call список_Click
+End Sub
+
+Private Sub список_Click()
+'i = список.ListIndex
+'Forms("Редактирование")!wform.Form.filter = "numb1120=" & список.Column(1, i)
+f = ""
+For Each i In список.ItemsSelected
+If f <> "" Then f = f & " OR "
+f = f & "numb1120=" & список.Column(1, i)
+Next i
+Forms("Редактирование")!wform.Form.filter = f
+End Sub

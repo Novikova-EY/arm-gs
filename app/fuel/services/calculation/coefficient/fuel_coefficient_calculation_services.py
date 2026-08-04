@@ -13,12 +13,14 @@ from app.fuel.models.fue_distribution_parameter_model import DistributionParamet
 from app.fuel.models.coefficient.distribution_coefficient_summary_model import (
     DistributionCoefficientSummary,
 )
-from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
-from app.fuel.services.adapters.access_filter_adapter import AccessFilterAdapter
+from app.fuel.services.calculation.equipment_group_selection import (
+    select_equipment_group_ids_for_calculation,
+)
 
 
 def d0(value) -> Decimal:
@@ -129,21 +131,11 @@ class FuelCoefficientCalculationService:
         return by_key
 
     def _select_group_ids(self, row: DistributionParameter, effective_db_version: int | None) -> list[int]:
-        query = self.session.query(EquipmentGroup.id)
-
-        if effective_db_version is not None and hasattr(EquipmentGroup, "database_version_id"):
-            query = query.filter(
-                or_(
-                    EquipmentGroup.database_version_id == effective_db_version,
-                    EquipmentGroup.database_version_id.is_(None),
-                )
-            )
-
-        expr = AccessFilterAdapter.build_expression(row.filter_text or "")
-        if expr is not None:
-            query = query.filter(expr)
-
-        return [x[0] for x in query.order_by(EquipmentGroup.id).all()]
+        return select_equipment_group_ids_for_calculation(
+            self.session,
+            filter_text=row.filter_text,
+            effective_db_version=effective_db_version,
+        )
 
     def _latest_specific_row(self, equipment_group_id: int, target_year: int, effective_db_version: int | None):
         q = self.session.query(EquipmentGroupSpecificFuelConsumption).filter(
@@ -172,6 +164,149 @@ class FuelCoefficientCalculationService:
             .order_by(EquipmentGroupSpecificFuelConsumption.year_number.desc())
             .first()
         )
+
+    def list_groups_missing_specific_for_distribution_parameter(
+        self,
+        distribution_parameter_id: int,
+    ) -> dict:
+        """
+        Группы фильтра для контроля Skip на Коэфф / Распред / Топливо:
+        - без строки топлива за расчётный год;
+        - с топливом за расчётный год, но без удельника year ≤ расчётного.
+        """
+        row = self.session.get(
+            DistributionParameter,
+            distribution_parameter_id,
+            options=[
+                joinedload(DistributionParameter.year),
+                joinedload(DistributionParameter.base_year),
+            ],
+        )
+        if row is None:
+            raise ValueError(f"Не найдена строка DistributionParameter id={distribution_parameter_id}")
+        if row.year is None:
+            raise ValueError(
+                f"DistributionParameter id={distribution_parameter_id}: не задан справочный год (Year)"
+            )
+
+        effective_db_version = self._resolve_effective_db_version(row)
+        group_ids = self._select_group_ids(row, effective_db_version)
+        cyear = int(row.year.number)
+
+        def _groups_payload(ids: list[int]) -> list[dict]:
+            if not ids:
+                return []
+            eg_rows = (
+                self.session.query(EquipmentGroup)
+                .filter(EquipmentGroup.id.in_(ids))
+                .all()
+            )
+            by_id = {eg.id: eg for eg in eg_rows}
+            out: list[dict] = []
+            for gid in ids:
+                eg = by_id.get(gid)
+                out.append(
+                    {
+                        "equipment_group_id": gid,
+                        "numb": eg.numb if eg is not None else None,
+                        "name": (eg.name or eg.name_ext or f"id={gid}")
+                        if eg is not None
+                        else f"id={gid}",
+                    }
+                )
+            out.sort(
+                key=lambda g: (
+                    g["numb"] is None,
+                    g["numb"] if g["numb"] is not None else 0,
+                    g["name"] or "",
+                )
+            )
+            return out
+
+        empty = {
+            "year_number": cyear,
+            "filter_group_count": len(group_ids),
+            "calc_fuel_group_count": 0,
+            "missing_fuel_count": 0,
+            "missing_fuel_groups": [],
+            "missing_count": 0,
+            "groups": [],
+        }
+        if not group_ids:
+            return empty
+
+        fuel_eg_ids = {
+            int(gid)
+            for (gid,) in self.session.query(EquipmentGroupFuelParam.equipment_group_id)
+            .filter(
+                EquipmentGroupFuelParam.equipment_group_id.in_(group_ids),
+                EquipmentGroupFuelParam.year_number == cyear,
+            )
+            .distinct()
+            .all()
+            if gid is not None
+        }
+        missing_fuel_ids = sorted(set(int(g) for g in group_ids) - fuel_eg_ids)
+        missing_fuel_groups = _groups_payload(missing_fuel_ids)
+
+        if not fuel_eg_ids:
+            empty["missing_fuel_count"] = len(missing_fuel_groups)
+            empty["missing_fuel_groups"] = missing_fuel_groups
+            return empty
+
+        specific_q = self.session.query(
+            EquipmentGroupSpecificFuelConsumption.equipment_group_id
+        ).filter(
+            EquipmentGroupSpecificFuelConsumption.equipment_group_id.in_(fuel_eg_ids),
+            EquipmentGroupSpecificFuelConsumption.year_number <= cyear,
+        )
+        if effective_db_version is not None and hasattr(
+            EquipmentGroupSpecificFuelConsumption, "database_version_id"
+        ):
+            specific_q = specific_q.filter(
+                or_(
+                    EquipmentGroupSpecificFuelConsumption.database_version_id
+                    == effective_db_version,
+                    EquipmentGroupSpecificFuelConsumption.database_version_id.is_(None),
+                )
+            )
+        with_specific = {
+            int(gid)
+            for (gid,) in specific_q.distinct().all()
+            if gid is not None
+        }
+        # Как _latest_specific_row: если с фильтром версии пусто — запасной поиск без версии.
+        still_missing = fuel_eg_ids - with_specific
+        if still_missing:
+            fallback = {
+                int(gid)
+                for (gid,) in self.session.query(
+                    EquipmentGroupSpecificFuelConsumption.equipment_group_id
+                )
+                .filter(
+                    EquipmentGroupSpecificFuelConsumption.equipment_group_id.in_(
+                        still_missing
+                    ),
+                    EquipmentGroupSpecificFuelConsumption.year_number <= cyear,
+                )
+                .distinct()
+                .all()
+                if gid is not None
+            }
+            with_specific |= fallback
+
+        missing_ids = sorted(fuel_eg_ids - with_specific)
+        groups_out = _groups_payload(missing_ids)
+
+        return {
+            "year_number": cyear,
+            "filter_group_count": len(group_ids),
+            "calc_fuel_group_count": len(fuel_eg_ids),
+            "missing_fuel_count": len(missing_fuel_groups),
+            "missing_fuel_groups": missing_fuel_groups,
+            "missing_count": len(groups_out),
+            "groups": groups_out,
+        }
 
     def run_for_distribution_parameter(
         self,
@@ -240,9 +375,12 @@ class FuelCoefficientCalculationService:
 
             base_nust = d0(base_row.nust) if base_row is not None else Decimal("0")
 
+            # Access: If U.NoMatch Then GoTo Skip — без EWTP и без сумм расчётного года.
             spec = self._latest_specific_row(equipment_group_id, cyear, effective_db_version)
-            y_val = d0(spec.y if spec else None)
-            cur_row.ewtp = d0(cur_row.qotr) * y_val / Decimal("1000")
+            if spec is None:
+                continue
+
+            cur_row.ewtp = d0(cur_row.qotr) * d0(spec.y) / Decimal("1000")
             updated_fuel_rows += 1
 
             csumnust += d0(cur_row.nust)
@@ -445,7 +583,7 @@ class FuelCoefficientCalculationService:
         Агрегаты по расчётному году для строки «Расчётный год» и второй таблицы «Коэфф»
         до сохранённой сводки DistributionCoefficientSummary.
 
-        Та же логика сумм и пересчёта Этц по удельному расходу, что в ``run_for_distribution_parameter``,
+        Та же логика сумм и пересчёта теплофикационной выработки ЭЭ (ewtp) по удельному расходу, что в ``run_for_distribution_parameter``,
         без записи в БД.
         """
         row = self.session.get(
@@ -490,9 +628,11 @@ class FuelCoefficientCalculationService:
 
             base_nust = d0(base_row.nust) if base_row is not None else Decimal("0")
 
+            # Access Skip без удельных — не копить суммы расчётного года.
             spec = self._latest_specific_row(equipment_group_id, cyear, effective_db_version)
-            y_val = d0(spec.y if spec else None)
-            ewtp = d0(cur_row.qotr) * y_val / Decimal("1000")
+            if spec is None:
+                continue
+            ewtp = d0(cur_row.qotr) * d0(spec.y) / Decimal("1000")
 
             csumnust += d0(cur_row.nust)
             if base_nust == 0:

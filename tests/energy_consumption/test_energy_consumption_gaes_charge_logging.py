@@ -66,7 +66,7 @@ def test_is_gaes_charge_station_log_matches_station_card_action():
         entity_type="station",
         action=(
             "Изменения в электростанции Загорская ГАЭС, "
-            "потребление электроэнергии ГАЭС на заряд (млн кВт·ч)"
+            "потребление электроэнергии ГАЭС на заряд (млн кВтч)"
         ),
     )
     assert logging_mod._is_gaes_charge_station_log(log) is True

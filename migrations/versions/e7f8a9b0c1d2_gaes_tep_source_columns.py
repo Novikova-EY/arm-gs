@@ -7,7 +7,7 @@ Create Date: 2026-03-31
 
 - Переименование generation_average_multiyear_billion_kwh_stage_{1,2}
   -> generation_average_multiyear_million_kwh_stage_{1,2} (при наличии старых имен).
-- Добавление колонок: среднемноголетняя по очередям (млн кВт·ч), потребление на заряд, капвложения млрд руб.
+- Добавление колонок: среднемноголетняя по очередям (млн кВтч), потребление на заряд, капвложения млрд руб.
 """
 from alembic import op
 import sqlalchemy as sa

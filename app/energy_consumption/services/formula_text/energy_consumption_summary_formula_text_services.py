@@ -192,7 +192,11 @@ def save_formula_text_override(*, formula_key: str, formula_text: str) -> EcSumm
         db.session.add(row)
     else:
         row.formula_text = text
-    clear_formula_text_override_cache()
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
+    )
+
+    invalidate_energy_consumption_display_caches()
     return get_formula_def(key)  # type: ignore[return-value]
 
 
@@ -201,4 +205,8 @@ def reset_formula_text_override(formula_key: str) -> None:
     row = EnergyConsumptionSummaryFormulaText.query.filter_by(formula_key=key).first()
     if row is not None:
         db.session.delete(row)
-    clear_formula_text_override_cache()
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
+    )
+
+    invalidate_energy_consumption_display_caches()

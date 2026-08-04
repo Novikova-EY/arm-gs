@@ -1,0 +1,48 @@
+Public Sub ExportTableStructure()
+
+    Dim db As DAO.Database
+    Dim td As DAO.TableDef
+    Dim fld As DAO.field
+    Dim f As Integer
+    Dim outFile As String
+
+    Set db = CurrentDb()
+
+    outFile = CurrentProject.Path & "\schema_export.csv"
+
+    f = FreeFile()
+    Open outFile For Output As #f
+    Print #f, "TableName;FieldName;DataType;Size;Required;Autonumber"
+
+    For Each td In db.TableDefs
+        If left(td.Name, 4) <> "MSys" Then
+            For Each fld In td.Fields
+                Print #f, td.Name & ";" & fld.Name & ";" & FieldTypeName(fld.Type) _
+                & ";" & fld.Size & ";" & ((fld.Attributes And DAO.FieldAttributeEnum.dbFixedField) <> 0) _
+                & ";" & ((fld.Attributes And DAO.FieldAttributeEnum.dbAutoIncrField) <> 0)
+            Next fld
+        End If
+    Next td
+
+    Close #f
+
+    MsgBox "Готово! Файл создан: " & outFile
+
+End Sub
+
+Private Function FieldTypeName(typeCode As Integer) As String
+    Select Case typeCode
+        Case 1: FieldTypeName = "Boolean"
+        Case 2: FieldTypeName = "Byte"
+        Case 3: FieldTypeName = "Integer"
+        Case 4: FieldTypeName = "Long"
+        Case 5: FieldTypeName = "Currency"
+        Case 6: FieldTypeName = "Single"
+        Case 7: FieldTypeName = "Double"
+        Case 8: FieldTypeName = "DateTime"
+        Case 10: FieldTypeName = "Text"
+        Case 11: FieldTypeName = "LongText"
+        Case 12: FieldTypeName = "GUID"
+        Case Else: FieldTypeName = "Unknown"
+    End Select
+End Function

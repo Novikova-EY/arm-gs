@@ -709,10 +709,10 @@ def _attach_rf_section_scatter_chart(
         return
     if section.get("is_population_section"):
         x_axis_label = "Накопленные денежные доходы населения, млн руб."
-        y_axis_label = "Потребление ЭЭ на душу населения, кВт·ч/тыс. руб."
+        y_axis_label = "Потребление ЭЭ на душу населения, кВтч/тыс. руб."
     else:
         x_axis_label = "Накопленные инвестиции, млн руб."
-        y_axis_label = "Электроемкость, кВт·ч/тыс. руб."
+        y_axis_label = "Электроемкость, кВтч/тыс. руб."
     scatter_chart = build_rf_scatter_chart(
         accum_cells=accum_row.get("cells") or {},
         intensity_cells=intensity_row.get("cells") or {},
@@ -2319,7 +2319,7 @@ def _sum_displayed_ved_consumption_from_fd_sections(
     *,
     display_years: list[int],
 ) -> dict[int, Decimal | None]:
-    """Сумма строк «Потребление ЭЭ» по секциям ФО (как на странице), млн кВт·ч."""
+    """Сумма строк «Потребление ЭЭ» по секциям ФО (как на странице), млн кВтч."""
     cells: dict[int, Decimal | None] = {year: None for year in display_years}
     for section in ved_sections:
         if section.get("is_industrial_group"):
@@ -2800,7 +2800,7 @@ def _load_rf_gaes_charge_cells(
     *,
     display_years: list[int],
 ) -> dict[int, Decimal | None]:
-    """Суммарный заряд ГАЭС по РФ (млн кВт·ч), как строка «всего» на сводке ГАЭС."""
+    """Суммарный заряд ГАЭС по РФ (млн кВтч), как строка «всего» на сводке ГАЭС."""
     if not display_years:
         return {}
     q = (

@@ -17,7 +17,7 @@ from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 
 def get_equipment_groups_with_fuel_formula_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,
@@ -25,8 +25,8 @@ def get_equipment_groups_with_fuel_formula_data(
 ):
     """
     Список (EquipmentGroup, EquipmentGroupFuelFormula) по фильтрам станций.
-    Все годы из БД (ограничение по year_number не применяется).
-    Для территориального отбора групп используется диапазон лет из справочника.
+    Строки формул ограничиваются year_number в [start_year, end_year];
+    для территориального отбора групп используется тот же диапазон лет.
     """
     from app.common.services.get_services.years.years_get_services import (
         get_filter_end_year,
@@ -39,6 +39,8 @@ def get_equipment_groups_with_fuel_formula_data(
 
     _start = start_year if start_year is not None else get_filter_start_year()
     _end = end_year if end_year is not None else get_filter_end_year()
+    if _start is not None and _end is not None and int(_start) > int(_end):
+        _start, _end = _end, _start
     current_version_id = get_current_db_version_id()
 
     version_match = or_(
@@ -51,10 +53,18 @@ def get_equipment_groups_with_fuel_formula_data(
             EquipmentGroup.database_version_id.is_(None),
         ),
     )
-    join_cond = and_(
+    join_parts = [
         EquipmentGroupFuelFormula.equipment_group_id == EquipmentGroup.id,
         version_match,
-    )
+    ]
+    if _start is not None and _end is not None:
+        join_parts.append(
+            and_(
+                EquipmentGroupFuelFormula.year_number >= int(_start),
+                EquipmentGroupFuelFormula.year_number <= int(_end),
+            )
+        )
+    join_cond = and_(*join_parts)
 
     base_query = db.session.query(EquipmentGroup, EquipmentGroupFuelFormula).outerjoin(
         EquipmentGroupFuelFormula,
@@ -128,6 +138,68 @@ def get_equipment_groups_with_fuel_formula_data(
         "page": 1,
         "per_page": total_count or 1,
     }
+
+
+class _MissingYearFuelFormula:
+    """Год из интервала без строки в gs_fue_equipment_group_fuel_formula."""
+
+    __slots__ = ("year_number",)
+
+    def __init__(self, year_number: int) -> None:
+        self.year_number = int(year_number)
+
+    def __bool__(self) -> bool:
+        return False
+
+    def __getattr__(self, name: str):
+        return None
+
+
+def expand_formula_rows_for_year_interval(rows, start_year, end_year):
+    """
+    Как на ТЭП edit_data: для каждой группы — строки на каждый год интервала.
+    Если за год есть несколько формул (variant) — все сохраняются; иначе — пустая заглушка.
+    """
+    from collections import defaultdict
+
+    if start_year is None or end_year is None:
+        return list(rows or [])
+
+    sy, ey = int(start_year), int(end_year)
+    if sy > ey:
+        sy, ey = ey, sy
+    years_range = range(sy, ey + 1)
+
+    by_eg_order: list[int] = []
+    by_eg_rows: dict[int, list] = defaultdict(list)
+
+    for eg, param in rows or []:
+        if not eg:
+            continue
+        eid = eg.id
+        if eid not in by_eg_rows:
+            by_eg_order.append(eid)
+        by_eg_rows[eid].append((eg, param))
+
+    out: list = []
+    for eid in by_eg_order:
+        eg_rows = by_eg_rows[eid]
+        eg = eg_rows[0][0]
+        year_to_params: dict[int, list] = defaultdict(list)
+        for _eg, param in eg_rows:
+            if not param or isinstance(param, _MissingYearFuelFormula):
+                continue
+            yn = getattr(param, "year_number", None)
+            if yn is not None:
+                year_to_params[int(yn)].append(param)
+        for y in years_range:
+            params = year_to_params.get(y) or []
+            if params:
+                for p in params:
+                    out.append((eg, p))
+            else:
+                out.append((eg, _MissingYearFuelFormula(y)))
+    return out
 
 
 def _numb1120_merge_key(param):

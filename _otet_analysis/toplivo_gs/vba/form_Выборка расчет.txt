@@ -1,0 +1,136 @@
+Version =20
+VersionRequired =20
+Checksum =-984336553
+Begin Form
+    FilterOn = NotDefault
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5612
+    DatasheetFontHeight =12
+    ItemSuffix =2
+    Left =636
+    Top =1236
+    Right =7020
+    Bottom =4884
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x9c9434daf25ae340
+    End
+    RecordSource ="SELECT [Имена_станций].[NAME], [Станции(макет)].[NUST], [Станции(макет)].[E], [С"
+        "танции(макет)].[H], [Станции(макет)].[EWTP], [Станции(макет)].[YEAR], [Станции(м"
+        "акет)].[OES], [Станции(макет)].[OBL], [Станции(макет)].[VED], [Станции(макет)].["
+        "OBOR], [Станции(макет)].[NUMB1120], [Имена_станций].[ordnumb] FROM [Станции(маке"
+        "т)] INNER JOIN Имена_станций ON [Станции(макет)].[NUMB1120]=[Имена_станций].[NUM"
+        "B] WHERE ((([Станции(макет)].[NUST])>0)) ORDER BY [Имена_станций].[ordnumb]; "
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x72b1e94b88e92541a710327c5af82126
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Width =2265
+                    ColumnWidth =2988
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x821cfb9500452d4e9431ac5929c5775f
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =2265
+                    ColumnWidth =744
+                    TabIndex =1
+                    Name ="NUST"
+                    ControlSource ="NUST"
+                    Format ="#"
+                    GUID = Begin
+                        0x06d91fa690ad0f479fd32856ff6fabee
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =2832
+                    ColumnWidth =660
+                    TabIndex =2
+                    Name ="E"
+                    ControlSource ="E"
+                    Format ="#"
+                    GUID = Begin
+                        0x939a31afc7c8f1498bd0478de122d315
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =3399
+                    ColumnWidth =570
+                    TabIndex =3
+                    Name ="H"
+                    ControlSource ="H"
+                    Format ="#"
+                    GUID = Begin
+                        0x81c5cade216dd045a31f5dd779ebc0ee
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =3966
+                    ColumnWidth =804
+                    TabIndex =4
+                    Name ="ptp"
+                    ControlSource ="=IIf([e]>0,[EWTP]/[e]*100,0)"
+                    Format ="#"
+                    GUID = Begin
+                        0xfc98035bb0584848ae3c3539e8fb52f8
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =119
+                    Left =4533
+                    ColumnWidth =1128
+                    TabIndex =5
+                    Name ="NUMB1120"
+                    ControlSource ="NUMB1120"
+                    GUID = Begin
+                        0x1a1489ae46518543a462fed1c5e9fd23
+                    End
+                End
+            End
+        End
+    End
+End

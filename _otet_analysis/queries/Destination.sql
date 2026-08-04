@@ -1,0 +1,2 @@
+SELECT DISTINCTROW Станции2019.*
+FROM Станции2019;

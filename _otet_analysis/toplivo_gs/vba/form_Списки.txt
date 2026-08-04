@@ -1,0 +1,85 @@
+Version =19
+VersionRequired =19
+Checksum =-440772174
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5669
+    DatasheetFontHeight =12
+    ItemSuffix =3
+    Left =1116
+    Top =2256
+    Right =6768
+    Bottom =4896
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x6ee5120c303ee340
+    End
+    GUID = Begin
+        0x251919f05afc6b4587e4e16506e92866
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =1984
+            BackColor =14942152
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x82445c3a1d7f814aa8a8ea3d9d9105db
+            End
+            Begin
+                Begin Label
+                    OverlapFlags =85
+                    Left =283
+                    Top =226
+                    Width =1819
+                    Height =284
+                    Name ="Надпись0"
+                    Caption ="изменить год ввода на"
+                    GUID = Begin
+                        0xdb8e8b6d4f22f545aa80a8825885b4ae
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Left =2551
+                    Top =226
+                    Width =737
+                    Height =284
+                    Name ="yearin"
+                    GUID = Begin
+                        0x45eaafe45700f34c8ab53335efada22e
+                    End
+                End
+            End
+        End
+    End
+End

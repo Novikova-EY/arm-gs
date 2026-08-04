@@ -1,0 +1,57 @@
+{# Макросы редактируемых ячеек топливных параметров (как на equipment_group_fuel_params_edit_data). #}
+{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+
+{% macro fuel_param_data_cell_content(attr, label, is_numeric, param) -%}
+{% if param is none %}{% if is_numeric and attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t') %}{% else %}—{% endif %}{% elif attr == 'hfix' %}{% set _hf = param|get_attr('hfix') %}{% if _hf is none %}—{% elif _hf|string == '1' %}да{% elif _hf|string == '0' %}нет{% else %}{{ _hf }}{% endif %}{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif attr == 'numb1120' %}{% set _sc = param|get_attr('numb1120') %}{% if _sc is none or (_sc|string|trim == '') or (_sc|string|trim|lower == 'none') %}—{% else %}{{ _sc }}{% endif %}{% elif is_numeric and attr in ('nt', 'nt_sum') %}{% set _v = param|get_attr(attr) %}{% if _v is none %}—{% else %}{{ _v|format_decimal(0) }}{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr), attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t')) }}{% else %}{{ param|get_attr(attr)|default('—', true) }}{% endif %}
+{%- endmacro %}
+
+{% macro fuel_param_tooltip_title(attr, is_numeric, param) -%}
+{%- if param is none -%}
+{%- elif is_numeric -%}
+{%- set v = param|get_attr(attr) -%}
+{%- if v is not none -%}{{ v|format_decimal(0) }}{%- endif -%}
+{%- elif attr == 'obor' and param.obor is not none -%}{{ param.obor }}
+{%- elif attr == 'obl' and param.obl is not none -%}{{ param.obl }}
+{%- elif attr == 'dep' and param.dep is not none -%}{{ param.dep }}
+{%- elif attr == 'oes' and param.oes is not none -%}{{ param.oes }}
+{%- elif attr == 'er' and param.er is not none -%}{{ param.er }}
+{%- elif attr == 'gk' and param.gk is not none -%}{{ param.gk }}
+{%- elif attr == 'be' and param.be is not none -%}{{ param.be }}
+{%- elif attr == 'ved' and param.ved is not none -%}{{ param.ved }}
+{%- elif attr == 'ved_cyrillic' and param.ved_cyrillic is not none -%}{{ param.ved_cyrillic }}
+{%- elif attr == 'hfix' and param.hfix is not none -%}{{ param.hfix }}
+{%- elif attr == 'numb1120' -%}{% set _sc = param|get_attr('numb1120') %}{% if _sc is not none and (_sc|string|trim != '') and (_sc|string|trim|lower != 'none') %}{{ _sc }}{% endif %}
+{%- else -%}{{- param|get_attr(attr)|default('', true) -}}
+{%- endif -%}
+{%- endmacro %}
+
+{# Редактируемая ячейка (стиль input как на /fuel/calculation/equipment_group_fuel_params_edit_data) #}
+{% macro fuel_param_edit_or_view(attr, label, is_numeric, param, gid, ynum, do_edit, rounding_digits, title_override='') -%}
+{% if do_edit and attr != 'numb1120' %}
+{% set raw = param|get_attr(attr) if param is not none else none %}
+{% set fname = 'g' ~ gid ~ '_fuel_param_' ~ ynum ~ '_' ~ attr %}
+{% set ttip = title_override if title_override else fuel_param_tooltip_title(attr, is_numeric, param)|trim %}
+{% if attr == 'hfix' %}
+<select name="{{ fname }}" class="form-select form-select-lg text-center fuel-param-input" data-initial="{% if raw is none %}{% else %}{{ raw }}{% endif %}"{% if ttip %} title="{{ ttip|e }}"{% endif %}>
+    <option value="" {% if raw is none %}selected{% endif %}>—</option>
+    <option value="0" {% if raw is not none and raw|string == '0' %}selected{% endif %}>нет</option>
+    <option value="1" {% if raw is not none and raw|string == '1' %}selected{% endif %}>да</option>
+</select>
+{% else %}
+{% if raw is none or (is_numeric and raw == 0 and attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t')) %}
+{% set display_val = '' %}
+{% elif is_numeric %}
+{% if attr in ('nt', 'nt_sum') %}
+{% set display_val = raw|format_decimal(0) %}
+{% else %}
+{% set display_val = raw|format_decimal_trim(rounding_digits) %}
+{% endif %}
+{% else %}
+{% set display_val = raw|string %}
+{% endif %}
+<input type="text" inputmode="{% if is_numeric %}decimal{% else %}numeric{% endif %}" autocomplete="off" name="{{ fname }}" class="form-control form-control-lg text-center fuel-param-input" value="{{ display_val }}" data-initial="{{ display_val|e }}"{% if ttip %} title="{{ ttip|e }}"{% endif %}>
+{% endif %}
+{% else %}
+{{ fuel_param_data_cell_content(attr, label, is_numeric, param) }}
+{% endif %}
+{%- endmacro %}

@@ -1,0 +1,96 @@
+Version =19
+VersionRequired =19
+Checksum =-440772174
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDeletions = NotDefault
+    FilterOn = NotDefault
+    DefaultView =2
+    AllowUpdating =1
+    ScrollBars =0
+    TabularCharSet =204
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =1656
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =600
+    Top =336
+    Right =5880
+    Bottom =3108
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x17db42dbee10e240
+    End
+    GUID = Begin
+        0xe5c7302f846c1b42b2be5b9b4a925a13
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Часы"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =576
+            LabelX =-1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            CanShrink = NotDefault
+            Height =255
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xfa963c45c9a4fb42abfe086e0f26a7cf
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    ColumnWidth =720
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    GUID = Begin
+                        0xa30aea344c96a444a7fd62dd476aeaa5
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =255
+                    Left =510
+                    ColumnWidth =570
+                    TabIndex =1
+                    Name ="H"
+                    ControlSource ="H"
+                    Format ="#"
+                    GUID = Begin
+                        0x041296b72f2278489d9eb95aac2a47dd
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =247
+                    Left =1080
+                    ColumnWidth =525
+                    TabIndex =2
+                    Name ="HFIX"
+                    ControlSource ="HFIX"
+                    Format ="#"
+                    GUID = Begin
+                        0x674f6139813b2149886533659d154a7b
+                    End
+                End
+            End
+        End
+    End
+End

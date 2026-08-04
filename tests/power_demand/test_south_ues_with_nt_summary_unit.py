@@ -13,9 +13,6 @@ from app.power_demand.services.demand_summary_services import (
     enrich_south_ues_with_nt_calculated_max_power_from_res_and_nt_subjects,
     tag_power_demand_south_ues_without_nt_manual_rows,
 )
-from app.power_demand.services.perimeter_variant_tree_rules import (
-    NEW_TERRITORIES_FROM_YEAR,
-)
 
 
 def _south_ues_row(
@@ -79,7 +76,7 @@ def _nt_subject_row(
     "app.power_demand.services.demand_summary_services._south_ues_ids_for_nt_enrichment",
     return_value=frozenset({100}),
 )
-def test_south_ues_with_nt_uses_combined_on_es_from_nt_subjects(
+def test_south_ues_with_nt_uses_combined_on_oes_from_nt_subjects(
     _south_ids_mock,
     _nt_rd_mock,
 ) -> None:
@@ -87,8 +84,36 @@ def test_south_ues_with_nt_uses_combined_on_es_from_nt_subjects(
     rows = [
         _south_ues_row(pk="calculated_max_power_mw", year_values=["—", "—"]),
         _res_row(pk="combined_on_oes", year_values=["50", "200"]),
-        _nt_subject_row(pk="combined_on_es", year_values=["30", "40"]),
-        _nt_subject_row(pk="combined_on_oes", year_values=["99", "99"]),
+        _nt_subject_row(pk="combined_on_oes", year_values=["30", "40"]),
+        _nt_subject_row(pk="combined_on_es", year_values=["99", "99"]),
+    ]
+
+    enrich_south_ues_with_nt_calculated_max_power_from_res_and_nt_subjects(
+        rows, years, rounding_digits=0
+    )
+
+    calc = next(r for r in rows if r["parameter_key"] == "calculated_max_power_mw")
+    assert calc["year_values"][0] == "80"
+    assert calc["year_values"][1] == "240"
+
+
+@patch(
+    "app.power_demand.services.demand_summary_services._new_territories_regional_district_ids",
+    return_value=frozenset({9001}),
+)
+@patch(
+    "app.power_demand.services.demand_summary_services._south_ues_ids_for_nt_enrichment",
+    return_value=frozenset({100}),
+)
+def test_south_ues_with_nt_empty_when_nt_sum_zero(
+    _south_ids_mock,
+    _nt_rd_mock,
+) -> None:
+    years = [2022, 2024]
+    rows = [
+        _south_ues_row(pk="calculated_max_power_mw", year_values=["—", "—"]),
+        _res_row(pk="combined_on_oes", year_values=["50", "200"]),
+        _nt_subject_row(pk="combined_on_oes", year_values=["0", "40"]),
     ]
 
     enrich_south_ues_with_nt_calculated_max_power_from_res_and_nt_subjects(
@@ -108,7 +133,7 @@ def test_south_ues_with_nt_uses_combined_on_es_from_nt_subjects(
     "app.power_demand.services.demand_summary_services._south_ues_ids_for_nt_enrichment",
     return_value=frozenset({100}),
 )
-def test_south_ues_with_nt_combined_on_ees_only_from_2023(
+def test_south_ues_with_nt_combined_on_ees_adds_nt_any_year(
     _south_ids_mock,
     _nt_rd_mock,
 ) -> None:
@@ -124,7 +149,7 @@ def test_south_ues_with_nt_combined_on_ees_only_from_2023(
     )
 
     calc = next(r for r in rows if r["parameter_key"] == "calculated_combined_on_ees_mw")
-    assert calc["year_values"][0] == "—"
+    assert calc["year_values"][0] == "15"
     assert calc["year_values"][1] == "115"
 
 
@@ -132,17 +157,26 @@ def test_south_ues_with_nt_combined_on_ees_only_from_2023(
     "app.power_demand.services.demand_summary_services._south_ues_ids_for_nt_enrichment",
     return_value=frozenset({100}),
 )
-def test_clear_south_ues_with_nt_verify_rows_before_from_year(_south_ids_mock) -> None:
+def test_clear_south_ues_with_nt_verify_rows_outside_perimeter(_south_ids_mock) -> None:
     years = [2022, 2024]
     rows = [
         _south_ues_row(
             pk="calculated_max_power_mw",
             year_values=["100", "200"],
+            perimeter_variant_code="with_nt_without_gaes",
+            entity_label="ОЭС Юга с НТ",
         ),
-        _south_ues_row(pk="max_power", year_values=["90", "190"]),
+        _south_ues_row(
+            pk="max_power",
+            year_values=["90", "190"],
+            perimeter_variant_code="with_nt_without_gaes",
+            entity_label="ОЭС Юга с НТ",
+        ),
         _south_ues_row(
             pk="verify_for_calculated_max_power_mw",
             year_values=["10", "10"],
+            perimeter_variant_code="with_nt_without_gaes",
+            entity_label="ОЭС Юга с НТ",
         ),
     ]
     _inject_oes_summary_verification_rows(rows, years)
@@ -151,9 +185,8 @@ def test_clear_south_ues_with_nt_verify_rows_before_from_year(_south_ids_mock) -
     verify = next(
         r for r in rows if r["parameter_key"] == "verify_for_calculated_max_power_mw"
     )
-    assert verify["year_values"][0] == "—"
+    assert verify["year_values"][0] == "10"
     assert verify["year_values"][1] == "10"
-    assert NEW_TERRITORIES_FROM_YEAR == 2023
 
 
 @patch(
@@ -185,8 +218,8 @@ def test_south_ues_without_nt_manual_rows_keep_db_calculated_values(
         _res_row(pk="combined_on_oes", year_values=["50", "200"]),
         _res_row(pk="combined_on_ees", year_values=["10", "100"]),
     ]
-    tag_power_demand_south_ues_without_nt_manual_rows(rows)
 
+    tag_power_demand_south_ues_without_nt_manual_rows(rows)
     enrich_oes_summary_calculated_max_power_from_res_combined(
         rows, years, rounding_digits=0
     )
@@ -197,10 +230,17 @@ def test_south_ues_without_nt_manual_rows_keep_db_calculated_values(
         rows, years, rounding_digits=0
     )
 
-    calc_max = next(r for r in rows if r["parameter_key"] == "calculated_max_power_mw")
-    calc_ees = next(
-        r for r in rows if r["parameter_key"] == "calculated_combined_on_ees_mw"
+    calc_max = next(
+        r
+        for r in rows
+        if r["parameter_key"] == "calculated_max_power_mw"
+        and r["perimeter_variant_code"] == "without_nt_without_gaes"
     )
-    assert calc_max["pd_pd_south_ues_without_nt_manual_row"] is True
+    calc_ees = next(
+        r
+        for r in rows
+        if r["parameter_key"] == "calculated_combined_on_ees_mw"
+        and r["perimeter_variant_code"] == "without_nt_without_gaes"
+    )
     assert calc_max["year_values"] == ["9 999", "8 888"]
     assert calc_ees["year_values"] == ["7 777", "6 666"]

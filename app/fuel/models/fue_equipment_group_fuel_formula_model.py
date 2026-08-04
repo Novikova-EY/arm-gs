@@ -47,6 +47,7 @@ class EquipmentGroupFuelFormula(db.Model):
     # Аналог поля v из Access
     variant_number = db.Column(db.Integer, nullable=False, default=0, index=True)
 
+    # Код группы оборудования
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
     numb1 = db.Column(db.Numeric(36, 16), nullable=True, index=True)
 

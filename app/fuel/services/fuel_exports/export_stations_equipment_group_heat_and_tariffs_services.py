@@ -7,7 +7,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
-from app.common.services.help_services import apply_nbsp_to_row, format_decimal_for_display
+from app.common.services.help_services import (
+    apply_nbsp_to_row,
+    format_decimal_for_display,
+)
 from app.fuel.services.equipment_groups.equipment_group_heat_and_tariffs_services import (
     get_equipment_groups_with_heat_and_tariffs_data,
     build_equipment_group_heat_and_tariffs_hierarchy,
@@ -72,14 +75,16 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
     ws.title = "Тепло и тарифы из СТ"
 
     columns = (
-        [EQUIPMENT_GROUP_ID_HEADER, "Группа оборудования / ЭТО"]
+        [EQUIPMENT_GROUP_ID_HEADER, "Группа оборудования"]
         + [label for _, label, _ in HEAT_AND_TARIFFS_IDENTITY_COLUMNS]
         + ["Показатель"]
         + [str(y) for y in years]
     )
     num_cols = len(columns)
 
-    header_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="C6EFCE", end_color="C6EFCE", fill_type="solid"
+    )
     header_font = Font(bold=True, size=10)
     header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -144,9 +149,7 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
     for est_block in hierarchy:
         title = est_block.get("est_name") or "—"
         _bump_lengths([title] + [""] * (num_cols - 1))
-        write_merged_section_row(
-            ws, next_data_row_index(ws), num_cols, title, FILL_EST
-        )
+        write_merged_section_row(ws, next_data_row_index(ws), num_cols, title, FILL_EST)
 
         for ues_block in est_block.get("ues_list") or []:
             ues_title = ues_block.get("ues_name") or "—"
@@ -170,7 +173,11 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
                     for group_block in station_block.get("group_blocks") or []:
                         group_entity = group_block.get("equipment_group")
                         group_name = (
-                            (group_entity.name if group_entity and group_entity.name else None)
+                            (
+                                group_entity.name
+                                if group_entity and group_entity.name
+                                else None
+                            )
                             or (
                                 group_entity.name_ext
                                 if group_entity and group_entity.name_ext

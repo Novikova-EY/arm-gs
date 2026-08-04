@@ -1,0 +1,790 @@
+Version =20
+VersionRequired =20
+Checksum =-653406182
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =10794
+    DatasheetFontHeight =10
+    ItemSuffix =39
+    Left =1320
+    Top =1152
+    Right =11028
+    Bottom =6480
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xf6a358e7ed39e240
+    End
+    GUID = Begin
+        0x09055a09ceea554ea662ce9bdd780a45
+    End
+    NameMap = Begin
+        0x0acc0e55000000001729dcda18907e4e9145271dae23c22900000000419ab1e8 ,
+        0xfb50e540e0dbeb010000000021043f04380441043e043a045f003f043e043b04 ,
+        0x3504390400000000000021e2ef34dca1fd448b2279289c52cab9000000002187 ,
+        0x11a9b84ce54090b3ea010000000021043f04380441043e043a045f003e043104 ,
+        0x4a0435043a0442043e043204000000000000ba217e3ff787f34e8164045361f1 ,
+        0x559f07000000000000000000000000000000000000006e0061006d0065000000 ,
+        0x00000000542e37f29c41fe44a37dfae85b32a4fb0700000021e2ef34dca1fd44 ,
+        0x8b2279289c52cab96f0070007400000000000000b618364edaefee4b8ba72788 ,
+        0x9268083c0700000021e2ef34dca1fd448b2279289c52cab97600610072007300 ,
+        0x0000000000003de98d67856e95469269010bcc52bd3207000000000000000000 ,
+        0x000000000000000000007400610062006c00650000000000000067e84e934d58 ,
+        0x7e438b761ccf72d69ad107000000000000000000000000000000000000006e00 ,
+        0x000000000000000000000000000000000000000000000c000000030000000000 ,
+        0x000000000000000000000000
+    End
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =6555
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xc41f6c84057486449d9dfc7bb7c457e1
+            End
+            Begin
+                Begin ListBox
+                    OverlapFlags =215
+                    MultiSelect =1
+                    ColumnCount =3
+                    Width =1440
+                    Height =1695
+                    Name ="flist"
+                    RowSourceType ="Table/Query"
+                    RowSource ="select * from Список_полей where table<>\"a\""
+                    ColumnWidths ="1440"
+                    GUID = Begin
+                        0xb341fc20337c984e88a118617da74b38
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =6240
+                    Top =2145
+                    Width =1140
+                    Height =585
+                    TabIndex =1
+                    Name ="Кнопка2"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x5d2daf3a67837546a50ab04f4d800f84
+                    End
+                End
+                Begin ListBox
+                    OverlapFlags =85
+                    ColumnCount =2
+                    Left =1680
+                    Width =2295
+                    Height =1695
+                    TabIndex =2
+                    Name ="so"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [name],opt,vars  FROM [Список_объектов]"
+                    ColumnWidths ="2268;1134"
+                    GUID = Begin
+                        0x659cac056a6d65479d3ca8afcc4b0c71
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =765
+                            Height =240
+                            Name ="name_подпись"
+                            Caption ="name"
+                            GUID = Begin
+                                0xc14be01446c6bf4f860eb5c4bd774bf0
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Top =2265
+                    Width =2265
+                    Height =340
+                    TabIndex =3
+                    Name ="cond"
+                    GUID = Begin
+                        0x5c0ef580a8caa94f80ffd250d9660914
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =2820
+                    Top =2265
+                    Width =340
+                    Height =340
+                    TabIndex =4
+                    Name ="Кнопка9"
+                    Caption ="..."
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xdf4e55b25fc14e48b1b0e1bf36300de6
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =4275
+                    Top =120
+                    TabIndex =5
+                    Name ="transp"
+                    DefaultValue ="False"
+                    GUID = Begin
+                        0x71c2e4da21e8474890e38a52b52cf3fc
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =247
+                            Left =4505
+                            Top =90
+                            Width =1455
+                            Height =240
+                            Name ="Надпись11"
+                            Caption ="Транспонировать"
+                            GUID = Begin
+                                0xeee0269c65c06b45843fdb7c654a37c0
+                            End
+                        End
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =4545
+                    Top =1125
+                    Width =170
+                    Height =170
+                    TabIndex =6
+                    Name ="usl"
+                    DefaultValue ="True"
+                    GUID = Begin
+                        0xa4b171c34c4882459957edf7f04a43bf
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =4775
+                            Top =1095
+                            Width =855
+                            Height =240
+                            Name ="Надпись13"
+                            Caption ="тыс.тут"
+                            GUID = Begin
+                                0xbc8cf1dc0a79f749b71465087f86dd1c
+                            End
+                        End
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =4545
+                    Top =1485
+                    Width =170
+                    Height =170
+                    TabIndex =7
+                    Name ="nat"
+                    DefaultValue ="False"
+                    GUID = Begin
+                        0x7da0c83885de1046ba3e6cfcd60db920
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =4775
+                            Top =1455
+                            Width =855
+                            Height =240
+                            Name ="Надпись15"
+                            Caption ="тыс.тонн"
+                            GUID = Begin
+                                0x7f4a16fe1efc834b8eb1ef3192303074
+                            End
+                        End
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =6180
+                    Top =120
+                    Width =165
+                    Height =195
+                    TabIndex =8
+                    Name ="hide"
+                    DefaultValue ="True"
+                    GUID = Begin
+                        0x3baaf78a90de024cabe83a867f393cd4
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =6410
+                            Top =90
+                            Width =1860
+                            Height =240
+                            Name ="Надпись17"
+                            Caption ="не показывать пустые"
+                            GUID = Begin
+                                0x0d087cd86c1ec24f94dc9f273253038b
+                            End
+                        End
+                    End
+                End
+                Begin ListBox
+                    OverlapFlags =85
+                    MultiSelect =1
+                    ColumnCount =2
+                    Left =8526
+                    Width =1985
+                    Height =1701
+                    TabIndex =9
+                    Name ="af"
+                    RowSourceType ="Table/Query"
+                    RowSource ="select name,n  from Список_полей where table=\"a\""
+                    ColumnWidths ="1985;567"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xc639afd4265b0b429fcbd101666d0b21
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Left =9075
+                    Top =2280
+                    Width =1125
+                    Height =345
+                    TabIndex =10
+                    Name ="fnf"
+                    GUID = Begin
+                        0x0d5bc5e37698734fb1f9a3f763777115
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =4275
+                    Top =585
+                    TabIndex =11
+                    Name ="itog"
+                    DefaultValue ="False"
+                    GUID = Begin
+                        0x8e48f3899dbfda4e99844c29b8710d6e
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =247
+                            Left =4505
+                            Top =555
+                            Width =855
+                            Height =240
+                            Name ="Надпись25"
+                            Caption ="Итог"
+                            GUID = Begin
+                                0x796c6728326f8047bff004eb3258a0b7
+                            End
+                        End
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =6240
+                    Top =1485
+                    Width =170
+                    Height =170
+                    TabIndex =12
+                    Name ="secstr"
+                    DefaultValue ="False"
+                    GUID = Begin
+                        0xca1ab8a185c7a14b883f447ef81e1d19
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =85
+                            Left =6470
+                            Top =1455
+                            Width =1155
+                            Height =240
+                            Name ="Надпись27"
+                            Caption ="2-ой строкой"
+                            GUID = Begin
+                                0x48335c6b753f02428d13e7dadcff5c82
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Left =9090
+                    Top =2850
+                    Width =1110
+                    Height =330
+                    TabIndex =13
+                    Name ="fnat"
+                    GUID = Begin
+                        0xddb66d6efedb9e4d9a31e2e6274297af
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Top =1785
+                    Width =3180
+                    Height =315
+                    TabIndex =14
+                    Name ="savecond"
+                    GUID = Begin
+                        0xbf3b375c2f4994478763e4d3a7d9811f
+                    End
+                End
+                Begin OptionGroup
+                    OverlapFlags =85
+                    Left =3405
+                    Top =2265
+                    Width =2267
+                    Height =343
+                    TabIndex =15
+                    Name ="condmode"
+                    DefaultValue ="1"
+                    GUID = Begin
+                        0x2e88f5c00c43d24288b489db22918440
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =3480
+                            Top =2353
+                            OptionValue =1
+                            Name ="Переключатель35"
+                            GUID = Begin
+                                0xa7d7a5db313dd04aa464892601c90c79
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =3710
+                                    Top =2325
+                                    Width =525
+                                    Height =240
+                                    Name ="Надпись36"
+                                    Caption ="новое"
+                                    GUID = Begin
+                                        0x0f2f528ccaf4b44d9e7470f3cf6ee2c2
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =4590
+                            Top =2353
+                            OptionValue =2
+                            Name ="Переключатель37"
+                            GUID = Begin
+                                0x2f612b4d912b9546983bd12568a0e3d6
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =4820
+                                    Top =2325
+                                    Width =615
+                                    Height =240
+                                    Name ="Надпись38"
+                                    Caption ="правка"
+                                    GUID = Begin
+                                        0xa615910c9d7e7f41baebf34ca82e0577
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub af_Click()
+i = af.ListIndex
+For j = 0 To flist.ListCount - 1
+If InStr(";" & af.Column(1, i) & ";", ";" & flist.Column(0, j) & ";") > 0 Then
+If af.Selected(i) Then flist.Selected(j) = True Else flist.Selected(j) = False
+End If
+Next j
+End Sub
+
+Private Sub Кнопка2_Click()
+Dim sellist As String, db As Database, qr As QueryDef, qh As QueryDef
+Dim h As String, R As Report, ry As Recordset, qt As QueryDef
+Set db = DBEngine.Workspaces(0).Databases(0)
+If cond <> "" Then swhere = " Where (" & cond & ")" Else swhere = ""
+sumlist = ""
+formugol = ""
+formugol1 = ""
+nsugol = ""
+fnf = 0
+If Not (usl And nat) Then secstr = False
+Debug.Print Time
+For i = 0 To flist.ListCount - 1
+If flist.Column(2, i) <> "" And flist.Column(1, i) <> "f" And Not flist.Selected(i) And flist.Column(1, i) = "w" Then
+nsugol = nsugol & ",sum(w." & flist.Column(0, i) & ") as " & flist.Column(0, i)
+End If
+Next i
+bnugol = False
+For Each i In flist.ItemsSelected
+If sumlist <> "" Then sumlist = sumlist & ","
+If flist.Column(1, i) = "f" Then
+isum = InStr(flist.Column(2, i), ";")
+sumlist = sumlist & "sum(" & Mid(flist.Column(2, i), 1, isum - 1) & ") as " & flist.Column(0, i)
+Else
+sumlist = sumlist & "sum(" & flist.Column(1, i) & "." & flist.Column(0, i) & ") as " & flist.Column(0, i)
+End If
+If flist.Column(0, i) = "UGOL" Then bnugol = True
+Next i
+If nat And bnugol Then sumlist = sumlist & nsugol
+fromtxt1 = "([#w] as w left join [#d] as d on w.numb1120=d.numb1120 and w.year=d.year #v) inner join имена_станций on w.numb1120=имена_станций.numb "
+If so.Column(2) = "no" Then fromtxt1 = Replace(fromtxt1, "#v", "") Else fromtxt1 = Replace(fromtxt1, "#v", " and w.v=d.v")
+fromtxt1 = Replace(fromtxt1, "#w", so.Column(0))
+fromtxt1 = Replace(fromtxt1, "#d", so.Column(1))
+sumsql = "select " & sumlist & " FROM " & fromtxt1 & swhere & ";"
+If hide Then
+Set rsum = db.OpenRecordset(sumsql)
+rsum.MoveFirst
+End If 'hide
+If InStr(cond, "main=0") > 0 Then vedtxt = "" Else vedtxt = " and w.ved>0"
+If Not transp Then 'прямая таблица
+fnat = 0
+seltxt = "SELECT Имена_станций.NAME AS name1, w.numb1120, w.numb1, 0 as v,w.YEAR, 1 as var, Имена_областей.NAME AS oblname, Имена_ОЭС.name AS oesname, w.OBL, w.OES "
+If so.Column(2) <> "no" Then seltxt = Replace(seltxt, " 0 as v", "w.v")
+sellist = ",null as f01,null as f02,null as f03,null as f04,null as f05,null as f06,null as f07,null as f08,null as f09,null as f10"
+sellistnat = sellist
+sellistdop = ",null as f11,null as f12,null as f13,null as f14,null as f15"
+sellistsum = sellist
+sellistsumnat = sellist
+h = """"" as h01,"""" as h02,"""" as h03,"""" as h04,"""" as h05,"""" as h06,"""" as h07,"""" as h08,"""" as h09,"""" as h10"
+hdop = """"" as h11,"""" as h12,"""" as h13,"""" as h14,"""" as h15"
+nf = 0
+For Each i In flist.ItemsSelected
+If hide Then If z(rsum(flist.Column(0, i))) > 0 Then B = True Else B = False Else B = True
+If B Then
+nf = nf + 1
+If nf = 11 Then
+sellist = sellist & sellistdop
+sellistsum = sellistsum & sellistdop
+sellistnat = sellistnat & sellistdop
+sellistsumnat = sellistsumnat & sellistdop
+h = h & "," & hdop
+End If 'nf=11
+fname = flist.Column(0, i)
+If usl Or (nat And (flist.Column(2, i) = "" Or flist.Column(1, i) = "f")) Then
+If flist.Column(1, i) = "f" Then
+isum = InStr(flist.Column(2, i), ";")
+f1 = Mid(flist.Column(2, i), 1, isum - 1) & " as f" & Format(nf, "00")
+f1sum = Mid(flist.Column(2, i), isum + 1) & " as f" & Format(nf, "00")
+Else
+f1 = flist.Column(1, i) & "." & fname & " as f" & Format(nf, "00")
+f1sum = "sum(" & flist.Column(1, i) & "." & fname & ") as f" & Format(nf, "00")
+End If 'f
+h1 = """" & fname & """" & " as h" & Format(nf, "00")
+sellist = Replace(sellist, "null as f" & Format(nf, "00"), f1)
+sellistsum = Replace(sellistsum, "null as f" & Format(nf, "00"), f1sum)
+h = Replace(h, """"" as h" & Format(nf, "00"), h1)
+End If 'usl
+If nat And flist.Column(2, i) <> "" And flist.Column(1, i) <> "f" Then
+If usl Then
+If Not secstr Then nf = nf + 1
+If nf = 11 And Not secstr Then
+sellist = sellist & sellistdop
+sellistsum = sellistsum & sellistdop
+h = h & "," & hdop
+End If ' nf=11
+If fnat = 0 Then fnat = nf
+End If 'usl in nat
+f1 = flist.Column(2, i) & " as f" & Format(nf, "00")
+f1sum = "sum(" & flist.Column(2, i) & ") as f" & Format(nf, "00")
+h1 = """n" & fname & """" & " as h" & Format(nf, "00")
+If Not secstr Then
+sellist = Replace(sellist, "null as f" & Format(nf, "00"), f1)
+sellistsum = Replace(sellistsum, "null as f" & Format(nf, "00"), f1sum)
+Else 'secstr
+sellistnat = Replace(sellistnat, "null as f" & Format(nf, "00"), f1)
+sellistsumnat = Replace(sellistsumnat, "null as f" & Format(nf, "00"), f1sum)
+End If ' not secstr
+h = Replace(h, """"" as h" & Format(nf, "00"), h1)
+If flist.Column(1, i) = "w" And flist.Column(0, i) <> "UGOL" Then '1)
+If formugol <> "" Then formugol = formugol & "+"
+If formugolsum <> "" Then formugolsum = formugolsum & "+"
+formugol = formugol & "z(f" & Format(nf, "00") & ")"
+End If '1)
+End If
+End If
+Next i
+'End If
+If nat And bnugol Then
+For i = 0 To flist.ListCount - 1
+If flist.Column(2, i) <> "" And flist.Column(1, i) <> "f" And Not flist.Selected(i) And flist.Column(1, i) = "w" Then
+If rsum(flist.Column(0, i)) <> 0 Then
+If formugol1 <> "" Then formugol1 = formugol1 & "+"
+formugol1 = formugol1 & "z(" & flist.Column(2, i) & ")"
+End If 'rsum<>0
+End If
+Next i
+If formugol <> "" And formugol1 <> "" Then formugol = formugol & "+"
+formugolsum = formugol
+If formugol1 <> "" Then formugolsum = formugol & "sum(" & formugol1 & ")"
+formugol = formugol & formugol1
+End If 'nat and bnugol
+sellistnat = Replace(sellistnat, "#", formugol)
+sellistsumnat = Replace(sellistsumnat, "sum(#)", formugolsum)
+fnf = nf
+If fnf > 15 Then
+bm = MsgBox("Число столбцов больше 15", vbOKOnly)
+GoTo endp
+End If 'fnf>15
+If nat Then
+If Not secstr Then
+fromtxt1 = "(" & fromtxt1 & ") left join Натура99 as n on w.numb1120=n.numb1120  and w.year=n.year"
+fromtxt = "((" & fromtxt1 & ")INNER JOIN Имена_областей ON w.OBL = Имена_областей.OBL) INNER JOIN Имена_ОЭС ON w.OES = Имена_ОЭС.oes"
+sellist = Replace(sellist, "#", formugol)
+sellistsum = Replace(sellistsum, "sum(#)", formugolsum)
+Else 'secstr
+fromtxt1nat = "(" & fromtxt1 & ") left join Натура99 as n on w.numb1120=n.numb1120 and w.year=n.year"
+fromtxtnat = "((" & fromtxt1nat & ")INNER JOIN Имена_областей ON w.OBL = Имена_областей.OBL) INNER JOIN Имена_ОЭС ON w.OES = Имена_ОЭС.oes"
+sellistnat = Replace(sellistnat, "#", formugol)
+sellistsumnat = Replace(sellistsumnat, "sum(#)", formugolsum)
+End If 'not secstr
+End If 'nat
+fromtxt = "((" & fromtxt1 & ")INNER JOIN Имена_областей ON w.OBL = Имена_областей.OBL) INNER JOIN Имена_ОЭС ON w.OES = Имена_ОЭС.oes"
+sqlqr = seltxt & sellist & " FROM " & fromtxt & ";"
+sqlqr = Replace(sqlqr, ";", swhere)
+If secstr Then
+sqlqr = sqlqr & " UNION " & Replace(seltxt, "1 as var", "2 as var") & sellistnat & " FROM " & fromtxtnat & swhere
+End If
+Set qsum = db.QueryDefs("Справка")
+Set qh = db.QueryDefs("СправкаП(заголовок)")
+sqlhold = qh.SQL
+sqlsumold = qsum.SQL
+qh.SQL = "select " & h & " from main;"
+If itog Then
+sqlsum1 = "Select ""Всего"" as name1,0 as numb1,0 as numb1120,0 as v,w.year,1 as var,null as oblname,null as oesname,0 as oes,0 as obl"
+sumvarfrom = ""
+sumvargroup = ""
+If so.Column(2) <> "no" Then
+sqlsum1 = Replace(sqlsum1, "0 as v", "sumvar.v as v")
+sumvarfrom = " inner join sumvar on w.v=sumvar.v1 "
+sumvargroup = ",sumvar.v "
+End If
+sqlsum = sqlsum1 & sellistsum & " from " & "(" & fromtxt1 & ")" & sumvarfrom & swhere & vedtxt & " group by w.year" & sumvargroup
+If Not secstr Then
+qsum.SQL = sqlqr & " union " & sqlsum & IIf(secstr, "", ";")
+Else
+qsum.SQL = sqlqr & " union " & sqlsum & " UNION " & Replace(sqlsum1, "1 as var", "2 as var") & sellistsumnat & " from (" & fromtxt1nat & ")" & sumvarfrom & swhere & vedtxt & " group by w.year" & sumvargroup & ";"
+End If 'not secstr
+Else
+qsum.SQL = sqlqr & ";"
+End If 'itog
+If fnf <= 10 Then
+DoCmd.OpenReport ("СправкаП"), acPreview
+Else
+DoCmd.OpenReport ("СправкаП15"), acPreview
+End If
+qsum.SQL = sqlsumold
+qh.SQL = sqlhold
+Debug.Print Time
+Else 'транспонированная таблица
+Debug.Print Time
+If nat Then fromtxt1 = "(" & fromtxt1 & ") left join Натура99 as n on w.numb1120=n.numb1120  and w.year=n.year"
+usql1 = "Select numb1120,0 as v,year,obl,oes,#f as data,""#n"" as h from [Рабочий(станции)] where #f>0"
+If so.Column(2) <> "no" Then usql1 = Replace(usql1, "0 as v", "v")
+Set qw = db.QueryDefs("Рабочий(станции)")
+Set qu = db.QueryDefs("Справка1п")
+wsqlold = qw.SQL
+usqlold = qu.SQL
+usql = ""
+sellist = ""
+sellistsum = ""
+nf = 1
+For Each i In flist.ItemsSelected
+If hide Then If z(rsum(flist.Column(0, i))) > 0 Then B = True Else B = False Else B = True
+If B Then
+fname = flist.Column(0, i)
+If usl Or (nat And (flist.Column(2, i) = "" Or flist.Column(1, i) = "f")) Then 'условное
+If flist.Column(1, i) = "f" Then
+isum = InStr(flist.Column(2, i), ";")
+f1 = Mid(flist.Column(2, i), 1, isum - 1) & " as " & fname
+f1sum = Mid(flist.Column(2, i), isum + 1)
+Else
+f1 = flist.Column(1, i) & "." & fname
+f1sum = "sum(" & f1 & ")"
+End If
+h1 = Format(nf, "00") & fname
+sellist = sellist & "," & f1
+sellistsum = sellistsum & "," & f1sum
+usql1f = Replace(usql1, "#f", fname)
+usql1f = Replace(usql1f, "#n", h1)
+If usql <> "" Then usql = usql & " UNION "
+usql = usql & usql1f
+nf = nf + 1
+End If 'условное
+If nat And flist.Column(2, i) <> "" And flist.Column(1, i) <> "f" Then 'натура
+f1u = flist.Column(1, i) & "." & fname
+f1 = flist.Column(2, i) & " as " & "n" & IIf(fname <> "[intin]", fname, "intin")
+h1 = Format(nf, "00") & "n" & fname
+sellist = sellist & "," & f1
+sellistsum = sellistsum & "," & "sum(" & flist.Column(2, i) & ") as " & "n" & IIf(fname <> "[intin]", fname, "intin")
+If InStr(cond, f1u) > 0 Then sellist = sellist & "," & f1u
+usql1f = Replace(usql1, "#f", "n" & IIf(fname <> "[intin]", fname, "intin"))
+usql1f = Replace(usql1f, "#n", h1)
+If usql <> "" Then usql = usql & " UNION "
+usql = usql & usql1f
+If flist.Column(1, i) = "w" And flist.Column(0, i) <> "UGOL" Then
+If formugol <> "" Then formugol = formugol & "+"
+formugol = formugol & "z(n" & fname & ")"
+End If
+nf = nf + 1
+End If 'натура
+End If
+Next i
+If nat And bnugol Then
+formugol1 = ""
+For i = 0 To flist.ListCount - 1
+If flist.Column(2, i) <> "" And flist.Column(1, i) <> "f" And Not flist.Selected(i) And flist.Column(1, i) = "w" Then
+If rsum(flist.Column(0, i)) <> 0 Then
+If formugol1 <> "" Then formugol1 = formugol1 & "+"
+formugol1 = formugol1 & "z(" & flist.Column(2, i) & ")"
+End If
+End If
+Next i
+If formugol <> "" And formugol1 <> "" Then formugol = formugol & "+"
+formugolsum = formugol
+If formugol1 <> "" Then formugolsum = formugol & "sum(" & formugol1 & ")"
+formugol = formugol & formugol1
+End If
+sellist = Replace(sellist, "#", formugol)
+sellistsum = Replace(sellistsum, "sum(#)", formugolsum)
+usql = usql & ";"
+wsql = "Select w.numb1120 ,0 as v,w.year,w.obl,w.oes" & sellist & " FROM " & fromtxt1 & swhere
+If so.Column(2) <> "no" Then wsql = Replace(wsql, "0 as v", "w.v")
+If itog Then
+wsqlsum = "Select 0 as numb1120,0 as v,w.year,0 as obl,0 as oes" & sellistsum & " FROM " & fromtxt1 & swhere & vedtxt & " group by w.year;"
+wsql = wsql & " union " & wsqlsum
+Else
+wsql = wsql & ";"
+End If
+qw.SQL = wsql
+qu.SQL = usql
+Set ry = db.OpenRecordset("Справка(годы)")
+ry.MoveFirst
+sprSQL = "Select c.name,ordnumb as numb1,s.numb1120,s.v,s.h,s.obl,s.oes,o.name as oblname,e.name as oesname"
+ny = 1
+h = ""
+ylist = ""
+Do While Not ry.EOF
+sprSQL = sprSQL & ",[" & ry!YEAR & "] as f" & ny
+If h <> "" Then h = h & ","
+h = h & """" & ry!YEAR & """ as h" & Format(ny, "00")
+If ylist <> "" Then ylist = ylist & ","
+ylist = ylist & ry!YEAR
+ry.MoveNext
+ny = ny + 1
+Loop
+For i = ny To 15
+sprSQL = sprSQL & ",null as f" & i
+h = h & ",null as h" & Format(i, "00")
+Next i
+Set qsprt = db.QueryDefs("Справка1пТ")
+sprtsqlold = qsprt.SQL
+qsprt.SQL = Replace(qsprt.SQL, "PIVOT Справка1п.year", "PIVOT Справка1п.year " & "IN (" & ylist & ")")
+sprSQL = sprSQL & " from ((Справка1пТ as s inner join имена_станций as c on s.numb1120=c.numb) inner join имена_областей as o on s.obl=o.obl) inner join имена_ОЭС as e on s.oes=e.oes;"
+Set qspr = db.QueryDefs("Справка1пТ+")
+sprsqlold = qspr.SQL
+qspr.SQL = sprSQL
+Set qh = db.QueryDefs("СправкаП(заголовок)")
+sqlhold = qh.SQL
+qh.SQL = "select " & h & " from main;"
+Debug.Print Time
+If ny <= 10 Then
+DoCmd.OpenReport ("СправкаТ"), acPreview
+Else
+DoCmd.OpenReport ("СправкаТ15"), acPreview
+End If
+qw.SQL = wsqlold
+qu.SQL = usqlold
+qspr.SQL = sprsqlold
+qsprt.SQL = sprtsqlold
+qh.SQL = sqlhold
+Debug.Print Time
+End If
+endp:
+End Sub
+
+Private Sub Кнопка9_Click()
+DoCmd.OpenForm "Условие", , , , , acDialog, "Справка"
+End Sub

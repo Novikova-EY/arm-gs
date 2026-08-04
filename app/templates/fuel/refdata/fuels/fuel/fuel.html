@@ -463,7 +463,10 @@
 
 <!-- Строки таблицы. Столбец "Короткое наименование" -->
                                 <td>
-                                    <input type="text" name="fuel_nazvl[]" class="form-control" value="{{ fuel.nazvl or '' }}">
+                                    <input type="text" name="fuel_nazvl[]" class="form-control"
+                                           value="{{ fuel.nazvl or '' }}"
+                                           style="text-transform: lowercase;"
+                                           oninput="this.value = this.value.toLowerCase()">
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Тип угольного топлива" -->

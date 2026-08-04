@@ -107,7 +107,7 @@ class EquipmentGroupExtraFuelParam(db.Model):
     luch = db.Column(db.Numeric(36, 16), nullable=True)
     tal = db.Column(db.Numeric(36, 16), nullable=True)
 
-    numb1120 = db.Column(db.Integer, nullable=True, index=True)  # связь по NUMB1120
+    numb1120 = db.Column(db.Integer, nullable=True, index=True)  # Код группы оборудования
     numb1 = db.Column(db.Integer, nullable=True)
 
     database_version_id = db.Column(

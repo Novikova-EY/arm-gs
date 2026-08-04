@@ -5,8 +5,9 @@
 
         <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex flex-nowrap align-items-center w-100 gap-1">
             <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
-            {% for key, value in request.args.items() %}
-                {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter", "equipment_group_name_filter"] %}
+            {% for key, value in request.args.items(multi=True) %}
+                {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter", "equipment_group_name_filter"]
+                      and key not in _fuel_transient_query_keys|default(['equipment_group_ids', 'show_empty_rows']) %}
                     {% if not (hide_year_range|default(false) and key in ["year", "start_year", "end_year"]) %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}

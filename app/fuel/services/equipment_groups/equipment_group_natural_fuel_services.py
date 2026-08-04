@@ -20,7 +20,7 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
 
 # Колонки для отображения (attr, label, is_numeric). Порядок как в Натура99.xlsx.
 NATURAL_FUEL_COLUMNS = [
-    ("numb1120", "Код электростанции", False),
+    ("numb1120", "Код группы оборудования", False),
     ("gaz", "GAZ", True),
     ("gazpp", "gazpp", True),
     ("gaz_prir", "gaz_prir", True),
@@ -118,7 +118,7 @@ NATURAL_FUEL_NUMERIC_ATTRS = [a for a, _l, n in NATURAL_FUEL_COLUMNS if n]
 
 def get_equipment_groups_with_natural_fuel_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,

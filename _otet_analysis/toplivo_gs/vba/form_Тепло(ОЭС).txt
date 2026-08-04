@@ -1,0 +1,218 @@
+Version =19
+VersionRequired =19
+Checksum =440772197
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDeletions = NotDefault
+    AllowAdditions = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    AllowUpdating =1
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =18
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =7373
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =288
+    Right =6276
+    Bottom =1920
+    DatasheetForeColor =33554432
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x6c787aa58f2fe240
+    End
+    GUID = Begin
+        0x1153fc1273782c48869094e60803465c
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Тепло(ОЭС)"
+    DatasheetFontName ="Times New Roman"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =284
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x2ddb203eca4df949ab48a6efd78b7516
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    ColumnWidth =645
+                    ColumnOrder =0
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    Format ="#"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xa91afde6144bf64ab49235cb3504d620
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =567
+                    Width =851
+                    ColumnWidth =690
+                    ColumnOrder =1
+                    TabIndex =1
+                    Name ="Q"
+                    ControlSource ="Sum-Q"
+                    Format ="#"
+                    GUID = Begin
+                        0x14b3a5cc2de57d468abb90f1b2409631
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =1418
+                    Width =851
+                    ColumnWidth =690
+                    ColumnOrder =2
+                    TabIndex =2
+                    Name ="qotr"
+                    ControlSource ="Sum-QOTR"
+                    Format ="#"
+                    GUID = Begin
+                        0x4f200b7dfc186145b6d2f09d87ab5346
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2269
+                    Width =851
+                    ColumnWidth =600
+                    ColumnOrder =3
+                    TabIndex =3
+                    Name ="nust"
+                    ControlSource ="Sum-NUST"
+                    Format ="#"
+                    GUID = Begin
+                        0x89a0662908deb747a9a296ebcf1fb29a
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3120
+                    Width =851
+                    ColumnWidth =600
+                    ColumnOrder =4
+                    TabIndex =4
+                    Name ="nt"
+                    ControlSource ="Sum-NT"
+                    Format ="#"
+                    GUID = Begin
+                        0x67b8ffa7d3becb43a9a0ae7492c87f21
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =5670
+                    ColumnWidth =690
+                    ColumnOrder =7
+                    TabIndex =5
+                    Name ="Qрас"
+                    ControlSource ="Qрас"
+                    Format ="#"
+                    GUID = Begin
+                        0xfa71fd688ad7a343bada1132cf21c40b
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =5105
+                    ColumnWidth =315
+                    ColumnOrder =8
+                    TabIndex =6
+                    Name ="%пр"
+                    ControlSource ="Прирост"
+                    Format ="#"
+                    EventProcPrefix ="Ctl_пр"
+                    GUID = Begin
+                        0x3faa567eef3d484a937e9b50a12660e0
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =247
+                    Left =4545
+                    ColumnWidth =645
+                    ColumnOrder =6
+                    TabIndex =7
+                    Name ="Delta"
+                    ControlSource ="Delta"
+                    Format ="#"
+                    GUID = Begin
+                        0x789e77011c341d40a50dcbcd15a5dcda
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =6239
+                    ColumnWidth =510
+                    ColumnOrder =9
+                    TabIndex =8
+                    Name ="Hs"
+                    ControlSource ="Hs"
+                    GUID = Begin
+                        0x3bbc8ec8799e59479d0033d3b7116ccd
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =6806
+                    ColumnWidth =345
+                    ColumnOrder =10
+                    TabIndex =9
+                    Name ="RI"
+                    ControlSource ="RI"
+                    GUID = Begin
+                        0xc942b10a0eba48418e531190310a4116
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =3971
+                    ColumnWidth =510
+                    ColumnOrder =5
+                    TabIndex =10
+                    Name ="Ht"
+                    ControlSource ="Ht"
+                    Format ="#"
+                    GUID = Begin
+                        0xeeb628a564bac94faa1e7022cf7f32c8
+                    End
+                End
+            End
+        End
+    End
+End

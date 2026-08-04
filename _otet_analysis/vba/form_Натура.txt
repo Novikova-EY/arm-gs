@@ -1,0 +1,1757 @@
+Version =21
+VersionRequired =20
+Checksum =1825037192
+Begin Form
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =17007
+    DatasheetFontHeight =10
+    ItemSuffix =34
+    Left =940
+    Top =1880
+    Right =17680
+    Bottom =7910
+    FrozenColumns =3
+    DatasheetGridlinesColor =12632256
+    Filter ="year=2020 and OES=1"
+    OrderBy ="obl, numb1, year"
+    RecSrcDt = Begin
+        0xe374f5849246e240
+    End
+    GUID = Begin
+        0xa8dc36ae5bc44f488c081b7c6ff2be8a
+    End
+    NameMap = Begin
+        0x0acc0e5500000000b66a07c92c773b499d399e2cda30ecad00000000487a3e28 ,
+        0x576fe64000000000000000001d04300442044304400430043900390000000000 ,
+        0x0000c0d1816a04edab4fba029e42faa6157106000000a8dc36ae5bc44f488c08 ,
+        0x1b7c6ff2be8a59004500410052000000000000004b8bd83d3ada0d42aa886dab ,
+        0xb4c177bd06000000a8dc36ae5bc44f488c081b7c6ff2be8a4f00450053000000 ,
+        0x00000000aaf546d14bbfa9488bf39c4998f3b63a06000000a8dc36ae5bc44f48 ,
+        0x8c081b7c6ff2be8a4f0042004c00000000000000dbb03011f4e90f4992c9d7a5 ,
+        0xa9ab506d07000000b66a07c92c773b499d399e2cda30ecad6e0075006d006200 ,
+        0x310000000000000003781c2c8250324fa170f5a8a15bd1c307000000b66a07c9 ,
+        0x2c773b499d399e2cda30ecad4e0041004d0045000000000000009a904d76b9e1 ,
+        0xfb448b497f8e78bff90507000000b66a07c92c773b499d399e2cda30ecad5900 ,
+        0x450041005200000000000000a4fe1d1aeffb3e4abff924752bbffb9307000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad470041005a000000000000000b3e7061 ,
+        0x171f1c4fa4120eb099db3ac207000000b66a07c92c773b499d399e2cda30ecad ,
+        0x490053004b005f00470041005a00000000000000f74d4a119502cf47a6e0b5b0 ,
+        0x41b9c4ec07000000b66a07c92c773b499d399e2cda30ecad4d0041005a005500 ,
+        0x5400000000000000c2d31837c89b8c4ca91dbc792fb03aac07000000b66a07c9 ,
+        0x2c773b499d399e2cda30ecad500052004f0043004800000000000000dfdb1438 ,
+        0x8effae4397b87be91e31440a07000000b66a07c92c773b499d399e2cda30ecad ,
+        0x44004f004e00000000000000b7a76be97f09074cbc9ac2b2c69edda407000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad50004f0044004d00000000000000dcc0 ,
+        0x82ec6d494a41a6f6d81eb939680207000000b66a07c92c773b499d399e2cda30 ,
+        0xecad4b0055005a004e00000000000000aa5e04fe272a19408c16d6901dd127ab ,
+        0x07000000b66a07c92c773b499d399e2cda30ecad42004100530048004b000000 ,
+        0x000000009b375907c0cfa048916bbbc489d51ff907000000b66a07c92c773b49 ,
+        0x9d399e2cda30ecad4b0041005a0041004800000000000000045e584e3e2af548 ,
+        0x8aae44236b78a5f207000000b66a07c92c773b499d399e2cda30ecad4b004100 ,
+        0x4e0000000000000064139e9f36076646ae728b2ab655dc2607000000b66a07c9 ,
+        0x2c773b499d399e2cda30ecad490052004b0055005400000000000000e87e231f ,
+        0x2f10d840bdb8c71799cc182b07000000b66a07c92c773b499d399e2cda30ecad ,
+        0x540055004e0047000000000000007bfb3dbd7c30594183defed36ed9196e0700 ,
+        0x0000b66a07c92c773b499d399e2cda30ecad480041004b00000000000000035a ,
+        0x92b4daa0754badee2aba398b6f5907000000b66a07c92c773b499d399e2cda30 ,
+        0xecad5400550056000000000000006948f45472a7a54d9471ff3f23ffbec70700 ,
+        0x0000b66a07c92c773b499d399e2cda30ecad4200550052000000000000008563 ,
+        0x973f42ce714596d18ac3c49ec33b07000000b66a07c92c773b499d399e2cda30 ,
+        0xecad4300480049005400000000000000f66ae35f140fc64290d33efd71a8844c ,
+        0x07000000b66a07c92c773b499d399e2cda30ecad41004d005500520000000000 ,
+        0x0000d0160b5a10a68e428a1af0777d2d0f1107000000b66a07c92c773b499d39 ,
+        0x9e2cda30ecad550052004700000000000000534905b9475a7349b42d9e7689e9 ,
+        0xbf2507000000b66a07c92c773b499d399e2cda30ecad55005300480055004d00 ,
+        0x000000000000376ca22b0fcd3744a42d195986b3dae007000000b66a07c92c77 ,
+        0x3b499d399e2cda30ecad5000520049004d0000000000000086c3f62ef7fe0c4b ,
+        0xba0ba3816984c7ab07000000b66a07c92c773b499d399e2cda30ecad59004100 ,
+        0x4b005500540000000000000039d09ce29f85f04d9500689d19286cfc07000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad4b0041004d0043004800000000000000 ,
+        0x04d7304d9a71264e91c08c0035bb3f1907000000b66a07c92c773b499d399e2c ,
+        0xda30ecad4d004100470000000000000092d1800804d6ff4381f00805e90b2264 ,
+        0x07000000b66a07c92c773b499d399e2cda30ecad4300480055004b004f005400 ,
+        0x00000000000010d0b505d43f044abb1d41d337342b0f07000000b66a07c92c77 ,
+        0x3b499d399e2cda30ecad530041004800000000000000f39754b8b42e51429b52 ,
+        0x7086b3e2a72507000000b66a07c92c773b499d399e2cda30ecad670061007a00 ,
+        0x5f007000720069007200000000000000ce5e717ab592f54291081e7e65852140 ,
+        0x07000000b66a07c92c773b499d399e2cda30ecad61007a006500790000000000 ,
+        0x0000a0f58ffb1f40d84aaa197c54ae0e479d07000000b66a07c92c773b499d39 ,
+        0x9e2cda30ecad6a006500720000000000000005cb9245cb6a3748a1f62b59f707 ,
+        0xef0607000000b66a07c92c773b499d399e2cda30ecad64006f006d0065006e00 ,
+        0x5f0067000000000000008768c504b1908c4689593e638552c19f07000000b66a ,
+        0x07c92c773b499d399e2cda30ecad64006900730065006c00000000000000b01c ,
+        0x1c10ec8632458d2dc25a71b8d10907000000b66a07c92c773b499d399e2cda30 ,
+        0xecad74007600700072006f0063006800000000000000b302779fe596964d9a9c ,
+        0x6015c057db8107000000b66a07c92c773b499d399e2cda30ecad6b0075007a00 ,
+        0x6e00670064000000000000003be73a3a8b645c43a9a5902b207a702207000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad73007600650072000000000000008ce4 ,
+        0x18247dbeeb41bf7c994242435a7607000000b66a07c92c773b499d399e2cda30 ,
+        0xecad65006b0069006200000000000000b1d76b2518b6e24a8db8ff52e4343921 ,
+        0x07000000b66a07c92c773b499d399e2cda30ecad6e0061007a00610072000000 ,
+        0x000000006ec60772e811ac47b7480a2d70eb46ea07000000b66a07c92c773b49 ,
+        0x9d399e2cda30ecad67007500730069006e00000000000000d252c434ede16040 ,
+        0x84ca90a4698651b307000000b66a07c92c773b499d399e2cda30ecad68006100 ,
+        0x72000000000000004fa986b09a347c41a881106ef2de4b1607000000b66a07c9 ,
+        0x2c773b499d399e2cda30ecad720061006900000000000000b1ca8415adfa5a4b ,
+        0x8cc79ed4f388b4a907000000b66a07c92c773b499d399e2cda30ecad62006900 ,
+        0x6b0069006e000000000000003430ad88e5bd5544af81a2da6954354207000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad6e006500720075000000000000007d34 ,
+        0x422a862cb644b1b5e2d0eaec921c07000000b66a07c92c773b499d399e2cda30 ,
+        0xecad62006500720069006e006700000000000000393a62bb49a83a4192da4c63 ,
+        0xb6454cc207000000b66a07c92c773b499d399e2cda30ecad56006f0072006b00 ,
+        0x000000000000075952ab4b4f7c4a904eb8457932c2b707000000b66a07c92c77 ,
+        0x3b499d399e2cda30ecad670061007a00700070000000000000004d6f97bba573 ,
+        0x2140a4656ac50634e63607000000b66a07c92c773b499d399e2cda30ecad6d00 ,
+        0x75006700000000000000692b34817a35254c9ceb4acf2425521007000000b66a ,
+        0x07c92c773b499d399e2cda30ecad6d0061007a0074006f007000000000000000 ,
+        0xf1a4fa7f89570a45b75be6af4b1cc92b07000000b66a07c92c773b499d399e2c ,
+        0xda30ecad6b00610072006100620000000000000036008b375d81164c9d0885f0 ,
+        0x2599102907000000b66a07c92c773b499d399e2cda30ecad6b006f006b007300 ,
+        0x5f0067000000000000000f4f163ae49c664f977c57bf907bc31307000000b66a ,
+        0x07c92c773b499d399e2cda30ecad73007a0068005f00670061007a0000000000 ,
+        0x00006da26a0d75e66943b7b323514f52592507000000b66a07c92c773b499d39 ,
+        0x9e2cda30ecad6b0075007a006e0074000000000000005093e935e8a66c46816a ,
+        0x56db5631358a07000000b66a07c92c773b499d399e2cda30ecad630068006500 ,
+        0x6c00000000000000f3a2e64786f97541b50cdc564e1b136407000000b66a07c9 ,
+        0x2c773b499d399e2cda30ecad690062006f00720000000000000051441d856c2e ,
+        0xd04fa89492ddc8b1729807000000b66a07c92c773b499d399e2cda30ecad7400 ,
+        0x750067006e000000000000009cc45c4713134a4b917893a95242d55207000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad750072007400000000000000793b00ac ,
+        0x11b8334ebef4902e7edb38f207000000b66a07c92c773b499d399e2cda30ecad ,
+        0x650072006b00000000000000460224aee6ef3b47976199a9dfb1356f07000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad720061007a0064006f006c0000000000 ,
+        0x0000a7c3ed05e13e5642835ea2ba22895ebc07000000b66a07c92c773b499d39 ,
+        0x9e2cda30ecad7a0079007200790061006e000000000000004eff4fe9b2f0b04c ,
+        0xad04c40ceab9f55307000000b66a07c92c773b499d399e2cda30ecad61006e00 ,
+        0x61006400000000000000ceddb0b5be6af342a80a893c7dd2669a07000000b66a ,
+        0x07c92c773b499d399e2cda30ecad69006e00740069006e00000000000000fc3e ,
+        0x78657b9f204bac166e5d5e37a33d07000000b66a07c92c773b499d399e2cda30 ,
+        0xecad6d00610069006b0075006200000000000000814ebe025de6d54195e6f810 ,
+        0xb6c8ddd207000000b66a07c92c773b499d399e2cda30ecad700072006f006300 ,
+        0x6800670061007a000000000000007c6c1e12891e694c86630cfba80c8d6c0700 ,
+        0x0000b66a07c92c773b499d399e2cda30ecad6e00660074005f00700072006f00 ,
+        0x6300680000000000000090d1528459f91c4190fe6f18d5c332ce07000000b66a ,
+        0x07c92c773b499d399e2cda30ecad6300680065007200000000000000211675da ,
+        0xdae08a42a514dcc9279168b107000000b66a07c92c773b499d399e2cda30ecad ,
+        0x69006e006f006500000000000000e7d24674aec3cd41a5760c5c9c66d25b0700 ,
+        0x0000b66a07c92c773b499d399e2cda30ecad6b0075007a006e00730073000000 ,
+        0x00000000c961c23689dbcb44b5073281cc6acb1f07000000b66a07c92c773b49 ,
+        0x9d399e2cda30ecad62006500720065007a00000000000000215fbdc6f49fe346 ,
+        0xac11338197ecfc1b07000000b66a07c92c773b499d399e2cda30ecad6f006b00 ,
+        0x69006e006f00000000000000e50105d37fc2bb4aa6c200a174eb495c07000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad74006100740061007500720000000000 ,
+        0x00006a8e7b3f037e5a4b8cde0d7d5a21278c07000000b66a07c92c773b499d39 ,
+        0x9e2cda30ecad6f0067006f0064006a00000000000000baef89191c9ca54aa44e ,
+        0x758e24ce8b6207000000b66a07c92c773b499d399e2cda30ecad680061006e00 ,
+        0x6b00610069000000000000004af7ac3a26b8e74ca14f6f2a1be248b407000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad7000790061006b000000000000007768 ,
+        0xbb1425b9fd449488d36038e4302b07000000b66a07c92c773b499d399e2cda30 ,
+        0xecad6b0069007a0065006c000000000000000320021fdba18e4d847f846ce01d ,
+        0x390c07000000b66a07c92c773b499d399e2cda30ecad6b006100720061006700 ,
+        0x000000000000c2867a7e89f3d049b5c0d3c36c72bec707000000b66a07c92c77 ,
+        0x3b499d399e2cda30ecad670074007400000000000000447686e6dc34cd4096f5 ,
+        0xb27e23bb26fd07000000b66a07c92c773b499d399e2cda30ecad6b0075007a00 ,
+        0x6e0075006e000000000000007657b6ee3473d148a3e9fc20a742794c07000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad70006500720000000000000047e69f82 ,
+        0x542b924abe4ecbce3872216507000000b66a07c92c773b499d399e2cda30ecad ,
+        0x4f00450053000000000000001401e2edd9cf5f4ebf3b0c98d1c8841507000000 ,
+        0xb66a07c92c773b499d399e2cda30ecad4f0042004c00000000000000e6939e58 ,
+        0x29278a4e8f85ad7dd1d8927f07000000b66a07c92c773b499d399e2cda30ecad ,
+        0x7400610072006200610067000000000000002497d82cfc0de04a930d38459cfc ,
+        0x014a07000000b66a07c92c773b499d399e2cda30ecad730076006f0000000000 ,
+        0x000015529c9c1c65374f94a8349b2cdb806e07000000b66a07c92c773b499d39 ,
+        0x9e2cda30ecad6b006100720061006a007900720061000000000000005ace33da ,
+        0xe4ffc34393c0ec817ffbc40f07000000b66a07c92c773b499d399e2cda30ecad ,
+        0x69007200620065006900000000000000c37a0358a82cba44b7fe8c020dc406c6 ,
+        0x07000000b66a07c92c773b499d399e2cda30ecad7a00610062005f006b006100 ,
+        0x6d0000000000000075abdb0523ad0849b047cf4d94dade2207000000b66a07c9 ,
+        0x2c773b499d399e2cda30ecad740065006e0069007a00000000000000204fc6c2 ,
+        0x8bd5a544a125ed382ead996d07000000b66a07c92c773b499d399e2cda30ecad ,
+        0x6b0061006e0073006b0000000000000000000000000000000000000000000000 ,
+        0x0c000000050000000000000000000000000000000000
+    End
+    RecordSource ="Натура99"
+    DatasheetFontName ="Arial Cyr"
+    FilterOnLoad =0
+    DatasheetGridlinesColor12 =12632256
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =4605
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x7da592b3197d5249b3046517f4f8eade
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =223
+                    Width =1125
+                    ColumnWidth =3495
+                    ColumnOrder =0
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    GUID = Begin
+                        0x1e1fa011d63c6f4e8050c772915c7d51
+                    End
+
+                    LayoutCachedWidth =1125
+                    LayoutCachedHeight =240
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =555
+                            Height =240
+                            Name ="Надпись0"
+                            Caption ="NAME:"
+                            GUID = Begin
+                                0x38e4536e79801a4ca74a2cee63f7750e
+                            End
+                            LayoutCachedWidth =555
+                            LayoutCachedHeight =240
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1133
+                    ColumnWidth =600
+                    ColumnOrder =1
+                    TabIndex =1
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    GUID = Begin
+                        0xc0d1816a04edab4fba029e42faa61571
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    IMESentenceMode =3
+                    Left =1700
+                    ColumnWidth =960
+                    ColumnOrder =2
+                    TabIndex =51
+                    Name ="GAZ"
+                    ControlSource ="GAZ"
+                    GUID = Begin
+                        0xebfd7d26ae7008489bfe1edef46e3b6f
+                    End
+
+                    LayoutCachedLeft =1700
+                    LayoutCachedWidth =2267
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    IMESentenceMode =3
+                    Left =2267
+                    ColumnWidth =1220
+                    ColumnOrder =5
+                    TabIndex =78
+                    Name ="ISK_GAZ"
+                    ControlSource ="ISK_GAZ"
+                    GUID = Begin
+                        0x507dd9e1a9d8bf4fac3b012a95f5f173
+                    End
+
+                    LayoutCachedLeft =2267
+                    LayoutCachedWidth =2834
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    IMESentenceMode =3
+                    Left =2834
+                    ColumnWidth =960
+                    ColumnOrder =9
+                    TabIndex =52
+                    Name ="MAZUT"
+                    ControlSource ="MAZUT"
+                    GUID = Begin
+                        0x8a1f759a06538d429098f2d2d9ab3443
+                    End
+
+                    LayoutCachedLeft =2834
+                    LayoutCachedWidth =3401
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    IMESentenceMode =3
+                    Left =3404
+                    ColumnWidth =1140
+                    ColumnOrder =14
+                    TabIndex =80
+                    Name ="PROCH"
+                    ControlSource ="PROCH"
+                    GUID = Begin
+                        0xe48c3f37650c0b44a841cacfa932daf2
+                    End
+
+                    LayoutCachedLeft =3404
+                    LayoutCachedWidth =3971
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =4025
+                    ColumnWidth =960
+                    ColumnOrder =18
+                    TabIndex =2
+                    Name ="DON"
+                    ControlSource ="DON"
+                    GUID = Begin
+                        0xca01423b8480584395147b537668e5a9
+                    End
+
+                    LayoutCachedLeft =4025
+                    LayoutCachedWidth =4592
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =4648
+                    ColumnWidth =960
+                    ColumnOrder =19
+                    TabIndex =3
+                    Name ="PODM"
+                    ControlSource ="PODM"
+                    GUID = Begin
+                        0x45aa3933f214db49b9a089834fc3defb
+                    End
+
+                    LayoutCachedLeft =4648
+                    LayoutCachedWidth =5215
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5272
+                    ColumnWidth =960
+                    ColumnOrder =22
+                    TabIndex =6
+                    Name ="KUZN"
+                    ControlSource ="KUZN"
+                    GUID = Begin
+                        0xc54e9fa5fb1b444b8d1c379e71791b77
+                    End
+
+                    LayoutCachedLeft =5272
+                    LayoutCachedWidth =5839
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5896
+                    ColumnWidth =960
+                    ColumnOrder =27
+                    TabIndex =10
+                    Name ="BASHK"
+                    ControlSource ="BASHK"
+                    GUID = Begin
+                        0x6b340b541933c544ae8f66121d9bb0a8
+                    End
+
+                    LayoutCachedLeft =5896
+                    LayoutCachedWidth =6463
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =6576
+                    ColumnWidth =960
+                    ColumnOrder =67
+                    TabIndex =11
+                    Name ="KAZAH"
+                    ControlSource ="KAZAH"
+                    GUID = Begin
+                        0x89140f05e2b81a4a9cdf63f5ef3198a9
+                    End
+
+                    LayoutCachedLeft =6576
+                    LayoutCachedWidth =7143
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =7256
+                    ColumnWidth =960
+                    ColumnOrder =38
+                    TabIndex =59
+                    Name ="KAN"
+                    ControlSource ="KAN"
+                    GUID = Begin
+                        0xbced0ed66313954096cfb5ae34c9ef14
+                    End
+
+                    LayoutCachedLeft =7256
+                    LayoutCachedWidth =7823
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    IMESentenceMode =3
+                    Left =7880
+                    ColumnOrder =31
+                    TabIndex =83
+                    Name ="IRKUT"
+                    ControlSource ="IRKUT"
+                    GUID = Begin
+                        0x6d1a90681d3a554ca71469c73fea3be9
+                    End
+
+                    LayoutCachedLeft =7880
+                    LayoutCachedWidth =8447
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    IMESentenceMode =3
+                    Left =8447
+                    ColumnWidth =990
+                    ColumnOrder =35
+                    TabIndex =84
+                    Name ="TUNG"
+                    ControlSource ="TUNG"
+                    GUID = Begin
+                        0xba97b6ccd81a7d469797ab12ad1555a2
+                    End
+
+                    LayoutCachedLeft =8447
+                    LayoutCachedWidth =9014
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =9014
+                    ColumnWidth =960
+                    ColumnOrder =49
+                    TabIndex =18
+                    Name ="HAK"
+                    ControlSource ="HAK"
+                    GUID = Begin
+                        0x62d389b84363b046b8b4b24dfd12215f
+                    End
+
+                    LayoutCachedLeft =9014
+                    LayoutCachedWidth =9581
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =9638
+                    ColumnWidth =960
+                    ColumnOrder =50
+                    TabIndex =19
+                    Name ="TUV"
+                    ControlSource ="TUV"
+                    GUID = Begin
+                        0x3603198f5f450d47b25c93af2e5af299
+                    End
+
+                    LayoutCachedLeft =9638
+                    LayoutCachedWidth =10205
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    IMESentenceMode =3
+                    Left =10204
+                    ColumnWidth =960
+                    ColumnOrder =45
+                    TabIndex =63
+                    Name ="BUR"
+                    ControlSource ="BUR"
+                    GUID = Begin
+                        0xadd78458eded484fa7946055996d8c34
+                    End
+
+                    LayoutCachedLeft =10204
+                    LayoutCachedWidth =10771
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10884
+                    ColumnWidth =960
+                    ColumnOrder =51
+                    TabIndex =22
+                    Name ="CHIT"
+                    ControlSource ="CHIT"
+                    GUID = Begin
+                        0x6266ce9a4a573a4cb8ae6ab0fbbd85cb
+                    End
+
+                    LayoutCachedLeft =10884
+                    LayoutCachedWidth =11451
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =11564
+                    ColumnWidth =960
+                    ColumnOrder =57
+                    TabIndex =24
+                    Name ="AMUR"
+                    ControlSource ="AMUR"
+                    GUID = Begin
+                        0xab79260e5656fd46b721a2a80b3c04d9
+                    End
+
+                    LayoutCachedLeft =11564
+                    LayoutCachedWidth =12131
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =12132
+                    ColumnWidth =960
+                    ColumnOrder =60
+                    TabIndex =25
+                    Name ="URG"
+                    ControlSource ="URG"
+                    GUID = Begin
+                        0x0a898ee9153df04388132a1d812b4cf3
+                    End
+
+                    LayoutCachedLeft =12132
+                    LayoutCachedWidth =12699
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =12756
+                    ColumnWidth =960
+                    ColumnOrder =78
+                    TabIndex =42
+                    Name ="USHUM"
+                    ControlSource ="USHUM"
+                    GUID = Begin
+                        0xe56ba87fb7235743a63dead88e099f78
+                    End
+
+                    LayoutCachedLeft =12756
+                    LayoutCachedWidth =13323
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =13379
+                    ColumnWidth =960
+                    ColumnOrder =61
+                    TabIndex =26
+                    Name ="PRIM"
+                    ControlSource ="PRIM"
+                    GUID = Begin
+                        0x69993c0cb24c544caf33b1a56f5465ac
+                    End
+
+                    LayoutCachedLeft =13379
+                    LayoutCachedWidth =13946
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =14060
+                    ColumnWidth =960
+                    ColumnOrder =70
+                    TabIndex =23
+                    Name ="YAKUT"
+                    ControlSource ="YAKUT"
+                    GUID = Begin
+                        0xa02bf0881c874b49aab74dc745b6d1e4
+                    End
+
+                    LayoutCachedLeft =14060
+                    LayoutCachedWidth =14627
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =14683
+                    ColumnWidth =960
+                    ColumnOrder =77
+                    TabIndex =37
+                    Name ="KAMCH"
+                    ControlSource ="KAMCH"
+                    GUID = Begin
+                        0x2add95745613f94482a0054e036c3172
+                    End
+
+                    LayoutCachedLeft =14683
+                    LayoutCachedWidth =15250
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =15250
+                    ColumnWidth =960
+                    ColumnOrder =65
+                    TabIndex =27
+                    Name ="MAG"
+                    ControlSource ="MAG"
+                    GUID = Begin
+                        0x120b876c0cca1e42be594b21f4c745f3
+                    End
+
+                    LayoutCachedLeft =15250
+                    LayoutCachedWidth =15817
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    IMESentenceMode =3
+                    Left =15817
+                    ColumnWidth =960
+                    ColumnOrder =74
+                    TabIndex =64
+                    Name ="CHUKOT"
+                    ControlSource ="CHUKOT"
+                    GUID = Begin
+                        0xe73aeb84b176fa40969ae862b7d7e499
+                    End
+
+                    LayoutCachedLeft =15817
+                    LayoutCachedWidth =16384
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =16440
+                    ColumnWidth =960
+                    ColumnOrder =66
+                    TabIndex =28
+                    Name ="SAH"
+                    ControlSource ="SAH"
+                    GUID = Begin
+                        0x20860d28116a32479034e01b92d50170
+                    End
+
+                    LayoutCachedLeft =16440
+                    LayoutCachedWidth =17007
+                    LayoutCachedHeight =240
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    IMESentenceMode =3
+                    Left =1700
+                    Top =226
+                    Height =220
+                    ColumnOrder =4
+                    TabIndex =69
+                    Name ="gaz_prir"
+                    ControlSource ="gaz_prir"
+                    GUID = Begin
+                        0xdac89aad5b4e4c42b09a14f14791c60d
+                    End
+
+                    LayoutCachedLeft =1700
+                    LayoutCachedTop =226
+                    LayoutCachedWidth =2267
+                    LayoutCachedHeight =446
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    Left =7880
+                    Top =226
+                    ColumnWidth =960
+                    ColumnOrder =32
+                    TabIndex =16
+                    Name ="azey"
+                    ControlSource ="azey"
+                    GUID = Begin
+                        0xdeafd9d91063a745b4552e746bb77a6c
+                    End
+
+                    LayoutCachedLeft =7880
+                    LayoutCachedTop =226
+                    LayoutCachedWidth =8447
+                    LayoutCachedHeight =466
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    IMESentenceMode =3
+                    Left =8447
+                    Top =226
+                    ColumnWidth =960
+                    ColumnOrder =36
+                    TabIndex =61
+                    Name ="jer"
+                    ControlSource ="jer"
+                    GUID = Begin
+                        0x3ba90b614b1e7e44889741ac90d820dd
+                    End
+
+                    LayoutCachedLeft =8447
+                    LayoutCachedTop =226
+                    LayoutCachedWidth =9014
+                    LayoutCachedHeight =466
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =2267
+                    Top =283
+                    Height =228
+                    ColumnWidth =1220
+                    ColumnOrder =7
+                    TabIndex =65
+                    Name ="domen_g"
+                    ControlSource ="domen_g"
+                    GUID = Begin
+                        0xf1e085e4218a3941bee4250e083ca837
+                    End
+
+                    LayoutCachedLeft =2267
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =2834
+                    LayoutCachedHeight =511
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =2834
+                    Top =283
+                    Height =220
+                    ColumnOrder =10
+                    TabIndex =70
+                    Name ="disel"
+                    ControlSource ="disel"
+                    GUID = Begin
+                        0xb2edcb110ae8f449b8f039821f69940e
+                    End
+
+                    LayoutCachedLeft =2834
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =3401
+                    LayoutCachedHeight =503
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =3401
+                    Top =283
+                    Height =228
+                    ColumnWidth =970
+                    ColumnOrder =17
+                    TabIndex =67
+                    Name ="tvproch"
+                    ControlSource ="tvproch"
+                    GUID = Begin
+                        0x8c1c6c8d2632094d971ac5f9b395455c
+                    End
+
+                    LayoutCachedLeft =3401
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =3968
+                    LayoutCachedHeight =511
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =5272
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =23
+                    TabIndex =55
+                    Name ="kuzngd"
+                    ControlSource ="kuzngd"
+                    GUID = Begin
+                        0xfc5276f0b42c4a469566139706b3ec4e
+                    End
+
+                    LayoutCachedLeft =5272
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =5839
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5896
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =28
+                    TabIndex =7
+                    Name ="sver"
+                    ControlSource ="sver"
+                    GUID = Begin
+                        0xffd6c8f98fff0244ba170c53d1163060
+                    End
+
+                    LayoutCachedLeft =5896
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =6463
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =6576
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =69
+                    TabIndex =30
+                    Name ="ekib"
+                    ControlSource ="ekib"
+                    GUID = Begin
+                        0x3a4cc837eb392b4a96108e4c346b0e3b
+                    End
+
+                    LayoutCachedLeft =6576
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =7143
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =7256
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =39
+                    TabIndex =12
+                    Name ="nazar"
+                    ControlSource ="nazar"
+                    GUID = Begin
+                        0x38e2e7c0f18b0447aa0f3249689b7bcf
+                    End
+
+                    LayoutCachedLeft =7256
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =7823
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10204
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =46
+                    TabIndex =20
+                    Name ="gusin"
+                    ControlSource ="gusin"
+                    GUID = Begin
+                        0xb76fd58c424faa438a62a86c5580bf1f
+                    End
+
+                    LayoutCachedLeft =10204
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =10771
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10884
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =55
+                    TabIndex =46
+                    Name ="har"
+                    ControlSource ="har"
+                    GUID = Begin
+                        0xb381a1186a6c254c9789faa869a46feb
+                    End
+
+                    LayoutCachedLeft =10884
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =11451
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =11564
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =58
+                    TabIndex =33
+                    Name ="raich"
+                    ControlSource ="rai"
+                    GUID = Begin
+                        0x95fcd7d957fe7a43a6d61a54bd9d56bf
+                    End
+
+                    LayoutCachedLeft =11564
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =12131
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =13379
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =64
+                    TabIndex =41
+                    Name ="bikin"
+                    ControlSource ="bikin"
+                    GUID = Begin
+                        0x5ebe3389fb7e1e4597339b661ce0d507
+                    End
+
+                    LayoutCachedLeft =13379
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =13946
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =14060
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =71
+                    TabIndex =32
+                    Name ="neru"
+                    ControlSource ="neru"
+                    GUID = Begin
+                        0xa3481b0082cea34f9e1b3d97ff7f4471
+                    End
+
+                    LayoutCachedLeft =14060
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =14627
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =15873
+                    Top =283
+                    ColumnWidth =960
+                    ColumnOrder =76
+                    TabIndex =36
+                    Name ="bering"
+                    ControlSource ="bering"
+                    GUID = Begin
+                        0x7cabc3e0cff4d644b5c97f54ea1c2c65
+                    End
+
+                    LayoutCachedLeft =15873
+                    LayoutCachedTop =283
+                    LayoutCachedWidth =16440
+                    LayoutCachedHeight =523
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =4648
+                    Top =340
+                    ColumnWidth =960
+                    ColumnOrder =20
+                    TabIndex =4
+                    Name ="Vork"
+                    ControlSource ="Vork"
+                    GUID = Begin
+                        0x2d0d5956c2ce1749ad653e87f3fd9cd1
+                    End
+
+                    LayoutCachedLeft =4648
+                    LayoutCachedTop =340
+                    LayoutCachedWidth =5215
+                    LayoutCachedHeight =580
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =1700
+                    Top =453
+                    Height =220
+                    ColumnOrder =3
+                    TabIndex =68
+                    Name ="gazpp"
+                    ControlSource ="gazpp"
+                    GUID = Begin
+                        0x74bf8f6651788947aa1053d995a572a9
+                    End
+
+                    LayoutCachedLeft =1700
+                    LayoutCachedTop =453
+                    LayoutCachedWidth =2267
+                    LayoutCachedHeight =673
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    IMESentenceMode =3
+                    Left =7880
+                    Top =509
+                    ColumnWidth =960
+                    ColumnOrder =34
+                    TabIndex =60
+                    Name ="mug"
+                    ControlSource ="mug"
+                    GUID = Begin
+                        0x27a1200823c5b74b9044cb9ba8620a58
+                    End
+
+                    LayoutCachedLeft =7880
+                    LayoutCachedTop =509
+                    LayoutCachedWidth =8447
+                    LayoutCachedHeight =749
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =2834
+                    Top =510
+                    Height =220
+                    ColumnOrder =11
+                    TabIndex =71
+                    Name ="maztop"
+                    ControlSource ="maztop"
+                    GUID = Begin
+                        0x42dcc24cf7bb434e9a7cea75b46c4ec3
+                    End
+
+                    LayoutCachedLeft =2834
+                    LayoutCachedTop =510
+                    LayoutCachedWidth =3401
+                    LayoutCachedHeight =730
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    IMESentenceMode =3
+                    Left =8447
+                    Top =510
+                    ColumnWidth =960
+                    ColumnOrder =37
+                    TabIndex =62
+                    Name ="karab"
+                    ControlSource ="karab"
+                    GUID = Begin
+                        0x666ddf272dfe85459c3fa24e7a6cd8cf
+                    End
+
+                    LayoutCachedLeft =8447
+                    LayoutCachedTop =510
+                    LayoutCachedWidth =9014
+                    LayoutCachedHeight =750
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =2267
+                    Top =566
+                    ColumnWidth =1220
+                    ColumnOrder =6
+                    TabIndex =79
+                    Name ="koks_g"
+                    ControlSource ="koks_g"
+                    GUID = Begin
+                        0x57dabdde905f15439819acc0f856fd1f
+                    End
+
+                    LayoutCachedLeft =2267
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =2834
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =3401
+                    Top =566
+                    Height =228
+                    ColumnWidth =1140
+                    ColumnOrder =15
+                    TabIndex =81
+                    Name ="szh_gaz"
+                    ControlSource ="szh_gaz"
+                    GUID = Begin
+                        0x45f094ce24a63348a0d0f4992c81049c
+                    End
+
+                    LayoutCachedLeft =3401
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =3968
+                    LayoutCachedHeight =794
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =5272
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =24
+                    TabIndex =56
+                    Name ="kuznt"
+                    ControlSource ="kuznt"
+                    GUID = Begin
+                        0xc0d0da87a5514249af12c9f67132ac1a
+                    End
+
+                    LayoutCachedLeft =5272
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =5839
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5896
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =29
+                    TabIndex =8
+                    Name ="chel"
+                    ControlSource ="chel"
+                    GUID = Begin
+                        0xa6f7abb74e266a42a79cf6f2109bec33
+                    End
+
+                    LayoutCachedLeft =5896
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =6463
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =7256
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =44
+                    TabIndex =13
+                    Name ="ibor"
+                    ControlSource ="ibor"
+                    GUID = Begin
+                        0x5684c1f6a1c4784cb7ca0364a88989c4
+                    End
+
+                    LayoutCachedLeft =7256
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =7823
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10204
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =48
+                    TabIndex =21
+                    Name ="tugn"
+                    ControlSource ="tugn"
+                    GUID = Begin
+                        0xf51af9b2a1c0f54ab405ce845ea2a2fc
+                    End
+
+                    LayoutCachedLeft =10204
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =10771
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10884
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =54
+                    TabIndex =45
+                    Name ="urt"
+                    ControlSource ="urt"
+                    GUID = Begin
+                        0x7d68decec5fe7b479af6f7b5d7d80608
+                    End
+
+                    LayoutCachedLeft =10884
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =11451
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =11564
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =59
+                    TabIndex =34
+                    Name ="erkov"
+                    ControlSource ="erk"
+                    GUID = Begin
+                        0xe58636436fc6cf45a2d7b7a8b7fb7619
+                    End
+
+                    LayoutCachedLeft =11564
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =12131
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =13379
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =63
+                    TabIndex =40
+                    Name ="razdol"
+                    ControlSource ="razdol"
+                    GUID = Begin
+                        0x8c08506d5dd9a64b9e9b351206cddfb4
+                    End
+
+                    LayoutCachedLeft =13379
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =13946
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =14060
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =72
+                    TabIndex =38
+                    Name ="zyryan"
+                    ControlSource ="zyryan"
+                    GUID = Begin
+                        0xcb51661e5ec85243bcaddd03e2220edb
+                    End
+
+                    LayoutCachedLeft =14060
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =14627
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =15873
+                    Top =566
+                    ColumnWidth =960
+                    ColumnOrder =75
+                    TabIndex =35
+                    Name ="anad"
+                    ControlSource ="anad"
+                    GUID = Begin
+                        0x46884d74292b8a4e894bc4c1fc884424
+                    End
+
+                    LayoutCachedLeft =15873
+                    LayoutCachedTop =566
+                    LayoutCachedWidth =16440
+                    LayoutCachedHeight =806
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    Left =4648
+                    Top =567
+                    ColumnWidth =960
+                    ColumnOrder =21
+                    TabIndex =5
+                    Name ="intin"
+                    ControlSource ="intin"
+                    GUID = Begin
+                        0xae3b98ca7d81564da86edae8222a7d63
+                    End
+
+                    LayoutCachedLeft =4648
+                    LayoutCachedTop =567
+                    LayoutCachedWidth =5215
+                    LayoutCachedHeight =807
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =6576
+                    Top =623
+                    ColumnWidth =960
+                    ColumnOrder =68
+                    TabIndex =29
+                    Name ="maikub"
+                    ControlSource ="maikub"
+                    GUID = Begin
+                        0x1467dc5aa8100940b91d32be0ad7a77c
+                    End
+
+                    LayoutCachedLeft =6576
+                    LayoutCachedTop =623
+                    LayoutCachedWidth =7143
+                    LayoutCachedHeight =863
+                End
+                Begin TextBox
+                    OverlapFlags =255
+                    IMESentenceMode =3
+                    Left =2267
+                    Top =793
+                    Height =228
+                    ColumnWidth =1220
+                    ColumnOrder =8
+                    TabIndex =66
+                    Name ="prochgaz"
+                    ControlSource ="prochgaz"
+                    GUID = Begin
+                        0x6ab5c92bd7c51541ae0c8a2d73793517
+                    End
+
+                    LayoutCachedLeft =2267
+                    LayoutCachedTop =793
+                    LayoutCachedWidth =2834
+                    LayoutCachedHeight =1021
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =2834
+                    Top =793
+                    Height =220
+                    ColumnWidth =1140
+                    ColumnOrder =12
+                    TabIndex =72
+                    Name ="nft_proch"
+                    ControlSource ="nft_proch"
+                    GUID = Begin
+                        0x5d4e160bcbcbbe4ca13321333e205f1c
+                    End
+
+                    LayoutCachedLeft =2834
+                    LayoutCachedTop =793
+                    LayoutCachedWidth =3401
+                    LayoutCachedHeight =1013
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =7880
+                    Top =793
+                    ColumnWidth =960
+                    ColumnOrder =33
+                    TabIndex =17
+                    Name ="cher"
+                    ControlSource ="cher"
+                    GUID = Begin
+                        0x6264aba23979524a9dde691e57ac94c0
+                    End
+
+                    LayoutCachedLeft =7880
+                    LayoutCachedTop =793
+                    LayoutCachedWidth =8447
+                    LayoutCachedHeight =1033
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    IMESentenceMode =3
+                    Left =3401
+                    Top =850
+                    Height =228
+                    ColumnWidth =1140
+                    ColumnOrder =16
+                    TabIndex =82
+                    Name ="inoe"
+                    ControlSource ="inoe"
+                    GUID = Begin
+                        0x659bfccb7a917f489402f9bc3e6a2941
+                    End
+
+                    LayoutCachedLeft =3401
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =3968
+                    LayoutCachedHeight =1078
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    IMESentenceMode =3
+                    Left =5272
+                    Top =850
+                    ColumnWidth =960
+                    ColumnOrder =25
+                    TabIndex =57
+                    Name ="kuznss"
+                    ControlSource ="kuznss"
+                    GUID = Begin
+                        0xb20d2187b0ff7c4d9e70f3a628fdec42
+                    End
+
+                    LayoutCachedLeft =5272
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =5839
+                    LayoutCachedHeight =1090
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =7256
+                    Top =850
+                    ColumnWidth =960
+                    ColumnOrder =40
+                    TabIndex =14
+                    Name ="berez"
+                    ControlSource ="berez"
+                    GUID = Begin
+                        0xaa9a325e275a4345af806cec605d38ab
+                    End
+
+                    LayoutCachedLeft =7256
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =7823
+                    LayoutCachedHeight =1090
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10204
+                    Top =850
+                    ColumnWidth =960
+                    ColumnOrder =47
+                    TabIndex =47
+                    Name ="okino"
+                    ControlSource ="okino"
+                    GUID = Begin
+                        0x07ab58d9d9d3404c8d92b04aef50b07f
+                    End
+
+                    LayoutCachedLeft =10204
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =10771
+                    LayoutCachedHeight =1090
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10884
+                    Top =850
+                    ColumnWidth =960
+                    ColumnOrder =53
+                    TabIndex =44
+                    Name ="tataur"
+                    ControlSource ="tataur"
+                    GUID = Begin
+                        0x1d53acd40e8ee7419c0f07494f5fbc01
+                    End
+
+                    LayoutCachedLeft =10884
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =11451
+                    LayoutCachedHeight =1090
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =11564
+                    Top =850
+                    Height =220
+                    ColumnOrder =84
+                    TabIndex =76
+                    Name ="ogodj"
+                    ControlSource ="ogodj"
+                    GUID = Begin
+                        0x070351227250c54fb10a9c488df4464f
+                    End
+
+                    LayoutCachedLeft =11564
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =12131
+                    LayoutCachedHeight =1070
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =13379
+                    Top =850
+                    ColumnWidth =960
+                    ColumnOrder =62
+                    TabIndex =39
+                    Name ="hankai"
+                    ControlSource ="hankai"
+                    GUID = Begin
+                        0x4c30507eba9cd8469adf05bc3c75f165
+                    End
+
+                    LayoutCachedLeft =13379
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =13946
+                    LayoutCachedHeight =1090
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =14060
+                    Top =850
+                    ColumnWidth =960
+                    ColumnOrder =73
+                    TabIndex =31
+                    Name ="pyakut"
+                    ControlSource ="pyak"
+                    GUID = Begin
+                        0x7c0625f767778e408fb0c16ca69abbbb
+                    End
+
+                    LayoutCachedLeft =14060
+                    LayoutCachedTop =850
+                    LayoutCachedWidth =14627
+                    LayoutCachedHeight =1090
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5896
+                    Top =907
+                    ColumnWidth =960
+                    ColumnOrder =30
+                    TabIndex =9
+                    Name ="kizel"
+                    ControlSource ="kizel"
+                    GUID = Begin
+                        0x3d679558f7284046b1047cd2fc1ccecc
+                    End
+
+                    LayoutCachedLeft =5896
+                    LayoutCachedTop =907
+                    LayoutCachedWidth =6463
+                    LayoutCachedHeight =1147
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =6576
+                    Top =963
+                    Height =220
+                    ColumnOrder =81
+                    TabIndex =73
+                    Name ="karag"
+                    ControlSource ="karag"
+                    GUID = Begin
+                        0x9d5f891f26982f4389f609f25337c219
+                    End
+
+                    LayoutCachedLeft =6576
+                    LayoutCachedTop =963
+                    LayoutCachedWidth =7143
+                    LayoutCachedHeight =1183
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    IMESentenceMode =3
+                    Left =2834
+                    Top =1077
+                    Height =220
+                    ColumnWidth =1140
+                    ColumnOrder =13
+                    TabIndex =85
+                    Name ="gtt"
+                    ControlSource ="gtt"
+                    GUID = Begin
+                        0x022ecdc3493a5c4ab20f4874812c6b8c
+                    End
+
+                    LayoutCachedLeft =2834
+                    LayoutCachedTop =1077
+                    LayoutCachedWidth =3401
+                    LayoutCachedHeight =1297
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    IMESentenceMode =3
+                    Left =5272
+                    Top =1077
+                    ColumnWidth =960
+                    ColumnOrder =26
+                    TabIndex =58
+                    Name ="kuznun"
+                    ControlSource ="kuznun"
+                    GUID = Begin
+                        0x32a5f86ac5972e43a1d9e6be97b90d7a
+                    End
+
+                    LayoutCachedLeft =5272
+                    LayoutCachedTop =1077
+                    LayoutCachedWidth =5839
+                    LayoutCachedHeight =1317
+                End
+                Begin TextBox
+                    OverlapFlags =247
+                    Left =7256
+                    Top =1077
+                    ColumnWidth =960
+                    ColumnOrder =41
+                    TabIndex =15
+                    Name ="per"
+                    ControlSource ="per"
+                    GUID = Begin
+                        0xf8e3944f972093428f5aaeeadcb3397e
+                    End
+
+                    LayoutCachedLeft =7256
+                    LayoutCachedTop =1077
+                    LayoutCachedWidth =7823
+                    LayoutCachedHeight =1317
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    IMESentenceMode =3
+                    Left =56
+                    Top =1133
+                    ColumnWidth =960
+                    ColumnOrder =79
+                    TabIndex =53
+                    Name ="OES"
+                    ControlSource ="OES"
+                    GUID = Begin
+                        0x4b8bd83d3ada0d42aa886dabb4c177bd
+                    End
+
+                    LayoutCachedLeft =56
+                    LayoutCachedTop =1133
+                    LayoutCachedWidth =623
+                    LayoutCachedHeight =1373
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    IMESentenceMode =3
+                    Left =623
+                    Top =1133
+                    ColumnWidth =960
+                    ColumnOrder =80
+                    TabIndex =54
+                    Name ="OBL"
+                    ControlSource ="OBL"
+                    GUID = Begin
+                        0xaaf546d14bbfa9488bf39c4998f3b63a
+                    End
+
+                    LayoutCachedLeft =623
+                    LayoutCachedTop =1133
+                    LayoutCachedWidth =1190
+                    LayoutCachedHeight =1373
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10884
+                    Top =1133
+                    ColumnWidth =960
+                    ColumnOrder =52
+                    TabIndex =43
+                    Name ="tarbag"
+                    ControlSource ="tarbag"
+                    GUID = Begin
+                        0x17f1197740b342429629744a04b31db2
+                    End
+
+                    LayoutCachedLeft =10884
+                    LayoutCachedTop =1133
+                    LayoutCachedWidth =11451
+                    LayoutCachedHeight =1373
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =11564
+                    Top =1134
+                    Height =220
+                    ColumnOrder =85
+                    TabIndex =77
+                    Name ="svo"
+                    ControlSource ="svo"
+                    GUID = Begin
+                        0x9f4a1f4dde3c1c4bb380593b6582420f
+                    End
+
+                    LayoutCachedLeft =11564
+                    LayoutCachedTop =1134
+                    LayoutCachedWidth =12131
+                    LayoutCachedHeight =1354
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =6576
+                    Top =1246
+                    Height =220
+                    ColumnOrder =82
+                    TabIndex =74
+                    Name ="karajyra"
+                    ControlSource ="karajyra"
+                    GUID = Begin
+                        0xa70eeed1a1c8424eae20b50ac7d6f9da
+                    End
+
+                    LayoutCachedLeft =6576
+                    LayoutCachedTop =1246
+                    LayoutCachedWidth =7143
+                    LayoutCachedHeight =1466
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =7256
+                    Top =1360
+                    ColumnWidth =960
+                    ColumnOrder =43
+                    TabIndex =49
+                    Name ="irbei"
+                    ControlSource ="irbei"
+                    GUID = Begin
+                        0xd33cf4171fadd54f9130460585fa5de8
+                    End
+
+                    LayoutCachedLeft =7256
+                    LayoutCachedTop =1360
+                    LayoutCachedWidth =7823
+                    LayoutCachedHeight =1600
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =10884
+                    Top =1417
+                    ColumnWidth =960
+                    ColumnOrder =56
+                    TabIndex =50
+                    Name ="zab_kam"
+                    ControlSource ="zab_kam"
+                    GUID = Begin
+                        0xbdefa93e88423a4fbcc8c1124540b50e
+                    End
+
+                    LayoutCachedLeft =10884
+                    LayoutCachedTop =1417
+                    LayoutCachedWidth =11451
+                    LayoutCachedHeight =1657
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    IMESentenceMode =3
+                    Left =6576
+                    Top =1530
+                    Height =220
+                    ColumnOrder =83
+                    TabIndex =75
+                    Name ="teniz"
+                    ControlSource ="teniz"
+                    GUID = Begin
+                        0xf5b5027549dafa46a1ec53e5328fa8cd
+                    End
+
+                    LayoutCachedLeft =6576
+                    LayoutCachedTop =1530
+                    LayoutCachedWidth =7143
+                    LayoutCachedHeight =1750
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =7256
+                    Top =1700
+                    ColumnWidth =960
+                    ColumnOrder =42
+                    TabIndex =48
+                    Name ="kansk"
+                    ControlSource ="kansk"
+                    GUID = Begin
+                        0xb42c331a322fc34a83bbdbd83f9ad788
+                    End
+
+                    LayoutCachedLeft =7256
+                    LayoutCachedTop =1700
+                    LayoutCachedWidth =7823
+                    LayoutCachedHeight =1940
+                End
+            End
+        End
+    End
+End

@@ -1,0 +1,3 @@
+SELECT Имена_областей.OBL, Имена_ОЭС.nameoes, Имена_областей.NAME AS oblname, Avg(IIf([Расчёт средней цены топлива].avg_gaz_c>0,[Расчёт средней цены топлива].avg_gaz_c,Null)) AS avg_gaz_c, Avg(IIf([Расчёт средней цены топлива].avg_ugol>0,[Расчёт средней цены топлива].avg_ugol,Null)) AS avg_ugol, Имена_областей.Terr_Belyaev
+FROM (([Расчёт средней цены топлива] INNER JOIN Имена_станций ON [Расчёт средней цены топлива].NUMB1120 = Имена_станций.NUMB) INNER JOIN Имена_ОЭС ON Имена_станций.OES = Имена_ОЭС.oes) INNER JOIN Имена_областей ON Имена_станций.OBL = Имена_областей.OBL
+GROUP BY Имена_областей.OBL, Имена_ОЭС.nameoes, Имена_областей.NAME, Имена_областей.Terr_Belyaev;

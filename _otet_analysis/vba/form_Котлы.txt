@@ -1,0 +1,222 @@
+Version =20
+VersionRequired =20
+Checksum =956046916
+Begin Form
+    PopUp = NotDefault
+    AllowDeletions = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =6306
+    DatasheetFontHeight =10
+    ItemSuffix =3
+    Left =312
+    Top =2328
+    Right =7056
+    Bottom =6840
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x08ddc2090f4fe240
+    End
+    GUID = Begin
+        0x6102294d40eaf243a2ca2b044c53c336
+    End
+    NameMap = Begin
+        0x0acc0e5500000000b9a3e2662d19064f9aaf609b6e23f6690000000038877fa8 ,
+        0xb84ce54000000000270100001a043e0442043b044b04000000000000478df5f6 ,
+        0x0ca5764bbaba9994aea2e63b07000000b9a3e2662d19064f9aaf609b6e23f669 ,
+        0x6e0061006d00650000000000000054748f3e78713c49b272ba94b0263fc20700 ,
+        0x0000b9a3e2662d19064f9aaf609b6e23f669790065006100720069006e000000 ,
+        0x00000000f979047e36c1db49b63ff0b9df8520c607000000b9a3e2662d19064f ,
+        0x9aaf609b6e23f669730074006e0075006d006200000000000000c7318e87a54a ,
+        0x62499fd862db0b8e3b8307000000b9a3e2662d19064f9aaf609b6e23f6696e00 ,
+        0x75006d0062003100310032003000000000000000ad1f19614c4a704bb76f248f ,
+        0x45fc192d07000000b9a3e2662d19064f9aaf609b6e23f6696d0074006f007000 ,
+        0x00000000000026f14c20d2f59f4eaed509cdab76d29207000000b9a3e2662d19 ,
+        0x064f9aaf609b6e23f669700072006f0074006f007000000000000000e7336648 ,
+        0xc2138646a546d390778b5bd1000000005bf4b18cb84ce540c002510a00000000 ,
+        0x1a043b043004410441043804440438043a0442043e0440045f0042043e043f04 ,
+        0x3b043804320430040000000000006da179ea85ff724db1f715271bde52b40700 ,
+        0x0000e7336648c2138646a546d390778b5bd163006f0064006500000000000000 ,
+        0x27d3a0fda5d1b54aa9e4504f9ea609f407000000e7336648c2138646a546d390 ,
+        0x778b5bd16e0061006d0065000000000000000000000000000000000000000000 ,
+        0x00000c000000030000000000000000000000000000000000
+    End
+    RecordSource ="Котлы"
+    BeforeInsert ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    OnMouseMove ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x47644d3e65f2c04598da83d1b9302c0a
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =567
+                    Width =1701
+                    ColumnWidth =2700
+                    ColumnOrder =1
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x79b349e663b33543bdda6ad66c0c92e2
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2268
+                    ColumnWidth =750
+                    ColumnOrder =2
+                    TabIndex =1
+                    Name ="yearin"
+                    ControlSource ="yearin"
+                    GUID = Begin
+                        0xd1e958dc1b9e714399974fd9e4b566f6
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    ColumnWidth =840
+                    ColumnOrder =0
+                    TabIndex =2
+                    Name ="stnumb"
+                    ControlSource ="stnumb"
+                    GUID = Begin
+                        0x6e62928528526c4091db62aa05666a0b
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    ColumnHidden = NotDefault
+                    OverlapFlags =93
+                    Left =4920
+                    ColumnWidth =1110
+                    ColumnOrder =3
+                    TabIndex =3
+                    Name ="numb1120"
+                    ControlSource ="numb1120"
+                    GUID = Begin
+                        0x635807560c09794688f2efa9acc6ad95
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3786
+                    Width =1134
+                    ColumnOrder =5
+                    TabIndex =4
+                    Name ="марка"
+                    ControlSource ="mtop"
+                    GUID = Begin
+                        0x7a8ab9389251e34fa048848336665875
+                    End
+                End
+                Begin ComboBox
+                    OverlapFlags =119
+                    ColumnCount =2
+                    ListWidth =1440
+                    Left =2835
+                    Width =951
+                    Height =284
+                    ColumnWidth =1830
+                    ColumnOrder =4
+                    TabIndex =5
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"10\";\"100\""
+                    GUID = Begin
+                        0x8e11d77c637e8845bafed75a72c9f4b8
+                    End
+                    Name ="Проектн.топл."
+                    ControlSource ="protop"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [Классификтор_топлива].[code], [Классификтор_топлива].[name] FROM [Класси"
+                        "фиктор_топлива] where code>0.4"
+                    ColumnWidths ="0;1440"
+                    EventProcPrefix ="Проектн_топл_"
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Dim stnt As Double, stcode As Double
+Private Sub Form_AfterUpdate()
+If OpenArgs = "Редактирование_отчетных_данных" Then
+If Not (Forms("редактирование_отчетных_данных").Form.stan.Form.Dirty) Then
+stnt = Forms("редактирование_отчетных_данных").Form.stan.Form!NT
+stcode = Forms("редактирование_отчетных_данных").Form.stan.Form!NUMB1120
+Call Form_Станции_отчет.verifynt(stnt, stcode)
+End If
+End If
+End Sub
+
+Private Sub Form_BeforeInsert(Cancel As Integer)
+Dim db As Database, MAIN As Recordset, R As Recordset
+If OpenArgs = "Редактирование_отчетных_данных" Then
+With Forms("редактирование_отчетных_данных").Form.stan.Form
+'If z(main)  0 Then
+'msg = MsgBox("Составная станция. Турбины вставляются только на группы оборудования", vbOKOnly)
+'Cancel = 1
+'GoTo endbi
+'End If
+Set R = .RecordsetClone
+R.FindFirst "main=" & !NUMB1120
+If Not R.NoMatch Then
+msg = MsgBox("Составная станция. Турбины вставляются только на группы оборудования", vbOKOnly)
+Cancel = 1
+GoTo endbi
+End If
+grcode = !NUMB1120
+End With
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set MAIN = db.OpenRecordset("select main from имена_станций where numb=" & grcode & ";")
+MAIN.MoveFirst
+If z(MAIN!MAIN) = 0 Then NUMB1120 = grcode Else NUMB1120 = MAIN!MAIN
+dem = Null
+End If
+endbi:
+End Sub
+
+Private Sub Form_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
+If Dirty Then
+DoCmd.RunCommand acCmdSaveRecord
+End If
+End Sub

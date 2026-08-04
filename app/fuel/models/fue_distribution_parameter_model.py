@@ -29,7 +29,7 @@ class DistributionParameter(db.Model):
         foreign_keys=[id_union_energy_system],
     )
 
-    # Расчитываемый год (id_year)
+    # Расчетный год (id_year)
     id_year = db.Column(
         db.Integer,
         db.ForeignKey(
@@ -112,6 +112,9 @@ class DistributionParameter(db.Model):
     # Наличие ограничений по выработке для РЭС
     lim = db.Column(db.Integer, nullable=True)
 
+    # Общий ключ копий одной логической строки во всех версиях БД
+    ref_uuid = db.Column(db.String(36), nullable=True, index=True)
+
     database_version_id = db.Column(
         db.Integer,
         db.ForeignKey(f"{SCHEMA_REFDATA}.gs_database_versions.id", ondelete="SET NULL"),
@@ -136,10 +139,9 @@ class DistributionParameter(db.Model):
 DISTRIBUTION_PARAMETER_LIST_COLUMN_HEADINGS: list[tuple[str, str]] = [
     ("name", "Объединенная энергосистема"),
     ("byear", "Базовый год"),
-    ("year", "Расчитываемый год"),
+    ("year", "Расчетный год"),
     ("e", "Выработка ТЭС"),
-    ("kplus", "Верхняя граница коэффициента загрузки (k+)"),
-    ("kmin", "Нижняя граница коэффициента загрузки (k−)"),
+    ("doptim", "Коэффициент допустимого отклонения"),
     ("k", "Коэффициент загрузки"),
     ("kn", "Коэффициент загрузки нового оборудования (расчётный)"),
     ("knps", "Коэффициент загрузки нового паросилового оборудования (расчётный)"),
@@ -148,7 +150,6 @@ DISTRIBUTION_PARAMETER_LIST_COLUMN_HEADINGS: list[tuple[str, str]] = [
     ("hnps", "ЧЧИУМ нового паросилового оборудования"),
     ("hngt", "ЧЧИУМ нового газотурбинного оборудования"),
     ("hnpg", "ЧЧИУМ нового парогазового оборудования"),
-    ("doptim", "Коэффициент допустимого отклонения"),
     ("lim", "Наличие ограничений по выработке для РЭС"),
     ("numb", "Порядковый номер"),
     ("bkl", "Вспомогательный номер территоррии для распределения выработки по станциям ОЭС"),

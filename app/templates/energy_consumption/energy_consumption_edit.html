@@ -1,265 +1,495 @@
-{% extends 'base.html' %}
-
-{% block title %}{{ page_title }}{% endblock %}
-
-{% block content %}
-{% if current_user.is_authenticated %}
-{% set can_edit_energy_consumption = can_edit_energy_consumption | default(false) %}
-{% set view_ncols_readonly = 5 if show_perimeter_variant_column else 4 %}
-{% set rd = rounding_digits if rounding_digits is defined else 1 %}
-{% set hub_href = url_for('energy_consumption_bp.hub') %}
-{% set _ez_ec_auto = fk_column is defined and fk_column == 'id_energy_zone' %}
+{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+block content %} {% if current_user.is_authenticated %} {% set
+can_edit_energy_consumption = can_edit_energy_consumption | default(false) %} {%
+set view_ncols_readonly = 5 if show_perimeter_variant_column else 4 %} {% set rd
+= rounding_digits if rounding_digits is defined else 1 %} {% set hub_href =
+url_for('energy_consumption_bp.hub') %} {% set _ez_ec_auto = fk_column is
+defined and fk_column == 'id_energy_zone' %}
 <div class="container-fluid mt-2">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
-        <a href="{{ hub_href }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль «Спрос»</a>
-        {% if back_url != hub_href %}
-        <a href="{{ back_url }}" class="btn btn-secondary fs-5">К списку</a>
-        {% endif %}
-    </div>
-
-    <h1 class="text-center mb-4">{{ page_title }}</h1>
-
-    {% if _ez_ec_auto %}
-    <div class="alert alert-info">
-        Показатели «млн кВт·ч» и «СиПР» по энергозоне рассчитываются автоматически как сумма по региональным энергосистемам, входящим в зону (обновляются при сохранении данных по РЭС и при импорте сводки).
-    </div>
+  <div
+    class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3"
+  >
+    <a href="{{ hub_href }}" class="btn btn-secondary fs-5"
+      ><i class="bi bi-gear-wide-connected"></i> Модуль «Спрос»</a
+    >
+    {% if back_url != hub_href %}
+    <a href="{{ back_url }}" class="btn btn-secondary fs-5">К списку</a>
     {% endif %}
+  </div>
 
-    <div class="d-flex justify-content-end mb-2 align-items-center">
-        <div class="d-inline-flex align-items-center flex-nowrap gap-2">
-            <label for="rounding_digits" class="mb-0 text-nowrap">Округл:</label>
-            <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 150px; width: auto;">
-                <option value="0" {% if rd == 0 %}selected{% endif %}>Не округлять</option>
-                <option value="1" {% if rd == 1 %}selected{% endif %}>1 знак</option>
-                <option value="2" {% if rd == 2 %}selected{% endif %}>2 знака</option>
-                <option value="3" {% if rd == 3 %}selected{% endif %}>3 знака</option>
-                <option value="-1" {% if rd == -1 %}selected{% endif %}>Целое число</option>
-            </select>
-        </div>
+  <h1 class="text-center mb-4">{{ page_title }}</h1>
+
+  {% if _ez_ec_auto %}
+  <div class="alert alert-info">
+    Показатели «млн кВтч» и «СиПР» по энергозоне рассчитываются автоматически
+    как сумма по региональным энергосистемам, входящим в зону (обновляются при
+    сохранении данных по РЭС и при импорте сводки).
+  </div>
+  {% endif %}
+
+  <div class="d-flex justify-content-end mb-2 align-items-center">
+    <div class="d-inline-flex align-items-center flex-nowrap gap-2">
+      <label for="rounding_digits" class="mb-0 text-nowrap">Округл:</label>
+      <select
+        id="rounding_digits"
+        name="rounding_digits_ui"
+        class="form-select"
+        style="min-width: 150px; width: auto"
+      >
+        <option value="0" {% if rd="" ="0" %}selected{% endif %}>
+          Не округлять
+        </option>
+        <option value="1" {% if rd="" ="1" %}selected{% endif %}>1 знак</option>
+        <option value="2" {% if rd="" ="2" %}selected{% endif %}>
+          2 знака
+        </option>
+        <option value="3" {% if rd="" ="3" %}selected{% endif %}>
+          3 знака
+        </option>
+        <option value="-1" {% if rd="" ="-1" %}selected{% endif %}>
+          Целое число
+        </option>
+      </select>
+    </div>
+  </div>
+
+  {% if can_edit_energy_consumption %}
+  <form method="POST" id="demand-params-form">
+    {{ form.hidden_tag() }}
+    <input type="hidden" name="rounding_digits" value="{{ rd }}" />
+    <script type="application/json" id="power-demand-year-options-json">
+      {{ year_options|tojson }}
+    </script>
+
+    <div class="d-flex justify-content-end mt-2 mb-3">
+      <button type="submit" class="btn btn-outline-primary fs-5">
+        Сохранить изменения
+      </button>
     </div>
 
-    {% if can_edit_energy_consumption %}
-    <form method="POST" id="demand-params-form">
-        {{ form.hidden_tag() }}
-        <input type="hidden" name="rounding_digits" value="{{ rd }}">
-        <script type="application/json" id="power-demand-year-options-json">{{ year_options|tojson }}</script>
-
-        <div class="d-flex justify-content-end mt-2 mb-3">
-            <button type="submit" class="btn btn-outline-primary fs-5">Сохранить изменения</button>
-        </div>
-
-        <div class="table-responsive">
-            <table id="power-demand-edit-table" class="table power-demand-params-table table-hover table-striped table-bordered align-middle">
-                <thead>
-                    <tr class="table-success" style="word-wrap: break-word;">
-                        {% if show_perimeter_variant_column %}
-                        <th class="text-center align-middle">Вариант<br>периметра</th>
-                        {% endif %}
-                        <th class="text-center align-middle">Год</th>
-                        <th class="text-center align-middle">Потребление электрической энергии,<br>млн кВт·ч</th>
-                        <th class="text-center align-middle">Потребление (СиПР),<br>млн кВт·ч</th>
-                        <th class="text-center align-middle">Примечание</th>
-                        <th class="text-center align-middle" data-no-sort>Удалить</th>
-                    </tr>
-                </thead>
-                <tbody id="demand-rows">
-                    {% for row in rows %}
-                    <tr>
-                        {% if show_perimeter_variant_column %}
-                        <td class="text-center align-middle">
-                            {% if fixed_perimeter_variant_code is defined %}
-                            <span class="text-nowrap">{{ perimeter_variant_display_label(fixed_perimeter_variant_code) }}</span>
-                            <input type="hidden" name="perimeter_variant_code[]" value="{{ fixed_perimeter_variant_code or '' }}">
-                            {% else %}
-                            <span class="text-nowrap">{{ perimeter_variant_display_label(row.perimeter_variant_code) }}</span>
-                            <input type="hidden" name="perimeter_variant_code[]" value="{{ row.perimeter_variant_code or '' }}">
-                            {% endif %}
-                        </td>
-                        {% endif %}
-                        <td class="text-center align-middle">
-                            <select name="slice_year[]" class="form-select form-select-sm text-center">
-                                <option value="" {% if row.year_number is none %}selected{% endif %}>—</option>
-                                {% for yn in year_options %}
-                                <option value="{{ yn }}" {% if row.year_number is not none and row.year_number == yn %}selected{% endif %}>{{ yn }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td class="text-center align-middle">
-                            <input type="text" name="ec_mln[]" inputmode="decimal" autocomplete="off"
-                                   class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}"
-                                   value="{% if row.energy_consumption_mln_kvt_ch is not none %}{{ row.energy_consumption_mln_kvt_ch|format_decimal_trim(rd) }}{% endif %}"
-                                   {% if row.energy_consumption_mln_kvt_ch is not none %}title="{{ (row.energy_consumption_mln_kvt_ch|format_decimal_trim(0))|e }}"{% endif %}
-                                   {% if _ez_ec_auto %}readonly tabindex="-1"{% endif %}>
-                            <input type="hidden" name="ec_mln_db[]" value="{% if row.energy_consumption_mln_kvt_ch is not none %}{{ (row.energy_consumption_mln_kvt_ch|format_decimal_trim(0))|e }}{% endif %}">
-                        </td>
-                        <td class="text-center align-middle">
-                            <input type="text" name="ec_sipr[]" inputmode="decimal" autocomplete="off"
-                                   class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}"
-                                   value="{% if row.energy_consumption_sipr_mln_kvt_ch is not none %}{{ row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(rd) }}{% endif %}"
-                                   {% if row.energy_consumption_sipr_mln_kvt_ch is not none %}title="{{ (row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(0))|e }}"{% endif %}
-                                   {% if _ez_ec_auto %}readonly tabindex="-1"{% endif %}>
-                            <input type="hidden" name="ec_sipr_db[]" value="{% if row.energy_consumption_sipr_mln_kvt_ch is not none %}{{ (row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(0))|e }}{% endif %}">
-                        </td>
-                        <td class="text-center align-middle">
-                            <textarea name="note[]" rows="2" class="form-control form-control-sm text-center">{{ row.note if row.note is not none else '' }}</textarea>
-                        </td>
-                        <td class="text-center align-middle">
-                            <input type="checkbox" name="del[]" value="{{ row.id }}">
-                            <input type="hidden" name="row_id[]" value="{{ row.id }}">
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    <tr class="table-light">
-                        {% if show_perimeter_variant_column %}
-                        <td class="text-center align-middle">
-                            {% if fixed_perimeter_variant_code is defined %}
-                            <span class="text-muted">{{ perimeter_variant_display_label(fixed_perimeter_variant_code) }}</span>
-                            <input type="hidden" name="perimeter_variant_code[]" value="{{ fixed_perimeter_variant_code or '' }}">
-                            {% else %}
-                            <select name="perimeter_variant_code[]" class="form-select form-select-sm text-center">
-                                {% for opt in perimeter_variant_options %}
-                                <option value="{{ opt.code }}">{{ opt.label }}</option>
-                                {% endfor %}
-                            </select>
-                            {% endif %}
-                        </td>
-                        {% endif %}
-                        <td class="text-center align-middle">
-                            <select name="slice_year[]" class="form-select form-select-sm text-center">
-                                <option value="" selected>—</option>
-                                {% for yn in year_options %}
-                                <option value="{{ yn }}">{{ yn }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td class="text-center align-middle">
-                            <input type="text" name="ec_mln[]" inputmode="decimal" autocomplete="off" class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}" {% if _ez_ec_auto %}readonly tabindex="-1"{% endif %}>
-                            <input type="hidden" name="ec_mln_db[]" value="">
-                        </td>
-                        <td class="text-center align-middle">
-                            <input type="text" name="ec_sipr[]" inputmode="decimal" autocomplete="off" class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}" {% if _ez_ec_auto %}readonly tabindex="-1"{% endif %}>
-                            <input type="hidden" name="ec_sipr_db[]" value="">
-                        </td>
-                        <td class="text-center align-middle">
-                            <textarea name="note[]" rows="2" class="form-control form-control-sm text-center"></textarea>
-                        </td>
-                        <td class="text-center align-middle text-muted">
-                            —
-                            <input type="hidden" name="row_id[]" value="">
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="d-flex justify-content-end mt-3 mb-4">
-            <button type="submit" class="btn btn-outline-primary fs-5">Сохранить изменения</button>
-        </div>
-    </form>
-    {% else %}
-    <div class="alert alert-info">Просмотр доступен. Редактирование — только для ролей «Нагрузки-админ» и «Нагрузки-редактор».</div>
     <div class="table-responsive">
-        <table id="power-demand-view-table" class="table power-demand-params-table table-bordered">
-            <thead>
-                <tr class="table-success">
-                    {% if show_perimeter_variant_column %}
-                    <th class="text-center align-middle">Вариант периметра</th>
-                    {% endif %}
-                    <th class="text-center align-middle">Год</th>
-                    <th class="text-center align-middle">Потребление электрической энергии, млн кВт·ч</th>
-                    <th class="text-center align-middle">Потребление (СиПР), млн кВт·ч</th>
-                    <th class="text-center align-middle">Примечание</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in rows %}
-                <tr>
-                    {% if show_perimeter_variant_column %}
-                    <td class="text-center align-middle text-nowrap">{{ perimeter_variant_display_label(row.perimeter_variant_code) }}</td>
-                    {% endif %}
-                    <td class="text-center align-middle">{{ row.year_number if row.year_number is not none else '—' }}</td>
-                    <td class="text-center align-middle" {% if row.energy_consumption_mln_kvt_ch is not none %}title="{{ (row.energy_consumption_mln_kvt_ch|format_decimal_trim(0))|e }}"{% endif %}>{{ row.energy_consumption_mln_kvt_ch|format_decimal_trim(rd) if row.energy_consumption_mln_kvt_ch is not none else '—' }}</td>
-                    <td class="text-center align-middle" {% if row.energy_consumption_sipr_mln_kvt_ch is not none %}title="{{ (row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(0))|e }}"{% endif %}>{{ row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(rd) if row.energy_consumption_sipr_mln_kvt_ch is not none else '—' }}</td>
-                    <td class="text-center align-middle text-break">{{ row.note if row.note is not none else '—' }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="{{ view_ncols_readonly }}" class="text-center text-muted">Нет данных</td></tr>
+      <table
+        id="power-demand-edit-table"
+        class="table power-demand-params-table table-hover table-striped table-bordered align-middle"
+      >
+        <thead>
+          <tr class="table-success" style="word-wrap: break-word">
+            {% if show_perimeter_variant_column %}
+            <th class="text-center align-middle">Вариант<br />периметра</th>
+            {% endif %}
+            <th class="text-center align-middle">Год</th>
+            <th class="text-center align-middle">
+              Потребление электрической энергии,<br />млн кВтч
+            </th>
+            <th class="text-center align-middle">
+              Потребление (СиПР),<br />млн кВтч
+            </th>
+            <th class="text-center align-middle">Примечание</th>
+            <th class="text-center align-middle" data-no-sort>Удалить</th>
+          </tr>
+        </thead>
+        <tbody id="demand-rows">
+          {% for row in rows %}
+          <tr>
+            {% if show_perimeter_variant_column %}
+            <td class="text-center align-middle">
+              {% if fixed_perimeter_variant_code is defined %}
+              <span class="text-nowrap"
+                >{{
+                perimeter_variant_display_label(fixed_perimeter_variant_code)
+                }}</span
+              >
+              <input
+                type="hidden"
+                name="perimeter_variant_code[]"
+                value="{{ fixed_perimeter_variant_code or '' }}"
+              />
+              {% else %}
+              <span class="text-nowrap"
+                >{{ perimeter_variant_display_label(row.perimeter_variant_code)
+                }}</span
+              >
+              <input
+                type="hidden"
+                name="perimeter_variant_code[]"
+                value="{{ row.perimeter_variant_code or '' }}"
+              />
+              {% endif %}
+            </td>
+            {% endif %}
+            <td class="text-center align-middle">
+              <select
+                name="slice_year[]"
+                class="form-select form-select-sm text-center"
+              >
+                <option
+                  value=""
+                  {%
+                  if
+                  row.year_number
+                  is
+                  none
+                  %}selected{%
+                  endif
+                  %}
+                >
+                  —
+                </option>
+                {% for yn in year_options %}
+                <option
+                  value="{{ yn }}"
+                  {%
+                  if
+                  row.year_number
+                  is
+                  not
+                  none
+                  and
+                  row.year_number=""
+                  ="yn"
+                  %}selected{%
+                  endif
+                  %}
+                >
+                  {{ yn }}
+                </option>
                 {% endfor %}
-            </tbody>
-        </table>
+              </select>
+            </td>
+            <td class="text-center align-middle">
+              <input
+                type="text"
+                name="ec_mln[]"
+                inputmode="decimal"
+                autocomplete="off"
+                class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}"
+                value="{% if row.energy_consumption_mln_kvt_ch is not none %}{{ row.energy_consumption_mln_kvt_ch|format_decimal_trim(rd) }}{% endif %}"
+                {%
+                if
+                row.energy_consumption_mln_kvt_ch
+                is
+                not
+                none
+                %}title="{{ (row.energy_consumption_mln_kvt_ch|format_decimal_trim(0))|e }}"
+                {%
+                endif
+                %}
+                {%
+                if
+                _ez_ec_auto
+                %}readonly
+                tabindex="-1"
+                {%
+                endif
+                %}
+              />
+              <input
+                type="hidden"
+                name="ec_mln_db[]"
+                value="{% if row.energy_consumption_mln_kvt_ch is not none %}{{ (row.energy_consumption_mln_kvt_ch|format_decimal_trim(0))|e }}{% endif %}"
+              />
+            </td>
+            <td class="text-center align-middle">
+              <input
+                type="text"
+                name="ec_sipr[]"
+                inputmode="decimal"
+                autocomplete="off"
+                class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}"
+                value="{% if row.energy_consumption_sipr_mln_kvt_ch is not none %}{{ row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(rd) }}{% endif %}"
+                {%
+                if
+                row.energy_consumption_sipr_mln_kvt_ch
+                is
+                not
+                none
+                %}title="{{ (row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(0))|e }}"
+                {%
+                endif
+                %}
+                {%
+                if
+                _ez_ec_auto
+                %}readonly
+                tabindex="-1"
+                {%
+                endif
+                %}
+              />
+              <input
+                type="hidden"
+                name="ec_sipr_db[]"
+                value="{% if row.energy_consumption_sipr_mln_kvt_ch is not none %}{{ (row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(0))|e }}{% endif %}"
+              />
+            </td>
+            <td class="text-center align-middle">
+              <textarea
+                name="note[]"
+                rows="2"
+                class="form-control form-control-sm text-center"
+              >
+{{ row.note if row.note is not none else '' }}</textarea
+              >
+            </td>
+            <td class="text-center align-middle">
+              <input type="checkbox" name="del[]" value="{{ row.id }}" />
+              <input type="hidden" name="row_id[]" value="{{ row.id }}" />
+            </td>
+          </tr>
+          {% endfor %}
+          <tr class="table-light">
+            {% if show_perimeter_variant_column %}
+            <td class="text-center align-middle">
+              {% if fixed_perimeter_variant_code is defined %}
+              <span class="text-muted"
+                >{{
+                perimeter_variant_display_label(fixed_perimeter_variant_code)
+                }}</span
+              >
+              <input
+                type="hidden"
+                name="perimeter_variant_code[]"
+                value="{{ fixed_perimeter_variant_code or '' }}"
+              />
+              {% else %}
+              <select
+                name="perimeter_variant_code[]"
+                class="form-select form-select-sm text-center"
+              >
+                {% for opt in perimeter_variant_options %}
+                <option value="{{ opt.code }}">{{ opt.label }}</option>
+                {% endfor %}
+              </select>
+              {% endif %}
+            </td>
+            {% endif %}
+            <td class="text-center align-middle">
+              <select
+                name="slice_year[]"
+                class="form-select form-select-sm text-center"
+              >
+                <option value="" selected>—</option>
+                {% for yn in year_options %}
+                <option value="{{ yn }}">{{ yn }}</option>
+                {% endfor %}
+              </select>
+            </td>
+            <td class="text-center align-middle">
+              <input
+                type="text"
+                name="ec_mln[]"
+                inputmode="decimal"
+                autocomplete="off"
+                class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}"
+                {%
+                if
+                _ez_ec_auto
+                %}readonly
+                tabindex="-1"
+                {%
+                endif
+                %}
+              />
+              <input type="hidden" name="ec_mln_db[]" value="" />
+            </td>
+            <td class="text-center align-middle">
+              <input
+                type="text"
+                name="ec_sipr[]"
+                inputmode="decimal"
+                autocomplete="off"
+                class="form-control form-control-sm text-center{% if _ez_ec_auto %} bg-light{% endif %}"
+                {%
+                if
+                _ez_ec_auto
+                %}readonly
+                tabindex="-1"
+                {%
+                endif
+                %}
+              />
+              <input type="hidden" name="ec_sipr_db[]" value="" />
+            </td>
+            <td class="text-center align-middle">
+              <textarea
+                name="note[]"
+                rows="2"
+                class="form-control form-control-sm text-center"
+              ></textarea>
+            </td>
+            <td class="text-center align-middle text-muted">
+              —
+              <input type="hidden" name="row_id[]" value="" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
-    {% endif %}
+
+    <div class="d-flex justify-content-end mt-3 mb-4">
+      <button type="submit" class="btn btn-outline-primary fs-5">
+        Сохранить изменения
+      </button>
+    </div>
+  </form>
+  {% else %}
+  <div class="alert alert-info">
+    Просмотр доступен. Редактирование — только для ролей «Нагрузки-админ» и
+    «Нагрузки-редактор».
+  </div>
+  <div class="table-responsive">
+    <table
+      id="power-demand-view-table"
+      class="table power-demand-params-table table-bordered"
+    >
+      <thead>
+        <tr class="table-success">
+          {% if show_perimeter_variant_column %}
+          <th class="text-center align-middle">Вариант периметра</th>
+          {% endif %}
+          <th class="text-center align-middle">Год</th>
+          <th class="text-center align-middle">
+            Потребление электрической энергии, млн кВтч
+          </th>
+          <th class="text-center align-middle">Потребление (СиПР), млн кВтч</th>
+          <th class="text-center align-middle">Примечание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          {% if show_perimeter_variant_column %}
+          <td class="text-center align-middle text-nowrap">
+            {{ perimeter_variant_display_label(row.perimeter_variant_code) }}
+          </td>
+          {% endif %}
+          <td class="text-center align-middle">
+            {{ row.year_number if row.year_number is not none else '—' }}
+          </td>
+          <td
+            class="text-center align-middle"
+            {%
+            if
+            row.energy_consumption_mln_kvt_ch
+            is
+            not
+            none
+            %}title="{{ (row.energy_consumption_mln_kvt_ch|format_decimal_trim(0))|e }}"
+            {%
+            endif
+            %}
+          >
+            {{ row.energy_consumption_mln_kvt_ch|format_decimal_trim(rd) if
+            row.energy_consumption_mln_kvt_ch is not none else '—' }}
+          </td>
+          <td
+            class="text-center align-middle"
+            {%
+            if
+            row.energy_consumption_sipr_mln_kvt_ch
+            is
+            not
+            none
+            %}title="{{ (row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(0))|e }}"
+            {%
+            endif
+            %}
+          >
+            {{ row.energy_consumption_sipr_mln_kvt_ch|format_decimal_trim(rd) if
+            row.energy_consumption_sipr_mln_kvt_ch is not none else '—' }}
+          </td>
+          <td class="text-center align-middle text-break">
+            {{ row.note if row.note is not none else '—' }}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td
+            colspan="{{ view_ncols_readonly }}"
+            class="text-center text-muted"
+          >
+            Нет данных
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>
 
 <style>
-    .power-demand-params-table {
-        font-size: 1.3rem;
-    }
-    .power-demand-params-table thead th {
-        font-size: 1.25rem;
-    }
-    .power-demand-params-table tbody td {
-        font-size: 1.3rem;
-    }
-    .power-demand-params-table .form-select-sm,
-    .power-demand-params-table .form-control-sm {
-        font-size: 1.2rem;
-    }
-    .power-demand-params-table .btn {
-        font-size: 1.15rem;
-    }
-    textarea.power-demand-edit-datetime-field {
-        white-space: pre-wrap;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        resize: vertical;
-        min-height: 2.5rem;
-        line-height: 1.25;
-        max-width: 100%;
-        field-sizing: content;
-    }
-    .power-demand-view-datetime-cell {
-        white-space: normal;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        max-width: 16rem;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    .power-demand-sortable-th {
-        cursor: pointer;
-        user-select: none;
-    }
-    thead th[data-no-sort] {
-        cursor: default;
-    }
+  .power-demand-params-table {
+    font-size: 1.3rem;
+  }
+  .power-demand-params-table thead th {
+    font-size: 1.25rem;
+  }
+  .power-demand-params-table tbody td {
+    font-size: 1.3rem;
+  }
+  .power-demand-params-table .form-select-sm,
+  .power-demand-params-table .form-control-sm {
+    font-size: 1.2rem;
+  }
+  .power-demand-params-table .btn {
+    font-size: 1.15rem;
+  }
+  textarea.power-demand-edit-datetime-field {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    resize: vertical;
+    min-height: 2.5rem;
+    line-height: 1.25;
+    max-width: 100%;
+    field-sizing: content;
+  }
+  .power-demand-view-datetime-cell {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    max-width: 16rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .power-demand-sortable-th {
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th[data-no-sort] {
+    cursor: default;
+  }
 </style>
 
 <script src="{{ url_for('static', filename='js/energy_consumption/table_sort.js') }}"></script>
 <script src="{{ url_for('static', filename='js/energy_consumption/slice_year_exclusive.js') }}"></script>
 <script src="{{ url_for('static', filename='js/energy_consumption/demand_save_validate.js') }}"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    document.getElementById("rounding_digits")?.addEventListener("change", function () {
+  document.addEventListener("DOMContentLoaded", function () {
+    document
+      .getElementById("rounding_digits")
+      ?.addEventListener("change", function () {
         const url = new URL(window.location.href);
         url.searchParams.set("rounding_digits", this.value);
         window.location.href = url.toString();
-    });
+      });
     const editTable = document.getElementById("power-demand-edit-table");
     if (editTable && typeof initPowerDemandTableSort === "function") {
-        initPowerDemandTableSort(editTable, { pinLastRowSelector: "tr.table-light" });
+      initPowerDemandTableSort(editTable, {
+        pinLastRowSelector: "tr.table-light",
+      });
     }
     const viewTable = document.getElementById("power-demand-view-table");
     if (viewTable && typeof initPowerDemandTableSort === "function") {
-        initPowerDemandTableSort(viewTable, {});
+      initPowerDemandTableSort(viewTable, {});
     }
     if (typeof initSliceYearExclusive === "function") {
-        initSliceYearExclusive();
+      initSliceYearExclusive();
     }
     if (typeof initDemandSaveValidate === "function") {
-        initDemandSaveValidate(document.getElementById("demand-params-form"));
+      initDemandSaveValidate(document.getElementById("demand-params-form"));
     }
-});
+  });
 </script>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

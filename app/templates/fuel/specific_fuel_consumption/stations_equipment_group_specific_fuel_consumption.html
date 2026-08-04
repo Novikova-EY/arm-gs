@@ -5,6 +5,29 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 
+<style>
+/* Фильтры / поиск / пагинация — всегда видимы при скролле таблицы */
+.sfc-sticky-controls {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background-color: var(--bs-body-bg, #fff);
+    padding-top: 0.25rem;
+    display: flow-root;
+}
+.sfc-sticky-controls .power-demand-filters-collapse,
+.sfc-sticky-controls .power-demand-import-export-collapse {
+    overflow: visible !important;
+}
+.sfc-sticky-controls .select2-container {
+    z-index: 1021;
+}
+/* Шапка таблицы липнет под панелью фильтров */
+#stationsTableContainer table thead th {
+    top: var(--sfc-controls-sticky-height, 0px);
+}
+</style>
+
 <div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
     <div class="text-center">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
@@ -21,7 +44,6 @@
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}" class="btn btn-secondary fs-5">Топливные параметры</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_group_extra_fuel_params') }}" class="btn btn-secondary fs-5">Доп. топливные параметры</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
 
@@ -37,25 +59,48 @@
         </div>
     </div>
 
-    <!-- Фильтры -->
+    <!-- Фильтры (липкая панель при скролле) -->
+    <div id="sfcStickyControls" class="sfc-sticky-controls">
     {% include 'fuel/specific_fuel_consumption/stations_equipment_group_specific_fuel_consumption_filters.html' %}
+    </div><!-- /.sfc-sticky-controls -->
+
+    {% if show_calc_mismatch|default(false) %}
+    <div class="alert alert-warning py-2" role="alert">
+        Временный фильтр: показаны только строки, где хотя бы одно поле
+        (y, btp, sntp, bk, snk) отличается от соответствующего *_calc
+        (NULL и 0 считаются одинаковыми — оба «—»; микроразница
+        в 6–7-м знаке после запятой не учитывается).
+        Найдено: <strong>{{ calc_mismatch_count|default(0) }}</strong>.
+        Расходящиеся ячейки подсвечены.
+    </div>
+    {% endif %}
 
 {% set specific_columns = [
-    ('numb1120', 'NUMB1120', false),
+    ('numb1120', 'Код группы оборудования', false),
     ('k', 'K', true),
-    ('y', 'Y', true),
-    ('y_calc', 'Y (расчет)', true),
-    ('btp', 'BTP', true),
-    ('btp_calc', 'BTP (расчет)', true),
-    ('sntp', 'SNTP', true),
-    ('sntp_calc', 'SNTP (расчет)', true),
-    ('bk', 'BK', true),
-    ('bk_calc', 'BK (расчет)', true),
-    ('snk', 'SNK', true),
-    ('snk_calc', 'SNK (расчет)', true)
+    ('y', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал', true),
+    ('y_calc', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал', true),
+    ('btp', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч', true),
+    ('btp_calc', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч', true),
+    ('sntp', 'Коэффициент отпуска ЭЭ в теплофикационном режиме', true),
+    ('sntp_calc', 'Коэффициент отпуска ЭЭ в теплофикационном режиме', true),
+    ('bk', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч', true),
+    ('bk_calc', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч', true),
+    ('snk', 'СН на выработку ЭЭ, %', true),
+    ('snk_calc', 'СН на выработку ЭЭ, %', true)
 ] %}
 {% set header_labels = consumption_column_labels or {} %}
 {% set column_count = specific_columns|length + 1 %}
+{# Подсказка title: полное значение из БД без округления UI (как на equipment_group_fuel_params_edit_data) #}
+{% macro sfc_db_tooltip(attr, is_numeric, cell_src, group_entity=none) -%}
+{%- if is_numeric and cell_src is not none -%}
+{%- set v = cell_src|get_attr(attr) -%}
+{%- if v is not none -%}{{ v|format_decimal(0) }}{%- endif -%}
+{%- elif attr == 'numb1120' -%}
+{%- set v = cell_src|get_attr('numb1120') if cell_src is not none else none -%}
+{%- if v is not none -%}{{ v }}{%- elif group_entity is not none and group_entity.numb is not none -%}{{ group_entity.numb }}{%- endif -%}
+{%- endif -%}
+{%- endmacro %}
 
     <table class="table table-hover table-striped table-bordered table-responsive">
         <thead class="table-success">
@@ -64,7 +109,7 @@
                 {% for attr, label, is_numeric in specific_columns %}
                 <th style="width: 70px;">
                     {{ header_labels.get(attr, label) }}{% if consumption_formulas is defined and consumption_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}
-                    <br><span class="text-muted small">({{ attr }})</span>
+                    <br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% endfor %}
             </tr>
@@ -90,6 +135,7 @@
                                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
                                 {% for row in group_block.rows %}
                                     {% set param = row[1] %}
+                                    {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
                                     <tr class="text-center align-middle">
                                         <td>
                                             {% if group_entity and group_entity.id %}
@@ -102,7 +148,8 @@
                                         </td>
                                         {% for attr, label, is_numeric in specific_columns %}
                                         {% set cell_src = param %}
-                                        <td>{% if cell_src is none %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                                        {% set cell_ttip = sfc_db_tooltip(attr, is_numeric, cell_src, group_entity)|trim %}
+                                        <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}
@@ -111,7 +158,9 @@
                         <tr class="text-center align-middle table-warning" style="font-weight: bold;">
                             <td>{{ station_block.station_name }}, всего</td>
                             {% for attr, label, is_numeric in specific_columns %}
-                            <td>{% if is_numeric and station_block.station_summary and attr in station_block.station_summary %}{% set v = station_block.station_summary[attr] %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
+                            {% set v = station_block.station_summary[attr] if is_numeric and station_block.station_summary and attr in station_block.station_summary else none %}
+                            {% set cell_ttip = (v|format_decimal(0) if v is not none else '')|trim %}
+                            <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if is_numeric and v is not none %}{% if v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
                             {% endfor %}
                         </tr>
                         {% endif %}
@@ -120,7 +169,9 @@
                         <tr class="text-center align-middle table-info" style="font-weight: bold;">
                             <td>{{ res_block.res_name }}, всего</td>
                             {% for attr, label, is_numeric in specific_columns %}
-                            <td>{% if is_numeric and res_block.res_summary and attr in res_block.res_summary %}{% set v = res_block.res_summary[attr] %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
+                            {% set v = res_block.res_summary[attr] if is_numeric and res_block.res_summary and attr in res_block.res_summary else none %}
+                            {% set cell_ttip = (v|format_decimal(0) if v is not none else '')|trim %}
+                            <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if is_numeric and v is not none %}{% if v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
                             {% endfor %}
                         </tr>
                         {% endif %}
@@ -132,6 +183,7 @@
                 {% set group_entity = row[0] %}
                 {% set param = row[1] %}
                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
                 <tr class="text-center align-middle">
                     <td>
                         {% if group_entity and group_entity.id %}
@@ -144,7 +196,8 @@
                     </td>
                     {% for attr, label, is_numeric in specific_columns %}
                     {% set cell_src = param %}
-                    <td>{% if cell_src is none %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                    {% set cell_ttip = sfc_db_tooltip(attr, is_numeric, cell_src, group_entity)|trim %}
+                    <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
                     {% endfor %}
                 </tr>
             {% endfor %}
@@ -213,6 +266,44 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 });
+</script>
+
+<script>
+(function () {
+    function updateSfcStickyHeights() {
+        var controls = document.getElementById("sfcStickyControls");
+        var container = document.getElementById("stationsTableContainer");
+        var h = controls
+            ? Math.ceil(controls.getBoundingClientRect().height || controls.offsetHeight || 0)
+            : 0;
+        var target = container || document.documentElement;
+        target.style.setProperty("--sfc-controls-sticky-height", h + "px");
+        if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+            window.armGsApplyStickyTheadOffsets();
+        }
+    }
+
+    function bind() {
+        updateSfcStickyHeights();
+        var controls = document.getElementById("sfcStickyControls");
+        if (controls && typeof ResizeObserver !== "undefined") {
+            var ro = new ResizeObserver(function () {
+                updateSfcStickyHeights();
+            });
+            ro.observe(controls);
+        }
+        document.addEventListener("shown.bs.collapse", updateSfcStickyHeights);
+        document.addEventListener("hidden.bs.collapse", updateSfcStickyHeights);
+        window.addEventListener("resize", updateSfcStickyHeights);
+        window.addEventListener("load", updateSfcStickyHeights);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bind);
+    } else {
+        bind();
+    }
+})();
 </script>
 
 <script>

@@ -88,7 +88,8 @@ def _save_station_meta_from_form(
 
     if can_edit_fuel and not can_edit:
         if "station_sign" not in request.form and not (
-            can_edit_external_code and "external_code" in request.form
+            can_edit_external_code
+            and ("external_code" in request.form or "kto" in request.form)
         ):
             return []
         form.process(formdata=request.form)
@@ -253,7 +254,8 @@ def _handle_station_machines_all_versions_save(
     is_gaes_station: bool,
 ) -> bool:
     """
-    Синхронизация таблицы заряда ГАЭС station_details во всех версиях БД.
+    Синхронизация кода КТО, выработки (и заряда ГАЭС для станций ГАЭС)
+    station_details во всех версиях БД.
     Возвращает True, если запрос был с all_versions=1 (вызвавший обработку или отказ).
     """
     if request.values.get("all_versions") != "1":
@@ -276,17 +278,10 @@ def _handle_station_machines_all_versions_save(
         )
         return True
 
-    if not is_gaes_station:
-        flash(
-            "Сохранение во всех версиях БД доступно только для таблицы заряда ГАЭС "
-            "на электростанциях типа ГАЭС.",
-            "warning",
-        )
-        return True
-
     sync_station_general_info = False
-    sync_station_energy = False
-    sync_station_gaes_charge = True
+    sync_station_kto = True
+    sync_station_energy = True
+    sync_station_gaes_charge = bool(is_gaes_station)
 
     request_meta = {
         "path": request.path,
@@ -304,11 +299,14 @@ def _handle_station_machines_all_versions_save(
             sync_station_energy=sync_station_energy,
             sync_station_gaes_charge=sync_station_gaes_charge,
             sync_station_general_info=sync_station_general_info,
+            sync_station_kto=sync_station_kto,
             sync_machines=False,
             request_meta=request_meta,
         )
         vt = result.get("versions_touched", 0)
+        ue = result.get("updated_energy_rows", 0)
         ug = result.get("updated_gaes_rows", 0)
+        uk = result.get("updated_kto_stations", 0)
         warnings = result.get("warnings") or []
 
         if result.get("no_changes") and not warnings:
@@ -319,10 +317,18 @@ def _handle_station_machines_all_versions_save(
         else:
             parts = [
                 f"затронуто версий БД: {vt}",
-                f"строк заряда ГАЭС: {ug}",
+                f"станций (код КТО): {uk}",
+                f"строк выработки: {ue}",
             ]
+            if sync_station_gaes_charge:
+                parts.append(f"строк заряда ГАЭС: {ug}")
+            tables_label = (
+                "Код КТО, таблицы выработки и заряда ГАЭС применены"
+                if sync_station_gaes_charge
+                else "Код КТО и таблица выработки применены"
+            )
             flash(
-                "Таблица заряда ГАЭС применена во всех версиях БД ("
+                f"{tables_label} во всех версиях БД ("
                 + ", ".join(parts)
                 + ").",
                 "success",
@@ -724,6 +730,7 @@ def station_details(station_id):
             "note",
             "station_sign",
             "external_code",
+            "kto",
         }
     )
     # Признаки формы агрегатов: удаление/поля агрегатов/примечание агрегата/собственник агрегата
@@ -872,6 +879,7 @@ def station_details(station_id):
             "note",
             "station_sign",
             "external_code",
+            "kto",
         }
 
         # Единая отправка: карточка станции + агрегаты + выработка (+ потребление ГАЭС) одной кнопкой / Enter
@@ -1090,6 +1098,7 @@ def station_details(station_id):
                                 "location",
                                 "note",
                                 "external_code",
+                                "kto",
                             }
                         ):
                             # Привязываем POST-данные к форме электростанции и валидируем

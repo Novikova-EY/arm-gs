@@ -1,0 +1,113 @@
+Version =19
+VersionRequired =19
+Checksum =440772172
+Begin Form
+    PopUp = NotDefault
+    Modal = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =5
+    BorderStyle =3
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5669
+    DatasheetFontHeight =10
+    ItemSuffix =6
+    Left =1500
+    Top =2460
+    Right =7455
+    Bottom =4935
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xfc47a513af05e240
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="main"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =2482
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xa6491f182aedd41193970080ad7e28b1
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3458
+                    Top =226
+                    Width =1026
+                    Height =628
+                    Name ="Кнопка4"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xbc491f182aedd41193970080ad7e28b1
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Width =2835
+                    Height =1920
+                    TabIndex =1
+                    Name ="Список_объектов"
+                    SourceObject ="Form.Список_объектов"
+                    GUID = Begin
+                        0x154a1f182aedd41193970080ad7e28b1
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Кнопка4_Click()
+Dim db As Database, so As Recordset, work As QueryDef
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set so = Список_объектов.Form.RecordsetClone
+so.Bookmark = Список_объектов.Form.Bookmark
+Debug.Print so!Name
+Set work = db.QueryDefs("Рабочий(станции)")
+work.SQL = "select distinctrow " & "[" & so!Name & "].* from " & "[" & so!Name & "];"
+End Sub

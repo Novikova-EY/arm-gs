@@ -1,0 +1,235 @@
+Version =20
+VersionRequired =20
+Checksum =-1227634287
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =26640
+    DatasheetFontHeight =10
+    ItemSuffix =14
+    Left =600
+    Top =336
+    Right =11028
+    Bottom =5652
+    DatasheetGridlinesColor =12632256
+    Filter ="toplcode<>0 and toplcode<>10"
+    RecSrcDt = Begin
+        0x32dbedd3b42de240
+    End
+    RecordSource ="Топливо"
+    OnCurrent ="[Event Procedure]"
+    OnOpen ="[Event Procedure]"
+    OnClose ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =5325
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x0ba50ceacbe8d511be1c0050bf59f750
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Width =2826
+                    Height =284
+                    ColumnWidth =1605
+                    Name ="Toplname"
+                    ControlSource ="Toplname"
+                    GUID = Begin
+                        0x0fa50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =87
+                    Left =2826
+                    Width =567
+                    Height =284
+                    ColumnWidth =975
+                    TabIndex =1
+                    Name ="toplcode"
+                    ControlSource ="toplcode"
+                    GUID = Begin
+                        0x99a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3975
+                    Top =120
+                    Width =567
+                    Height =397
+                    TabIndex =2
+                    Name ="Итог"
+                    Caption ="Итог"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xbd8ae6ec68e9d511be1c0050bf59f750
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =4860
+                    Top =120
+                    Width =567
+                    Height =397
+                    TabIndex =3
+                    Name ="Годы"
+                    Caption ="Годы"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xf68ae6ec68e9d511be1c0050bf59f750
+                    End
+                End
+                Begin ComboBox
+                    RowSourceTypeInt =1
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    TextAlign =2
+                    ListWidth =851
+                    Left =5427
+                    Top =120
+                    Width =851
+                    Height =369
+                    FontSize =9
+                    TabIndex =4
+                    GUID = Begin
+                        0x108be6ec68e9d511be1c0050bf59f750
+                    End
+                    Name ="Список_лет"
+                    RowSourceType ="Value List"
+                    RowSource ="\"Все\";2000;2005;2010;2015;2020"
+                    ColumnWidths ="1440"
+                    DefaultValue ="\"Все\""
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Close()
+DoCmd.Close acForm, "Топливо(станции)"
+End Sub
+
+Private Sub Form_Current()
+DoCmd.OpenForm "Топливо(станции)", acFormDS, , seltopl(toplcode) & ">0"
+End Sub
+Function seltopl(code)
+If code = 6 Then seltopl = "don"
+If code = 7 Then seltopl = "podm"
+If code = 8 Then seltopl = "vork"
+If code = 9 Then seltopl = "intin"
+If code = 10.1 Then seltopl = "kuznt"
+If code = 10.2 Then seltopl = "kuznss"
+If code = 10.3 Then seltopl = "kuzngd"
+If code = 10.4 Then seltopl = "kuznun"
+If code = 11 Then seltopl = "sver"
+If code = 12 Then seltopl = "chel"
+If code = 13 Then seltopl = "kizel"
+If code = 14 Then seltopl = "bashk"
+If code = 15 Then seltopl = "ekib"
+If code = 16 Then seltopl = "karag"
+If code = 17 Then seltopl = "nazar"
+If code = 18 Then seltopl = "ibor"
+If code = 19 Then seltopl = "berez"
+If code = 19.1 Then seltopl = "per"
+If code = 20 Then seltopl = "hak"
+If code = 21 Then seltopl = "tuv"
+If code = 22 Then seltopl = "azey"
+If code = 23 Then seltopl = "cher"
+If code = 24 Then seltopl = "gusin"
+If code = 25 Then seltopl = "tugn"
+If code = 26 Then seltopl = "chit"
+'If code = 27 Then seltopl = "ner"
+If code = 27 Then seltopl = "yakut"
+If code = 28 Then seltopl = "prim"
+If code = 29 Then seltopl = "amur"
+If code = 30 Then seltopl = "urg"
+If code = 31 Then seltopl = "luch"
+If code = 32 Then seltopl = "mag"
+If code = 33 Then seltopl = "sah"
+End Function
+
+Private Sub Form_Open(Cancel As Integer)
+filter = "toplcode<>0 and toplcode<>10"
+FilterOn = True
+End Sub
+
+Private Sub Годы_Click()
+With Forms("Топливо(станции)")
+If Список_лет <> "Все" Then
+filterall = .filter
+.filter = filterall & " and year=" & Список_лет
+Else
+.filter = filterall
+End If
+.FilterOn = True
+End With
+End Sub
+
+Private Sub Итог_Click()
+sqlt = "Select year,sum(" & seltopl(toplcode) & ") as Сумма from [" & Forms("Топливо(станции)").RecordSource & "] group by year;"
+Application.DoCmd.OpenForm "Итог", acFormDS
+Forms("Итог").RecordSource = sqlt
+Forms("Итог").Requery
+End Sub

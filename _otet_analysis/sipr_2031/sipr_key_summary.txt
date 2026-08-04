@@ -1,0 +1,97 @@
+TABLE Станции(Схема) COLS=63
+NAME, YEAR, NUST, NR, E, EOTP, EURT, EUST, Q, TURT, TUST, B, GAZ, ISK_GAZ, MAZUT, TORF, SLAN, PROCH, UGOL, DON, PODM, PECH, ALT, KUZN, URAL, BASHK, KAZAH, KAN, TUNG, IRKUT, HAK, TUV, BUR, CHIT, TAL, AMUR, URG, USHUM, PRIM, YAKUT, MAG, KAMCH, CHUKOT, SAH, QOTR, SNK, EWTP, NT, NTsum, OBOR, H, HFIX, VED, вед, OBL, DEP, OES, ER, NUMB1120, numb1, v, BE, GK
+
+TABLE Удельные(Схема) COLS=18
+name, year, snk, k, obor, btp, sntp, Bk, y, Kh, bbas, Ksn, snbas, numb1120, numb1, v, fbt, w
+
+TABLE Формулы_топлива(Схема) COLS=6
+NAME, year, formtxt, numb1120, numb1, v
+
+TABLE Списки_агрегатов COLS=54
+name, year, stnumb, stcode, stname, typecode, ur, nt, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036, 2037, 2038, 2039, 2040, 2041, 2042, obor, grcode, numb, work, grcodec, oes
+
+TABLE Доп_угли(Схема) COLS=64
+NAME, YEAR, gaz_prir, gazpp, disel, maztop, gtt, nft_proch, domen_g, koks_g, prochgaz, tvproch, szh_gaz, inoe, nazar, ibor, berez, per, irbei, kansk, gusin, tugn, okino, azey, mug, cher, jer, karab, vork, intin, sver, chel, kizel, sosv, kuzngd, kuznt, kuznss, kuznun, har, urt, tataur, tarbag, zab_kam, rai, erk, ogodj, svo, bikin, razdol, hankai, neru, zyryan, pyak, bering, anad, ekib, maikub, karag, karajyra, teniz, NUMB1120, numb1, v, oes
+
+TABLE Параметры-распределения COLS=24
+name, year, filter, e, kplus, kmin, k, bkl, wname, uname, toplname, dopname, byear, kn, knps, kngt, knpg, hnps, hngt, hnpg, numb, WT_RECID, doptim, lim
+
+TABLE Ограничения COLS=13
+year, oes, name, obl, emin, emax, ecur, H, ecurdis, Hdis, etp, kobl, kcur
+
+TABLE Дефициты COLS=25
+year, obl, РЭУ, Eпотр, D, E, Nust, NнеТЭС, DN, DNust, Dmax, Nmaxsob, Dwork, oes, nout, pr, q, Eнетэс, Eэи, Eгэс, Eаэс, Eни, Eгаэс, Eэксп, Nr
+
+TABLE перетоки_табл COLS=12
+year, РЭУ1, РЭУ2, obl1, obl2, p, pinv, pwork, t, id, oes, nc
+
+SQL: SELECT year, Count(*) as c FROM [Удельные(Схема)] GROUP BY year ORDER BY year
+2021	947
+2022	783
+2023	777
+2024	810
+2025	215
+2026	49
+2027	18
+2028	25
+2029	5
+2030	9
+2031	12
+2032	3
+2033	3
+2034	1
+2035	8
+2036	1
+2037	1
+2038	1
+2039	2
+2040	6
+2041	3
+2042	1
+
+SQL: SELECT year, Count(*) as c FROM [Формулы_топлива(Схема)] GROUP BY year ORDER BY year
+2021	988
+2022	857
+2023	865
+2024	925
+2025	64
+2026	75
+2027	9
+2028	4
+2029	9
+2030	11
+2031	13
+2032	1
+2033	1
+2034	1
+2035	10
+2036	1
+2037	1
+2038	1
+2040	4
+2042	1
+
+SQL: SELECT Year, Count(*) as c FROM [Доп_угли(Схема)] GROUP BY Year ORDER BY Year
+2021	1099
+2022	1102
+2023	1103
+2024	1090
+2025	1170
+2026	1125
+2027	1122
+2028	1120
+2029	1120
+2030	1181
+2031	1084
+2032	1041
+2033	1041
+2034	1041
+2035	1073
+2036	1026
+2037	1025
+2038	1025
+2039	1025
+2040	1025
+2041	1025
+2042	1025
+

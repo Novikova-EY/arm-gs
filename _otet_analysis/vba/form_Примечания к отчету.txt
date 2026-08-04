@@ -1,0 +1,104 @@
+Version =20
+VersionRequired =20
+Checksum =-1537632275
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =11235
+    DatasheetFontHeight =10
+    ItemSuffix =2
+    Left =864
+    Top =336
+    Right =12468
+    Bottom =7308
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x5590db36d7d5e240
+    End
+    GUID = Begin
+        0xd88f33b6c3480d478887da4dcc9ef07a
+    End
+    NameMap = Begin
+        0x0acc0e550000000055b1364f3ecb104dafa85527d0297a1900000000ddf1c497 ,
+        0xb84ce54000000000000000001f04400438043c043504470430043d0438044f04 ,
+        0x20003a0420003e04420447043504420443042800370430043f0440043e044104 ,
+        0x290000000000000038b2def38d2ede41bb76173d6667b69c0700000055b1364f ,
+        0x3ecb104dafa85527d0297a1933043e04340400000000000046bf47abfa9d1445 ,
+        0x8e70ae0b8b8276c60700000055b1364f3ecb104dafa85527d0297a191f044004 ,
+        0x38043c043504470430043d0438043504000000000000afcdd185950bfb4c8d66 ,
+        0x8d2e80aa73560700000055b1364f3ecb104dafa85527d0297a196e0061006d00 ,
+        0x6500000000000000000000000000000000000000000000000c00000003000000 ,
+        0x0000000000000000000000000000
+    End
+    RecordSource ="Примечания к отчету(запрос)"
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =6916
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x2bf1050d5c79b14c99b8ff2588bd6279
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =85
+                    ColumnWidth =552
+                    Name ="год"
+                    ControlSource ="год"
+                    GUID = Begin
+                        0x78fb231872df77429be63808c1c82dd9
+                    End
+                End
+                Begin TextBox
+                    EnterKeyBehavior = NotDefault
+                    ScrollBars =2
+                    OverlapFlags =85
+                    Top =566
+                    Width =11235
+                    Height =6348
+                    ColumnWidth =10332
+                    TabIndex =1
+                    Name ="Примечание"
+                    ControlSource ="Примечание"
+                    GUID = Begin
+                        0x483b4bbff3d3404a9b1f8e7b9290281f
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =1133
+                    Width =1755
+                    ColumnWidth =1800
+                    TabIndex =2
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0xf832c09620123143ad8f5aec722ad472
+                    End
+                End
+            End
+        End
+    End
+End

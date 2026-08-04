@@ -3,7 +3,7 @@
 EquipmentGroupHeatAndTariffs — тепло и тарифы из схем теплоснабжения (СТ).
 Источник Access: «Тепло из схем теплоснабжения» (+ нормализованные Q/TARIF).
 """
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import ForeignKeyConstraint, UniqueConstraint
 from sqlalchemy.sql import func
 from app.extensions import db
 from config import SCHEMA_FUEL, SCHEMA_REFDATA
@@ -12,8 +12,9 @@ from config import SCHEMA_FUEL, SCHEMA_REFDATA
 class EquipmentGroupHeatAndTariffs(db.Model):
     """
     Тепло (Q) и тариф (TARIF) из схем теплоснабжения.
-    Связь с EquipmentGroup через equipment_group_id (NUMB1120 = EquipmentGroup.numb),
-    если NUMB1120 задан; иначе запись без привязки к группе оборудования.
+    Связь с EquipmentGroup через equipment_group_id и numb1120 = EquipmentGroup.numb
+    (без FK на numb — поле не уникально).
+    year_number + database_version_id → Year.number + Year.database_version_id.
     """
 
     __tablename__ = "gs_fue_equipment_group_heat_and_tariffs"
@@ -26,6 +27,15 @@ class EquipmentGroupHeatAndTariffs(db.Model):
             "year_number",
             "database_version_id",
             name="uq_equipment_group_heat_and_tariffs_key",
+        ),
+        ForeignKeyConstraint(
+            ["year_number", "database_version_id"],
+            [
+                f"{SCHEMA_REFDATA}.gs_sys_years.number",
+                f"{SCHEMA_REFDATA}.gs_sys_years.database_version_id",
+            ],
+            ondelete="RESTRICT",
+            name="fk_equipment_group_heat_and_tariffs_year_ver",
         ),
         {"schema": SCHEMA_FUEL},
     )
@@ -50,10 +60,40 @@ class EquipmentGroupHeatAndTariffs(db.Model):
     name_goroda = db.Column(db.String(255), nullable=True)
     var_razv = db.Column(db.Integer, nullable=True)
     name_eto = db.Column(db.Text, nullable=True)
+
+    # Код группы оборудования: numb1120 = EquipmentGroup.numb (без FK — numb не уникален)
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
+    equipment_group_by_numb = db.relationship(
+        "EquipmentGroup",
+        primaryjoin=(
+            "and_("
+            "EquipmentGroupHeatAndTariffs.numb1120==foreign(EquipmentGroup.numb), "
+            "EquipmentGroupHeatAndTariffs.database_version_id==EquipmentGroup.database_version_id"
+            ")"
+        ),
+        viewonly=True,
+        uselist=False,
+        lazy="select",
+    )
+
     ndv_st = db.Column(db.Integer, nullable=True)
 
+    # Ссылка на год: Year.number + database_version_id (composite FK).
     year_number = db.Column(db.Integer, nullable=True, index=True)
+    year = db.relationship(
+        "Year",
+        lazy="noload",
+        primaryjoin=(
+            "and_(Year.number==EquipmentGroupHeatAndTariffs.year_number, "
+            "Year.database_version_id==EquipmentGroupHeatAndTariffs.database_version_id)"
+        ),
+        foreign_keys=(
+            "[EquipmentGroupHeatAndTariffs.year_number, "
+            "EquipmentGroupHeatAndTariffs.database_version_id]"
+        ),
+        viewonly=True,
+    )
+
     q = db.Column(db.Numeric(36, 16), nullable=True)
     tarif = db.Column(db.Numeric(36, 16), nullable=True)
 

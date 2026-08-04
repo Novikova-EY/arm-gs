@@ -44,7 +44,7 @@ class FederalDistrictPopulationConsumptionYearParameter(db.Model, AuditMixin):
         back_populates="fd_population_consumption_year_parameters",
         lazy="noload",
     )
-    # Значение показателя за год (кВт·ч/чел., зависит от row_kind)
+    # Значение показателя за год (кВтч/чел., зависит от row_kind)
     parameter_value = db.Column(Numeric(25, 10), nullable=True)
     note = db.Column(db.Text, nullable=True)
 

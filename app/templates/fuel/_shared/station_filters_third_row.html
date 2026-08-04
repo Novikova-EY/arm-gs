@@ -19,8 +19,9 @@
             </div>
             {% endif %}
             <form method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}" class="d-flex align-items-center gap-2 flex-nowrap overflow-x-auto" id="yearForm">
-                {% for key, value in request.args.items() %}
-                    {% if key != "per_page" and key != "start_year" and key != "end_year" and key != "year" %}
+                {% for key, value in request.args.items(multi=True) %}
+                    {% if key != "per_page" and key != "start_year" and key != "end_year" and key != "year"
+                          and key not in _fuel_transient_query_keys|default(['equipment_group_ids', 'show_empty_rows']) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endfor %}
@@ -66,13 +67,14 @@
             </form>
         </div>
 
-        {% if show_recalculate_specific_fuel_consumption|default(false) %}
-        <!-- По центру строки: (опционально) пересчёт удельных; копирование по годам — в строке «Импорт/Экспорт» (station_filters_second_row) -->
+        {% if show_recalculate_specific_fuel_consumption|default(false) or show_recalculate_specific_fuel_price|default(false) or show_calc_mismatch_toggle|default(false) %}
+        <!-- По центру строки: (опционально) пересчёт удельных/цен; копирование по годам — в строке «Импорт/Экспорт» (station_filters_second_row) -->
         <div class="d-flex align-items-center justify-content-center gap-3 flex-wrap station-filters-third-center flex-shrink-0">
+                {% if show_recalculate_specific_fuel_consumption|default(false) %}
                 <form method="POST" action="{{ url_for('fuel_bp.recalculate_specific_fuel_consumption') }}" class="d-inline" id="recalculateSpecificFuelConsumptionForm">
                     {{ form.csrf_token if form is defined else '' }}
                     <input type="hidden" name="year" id="recalcYearInput" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -81,18 +83,58 @@
                         Рассчитать удельные показатели
                     </button>
                 </form>
+                {% endif %}
+                {% if show_recalculate_specific_fuel_price|default(false) %}
+                <form method="POST" action="{{ url_for('fuel_bp.recalculate_specific_fuel_price') }}" class="d-inline" id="recalculateSpecificFuelPriceForm">
+                    {{ form.csrf_token if form is defined else '' }}
+                    <input type="hidden" name="year" id="recalcPriceYearInput" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% for key, value in request.args.items(multi=True) %}
+                        {% if key != 'year' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                    {% endfor %}
+                    <button type="submit" class="btn btn-outline-primary" style="white-space: nowrap;">
+                        Рассчитать цены топлива
+                    </button>
+                </form>
+                {% endif %}
+                {# Временная кнопка: показать строки, где поле ≠ *_calc #}
+                {% if show_calc_mismatch|default(false) %}
+                <a href="{{ calc_mismatch_toggle_url }}"
+                   class="btn btn-warning"
+                   style="white-space: nowrap;"
+                   title="Временно: сбросить фильтр расхождений calc">
+                    Расхождения calc{% if calc_mismatch_count is not none %} ({{ calc_mismatch_count }}){% endif %} ✕
+                </a>
+                {% else %}
+                <a href="{{ calc_mismatch_toggle_url }}"
+                   class="btn btn-outline-warning"
+                   style="white-space: nowrap;"
+                   title="Временно: показать строки, где хотя бы одно поле ≠ соответствующему *_calc">
+                    Расхождения calc
+                </a>
+                {% endif %}
+                {% if show_recalculate_specific_fuel_consumption|default(false) or show_recalculate_specific_fuel_price|default(false) %}
                 <script>
                 (function() {
-                    var recalcForm = document.getElementById('recalculateSpecificFuelConsumptionForm');
                     var yearSelect = document.getElementById('year');
+                    var recalcForm = document.getElementById('recalculateSpecificFuelConsumptionForm');
                     var recalcYearInput = document.getElementById('recalcYearInput');
                     if (recalcForm && yearSelect && recalcYearInput) {
                         recalcForm.addEventListener('submit', function() {
                             recalcYearInput.value = yearSelect.value;
                         });
                     }
+                    var recalcPriceForm = document.getElementById('recalculateSpecificFuelPriceForm');
+                    var recalcPriceYearInput = document.getElementById('recalcPriceYearInput');
+                    if (recalcPriceForm && yearSelect && recalcPriceYearInput) {
+                        recalcPriceForm.addEventListener('submit', function() {
+                            recalcPriceYearInput.value = yearSelect.value;
+                        });
+                    }
                 })();
                 </script>
+                {% endif %}
         </div>
         {% endif %}
 
@@ -107,9 +149,16 @@
             {% endif %}
         {% endif %}
 
-        {% if not hide_pagination_and_per_page|default(false) %}
-        <!-- Справа: пагинация и выбор числа строк (если не center_top_pagination — пагинация здесь же; иначе только «Показать: …»). -->
-        <div class="d-flex align-items-center flex-wrap justify-content-end gap-3 station-filters-third-right" style="{% if center_top_pagination|default(false) %}flex: 0 1 auto{% else %}flex: 1 1 0{% endif %}; min-width: 0;">
+        {% set _show_fuel_edit_filter_actions = (
+            (show_fuel_calc_edit_add_year_period|default(false) and year_list_for_edit|default(none))
+            or (show_fuel_calc_edit_save_in_filters|default(false) and not hide_fuel_calc_edit_save_in_filters|default(false))
+            or show_fuel_calc_edit_hide_empty_toggle|default(false)
+            or show_fuel_detail_panels_toggle|default(false)
+        ) %}
+        {% if not hide_pagination_and_per_page|default(false) or _show_fuel_edit_filter_actions %}
+        <!-- Справа: кнопки редактирования; пагинация/«Показать» — если не скрыты. -->
+        <div class="d-flex align-items-center flex-wrap justify-content-end gap-3 station-filters-third-right" style="{% if center_top_pagination|default(false) or hide_pagination_and_per_page|default(false) %}flex: 0 1 auto{% else %}flex: 1 1 0{% endif %}; min-width: 0;">
+            {% if not hide_pagination_and_per_page|default(false) %}
             {% if not hide_pagination_in_filters_third_row|default(false) %}
             {% if not center_top_pagination|default(false) %}
             <div class="d-flex justify-content-center align-items-center" style="min-width: min(100%, 200px);">
@@ -120,18 +169,39 @@
             </div>
             {% endif %}
             {% endif %}
+            {% endif %}
 
             <div class="d-flex align-items-center flex-wrap justify-content-end gap-3">
             {% if show_fuel_calc_edit_add_year_period|default(false) and current_user.is_authenticated and current_user.has_admin and year_list_for_edit|default(none) %}
-            <button type="button" class="btn btn-outline-primary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#fuelEditDataHeatBulkAddYearModal">Добавить год</button>
-            <button type="button" class="btn btn-outline-primary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#fuelEditDataHeatBulkAddPeriodModal">Добавить период</button>
+            <button type="button" class="btn btn-outline-success flex-shrink-0" data-bs-toggle="modal" data-bs-target="#fuelEditDataHeatBulkAddYearModal">Добавить год</button>
+            <button type="button" class="btn btn-outline-success flex-shrink-0" data-bs-toggle="modal" data-bs-target="#fuelEditDataHeatBulkAddPeriodModal">Добавить период</button>
             {% endif %}
             {% if show_fuel_calc_edit_save_in_filters|default(false) and not hide_fuel_calc_edit_save_in_filters|default(false) and current_user.is_authenticated and current_user.has_admin %}
-            <button type="submit" form="fuelParamsBulkEditForm" class="btn btn-outline-primary fs-5 flex-shrink-0">Сохранить</button>
+            <button type="submit" form="{{ fuel_calc_edit_save_form_id|default('fuelParamsBulkEditForm') }}" class="btn btn-outline-primary flex-shrink-0">Сохранить</button>
             {% endif %}
+            {% if show_fuel_calc_edit_hide_empty_toggle|default(false) %}
+            <button type="button"
+                    id="fuelEditHideEmptyToggle"
+                    class="btn btn-secondary text-wrap flex-shrink-0"
+                    aria-pressed="true"
+                    title="Скрыть строки, у которых показатели не заполнены (жёлтые строки изменения Nуст всегда видны)">
+                Пустые строки
+            </button>
+            {% endif %}
+            {% if show_fuel_detail_panels_toggle|default(false) %}
+            <button type="button"
+                    id="fuelDetailPanelsToggle"
+                    class="btn btn-primary flex-shrink-0 text-nowrap"
+                    aria-pressed="true"
+                    title="Показать/скрыть таблицы детализации топлива">
+                Детализация топлива
+            </button>
+            {% endif %}
+            {% if not hide_pagination_and_per_page|default(false) %}
             <form id="perPageForm" method="GET" action="{{ filters_action|default(url_for('fuel_bp.stations_equipment_groups')) }}">
-                {% for key, value in request.args.items() %}
-                    {% if key != "per_page" %}
+                {% for key, value in request.args.items(multi=True) %}
+                    {% if key != "per_page"
+                          and key not in _fuel_transient_query_keys|default(['equipment_group_ids', 'show_empty_rows']) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}
                 {% endfor %}
@@ -161,7 +231,7 @@
                         <div class="d-flex align-items-center gap-2" id="per_page_select_wrapper">
                             <label for="per_page_select" class="mb-0" style="white-space: nowrap; min-width: 100px;">Показать:</label>
                             <select id="per_page_select" name="per_page" class="form-select" style="min-width: 150px;" onchange="this.form.submit()">
-                                {% set selected_per_page = request.args.get('per_page', default_per_page|default('10')) %}
+                                {% set selected_per_page = request.args.get('per_page', default_per_page|default('25')) %}
                                 <option value="10" {% if selected_per_page == '10' %}selected{% endif %}>10 {{ per_page_count_label | default('станций') }}</option>
                                 <option value="25" {% if selected_per_page == '25' %}selected{% endif %}>25 {{ per_page_count_label | default('станций') }}</option>
                                 <option value="50" {% if selected_per_page == '50' %}selected{% endif %}>50 {{ per_page_count_label | default('станций') }}</option>
@@ -172,9 +242,10 @@
                     </div>
                 </div>
             </form>
+            {% endif %}
             </div>
         </div>
-        {% elif show_recalculate_specific_fuel_consumption|default(false) %}
+        {% elif show_recalculate_specific_fuel_consumption|default(false) or show_recalculate_specific_fuel_price|default(false) or show_calc_mismatch_toggle|default(false) %}
         <div class="station-filters-third-right-spacer flex-grow-1 flex-basis-0" style="min-width: 0;" aria-hidden="true"></div>
         {% endif %}
     </div>

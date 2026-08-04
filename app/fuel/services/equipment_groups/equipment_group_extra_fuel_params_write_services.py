@@ -19,7 +19,10 @@ from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
 )
-from app.common.services.help_services import values_equal_by_display_precision
+from app.common.services.help_services import (
+    format_number_trim_trailing,
+    values_equal_by_display_precision,
+)
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (
     EquipmentGroupExtraFuelParam,
@@ -34,6 +37,12 @@ NUMERIC_EXTRA_ATTRS = frozenset(EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS)
 def _format_val(value):
     if value is None:
         return "—"
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (Decimal, int, float)):
+        return format_number_trim_trailing(value)
+    if isinstance(value, str):
+        return value.strip() or "—"
     return str(value)
 
 

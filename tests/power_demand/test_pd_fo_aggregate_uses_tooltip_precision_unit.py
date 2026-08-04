@@ -52,11 +52,8 @@ def test_fo_combined_on_fo_aggregate_uses_tooltip_precision() -> None:
     assert sums[90][1] == 31839.1
 
 
-def test_fo_aggregate_skips_tites_branch_res(monkeypatch) -> None:
-    """Норильск (ТИТЭС) под Сибирским ФО не должен входить в расчётный максимум ФО."""
-    monkeypatch.setattr(
-        dss, "_tites_union_energy_system_ids", lambda: frozenset({120})
-    )
+def test_fo_aggregate_includes_tites_branch_res() -> None:
+    """Норильск (ТИТЭС) под Сибирским ФО входит в расчётный максимум ФО."""
     years = [2022, 2023]
     rows = [
         {
@@ -83,7 +80,7 @@ def test_fo_aggregate_skips_tites_branch_res(monkeypatch) -> None:
         },
     ]
     sums = dss._aggregate_res_combined_on_fo_mw_sum_by_federal_district(rows, years)
-    assert sums[90] == [29601.6, 32385.9]
+    assert sums[90] == [30692.6, 33502.9]
 
 
 def test_verify_diff_uses_tooltip_precision() -> None:

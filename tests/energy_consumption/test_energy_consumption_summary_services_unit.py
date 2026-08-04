@@ -13,7 +13,7 @@ def _ues_base_row() -> dict:
         "show_entity_cell": True,
         "show_entity_note_cell": True,
         "parameter_key": "energy_consumption_mln_kvt_ch",
-        "parameter_label": "Потребление электрической энергии, млн кВт·ч",
+        "parameter_label": "Потребление электрической энергии, млн кВтч",
         "demand_model_name": "UnionEnergySystemEnergyConsumptionParameter",
         "parent_fk_column": "id_union_energy_system",
         "parent_id": 117,
@@ -71,7 +71,7 @@ def _south_variant_row(code: str, value: str) -> dict:
         "show_entity_cell": True,
         "show_entity_note_cell": True,
         "parameter_key": "energy_consumption_mln_kvt_ch",
-        "parameter_label": "Потребление электрической энергии, млн кВт·ч",
+        "parameter_label": "Потребление электрической энергии, млн кВтч",
         "demand_model_name": "UnionEnergySystemEnergyConsumptionParameter",
         "parent_fk_column": "id_union_energy_system",
         "parent_id": 118,
@@ -7477,7 +7477,7 @@ def test_apply_oes_tites_root_formula_sums_energy_units_excluding_o1(monkeypatch
             "entity_kind": "group-root",
             "show_entity_cell": True,
             "parameter_key": "energy_consumption_mln_kvt_ch",
-            "parameter_label": "Потребление электрической энергии, млн кВт·ч",
+            "parameter_label": "Потребление электрической энергии, млн кВтч",
             "demand_model_name": "EnergySystemTypeEnergyConsumptionParameter",
             "perimeter_variant_code": None,
             "year_values": ["0.0"],
@@ -8557,7 +8557,7 @@ def _chukotka_energy_zone_summary_block() -> list[dict]:
             "entity_depth": 1,
             "show_entity_cell": True,
             "parameter_key": "energy_consumption_mln_kvt_ch",
-            "parameter_label": "Потребление электрической энергии, млн кВт·ч",
+            "parameter_label": "Потребление электрической энергии, млн кВтч",
             "year_values": ["1"],
         }
     )
@@ -8683,7 +8683,7 @@ def _chukotka_oes_split_summary_block() -> list[dict]:
             "entity_depth": 1,
             "show_entity_cell": True,
             "parameter_key": "energy_consumption_mln_kvt_ch",
-            "parameter_label": "Потребление электрической энергии, млн кВт·ч",
+            "parameter_label": "Потребление электрической энергии, млн кВтч",
             "year_values": ["1"],
         }
     )

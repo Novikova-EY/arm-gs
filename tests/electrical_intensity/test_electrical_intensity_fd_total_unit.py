@@ -355,6 +355,6 @@ def test_build_fd_territory_summary_includes_household_consumption(app):
 
     assert summary is not None
     ref_by_kind = {r["row_kind"]: r for r in summary["reference_rows"]}
-    # 3800 (ВЭД) + 400 (домашние хозяйства) = 4200 млн кВт·ч → 4.2 млрд кВт·ч
+    # 3800 (ВЭД) + 400 (домашние хозяйства) = 4200 млн кВтч → 4.2 млрд кВтч
     assert ref_by_kind[REF_ROW_FD_VED_CONSUMPTION]["cells"][2020] == Decimal("4.2")
     assert ref_by_kind[REF_ROW_FD_TOTAL_CONSUMPTION]["cells"][2020] == Decimal("4.7")

@@ -1,0 +1,553 @@
+Version =20
+VersionRequired =20
+Checksum =272739430
+Begin Form
+    KeyPreview = NotDefault
+    DefaultView =2
+    AllowUpdating =1
+    TabularCharSet =204
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =17010
+    DatasheetFontHeight =10
+    ItemSuffix =3
+    Left =288
+    Top =900
+    Right =10980
+    Bottom =3252
+    FrozenColumns =3
+    DatasheetGridlinesColor =12632256
+    OrderBy ="ordnumb"
+    RecSrcDt = Begin
+        0xc6d03ae194e7e140
+    End
+    GUID = Begin
+        0x841d2b73ee6f0445a774207daec18eb7
+    End
+    NameMap = Begin
+        0x0acc0e5500000000fd902a616531f24ca0f24468666a97de0000000065e83ba9 ,
+        0xb84ce54000008e00015e235c260435043d044204400400000000000044569327 ,
+        0xeeb6b440a33c06b3c3159dfb01000000f27d36a8b84ce540ac59f710d4711300 ,
+        0x14043e043f045f00430433043b0438040000000000004436c3e7a9eb224fadb4 ,
+        0xcdf91f5f39a200000000868ded8fb84ce5400000000000008e0014043e043f04 ,
+        0x5f00430433043b0438043200300031003700000000000000fdaa4b8ab3aa7845 ,
+        0xbabcbc82f0810af9070000004436c3e7a9eb224fadb4cdf91f5f39a26e007500 ,
+        0x6d0062003100310032003000000000000000425705201d9829469c49e909bd66 ,
+        0xe5be070000004436c3e7a9eb224fadb4cdf91f5f39a279006500610072000000 ,
+        0x00000000ac08540b990bde4a9abeb41905499b0b07000000fd902a616531f24c ,
+        0xa0f24468666a97de6e0075006d006200310031003200300000000000000050c9 ,
+        0x9cdbbff96f4e918969c6bee5d4a907000000fd902a616531f24ca0f24468666a ,
+        0x97de7900650061007200000000000000b32f98987ea55b4ea350a297d742cdb5 ,
+        0x07000000fd902a616531f24ca0f24468666a97de4e0041004d00450000000000 ,
+        0x000006c102dc53558345bbfff95a7a76179407000000fd902a616531f24ca0f2 ,
+        0x4468666a97de4e0055005300540000000000000063450cd65ac84147a89e4522 ,
+        0xa9a6363207000000fd902a616531f24ca0f24468666a97de4500000000000000 ,
+        0xd9ac62bca3ad0b448a17c1d782a751fd07000000fd902a616531f24ca0f24468 ,
+        0x666a97de45004f0054005000000000000000384b773f731e494bb3d0365e4036 ,
+        0xabee07000000fd902a616531f24ca0f24468666a97de45005500520054000000 ,
+        0x00000000cce5d41cf690e24b821413b4df40a26207000000fd902a616531f24c ,
+        0xa0f24468666a97de450055005300540000000000000044e43255cdb75c42b30d ,
+        0xa6d92eb2622b07000000fd902a616531f24ca0f24468666a97de510000000000 ,
+        0x0000a82fc16fdfde07449984d79ff6517a7407000000fd902a616531f24ca0f2 ,
+        0x4468666a97de5400550052005400000000000000a42d185031c39c45ae8604bc ,
+        0xd410b79507000000fd902a616531f24ca0f24468666a97de5400550053005400 ,
+        0x000000000000aff939ec1e006f41918abcabbcc2838507000000fd902a616531 ,
+        0xf24ca0f24468666a97de42000000000000003f5709ee148b8346a6e9753e3fe6 ,
+        0x2fbd07000000fd902a616531f24ca0f24468666a97de470041005a0000000000 ,
+        0x0000886b855b50af654388a5e89eb28c42ab07000000fd902a616531f24ca0f2 ,
+        0x4468666a97de4d0041005a0055005400000000000000adb48674882b2e4fab66 ,
+        0x2adc681fdd9d07000000fd902a616531f24ca0f24468666a97de550047004f00 ,
+        0x4c0000000000000078198a880019464ebcebf88308c6898107000000fd902a61 ,
+        0x6531f24ca0f24468666a97de4b0055005a004e0000000000000061042f818663 ,
+        0x464ea5316ad9cfda2a7607000000fd902a616531f24ca0f24468666a97de5000 ,
+        0x4f0044004d00000000000000f983267bd1192343b67e8f9cc01a982e07000000 ,
+        0xfd902a616531f24ca0f24468666a97de5000450043004800000000000000ee0f ,
+        0x41001151674490715a56a0e99d9807000000fd902a616531f24ca0f24468666a ,
+        0x97de44004f004e00000000000000d3b0a27c0ee85b479874e68fb1110e110700 ,
+        0x0000fd902a616531f24ca0f24468666a97de45004b0049004200000000000000 ,
+        0xbfd8bf42f93eb04191180c21c1c851be07000000fd902a616531f24ca0f24468 ,
+        0x666a97de4b004100520041004700000000000000fbec7df0437e344cb868ed2a ,
+        0xc5cfff6807000000fd902a616531f24ca0f24468666a97de4b0041004e000000 ,
+        0x00000000da8be4ef7ce1584b91686947be789ccb07000000fd902a616531f24c ,
+        0xa0f24468666a97de54004f005200460000000000000045c42dfc58427a418192 ,
+        0xb51ad0947c3807000000fd902a616531f24ca0f24468666a97de470054005400 ,
+        0x000000000000f65372a8054b4b4fb3ea73a173f2d3a207000000fd902a616531 ,
+        0xf24ca0f24468666a97de500052004f0043004800000000000000c7225be13612 ,
+        0x6b4390267f2ae51a4a2c07000000fd902a616531f24ca0f24468666a97de5100 ,
+        0x4f00540052000000000000001a42be0f6f168046b8176a0fd1571a3d07000000 ,
+        0xfd902a616531f24ca0f24468666a97de53004e004b0000000000000031408585 ,
+        0x369d30489259440c48f3012a07000000fd902a616531f24ca0f24468666a97de ,
+        0x45005700540050000000000000003836f73efffcd04db1423eae28cb25610700 ,
+        0x0000fd902a616531f24ca0f24468666a97de4e005400000000000000ae8fa264 ,
+        0xb42c7c4c9d79461efc9da08b07000000fd902a616531f24ca0f24468666a97de ,
+        0x53004e005400000000000000000000000000000000000000000000000c000000 ,
+        0x030000000000000000000000000000000000
+    End
+    RecordSource ="Центр"
+    DatasheetFontName ="Arial Cyr"
+    OnKeyDown ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =561
+            LabelX =-1701
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =900
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x7b280bd605f458418d00b41d1fb1f46b
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Width =1662
+                    ColumnWidth =2928
+                    ColumnOrder =0
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    Format ="@"
+                    GUID = Begin
+                        0x8946e90b06e7764fbc698b5d17e3f531
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1662
+                    Width =567
+                    ColumnWidth =615
+                    ColumnOrder =1
+                    TabIndex =1
+                    Name ="NUST"
+                    ControlSource ="NUST"
+                    Format ="0"
+                    GUID = Begin
+                        0xf423c7c0973a764da5d1b8ab36989037
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2229
+                    Width =567
+                    ColumnWidth =675
+                    ColumnOrder =3
+                    TabIndex =2
+                    Name ="E"
+                    ControlSource ="E"
+                    Format ="0"
+                    GUID = Begin
+                        0x0e206030a6d00a4fb364be909c8c62ef
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2796
+                    Width =567
+                    ColumnWidth =675
+                    ColumnOrder =4
+                    TabIndex =3
+                    Name ="EOTP"
+                    ControlSource ="EOTP"
+                    Format ="0"
+                    GUID = Begin
+                        0xe5ac642b29275d479ac4436adc05549b
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =3363
+                    Width =567
+                    ColumnWidth =660
+                    ColumnOrder =6
+                    TabIndex =4
+                    Name ="EURT"
+                    ControlSource ="EURT"
+                    Format ="#.0"
+                    GUID = Begin
+                        0xfc2a9246fd4982468925fc1085ccd900
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3930
+                    Width =567
+                    ColumnWidth =660
+                    ColumnOrder =7
+                    TabIndex =5
+                    Name ="EUST"
+                    ControlSource ="EUST"
+                    Format ="0"
+                    GUID = Begin
+                        0x56a249092cb3454bafaab4fc9a1c81e8
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =4497
+                    Width =567
+                    ColumnWidth =630
+                    ColumnOrder =8
+                    TabIndex =6
+                    Name ="Q"
+                    ControlSource ="Q"
+                    Format ="0"
+                    GUID = Begin
+                        0xc9e5de1658b37b4d958e45777126c576
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =5064
+                    Width =567
+                    ColumnWidth =660
+                    ColumnOrder =10
+                    TabIndex =7
+                    Name ="TURT"
+                    ControlSource ="TURT"
+                    Format ="#.0"
+                    GUID = Begin
+                        0x29e64221fe1fb247b93daab2a00a531d
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =5631
+                    Width =567
+                    ColumnWidth =660
+                    ColumnOrder =11
+                    TabIndex =8
+                    Name ="TUST"
+                    ControlSource ="TUST"
+                    Format ="0"
+                    GUID = Begin
+                        0x83c7e47ba4aa3f4abd9be6e366d84278
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =6198
+                    Width =567
+                    ColumnWidth =570
+                    ColumnOrder =14
+                    TabIndex =9
+                    Name ="B"
+                    ControlSource ="B"
+                    Format ="0"
+                    GUID = Begin
+                        0xffc3e3c6d46ef146a360e8702d730b3d
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =6765
+                    Width =567
+                    ColumnWidth =570
+                    ColumnOrder =15
+                    TabIndex =10
+                    Name ="GAZ"
+                    ControlSource ="GAZ"
+                    Format ="0"
+                    GUID = Begin
+                        0x2d82838af6436c4aa7a208a646ba008a
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =7332
+                    Width =567
+                    ColumnWidth =750
+                    ColumnOrder =16
+                    TabIndex =11
+                    Name ="MAZUT"
+                    ControlSource ="MAZUT"
+                    Format ="0"
+                    GUID = Begin
+                        0xd157d36b8949af4abfb5dda1ce8bcfef
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =7899
+                    Width =567
+                    ColumnWidth =615
+                    ColumnOrder =17
+                    TabIndex =12
+                    Name ="UGOL"
+                    ControlSource ="UGOL"
+                    Format ="0"
+                    GUID = Begin
+                        0xa19fb69e66142546acc564091b750b39
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =8466
+                    Width =567
+                    ColumnWidth =600
+                    ColumnOrder =18
+                    TabIndex =13
+                    Name ="KUZN"
+                    ControlSource ="KUZN"
+                    Format ="0"
+                    GUID = Begin
+                        0x3702f9ccc38dcd4f98a8e83094ca4f01
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =9033
+                    Width =567
+                    ColumnWidth =600
+                    ColumnOrder =19
+                    TabIndex =14
+                    Name ="PODM"
+                    ControlSource ="PODM"
+                    Format ="0"
+                    GUID = Begin
+                        0x3e35ae0c8b4d2544b287590509e79143
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =9600
+                    Width =567
+                    ColumnWidth =480
+                    ColumnOrder =20
+                    TabIndex =15
+                    Name ="PECH"
+                    ControlSource ="PECH"
+                    Format ="0"
+                    GUID = Begin
+                        0x43343b55a80c854ca63f56539e2a8e04
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =10167
+                    Width =567
+                    ColumnWidth =615
+                    ColumnOrder =21
+                    TabIndex =16
+                    Name ="DON"
+                    ControlSource ="DON"
+                    Format ="0"
+                    GUID = Begin
+                        0x1362988c0c712a43ae65f38c7e12cd05
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =10734
+                    Width =567
+                    ColumnWidth =600
+                    ColumnOrder =22
+                    TabIndex =17
+                    Name ="EKIB"
+                    ControlSource ="EKIB"
+                    Format ="0"
+                    GUID = Begin
+                        0x047af2ad26a2d841a9b8531537fd1c4b
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =11301
+                    Width =567
+                    ColumnWidth =645
+                    ColumnOrder =23
+                    TabIndex =18
+                    Name ="KARAG"
+                    ControlSource ="KARAG"
+                    Format ="0"
+                    GUID = Begin
+                        0x25b54cb992bb8541b8aac044fad591f6
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =11868
+                    Width =567
+                    ColumnWidth =480
+                    ColumnOrder =24
+                    TabIndex =19
+                    Name ="KAN"
+                    ControlSource ="KAN"
+                    Format ="0"
+                    GUID = Begin
+                        0x7bb577464803d446aee15cf2cf906fbd
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =12435
+                    Width =567
+                    ColumnWidth =600
+                    ColumnOrder =25
+                    TabIndex =20
+                    Name ="TORF"
+                    ControlSource ="TORF"
+                    Format ="0"
+                    GUID = Begin
+                        0x3a8cf555b0086b42b52b11c88dcdba95
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =13002
+                    Width =567
+                    ColumnWidth =585
+                    ColumnOrder =26
+                    TabIndex =21
+                    Name ="GTT"
+                    ControlSource ="GTT"
+                    Format ="0"
+                    GUID = Begin
+                        0x0c2a194f68463f46824d136d2e70b56d
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =13569
+                    Width =567
+                    ColumnWidth =750
+                    ColumnOrder =27
+                    TabIndex =22
+                    Name ="PROCH"
+                    ControlSource ="PROCH"
+                    Format ="0"
+                    GUID = Begin
+                        0x4def3c269f02574c8074762a3cb79679
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =14136
+                    Width =567
+                    ColumnWidth =630
+                    ColumnOrder =9
+                    TabIndex =23
+                    Name ="QOTR"
+                    ControlSource ="QOTR"
+                    Format ="0"
+                    GUID = Begin
+                        0x31e6411969a68b43a53251ecfdf6e2e2
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =95
+                    Left =14703
+                    Width =567
+                    ColumnWidth =480
+                    ColumnOrder =12
+                    TabIndex =24
+                    Name ="SNK"
+                    ControlSource ="SNK"
+                    Format ="#"
+                    GUID = Begin
+                        0x049aa6548c74e44dbc3c77b40ac656e3
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =15270
+                    Width =567
+                    ColumnWidth =645
+                    ColumnOrder =5
+                    TabIndex =25
+                    Name ="EWTP"
+                    ControlSource ="EWTP"
+                    Format ="0"
+                    GUID = Begin
+                        0x372f4ce45d996944aa2a22fc78e82d47
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =15837
+                    Width =567
+                    ColumnWidth =570
+                    ColumnOrder =2
+                    TabIndex =26
+                    Name ="NT"
+                    ControlSource ="NT"
+                    Format ="0"
+                    GUID = Begin
+                        0x2f531868ff696046a88faf96aa8926d6
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =16404
+                    Top =15
+                    ColumnWidth =540
+                    ColumnOrder =13
+                    TabIndex =27
+                    Name ="SNT"
+                    ControlSource ="SNT"
+                    GUID = Begin
+                        0xa8cb6a9aeea1b144ba611ca647374f61
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =119
+                    Left =2265
+                    Top =345
+                    Width =7365
+                    Height =555
+                    TabIndex =28
+                    Name ="Доп_угли"
+                    SourceObject ="Form.Доп_угли"
+                    LinkChildFields ="numb1120;year"
+                    LinkMasterFields ="numb1120;year"
+                    GUID = Begin
+                        0x46862e8f10453241adb414fe26aa0508
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =255
+                            Left =2265
+                            Top =105
+                            Width =855
+                            Height =240
+                            Name ="Надпись2"
+                            Caption ="Доп_угли:"
+                            GUID = Begin
+                                0x872d2a8761e3ef43a55923f432b04cd1
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+If KeyCode = 114 Then SendKeys ("^{TAB}")
+End Sub

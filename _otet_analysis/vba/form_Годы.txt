@@ -1,0 +1,143 @@
+Version =21
+VersionRequired =20
+Checksum =1779754430
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =7
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =3195
+    DatasheetFontHeight =10
+    ItemSuffix =3
+    Left =6950
+    Top =3020
+    Right =10160
+    Bottom =5070
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xa3b765ed4f45e240
+    End
+    GUID = Begin
+        0x507103f17cebd54d9c241376e6871e51
+    End
+    NameMap = Begin
+        0x0acc0e5500000000000000000000000000000000000000000c00000005000000 ,
+        0x0000000000000000000000000000
+    End
+    DatasheetFontName ="Arial Cyr"
+    FilterOnLoad =0
+    DatasheetGridlinesColor12 =12632256
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+            BorderLineStyle =0
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =2070
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xe4827b2da8abd2438d597d9519685fc8
+            End
+            Begin
+                Begin ListBox
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    MultiSelect =1
+                    Left =105
+                    Top =60
+                    Width =1440
+                    Height =1845
+                    Name ="годы"
+                    RowSourceType ="Value List"
+                    RowSource ="\"Все\";1989;1990;1991;1992;1993;1994;1995;1996;1997;1998;1999;2000;2001;2002;20"
+                        "03;2004;2005;2006;2007;2008;2009;2010;2011;2012;2013;2014;2015;2016;2017;2018;20"
+                        "19;2020;2021;2022;2023"
+                    ColumnWidths ="1440"
+                    DefaultValue ="\"Все\""
+                    GUID = Begin
+                        0xd73a5f1801b4084e8d91e09d918d75e2
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1875
+                    Top =600
+                    Width =795
+                    Height =510
+                    TabIndex =1
+                    Name ="OK"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x777a664616aadd47aca27e67debf0975
+                    End
+
+                    WebImagePaddingLeft =3
+                    WebImagePaddingTop =3
+                    WebImagePaddingRight =2
+                    WebImagePaddingBottom =2
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub OK_Click()
+With Forms("Редактирование_отчетных_данных")!stan.Form
+f = .Filter
+i1 = InStr(f, " and (year=")
+If i1 = 0 Then GoTo skip
+i2 = InStr(i1, f, ")")
+f = left(f, i1 - 1) & Mid(f, i2 + 1)
+skip:
+If Not годы.Selected(0) Then
+fy = "("
+For Each i In годы.ItemsSelected
+If fy <> "(" Then fy = fy & " or "
+fy = fy & "year=" & годы.Column(0, i)
+Next i
+fy = fy & ")"
+f = f & " and " & fy
+End If
+.Filter = f
+.FilterOn = True
+.Form.OrderBy = "numb1,year"
+.OrderByOn = True
+End With
+End Sub

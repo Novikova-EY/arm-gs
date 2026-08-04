@@ -1,0 +1,433 @@
+﻿╨хфръЄшЁютрэшх_юЄўхЄэ√ї_фрээ√ї: code_chars=13537 captions=12
+  CAP: ╬ЄъЁ√Є№
+  CAP: схч уЁєяя
+  CAP: ╥єЁсшэ√
+  CAP: ╚Єюу
+  CAP: ├юф√
+  CAP: ╘шы№ЄЁ
+  CAP: ┬ёЄртър
+  CAP: ╬ЄўхЄ
+  CAP: ─шруЁрььр
+  CAP: ╙ёыютшх
+  CAP: ╩эюяър39
+  CAP: ╩эюяър80
+╨хфръЄшЁютрэшх_Єшяют√ї_єфхы№э√ї: code_chars=960 captions=1
+  CAP: ёяЁртър
+╥шяют√х_єфхы№э√х_Ёрёїюф√: code_chars=436 captions=0
+┬√сюЁ_трЁшрэЄр: code_chars=1322 captions=10
+  CAP: ╤хтхЁю-чрярф
+  CAP: ╤шсшЁ№
+  CAP: ▀эЄрЁ№
+  CAP: ═юЁшы№ёъ
+  CAP: ╓хэЄЁ
+  CAP: ┬юёЄюъ
+  CAP: ┬юыур
+  CAP: ╚ч.Ё-э√ ─.┬юёЄюър
+  CAP: ═шъюырхт
+  CAP: ╙Ёры
+╤яшёюъ_трЁшрэЄют: code_chars=479 captions=0
+╤юёЄртэ√х-ёЄрэЎшш: code_chars=6634 captions=6
+  CAP: ╤ўхЄ
+  CAP: ╤яюёюс ЁрёўхЄр
+  CAP: snt ш bt
+  CAP: ЁрёяЁхф.Q
+  CAP: фюяюыэшЄхы№э√х фрээ√х
+  CAP: юёэютэ√х фрээ√х
+╤ЄрэЎшш_юЄўхЄ: code_chars=13541 captions=0
+╚Єюу: code_chars=157 captions=0
+═рЄєЁр: code_chars=0 captions=1
+  CAP: NAME:
+╨хфръЄшЁютрэшх_эрЄєЁ√: code_chars=1781 captions=3
+  CAP: ├юф√
+  CAP: ╙уюы№
+  CAP: ┬ёЄртър
+╤яЁртър: code_chars=13039 captions=9
+  CAP: name
+  CAP: ╥ЁрэёяюэшЁютрЄ№
+  CAP: Є√ё.ЄєЄ
+  CAP: Є√ё.Єюээ
+  CAP: эх яюърч√трЄ№ яєёЄ√х
+  CAP: ╚Єюу
+  CAP: 2-ющ ёЄЁюъющ
+  CAP: эютюх
+  CAP: яЁртър
+╘юЁьр1: code_chars=0 captions=0
+9-╧╤: code_chars=0 captions=20
+  CAP: яюыхчэ√щ юЄяєёъ
+  CAP: т Єюь ўшёых:
+  CAP: цъї ш эрёхыхэшх
+  CAP: яЁюь√°ыхээюёЄ№
+  CAP: ёЄЁюшЄхы№ёЄтю
+  CAP: ёхы№ёъюх їюч щёЄтю
+  CAP: ЄЁрэёяюЁЄ ш ёт ч№
+  CAP: яЁюўшх
+  CAP: Є√ё.├ъры
+  CAP: яюЄхЁш т ЄхяыюёхЄш
+  CAP: Єюяыштэр 
+  CAP: ўхЁэ.ьхЄрыєЁуш .
+  CAP: ЎтхЄэ.ьхЄрыєЁуш 
+  CAP: їшьш  ш эхЇЄхїшьш 
+  CAP: ыхёэ.,фхЁхт.,Ўхы.-сєь.
+  CAP: ыхуър 
+  CAP: яш∙хтр 
+  CAP: ьр°шэ.ш ьхЄрыыюсЁ.
+  CAP: Є√ё.├ъры
+  CAP: яю юЄЁрёы ь яЁюь.
+
+=== Interesting queries ===
+
+## '╤ЄрэЎшш2018' схч яюфўшэхээ√ї т '─юы  Єюяыштр т чрЄЁрЄрї эр ¤¤'
+SELECT ╤ЄрэЎшш2018.NAME, ╤ЄрэЎшш2018.NUMB1120, ╤ЄрэЎшш2018.NUST, ╤ЄрэЎшш2018.E, ╤ЄрэЎшш2018.VED
+FROM ╤ЄрэЎшш2018 LEFT JOIN [─юы  Єюяыштр т чрЄЁрЄрї эр ¤¤] ON ╤ЄрэЎшш2018.NUMB1120 = [─юы  Єюяыштр т чрЄЁрЄрї эр ¤¤].NUMB1120
+WHERE ((([─юы  Єюяыштр т чрЄЁрЄрї эр ¤¤].NUMB1120) Is Null) AND ((╤ЄрэЎшш2018.VED)=0 Or (╤ЄрэЎшш2018.VED) Is Null));
+
+
+## EWTP яю уюфрь
+TRANSFORM Sum([╤ЄрэЎшш(рЁїшт)].ewtp) AS [Sum-ewtp]
+SELECT [╤ЄрэЎшш(рЁїшт)].name, [╤ЄрэЎшш(рЁїшт)].numb1
+FROM [╤ЄрэЎшш(рЁїшт)]
+WHERE ((([╤ЄрэЎшш(рЁїшт)].year)=1990 Or ([╤ЄрэЎшш(рЁїшт)].year)=2000 Or ([╤ЄрэЎшш(рЁїшт)].year)=2005 Or ([╤ЄрэЎшш(рЁїшт)].year)=2010 Or ([╤ЄрэЎшш(рЁїшт)].year)=2015 Or ([╤ЄрэЎшш(рЁїшт)].year)=2020) AND (([╤ЄрэЎшш(рЁїшт)].ved)>0))
+GROUP BY [╤ЄрэЎшш(рЁїшт)].name, [╤ЄрэЎшш(рЁїшт)].numb1
+ORDER BY [╤ЄрэЎшш(рЁїшт)].numb1
+PIVOT [╤ЄрэЎшш(рЁїшт)].Year;
+
+
+## └эрышч єфхы№э√ї эр ╥▌╓
+SELECT [╤ЄрэЎшш_89-2001].NAME, [╤ЄрэЎшш_89-2001].Year, [╤ЄрэЎшш_89-2001].E, [╤ЄрэЎшш_89-2001].ewtp, [ewtp]/[e]*100 AS ptp, [╤ЄрэЎшш_89-2001].eurt, [╤ЄрэЎшш_89-2001].NUMB1120
+FROM [╤ЄрэЎшш_89-2001]
+WHERE ((([╤ЄрэЎшш_89-2001].E)>0))
+ORDER BY [╤ЄрэЎшш_89-2001].numb1, [╤ЄрэЎшш_89-2001].Year;
+
+
+## └эрышч_єфхы№э√ї
+SELECT ┬хё№_юЄўхЄ.name, ┬хё№_юЄўхЄ.year, ┬хё№_юЄўхЄ.E, ┬хё№_юЄўхЄ.ewtp
+FROM ┬хё№_юЄўхЄ INNER JOIN ╚ьхэр_ёЄрэЎшщ ON ┬хё№_юЄўхЄ.numb1120=╚ьхэр_ёЄрэЎшщ.NUMB
+WHERE (((┬хё№_юЄўхЄ.year)>1997) AND ((┬хё№_юЄўхЄ.ewtp)>0) AND ((┬хё№_юЄўхЄ.obl)=30) AND ((╚ьхэр_ёЄрэЎшщ.MAIN) Is Null))
+ORDER BY ┬хё№_юЄўхЄ.numb1, ┬хё№_юЄўхЄ.year;
+
+
+## ─ы  Ёрёў╕Єр ЇюЁьєы Єюяыштр_└э 
+SELECT ╚ьхэр_ёЄрэЎшщ.NAME, St.NUMB1120, St.Year, St.NUST, St.B, St.GAZ, St.ISK_GAZ, St.MAZUT, St.TORF, St.SLAN, St.PROCH, Dop.domen_g, Dop.koks_g, Dop.prochgaz, Dop.tvproch, Dop.szh_gaz, Dop.inoe, St.UGOL, St.DON, St.PODM, St.PECH, St.ARKT, St.KUZN, St.URAL, St.BASHK, St.KAZAH, St.KAN, St.TUNG, St.IRKUT, St.HAK, St.TUV, St.BUR, St.CHIT, St.AMUR, St.PRIM, St.URG, St.USHUM, St.YAKUT, St.MAG, St.SAH, St.KAMCH, St.CHUKOT, Dop.gazpp, Dop.intin, Dop.vork, Dop.kuzngd, Dop.kuznt, Dop.kuznss, Dop.kuznun, Dop.sver, Dop.chel, Dop.kizel, Dop.ekib, Dop.maikub, Dop.nazar, Dop.ibor, Dop.berez, Dop.per, Dop.irbei, Dop.kansk, Dop.jer, Dop.karab, Dop.azey, Dop.mug, Dop.cher, Dop.gusin, Dop.tugn, Dop.okino, Dop.har, Dop.urt, Dop.tataur, Dop.tarbag, Dop.zab_kam, Dop.neru, Dop.zyryan, Dop.pyak, Dop.rai, Dop.erk, Dop.bikin, Dop.razdol, Dop.hankai, Dop.anad, Dop.bering, Dop.gaz_prir, Dop.disel, Dop.maztop, Dop.gtt, Dop.nft_proch, Dop.ogodj, Dop.svo, Dop.karag, Dop.karajyra, Dop.teniz
+FROM ╚ьхэр_ёЄрэЎшщ INNER JOIN (╚ьхэр_юсырёЄхщ INNER JOIN (╚ьхэр_╬▌╤ INNER JOIN (╤ЄрэЎшш2024 AS St LEFT JOIN ─юя_єуыш2024 AS Dop ON (St.YEAR = Dop.YEAR) AND (St.NUMB1120 = Dop.NUMB1120)) ON ╚ьхэр_╬▌╤.oes = St.OES) ON ╚ьхэр_юс
+
+## ─ы _уЁрЇшъют_єфхы№э√ї
+SELECT ┬хё№_юЄўхЄ.name, ┬хё№_юЄўхЄ.year, [ewtp]/[E]*100 AS p, ┬хё№_юЄўхЄ.eurt
+FROM ┬хё№_юЄўхЄ
+WHERE (((┬хё№_юЄўхЄ.year)>1995) AND ((┬хё№_юЄўхЄ.E)>0))
+ORDER BY ┬хё№_юЄўхЄ.numb1, ┬хё№_юЄўхЄ.year;
+
+
+## ─юсртыхэшх т ╙фхы№э√х(рЁїшт)_└э 
+INSERT INTO [╙фхы№э√х(рЁїшт)]
+SELECT DISTINCTROW ╙фхы№э√х2023.*
+FROM ╙фхы№э√х2023 LEFT JOIN [╙фхы№э√х(рЁїшт)] ON ╙фхы№э√х2023.NUMB1120 = [╙фхы№э√х(рЁїшт)].NUMB1120;
+
+
+## ─юсртыхэшх т ╓хэр(рЁїшт)_└э 
+INSERT INTO [╓хэр(рЁїшт)]
+SELECT DISTINCTROW ╓хэр2021.*
+FROM ╓хэр2021 LEFT JOIN [╓хэр(рЁїшт)] ON ╓хэр2021.NUMB1120 = [╓хэр(рЁїшт)].NUMB1120;
+
+
+## ─юсртыхэшх шч ╤ЄрэЎшш_╤їхьр т ╙фхы№э√х_рэрышч
+INSERT INTO ╙фхы№э√х_рэрышч ( E, eurt, [year], numb1120, D_ewtp, D_otr, name )
+SELECT DISTINCTROW [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].E, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].EURT, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].YEAR, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NUMB1120, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].D_ewtp, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].D_otr, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NAME
+FROM ╙фхы№э√х_рэрышч INNER JOIN [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї] ON ╙фхы№э√х_рэрышч.numb1120=[╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NUMB1120
+WHERE ((([╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].YEAR)>2018));
+
+
+## ─юы  Єюяыштр т чрЄЁрЄрї эр ¤¤
+SELECT ╟рЄЁрЄ√_2.NUMB1120, ╚ьхэр_ёЄрэЎшщ.NAME, [╟рЄЁрЄ√_2]![110]/[╟рЄЁрЄ√_2]![10] AS d_topl, [╟рЄЁрЄ√_2]![10]-[╟рЄЁрЄ√_2]![110] AS proch_zatr, ╟рЄЁрЄ√_2.zatraty, Cost_ee.cena_e
+FROM (╟рЄЁрЄ√_2 INNER JOIN ╚ьхэр_ёЄрэЎшщ ON ╟рЄЁрЄ√_2.NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB) INNER JOIN Cost_ee ON ╚ьхэр_ёЄрэЎшщ.ordnumb = Cost_ee.ordnumb
+WHERE (((╟рЄЁрЄ√_2.zatraty)=" Zatr_E"))
+ORDER BY ╚ьхэр_ёЄрэЎшщ.ordnumb, ╟рЄЁрЄ√_2.zatraty;
+
+
+## ╚чьхэхэшх Єюяыштр 2023-2024
+SELECT t_2023.t_2023, t_2024.t_2024, t_2024.NUMB1120, ╚ьхэр_ёЄрэЎшщ.NAME AS stancia, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME AS oblast
+FROM (((t_2023 INNER JOIN t_2024 ON t_2023.NUMB1120 = t_2024.NUMB1120) INNER JOIN ╚ьхэр_ёЄрэЎшщ ON t_2024.NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB) INNER JOIN ╚ьхэр_╬▌╤ ON ╚ьхэр_ёЄрэЎшщ.OES = ╚ьхэр_╬▌╤.oes) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╚ьхэр_ёЄрэЎшщ.OBL = ╚ьхэр_юсырёЄхщ.OBL
+WHERE (((t_2024.t_2024)<>[t_2023]));
+
+
+## ╩юэЄЁюы№_єфхы№э√ї
+SELECT ╤ЄрэЎшш2024.OES, ╚ьхэр_юсырёЄхщ.NAME, ╤ЄрэЎшш2024.NAME, ╤ЄрэЎшш2024.B, [EOTP]*[eurt]/1000+[Q]*[turt]/1000 AS Bras, Abs([B]-[Bras]) AS d, IIf([EOTP]>0,[eust]/[EOTP]*1000,0) AS be, ╤ЄрэЎшш2024.EURT, Abs([eurt]-[be]) AS d2, IIf([Q]>0,[tust]/[Q]*1000,0) AS bt, ╤ЄрэЎшш2024.TURT, Abs([turt]-[bt]) AS d3, ╤ЄрэЎшш2024.EOTP, ╤ЄрэЎшш2024.Q
+FROM ╤ЄрэЎшш2024 INNER JOIN ╚ьхэр_юсырёЄхщ ON ╤ЄрэЎшш2024.OBL = ╚ьхэр_юсырёЄхщ.OBL;
+
+
+## ╩юяшЁютрэшх ъю¤ЇЇшЎшхэЄют эрЄєЁ√ яю gaz_prir, maztop
+UPDATE ═рЄєЁр99 SET ═рЄєЁр99.gaz_prir = [═рЄєЁр99]![GAZ], ═рЄєЁр99.maztop = [═рЄєЁр99]![MAZUT]
+WHERE (((═рЄєЁр99.YEAR)>2009));
+
+
+## ╬сэютыхэшх Єшяют юсюЁєфютрэш  ╤ЄрэЎшш(рЁїшт)
+UPDATE ╚ьхэр_ёЄрэЎшщ INNER JOIN [╤ЄрэЎшш(рЁїшт)] ON ╚ьхэр_ёЄрэЎшщ.NUMB=[╤ЄрэЎшш(рЁїшт)].numb1120 SET [╤ЄрэЎшш(рЁїшт)].obor = ╚ьхэр_ёЄрэЎшщ!Єшя
+WHERE ((([╤ЄрэЎшш(рЁїшт)].year)=2012));
+
+
+## ╬сэютыхэшх ╓хэр(рЁїшт)_└э 
+UPDATE [╓хэр(рЁїшт)] INNER JOIN ╓хэр2020 AS Cena ON ([╓хэр(рЁїшт)].NUMB1120 = Cena.NUMB1120) AND ([╓хэр(рЁїшт)].YEAR = Cena.YEAR) SET [╓хэр(рЁїшт)].NAME = Cena!name, [╓хэр(рЁїшт)].GAZ_c = Cena!GAZ_c, [╓хэр(рЁїшт)].gazpp_c = Cena!gazpp_c, [╓хэр(рЁїшт)].MAZUT_c = Cena!MAZUT_c, [╓хэр(рЁїшт)].TORF_c = Cena!TORF_c, [╓хэр(рЁїшт)].PROCH_c = Cena!PROCH_c, [╓хэр(рЁїшт)].koksdom_c = [Cena]![koksdom_c], [╓хэр(рЁїшт)].prochgaz_c = [Cena]![prochgaz_c], [╓хэр(рЁїшт)].tvproch_c = [Cena]![tvproch_c], [╓хэр(рЁїшт)].DON_c = Cena!DON_c, [╓хэр(рЁїшт)].PODM_c = Cena!PODM_c, [╓хэр(рЁїшт)].PECH_c = Cena!PECH_c, [╓хэр(рЁїшт)].vork_c = Cena!vork_c, [╓хэр(рЁїшт)].intin_c = Cena!intin_c, [╓хэр(рЁїшт)].KUZN_c = Cena!KUZN_c, [╓хэр(рЁїшт)].kuzngd_c = Cena!kuzngd_c, [╓хэр(рЁїшт)].kuznt_c = Cena!kuznt_c, [╓хэр(рЁїшт)].kuznss_c = Cena!kuznss_c, [╓хэр(рЁїшт)].kuznun_c = Cena!kuznun_c, [╓хэр(рЁїшт)].URAL_c = Cena!URAL_c, [╓хэр(рЁїшт)].sver_c = Cena!sver_c, [╓хэр(рЁїшт)].chel_c = Cena!chel_c, [╓хэр(рЁїшт)].kizel_c = Cena!kizel_c, [╓хэр(рЁїшт)].BASHK_c = Cena!bashk_c, [╓хэр(рЁїшт)].KAZAH_c = Cena!kazah_c, [╓хэр(рЁїшт)].ekib_c = Cena!ekib_c, [╓хэр(рЁїшт)].maikub_c = Cena!maikub_c, [╓хэр(рЁїшт)].KAN_c = Cena!kan_c, [╓хэ
+
+## ╧юшёъ юЄъыюэхэшщ т Ўхэрї эр Єюяыштю
+SELECT C.NAME, C.Year, C.GAZ_c, C.MAZUT_c, C.ISK_GAZ_c, C.PROCH_c, NUMB1120
+FROM ╓хэр2022 AS C
+WHERE (
+        C.GAZ_c > 0 AND 
+        (
+            C.GAZ_c > (
+                SELECT Avg(IIf(GAZ_c > 0, GAZ_c, Null)) * 2.5 FROM ╓хэр2022
+            ) 
+            OR 
+            C.GAZ_c < (
+                SELECT Avg(IIf(GAZ_c > 0, GAZ_c, Null)) * 0.3 FROM ╓хэр2022
+            )
+        )
+    )
+    OR
+    (
+        C.MAZUT_c > 0 AND 
+        (
+            C.MAZUT_c > (
+                SELECT Avg(IIf(MAZUT_c > 0, MAZUT_c, Null)) * 2.5 FROM ╓хэр2022
+            )
+            OR 
+            C.MAZUT_c < (
+                SELECT Avg(IIf(MAZUT_c > 0, MAZUT_c, Null)) * 0.3 FROM ╓хэр2022
+            )
+        )
+    )
+    OR
+    (
+        C.ISK_GAZ_c > 0 AND 
+        (
+            C.ISK_GAZ_c > (
+                SELECT Avg(IIf(ISK_GAZ_c > 0, ISK_GAZ_c, Null)) * 2 FROM ╓хэр2022
+            )
+            OR 
+            C.ISK_GAZ_c < (
+                SELECT Avg(IIf(ISK_GAZ_c > 0, ISK_GAZ_c, Null)) * 0.3 FROM ╓хэр2022
+            )
+        )
+    )
+    OR
+    (
+        C.PROCH_c > 0 AND 
+        (
+            C.PROCH_c > (
+                SELECT Avg(IIf(PROCH_c > 0, PROCH_c, Null)) * 2 FROM 
+
+## ╧юшёъ яютЄюЁхэшщ фы  ╙фхы№э√х(рЁїшт)
+SELECT [╙фхы№э√х(рЁїшт)].YEAR, [╙фхы№э√х(рЁїшт)].NUMB1120, [╙фхы№э√х(рЁїшт)].NAME
+FROM [╙фхы№э√х(рЁїшт)]
+WHERE ((([╙фхы№э√х(рЁїшт)].YEAR) In (SELECT [YEAR] FROM [╙фхы№э√х(рЁїшт)] As Tmp GROUP BY [YEAR],[NUMB1120] HAVING Count(*)>1  And [NUMB1120] = [╙фхы№э√х(рЁїшт)].[NUMB1120])))
+ORDER BY [╙фхы№э√х(рЁїшт)].YEAR, [╙фхы№э√х(рЁїшт)].NUMB1120;
+
+
+## ╧юшёъ яютЄюЁхэшщ фы  ╙фхы№э√х2011_2
+SELECT ╙фхы№э√х2011_2.YEAR AS ┬√Ёрцхэшх1, ╙фхы№э√х2011_2.NUMB1120 AS ┬√Ёрцхэшх2, ╙фхы№э√х2011_2.NAME AS ┬√Ёрцхэшх3
+FROM ╙фхы№э√х2011_2
+WHERE ((([╙фхы№э√х2011_2].[YEAR]) In (SELECT [YEAR] FROM [╙фхы№э√х2011_2] As Tmp GROUP BY [YEAR],[NUMB1120] HAVING Count(*)>1  And [NUMB1120] = [╙фхы№э√х2011_2].[NUMB1120])))
+ORDER BY ╙фхы№э√х2011_2.YEAR, ╙фхы№э√х2011_2.NUMB1120;
+
+
+## ╧ЁютхЁър eotp ш ewtp
+SELECT ╤ЄрэЎшш2024.NAME, ╤ЄрэЎшш2024.Year, [E]-[eotp] AS sn, [E]-[ewtp] AS Ekon, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME, ╤ЄрэЎшш2024.NUST
+FROM ╚ьхэр_╬▌╤ INNER JOIN (╚ьхэр_юсырёЄхщ INNER JOIN ╤ЄрэЎшш2024 ON ╚ьхэр_юсырёЄхщ.OBL = ╤ЄрэЎшш2024.OBL) ON ╚ьхэр_╬▌╤.oes = ╤ЄрэЎшш2024.OES
+WHERE ((([E]-[ewtp])<0));
+
+
+## ╧ЁютхЁър ved_фы  ЁрёўхЄр btp_└э 
+SELECT ╤ЄрэЎшш2024.NUMB1120, ╤ЄрэЎшш2024.OES, ╚ьхэр_юсырёЄхщ.NAME AS obl, ╚ьхэр_ёЄрэЎшщ.NAME, ╤ЄрэЎшш2024.EWTP, ╤ЄрэЎшш2024.EOTP, ╤ЄрэЎшш2024.QOTR, ╙фхы№э√х2024.BTP, ╤ЄрэЎшш2024.VED, ╤ЄрэЎшш2024.OBOR
+FROM ((╙фхы№э√х2024 INNER JOIN ╤ЄрэЎшш2024 ON ╙фхы№э√х2024.NUMB1120 = ╤ЄрэЎшш2024.NUMB1120) INNER JOIN ╚ьхэр_ёЄрэЎшщ ON ╤ЄрэЎшш2024.NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╤ЄрэЎшш2024.OBL = ╚ьхэр_юсырёЄхщ.OBL
+WHERE (((╤ЄрэЎшш2024.EWTP)>0) AND ((╤ЄрэЎшш2024.EOTP)>0) AND ((╙фхы№э√х2024.BTP)=0 Or (╙фхы№э√х2024.BTP) Is Null))
+ORDER BY ╤ЄрэЎшш2024.OES, ╤ЄрэЎшш2024.numb1;
+
+
+## ╧ЁютхЁър Єюяыштр
+SELECT ╚ьхэр_юсырёЄхщ.NAME AS obl, ╤ЄрэЎшш2024.NAME, ╤ЄрэЎшш2024.B, Nz([EUST],0)+Nz([TUST],0) AS summ, [B]-[summ] AS d
+FROM ╚ьхэр_юсырёЄхщ INNER JOIN ╤ЄрэЎшш2024 ON ╚ьхэр_юсырёЄхщ.OBL = ╤ЄрэЎшш2024.OBL
+WHERE (((╤ЄрэЎшш2024.B)>0) AND ((Nz([EUST],0)+Nz([TUST],0))=0 Or (Nz([EUST],0)+Nz([TUST],0)) Is Null));
+
+
+## ╧ЁюёьюЄЁ VED ёюёЄртэ√ї ёЄрэЎшщ
+SELECT DISTINCT st1.NAME, st1.NUMB1120, im1.MAIN, st1.VED, st1.numb1
+FROM ╤ЄрэЎшш2021 AS st1 LEFT JOIN ╚ьхэр_ёЄрэЎшщ AS im1 ON st1.NUMB1120 = im1.NUMB
+WHERE (((st1.NUMB1120) In (SELECT DISTINCT MAIN 
+        FROM ╚ьхэр_ёЄрэЎшщ
+        WHERE MAIN IS NOT NULL
+    ) Or (st1.NUMB1120) In (SELECT DISTINCT NUMB 
+        FROM ╚ьхэр_ёЄрэЎшщ
+        WHERE MAIN IS NOT NULL
+    )))
+ORDER BY st1.numb1;
+
+
+## ╧ЁюёьюЄЁ юЄў╕Єэ ш яхЁёяхъЄ єхфы№э√ї_└э 
+SELECT ╙фхы№э√х_рэрышч.name, ╙фхы№э√х_рэрышч.year, ╙фхы№э√х_рэрышч.E, ╙фхы№э√х_рэрышч.D_ewtp, ╙фхы№э√х_рэрышч.D_otr, ╙фхы№э√х_рэрышч.eurt, ╙фхы№э√х_рэрышч.BTP, ╙фхы№э√х_рэрышч.BK, ╙фхы№э√х_рэрышч.Y, ╙фхы№э√х_рэрышч.numb1120, KOEFF.k
+FROM (╚ьхэр_ёЄрэЎшщ INNER JOIN ╙фхы№э√х_рэрышч ON ╚ьхэр_ёЄрэЎшщ.NUMB = ╙фхы№э√х_рэрышч.numb1120) LEFT JOIN KOEFF ON ╚ьхэр_ёЄрэЎшщ.NUMB = KOEFF.NUMB
+ORDER BY ╚ьхэр_ёЄрэЎшщ.ordnumb, ╙фхы№э√х_рэрышч.year;
+
+
+## ╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї
+SELECT [╤ЄрэЎшш(╤їхьр)].NAME, [╤ЄрэЎшш(╤їхьр)].YEAR, [╤ЄрэЎшш(╤їхьр)].E, IIf([E]>0,[ewtp]/[E],0) AS D_ewtp, IIf([Q]>0,[qotr]/[Q],0) AS D_otr, [╤ЄрэЎшш(╤їхьр)].EURT, [╤ЄрэЎшш(╤їхьр)].NUMB1120
+FROM [╤ЄрэЎшш(╤їхьр)]
+WHERE ((([╤ЄрэЎшш(╤їхьр)].YEAR)>2018))
+ORDER BY [╤ЄрэЎшш(╤їхьр)].numb1, [╤ЄрэЎшш(╤їхьр)].YEAR;
+
+
+## ╧ЁюёьюЄЁ єфхы№э√ї юсюЁєфютрэш _└э 
+SELECT ╙фхы№э√х2021.NAME, ╥єЁсшэ√.opesname, ╙фхы№э√х2021.Y, ╙фхы№э√х2021.BTP, ╙фхы№э√х2021.SNTP, ╙фхы№э√х2021.BK, ╙фхы№э√х2021.SNK, ╥єЁсшэ√.numb1120, ╥єЁсшэ√.stnumb, ╙фхы№э√х2021.NUMB1120, ╤ЄрэЎшш_фы _ётюфэющ_2021.dolya_ewtp
+FROM ╤ЄрэЎшш_фы _ётюфэющ_2021 INNER JOIN (╙фхы№э√х2021 LEFT JOIN ╥єЁсшэ√ ON ╙фхы№э√х2021.NUMB1120 = ╥єЁсшэ√.grcode) ON ╤ЄрэЎшш_фы _ётюфэющ_2021.NUMB1120 = ╙фхы№э√х2021.NUMB1120
+ORDER BY ╥єЁсшэ√.numb1120, ╥єЁсшэ√.stnumb;
+
+
+## ╧Ёюўхх Єюяыштю 2014 ш 2024 уюф√
+SELECT ╤ЄрэЎшш2014.NAME AS stanciya, ╤ЄрэЎшш2014.NUMB1120, ╤ЄрэЎшш2014.Year AS god, ╤ЄрэЎшш2014.PROCH AS Proch_2014, ╤ЄрэЎшш2024.ISK_GAZ, ─юя_єуыш2024.domen_g, ─юя_єуыш2024.koks_g, ─юя_єуыш2024.prochgaz, ╤ЄрэЎшш2024.PROCH AS Proch_2024, ─юя_єуыш2024.tvproch, ─юя_єуыш2024.szh_gaz, ─юя_єуыш2024.inoe
+FROM ─юя_єуыш2024 RIGHT JOIN (╤ЄрэЎшш2014 LEFT JOIN ╤ЄрэЎшш2024 ON ╤ЄрэЎшш2014.NUMB1120 = ╤ЄрэЎшш2024.NUMB1120) ON ─юя_єуыш2024.NUMB1120 = ╤ЄрэЎшш2024.NUMB1120
+WHERE (((╤ЄрэЎшш2014.PROCH)>0))
+ORDER BY ╤ЄрэЎшш2014.numb1;
+
+
+## ЁрёўхЄэ√щ_ЄрЁшЇ
+SELECT [╧юёЄртъш єуы ].¤ыхъЄЁюёЄрэЎш , [╧юёЄртъш єуы ].numb, [╧юёЄртъш єуы ].[цф ёЄ яюыєў], [╧юёЄртъш єуы ].єуюы№, [╧юёЄртъш єуы ].[цф ёЄрэЎш  юЄяЁ], [╧юёЄртъш єуы ].ЁрёёЄю эшх, (select ёЁхфэ from [╚1_╧ю ёэ√х_ЁрёёЄю эш ] where (ЁрёёЄю эшх>=эрў and ЁрёёЄю эшх<=ъюэ)) AS L, (select ╩я3Є2 from ╩я3Є2 where ЁрёёЄю эшх>=[эрў] and ЁрёёЄю эшх<=[ъюэ]) AS k1, Round(IIf([L]<=160,1.23,IIf([L]<3000,1.041-0.00006*[L]+31/[L],0.87)),2) AS KL, 2132+(8.116+0.0338*70)*[KL]*[L] AS ╚1, 1126+1.304*[L]*0.87 AS ┬4, [ш1]*[k1]+[т4] AS ╥1, (2132+(8.116+0.0338*70)*0.87*3550)*0.63+1126+1.304*0.87*3550 AS ╥3500, (IIf([ЁрёёЄю эшх]<3500,[╥1],[╥3500]+0.333*([╥1]-[╥3500])))/70 AS T
+FROM [╧юёЄртъш єуы ];
+
+
+## ╨рёў╕Є эшч°хщ ЄхяыюЄ√ ёуюЁрэш 
+SELECT ═рЄєЁр99.YEAR, ╚ьхэр_ёЄрэЎшщ.NAME, [nazar]*7000 AS [nazar-koef], [kansk]*7000 AS kan_koef, [gusin]*7000 AS gus_koeff, [tugn]*7000 AS tugn_koef, [urt]*7000 AS urt_koef, [zyryan]*7000 AS zyr_koef, [rai]*7000 AS rai_koeff, [erk]*7000 AS erk_koef, [ogodj]*7000 AS ogodj_koef, [ekib]*7000 AS ekib_koef, [maikub]*7000 AS maikub_koef, [karag]*7000 AS karag_koef, [karajyra]*7000 AS karajyra_koef, [teniz]*7000 AS teniz_koef, *
+FROM ╚ьхэр_ёЄрэЎшщ INNER JOIN ═рЄєЁр99 ON ╚ьхэр_ёЄрэЎшщ.NUMB = ═рЄєЁр99.NUMB1120
+WHERE (((═рЄєЁр99.YEAR)>2016) AND (([teniz]*7000)>0));
+
+
+## ╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр
+SELECT NUMB1120, AVG(IIF(gaz_c IS NOT NULL OR gaz_c > 0, gaz_c, NULL)) AS avg_gaz_c, SUM(IIF(DON_c > 0, DON_c, 0)
+        + IIF(PODM_c > 0, PODM_c, 0)
+
+        + IIF(vork_c > 0, vork_c, 0)
+        + IIF(intin_c > 0, intin_c, 0)
+       
+        + IIF(kuzngd_c > 0, kuzngd_c, 0)
+        + IIF(kuznt_c > 0, kuznt_c, 0)
+        + IIF(kuznss_c > 0, kuznss_c, 0)
+        + IIF(kuznun_c > 0, kuznun_c, 0)
+        + IIF(URAL_c > 0, URAL_c, 0)
+        + IIF(sver_c > 0, sver_c, 0)
+        + IIF(chel_c > 0, chel_c, 0)
+        + IIF(kizel_c > 0, kizel_c, 0)
+        + IIF(BASHK_c > 0, BASHK_c, 0)
+  
+        + IIF(ekib_c > 0, ekib_c, 0)
+        + IIF(maikub_c > 0, maikub_c, 0)
+
+        + IIF(nazar_c > 0, nazar_c, 0)
+        + IIF(ibor_c > 0, ibor_c, 0)
+        + IIF(berez_c > 0, berez_c, 0)
+        + IIF(per_c > 0, per_c, 0)
+        + IIF(irbei_c > 0, irbei_c, 0)
+        + IIF(kansk_c > 0, kansk_c, 0)
+
+        + IIF(azey_c > 0, azey_c, 0)
+        + IIF(mug_c > 0, mug_c, 0)
+        + IIF(cher_c > 0, cher_c, 0)
+
+        + IIF(jer_c > 0, jer_c, 0)
+        + IIF(karab_c > 0, karab_c, 0)
+        + IIF(HAK_c > 0, HAK_c, 0)
+        + IIF(TUV_c > 0, TUV_c, 0)
+
+        + IIF(gusin_c > 0, gusin_c, 0)
+        
+
+## ╨рёў╕Є ёЁхфэхщ Ўхэ√ єуы  (яЁюёьюЄЁ)
+SELECT ╚ьхэр_юсырёЄхщ.OBL, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME AS oblname, Avg(IIf([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_gaz_c>0,[╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_gaz_c,Null)) AS avg_gaz_c, Avg(IIf([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_ugol>0,[╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_ugol,Null)) AS avg_ugol, ╚ьхэр_юсырёЄхщ.Terr_Belyaev
+FROM (([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр] INNER JOIN ╚ьхэр_ёЄрэЎшщ ON [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB) INNER JOIN ╚ьхэр_╬▌╤ ON ╚ьхэр_ёЄрэЎшщ.OES = ╚ьхэр_╬▌╤.oes) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╚ьхэр_ёЄрэЎшщ.OBL = ╚ьхэр_юсырёЄхщ.OBL
+GROUP BY ╚ьхэр_юсырёЄхщ.OBL, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME, ╚ьхэр_юсырёЄхщ.Terr_Belyaev;
+
+
+## ╨рёў╕Є Ўхэ√ 2
+SELECT Avg(╤ЄюшьюёЄ№2021.GAZ) AS [Avg-GAZ], Avg([╤ЄюшьюёЄ№2021]![gaz]/[╤ЄрэЎшш2021]![gaz]) AS Ўхэр, ╤ЄрэЎшш2021.OBL, ╚ьхэр_юсырёЄхщ.NAME
+FROM (╤ЄрэЎшш2021 INNER JOIN ╤ЄюшьюёЄ№2021 ON (╤ЄрэЎшш2021.NUMB1120 = ╤ЄюшьюёЄ№2021.NUMB1120) AND (╤ЄрэЎшш2021.YEAR = ╤ЄюшьюёЄ№2021.YEAR)) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╤ЄрэЎшш2021.OBL = ╚ьхэр_юсырёЄхщ.OBL
+GROUP BY ╤ЄрэЎшш2021.OBL, ╚ьхэр_юсырёЄхщ.NAME
+HAVING (((Avg(╤ЄюшьюёЄ№2021.GAZ))>0));
+
+
+## ╤Ёртэхэшх Ўхэ√ Єюяыштр шч Ёрчэ√ї юЄў╕Єют
+SELECT ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME AS oblast, [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120, ╚ьхэр_ёЄрэЎшщ.NAME, ╟рЄЁрЄ√_Єюяыштю_2021.cena_e, ╟рЄЁрЄ√_Єюяыштю_2021.cena_Be, ╟рЄЁрЄ√_Єюяыштю_2021.cena_Bt, [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_gaz_c, [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_ugol
+FROM ╚ьхэр_юсырёЄхщ INNER JOIN (╚ьхэр_╬▌╤ INNER JOIN (╚ьхэр_ёЄрэЎшщ INNER JOIN ([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр] LEFT JOIN ╟рЄЁрЄ√_Єюяыштю_2021 ON [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120 = ╟рЄЁрЄ√_Єюяыштю_2021.NUMB1120) ON ╚ьхэр_ёЄрэЎшщ.NUMB = [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120) ON ╚ьхэр_╬▌╤.oes = ╚ьхэр_ёЄрэЎшщ.OES) ON ╚ьхэр_юсырёЄхщ.OBL = ╚ьхэр_ёЄрэЎшщ.OBL
+ORDER BY ╚ьхэр_ёЄрэЎшщ.ordnumb;
+
+
+## ╤ЄрэЎшш ё Ўхэющ Єюяыштр
+SELECT ╤ЄрэЎшш_фы _ётюфэющ_2021.*, ╓хэр2021.*
+FROM ╤ЄрэЎшш_фы _ётюфэющ_2021 INNER JOIN ╓хэр2021 ON ╤ЄрэЎшш_фы _ётюфэющ_2021.NUMB1120 = ╓хэр2021.NUMB1120;
+
+
+## ╤ЄрэЎшш_╨└╬_яю_Єюяыштє_2001
+SELECT Sum(╤ЄрэЎшш2001.NUST) AS [Sum-NUST], Sum(╤ЄрэЎшш2001.nr) AS [Sum-nr], Sum(╤ЄрэЎшш2001.E) AS [Sum-E], Count(╚ьхэр_ёЄрэЎшщ.ordnumb) AS [Count-ordnumb]
+FROM ╤ЄрэЎшш2001 INNER JOIN ╚ьхэр_ёЄрэЎшщ ON ╤ЄрэЎшш2001.NUMB1120=╚ьхэр_ёЄрэЎшщ.NUMB
+WHERE (((╤ЄрэЎшш2001.NUST)>0) AND ((╤ЄрэЎшш2001.B)>0) AND ((z([B])-z([gaz])-z([mazut])-z([gtt]))=0) AND ((z([gaz]))>0) AND ((z([mazut])+z([gtt]))>0) AND ((╚ьхэр_ёЄрэЎшщ.┬хфюьёЄтю)=1) AND ((╚ьхэр_ёЄрэЎшщ.MAIN) Is Null Or (╚ьхэр_ёЄрэЎшщ.MAIN)=0));
+
+
+## ╤ЄЁєъЄєЁр-Єюяыштр
+SELECT DISTINCTROW [╧хЁхтюф-єуюы№-ьрчєЄ].NAME, [╧хЁхтюф-єуюы№-ьрчєЄ].ordnumb, [╬с·хфшэхэшх-ЄрсышЎ].year AS ┬√Ёрцхэшх1, [╬с·хфшэхэшх-ЄрсышЎ].nust AS ┬√Ёрцхэшх2, [╬с·хфшэхэшх-ЄрсышЎ].E AS ┬√Ёрцхэшх3, [╬с·хфшэхэшх-ЄрсышЎ].B AS ┬√Ёрцхэшх4, [╬с·хфшэхэшх-ЄрсышЎ].gaz AS ┬√Ёрцхэшх5, [gaz]/[b]*100 AS pgaz, [╬с·хфшэхэшх-ЄрсышЎ].mazut AS ┬√Ёрцхэшх6, [mazut]/[b]*100 AS pmazut, [╬с·хфшэхэшх-ЄрсышЎ].ugol AS ┬√Ёрцхэшх7, [ugol]/[b]*100 AS pugol, z([PROCH])+z([TORF])+z([SLAN])+z([GTT]) AS PR, [pr]/[b]*100 AS ppr, ╚ьхэр_юсырёЄхщ.NAME, ╚ьхэр_╬▌╤.name, [╬с·хфшэхэшх-ЄрсышЎ].oes AS ┬√Ёрцхэшх8, ╚ьхэр_юсырёЄхщ.OBL
+FROM [╬с·хфшэхэшх-ЄрсышЎ], ╚ьхэр_юсырёЄхщ, ╚ьхэр_╬▌╤, [╧хЁхтюф-єуюы№-ьрчєЄ]
+WHERE ((([╧хЁхтюф-єуюы№-ьрчєЄ].p)=1))
+ORDER BY [╧хЁхтюф-єуюы№-ьрчєЄ].ordnumb, [╬с·хфшэхэшх-ЄрсышЎ].year;
+
+
+## ╥юяыштэ√х чрЄЁрЄ√
+SELECT ┬ёх_╟рЄЁрЄ√.NUMB1120, ┬ёх_╟рЄЁрЄ√.Year, ┬ёх_╟рЄЁрЄ√.ZATRATY_SUM, ┬ёх_╟рЄЁрЄ√.Zatr_E, ┬ёх_╟рЄЁрЄ√.Zatr_P, ┬ёх_╟рЄЁрЄ√.Zatr_Q
+FROM ┬ёх_╟рЄЁрЄ√ LEFT JOIN ╚ьхэр_чрЄЁрЄ√ ON ┬ёх_╟рЄЁрЄ√.code_zatr = ╚ьхэр_чрЄЁрЄ√.code_zatr
+WHERE (((┬ёх_╟рЄЁрЄ√.code_zatr) In (110)));
+
+
+## ╙фхы№э√х Єюяыштэ√х чрЄЁрЄ√
+SELECT [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].gruppa_oborud, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].numb1120, [╥юяыштэ√х чрЄЁрЄ√].Year, [Zatr_E]/[eotp] AS ud_topl_E, [Zatr_Q]/[Qotp] AS ud_topl_Q, [ZATRATY_SUM]/[B] AS cena, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].nameoes, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].nov_Belyaev, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].NAME
+FROM [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)] RIGHT JOIN [╥юяыштэ√х чрЄЁрЄ√] ON ([╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].Year = [╥юяыштэ√х чрЄЁрЄ√].Year) AND ([╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].numb1120 = [╥юяыштэ√х чрЄЁрЄ√].NUMB1120);
+
+
+## ╙фхы№э√х_фы _яхўрЄш
+SELECT DISTINCTROW ╙фхы№э√х2013.*, ╚ьхэр_ёЄрэЎшщ.ordnumb, ╚ьхэр_ёЄрэЎшщ.OES
+FROM ╚ьхэр_ёЄрэЎшщ INNER JOIN ╙фхы№э√х2013 ON ╚ьхэр_ёЄрэЎшщ.NUMB=╙фхы№э√х2013.NUMB1120;
+
+
+## ╘юЁьєы√ Єюяыштр_юЄў╕Є
+SELECT ╘юЁьєы√_Єюяыштр_юЄў╕Є.NAME AS ╤ЄрэЎш , ╘юЁьєы√_Єюяыштр_юЄў╕Є.NUMB1120, ╘юЁьєы√_Єюяыштр_юЄў╕Є.YEAR, ╘юЁьєы√_Єюяыштр_юЄў╕Є.formtxt, ╚ьхэр_юсырёЄхщ.NAME AS ╬сырёЄ№
+FROM (╚ьхэр_ёЄрэЎшщ INNER JOIN ╘юЁьєы√_Єюяыштр_юЄў╕Є ON ╚ьхэр_ёЄрэЎшщ.NUMB = ╘юЁьєы√_Єюяыштр_юЄў╕Є.NUMB1120) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╚ьхэр_ёЄрэЎшщ.OBL = ╚ьхэр_юсырёЄхщ.OBL
+ORDER BY ╚ьхэр_ёЄрэЎшщ.ordnumb, ╘юЁьєы√_Єюяыштр_юЄў╕Є.YEAR;
+
+
+## ╓хэр Єюяыштр ш ╙╨╙╥
+SELECT [╓хэр Єюяыштр шэфхъёшЁютрээр ].NAME, [╓хэр Єюяыштр шэфхъёшЁютрээр ].NUMB1120, [╓хэр Єюяыштр шэфхъёшЁютрээр ].Year, [╓хэр Єюяыштр шэфхъёшЁютрээр ].cena_gaza_ind, [╓хэр Єюяыштр шэфхъёшЁютрээр ].cena_ugol_ind, [╓хэр Єюяыштр шэфхъёшЁютрээр ].cena_e, [╓хэр Єюяыштр шэфхъёшЁютрээр ].cena_Be, ╤ЄрэЎшш2021.EURT
+FROM ╤ЄрэЎшш2021 INNER JOIN [╓хэр Єюяыштр шэфхъёшЁютрээр ] ON ╤ЄрэЎшш2021.NUMB1120 = [╓хэр Єюяыштр шэфхъёшЁютрээр ].NUMB1120;
+
+
+## ╓хэр Єюяыштр ш ╙╨╙╥_2021
+SELECT ╤ЄрэЎшш2021.NUMB1120, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME AS oblast, ╤ЄрэЎшш2021.NAME AS stancia, ╤ЄрэЎшш2021.NUST, ╤ЄрэЎшш2021.EURT, [cena_Be]*1.202238 AS cena_topl_zatr_2023, [avg_gaz_c]*1.202238 AS cena_gaz_2023, IIf([╤ЄрэЎшш2021].[oes]<7,[avg_gaz_c]*1.452434488,[avg_gaz_c]*1.717260255) AS cena_gaz_2042, [avg_ugol]*1.202238 AS cena_ugol_2023, [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_gaz_c, [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_ugol, ╟рЄЁрЄ√_Єюяыштю_2021.cena_e AS toplzatr_na_EOTP, ╓хэр_¤эхЁушш_2021.cena_e AS vsezatr_na_EOTP, ╟рЄЁрЄ√_Єюяыштю_2021.cena_Be, IIf([ЇюЁ¤ь]=1,"юяЄ","Ёючэ") AS Opt, Round([E]/[NUST]*1000,0) AS Hust, IIf([ved]>0,0,1) AS sost, IIf([main]>0,1,0) AS [group], ╤ЄрэЎшш2021.OBOR
+FROM (╚ьхэр_ёЄрэЎшщ INNER JOIN ((((╤ЄрэЎшш2021 LEFT JOIN ╟рЄЁрЄ√_Єюяыштю_2021 ON ╤ЄрэЎшш2021.NUMB1120 = ╟рЄЁрЄ√_Єюяыштю_2021.NUMB1120) LEFT JOIN [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр] ON ╤ЄрэЎшш2021.NUMB1120 = [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╤ЄрэЎшш2021.OBL = ╚ьхэр_юсырёЄхщ.OBL) INNER JOIN ╚ьхэр_╬▌╤ ON ╤ЄрэЎшш2021.OES = ╚ьхэр_╬▌╤.oes) ON ╚ьхэр_ёЄрэЎшщ.NUMB = ╤ЄрэЎшш2021.NUMB1120) LEFT JOIN ╓хэр_¤эхЁушш_2021 ON ╤ЄрэЎшш2021.NUMB1120 = ╓хэр_¤эхЁушш_2021.NUMB1120
+OR
+
+## ╓хэр Єюяыштр ш ¤эхЁушш (яЁюёьюЄЁ)
+SELECT ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME AS oblast, ╚ьхэр_ёЄрэЎшщ.NAME AS STANCIA, [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_gaz_c, [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_ugol, ╓хэр_¤эхЁушш_2021.cena_e, ╓хэр_¤эхЁушш_2021.cena_q, ╓хэр_¤эхЁушш_2021.cena_p, ╚ьхэр_ёЄрэЎшщ.NUMB, ╚ьхэр_ёЄрэЎшщ.ЇюЁ¤ь
+FROM ((╓хэр_¤эхЁушш_2021 RIGHT JOIN ([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр] INNER JOIN ╚ьхэр_ёЄрэЎшщ ON [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB) ON ╓хэр_¤эхЁушш_2021.NUMB1120 = [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120) INNER JOIN ╚ьхэр_╬▌╤ ON ╚ьхэр_ёЄрэЎшщ.OES = ╚ьхэр_╬▌╤.oes) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╚ьхэр_ёЄрэЎшщ.OBL = ╚ьхэр_юсырёЄхщ.OBL
+WHERE (((╚ьхэр_ёЄрэЎшщ.ЇюЁ¤ь)=1))
+ORDER BY ╚ьхэр_ёЄрэЎшщ.ordnumb;
+
+
+## ╓хэр Єюяыштр шэфхъёшЁютрээр 
+SELECT [╤ЄрэЎшш(╤їхьр)_├╤].NUMB1120, ╚ьхэр_ёЄрэЎшщ.NAME, [╤ЄрэЎшш(╤їхьр)_├╤].Year, [avg_gaz_c]*[Kgaz] AS cena_gaza_ind, [avg_ugol]*[Kugol] AS cena_ugol_ind, [╤Ёртэхэшх Ўхэ√ Єюяыштр шч Ёрчэ√ї юЄў╕Єют].cena_e, [╤Ёртэхэшх Ўхэ√ Єюяыштр шч Ёрчэ√ї юЄў╕Єют].avg_gaz_c AS cena_gaza_2021, [╤Ёртэхэшх Ўхэ√ Єюяыштр шч Ёрчэ√ї юЄў╕Єют].avg_ugol AS cena_ugol_2021, [╤Ёртэхэшх Ўхэ√ Єюяыштр шч Ёрчэ√ї юЄў╕Єют].cena_Be
+FROM (([╤ЄрэЎшш(╤їхьр)_├╤] INNER JOIN [╓хэют√х шэфхъё√] ON [╤ЄрэЎшш(╤їхьр)_├╤].YEAR = [╓хэют√х шэфхъё√].year) INNER JOIN [╤Ёртэхэшх Ўхэ√ Єюяыштр шч Ёрчэ√ї юЄў╕Єют] ON [╤ЄрэЎшш(╤їхьр)_├╤].NUMB1120 = [╤Ёртэхэшх Ўхэ√ Єюяыштр шч Ёрчэ√ї юЄў╕Єют].NUMB1120) INNER JOIN ╚ьхэр_ёЄрэЎшщ ON [╤ЄрэЎшш(╤їхьр)_├╤].NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB
+WHERE ((([╤ЄрэЎшш(╤їхьр)_├╤].Year)=2023 Or ([╤ЄрэЎшш(╤їхьр)_├╤].Year)=2042))
+ORDER BY [╤ЄрэЎшш(╤їхьр)_├╤].numb1, [╤ЄрэЎшш(╤їхьр)_├╤].Year;
+
+
+## ╓хэр ¤эхЁушш 2018-2021
+SELECT [╓хэр_¤эхЁушш_2018].*
+FROM [╓хэр_¤эхЁушш_2018]
+UNION SELECT [╓хэр_¤эхЁушш_2019].*
+FROM [╓хэр_¤эхЁушш_2019]
+UNION SELECT [╓хэр_¤эхЁушш_2020].*
+FROM [╓хэр_¤эхЁушш_2020]
+UNION SELECT [╓хэр_¤эхЁушш_2021].*
+FROM [╓хэр_¤эхЁушш_2021]
+ORDER BY numb1120, year;
+

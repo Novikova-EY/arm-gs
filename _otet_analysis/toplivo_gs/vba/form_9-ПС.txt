@@ -1,0 +1,513 @@
+Version =19
+VersionRequired =19
+Checksum =440772164
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5442
+    DatasheetFontHeight =12
+    Left =216
+    Right =7452
+    Bottom =5100
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x4108a0c10de1e240
+    End
+    GUID = Begin
+        0x5c940804063a2249af0c41302f404329
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Теплопотребление_АО"
+    DatasheetFontName ="Times New Roman Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =3061
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x65bde2a6d413684bafbb70d775d51618
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Left =1700
+                    Top =283
+                    Width =680
+                    Height =284
+                    Name ="потп"
+                    ControlSource ="потп"
+                    GUID = Begin
+                        0xbb2414e1d875ae45949daa7b3e7dfee2
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Left =1700
+                    Top =850
+                    Width =680
+                    Height =284
+                    TabIndex =1
+                    Name ="жкх_и_нас"
+                    ControlSource ="жкх_и_нас"
+                    GUID = Begin
+                        0x46fe9cddd30aaf4b85a80aaf5afc1271
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =1700
+                    Top =1134
+                    Width =680
+                    Height =284
+                    TabIndex =2
+                    Name ="пром"
+                    ControlSource ="пром"
+                    GUID = Begin
+                        0xe27a6e88d9e35c4fb0d3f5c39024882a
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =1700
+                    Top =1418
+                    Width =680
+                    Height =284
+                    TabIndex =3
+                    Name ="строит"
+                    ControlSource ="строит"
+                    GUID = Begin
+                        0x441bbbf3abc6ed46975a551a760f7941
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =1700
+                    Top =1702
+                    Width =680
+                    Height =284
+                    TabIndex =4
+                    Name ="cx"
+                    ControlSource ="cx"
+                    GUID = Begin
+                        0xffaa5eb8b4d0154cb9252b4c4ce8eeab
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =1700
+                    Top =1986
+                    Width =680
+                    Height =284
+                    TabIndex =5
+                    Name ="тр_и_св"
+                    ControlSource ="тр_и_св"
+                    GUID = Begin
+                        0xad9b8c36f11fa34889b234b5d2f0016b
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =1700
+                    Top =2270
+                    Width =680
+                    Height =284
+                    TabIndex =6
+                    Name ="проч"
+                    ControlSource ="проч"
+                    GUID = Begin
+                        0xb34a02aeb0280043a437179ee5129e4c
+                    End
+                End
+                Begin Label
+                    OverlapFlags =93
+                    Top =283
+                    Width =1418
+                    Height =284
+                    Name ="Надпись3"
+                    Caption ="полезный отпуск"
+                    GUID = Begin
+                        0x1ce90d17e3f4154189d3add62dce3788
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Top =567
+                    Width =1418
+                    Height =284
+                    Name ="Надпись4"
+                    Caption ="в том числе:"
+                    GUID = Begin
+                        0xe203e8f90ca2c44a954411ce3f7acbf0
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Top =851
+                    Width =1418
+                    Height =284
+                    Name ="Надпись5"
+                    Caption ="жкх и население"
+                    GUID = Begin
+                        0x0aca9308947cdc419c4fd550f30c3820
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Top =1135
+                    Width =1418
+                    Height =284
+                    Name ="Надпись6"
+                    Caption ="промышленность"
+                    GUID = Begin
+                        0xbdf5d01b23b93944a3fe6d31b5868dfd
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Top =1419
+                    Width =1418
+                    Height =284
+                    Name ="Надпись7"
+                    Caption ="строительство"
+                    GUID = Begin
+                        0xf7e28f26fb950043b464b47ce4fabb6a
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Top =1703
+                    Width =1418
+                    Height =284
+                    Name ="Надпись8"
+                    Caption ="сельское хозяйство"
+                    GUID = Begin
+                        0x89529a889d60e74e84bab8d44edbb0f6
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Top =1987
+                    Width =1418
+                    Height =284
+                    Name ="Надпись9"
+                    Caption ="транспорт и связь"
+                    GUID = Begin
+                        0xe9c9192b68d29545b39905c236b28fe1
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Top =2271
+                    Width =1418
+                    Height =284
+                    Name ="Надпись10"
+                    Caption ="прочие"
+                    GUID = Begin
+                        0x524d686dab30694382caa17f19951f87
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =1644
+                    Width =804
+                    Height =228
+                    Name ="Надпись12"
+                    Caption ="тыс.Гкал"
+                    GUID = Begin
+                        0xb28cf78b33396c4f95e89249f8c29ba7
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =87
+                    Left =1700
+                    Top =2554
+                    Width =680
+                    Height =284
+                    TabIndex =7
+                    Name ="потери"
+                    ControlSource ="потери"
+                    GUID = Begin
+                        0x9d82fb3008d85441bc2bf79c8582d56c
+                    End
+                End
+                Begin Label
+                    OverlapFlags =87
+                    Top =2561
+                    Width =1452
+                    Height =276
+                    Name ="Надпись13"
+                    Caption ="потери в теплосети"
+                    GUID = Begin
+                        0x8d301176d823eb4f95e82967bb3fc35b
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Left =4537
+                    Top =567
+                    Width =680
+                    Height =284
+                    TabIndex =8
+                    Name ="топл"
+                    ControlSource ="топл"
+                    GUID = Begin
+                        0x12040de6390f1643a04876e34fb8dba3
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =4537
+                    Top =851
+                    Width =680
+                    Height =284
+                    TabIndex =9
+                    Name ="чмет"
+                    ControlSource ="чмет"
+                    GUID = Begin
+                        0xf3ee112ed642224a93eabb476210d930
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =4537
+                    Top =1135
+                    Width =680
+                    Height =284
+                    TabIndex =10
+                    Name ="цмет"
+                    ControlSource ="цмет"
+                    GUID = Begin
+                        0x96cc733f279a564e9103070b50b62ee0
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =4537
+                    Top =1419
+                    Width =680
+                    Height =284
+                    TabIndex =11
+                    Name ="хнх"
+                    ControlSource ="хнх"
+                    GUID = Begin
+                        0x6ebfc4370ff1f44abfdc881329d2ae3c
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =4537
+                    Top =1703
+                    Width =680
+                    Height =284
+                    TabIndex =12
+                    Name ="лдцб"
+                    ControlSource ="лдцб"
+                    GUID = Begin
+                        0x88e7ed99e1042b4389714dab7c04e62c
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Left =4537
+                    Top =2271
+                    Width =680
+                    Height =284
+                    TabIndex =13
+                    Name ="пищ"
+                    ControlSource ="пищ"
+                    GUID = Begin
+                        0xa228ca43f7f6f142af899d465eacf066
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =4537
+                    Top =2555
+                    Width =680
+                    Height =284
+                    TabIndex =14
+                    Name ="машмо"
+                    ControlSource ="машмо"
+                    GUID = Begin
+                        0x911fc14fb474f842a93ba61ed4b83706
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =2837
+                    Top =568
+                    Width =1701
+                    Height =284
+                    Name ="Надпись14"
+                    Caption ="топливная"
+                    GUID = Begin
+                        0x8a085f503cf60247a4fe10c641ed8c25
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =2837
+                    Top =852
+                    Width =1701
+                    Height =284
+                    Name ="Надпись15"
+                    Caption ="черн.металургия."
+                    GUID = Begin
+                        0x6a0719bcb0205c4b928468cda24960ec
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =2834
+                    Top =1135
+                    Width =1701
+                    Height =284
+                    Name ="Надпись16"
+                    Caption ="цветн.металургия"
+                    GUID = Begin
+                        0xae6e8a8c6f7fdb42b0717c676eea5a50
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =2836
+                    Top =1419
+                    Width =1701
+                    Height =284
+                    Name ="Надпись17"
+                    Caption ="химия и нефтехимия"
+                    GUID = Begin
+                        0x4f5bc1129a59244db1018ae6b7c78e38
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =2836
+                    Top =1702
+                    Width =1701
+                    Height =284
+                    Name ="Надпись18"
+                    Caption ="лесн.,дерев.,цел.-бум."
+                    GUID = Begin
+                        0xc43d09ae71019a438ead27def8972713
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =4537
+                    Top =1987
+                    Width =680
+                    Height =284
+                    TabIndex =15
+                    Name ="легк"
+                    ControlSource ="легк"
+                    GUID = Begin
+                        0x4663f5fe772c4e4fb14f14c1bae011fd
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =2836
+                    Top =1986
+                    Width =1701
+                    Height =284
+                    Name ="Надпись19"
+                    Caption ="легкая"
+                    GUID = Begin
+                        0xde0b53aac053eb48acbbdf075cbbf24f
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =2836
+                    Top =2269
+                    Width =1701
+                    Height =284
+                    Name ="Надпись20"
+                    Caption ="пищевая"
+                    GUID = Begin
+                        0xd6f100825eca454bbf08e5be04c98dca
+                    End
+                End
+                Begin Label
+                    OverlapFlags =87
+                    Left =2836
+                    Top =2553
+                    Width =1701
+                    Height =284
+                    Name ="Надпись21"
+                    Caption ="машин.и металлобр."
+                    GUID = Begin
+                        0x51c85bd8d83c874ba85471999c87045a
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =4478
+                    Top =283
+                    Width =744
+                    Height =228
+                    Name ="Надпись22"
+                    Caption ="тыс.Гкал"
+                    GUID = Begin
+                        0x7745bb0e6e81724c8342e6a1baaf8917
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =2834
+                    Top =283
+                    Width =1593
+                    Height =227
+                    FontWeight =700
+                    Name ="Надпись23"
+                    Caption ="по отраслям пром."
+                    GUID = Begin
+                        0x839033644de296448d2b04f580fd5769
+                    End
+                End
+            End
+        End
+    End
+End

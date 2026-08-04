@@ -1,0 +1,2 @@
+SELECT c.NAME, c.ordnumb AS numb1, s.numb1120, s.v, s.h, s.obl, s.oes, o.NAME AS oblname, e.name AS oesname, s.[2000] AS f1, s.[2005] AS f2, s.[2010] AS f3, s.[2015] AS f4, s.[2020] AS f5, Null AS f6, Null AS f7, Null AS f8, Null AS f9, Null AS f10, Null AS f11, Null AS f12, Null AS f13, Null AS f14, Null AS f15
+FROM ((Справка1пТ AS s INNER JOIN имена_станций AS c ON s.numb1120=c.NUMB) INNER JOIN имена_областей AS o ON s.obl=o.OBL) INNER JOIN имена_ОЭС AS e ON s.oes=e.oes;

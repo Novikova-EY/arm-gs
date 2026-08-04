@@ -28,7 +28,7 @@ def build_ved_consumption_excel_stream(context: dict[str, Any]) -> BytesIO:
             return f"{y}\n{s}"
         return str(y)
 
-    ws.cell(row=1, column=1, value="Территория / ВЭД, млн кВт·ч").font = Font(bold=True)
+    ws.cell(row=1, column=1, value="Территория / ВЭД, млн кВтч").font = Font(bold=True)
     for col_idx, year in enumerate(years, start=2):
         cell = ws.cell(row=1, column=col_idx, value=year_header_cell(year))
         cell.font = Font(bold=True)

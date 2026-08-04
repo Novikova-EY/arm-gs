@@ -4275,6 +4275,19 @@ def _station_external_code_conflict_id(station: Station, new_code: str) -> int |
     return query.scalar()
 
 
+def _station_kto_conflict_id(station: Station, new_kto: str) -> int | None:
+    query = db.session.query(Station.id).filter(
+        Station.kto == new_kto,
+        Station.id != station.id,
+    )
+    version_id = getattr(station, "database_version_id", None)
+    if version_id is None:
+        query = query.filter(Station.database_version_id.is_(None))
+    else:
+        query = query.filter(Station.database_version_id == version_id)
+    return query.scalar()
+
+
 def update_station_from_form_service(
     user,
     station: Station,
@@ -4337,6 +4350,20 @@ def update_station_from_form_service(
                     )
                 changes.append(f"external_code: {old_code or 'не указано'} → {new_code}")
                 station.external_code = new_code
+
+            old_kto = (getattr(station, "kto", None) or "").strip()
+            kto_field = getattr(form, "kto", None)
+            new_kto = (kto_field.data or "").strip() if kto_field is not None else old_kto
+            if old_kto != new_kto:
+                if new_kto:
+                    conflict_id = _station_kto_conflict_id(station, new_kto)
+                    if conflict_id is not None:
+                        raise ValueError(
+                            f"Код КТО {new_kto!r} уже используется электростанцией id={conflict_id} "
+                            f"в версии БД {getattr(station, 'database_version_id', None)}"
+                        )
+                changes.append(f"Код КТО: {old_kto or 'не указано'} → {new_kto or 'не указано'}")
+                station.kto = new_kto or None
 
         # Название + субъект РФ: проверка уникальности до присваивания
         new_name = _normalize_angle_quotes(form.name.data) if can_edit_core else station.name
@@ -4629,7 +4656,7 @@ def save_station_energy_generation_service(
     form_data,
 ) -> list:
     """
-    Сохраняет выработку электроэнергии электростанцией по годам (млн кВт·ч).
+    Сохраняет выработку электроэнергии электростанцией по годам (млн кВтч).
     Возвращает список строк изменений для логирования (пустой, если сохранять нечего).
     """
     from app.energy_balance.models.station_energy_generation_model import (
@@ -4711,10 +4738,14 @@ def save_station_energy_generation_service(
             pass
         _commit_with_retry()
 
+        from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache
+
+        clear_energy_balance_cache()
+
         rd_name = station.regional_district.name if station.regional_district else "не указано"
         log_to_db(
             user,
-            f"Изменения в электростанции {station.name} ({rd_name}), выработка электроэнергии (млн кВт·ч)",
+            f"Изменения в электростанции {station.name} ({rd_name}), выработка электроэнергии (млн кВтч)",
             details="; ".join(changes),
             entity_type="station",
             entity_id=station.id,
@@ -4734,7 +4765,7 @@ def save_station_gaes_charge_consumption_service(
     form_data,
 ) -> list:
     """
-    Потребление электрической энергии ГАЭС на заряд по годам (млн кВт·ч).
+    Потребление электрической энергии ГАЭС на заряд по годам (млн кВтч).
     """
     from app.common.services.database_version_filter import filter_by_explicit_db_version
     from app.generation.models.station.station_gaes_charge_consumption_model import (
@@ -4824,7 +4855,7 @@ def save_station_gaes_charge_consumption_service(
         rd_name = station.regional_district.name if station.regional_district else "не указано"
         log_to_db(
             user,
-            f"Изменения в электростанции {station.name} ({rd_name}), потребление электроэнергии ГАЭС на заряд (млн кВт·ч)",
+            f"Изменения в электростанции {station.name} ({rd_name}), потребление электроэнергии ГАЭС на заряд (млн кВтч)",
             details="; ".join(changes),
             entity_type="station",
             entity_id=station.id,

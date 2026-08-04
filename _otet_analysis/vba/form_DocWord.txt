@@ -1,0 +1,102 @@
+Version =20
+VersionRequired =20
+Checksum =-1972257706
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =10020
+    DatasheetFontHeight =12
+    ItemSuffix =2
+    Left =348
+    Top =3312
+    Right =10860
+    Bottom =4476
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x60892eaaf2e1e240
+    End
+    GUID = Begin
+        0x01d64c0424171d45a6c70eb31c7d9ec7
+    End
+    NameMap = Begin
+        0x0acc0e55000000001d51a3302d3cb743b1755a4c9d6ef3fc00000000705d6c8c ,
+        0xb84ce54010594e0a0000000013043e0440043e0434043004000000000000115b ,
+        0xbf3daaa1cb4989db400913864140070000000000000000000000000000000000 ,
+        0x000063006f006d00000000000000000000000000000000000000000000000c00 ,
+        0x0000030000000000000000000000000000000000
+    End
+    RecordSource ="SELECT Города.* FROM Города; "
+    DatasheetFontName ="Times New Roman Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin BoundObjectFrame
+            SpecialEffect =2
+            Width =4536
+            Height =2835
+            LabelX =-1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin UnboundObjectFrame
+            SpecialEffect =2
+            OldBorderStyle =1
+            Width =4536
+            Height =2835
+        End
+        Begin Section
+            Height =4431
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x8416a204a98c114198130a63546de510
+            End
+            Begin
+                Begin BoundObjectFrame
+                    DisplayType = NotDefault
+                    SpecialEffect =0
+                    OverlapFlags =215
+                    Width =10020
+                    Height =4431
+                    Name ="com"
+                    ControlSource ="com"
+                    GUID = Begin
+                        0x976736d6ed5d9e43b6a6e4bdc34fc2f8
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =408
+                            Height =228
+                            Name ="Надпись1"
+                            Caption ="com:"
+                            GUID = Begin
+                                0xff52bfe994b2ca41aa95f81f94041ba3
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End

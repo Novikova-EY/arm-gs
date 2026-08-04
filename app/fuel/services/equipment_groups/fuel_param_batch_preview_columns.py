@@ -3,23 +3,28 @@
 
 from __future__ import annotations
 
+from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
+    EquipmentGroupSpecificFuelConsumption,
+)
+
 # Полный набор как на stations_equipment_group_fuel_params / пакетный пересчёт.
 FUEL_PARAM_PREVIEW_COLUMNS_FULL: list[tuple[str, str, bool]] = [
-    ("numb1120", "Код электростанции", False),
-    ("nust", "Руст", True),
-    ("nr", "Ррасп", True),
-    ("e", "Выработка эл.эн.", True),
-    ("ewtp", "Этц", True),
-    ("eotp", "Отпуск эл.эн.", True),
-    ("eurt", "Уд.расх эл.эн.", True),
+    ("numb1120", "Код группы оборудования", False),
+    ("nust", EquipmentGroupFuelParam.NUST_COLUMN_LABEL, True),
+    ("nr", EquipmentGroupFuelParam.NR_COLUMN_LABEL, True),
+    ("e", "Выработка ЭЭ, тыс.кВтч", True),
+    ("ewtp", "Теплофикационная выработка ЭЭ, тыс.кВтч", True),
+    ("eotp", EquipmentGroupFuelParam.EOTP_COLUMN_LABEL, True),
+    ("eurt", EquipmentGroupFuelParam.EURT_COLUMN_LABEL, True),
     ("eust", "Расх топ эл.эн.", True),
-    ("snk", "СН, %", True),
-    ("q", "Отпуск тепл.эн.", True),
-    ("qotr", "Отраб тепл.эн.", True),
-    ("turt", "Уд.расх тепл.эн.", True),
-    ("tust", "Расх топ тепл.эн.", True),
-    ("sn_t", "СН, кВтч/Гкал", True),
-    ("b", "Расх топл.", True),
+    ("snk", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
+    ("q", EquipmentGroupFuelParam.Q_COLUMN_LABEL, True),
+    ("qotr", "Тепловое потребление (отборов турбин), тыс.Гкал", True),
+    ("turt", EquipmentGroupFuelParam.TURT_COLUMN_LABEL, True),
+    ("tust", EquipmentGroupFuelParam.TUST_COLUMN_LABEL, True),
+    ("sn_t", "СН, кВтч/⁠Гкал", True),
+    ("b", "Расход топлива, всего", True),
     ("gaz", "Газ", True),
     ("isk_gaz", "Иск. газ", True),
     ("mazut", "Мазут", True),
@@ -51,30 +56,30 @@ FUEL_PARAM_PREVIEW_COLUMNS_FULL: list[tuple[str, str, bool]] = [
     ("chukot", "Чукотка", True),
     ("kamch", "Камчатка", True),
     ("sah", "Сахалин", True),
-    ("nt", "Тепл. мощн. отборов", True),
-    ("nt_sum", "Сумма NT", True),
+    ("nt", EquipmentGroupFuelParam.NT_COLUMN_LABEL, True),
+    ("nt_sum", EquipmentGroupFuelParam.NT_SUM_COLUMN_LABEL, True),
 ]
 
 # Входы и результаты этапов Коэфф / Распред / расчётных формул по строке (без долей по видам топлива).
 FUEL_PARAM_PREVIEW_COLUMNS_CALCULATION: list[tuple[str, str, bool]] = [
-    ("numb1120", "Код электростанции", False),
-    ("nust", "Руст", True),
-    ("nr", "Ррасп", True),
-    ("y", "Уд. выработка эл.эн. (Y)", True),
-    ("e", "Выработка эл.эн.", True),
-    ("ewtp", "Этц", True),
-    ("eotp", "Отпуск эл.эн.", True),
-    ("eurt", "Уд.расх эл.эн.", True),
+    ("numb1120", "Код группы оборудования", False),
+    ("nust", EquipmentGroupFuelParam.NUST_COLUMN_LABEL, True),
+    ("nr", EquipmentGroupFuelParam.NR_COLUMN_LABEL, True),
+    ("y", EquipmentGroupSpecificFuelConsumption.Y_COLUMN_LABEL, True),
+    ("e", "Выработка ЭЭ, тыс.кВтч", True),
+    ("ewtp", "Теплофикационная выработка ЭЭ, тыс.кВтч", True),
+    ("eotp", EquipmentGroupFuelParam.EOTP_COLUMN_LABEL, True),
+    ("eurt", EquipmentGroupFuelParam.EURT_COLUMN_LABEL, True),
     ("eust", "Расх топ эл.эн.", True),
-    ("snk", "СН, %", True),
-    ("q", "Отпуск тепл.эн.", True),
-    ("qotr", "Отраб тепл.эн.", True),
-    ("turt", "Уд.расх тепл.эн.", True),
-    ("tust", "Расх топ тепл.эн.", True),
-    ("sn_t", "СН, кВтч/Гкал", True),
-    ("b", "Расх топл.", True),
-    ("nt", "Тепл. мощн. отборов", True),
-    ("nt_sum", "Сумма NT", True),
+    ("snk", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
+    ("q", EquipmentGroupFuelParam.Q_COLUMN_LABEL, True),
+    ("qotr", "Тепловое потребление (отборов турбин), тыс.Гкал", True),
+    ("turt", EquipmentGroupFuelParam.TURT_COLUMN_LABEL, True),
+    ("tust", EquipmentGroupFuelParam.TUST_COLUMN_LABEL, True),
+    ("sn_t", "СН, кВтч/⁠Гкал", True),
+    ("b", "Расход топлива, всего", True),
+    ("nt", EquipmentGroupFuelParam.NT_COLUMN_LABEL, True),
+    ("nt_sum", EquipmentGroupFuelParam.NT_SUM_COLUMN_LABEL, True),
 ]
 
 COLLAPSIBLE_UGOL_ATTRS: list[str] = [

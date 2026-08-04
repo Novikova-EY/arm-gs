@@ -207,7 +207,7 @@ class EquipmentGroupNaturalFuel(db.Model):
         uselist=False,
     )
 
-    # Код электростанции: numb1120 = EquipmentGroup.numb (без FK — numb не уникален)
+    # Код группы оборудования: numb1120 = EquipmentGroup.numb (без FK — numb не уникален)
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
     equipment_group_by_numb = db.relationship(
         "EquipmentGroup",

@@ -1,0 +1,75 @@
+Version =19
+VersionRequired =19
+Checksum =440772180
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    ScrollBars =2
+    TabularCharSet =204
+    TabularFamily =5
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =1701
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =1800
+    Top =180
+    Right =4848
+    Bottom =1800
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x9831f19f4d07e240
+    End
+    GUID = Begin
+        0x86a72c9413c0c943933bd0b34d51e27c
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Список_макетов"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =283
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x8c9e1858949b7541915de5e7527ef6a4
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =85
+                    ColumnWidth =2460
+                    Name ="Макет"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0xdb25b6aff4ddd146b8a1e895bc700a21
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database

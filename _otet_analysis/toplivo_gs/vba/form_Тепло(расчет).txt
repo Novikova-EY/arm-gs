@@ -1,0 +1,202 @@
+Version =21
+VersionRequired =20
+Checksum =-1013644874
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =8
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =4536
+    DatasheetFontHeight =10
+    ItemSuffix =4
+    Left =730
+    Top =5200
+    Right =6380
+    Bottom =7620
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x9261ee305616e640
+    End
+    GUID = Begin
+        0x0a43fd4c7a11664781cc07767780fdec
+    End
+    RecordSource ="Станции(Схема)"
+    BeforeUpdate ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    FilterOnLoad =0
+    DatasheetGridlinesColor12 =12632256
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xc744789777bc6d4f86cbb154b7094d52
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    ColumnWidth =660
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    GUID = Begin
+                        0xef09576fc40ab746853d6c6f8c295f64
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =567
+                    ColumnWidth =555
+                    TabIndex =1
+                    Name ="Q"
+                    ControlSource ="Q"
+                    Format ="#"
+                    GUID = Begin
+                        0x50d57dc925af574394177b1bfef01b37
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =1134
+                    ColumnWidth =495
+                    TabIndex =2
+                    Name ="qotr"
+                    ControlSource ="qotr"
+                    Format ="#"
+                    GUID = Begin
+                        0x7f32152ab21c294ab212cf6c6c59111c
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1701
+                    ColumnWidth =705
+                    TabIndex =3
+                    Name ="NUST"
+                    ControlSource ="NUST"
+                    GUID = Begin
+                        0x6241688e6d4c8841bd81359b64189a61
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2268
+                    ColumnWidth =600
+                    TabIndex =4
+                    Name ="NT"
+                    ControlSource ="NT"
+                    GUID = Begin
+                        0xef79ad454af04041a881927e1b03ccba
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2835
+                    ColumnWidth =570
+                    TabIndex =5
+                    Name ="Ht"
+                    ControlSource ="=IIf([nt]=0,0,[qotr]/[nt]*1000)"
+                    Format ="#"
+                    GUID = Begin
+                        0xe96f05c55db02d488c8b6464c57bb45c
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3402
+                    ColumnWidth =525
+                    TabIndex =6
+                    Name ="potr"
+                    ControlSource ="=IIf([q]=0,0,[qotr]/[q]*100)"
+                    Format ="#"
+                    GUID = Begin
+                        0x257cf164ea96fd46a8ba79ad6bc48868
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =3969
+                    ColumnWidth =890
+                    TabIndex =7
+                    Name ="%пр"
+                    ControlSource ="=ppf([year])"
+                    Format ="#"
+                    EventProcPrefix ="Ctl_пр"
+                    GUID = Begin
+                        0xe873667bd4d9cb49a85f0be49cccbb47
+                    End
+
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_AfterUpdate()
+Refresh
+End Sub
+
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+Dim stan As Form
+Set stan = Parent.Form
+If stan!calc = 0 Then B = MsgBox("Станция разбита на групп оборудования.Изменения учтены не будут")
+End Sub
+Function ppf(y As Double)
+Dim Q() As Double, R As Recordset
+Set R = Me.RecordsetClone
+ny = R.RecordCount
+ReDim Q(ny - 1)
+R.MoveFirst
+If R!year = y Then
+ppf = 0
+GoTo endppf
+End If
+Do While (R!year <> y)
+Qprev = R!Q
+R.MoveNext
+Loop
+If Qprev <> 0 Then ppf = (R!Q - Qprev) / Qprev * 100 Else ppf = 0
+endppf:
+End Function

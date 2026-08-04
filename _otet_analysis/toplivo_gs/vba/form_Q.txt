@@ -1,0 +1,386 @@
+Version =19
+VersionRequired =19
+Checksum =440772197
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5782
+    DatasheetFontHeight =12
+    ItemSuffix =46
+    Left =1116
+    Top =2508
+    Right =7356
+    Bottom =5100
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xcda1d033af00e340
+    End
+    GUID = Begin
+        0x60d627fb3cd2ac4492f24696f6c1f949
+    End
+    NameMap = Begin
+        0x0acc0e5500000000b1f66927be0c694a9823ea03afaed58101000000eb3808c6 ,
+        0x9140e340d8c81200f760083051006f0070000000
+    End
+    DatasheetFontName ="Times New Roman Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =2788
+            BackColor =16777156
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xa17ae799e7ebc04cabb8ba7b431007f6
+            End
+            Begin
+                Begin OptionGroup
+                    SpecialEffect =0
+                    OldBorderStyle =0
+                    OverlapFlags =85
+                    Left =170
+                    Top =60
+                    Width =446
+                    Height =1578
+                    Name ="Var"
+                    DefaultValue ="1"
+                    GUID = Begin
+                        0x498347408b7e8d42bf41cb5e44b5fa6c
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =340
+                            Top =226
+                            OptionValue =4
+                            Name ="Переключатель44"
+                            GUID = Begin
+                                0x5d1ae129b185614cabab8b26d6f4b194
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =340
+                            Top =623
+                            OptionValue =1
+                            Name ="Переключатель6"
+                            GUID = Begin
+                                0x197b8fa9868c30428d4e112baa673730
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =340
+                            Top =952
+                            OptionValue =2
+                            Name ="Переключатель8"
+                            GUID = Begin
+                                0xa9251056ef36a54b8ad0bc313ac55119
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =340
+                            Top =1282
+                            OptionValue =3
+                            Name ="Переключатель30"
+                            GUID = Begin
+                                0x4bb78a84cf1b384e98fbcf271b46b495
+                            End
+                        End
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =737
+                    Top =623
+                    Width =540
+                    Height =228
+                    Name ="Надпись12"
+                    Caption ="пред +"
+                    GUID = Begin
+                        0x83a1f7bb5729f049a3d91a3ac055ff53
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    TextAlign =2
+                    Left =1360
+                    Top =623
+                    Width =284
+                    Height =227
+                    TabIndex =1
+                    Name ="P"
+                    GUID = Begin
+                        0x358b06fe94984d48a347212f1b6b7ee8
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =1700
+                    Top =623
+                    Width =612
+                    Height =228
+                    Name ="Надпись15"
+                    Caption ="% в год"
+                    GUID = Begin
+                        0x912735608d89ba4e80803e201e8e1d26
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =737
+                    Top =952
+                    Width =372
+                    Height =228
+                    Name ="Надпись16"
+                    Caption ="Nт *"
+                    GUID = Begin
+                        0x4c1e6fbf4c38184e90ce09107e309a2e
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    TextAlign =2
+                    Left =1190
+                    Top =964
+                    Width =464
+                    Height =227
+                    TabIndex =2
+                    Name ="H"
+                    GUID = Begin
+                        0xd4d6119718468a43a1d3bfcb78379878
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =1713
+                    Top =964
+                    Width =708
+                    Height =228
+                    Name ="Надпись18"
+                    Caption ="час +Qвк"
+                    GUID = Begin
+                        0xd17893d27380f24390cf12a98f51ce91
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =1417
+                    Top =1701
+                    Width =516
+                    Height =228
+                    Name ="Надпись21"
+                    Caption ="Qотр="
+                    GUID = Begin
+                        0x98f5a05bfcfb114f9286e197a93e0d39
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    TextAlign =2
+                    Left =2040
+                    Top =1701
+                    Width =284
+                    Height =227
+                    TabIndex =3
+                    Name ="potr"
+                    GUID = Begin
+                        0x5e1dbd4f9f035a478026109f49b88cfb
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =2437
+                    Top =1701
+                    Width =288
+                    Height =204
+                    Name ="Надпись24"
+                    Caption ="%"
+                    GUID = Begin
+                        0xdac079000499ca4d9b0d18d9164db434
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =2505
+                    Top =964
+                    Width =912
+                    Height =228
+                    Name ="Надпись25"
+                    Caption ="но не более"
+                    GUID = Begin
+                        0xa094c800038e284791ec262b4a78e696
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    TextAlign =2
+                    Left =3580
+                    Top =964
+                    Width =284
+                    Height =226
+                    TabIndex =4
+                    Name ="pmax"
+                    GUID = Begin
+                        0xe9663f320cc91c43ae72c8995f8cf29f
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =3978
+                    Top =964
+                    Width =612
+                    Height =228
+                    Name ="Надпись28"
+                    Caption ="% в год"
+                    GUID = Begin
+                        0xc12a0caa7fcf9f4481df920540d1f0ba
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =737
+                    Top =1282
+                    Width =936
+                    Height =228
+                    Name ="Надпись32"
+                    Caption ="только Qотр"
+                    GUID = Begin
+                        0x1b1c6d30873a674cb05698b335c7b0fb
+                    End
+                End
+                Begin ComboBox
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    ListWidth =1440
+                    Left =3854
+                    Top =113
+                    Width =574
+                    Height =284
+                    TabIndex =5
+                    GUID = Begin
+                        0xa1453c3bd150e24e8ded13eb606d84e0
+                    End
+                    Name ="Y1"
+                    RowSourceType ="Value List"
+                    RowSource ="2006;2007;2008;2010;2015"
+                    ColumnWidths ="1440"
+                End
+                Begin ComboBox
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    ListWidth =1440
+                    Left =4648
+                    Top =113
+                    Width =574
+                    Height =284
+                    TabIndex =6
+                    GUID = Begin
+                        0x00e8b24994b9dd4c88e72e2d7b20737a
+                    End
+                    Name ="Y2"
+                    RowSourceType ="Value List"
+                    RowSource ="2010;2015;2020"
+                    ColumnWidths ="1441"
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =3401
+                    Top =113
+                    Width =227
+                    Height =170
+                    TabIndex =7
+                    Name ="sely"
+                    DefaultValue ="False"
+                    GUID = Begin
+                        0x6dd959e5f695f445bfdb3f1c5ca91c67
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    SpecialEffect =0
+                    Left =3118
+                    Top =1303
+                    Width =2544
+                    Height =1428
+                    TabIndex =8
+                    Name ="Qop"
+                    SourceObject ="Form.Qop"
+                    GUID = Begin
+                        0x13d87ac15f74dc4aa7846073ba376974
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =732
+                    Top =108
+                    Width =1956
+                    Height =228
+                    Name ="Надпись45"
+                    Caption ="интерполировать опорные"
+                    GUID = Begin
+                        0x52d09feca9ae7c4083cb347241be3eaa
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database

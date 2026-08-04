@@ -192,8 +192,8 @@ def test_aggregate_sheet_labels_kamchatka_res_dual_variant_rows_from_arme_templa
 def test_aggregate_from_screen_export_matrix_reads_mln_and_sipr_rows():
     matrix = [
         ("Энергосистема", "Наименование параметров", 2024, 2025),
-        ("Россия", "Потребление электрической энергии, млн кВт·ч", 10, 20),
-        ("", "Потребление электрической энергии (СиПР), млн кВт·ч", 1, 2),
+        ("Россия", "Потребление электрической энергии, млн кВтч", 10, 20),
+        ("", "Потребление электрической энергии (СиПР), млн кВтч", 1, 2),
         ("", "Годовой темп прироста, %", 5, 6),
     ]
     acc_mln, acc_sipr = service._aggregate_from_screen_export_matrix(matrix)
@@ -275,6 +275,53 @@ def test_collapse_labels_clears_variant_for_entity_without_bindings(monkeypatch)
 
     assert acc[(fd_model, fk_fd, 124, 2024, None)] == Decimal("100")
     assert (fd_model, fk_fd, 124, 2024, "with_nt_with_gaes") not in acc
+
+
+@pytest.mark.parametrize(
+    "row_order",
+    [
+        ((None, "o1"),),  # как в шаблоне: сначала пустой вариант
+        (("o1", None),),  # обратный порядок не должен удваивать
+    ],
+)
+def test_collapse_labels_does_not_double_unbound_eu_none_and_o1(monkeypatch, row_order):
+    """Энергорайоны без привязок: NULL + o1 из Excel → одно значение, не сумма."""
+    eu_model = service.EnergyUnitEnergyConsumptionParameter
+    fk_eu = service._MODEL_FK[eu_model]
+    label = "Центральный энергорайон Магаданской области"
+    eu = type("EU", (), {"id": 76, "name": label})()
+    ctx = {
+        "ues": [],
+        "res": [],
+        "rd": [],
+        "fd": [],
+        "sync_area": [],
+        "energy_unit": [(eu, label)],
+    }
+    value = Decimal("2165.087")
+    acc_labels: defaultdict[tuple[str, int, str | None], Decimal] = defaultdict(
+        lambda: Decimal("0")
+    )
+    for pvc in row_order[0]:
+        acc_labels[(label, 2016, pvc)] = value
+
+    monkeypatch.setattr(
+        service,
+        "perimeter_entity_context_for_model",
+        lambda *_a, **_k: ("energy_unit", label),
+    )
+    monkeypatch.setattr(service, "perimeter_variant_codes_for_entity", lambda *_a, **_k: ())
+
+    acc, _ = service._collapse_labels_to_bind_keys(
+        acc_labels,
+        ctx=ctx,
+        years_ok={2016},
+        variant_column_mode=True,
+    )
+
+    key = (eu_model, fk_eu, 76, 2016, None)
+    assert acc[key] == value
+    assert (eu_model, fk_eu, 76, 2016, "o1") not in acc
 
 
 def test_mirror_res_skips_o1_when_regional_district_has_no_perimeter_variants(monkeypatch):

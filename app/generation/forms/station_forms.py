@@ -102,9 +102,9 @@ class StationFilterForm(FlaskForm):
         validators=[Optional(), Length(max=255)]
     )
 
-    # Номер КТО
+    # Код КТО
     kto = StringField(
-        'Номер КТО',
+        'Код КТО',
         validators=[Optional(), Length(max=80)]
     )
 

@@ -1,0 +1,118 @@
+Version =19
+VersionRequired =19
+Checksum =-494773862
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =55
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2835
+    DatasheetFontHeight =10
+    ItemSuffix =2
+    Left =4872
+    Top =4332
+    Right =8076
+    Bottom =5760
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x68ed8ffdd50de340
+    End
+    GUID = Begin
+        0x2c9d33ea5e779740993000b2ea0c9b35
+    End
+    NameMap = Begin
+        0x0acc0e5500000000e3472427549e5844b6597ad867a9ce8500000000ddf6db0a ,
+        0x13e2e24000000000000000002104420430043d04460438043804320030003000 ,
+        0x3300000000000000c4d7c98b907e464fac4dcf86dd78ad9307000000e3472427 ,
+        0x549e5844b6597ad867a9ce8551000000000000003527dad74030f74d98ff490d ,
+        0x74208946000000006ddf8fd3ef7ae340000000000000000018043c0435043d04 ,
+        0x30045f004104420430043d0446043804390400000000000002ab3a21fe53c849 ,
+        0x90d5752ecf1aa654070000003527dad74030f74d98ff490d742089464d004100 ,
+        0x49004e00000000000000638d2ca41dc82440828479febcb4c851070000003527 ,
+        0xdad74030f74d98ff490d742089461204350434043e043c044104420432043e04 ,
+        0x000000000000d4ee96bf5df02d4b99470ca21880a0db070000003527dad74030 ,
+        0xf74d98ff490d742089464e0041004d0045000000000000004fd4a7c61d222a42 ,
+        0x99092bbc1d9cca0a070000003527dad74030f74d98ff490d7420894663006f00 ,
+        0x6400650067006f0072000000000000008b07923e01c248468a69b5e34c817f22 ,
+        0x070000003527dad74030f74d98ff490d742089464f0042004c00000000000000 ,
+        0x9600a4bba9e82340bc6d1f65006dacd8070000003527dad74030f74d98ff490d ,
+        0x742089464e0055004d004200000000000000c51075cf03f0d7428890310d8307 ,
+        0x436207000000e3472427549e5844b6597ad867a9ce854e0055004d0042003100 ,
+        0x3100320030000000
+    End
+    RecordSource ="SELECT [Имена_станций].[NAME], [Станции2003].[Q], [Имена_станций].[codegor], [Им"
+        "ена_станций].[OBL], [Имена_станций].[NUMB] FROM Станции2003 INNER JOIN Имена_ста"
+        "нций ON [Станции2003].[NUMB1120]=[Имена_станций].[NUMB] WHERE ((([Станции2003].["
+        "Q])>0) And (([Имена_станций].[MAIN])=0 Or ([Имена_станций].[MAIN]) Is Null) And "
+        "(([Имена_станций].[Ведомство])=1)); "
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x8fe9e2e3f38b4f4fb70e1af37dc750e3
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Width =1701
+                    ColumnWidth =2340
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    GUID = Begin
+                        0xed7b5ba671b6444b89fc26eba4fa2ba7
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1701
+                    ColumnWidth =570
+                    TabIndex =1
+                    Name ="Q"
+                    ControlSource ="Q"
+                    GUID = Begin
+                        0xb123d1332a77264582eeb6e209db1e91
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =2268
+                    ColumnWidth =900
+                    TabIndex =2
+                    Name ="codegor"
+                    ControlSource ="codegor"
+                    GUID = Begin
+                        0x901d5a7c50d56142b8be633c0ed05c67
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database

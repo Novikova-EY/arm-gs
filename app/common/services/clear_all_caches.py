@@ -119,32 +119,22 @@ def clear_all_application_caches() -> dict[str, Any]:
             pass
 
     def _power_demand() -> None:
-        from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
-        from app.power_demand.services.pd_demand_rows_bulk_cache import (
-            clear_power_demand_rows_bulk_cache,
+        from app.power_demand.services.pd_summary_page_cache import (
+            invalidate_power_demand_display_caches,
         )
         from app.power_demand.services.formula_text.power_demand_summary_formula_text_services import (
             clear_formula_text_override_cache as clear_pd_formula_text_cache,
         )
 
-        clear_pd_summary_page_cache()
-        clear_power_demand_rows_bulk_cache()
+        invalidate_power_demand_display_caches()
         clear_pd_formula_text_cache()
 
     def _energy_consumption() -> None:
-        from app.energy_consumption.services.energy_consumption_summary_services import (
-            clear_gaes_charge_summary_cache,
-        )
-        from app.power_demand.services.pd_ec_consumption_index_cache import (
-            invalidate_pd_ec_consumption_index_cache,
-        )
-        from app.energy_consumption.services.formula_text.energy_consumption_summary_formula_text_services import (
-            clear_formula_text_override_cache as clear_ec_formula_text_cache,
+        from app.energy_consumption.services.ec_display_cache import (
+            invalidate_energy_consumption_display_caches,
         )
 
-        clear_gaes_charge_summary_cache()
-        invalidate_pd_ec_consumption_index_cache()
-        clear_ec_formula_text_cache()
+        invalidate_energy_consumption_display_caches()
 
     def _energy_balance() -> None:
         from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache

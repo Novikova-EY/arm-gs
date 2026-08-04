@@ -1,10 +1,35 @@
 {% extends 'base.html' %}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
 
+{# Подсказка с полным значением из БД (без округления UI), как на equipment_group_fuel_params_edit_data #}
+{% macro specific_fc_tooltip_title(attr, is_numeric, param) -%}
+{%- if param is none -%}
+{%- elif is_numeric -%}
+{%- set v = param|get_attr(attr) -%}
+{%- if v is not none -%}{{ v|format_decimal(0) }}{%- endif -%}
+{%- elif attr == 'numb1120' -%}
+{%- set _sc = param|get_attr('numb1120') -%}
+{%- if _sc is not none and (_sc|string|trim != '') and (_sc|string|trim|lower != 'none') -%}{{ _sc }}{%- endif -%}
+{%- else -%}
+{{- param|get_attr(attr)|default('', true) -}}
+{%- endif -%}
+{%- endmacro %}
+
 {% macro specific_fc_data_cell(attr, is_numeric, param) -%}
 {% if param is none %}—
 {% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}
 {% else %}{% set v = param|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}
+{%- endmacro %}
+
+{% macro specific_fc_numb1120_cell(param, group_entity) -%}
+{% set v = param|get_attr('numb1120') if param is not none else none %}
+{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}
+{{ v if v is not none else '—' }}
+{%- endmacro %}
+
+{% macro specific_fc_numb1120_tooltip(param, group_entity) -%}
+{%- set v = param|get_attr('numb1120') if param is not none else none -%}
+{%- if v is not none -%}{{ v }}{%- elif group_entity is not none and group_entity.numb is not none -%}{{ group_entity.numb }}{%- endif -%}
 {%- endmacro %}
 
 {% macro specific_fc_edit_cell(attr, is_numeric, param, gid, ynum, do_edit, rounding_digits, form_id) -%}
@@ -18,13 +43,14 @@
 {% set display_val = raw|string %}
 {% endif %}
 {% set fname = 'g' ~ gid ~ '_specific_fc_' ~ ynum ~ '_' ~ attr %}
-<input type="text" inputmode="{% if is_numeric %}decimal{% else %}text{% endif %}" autocomplete="off" name="{{ fname }}" class="form-control form-control-lg text-center" value="{{ display_val }}"{% if form_id %} form="{{ form_id }}"{% endif %}>
+{% set ttip = specific_fc_tooltip_title(attr, is_numeric, param)|trim %}
+<input type="text" inputmode="{% if is_numeric %}decimal{% else %}text{% endif %}" autocomplete="off" name="{{ fname }}" class="form-control form-control-lg text-center" value="{{ display_val }}"{% if form_id %} form="{{ form_id }}"{% endif %}{% if ttip %} title="{{ ttip|e }}"{% endif %}>
 {% else %}
 {{ specific_fc_data_cell(attr, is_numeric, param) }}
 {% endif %}
 {%- endmacro %}
 
-{% block title %}Редактирование удельных показателей (расчётный модуль){% endblock %}
+{% block title %}ТЭП групп оборудования (редактирование){% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -38,36 +64,136 @@
     </div>
 </div>
 
-<div class="container-fluid mt-2">
-    <div class="table-responsive" id="stationsTableContainer">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+{# Как equipment_group_fuel_params_edit_data: при прокрутке уходит только заголовок; кнопки и фильтры липкие #}
+<div class="fuel-calc-edit-shell d-flex flex-column">
+<div class="fuel-calc-edit-top overflow-auto" style="flex: 1 1 0; min-height: 0;">
+<div class="fuel-calc-edit-pane-content w-100 mt-2 px-0">
+    <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-nav bg-body">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 py-1">
         <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
     </div>
+    </div><!-- /.fuel-calc-edit-sticky-nav -->
 
-    <div class="col-12 mb-2">
-        <h2 class="text-center mb-4">Редактирование удельных показателей</h2>
+    <div class="col-12 mb-2 fuel-calc-edit-page-title">
+        <h2 class="text-center mb-4">ТЭП групп оборудования<br>(редактирование)</h2>
     </div>
 
+    <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-filters bg-body">
     {% include 'fuel/calculation/fuel_calculation_specific_consumption_edit_data_filters.html' %}
+    </div><!-- /.fuel-calc-edit-sticky-filters -->
+
+    <div id="stationsTableContainer">
+
+    {% if current_user.is_authenticated and current_user.has_admin and year_list_for_edit %}
+    <div class="modal fade" id="fuelEditDataHeatBulkAddYearModal" tabindex="-1" aria-labelledby="fuelEditDataHeatBulkAddYearModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('fuel_bp.equipment_group_specific_fuel_consumption_edit_data_add_year') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% for key, value in request.args.items(multi=True) %}
+                    <input type="hidden" name="r_{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fuelEditDataHeatBulkAddYearModalLabel">Добавить год</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="specificFcAddYearBase">Базовый год</label>
+                        <select name="id_base_year" id="specificFcAddYearBase" class="form-select form-select-lg" aria-label="Базовый год" required>
+                            <option value="">—</option>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="specificFcAddYearTarget">Расчитываемый год</label>
+                        <select name="id_target_year" id="specificFcAddYearTarget" class="form-select form-select-lg" aria-label="Расчитываемый год" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить в таблицу</button>
+                </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="fuelEditDataHeatBulkAddPeriodModal" tabindex="-1" aria-labelledby="fuelEditDataHeatBulkAddPeriodModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('fuel_bp.equipment_group_specific_fuel_consumption_edit_data_add_period') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% for key, value in request.args.items(multi=True) %}
+                    <input type="hidden" name="r_{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fuelEditDataHeatBulkAddPeriodModalLabel">Добавить период</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="specificFcAddPeriodBase">Базовый год</label>
+                        <select name="id_base_year" id="specificFcAddPeriodBase" class="form-select form-select-lg" aria-label="Базовый год для периода" required>
+                            <option value="">—</option>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="specificFcAddPeriodFrom">Расчитываемый год с</label>
+                        <select name="id_year_from" id="specificFcAddPeriodFrom" class="form-select form-select-lg" aria-label="Начало периода" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="specificFcAddPeriodTo">Расчитываемый год по</label>
+                        <select name="id_year_to" id="specificFcAddPeriodTo" class="form-select form-select-lg" aria-label="Конец периода" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить период в таблицу</button>
+                </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
 {% set can_edit_bulk = current_user.is_authenticated and current_user.has_admin %}
 {% set hdr = consumption_column_labels|default({}) %}
-{# (attr, key in COLUMN_LABELS / header, is_numeric, allow_input) #}
+{% set fact_years = fact_year_numbers|default([]) %}
+{% set plan_years = plan_year_numbers|default([]) %}
+{# (attr, key in COLUMN_LABELS / header, is_numeric, kind)
+   kind: 'view' | 'input' | 'calc'
+   — input: редактируется кроме годов «факт»
+   — calc: только просмотр для «факт»; редактируется для остальных признаков (в т.ч. «план»)
+   Входные y/btp/sntp/bk/snk скрыты; показываем numb1120, k и *_calc #}
+{# numb1120 только просмотр; при сохранении подставляется EquipmentGroup.numb #}
 {% set specific_fc_columns = [
-    ('numb1120', 'NUMB1120', false, true),
-    ('k', 'K', true, true),
-    ('y', 'Y', true, true),
-    ('y_calc', 'Y (расчет)', true, false),
-    ('btp', 'BTP', true, true),
-    ('btp_calc', 'BTP (расчет)', true, false),
-    ('sntp', 'SNTP', true, true),
-    ('sntp_calc', 'SNTP (расчет)', true, false),
-    ('bk', 'BK', true, true),
-    ('bk_calc', 'BK (расчет)', true, false),
-    ('snk', 'SNK', true, true),
-    ('snk_calc', 'SNK (расчет)', true, false),
+    ('numb1120', 'Код группы оборудования', false, 'view'),
+    ('k', 'K', true, 'input'),
+    ('y_calc', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал', true, 'calc'),
+    ('btp_calc', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч', true, 'calc'),
+    ('sntp_calc', 'Коэффициент отпуска ЭЭ в теплофикационном режиме', true, 'calc'),
+    ('bk_calc', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч', true, 'calc'),
+    ('snk_calc', 'СН на выработку ЭЭ, %', true, 'calc'),
 ] %}
 {% set column_count = specific_fc_columns|length + 2 %}
 
@@ -80,17 +206,17 @@
         <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
         <input type="hidden" name="bulk_edit_group_ids" value="{{ bulk_edit_equipment_group_ids|default([])|join(',') }}">
     {% endif %}
-    <table class="table table-hover table-striped table-bordered table-responsive" data-auto-export-excel="off">
+    <table class="table table-hover table-striped table-bordered table-responsive" id="specificFcEditTable" data-auto-export-excel="off">
         <thead class="table-success">
             <tr class="text-center align-middle" style="word-wrap: break-word;">
-                <th style="min-width: 9rem;">Группа</th>
+                <th style="min-width: 9rem;">Группа оборудования</th>
                 <th style="min-width: 3.5rem;">Год</th>
-                {% for attr, _lbl, is_numeric, allow_input in specific_fc_columns %}
+                {% for attr, _lbl, is_numeric, kind in specific_fc_columns %}
                 <th style="min-width: 4rem;" class="specific-fc-col-{{ attr }}">
                     {{ hdr.get(attr, _lbl) }}{% if consumption_formulas is defined and consumption_formulas.get(attr) %}
                     <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>
                     {% endif %}
-                    <br><span class="text-muted small">({{ attr }})</span>
+                    <br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% endfor %}
             </tr>
@@ -120,19 +246,40 @@
                                     {% set param = row[1] %}
                                     {% set is_first_row = loop.first %}
                                     {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
-                                    {% set can_row_edit = can_edit_bulk and gid and ynum != '' %}
-                                    <tr class="text-center align-middle">
+                                    {% set is_fact_year = ynum != '' and ynum in fact_years %}
+                                    {% set is_plan_year = ynum != '' and ynum in plan_years %}
+                                    {% set can_row_edit = can_edit_bulk and gid and ynum != '' and not is_fact_year %}
+                                    {% set can_calc_edit = can_edit_bulk and gid and ynum != '' and not is_fact_year %}
+                                    {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
+                                    {% set row_is_empty = not param %}
+                                    <tr class="text-center align-middle{% if nust_highlight_row %} table-warning{% endif %}"
+                                        data-fuel-edit-data-row="1"
+                                        data-fuel-group-id="{{ gid }}"
+                                        {% if is_fact_year %}data-fact-year="1"{% endif %}
+                                        {% if is_plan_year %}data-plan-year="1"{% endif %}
+                                        {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
+                                        {% if row_is_empty %}data-row-empty="1"{% endif %}>
                                         {% if is_first_row %}
-                                        <td rowspan="{{ row_span }}">
+                                        <td rowspan="{{ row_span }}" data-fuel-group-label="1">
                                             {% if group_entity and group_entity.id %}
                                             <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
                                             {% else %}{{ group_name }}{% endif %}
                                         </td>
                                         {% endif %}
                                         <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
-                                        {% for attr, _2, is_numeric, allow_input in specific_fc_columns %}
-                                        <td>
-                                            {% if allow_input and can_row_edit %}
+                                        {% for attr, _2, is_numeric, kind in specific_fc_columns %}
+                                        {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit) %}
+                                        {% if attr == 'numb1120' %}
+                                        {% set cell_ttip = specific_fc_numb1120_tooltip(param, group_entity)|trim %}
+                                        {% elif not do_edit_cell %}
+                                        {% set cell_ttip = specific_fc_tooltip_title(attr, is_numeric, param)|trim %}
+                                        {% else %}
+                                        {% set cell_ttip = '' %}
+                                        {% endif %}
+                                        <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>
+                                            {% if attr == 'numb1120' %}
+                                            {{ specific_fc_numb1120_cell(param, group_entity) }}
+                                            {% elif do_edit_cell %}
                                             {{ specific_fc_edit_cell(attr, is_numeric, param, gid, ynum, true, rounding_digits, 'specificFcBulkEditForm' if can_edit_bulk else none) }}
                                             {% else %}
                                             {{ specific_fc_data_cell(attr, is_numeric, param) }}
@@ -157,19 +304,40 @@
                 {% set param = row[1] %}
                 {% set is_first_row = loop.first %}
                 {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
-                {% set can_row_edit = can_edit_bulk and gid and ynum != '' %}
-                <tr class="text-center align-middle">
+                {% set is_fact_year = ynum != '' and ynum in fact_years %}
+                {% set is_plan_year = ynum != '' and ynum in plan_years %}
+                {% set can_row_edit = can_edit_bulk and gid and ynum != '' and not is_fact_year %}
+                {% set can_calc_edit = can_edit_bulk and gid and ynum != '' and not is_fact_year %}
+                {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
+                {% set row_is_empty = not param %}
+                <tr class="text-center align-middle{% if nust_highlight_row %} table-warning{% endif %}"
+                    data-fuel-edit-data-row="1"
+                    data-fuel-group-id="{{ gid }}"
+                    {% if is_fact_year %}data-fact-year="1"{% endif %}
+                    {% if is_plan_year %}data-plan-year="1"{% endif %}
+                    {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
+                    {% if row_is_empty %}data-row-empty="1"{% endif %}>
                     {% if is_first_row %}
-                    <td rowspan="{{ row_span }}">
+                    <td rowspan="{{ row_span }}" data-fuel-group-label="1">
                         {% if group_entity and group_entity.id %}
                         <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
                         {% else %}{{ group_name }}{% endif %}
                     </td>
                     {% endif %}
                     <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
-                    {% for attr, _2, is_numeric, allow_input in specific_fc_columns %}
-                    <td>
-                        {% if allow_input and can_row_edit %}
+                    {% for attr, _2, is_numeric, kind in specific_fc_columns %}
+                    {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit) %}
+                    {% if attr == 'numb1120' %}
+                    {% set cell_ttip = specific_fc_numb1120_tooltip(param, group_entity)|trim %}
+                    {% elif not do_edit_cell %}
+                    {% set cell_ttip = specific_fc_tooltip_title(attr, is_numeric, param)|trim %}
+                    {% else %}
+                    {% set cell_ttip = '' %}
+                    {% endif %}
+                    <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>
+                        {% if attr == 'numb1120' %}
+                        {{ specific_fc_numb1120_cell(param, group_entity) }}
+                        {% elif do_edit_cell %}
                         {{ specific_fc_edit_cell(attr, is_numeric, param, gid, ynum, true, rounding_digits, 'specificFcBulkEditForm' if can_edit_bulk else none) }}
                         {% else %}
                         {{ specific_fc_data_cell(attr, is_numeric, param) }}
@@ -196,8 +364,10 @@
         {% include 'generation/includes/pagination_station.html' %}
         {% endif %}
     </div>
-    </div>
-</div>
+    </div><!-- /#stationsTableContainer -->
+</div><!-- /.fuel-calc-edit-pane-content -->
+</div><!-- /.fuel-calc-edit-top -->
+</div><!-- /.fuel-calc-edit-shell -->
 
 <script id="filters-data" type="application/json">
     {{ {
@@ -235,7 +405,117 @@
         'fd_to_est_mapping': fd_to_est_mapping
     } | tojson | safe }}
 </script>
+<style>
+    /* Высота блока: под реальную шапку (#appTopBar) и отступы body */
+    .fuel-calc-edit-shell {
+        height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+        min-height: 560px;
+        max-height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+    }
+    .fuel-calc-edit-shell .fuel-calc-edit-pane-content {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    /* Липкие кнопки и фильтры; заголовок прокручивается */
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-stack {
+        position: sticky;
+        left: 0;
+        z-index: 40;
+        width: var(--fuel-calc-edit-scrollport-width, 100%);
+        max-width: var(--fuel-calc-edit-scrollport-width, 100%);
+        box-sizing: border-box;
+        background-color: var(--bs-body-bg, #fff);
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-nav {
+        top: 0;
+        z-index: 42;
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters {
+        top: var(--fuel-calc-edit-nav-sticky-height, 0px);
+        z-index: 41;
+        display: flow-root;
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters .power-demand-filters-collapse,
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters .power-demand-import-export-collapse {
+        overflow: visible !important;
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters > .col-12.mb-2:last-child {
+        margin-bottom: 0.5rem !important;
+    }
+    /* Как в редактируемых полях (form-control-lg): единый размер шрифта на странице */
+    .fuel-calc-edit-shell {
+        font-size: 1.25rem;
+    }
+    .fuel-calc-edit-shell .form-control-lg {
+        font-size: 1.25rem;
+    }
+    .fuel-calc-edit-shell #specificFcEditTable {
+        font-size: 1.25rem;
+    }
+    .fuel-calc-edit-shell #specificFcEditTable thead th .small,
+    .fuel-calc-edit-shell #specificFcEditTable .text-muted.small {
+        font-size: 0.85em;
+    }
+    /*
+      overflow на #stationsTableContainer ломает sticky у thead относительно .fuel-calc-edit-top.
+      Горизонтальный и вертикальный скролл — у .fuel-calc-edit-top (overflow-auto).
+    */
+    .fuel-calc-edit-shell #stationsTableContainer {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .fuel-calc-edit-top #stationsTableContainer #specificFcEditTable thead th {
+        position: sticky;
+        top: var(--fuel-calc-edit-controls-sticky-height, 0px);
+        z-index: 35;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+    }
+    /* Руст изменился к предыдущему году: вся строка одним фоном */
+    #specificFcEditTable tbody tr.table-warning > td,
+    #specificFcEditTable tbody tr[data-row-yellow="1"] > td {
+        --bs-table-bg: var(--bs-warning-bg-subtle, #fff3cd);
+        --bs-table-bg-type: var(--bs-warning-bg-subtle, #fff3cd);
+        --bs-table-accent-bg: transparent;
+        background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;
+    }
+    /* Поля ввода — как обычные ячейки (без «белых окон» внутри строки) */
+    #specificFcEditTable tbody td:has(> input.form-control) {
+        padding: 0 !important;
+        vertical-align: middle;
+    }
+    #specificFcEditTable tbody td > input.form-control {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: 2.5rem;
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.2rem 0.35rem;
+        font-size: inherit;
+        line-height: 1.3;
+        background-color: transparent;
+        background-clip: padding-box;
+    }
+    #specificFcEditTable tbody td > input.form-control:focus {
+        box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+        outline: 0;
+        background-color: transparent;
+    }
+    #specificFcEditTable tbody tr.fuel-edit-empty-row-hidden {
+        display: none !important;
+    }
+</style>
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") initializeStationFilters();
@@ -246,6 +526,54 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     var loadingOverlay = document.getElementById('loading-overlay');
     if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+    document.getElementById('rounding_digits')?.addEventListener('change', function() {
+        const selectedRounding = this.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits', selectedRounding);
+        window.location.href = url.toString();
+    });
+
+    var editTop = document.querySelector(".fuel-calc-edit-top");
+    var stickyNav = document.querySelector(".fuel-calc-edit-sticky-nav");
+    var stickyFilters = document.querySelector(".fuel-calc-edit-sticky-filters");
+    function updateFuelCalcEditStickyHeights() {
+        if (!editTop) return;
+        var navH = stickyNav ? Math.ceil(stickyNav.getBoundingClientRect().height || stickyNav.offsetHeight || 0) : 0;
+        var filtersH = stickyFilters ? Math.ceil(stickyFilters.getBoundingClientRect().height || stickyFilters.offsetHeight || 0) : 0;
+        var thead = document.querySelector("#specificFcEditTable > thead");
+        var gap = 0;
+        if (stickyFilters && thead) {
+            if (editTop.scrollTop <= 1) {
+                gap = Math.max(0, Math.round(
+                    thead.getBoundingClientRect().top - stickyFilters.getBoundingClientRect().bottom
+                ));
+                editTop.dataset.fuelCalcEditTheadGap = String(gap);
+            } else {
+                gap = parseInt(editTop.dataset.fuelCalcEditTheadGap || "0", 10) || 0;
+            }
+        }
+        editTop.style.setProperty("--fuel-calc-edit-nav-sticky-height", navH + "px");
+        editTop.style.setProperty("--fuel-calc-edit-controls-sticky-height", (navH + filtersH + gap) + "px");
+        editTop.style.setProperty("--fuel-calc-edit-scrollport-width", Math.max(0, Math.floor(editTop.clientWidth)) + "px");
+    }
+    updateFuelCalcEditStickyHeights();
+    window.addEventListener("resize", updateFuelCalcEditStickyHeights);
+    document.addEventListener("shown.bs.collapse", updateFuelCalcEditStickyHeights);
+    document.addEventListener("hidden.bs.collapse", updateFuelCalcEditStickyHeights);
+    if (editTop) {
+        editTop.addEventListener("scroll", function () {
+            if (editTop.scrollTop <= 1) {
+                updateFuelCalcEditStickyHeights();
+            }
+        }, { passive: true });
+    }
+    if (typeof ResizeObserver !== "undefined") {
+        var ro = new ResizeObserver(updateFuelCalcEditStickyHeights);
+        if (stickyNav) ro.observe(stickyNav);
+        if (stickyFilters) ro.observe(stickyFilters);
+        if (editTop) ro.observe(editTop);
+    }
 });
 </script>
 {% endif %}

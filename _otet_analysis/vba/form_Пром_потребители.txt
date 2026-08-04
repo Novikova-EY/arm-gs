@@ -1,0 +1,218 @@
+Version =20
+VersionRequired =20
+Checksum =1675376357
+Begin Form
+    PopUp = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =55
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5387
+    DatasheetFontHeight =10
+    ItemSuffix =12
+    Left =1008
+    Top =2244
+    Right =6828
+    Bottom =4956
+    FrozenColumns =2
+    DatasheetGridlinesColor =12632256
+    Filter ="code=55"
+    RecSrcDt = Begin
+        0xe3f5c21952b5e240
+    End
+    GUID = Begin
+        0xae64dd73c15c3641b77a34879c0939b1
+    End
+    NameMap = Begin
+        0x0acc0e55000000006b68ab4a7c39994b99ecccca08dda76f000000008c83d58c ,
+        0xb84ce54000000000000000001f043e0442044004350431043804420435043b04 ,
+        0x38045f00420435043f043b043004000000000000bd581b52d2c3054fbb84c8f2 ,
+        0xd0679725070000006b68ab4a7c39994b99ecccca08dda76f3f04400435043404 ,
+        0x3f044004000000000000bb4ce24e9950f5478f8dbd460454ac2a070000006b68 ,
+        0xab4a7c39994b99ecccca08dda76f3e0442044004300441043b044c0400000000 ,
+        0x0000de1fdb62c8ffd944b76c218c6c881e04070000006b68ab4a7c39994b99ec ,
+        0xccca08dda76f51000000000000005167c61445b7074199812af7240485090700 ,
+        0x00006b68ab4a7c39994b99ecccca08dda76f63006f006400650067006f007200 ,
+        0x0000000000002566dfda4ee32440866dd25761803d93070000006b68ab4a7c39 ,
+        0x994b99ecccca08dda76f63006f0064006500730074000000000000005ef55f5c ,
+        0x98d3594093bfb654f3e0de33070000006b68ab4a7c39994b99ecccca08dda76f ,
+        0x1f04400438043c043504470430043d0438043504000000000000ceb4d1701ed8 ,
+        0xc349b27831f06dd7346b070000006b68ab4a7c39994b99ecccca08dda76f5100 ,
+        0x320030003000340000000000000013ff30f052971d40bf13d45d599b93a70700 ,
+        0x00006b68ab4a7c39994b99ecccca08dda76f5100320030003000350000000000 ,
+        0x0000000000000000000000000000000000000c00000003000000000000000000 ,
+        0x0000000000000000
+    End
+    RecordSource ="Потребители_тепла"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin Image
+            BackStyle =0
+            OldBorderStyle =0
+            PictureAlignment =2
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin UnboundObjectFrame
+            SpecialEffect =2
+            OldBorderStyle =1
+            Width =4536
+            Height =2835
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xcc45ee6b79bb4143a50308871b4cde76
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    ColumnWidth =3084
+                    ColumnOrder =0
+                    Name ="предпр"
+                    ControlSource ="предпр"
+                    OnDblClick ="[Event Procedure]"
+                    ControlTipText ="Ново-Стерлитамакская ТЭЦ"
+                    GUID = Begin
+                        0xd8682c5fefa9dc4594b654410da6ab31
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =1701
+                    Width =561
+                    ColumnWidth =876
+                    ColumnOrder =2
+                    TabIndex =1
+                    Name ="отрасль"
+                    ControlSource ="отрасль"
+                    GUID = Begin
+                        0xf9bbd896a8d9224bbe08403cefb7bb33
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Left =2546
+                    Width =573
+                    ColumnWidth =528
+                    ColumnOrder =3
+                    TabIndex =2
+                    Name ="2003"
+                    ControlSource ="Q"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2003"
+                    GUID = Begin
+                        0x14cfbf658b353f4995c1e78e355d0ede
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    ColumnHidden = NotDefault
+                    OverlapFlags =93
+                    Left =4253
+                    Width =567
+                    ColumnWidth =930
+                    ColumnOrder =6
+                    TabIndex =3
+                    Name ="codegor"
+                    ControlSource ="codegor"
+                    GUID = Begin
+                        0x9c08e2f78e40ae409cfd960d9d601bbf
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    ColumnHidden = NotDefault
+                    OverlapFlags =87
+                    Left =4820
+                    Width =567
+                    ColumnWidth =765
+                    ColumnOrder =7
+                    TabIndex =4
+                    Name ="codest"
+                    ControlSource ="codest"
+                    GUID = Begin
+                        0x95821dd326939245b835b711384e7c31
+                    End
+                End
+                Begin TextBox
+                    FontUnderline = NotDefault
+                    OverlapFlags =119
+                    Left =2262
+                    Width =284
+                    ColumnWidth =420
+                    ColumnOrder =1
+                    TabIndex =5
+                    ForeColor =1279872587
+                    Name ="см"
+                    ControlSource ="Примечание"
+                    GUID = Begin
+                        0x06bd9ff9093d174f8e6beaee18fd0d7f
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =127
+                    Left =3119
+                    Width =567
+                    ColumnWidth =552
+                    TabIndex =6
+                    Name ="2004"
+                    ControlSource ="Q2004"
+                    EventProcPrefix ="Ctl2004"
+                    GUID = Begin
+                        0x4b842d16cfd3ce45bf8e4c6d3155bce8
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    Left =3686
+                    Width =567
+                    ColumnWidth =708
+                    TabIndex =7
+                    Name ="Q2005"
+                    ControlSource ="Q2005"
+                    GUID = Begin
+                        0xa2f238edbbbc7446b7b6ddc3cf6b4e01
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub предпр_DblClick(Cancel As Integer)
+Parent!Фильтр1 = 3
+Call Form_Теплопотребление.Фильтр1_AfterUpdate
+End Sub

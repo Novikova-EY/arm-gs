@@ -12,6 +12,7 @@ from app.common.models.database_version_model import DatabaseVersion
 from app.extensions import db
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.station.station_model import Station
+from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
 
@@ -27,6 +28,129 @@ def get_database_versions_for_check() -> list[dict[str, Any]]:
         for version in versions
         if version.id is not None and version.version_number
     ]
+
+
+def _normalize_company_identity_key(value: str | None) -> str:
+    return " ".join(str(value or "").split()).strip().lower()
+
+
+def _company_identity_key_from_gen_company(company: GenCompany | None) -> str:
+    if company is None:
+        return ""
+    key = (getattr(company, "ref_uuid", None) or "").strip()
+    if key:
+        return key
+    return _normalize_company_identity_key(getattr(company, "name", None))
+
+
+def _company_sets_compatible(
+    left: set[str] | frozenset[str] | None,
+    right: set[str] | frozenset[str] | None,
+) -> bool:
+    """
+    Совместимы ли наборы генкомпаний для объединения «семейства».
+
+    Пустой набор не даёт основания развести станции (нет данных) — считаем совместимым.
+    Непустые непересекающиеся наборы — разные станции (как две ТЭС-2 в Карелии).
+    """
+    left_set = set(left or ())
+    right_set = set(right or ())
+    if not left_set or not right_set:
+        return True
+    return not left_set.isdisjoint(right_set)
+
+
+def _should_apply_company_split(
+    left_version_id: Optional[int],
+    right_version_id: Optional[int],
+    preferred_version_id: Optional[int],
+) -> bool:
+    """
+    Разведение по генкомпаниям только внутри текущей версии БД.
+
+    Между версиями смена владельца у той же станции (тот же external_code)
+    не должна давать две строки.
+    """
+    if preferred_version_id is None:
+        return (
+            left_version_id is not None
+            and right_version_id is not None
+            and left_version_id == right_version_id
+        )
+    return (
+        left_version_id == preferred_version_id
+        and right_version_id == preferred_version_id
+    )
+
+
+def _station_company_keys_batch(station_ids: list[int]) -> dict[int, set[str]]:
+    """station_id -> набор identity-ключей генкомпаний её агрегатов."""
+    if not station_ids:
+        return {}
+
+    rows = (
+        db.session.query(Machine.id_station, GenCompany)
+        .outerjoin(GenCompany, GenCompany.id == Machine.id_gen_company)
+        .filter(Machine.id_station.in_(station_ids), Machine.id_gen_company.isnot(None))
+        .all()
+    )
+    result: dict[int, set[str]] = defaultdict(set)
+    for station_id, company in rows:
+        if station_id is None:
+            continue
+        key = _company_identity_key_from_gen_company(company)
+        if key:
+            result[station_id].add(key)
+    return result
+
+
+def _filter_stations_by_company_compatibility(
+    anchor_station: Station,
+    family: list[Station],
+    company_keys_by_station: dict[int, set[str]] | None = None,
+) -> list[Station]:
+    """
+    Оставляет в семействе станции с совместимыми генкомпаниями.
+
+    Записи с тем же non-empty external_code оставляем всегда: это одна станция
+    в разных версиях БД, даже если владелец сменился.
+    """
+    if not family:
+        return family
+
+    anchor_id = getattr(anchor_station, "id", None)
+    if company_keys_by_station is None:
+        ids = [
+            station_id
+            for station_id in (
+                [anchor_id]
+                + [getattr(item, "id", None) for item in family]
+            )
+            if station_id is not None
+        ]
+        company_keys_by_station = _station_company_keys_batch(ids)
+
+    anchor_companies = company_keys_by_station.get(anchor_id, set()) if anchor_id is not None else set()
+    anchor_code = (getattr(anchor_station, "external_code", None) or "").strip()
+    filtered: list[Station] = []
+    seen_ids: set[int] = set()
+    for item in family:
+        item_id = getattr(item, "id", None)
+        if item_id is None or item_id in seen_ids:
+            continue
+        item_code = (getattr(item, "external_code", None) or "").strip()
+        same_identity_code = bool(anchor_code) and anchor_code == item_code
+        if (
+            item_id == anchor_id
+            or same_identity_code
+            or _company_sets_compatible(
+                anchor_companies,
+                company_keys_by_station.get(item_id, set()),
+            )
+        ):
+            filtered.append(item)
+            seen_ids.add(item_id)
+    return filtered or ([anchor_station] if anchor_station is not None else [])
 
 
 def _collect_anchor_codes(stations: list[Station]) -> tuple[set[str], set[str]]:
@@ -78,11 +202,20 @@ def dedupe_station_ids_from_rows(
     preferred_version_id: Optional[int] = None,
     machine_counts: Optional[dict[int, int]] = None,
 ) -> list[int]:
-    """Оставляет по одной станции на external_code, сохраняя порядок первых вхождений."""
+    """
+    Оставляет по одной станции на логическое семейство (external_code / подпись),
+    сохраняя порядок первых вхождений.
+
+    Разные генкомпании разводят станции только внутри текущей версии БД
+    (две одноимённые ТЭС-2 с разными владельцами в одной версии остаются обеими).
+    Между версиями смена генкомпании у того же external_code не даёт две строки.
+    """
     if not rows:
         return []
 
     machine_counts = machine_counts or {}
+    station_ids_in_rows = list({row[0] for row in rows if row and row[0] is not None})
+    company_keys_by_station = _station_company_keys_batch(station_ids_in_rows)
 
     def version_rank(version_id: Optional[int]) -> tuple[int, int]:
         if preferred_version_id is not None and version_id == preferred_version_id:
@@ -102,10 +235,12 @@ def dedupe_station_ids_from_rows(
             return (0, -count)
         return (1, 0)
 
-    chosen_by_code: dict[str, tuple[int, tuple]] = {}
+    # code -> список представителей с несовместимыми генкомпаниями (в текущей версии)
+    chosen_by_code: dict[str, list[tuple[int, set[str], tuple]]] = defaultdict(list)
     no_code_ids: list[int] = []
     seen_no_code: set[int] = set()
     rank_by_station_id: dict[int, tuple] = {}
+    version_by_station_id: dict[int, Optional[int]] = {}
 
     for row in rows:
         station_id = row[0]
@@ -123,6 +258,7 @@ def dedupe_station_ids_from_rows(
         prev_rank = rank_by_station_id.get(station_id)
         if prev_rank is None or rank < prev_rank:
             rank_by_station_id[station_id] = rank
+            version_by_station_id[station_id] = version_id
 
         code = (external_code or "").strip()
         if not code:
@@ -131,11 +267,41 @@ def dedupe_station_ids_from_rows(
                 seen_no_code.add(station_id)
             continue
 
-        prev = chosen_by_code.get(code)
-        if prev is None or rank < prev[1]:
-            chosen_by_code[code] = (station_id, rank)
+        companies = set(company_keys_by_station.get(station_id, set()))
+        bucket = chosen_by_code[code]
+        matched_index = None
 
-    deduped_set = {item[0] for item in chosen_by_code.values()} | set(no_code_ids)
+        # Сначала ищем представителя с совместимыми генкомпаниями.
+        for index, (prev_id, prev_companies, prev_rank_value) in enumerate(bucket):
+            if _company_sets_compatible(prev_companies, companies):
+                matched_index = index
+                if rank < prev_rank_value:
+                    bucket[index] = (station_id, companies, rank)
+                else:
+                    bucket[index] = (prev_id, prev_companies | companies, prev_rank_value)
+                break
+
+        # Иначе — только если разведение по компаниям неприменимо (разные версии).
+        if matched_index is None:
+            for index, (prev_id, prev_companies, prev_rank_value) in enumerate(bucket):
+                prev_version = version_by_station_id.get(prev_id)
+                if _should_apply_company_split(
+                    prev_version, version_id, preferred_version_id
+                ):
+                    continue
+                matched_index = index
+                if rank < prev_rank_value:
+                    bucket[index] = (station_id, companies, rank)
+                else:
+                    bucket[index] = (prev_id, prev_companies, prev_rank_value)
+                break
+
+        if matched_index is None:
+            bucket.append((station_id, companies, rank))
+
+    deduped_set = {
+        item[0] for bucket in chosen_by_code.values() for item in bucket
+    } | set(no_code_ids)
     result: list[int] = []
     seen: set[int] = set()
     for row in rows:
@@ -161,15 +327,43 @@ def dedupe_station_ids_from_rows(
         if left_root != right_root:
             parent[right_root] = left_root
 
+    def companies_block_merge(left_id: int, right_id: int) -> bool:
+        """Блокировать объединение из‑за генкомпаний только в текущей версии."""
+        if not _should_apply_company_split(
+            version_by_station_id.get(left_id),
+            version_by_station_id.get(right_id),
+            preferred_version_id,
+        ):
+            return False
+        return not _company_sets_compatible(
+            company_keys_by_station.get(left_id, set()),
+            company_keys_by_station.get(right_id, set()),
+        )
+
     token_owner: dict[tuple[str, object], int] = {}
-    family_map = _station_families_for_dedupe_batch(result)
+    family_map = _station_families_for_dedupe_batch(
+        result,
+        company_keys_by_station=company_keys_by_station,
+    )
     for station_id in result:
+        anchor_companies = company_keys_by_station.get(station_id, set())
         tokens: set[tuple[str, object]] = set()
         for family_station in family_map.get(station_id, []):
             family_id = getattr(family_station, "id", None)
-            if family_id is not None:
-                tokens.add(("id", family_id))
+            if family_id is None:
+                continue
+            family_companies = company_keys_by_station.get(family_id, set())
             family_code = (getattr(family_station, "external_code", None) or "").strip()
+            companies_ok = _company_sets_compatible(anchor_companies, family_companies)
+            # family_map может оставить same-code родственника при смене владельца;
+            # по имени без общего кода разные ГК не связываем.
+            if not companies_ok and not family_code:
+                continue
+            if not companies_ok and family_code:
+                tokens.add(("id", family_id))
+                tokens.add(("code", family_code))
+                continue
+            tokens.add(("id", family_id))
             if family_code:
                 tokens.add(("code", family_code))
 
@@ -177,8 +371,11 @@ def dedupe_station_ids_from_rows(
             owner = token_owner.get(token)
             if owner is None:
                 token_owner[token] = station_id
-            else:
-                union(station_id, owner)
+                continue
+            if companies_block_merge(station_id, owner):
+                # Токен занят другой генкомпанией в текущей версии — не объединяем.
+                continue
+            union(station_id, owner)
 
     components: dict[int, list[int]] = defaultdict(list)
     for station_id in result:
@@ -908,7 +1105,10 @@ def _station_signature_family(
     return signature_family
 
 
-def _station_families_for_dedupe_batch(station_ids: list[int]) -> dict[int, list[Station]]:
+def _station_families_for_dedupe_batch(
+    station_ids: list[int],
+    company_keys_by_station: dict[int, set[str]] | None = None,
+) -> dict[int, list[Station]]:
     """Пакетно строит семейства станций для union-find на странице проверки external_code."""
     if not station_ids:
         return {}
@@ -993,6 +1193,30 @@ def _station_families_for_dedupe_batch(station_ids: list[int]) -> dict[int, list
         if candidate_combined_key:
             candidates_by_name_combined[candidate_combined_key].append(candidate)
 
+    family_candidate_ids: set[int] = set(stations_by_id)
+    for family_list in code_family_by_code.values():
+        for item in family_list:
+            item_id = getattr(item, "id", None)
+            if item_id is not None:
+                family_candidate_ids.add(item_id)
+    for candidate in signature_candidates:
+        candidate_id = getattr(candidate, "id", None)
+        if candidate_id is not None:
+            family_candidate_ids.add(candidate_id)
+
+    if company_keys_by_station is None:
+        company_keys_by_station = {}
+    missing_company_ids = [
+        station_id
+        for station_id in family_candidate_ids
+        if station_id not in company_keys_by_station
+    ]
+    if missing_company_ids:
+        company_keys_by_station = {
+            **company_keys_by_station,
+            **_station_company_keys_batch(missing_company_ids),
+        }
+
     family_map: dict[int, list[Station]] = {}
     for station_id, db_station in stations_by_id.items():
         external_code = (getattr(db_station, "external_code", None) or "").strip()
@@ -1025,8 +1249,13 @@ def _station_families_for_dedupe_batch(station_ids: list[int]) -> dict[int, list
                     signature_family.append(candidate)
 
         code_family = code_family_by_code.get(external_code, []) if external_code else []
-        family_map[station_id] = (
+        merged_family = (
             _merge_family_by_id(signature_family, code_family, [db_station]) or [db_station]
+        )
+        family_map[station_id] = _filter_stations_by_company_compatibility(
+            db_station,
+            merged_family,
+            company_keys_by_station,
         )
 
     return family_map
@@ -1098,7 +1327,10 @@ def _station_family_for_check(station: Station) -> list[Station]:
             .all()
         )
 
-    return _merge_family_by_id(signature_family, code_family, [db_station]) or [db_station]
+    merged_family = _merge_family_by_id(signature_family, code_family, [db_station]) or [
+        db_station
+    ]
+    return _filter_stations_by_company_compatibility(db_station, merged_family)
 
 
 def _machine_family_for_check(machine: Machine) -> list[Machine]:
@@ -1118,55 +1350,64 @@ def _machine_family_for_check(machine: Machine) -> list[Machine]:
     machine_name_key = _normalize_check_key(getattr(db_machine, "machine_name", None))
     date_exploitation = getattr(db_machine, "date_exploitation", None)
 
-    signature_family = []
     station = getattr(db_machine, "machine_station", None)
-    if station is not None and machine_number_key and machine_name_key:
-        station_ids = [
+    allowed_station_ids: set[int] | None = None
+    if station is not None:
+        allowed_station_ids = {
             station_item.id
             for station_item in _station_family_for_check(station)
             if getattr(station_item, "id", None) is not None
-        ]
-        if station_ids:
-            signature_query = (
-                db.session.query(Machine)
-                .filter(Machine.id_station.in_(station_ids))
+        }
+
+    signature_family = []
+    if (
+        allowed_station_ids
+        and machine_number_key
+        and machine_name_key
+    ):
+        signature_query = db.session.query(Machine).filter(
+            Machine.id_station.in_(allowed_station_ids)
+        )
+        if date_exploitation is None:
+            signature_query = signature_query.filter(Machine.date_exploitation.is_(None))
+        else:
+            signature_query = signature_query.filter(
+                Machine.date_exploitation == date_exploitation
             )
-            if date_exploitation is None:
-                signature_query = signature_query.filter(Machine.date_exploitation.is_(None))
-            else:
-                signature_query = signature_query.filter(
-                    Machine.date_exploitation == date_exploitation
-                )
-            signature_candidates = signature_query.order_by(
-                Machine.database_version_id.asc().nullsfirst(),
-                Machine.id.asc(),
-            ).all()
-            signature_family = [
-                candidate
-                for candidate in signature_candidates
-                if _normalize_machine_number(getattr(candidate, "machine_number", None))
-                == machine_number_key
-                and _machine_signature_matches(db_machine, candidate)
-            ]
+        signature_candidates = signature_query.order_by(
+            Machine.database_version_id.asc().nullsfirst(),
+            Machine.id.asc(),
+        ).all()
+        signature_family = [
+            candidate
+            for candidate in signature_candidates
+            if _normalize_machine_number(getattr(candidate, "machine_number", None))
+            == machine_number_key
+            and _machine_signature_matches(db_machine, candidate)
+        ]
 
     id_ti_family = []
     id_ti = getattr(db_machine, "id_ti", None)
     if id_ti is not None:
-        id_ti_family = (
-            db.session.query(Machine)
-            .filter(Machine.id_ti == id_ti)
-            .order_by(Machine.database_version_id.asc().nullsfirst(), Machine.id.asc())
-            .all()
-        )
+        id_ti_query = db.session.query(Machine).filter(Machine.id_ti == id_ti)
+        if allowed_station_ids is not None:
+            id_ti_query = id_ti_query.filter(Machine.id_station.in_(allowed_station_ids))
+        id_ti_family = id_ti_query.order_by(
+            Machine.database_version_id.asc().nullsfirst(),
+            Machine.id.asc(),
+        ).all()
 
     code_family = []
     if external_code:
-        code_family = (
-            db.session.query(Machine)
-            .filter(db.func.trim(Machine.external_code) == external_code)
-            .order_by(Machine.database_version_id.asc().nullsfirst(), Machine.id.asc())
-            .all()
+        code_query = db.session.query(Machine).filter(
+            db.func.trim(Machine.external_code) == external_code
         )
+        if allowed_station_ids is not None:
+            code_query = code_query.filter(Machine.id_station.in_(allowed_station_ids))
+        code_family = code_query.order_by(
+            Machine.database_version_id.asc().nullsfirst(),
+            Machine.id.asc(),
+        ).all()
 
     return _merge_family_by_id(signature_family, id_ti_family, code_family, [db_machine]) or [
         db_machine

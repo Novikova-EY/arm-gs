@@ -1,0 +1,469 @@
+Version =20
+VersionRequired =20
+Checksum =-1004286178
+Begin Form
+    PopUp = NotDefault
+    Modal = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =5
+    BorderStyle =3
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5400
+    DatasheetFontHeight =10
+    ItemSuffix =40
+    Left =1785
+    Top =2190
+    Right =7185
+    Bottom =6705
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xfc47a513af05e240
+    End
+    RecordSource ="main"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =4535
+            BackColor =8421504
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x12fd643df701a94f9a0fb3ba3bb6cf41
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3990
+                    Top =255
+                    Width =1026
+                    Height =643
+                    Name ="Кнопка4"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x18b8221cfbd5b94e97b6ab8800ce81d8
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Width =3405
+                    Height =1985
+                    TabIndex =1
+                    Name ="Список_вариантов"
+                    SourceObject ="Form.Список_вариантов"
+                    GUID = Begin
+                        0x9b3885a446d6784e813be38034865778
+                    End
+                End
+                Begin OptionGroup
+                    BackStyle =1
+                    OverlapFlags =85
+                    Left =135
+                    Top =2280
+                    Width =4970
+                    Height =2208
+                    TabIndex =2
+                    BackColor =8421440
+                    Name ="ОЭС"
+                    GUID = Begin
+                        0x55ae7851b75fbf4192d4f50536f6502d
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =95
+                            Left =2267
+                            Top =2494
+                            OptionValue =6
+                            Name ="Переключатель24"
+                            GUID = Begin
+                                0x75d0d36333af96459ccf70c2dcd879ec
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =255
+                                    Left =2497
+                                    Top =2494
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись25"
+                                    Caption ="Сибирь"
+                                    GUID = Begin
+                                        0x3fcdbf5f6dae6444ab354190a7c07d0c
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =95
+                            Left =321
+                            Top =2498
+                            OptionValue =1
+                            Name ="Переключатель10"
+                            GUID = Begin
+                                0x851be86371b8844a86321d9ec6b1f812
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =551
+                                    Top =2470
+                                    Width =1140
+                                    Height =240
+                                    Name ="Надпись11"
+                                    Caption ="Северо-запад"
+                                    GUID = Begin
+                                        0xca0275d8f02c0f42bde950dd5208909e
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =119
+                            Left =2267
+                            Top =2751
+                            OptionValue =7
+                            Name ="Переключатель28"
+                            GUID = Begin
+                                0x6eeedac551549d4c8816725b0604affb
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =2497
+                                    Top =2721
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись29"
+                                    Caption ="Восток"
+                                    GUID = Begin
+                                        0x67333fd175bee6418d04e8809ee8372e
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =95
+                            Left =321
+                            Top =2772
+                            OptionValue =8
+                            Name ="Переключатель20"
+                            GUID = Begin
+                                0xdd457df19a7d854484da46b59746c599
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =551
+                                    Top =2742
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись21"
+                                    Caption ="Янтарь"
+                                    GUID = Begin
+                                        0x12943d386fe2184798bf27beeedd1fdc
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =2267
+                            Top =3034
+                            OptionValue =10
+                            Name ="Переключатель26"
+                            GUID = Begin
+                                0xf307291b67d29244b5a6003c803244da
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =2497
+                                    Top =3004
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись27"
+                                    Caption ="Норильск"
+                                    GUID = Begin
+                                        0xbc9093a383acc2419be19af81601c219
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =95
+                            Left =321
+                            Top =3046
+                            OptionValue =2
+                            Name ="Переключатель12"
+                            GUID = Begin
+                                0xedfe57c6b221d64b866fde0a738e08d5
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =551
+                                    Top =3018
+                                    Width =555
+                                    Height =240
+                                    Name ="Надпись13"
+                                    Caption ="Центр"
+                                    GUID = Begin
+                                        0x4dd910e62e48194fbf16b679853b47eb
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =2267
+                            Top =3318
+                            OptionValue =9
+                            Name ="Переключатель30"
+                            GUID = Begin
+                                0x8fad126e31af424096c81f9a0670e652
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =2497
+                                    Top =3288
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись31"
+                                    Caption ="Из.р-ны Д.Востока"
+                                    GUID = Begin
+                                        0x58e757b23cc67e428961b947504ae669
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =321
+                            Top =3320
+                            OptionValue =3
+                            Name ="Переключатель14"
+                            GUID = Begin
+                                0x5a94fff16d60024aad09760a8ea53ac8
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =551
+                                    Top =3292
+                                    Width =510
+                                    Height =240
+                                    Name ="Надпись15"
+                                    Caption ="Волга"
+                                    GUID = Begin
+                                        0xb345454c6b719449b2afa60e2a2a8f20
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =95
+                            Left =321
+                            Top =3594
+                            OptionValue =4
+                            Name ="Переключатель16"
+                            GUID = Begin
+                                0xb02f47bef04fde43b5f82b123c55da6d
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =551
+                                    Top =3564
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись17"
+                                    Caption ="Юг"
+                                    GUID = Begin
+                                        0x69c9fbd79e262b438eda686c605377cd
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =2267
+                            Top =3601
+                            OptionValue =13
+                            Name ="Переключатель38"
+                            GUID = Begin
+                                0xae591b328d926c43a9bcaf8259124f26
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =2497
+                                    Top =3571
+                                    Width =1485
+                                    Height =240
+                                    Name ="Крым"
+                                    Caption ="Крым"
+                                    GUID = Begin
+                                        0x15beb260cc68814589a60c480c00bf15
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =321
+                            Top =3868
+                            OptionValue =5
+                            Name ="Переключатель18"
+                            GUID = Begin
+                                0xa54ac9297d41e542982936331998c773
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =551
+                                    Top =3838
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись19"
+                                    Caption ="Урал"
+                                    GUID = Begin
+                                        0x32271dbc3e848240a977feb529dd49eb
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =95
+                            Left =2267
+                            Top =3885
+                            OptionValue =12
+                            Name ="Переключатель32"
+                            GUID = Begin
+                                0x478c394594e95444a93071ff9f2340ba
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =255
+                                    Left =2497
+                                    Top =3855
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись33"
+                                    Caption ="Николаев"
+                                    GUID = Begin
+                                        0x5c82d4a08e8bfa449cd09a7d94edebc7
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =247
+                            Left =2267
+                            Top =4111
+                            OptionValue =0
+                            Name ="Переключатель35"
+                            GUID = Begin
+                                0x8e7f27b21d9ca948a6b1b1bf57c477b8
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =2497
+                                    Top =4081
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись36"
+                                    Caption ="Все"
+                                    GUID = Begin
+                                        0x672a35d1dc60ab48a500466458288d0e
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Dim db As Database, cv As DAO.Recordset
+Private Sub Form_Open(Cancel As Integer)
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set cv = db.OpenRecordset("Текущий_вариант", DB_OPEN_TABLE)
+ОЭС.Value = cv!oes
+End Sub
+
+Private Sub Кнопка4_Click()
+Dim sv As DAO.Recordset
+Dim work As QueryDef, dest As QueryDef, work1 As QueryDef, dopq As QueryDef
+Set sv = Список_вариантов.Form.RecordsetClone
+sv.Bookmark = Список_вариантов.Form.Bookmark
+Debug.Print OpenArgs
+If OpenArgs = "тепло" Then
+Forms("Тепло").Form!var = sv!wname
+Forms("Тепло").Form!oes = ОЭС.Value
+Else
+cv.Edit
+For i = 0 To sv.Fields.Count - 1
+cv.Fields(sv.Fields(i).Name) = sv.Fields(i).Value
+Next i
+cv!oes = ОЭС.Value
+cv.Update
+End If
+DoCmd.Close
+End Sub

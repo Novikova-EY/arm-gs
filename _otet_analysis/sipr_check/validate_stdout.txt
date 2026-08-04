@@ -1,0 +1,25 @@
+﻿Param: ╥▌╤ ┬юыур¤эхЁую cyear=2031 byear=2024 E=68451 k=0.952236938476563
+
+=== Coeff / aggregates ===
+base NUST=16581.759 E=61971.222023 EWTP=31671.958464
+calc NUST=16444.918 (skipped_no_ud=0)
+sumE stations=68450.87260206715749  E_target=68451  abs_delta=0.12739793284251
+ch=4162.440943761470868994299637
+knps stored=1.15317573700737 exp=1.153169513958890301091291581 match=True
+kngt stored=1.32134719865428 exp=1.321340068077895136667104936 match=True
+knpg stored=1.39342068221724 exp=1.393413162700325780485310660 match=True
+
+=== Energy EWTP/EOTP/EUST/EURT/TUST/B: 534/534 match ===
+
+=== H = E/NUST*1000: 76/77 match ===
+ FAIL (False, '108', '', Decimal('4793.75'), Decimal('4121.789907126916666666666667'), Decimal('671.960092873083333333333333'))
+
+=== Fuel formtxt->GAZ/MAZUT/PROCH: 0/1 match ===
+ FAIL (False, '315', '', 'GAZ', Decimal('206.755505216434'), Decimal('44.8245935309228912'), 'gazpp=21,68;gaz_prir', Decimal('161.9309116855111088'))
+
+=== EWTP only: 89/89 match ===
+
+=== Distribution convergence ===
+abs(sumE - E_target) = 0.12739793284251 (Access threshold 0.3)
+
+Wrote c:\arm_gs\_otet_analysis\sipr_check\validation_report.txt

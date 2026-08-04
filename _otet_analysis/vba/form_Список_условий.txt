@@ -1,0 +1,90 @@
+Version =20
+VersionRequired =20
+Checksum =-351699600
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2826
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =216
+    Top =480
+    Right =4836
+    Bottom =2796
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xd1538189300ce240
+    End
+    GUID = Begin
+        0x346d8cf4593e37479e00485310b4590b
+    End
+    NameMap = Begin
+        0x0acc0e5500000000e473508148e9a24ba5d4882fc52a4f9a000000006581ff8c ,
+        0xb84ce540000000000000000021043f04380441043e043a045f00430441043b04 ,
+        0x3e043204380439040000000000001658e56dc493e34499132b8af79f23eb0700 ,
+        0x0000e473508148e9a24ba5d4882fc52a4f9a6e0061006d006500000000000000 ,
+        0x000000000000000000000000000000000c000000030000000000000000000000 ,
+        0x000000000000
+    End
+    RecordSource ="Список_условий"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =270
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x2bde4ae7381694429e355765b1e41ed7
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =215
+                    Left =15
+                    Top =15
+                    Width =2811
+                    ColumnWidth =2115
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x1947c26567b7884cbb23ea3fbe863b4b
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Top =15
+                            Width =525
+                            Height =240
+                            Name ="Надпись0"
+                            Caption ="name:"
+                            GUID = Begin
+                                0xc4df80277797414997a2d60d73f9d587
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End

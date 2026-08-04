@@ -35,6 +35,15 @@ def _is_kaliningrad_synchronous_area(row: dict[str, Any]) -> bool:
     return "калининград" in _label_cf(row)
 
 
+def _is_far_east_federal_district(row: dict[str, Any]) -> bool:
+    lbl = _label_cf(row).replace("ё", "е")
+    for prefix in ("фо - ", "фо — "):
+        if lbl.startswith(prefix):
+            lbl = lbl[len(prefix) :].strip()
+            break
+    return "дальневосточн" in lbl
+
+
 def strip_pd_formula_nt_suffix(formula_key: str | None) -> str:
     """Убрать хвостовой ``_with_nt`` / ``_without_nt`` у ключа формулы."""
     key = str(formula_key or "").strip()
@@ -117,8 +126,12 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
 
     if dm == "FederalDistrictDemandParameter":
         if pk == "calculated_max_fo_mw":
+            if _is_far_east_federal_district(row):
+                return "fo_calc_max_mw_far_east"
             return "fo_calc_max_mw"
         if pk == "calculated_max_power_mw":
+            if _is_far_east_federal_district(row):
+                return "fo_calc_max_power_mw_far_east"
             return "fo_calc_max_power_mw"
         if pk == "calculated_combined_on_cz_mw":
             return "fo_calc_combined_on_cz_mw"
@@ -149,6 +162,8 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
             return "oes_ees_russia_calc_max"
         if pk == "calculated_max_ees_via_es_mw":
             return "oes_ees_russia_calc_max_via_es"
+        if pk == "calculated_max_ees_via_ez_mw":
+            return "oes_ees_russia_calc_max_via_ez"
 
     if dm == "EesRussiaDemandParameter" and pk == "calculated_max_power_consumption_mw":
         return "oes_ees_calc_max_power_consumption"
@@ -161,6 +176,9 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
 
     if pk == "verify_for_calculated_max_ees_via_es_mw":
         return "ees_russia_verify_calc_max_via_es"
+
+    if pk == "verify_for_calculated_max_ees_via_ez_mw":
+        return "ees_russia_verify_calc_max_via_ez"
 
     if dm == "SynchronousAreaDemandParameter" and _is_second_synchronous_area(row):
         formula_key = {

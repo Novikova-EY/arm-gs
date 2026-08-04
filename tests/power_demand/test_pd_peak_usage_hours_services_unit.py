@@ -417,7 +417,7 @@ def test_lookup_chi_does_not_fallback_to_null_perimeter_variant_for_with_nt():
     )
 
 
-def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_from_2023():
+def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_when_nt_nonzero():
     south_fd_id = 125
     years = [2022, 2023, 2024]
     ec_index = {
@@ -468,6 +468,7 @@ def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_from_2023():
             chi_svc,
             "_sum_nt_subjects_ec_mln_for_chi",
             side_effect=lambda slice_key, **kwargs: {
+                2022: 0.0,
                 2023: 5.0,
                 2024: 20.0,
             }.get(slice_key),

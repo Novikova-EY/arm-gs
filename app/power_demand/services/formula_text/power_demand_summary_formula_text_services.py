@@ -202,6 +202,9 @@ def save_formula_text_override(*, formula_key: str, formula_text: str) -> PdSumm
     else:
         row.formula_text = text
     clear_formula_text_override_cache()
+    from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
+
+    clear_pd_summary_page_cache()
     return get_formula_def(key)  # type: ignore[return-value]
 
 
@@ -211,3 +214,6 @@ def reset_formula_text_override(formula_key: str) -> None:
     if row is not None:
         db.session.delete(row)
     clear_formula_text_override_cache()
+    from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
+
+    clear_pd_summary_page_cache()

@@ -1,125 +1,246 @@
-{# ТЭП основных площадок: все столбцы как «Перечень исходных ТЭП» на карточке площадки. Ожидает: tep_groups #}
-{% set tep_col_count = 41 %}
+{# ТЭП основных площадок: все столбцы как «Перечень исходных ТЭП» на карточке
+площадки. Ожидает: tep_groups #} {% set tep_col_count = 41 %}
 <div class="table-responsive">
-    <table class="table table-hover table-striped table-bordered prospective-places-gaes-table tep-ges-page-table tep-ges-main-full-table mb-0" style="text-align: center;">
-        <thead class="table-success">
-            <tr class="text-center align-middle">
-                <th rowspan="3" style="min-width: 44px;">№ п/п</th>
-                <th rowspan="3" style="min-width: 140px;">Наименование площадки</th>
-                <th colspan="21" style="white-space: normal;">Основные параметры</th>
-                <th colspan="12" style="white-space: normal;">Очередность строительства<br>(прирост вводимой мощности), МВт</th>
-                <th colspan="3" style="white-space: normal;">Капитальные затраты, млн руб.</th>
-                <th rowspan="3" style="min-width: 100px; white-space: normal;">Удельные условно-постоянные эксплуатационные затраты (без амортизационных отчислений), млн руб./МВт</th>
-                <th rowspan="3" style="min-width: 100px; white-space: normal;">Удельные капиталовложения в строительство (с бассейнами), млн руб./МВт</th>
-                <th rowspan="3" style="min-width: 120px; white-space: normal;">Примечание</th>
-            </tr>
-            <tr class="text-center align-middle">
-                <th colspan="4" style="white-space: normal;">Установленная мощность,<br>генераторный режим, МВт</th>
-                <th colspan="4" style="white-space: normal;">Установленная мощность,<br>насосный режим, МВт</th>
-                <th rowspan="2" style="min-width: 64px; white-space: normal;">Количество агрегатов, шт.</th>
-                <th colspan="2" style="white-space: normal;">Единичная мощность агрегата,<br>МВт</th>
-                <th rowspan="2" style="min-width: 100px; white-space: normal;">Тип гидротурбины</th>
-                <th rowspan="2" style="min-width: 72px; white-space: normal;">Срок строительства ГАЭС, лет</th>
-                <th colspan="3" style="white-space: normal;">Годовая выработка электроэнергии</th>
-                <th colspan="3" style="white-space: normal;">Годовое потребление электроэнергии ГАЭС на заряд, млн кВт·ч</th>
-                <th colspan="2" style="white-space: normal;">Число часов использования установленной мощности в сутки, час/сутки</th>
-                {% for y in range(1, 13) %}
-                <th rowspan="2" style="min-width: 56px; white-space: normal;">{{ y }} год</th>
-                {% endfor %}
-                <th rowspan="2" style="min-width: 88px; white-space: normal;">Капитальные затраты (без ПИР)</th>
-                <th colspan="2" style="white-space: normal;">в том числе</th>
-            </tr>
-            <tr class="text-center align-middle">
-                <th style="min-width: 72px; white-space: normal;">всего</th>
-                <th style="min-width: 80px; white-space: normal;">в т.ч. пусковой комплекс</th>
-                <th style="min-width: 72px; white-space: normal;">1 очередь</th>
-                <th style="min-width: 72px; white-space: normal;">2 очередь</th>
-                <th style="min-width: 72px; white-space: normal;">всего</th>
-                <th style="min-width: 80px; white-space: normal;">в т.ч. пусковой комплекс</th>
-                <th style="min-width: 72px; white-space: normal;">1 очередь</th>
-                <th style="min-width: 72px; white-space: normal;">2 очередь</th>
-                <th style="min-width: 88px; white-space: normal;">генера-<br>торный режим</th>
-                <th style="min-width: 88px; white-space: normal;">насосный режим</th>
-                <th style="min-width: 88px; white-space: normal;">всего</th>
-                <th style="min-width: 88px; white-space: normal;">1 очередь</th>
-                <th style="min-width: 88px; white-space: normal;">2 очередь</th>
-                <th style="min-width: 88px; white-space: normal;">всего</th>
-                <th style="min-width: 88px; white-space: normal;">1 очередь</th>
-                <th style="min-width: 88px; white-space: normal;">2 очередь</th>
-                <th style="min-width: 88px; white-space: normal;">генера-<br>торный режим</th>
-                <th style="min-width: 88px; white-space: normal;">насосный режим</th>
-                <th style="min-width: 88px; white-space: normal;">здания, сооружения,<br>оборудование и бассейнами ГАЭС</th>
-                <th style="min-width: 88px; white-space: normal;">СВМ</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% if tep_groups %}
-                {% for g in tep_groups %}
-                <tr class="gaes-place-type-group">
-                    <td colspan="{{ tep_col_count }}" class="py-3">{{ g.type_label }}</td>
-                </tr>
-                {% if g.tep_rows %}
-                {% for row in g.tep_rows %}
-                {% set tf = row.tep_full_current_year | default(row.tep_full) %}
-                <tr>
-                    <td class="text-center align-middle">{{ row.idx }}</td>
-                    {% if row.show_station_cell %}
-                    <td class="text-center align-middle" rowspan="{{ row.station_rowspan }}">
-                        <a href="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=row.station_id) }}">{{ row.site_name }}</a>
-                    </td>
-                    {% endif %}
-                    <td class="text-center align-middle">{{ tf.installed_capacity_mw_generator_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.startup_complex_capacity_mw_generator_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.stage_1_capacity_mw_generator_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.stage_2_capacity_mw_generator_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.installed_capacity_mw_pump_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.startup_complex_capacity_mw_pump_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.stage_1_capacity_mw_pump_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.stage_2_capacity_mw_pump_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.units_count }}</td>
-                    <td class="text-center align-middle">{{ tf.unit_capacity_mw_generator_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.unit_capacity_mw_pump_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.hydro_turbine_type }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_period_years }}</td>
-                    <td class="text-center align-middle">{{ tf.generation_average_multiyear_million_kwh }}</td>
-                    <td class="text-center align-middle">{{ tf.generation_average_multiyear_million_kwh_stage_1 }}</td>
-                    <td class="text-center align-middle">{{ tf.generation_average_multiyear_million_kwh_stage_2 }}</td>
-                    <td class="text-center align-middle">{{ tf.annual_charging_electricity_consumption_million_kwh }}</td>
-                    <td class="text-center align-middle">{{ tf.annual_charging_electricity_consumption_million_kwh_stage_1 }}</td>
-                    <td class="text-center align-middle">{{ tf.annual_charging_electricity_consumption_million_kwh_stage_2 }}</td>
-                    <td class="text-center align-middle">{{ tf.ccium_turbine_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.ccium_pump_mode }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_01_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_02_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_03_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_04_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_05_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_06_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_07_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_08_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_09_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_10_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_11_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.construction_increment_year_12_mw }}</td>
-                    <td class="text-center align-middle">{{ tf.capital_cost_wo_pir_total_million_rub }}</td>
-                    <td class="text-center align-middle">{{ tf.capital_cost_wo_pir_ges_with_reservoir_million_rub }}</td>
-                    <td class="text-center align-middle">{{ tf.capital_cost_wo_pir_svm_million_rub }}</td>
-                    <td class="text-center align-middle">{{ tf.specific_semifixed_operating_costs_thous_rub_per_kw }}</td>
-                    <td class="text-center align-middle">{{ tf.specific_capital_investment_thous_rub_per_kw }}</td>
-                    <td class="text-start align-middle text-break">{% if tf.note != '—' %}{{ tf.note|nl2br }}{% else %}—{% endif %}</td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                <tr>
-                    <td colspan="{{ tep_col_count }}" class="text-center text-muted">Нет данных</td>
-                </tr>
-                {% endif %}
-                {% endfor %}
-            {% else %}
-                <tr>
-                    <td colspan="{{ tep_col_count }}" class="text-center text-muted">Нет данных</td>
-                </tr>
-            {% endif %}
-        </tbody>
-    </table>
+  <table
+    class="table table-hover table-striped table-bordered prospective-places-gaes-table tep-ges-page-table tep-ges-main-full-table mb-0"
+    style="text-align: center"
+  >
+    <thead class="table-success">
+      <tr class="text-center align-middle">
+        <th rowspan="3" style="min-width: 44px">№ п/п</th>
+        <th rowspan="3" style="min-width: 140px">Наименование площадки</th>
+        <th colspan="21" style="white-space: normal">Основные параметры</th>
+        <th colspan="12" style="white-space: normal">
+          Очередность строительства<br />(прирост вводимой мощности), МВт
+        </th>
+        <th colspan="3" style="white-space: normal">
+          Капитальные затраты, млн руб.
+        </th>
+        <th rowspan="3" style="min-width: 100px; white-space: normal">
+          Удельные условно-постоянные эксплуатационные затраты (без
+          амортизационных отчислений), млн руб./МВт
+        </th>
+        <th rowspan="3" style="min-width: 100px; white-space: normal">
+          Удельные капиталовложения в строительство (с бассейнами), млн руб./МВт
+        </th>
+        <th rowspan="3" style="min-width: 120px; white-space: normal">
+          Примечание
+        </th>
+      </tr>
+      <tr class="text-center align-middle">
+        <th colspan="4" style="white-space: normal">
+          Установленная мощность,<br />генераторный режим, МВт
+        </th>
+        <th colspan="4" style="white-space: normal">
+          Установленная мощность,<br />насосный режим, МВт
+        </th>
+        <th rowspan="2" style="min-width: 64px; white-space: normal">
+          Количество агрегатов, шт.
+        </th>
+        <th colspan="2" style="white-space: normal">
+          Единичная мощность агрегата,<br />МВт
+        </th>
+        <th rowspan="2" style="min-width: 100px; white-space: normal">
+          Тип гидротурбины
+        </th>
+        <th rowspan="2" style="min-width: 72px; white-space: normal">
+          Срок строительства ГАЭС, лет
+        </th>
+        <th colspan="3" style="white-space: normal">
+          Годовая выработка электроэнергии
+        </th>
+        <th colspan="3" style="white-space: normal">
+          Годовое потребление электроэнергии ГАЭС на заряд, млн кВтч
+        </th>
+        <th colspan="2" style="white-space: normal">
+          Число часов использования установленной мощности в сутки, час/сутки
+        </th>
+        {% for y in range(1, 13) %}
+        <th rowspan="2" style="min-width: 56px; white-space: normal">
+          {{ y }} год
+        </th>
+        {% endfor %}
+        <th rowspan="2" style="min-width: 88px; white-space: normal">
+          Капитальные затраты (без ПИР)
+        </th>
+        <th colspan="2" style="white-space: normal">в том числе</th>
+      </tr>
+      <tr class="text-center align-middle">
+        <th style="min-width: 72px; white-space: normal">всего</th>
+        <th style="min-width: 80px; white-space: normal">
+          в т.ч. пусковой комплекс
+        </th>
+        <th style="min-width: 72px; white-space: normal">1 очередь</th>
+        <th style="min-width: 72px; white-space: normal">2 очередь</th>
+        <th style="min-width: 72px; white-space: normal">всего</th>
+        <th style="min-width: 80px; white-space: normal">
+          в т.ч. пусковой комплекс
+        </th>
+        <th style="min-width: 72px; white-space: normal">1 очередь</th>
+        <th style="min-width: 72px; white-space: normal">2 очередь</th>
+        <th style="min-width: 88px; white-space: normal">
+          генера-<br />торный режим
+        </th>
+        <th style="min-width: 88px; white-space: normal">насосный режим</th>
+        <th style="min-width: 88px; white-space: normal">всего</th>
+        <th style="min-width: 88px; white-space: normal">1 очередь</th>
+        <th style="min-width: 88px; white-space: normal">2 очередь</th>
+        <th style="min-width: 88px; white-space: normal">всего</th>
+        <th style="min-width: 88px; white-space: normal">1 очередь</th>
+        <th style="min-width: 88px; white-space: normal">2 очередь</th>
+        <th style="min-width: 88px; white-space: normal">
+          генера-<br />торный режим
+        </th>
+        <th style="min-width: 88px; white-space: normal">насосный режим</th>
+        <th style="min-width: 88px; white-space: normal">
+          здания, сооружения,<br />оборудование и бассейнами ГАЭС
+        </th>
+        <th style="min-width: 88px; white-space: normal">СВМ</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if tep_groups %} {% for g in tep_groups %}
+      <tr class="gaes-place-type-group">
+        <td colspan="{{ tep_col_count }}" class="py-3">{{ g.type_label }}</td>
+      </tr>
+      {% if g.tep_rows %} {% for row in g.tep_rows %} {% set tf =
+      row.tep_full_current_year | default(row.tep_full) %}
+      <tr>
+        <td class="text-center align-middle">{{ row.idx }}</td>
+        {% if row.show_station_cell %}
+        <td
+          class="text-center align-middle"
+          rowspan="{{ row.station_rowspan }}"
+        >
+          <a
+            href="{{ url_for('prospective_places_bp.prospective_place_gaes_details', id=row.station_id) }}"
+            >{{ row.site_name }}</a
+          >
+        </td>
+        {% endif %}
+        <td class="text-center align-middle">
+          {{ tf.installed_capacity_mw_generator_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.startup_complex_capacity_mw_generator_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.stage_1_capacity_mw_generator_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.stage_2_capacity_mw_generator_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.installed_capacity_mw_pump_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.startup_complex_capacity_mw_pump_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.stage_1_capacity_mw_pump_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.stage_2_capacity_mw_pump_mode }}
+        </td>
+        <td class="text-center align-middle">{{ tf.units_count }}</td>
+        <td class="text-center align-middle">
+          {{ tf.unit_capacity_mw_generator_mode }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.unit_capacity_mw_pump_mode }}
+        </td>
+        <td class="text-center align-middle">{{ tf.hydro_turbine_type }}</td>
+        <td class="text-center align-middle">
+          {{ tf.construction_period_years }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.generation_average_multiyear_million_kwh }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.generation_average_multiyear_million_kwh_stage_1 }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.generation_average_multiyear_million_kwh_stage_2 }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.annual_charging_electricity_consumption_million_kwh }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.annual_charging_electricity_consumption_million_kwh_stage_1 }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.annual_charging_electricity_consumption_million_kwh_stage_2 }}
+        </td>
+        <td class="text-center align-middle">{{ tf.ccium_turbine_mode }}</td>
+        <td class="text-center align-middle">{{ tf.ccium_pump_mode }}</td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_01_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_02_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_03_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_04_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_05_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_06_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_07_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_08_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_09_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_10_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_11_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.construction_increment_year_12_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.capital_cost_wo_pir_total_million_rub }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.capital_cost_wo_pir_ges_with_reservoir_million_rub }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.capital_cost_wo_pir_svm_million_rub }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.specific_semifixed_operating_costs_thous_rub_per_kw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ tf.specific_capital_investment_thous_rub_per_kw }}
+        </td>
+        <td class="text-start align-middle text-break">
+          {% if tf.note != '—' %}{{ tf.note|nl2br }}{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %} {% else %}
+      <tr>
+        <td colspan="{{ tep_col_count }}" class="text-center text-muted">
+          Нет данных
+        </td>
+      </tr>
+      {% endif %} {% endfor %} {% else %}
+      <tr>
+        <td colspan="{{ tep_col_count }}" class="text-center text-muted">
+          Нет данных
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
 </div>

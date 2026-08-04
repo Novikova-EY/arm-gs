@@ -1,0 +1,627 @@
+Version =20
+VersionRequired =20
+Checksum =2115295879
+Begin Form
+    KeyPreview = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    Cycle =1
+    GridY =10
+    Width =10771
+    DatasheetFontHeight =10
+    ItemSuffix =66
+    Top =396
+    Right =11028
+    Bottom =5988
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x46f3145171ebe140
+    End
+    GUID = Begin
+        0xdd452022d228244f9189567e9111efe7
+    End
+    NameMap = Begin
+        0x0acc0e55000000000033f12bd218be4599c5298f674769eb00000000ca191499 ,
+        0xb84ce54000008e00015e235c21043e0441044204300432043d044b0435042d00 ,
+        0x4104420430043d0446043804380400000000000009d697f4b650cb43a3579ba9 ,
+        0x4e8dd7cb070000000033f12bd218be4599c5298f674769eb4f00450053000000 ,
+        0x000000009600a4bba9e82340bc6d1f65006dacd8070000000033f12bd218be45 ,
+        0x99c5298f674769eb4e0055004d004200000000000000d79c235de3d4f2479475 ,
+        0x3dabeaf78cd6070000000033f12bd218be4599c5298f674769eb4e0041004d00 ,
+        0x4500000000000000ef0ddf76cb646e4ea5e77c2a4c30110e06000000dd452022 ,
+        0xd228244f9189567e9111efe76400610074006100000000000000277acb031cca ,
+        0xec4791e322609fd9a7a30100000069de98a8b84ce540db01917c0000f7102004 ,
+        0x300437043104380432043a0430040000000000008841c82ad75a0f4499118881 ,
+        0xd86e54ab00000000342ae68cb84ce5406c6e1300060000002004300437043104 ,
+        0x380432043a0430043200300030003700000000000000c9b37f2093a9da4a8510 ,
+        0x10817c6d1a5b070000008841c82ad75a0f4499118881d86e54ab6e0075006d00 ,
+        0x6200310031003200300000000000000000000000000000000000000000000000 ,
+        0x0c000000030000000000000000000000000000000000
+    End
+    RecordSource ="Составные-станции"
+    OnCurrent ="[Event Procedure]"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    OnKeyDown ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="MS Sans Serif"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin UnboundObjectFrame
+            SpecialEffect =2
+            OldBorderStyle =1
+            Width =4536
+            Height =2835
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =5612
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x1710d2c6d06bca47b965036c1c02ea19
+            End
+            Begin
+                Begin Subform
+                    OverlapFlags =85
+                    Top =900
+                    Width =10716
+                    Height =2631
+                    TabIndex =1
+                    Name ="data"
+                    OnEnter ="[Event Procedure]"
+                    GUID = Begin
+                        0xef0ddf76cb646e4ea5e77c2a4c30110e
+                    End
+                End
+                Begin TextBox
+                    AutoTab = NotDefault
+                    TabStop = NotDefault
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Left =3447
+                    Width =531
+                    ColumnWidth =456
+                    TabIndex =4
+                    Name ="OES"
+                    ControlSource ="OES"
+                    GUID = Begin
+                        0xe8297a89aa82fb41a1a50b89d55f6bf8
+                    End
+                End
+                Begin TextBox
+                    TabStop = NotDefault
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =2871
+                    Width =576
+                    ColumnWidth =720
+                    TabIndex =3
+                    Name ="NUMB"
+                    ControlSource ="NUMB"
+                    GUID = Begin
+                        0x23f4ea93d269584b8b6264a177f65a6e
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =87
+                    Width =2871
+                    ColumnWidth =3135
+                    Name ="NAME1"
+                    ControlSource ="NAME"
+                    GUID = Begin
+                        0xb6d09b887721dd499c60332eb2228086
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    SpecialEffect =0
+                    Left =120
+                    Top =4305
+                    Width =4620
+                    Height =810
+                    TabIndex =2
+                    Name ="Разбивка"
+                    SourceObject ="Form.Разбивка"
+                    LinkChildFields ="numb1120"
+                    LinkMasterFields ="link"
+                    GUID = Begin
+                        0x0f2b4f87cd8fcb4a8cb20ffa369147a7
+                    End
+                End
+                Begin TextBox
+                    TabStop = NotDefault
+                    OverlapFlags =85
+                    Top =3855
+                    Width =567
+                    TabIndex =5
+                    Name ="link"
+                    ControlSource ="=data.Form!numb1120"
+                    GUID = Begin
+                        0x7ca06309f0ad714eb334bc4a49715c5b
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =4425
+                    Top =60
+                    Width =1251
+                    Height =373
+                    TabIndex =6
+                    Name ="Кнопка16"
+                    Caption ="Счет"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x9f34d04d12fd914b91ee0d7f3c606c19
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5100
+                    Top =3975
+                    Width =851
+                    TabIndex =7
+                    Name ="dmax1"
+                    GUID = Begin
+                        0x936774d58eda1a43a08f96b7d7542799
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5100
+                    Top =4350
+                    Width =851
+                    TabIndex =8
+                    Name ="dmax2"
+                    GUID = Begin
+                        0x12149393f7fdd84489f95b38a01a69c8
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =5100
+                    Top =4770
+                    Width =851
+                    TabIndex =9
+                    Name ="dmax3"
+                    GUID = Begin
+                        0xd78dc435d2bfd4489dee825018541e4d
+                    End
+                End
+                Begin OptionGroup
+                    OverlapFlags =85
+                    Left =6225
+                    Top =4005
+                    Width =1581
+                    Height =1273
+                    TabIndex =10
+                    Name ="switch"
+                    DefaultValue ="1"
+                    GUID = Begin
+                        0xe59a6f64eac41d46b7dc09cbd3fba555
+                    End
+                    Begin
+                        Begin Label
+                            BackStyle =1
+                            OverlapFlags =215
+                            Left =6345
+                            Top =3885
+                            Width =1275
+                            Height =240
+                            BackColor =-2147483633
+                            Name ="Надпись53"
+                            Caption ="Способ расчета"
+                            GUID = Begin
+                                0x1e29cdfc94be2549ba31e517ff55867e
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =6411
+                            Top =4243
+                            OptionValue =1
+                            Name ="Переключатель55"
+                            GUID = Begin
+                                0x8502c4fbf4b20445863e11744d6fdd0d
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =6641
+                                    Top =4215
+                                    Width =285
+                                    Height =240
+                                    Name ="Надпись56"
+                                    Caption ="snt"
+                                    GUID = Begin
+                                        0xba05fa538ee04b449c22541fe7c0ecc1
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =6411
+                            Top =4573
+                            OptionValue =2
+                            Name ="Переключатель57"
+                            GUID = Begin
+                                0xeda64974a15e1a44a0a1f5eaf023fe7a
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =6641
+                                    Top =4545
+                                    Width =210
+                                    Height =240
+                                    Name ="Надпись58"
+                                    Caption ="bt"
+                                    GUID = Begin
+                                        0x22e6bb6dab5f814f83a68b4fe7af5f82
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =6411
+                            Top =4903
+                            OptionValue =3
+                            Name ="Переключатель59"
+                            GUID = Begin
+                                0x7c9fff886d54d3479966551baa5b4d75
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =6641
+                                    Top =4875
+                                    Width =600
+                                    Height =240
+                                    Name ="Надпись60"
+                                    Caption ="snt и bt"
+                                    GUID = Begin
+                                        0xf19284dc2896994ca1081fe13d5ca169
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =6015
+                    Top =120
+                    TabIndex =11
+                    Name ="dis"
+                    GUID = Begin
+                        0x5d68a6de2054db4799492cbfacea881e
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =247
+                            Left =6245
+                            Top =90
+                            Width =900
+                            Height =240
+                            Name ="Надпись62"
+                            Caption ="распред.Q"
+                            GUID = Begin
+                                0x8f03b6d4c62b6b44b0cfb372d282613e
+                            End
+                        End
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    TextFontCharSet =0
+                    Left =1077
+                    Top =3855
+                    Width =2295
+                    Height =210
+                    FontWeight =700
+                    Name ="Надпись63"
+                    Caption ="дополнительные данные"
+                    GUID = Begin
+                        0xbc98258a7c2734448c152ea3328ff008
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    TextFontCharSet =0
+                    Left =585
+                    Top =555
+                    Width =1770
+                    Height =210
+                    FontWeight =700
+                    Name ="Надпись65"
+                    Caption ="основные данные"
+                    GUID = Begin
+                        0x7f664c804bc93641be7245a594676da0
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Dim Est As Double, Qst As Double, qotrst As Double, Btst As Double
+Dim eotpst As Double, best As Double, snkst As Double, sntst As Double
+Dim turtst As Double, eurtst As Double
+Option Compare Database
+Option Explicit
+
+
+Private Sub Form_Current()
+Dim n As Integer
+If (OES = 1 Or OES = 8) And Not (data.SourceObject = "Северо-Запад") Then setform ("Северо-Запад")
+If OES = 2 And Not (data.SourceObject = "Центр") Then setform ("Центр")
+If OES = 3 And Not (data.SourceObject = "Волга") Then setform ("Волга")
+If OES = 4 And Not (data.SourceObject = "Юг") Then setform ("Юг")
+If (OES = 5 Or OES = 11) And Not (data.SourceObject = "Урал") Then setform ("Урал")
+If (OES = 6 Or OES = 10) And Not (data.SourceObject = "Сибирь") Then setform ("Сибирь")
+If (OES = 7 Or OES = 9) And Not (data.SourceObject = "Восток") Then setform ("Восток")
+dmax1 = 0
+dmax2 = 0
+dmax3 = 0
+dis = True
+n = data.Form.RecordsetClone.RecordCount
+If n = 3 Then switch = 1 Else switch = 3
+End Sub
+
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+If KeyCode = 114 Then data.SetFocus
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+setform ("Северо-Запад")
+End Sub
+
+
+Public Sub setform(fname As String)
+Dim i As Long
+data.SourceObject = fname
+data.Form.KeyPreview = True
+data.LinkChildFields = "numbm"
+data.LinkMasterFields = "numb"
+data.Form.OrderBy = "ordnumb"
+End Sub
+
+
+Private Sub Кнопка11_Click()
+Dim df As Form, q1 As Double, q2 As Double, bt1 As Double, bt2 As Double
+Dim be1 As Double, be2 As Double, eotp1 As Double
+data.SetFocus
+Set df = data.Form
+DoCmd.GoToRecord , , acGoTo, 2
+bt1 = df!TURT
+be1 = df!EURT
+If bt1 = 0 Then df!Q = 0
+DoCmd.GoToRecord , , acGoTo, 3
+bt2 = df!TURT
+be2 = df!EURT
+If bt2 = 0 Then
+df!Q = 0
+q1 = Qst
+Else
+If bt1 = 0 Then
+df!Q = Qst
+Else
+q1 = (Btst * 1000 - Qst * bt2) / (bt1 - bt2)
+df!Q = Qst - q1
+End If
+End If
+eotp1 = (best * 1000 - eotpst * be2) / (be1 - be2)
+df!EOTP = eotpst - eotp1
+DoCmd.GoToRecord , , acGoTo, 2
+df!Q = q1
+df!EOTP = eotp1
+End Sub
+
+Private Sub Кнопка12_Click()
+Dim df As Form, q1 As Double, q2 As Double, bt1 As Double, bt2 As Double
+Dim rf As Form, n As Integer, sumqotr As Double, i As Integer, k1 As Double
+Dim sume As Double, k2 As Double
+data.SetFocus
+Set df = data.Form
+Set rf = Разбивка.Form
+n = df.RecordsetClone.RecordCount
+sumqotr = 0
+sume = 0
+For i = 2 To n
+DoCmd.GoToRecord , , acGoTo, i
+df!QOTR = df!NT * z(rf!kNт / 100) * 8.76
+sumqotr = sumqotr + df!QOTR
+df!E = (df!EOTP + z(df!Q) * z(df!SNt) / 1000) / (1 - z(df!SNK) / 100)
+sume = sume + df!E
+df!EUST = df!EOTP * df!EURT / 1000
+df!TUST = df!Q * df!TURT / 1000
+df!B = df!EUST + df!TUST
+df!GAZ = df!B * z(rf!газ) / 100
+df!MAZUT = df!B * z(rf!мазут) / 100
+df!UGOL = df!B * z(rf!уголь) / 100
+Next
+k1 = qotrst / sumqotr
+k2 = Est / sume
+For i = 2 To n
+DoCmd.GoToRecord , , acGoTo, i
+df!QOTR = df!QOTR * k1
+df!E = df!E * k2
+Next
+End Sub
+
+Private Sub Кнопка16_Click()
+Dim a() As Double, a1() As Double, B() As Double, Q() As Double
+Dim df As Form, rf As Form, n, i As Integer, j As Integer, d0 As Double, sumq As Double, k As Double
+Dim sume As Double, E() As Double, delta As Double, sumeurt As Double, sumsnt As Double, sumbt As Double
+Dim k1 As Double, sumqotr As Double, sum1 As Double, delta1 As Double
+data.SetFocus
+Set df = data.Form
+Set rf = Разбивка.Form
+n = df.RecordsetClone.RecordCount
+DoCmd.GoToRecord , , acGoTo, 1
+Est = z(data.Form!E)
+Qst = z(data.Form!Q)
+qotrst = z(data.Form!QOTR)
+Btst = z(data.Form!TUST)
+eotpst = z(data.Form!EOTP)
+best = z(data.Form!EUST)
+snkst = z(data.Form!SNK)
+sntst = z(data.Form!SNt)
+eurtst = z(data.Form!EURT)
+turtst = z(data.Form!TURT)
+ReDim a(n - 1, n - 1)
+ReDim a1(n - 1)
+ReDim B(n - 1)
+ReDim Q(n - 1)
+sume = 0
+sumqotr = 0
+For i = 2 To n
+DoCmd.GoToRecord , , acGoTo, i
+df!E = z(df!NUST) * z(rf!kne) / 100 * 8.76
+df!QOTR = z(df!NT) * z(rf!kNт) / 100 * 8.76
+sume = sume + df!E
+sumqotr = sumqotr + df!QOTR
+Next
+If sume <> Est Then k = Est / sume
+If sumqotr <> qotrst And sumqotr > 0 Then k1 = qotrst / sumqotr
+sum1 = 0
+For i = 2 To n
+DoCmd.GoToRecord , , acGoTo, i
+df!E = df!E * k
+df!EWTP = df!E * z(rf!ptp) / 100
+df!QOTR = df!QOTR * k1
+If switch = 1 Then
+'sum1 = sum1 + df!E * (1 - z(df!SNK) / 100)
+sum1 = sum1 + df!E * (1 - z(df!SNK) / 100) * df!EURT / 1000
+End If
+Next
+'РАСПРЕДЕЛЕНИЕ ТЕПЛА
+If dis = False Then GoTo skipq
+sumq = 0
+sumsnt = 0
+sumeurt = 0
+sumbt = 0
+For i = 2 To n
+DoCmd.GoToRecord , , acGoTo, i
+a(1, i - 1) = 1
+If n = 3 Then
+If switch = 1 Then
+a(2, i - 1) = z(df!SNt)
+ElseIf switch = 2 Then
+a(2, i - 1) = z(df!TURT)
+End If
+ElseIf n = 4 Then
+If switch = 3 Then
+a(2, i - 1) = z(df!SNt)
+a(3, i - 1) = z(df!TURT)
+End If
+End If
+sumeurt = sumeurt + z(df!EURT)
+sumsnt = sumsnt + z(df!SNt)
+sumbt = sumbt + z(df!TURT)
+Next
+B(1) = 1
+If n = 3 Then
+If switch = 1 Then
+B(2) = sntst
+ElseIf switch = 2 Then
+B(2) = turtst
+End If
+ElseIf n = 4 Then
+If switch = 3 Then
+B(2) = sntst
+B(3) = turtst
+End If
+End If
+d0 = det3(a)
+Debug.Print "d0="; d0;
+For j = 1 To n - 1
+For i = 2 To n
+a1(i - 1) = a(i - 1, j)
+a(i - 1, j) = B(i - 1)
+Next
+Q(j) = Qst * det3(a) / d0
+If n = 3 And switch < 3 Then
+If switch = 1 Then delta = 0.01 Else delta = 0.1
+If switch = 1 Then delta1 = 0.055 Else delta1 = 0.1
+ElseIf n = 4 And switch = 3 Then
+delta = 0.01 * sumbt + 0.1 * sumsnt
+delta1 = 0.01 * (sumbt - z(df!TURT) + turtst) + 0.1 * (sumsnt - z(df!SNt) + sntst)
+End If
+Debug.Print "delta="; delta; "delta1="; delta1
+If j = 1 Then
+If Q(j) > 0 Then dmax1 = Abs((Abs(det3(a)) + delta1) / (Abs(d0) - delta) - det3(a) / d0) / (det3(a) / d0) * 100
+ElseIf j = 2 Then
+If Q(j) > 0 Then dmax2 = Abs((Abs(det3(a)) + delta1) / (Abs(d0) - delta) - det3(a) / d0) / (det3(a) / d0) * 100
+ElseIf j = 3 Then
+If Q(j) > 0 Then dmax3 = Abs((Abs(det3(a)) + delta1) / (Abs(d0) - delta) - det3(a) / d0) / (det3(a) / d0) * 100
+End If
+Debug.Print det3(a); "q="; Q(j)
+For i = 2 To n
+a(i - 1, j) = a1(i - 1)
+Next
+If a(2, j) = 0 Then Q(j) = 0
+sumq = sumq + Q(j)
+Next
+k = Qst / sumq
+skipq: For i = 2 To n
+DoCmd.GoToRecord , , acGoTo, i
+If dis Then df!Q = Q(i - 1) * k
+df!EOTP = df!E * (1 - z(df!SNK) / 100) - z(df!Q) * z(df!SNt) / 1000
+df!EUST = df!EOTP * df!EURT / 1000
+df!TUST = df!Q * z(df!TURT) / 1000
+df!B = z(df!EUST) + z(df!TUST)
+df!GAZ = df!B * rf!газ / 100
+df!MAZUT = df!B * rf!мазут / 100
+df!UGOL = df!B * rf!уголь / 100
+If Est > 0 Then rf!pe = df!E / Est * 100
+Next
+End Sub

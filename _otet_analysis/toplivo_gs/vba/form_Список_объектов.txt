@@ -1,0 +1,73 @@
+Version =19
+VersionRequired =19
+Checksum =440772172
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =5
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =1701
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Top =2556
+    Right =2808
+    Bottom =4788
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x7f4705cc3307e240
+    End
+    GUID = Begin
+        0xc1a561a7e8a0f545b240dce6ce015875
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Список_объектов"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =283
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x9b2b4bbea950a94d9403e34c4fa9a33e
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =85
+                    ColumnWidth =2535
+                    Name ="Вариант"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x53a775b812eba0408a16a8e3fba8fcbc
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database

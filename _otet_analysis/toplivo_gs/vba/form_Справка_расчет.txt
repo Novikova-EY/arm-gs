@@ -1,0 +1,83 @@
+Version =19
+VersionRequired =19
+Checksum =440772197
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5102
+    DatasheetFontHeight =12
+    ItemSuffix =2
+    Left =588
+    Top =1944
+    Right =6540
+    Bottom =5724
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x89c17380ec5ae340
+    End
+    GUID = Begin
+        0x16123e5955fc7d4a92ac1849733abaf9
+    End
+    NameMap = Begin
+        0x0acc0e5500000000052431ba6acd49459e57c293437e524d0100000068faeb60 ,
+        0xed5ae3402f000000f760083012044b0431043e0440043a043004200040043004 ,
+        0x41043f0440043504340435043b0435043d04380439040000
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =3972
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x0a480587a3f8aa49801474404ff79446
+            End
+            Begin
+                Begin Subform
+                    OverlapFlags =215
+                    Width =3120
+                    Height =3972
+                    Name ="Sdis"
+                    SourceObject ="Form.Выборка распределений"
+                    GUID = Begin
+                        0x37d135bda86f2146b81e9a7970e2bc08
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =1788
+                            Height =228
+                            Name ="Выборка распределений Надпись"
+                            Caption ="Выборка распределений"
+                            EventProcPrefix ="Выборка_распределений_Надпись"
+                            GUID = Begin
+                                0x1744ba3a91b72b4aa22382f6adca1efe
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End

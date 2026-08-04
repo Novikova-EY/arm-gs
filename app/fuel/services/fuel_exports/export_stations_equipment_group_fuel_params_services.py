@@ -8,6 +8,10 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
 from app.common.services.help_services import apply_nbsp_to_row, format_decimal_for_display
+from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
+from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
+    EquipmentGroupSpecificFuelConsumption,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     get_equipment_groups_with_fuel_params_data,
     build_name_maps_from_rows,
@@ -27,21 +31,21 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
 )
 
 FUEL_PARAM_COLUMNS = [
-    ("numb1120", "Код электростанции", False),
-    ("nust", "Руст", True),
-    ("nr", "Ррасп", True),
-    ("e", "Выр", True),
-    ("ewtp", "Этц", True),
-    ("eotp", "Отпуск ээ", True),
-    ("eurt", "Уд.расх ээ", True),
+    ("numb1120", "Код группы оборудования", False),
+    ("nust", EquipmentGroupFuelParam.NUST_COLUMN_LABEL, True),
+    ("nr", EquipmentGroupFuelParam.NR_COLUMN_LABEL, True),
+    ("e", "Выработка ЭЭ, тыс.кВтч", True),
+    ("ewtp", "Теплофикационная выработка ЭЭ, тыс.кВтч", True),
+    ("eotp", EquipmentGroupFuelParam.EOTP_COLUMN_LABEL, True),
     ("eust", "Расх топ ээ", True),
-    ("snk", "СН, %", True),
-    ("q", "Отпуск, Гкал", True),
-    ("qotr", "Отраб", True),
-    ("turt", "Уд.расх тэ", True),
-    ("tust", "Расх топ тэ", True),
-    ("sn_t", "СН, кВтч/Гкал", True),
-    ("b", "Расх топл.", True),
+    ("eurt", EquipmentGroupFuelParam.EURT_COLUMN_LABEL, True),
+    ("snk", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
+    ("q", EquipmentGroupFuelParam.Q_COLUMN_LABEL, True),
+    ("qotr", "Тепловое потребление (отборов турбин), тыс.Гкал", True),
+    ("turt", EquipmentGroupFuelParam.TURT_COLUMN_LABEL, True),
+    ("tust", EquipmentGroupFuelParam.TUST_COLUMN_LABEL, True),
+    ("sn_t", "СН, кВтч/⁠Гкал", True),
+    ("b", "Расход топлива, всего", True),
     ("gaz", "Газ", True),
     ("isk_gaz", "Иск. газ", True),
     ("mazut", "Мазут", True),
@@ -73,8 +77,8 @@ FUEL_PARAM_COLUMNS = [
     ("chukot", "Чукотка", True),
     ("kamch", "Камчатка", True),
     ("sah", "Сахалин", True),
-    ("nt", "Тепл. мощн. отборов", True),
-    ("nt_sum", "Сумма NT", True),
+    ("nt", EquipmentGroupFuelParam.NT_COLUMN_LABEL, True),
+    ("nt_sum", EquipmentGroupFuelParam.NT_SUM_COLUMN_LABEL, True),
 ]
 
 

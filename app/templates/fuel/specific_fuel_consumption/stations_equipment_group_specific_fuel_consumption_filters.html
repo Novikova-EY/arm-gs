@@ -6,11 +6,9 @@
 {% set per_page_all_label = 'группы оборудования' %}
 {% set import_redirect_endpoint = 'fuel_bp.stations_equipment_group_specific_fuel_consumption' %}
 {% set use_single_year = true %}
-{% set show_specific_fuel_consumption_import = true %}
-{% set import_specific_fuel_consumption_action = url_for('fuel_bp.import_equipment_group_specific_fuel_consumption') %}
-{% set import_specific_fuel_consumption_redirect_to = 'fuel_bp.stations_equipment_group_specific_fuel_consumption' %}
 {% set show_specific_fuel_consumption_calc_import = true %}
 {% set show_specific_fuel_consumption_export = true %}
+{% set show_rounding_digits = true %}
 {% set import_specific_fuel_consumption_calc_action = url_for('fuel_bp.import_equipment_group_specific_fuel_consumption_calculated') %}
 {% set selected_year = selected_year|default(start_year)|default(end_year) %}
 {% set center_top_pagination = true %}

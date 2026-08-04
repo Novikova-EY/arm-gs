@@ -2,7 +2,8 @@
 """
 Синхронизация данных station_details во все версии БД:
 - агрегаты (Machine) по external_code;
-- выработка (StationEnergyGeneration) и заряд ГАЭС (StationGaesChargeConsumption) по external_code станции.
+- код КТО, выработка (StationEnergyGeneration) и заряд ГАЭС (StationGaesChargeConsumption)
+  по external_code станции.
 """
 from __future__ import annotations
 
@@ -211,6 +212,75 @@ def _form_has_station_general_info(form_data) -> bool:
         "note",
     }
     return bool(meta_keys & keys)
+
+
+def _sync_station_kto_all_versions(
+    *,
+    station_external_code: str,
+    version_ids: list[Optional[int]],
+    version_numbers: dict[int, str],
+    new_kto: str | None,
+    versions_touched_set: set[Optional[int]],
+    change_log: list[str],
+    warnings: list[str],
+) -> int:
+    """Код КТО станции во всех версиях (по external_code)."""
+    updated_stations = 0
+    for version_id in version_ids:
+        targets = _stations_by_external_code(station_external_code, version_id)
+        if not targets:
+            continue
+        version_changed = False
+        for target in targets:
+            old_kto = (getattr(target, "kto", None) or "").strip() or None
+            if old_kto == new_kto:
+                continue
+
+            if new_kto:
+                conflict_q = db.session.query(Station.id).filter(
+                    Station.kto == new_kto,
+                    Station.id != target.id,
+                )
+                if version_id is None:
+                    conflict_q = conflict_q.filter(Station.database_version_id.is_(None))
+                else:
+                    conflict_q = conflict_q.filter(
+                        Station.database_version_id == version_id
+                    )
+                conflict_id = conflict_q.scalar()
+                if conflict_id:
+                    warnings.append(
+                        f"Станция id={target.id}, "
+                        f"{database_version_log_prefix(version_id, version_numbers)}: "
+                        f"код КТО {new_kto!r} уже используется электростанцией "
+                        f"id={conflict_id}, код КТО не изменён."
+                    )
+                    continue
+
+            change_log.append(
+                f"Код КТО, {database_version_log_prefix(version_id, version_numbers)}, "
+                f"id={target.id}: {_format_val_for_log(old_kto)} → "
+                f"{_format_val_for_log(new_kto)}"
+            )
+            target.kto = new_kto
+            from sqlalchemy.sql import func
+
+            target.updated_at = func.now()
+            flag_modified(target, "updated_at")
+            updated_stations += 1
+            version_changed = True
+            logger.info(
+                "[station_all_versions] kto station id=%s version_id=%s %r → %r",
+                target.id,
+                version_id,
+                old_kto,
+                new_kto,
+            )
+
+        if version_changed:
+            versions_touched_set.add(version_id)
+
+    return updated_stations
 
 
 def _sync_station_general_info_all_versions(
@@ -484,6 +554,7 @@ def update_station_machines_all_versions_from_form(
     sync_station_energy: bool = False,
     sync_station_gaes_charge: bool = False,
     sync_station_general_info: bool = False,
+    sync_station_kto: bool = False,
     sync_machines: bool = True,
     request_meta: Optional[dict] = None,
 ) -> dict:
@@ -491,13 +562,14 @@ def update_station_machines_all_versions_from_form(
     Применяет данные формы station_details во всех версиях БД.
 
     Агрегаты — по external_code машины (fuel_so, note, id_gen_company).
-    Общая информация / местоположение — по external_code станции.
+    Общая информация / местоположение / код КТО — по external_code станции.
     Выработка и заряд ГАЭС — по external_code станции (st_gen_*, st_gaes_charge_*).
     """
     request_meta = request_meta or {}
     if start_year > end_year:
         start_year, end_year = end_year, start_year
 
+    form_keys = set(form_data.keys()) if hasattr(form_data, "keys") else set()
     anchor_machine_ids = _machine_ids_from_form(form_data) if sync_machines else []
     has_machine_form = bool(anchor_machine_ids)
     has_energy_form = bool(sync_station_energy)
@@ -505,12 +577,20 @@ def update_station_machines_all_versions_from_form(
     has_general_info_form = sync_station_general_info and _form_has_station_general_info(
         form_data
     )
+    has_kto_form = bool(sync_station_kto)
 
-    if not has_machine_form and not has_energy_form and not has_gaes_form and not has_general_info_form:
+    if (
+        not has_machine_form
+        and not has_energy_form
+        and not has_gaes_form
+        and not has_general_info_form
+        and not has_kto_form
+    ):
         return {
             "versions_touched": 0,
             "updated_machines": 0,
             "updated_stations": 0,
+            "updated_kto_stations": 0,
             "updated_energy_rows": 0,
             "updated_gaes_rows": 0,
             "no_changes": True,
@@ -538,17 +618,19 @@ def update_station_machines_all_versions_from_form(
     updated_energy_rows = 0
     updated_gaes_rows = 0
     updated_stations = 0
+    updated_kto_stations = 0
 
     station_external_code = (getattr(station, "external_code", None) or "").strip()
 
     logger.info(
         "[station_all_versions] START station_id=%s station_name=%r user=%r "
-        "machines=%s general=%s energy=%s gaes=%s years=%s..%s meta=%s",
+        "machines=%s general=%s kto=%s energy=%s gaes=%s years=%s..%s meta=%s",
         station.id,
         station.name,
         user,
         has_machine_form,
         has_general_info_form,
+        has_kto_form,
         has_energy_form,
         has_gaes_form,
         start_year,
@@ -556,15 +638,18 @@ def update_station_machines_all_versions_from_form(
         request_meta,
     )
 
-    needs_station_code = has_energy_form or has_gaes_form or has_general_info_form
+    needs_station_code = (
+        has_energy_form or has_gaes_form or has_general_info_form or has_kto_form
+    )
     if needs_station_code and not station_external_code:
         warnings.append(
-            "У электростанции отсутствует external_code — общая информация, выработка "
-            "и заряд ГАЭС не синхронизированы во всех версиях."
+            "У электростанции отсутствует external_code — общая информация, код КТО, "
+            "выработка и заряд ГАЭС не синхронизированы во всех версиях."
         )
         has_energy_form = False
         has_gaes_form = False
         has_general_info_form = False
+        has_kto_form = False
 
     if has_energy_form or has_gaes_form:
         for seq_schema, seq_table in (
@@ -584,6 +669,21 @@ def update_station_machines_all_versions_from_form(
                 version_ids=version_ids,
                 version_numbers=version_numbers,
                 meta_values=meta_values,
+                versions_touched_set=versions_touched_set,
+                change_log=station_table_log,
+                warnings=warnings,
+            )
+
+        if has_kto_form and station_external_code:
+            if "kto" in form_keys:
+                new_kto = (form_data.get("kto") or "").strip() or None
+            else:
+                new_kto = (getattr(station, "kto", None) or "").strip() or None
+            updated_kto_stations = _sync_station_kto_all_versions(
+                station_external_code=station_external_code,
+                version_ids=version_ids,
+                version_numbers=version_numbers,
+                new_kto=new_kto,
                 versions_touched_set=versions_touched_set,
                 change_log=station_table_log,
                 warnings=warnings,
@@ -711,6 +811,7 @@ def update_station_machines_all_versions_from_form(
     any_changes = (
         bool(updated_machine_ids)
         or updated_stations > 0
+        or updated_kto_stations > 0
         or updated_energy_rows > 0
         or updated_gaes_rows > 0
     )
@@ -724,6 +825,7 @@ def update_station_machines_all_versions_from_form(
             "versions_touched": 0,
             "updated_machines": 0,
             "updated_stations": 0,
+            "updated_kto_stations": 0,
             "updated_energy_rows": 0,
             "updated_gaes_rows": 0,
             "no_changes": True,
@@ -745,6 +847,12 @@ def update_station_machines_all_versions_from_form(
         clear_station_aggregation_cache(
             "после синхронизации station_details во всех версиях БД"
         )
+        if updated_energy_rows > 0:
+            from app.energy_balance.services.energy_balance_cache import (
+                clear_energy_balance_cache,
+            )
+
+            clear_energy_balance_cache()
     except Exception:
         db.session.rollback()
         logger.exception(
@@ -763,6 +871,7 @@ def update_station_machines_all_versions_from_form(
         f"Затронуто версий БД: {versions_touched}",
         f"Обновлено записей Machine: {updated_count}",
         f"Обновлено станций (общая информация): {updated_stations}",
+        f"Обновлено станций (код КТО): {updated_kto_stations}",
         f"Обновлено строк выработки: {updated_energy_rows}",
         f"Обновлено строк заряда ГАЭС: {updated_gaes_rows}",
         f"Мета запроса: {request_meta}",
@@ -792,11 +901,12 @@ def update_station_machines_all_versions_from_form(
     if current_app:
         current_app.logger.info(
             "[station_all_versions] SUCCESS station_id=%s versions=%s machines=%s "
-            "stations=%s energy_rows=%s gaes_rows=%s",
+            "stations=%s kto=%s energy_rows=%s gaes_rows=%s",
             station.id,
             versions_touched,
             updated_count,
             updated_stations,
+            updated_kto_stations,
             updated_energy_rows,
             updated_gaes_rows,
         )
@@ -805,6 +915,7 @@ def update_station_machines_all_versions_from_form(
         "versions_touched": versions_touched,
         "updated_machines": updated_count,
         "updated_stations": updated_stations,
+        "updated_kto_stations": updated_kto_stations,
         "updated_energy_rows": updated_energy_rows,
         "updated_gaes_rows": updated_gaes_rows,
         "warnings": warnings,

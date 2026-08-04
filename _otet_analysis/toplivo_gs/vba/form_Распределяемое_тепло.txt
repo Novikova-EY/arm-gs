@@ -1,0 +1,124 @@
+Version =19
+VersionRequired =19
+Checksum =440772172
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2853
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =4956
+    Right =7800
+    Bottom =1680
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x9c3f1d88f432e240
+    End
+    GUID = Begin
+        0x908971b5d91d664eb488e74d7639d8dd
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Распределяемое_тепло"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xd197b21eeb76cf47be6ea8243a4117a7
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =567
+                    ColumnWidth =780
+                    ColumnOrder =1
+                    Name ="Qрас"
+                    ControlSource ="Qрас"
+                    GUID = Begin
+                        0x3ef1afe05343574184669e4c6392ab8b
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =1134
+                    ColumnWidth =480
+                    ColumnOrder =2
+                    TabIndex =1
+                    Name ="%пр"
+                    ControlSource ="Прирост"
+                    Format ="#"
+                    EventProcPrefix ="Ctl_пр"
+                    GUID = Begin
+                        0xc20a30ffc5326143833dedb79943557c
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =1701
+                    ColumnWidth =570
+                    ColumnOrder =3
+                    TabIndex =2
+                    Name ="Hs"
+                    ControlSource ="Hs"
+                    Format ="#"
+                    GUID = Begin
+                        0xf5375d717e574a4e8dca668ea51a16dd
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =247
+                    Left =1701
+                    ColumnWidth =345
+                    ColumnOrder =4
+                    TabIndex =3
+                    Name ="RI"
+                    ControlSource ="RI"
+                    Format ="#"
+                    GUID = Begin
+                        0xbe2332cdccc23f4f9d326e5bdcd94833
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    ColumnWidth =570
+                    ColumnOrder =0
+                    TabIndex =4
+                    Name ="year"
+                    ControlSource ="year"
+                    GUID = Begin
+                        0x89604cd13619c940812424714f31777b
+                    End
+                End
+            End
+        End
+    End
+End

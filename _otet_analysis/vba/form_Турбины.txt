@@ -1,0 +1,243 @@
+Version =21
+VersionRequired =20
+Checksum =-1573231721
+Begin Form
+    PopUp = NotDefault
+    AllowDeletions = NotDefault
+    FilterOn = NotDefault
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5670
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =315
+    Top =3780
+    Right =19245
+    Bottom =8010
+    DatasheetGridlinesColor =12632256
+    Filter ="numb1120=776"
+    OrderBy ="Турбины.stnumb"
+    RecSrcDt = Begin
+        0xb2d89cf7ce35e240
+    End
+    GUID = Begin
+        0xbdac3de70699c149814e07f6a383e869
+    End
+    NameMap = Begin
+        0x0acc0e5500000000bce3aa80ead150458a1bc0c38a3d402a00000000c8b71546 ,
+        0x7163e5400000000000000000220443044004310438043d044b04000000000000 ,
+        0xf9531ff06377e84eb52a5f61788251c406000000bdac3de70699c149814e07f6 ,
+        0xa383e8696e0075006d00620031003100320030000000000000000b291f56c884 ,
+        0x5c4381fbc63b2a04c57007000000bce3aa80ead150458a1bc0c38a3d402a7300 ,
+        0x74006e0075006d0062000000000000006a14821d764feb488476ef13b285b4b4 ,
+        0x07000000bce3aa80ead150458a1bc0c38a3d402a6f007000650073006e006100 ,
+        0x6d006500000000000000c5f5a8ce890fbc49a36f144b849c753a07000000bce3 ,
+        0xaa80ead150458a1bc0c38a3d402a790065006100720069006e00000000000000 ,
+        0x82663ceb4e2f084a8fbdb195a1637c3807000000bce3aa80ead150458a1bc0c3 ,
+        0x8a3d402a640065006d00000000000000aa78032ac8c36f488ec9623b85a30c1d ,
+        0x07000000bce3aa80ead150458a1bc0c38a3d402a6e0074000000000000003dd7 ,
+        0x97893295544383eeb02006303c9a07000000bce3aa80ead150458a1bc0c38a3d ,
+        0x402a6e0075006d0062003100310032003000000000000000fab5c726407e8c48 ,
+        0xbbf7e960acdb852e07000000bce3aa80ead150458a1bc0c38a3d402a67007200 ,
+        0x63006f0064006500000000000000ff2ebe58e3dbf14f9043e0dc6b6d20780700 ,
+        0x0000bce3aa80ead150458a1bc0c38a3d402a3f04400438043c04350447043004 ,
+        0x3d0438043504000000000000000000000000000000000000000000000c000000 ,
+        0x050000000000000000000000000000000000
+    End
+    RecordSource ="Турбины"
+    BeforeInsert ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    OnMouseMove ="[Event Procedure]"
+    FilterOnLoad =255
+    DatasheetGridlinesColor12 =12632256
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xf56824102ef25241b794193fe6dbdc9a
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =567
+                    Width =1701
+                    ColumnWidth =4200
+                    ColumnOrder =1
+                    Name ="name"
+                    ControlSource ="opesname"
+                    GUID = Begin
+                        0x6dd3334e1ee569499204409b6bd67d29
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2268
+                    ColumnWidth =750
+                    ColumnOrder =2
+                    TabIndex =1
+                    Name ="yearin"
+                    ControlSource ="yearin"
+                    GUID = Begin
+                        0xe63ec3d2f5a9cc45857026353d17b124
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    ColumnWidth =840
+                    ColumnOrder =0
+                    TabIndex =2
+                    Name ="stnumb"
+                    ControlSource ="stnumb"
+                    GUID = Begin
+                        0x2b005d90b0169c489785073af9960e2f
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2835
+                    ColumnWidth =1050
+                    TabIndex =3
+                    Name ="dem"
+                    ControlSource ="dem"
+                    Format ="#"
+                    GUID = Begin
+                        0x7cfe601012ae6e4daae15441ea64f5f5
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3402
+                    ColumnWidth =630
+                    TabIndex =4
+                    Name ="nt"
+                    ControlSource ="nt"
+                    GUID = Begin
+                        0x5e8326097500d141a51ac42bbf83f79f
+                    End
+
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    ColumnHidden = NotDefault
+                    OverlapFlags =93
+                    Left =4536
+                    ColumnWidth =1110
+                    TabIndex =5
+                    Name ="numb1120"
+                    ControlSource ="numb1120"
+                    GUID = Begin
+                        0xf9531ff06377e84eb52a5f61788251c4
+                    End
+
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    ColumnHidden = NotDefault
+                    OverlapFlags =87
+                    Left =5103
+                    ColumnWidth =810
+                    TabIndex =6
+                    Name ="grcode"
+                    ControlSource ="grcode"
+                    GUID = Begin
+                        0xac4cb7aa4510d64f868ccd4207ddfbc6
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =3969
+                    ColumnWidth =8790
+                    TabIndex =7
+                    Name ="примечание"
+                    ControlSource ="примечание"
+                    GUID = Begin
+                        0xa421f0091037694690dae18a88ade19b
+                    End
+
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Dim stnt As Double, stcode As Double
+Private Sub Form_AfterUpdate()
+If OpenArgs = "Редактирование_отчетных_данных" Then
+If Not (Forms("редактирование_отчетных_данных").Form.stan.Form.Dirty) Then
+stnt = Forms("редактирование_отчетных_данных").Form.stan.Form!NT
+stcode = Forms("редактирование_отчетных_данных").Form.stan.Form!NUMB1120
+Call Form_Станции_отчет.verifynt(stnt, stcode)
+End If
+End If
+End Sub
+
+Private Sub Form_BeforeInsert(Cancel As Integer)
+Dim db As Database, MAIN As Recordset, R As Recordset
+If OpenArgs = "Редактирование_отчетных_данных" Then
+With Forms("редактирование_отчетных_данных").Form.stan.Form
+'If z(main)  0 Then
+'msg = MsgBox("Составная станция. Турбины вставляются только на группы оборудования", vbOKOnly)
+'Cancel = 1
+'GoTo endbi
+'End If
+Set R = .RecordsetClone
+R.FindFirst "main=" & !NUMB1120
+If Not R.NoMatch Then
+msg = MsgBox("Составная станция. Турбины вставляются только на группы оборудования", vbOKOnly)
+Cancel = 1
+GoTo endbi
+End If
+grcode = !NUMB1120
+End With
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set MAIN = db.OpenRecordset("select main from имена_станций where numb=" & grcode & ";")
+MAIN.MoveFirst
+If z(MAIN!MAIN) = 0 Then NUMB1120 = grcode Else NUMB1120 = MAIN!MAIN
+dem = Null
+End If
+endbi:
+End Sub
+
+Private Sub Form_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
+If Dirty Then
+DoCmd.RunCommand acCmdSaveRecord
+End If
+End Sub

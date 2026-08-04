@@ -11,7 +11,9 @@ from app.common.perimeter_variant.db_loader import invalidate_perimeter_catalog_
 from app.common.perimeter_variant.registry import ENTITY_KIND_CHOICES, perimeter_catalog_source
 from app.extensions import db
 from app.common.models.perimeter_variant import EntityPerimeterBinding, PerimeterVariant
-from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
+from app.power_demand.services.pd_summary_page_cache import (
+    invalidate_power_demand_display_caches,
+)
 
 
 def _username() -> str:
@@ -22,7 +24,12 @@ def _username() -> str:
 
 def _invalidate_perimeter_variant_dependent_caches() -> None:
     invalidate_perimeter_catalog_cache()
-    clear_pd_summary_page_cache()
+    invalidate_power_demand_display_caches()
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
+    )
+
+    invalidate_energy_consumption_display_caches()
 
 
 def _parameter_models_with_perimeter_variant_code() -> tuple[Type[Any], ...]:

@@ -13,12 +13,26 @@ from flask import request
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.aggregation_cache import get_redis_client
 
-PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 28
+# v29: в значении кэша хранится поколение — get отбрасывает записи после clear,
+# даже если SCAN/delete по Redis не удалил ключ.
+PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 29
 _CACHE_TIMEOUT = timedelta(minutes=30)
-_memory_cache: dict[str, tuple[Any, datetime]] = {}
+_memory_cache: dict[str, tuple[int, Any, datetime]] = {}
 # Поколение кэша: отсекает «опоздавшие» записи после clear (threaded/gunicorn).
 _cache_generation: int = 0
 _REDIS_GENERATION_KEY = f"pd_summary:cache_gen:v{PD_SUMMARY_PAGE_CACHE_KEY_VERSION}"
+
+# Скоупы data.json (любая комбинация query → отдельный ключ внутри скоупа).
+PD_SUMMARY_CACHE_SCOPES: frozenset[str] = frozenset(
+    {
+        "oes",
+        "fo",
+        "ez",
+        "coeff_oes",
+        "coeff_fo",
+        "coeff_ez",
+    }
+)
 
 
 def _cache_ttl_seconds() -> int:
@@ -63,35 +77,55 @@ def make_pd_summary_data_cache_key(scope: str, query_string: str) -> str:
     )
 
 
+def _unpack_cached_entry(raw: Any) -> tuple[int | None, Any]:
+    """Возвращает (generation|None, value). Старый формат без поколения → generation=None."""
+    if isinstance(raw, tuple) and len(raw) == 2 and isinstance(raw[0], int):
+        return int(raw[0]), raw[1]
+    return None, raw
+
+
 def get_cached_value(cache_key: str) -> Any | None:
+    current_gen = _get_cache_generation()
     redis_client = get_redis_client()
     if redis_client:
         try:
             serialized = redis_client.get(cache_key)
             if serialized:
-                return pickle.loads(serialized)
+                entry_gen, value = _unpack_cached_entry(pickle.loads(serialized))
+                if entry_gen is None or entry_gen != current_gen:
+                    try:
+                        redis_client.delete(cache_key)
+                    except Exception:
+                        pass
+                    return None
+                return value
         except Exception:
             pass
 
     cached = _memory_cache.get(cache_key)
     if cached is None:
         return None
-    value, cached_at = cached
+    entry_gen, value, cached_at = cached
+    if entry_gen != current_gen:
+        del _memory_cache[cache_key]
+        return None
     if datetime.now() - cached_at >= _CACHE_TIMEOUT:
         del _memory_cache[cache_key]
         return None
     return value
 
 
-def set_cached_value(cache_key: str, value: Any) -> None:
+def set_cached_value(cache_key: str, value: Any, *, generation: int | None = None) -> None:
+    gen = _get_cache_generation() if generation is None else int(generation)
+    payload = (gen, value)
     redis_client = get_redis_client()
     if redis_client:
         try:
-            redis_client.setex(cache_key, _cache_ttl_seconds(), pickle.dumps(value))
+            redis_client.setex(cache_key, _cache_ttl_seconds(), pickle.dumps(payload))
             return
         except Exception:
             pass
-    _memory_cache[cache_key] = (value, datetime.now())
+    _memory_cache[cache_key] = (gen, value, datetime.now())
 
 
 def cached_load_pd_summary_data(
@@ -108,7 +142,7 @@ def cached_load_pd_summary_data(
     # Не писать в кэш, если за время loader() был clear_pd_summary_page_cache()
     # (иначе устаревший ответ перетирает свежие данные после сохранения ячейки).
     if _get_cache_generation() == generation:
-        set_cached_value(cache_key, value)
+        set_cached_value(cache_key, value, generation=generation)
     return value
 
 
@@ -126,3 +160,16 @@ def clear_pd_summary_page_cache() -> None:
         except Exception:
             pass
     _memory_cache = {}
+
+
+def invalidate_power_demand_display_caches() -> None:
+    """
+    Полный сброс кэшей отображения сводок «Нагрузки» после любого изменения данных.
+    Вызывать после commit на всех путях записи (сводка, детальные страницы, формулы, EC).
+    """
+    clear_pd_summary_page_cache()
+    from app.power_demand.services.pd_demand_rows_bulk_cache import (
+        clear_power_demand_rows_bulk_cache,
+    )
+
+    clear_power_demand_rows_bulk_cache()

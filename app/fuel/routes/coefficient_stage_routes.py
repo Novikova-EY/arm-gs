@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from decimal import Decimal, InvalidOperation
 
-from flask import flash, request
+from flask import flash, request, session
 from flask_login import login_required
+from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.fuel.models.fue_distribution_parameter_model import DistributionParameter
@@ -10,11 +11,41 @@ from app.fuel.models.coefficient.distribution_coefficient_summary_model import (
     DistributionCoefficientSummary,
 )
 from app.fuel.services.calculation.coefficient.fuel_coefficient_calculation_services import (
+    CoeffStageRunResult,
     FuelCoefficientCalculationService,
 )
+from app.common.services.help_services import parse_decimal_from_display
 from app.fuel.routes.equipment_group_fuel_batch_ui_routes import _csrf_ok
-from app.fuel.routes.fuel_calculation_common import redirect_back_after_post
+from app.fuel.routes.fuel_calculation_common import (
+    FUEL_COEFF_LAST_RUN_SESSION_KEY,
+    redirect_back_after_post,
+)
 from app.fuel.routes import fuel_bp
+
+
+def _store_coeff_last_run_in_session(
+    row: DistributionParameter,
+    res: CoeffStageRunResult,
+    *,
+    trigger: str = "run_coeff",
+) -> None:
+    """Метаданные последнего запуска «Коэфф» для блока на /fuel/calculation."""
+    ues_name = ""
+    if row.union_energy_system is not None:
+        ues_name = row.union_energy_system.name or ""
+    year_number = row.year.number if row.year is not None else None
+    session[FUEL_COEFF_LAST_RUN_SESSION_KEY] = {
+        "distribution_parameter_id": res.distribution_parameter_id,
+        "distribution_name": ues_name,
+        "year_number": year_number,
+        "base_year_number": row.base_year.number if row.base_year is not None else None,
+        "total_groups": res.total_groups,
+        "updated_fuel_rows": res.updated_fuel_rows,
+        "summary_id": res.summary_id,
+        "e_target": str(row.e) if row.e is not None else None,
+        "trigger": trigger,
+    }
+    session.modified = True
 
 
 def _ph_for_psu_hd_column(summary: DistributionCoefficientSummary | None):
@@ -83,13 +114,8 @@ def get_coeff_tech_aggregate_row(summary):
 
 
 def parse_e_eraspred(raw) -> Decimal | None:
-    if raw is None:
-        return None
-    s = str(raw).strip()
-    if s == "":
-        return None
     try:
-        return Decimal(s.replace(",", "."))
+        return parse_decimal_from_display(raw)
     except InvalidOperation as e:
         raise ValueError("Некорректное числовое значение поля «Ераспред».") from e
 
@@ -107,7 +133,15 @@ def run_coeff_stage():
         return redirect_back_after_post()
 
     try:
-        row = db.session.get(DistributionParameter, dp_id)
+        row = db.session.get(
+            DistributionParameter,
+            dp_id,
+            options=[
+                joinedload(DistributionParameter.union_energy_system),
+                joinedload(DistributionParameter.year),
+                joinedload(DistributionParameter.base_year),
+            ],
+        )
         if row is None:
             flash(f"Не найден параметр распределения id={dp_id}.", "danger")
             return redirect_back_after_post()
@@ -118,6 +152,7 @@ def run_coeff_stage():
             db.session.flush()
 
         res = FuelCoefficientCalculationService().run_for_distribution_parameter(dp_id)
+        _store_coeff_last_run_in_session(row, res, trigger="run_coeff")
         flash(
             f"Этап «Коэфф» выполнен. Групп: {res.total_groups}, "
             f"обновлено строк fuel_param: {res.updated_fuel_rows}.",
@@ -169,7 +204,15 @@ def fuel_calculation_update_tech_hn():
         return redirect_back_after_post()
 
     try:
-        row = db.session.get(DistributionParameter, dp_id)
+        row = db.session.get(
+            DistributionParameter,
+            dp_id,
+            options=[
+                joinedload(DistributionParameter.union_energy_system),
+                joinedload(DistributionParameter.year),
+                joinedload(DistributionParameter.base_year),
+            ],
+        )
         if row is None:
             flash(f"Не найден параметр распределения id={dp_id}.", "danger")
             return redirect_back_after_post()
@@ -179,6 +222,7 @@ def fuel_calculation_update_tech_hn():
         db.session.flush()
 
         res = FuelCoefficientCalculationService().run_for_distribution_parameter(dp_id)
+        _store_coeff_last_run_in_session(row, res, trigger="update_tech_hn")
         flash(
             f"Сохранено поле {h_field}. Этап «Коэфф» обновлён: групп {res.total_groups}, "
             f"строк топлива {res.updated_fuel_rows}.",

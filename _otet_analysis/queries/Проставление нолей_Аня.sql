@@ -1,0 +1,2 @@
+UPDATE Доп_угли2021 SET Доп_угли2021.gazpp = IIf(Доп_угли2021.gazpp Is Null,0,Доп_угли2021.gazpp), Доп_угли2021.koksdom = IIf(Доп_угли2021.koksdom Is Null,0,Доп_угли2021.koksdom), Доп_угли2021.prochgaz = IIf(Доп_угли2021.prochgaz Is Null,0,Доп_угли2021.prochgaz), Доп_угли2021.tvproch = IIf(Доп_угли2021.tvproch Is Null,0,Доп_угли2021.tvproch)
+WHERE (((Доп_угли2021.gazpp) Is Null) AND ((Доп_угли2021.koksdom) Is Null) AND ((Доп_угли2021.prochgaz) Is Null) AND ((Доп_угли2021.tvproch) Is Null));

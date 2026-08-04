@@ -1,150 +1,984 @@
-{% extends 'base.html' %}
-
-{% block title %}Ограничения{% endblock %}
-
-{% block content %}
-{% if current_user.is_authenticated %}
+{% extends 'base.html' %} {% block title %}Ограничения{% endblock %} {% block
+content %} {% if current_user.is_authenticated %}
 
 <style>
-.restrictions-table {
+  .restrictions-table {
     font-size: 1.05rem;
     vertical-align: middle;
-}
-.restrictions-table thead th {
-    font-size: 0.95rem;
+  }
+  .restrictions-table thead th {
+    font-size: 1rem;
+    white-space: normal;
+    word-wrap: break-word;
+    vertical-align: middle;
+  }
+  .restrictions-table .fr-col-name .fuel-param-input {
+    min-width: 10rem;
+  }
+  .restrictions-table .fr-col-ref .fuel-param-input {
+    min-width: 9rem;
+  }
+  .restrictions-table .fr-readonly {
+    background-color: #f8f9fa;
+  }
+  .restrictions-table tbody td {
     white-space: nowrap;
-}
+  }
+  .restrictions-table.restrictions-edit-table tbody td {
+    font-size: 1.1rem;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .restrictions-table.restrictions-edit-table tbody td:has(> .fuel-param-input) {
+    padding: 0 !important;
+    vertical-align: middle;
+  }
+  .restrictions-table.restrictions-edit-table .fuel-param-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.5rem;
+    box-sizing: border-box;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0.2rem 0.35rem;
+    font-size: 1.1rem !important;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    background-color: transparent;
+    background-clip: padding-box;
+  }
+  .restrictions-table.restrictions-edit-table .fuel-param-input:focus {
+    box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+    outline: 0;
+    z-index: 1;
+    position: relative;
+  }
+  .restrictions-delete-mode .fr-delete-btn {
+    display: inline-flex !important;
+  }
+  .fr-delete-btn {
+    display: none;
+  }
+  .restrictions-sticky-controls {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background-color: var(--bs-body-bg, #fff);
+    padding-top: 0.25rem;
+    /* Сохраняет mb-2 последней строки кнопок внутри панели (как на edit_data) */
+    display: flow-root;
+  }
+  .restrictions-sticky-controls .power-demand-filters-collapse,
+  .restrictions-sticky-controls .power-demand-import-export-collapse {
+    overflow: visible !important;
+  }
+  .restrictions-sticky-controls .select2-container {
+    z-index: 1021;
+  }
+  /* overflow на .table-responsive ломает sticky у thead относительно страницы */
+  #restrictionsTableContainer.table-responsive {
+    overflow: visible !important;
+  }
+  /* Шапка таблицы липнет под панелью кнопок/импорта */
+  #restrictionsTableContainer .restrictions-table thead th {
+    position: sticky;
+    top: var(--restrictions-controls-sticky-height, 0px);
+    z-index: 50;
+    background-color: var(--bs-success-bg-subtle, #d1e7dd);
+    box-shadow: inset 0 -1px 0
+      var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+  }
+  /* Фильтры в шапке: как на distribution_parameters */
+  .restrictions-table .filter-button {
+    font-size: inherit;
+    white-space: normal;
+    max-width: 100%;
+  }
+  .restrictions-table thead .fr-thead-filter-menu {
+    min-width: 11rem;
+  }
+  .restrictions-table thead .fr-thead-ues-menu,
+  .restrictions-table thead .fr-thead-res-menu,
+  .restrictions-table thead .fr-thead-year-menu {
+    max-height: min(70vh, 22rem);
+    overflow-y: auto;
+  }
 </style>
 
-{% set _ues_selected = union_energy_system_filter[0] if union_energy_system_filter and union_energy_system_filter|length > 0 else none %}
+{% set _ues_filter = union_energy_system_filter|default([]) %}
+{% set _res_filter = regional_energy_system_filter|default([]) %}
+{% set _start_year_filter = start_year_filter|default([]) %}
+{% set _key_attrs = ['year', 'oes', 'restriction_name', 'obl'] %}
+{% set _edit_attrs = ['year', 'oes', 'restriction_name', 'obl', 'emin',
+'emax', 'kobl', 'kcur'] %} {% set _readonly_attrs = ['ecur', 'h', 'ecurdis',
+'hdis', 'etp'] %} {% set _qs_no_edit = qs_no_edit|default('') %}
+{% set _oes_name_map = oes_name_map|default({}) %}
+{% set _obl_name_map = obl_name_map|default({}) %}
+{% set _oes_choices = oes_choices|default([]) %}
+{% set _obl_choices = obl_choices|default([]) %}
+{% set _filter_years = filter_year_list|default([]) %}
+{% set _ues_list = union_energy_system_list|default([]) %}
+{% set _res_list = regional_energy_system_list|default([]) %}
+{% set _ues_filter_str = _ues_filter|map('string')|list %}
+{% set _res_filter_str = _res_filter|map('string')|list %}
+{% macro _code_str(v) %}{% if v is none %}{% elif v == v|int %}{{ v|int }}{% else %}{{ v }}{% endif %}{% endmacro %}
+{% macro fr_thead_cell(attr, label, field_code) %}
+{% if attr == 'year' %}
+<div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+  <div class="dropdown">
+    <button
+      class="btn dropdown-toggle filter-button"
+      type="button"
+      data-bs-toggle="dropdown"
+      data-bs-auto-close="outside"
+      data-bs-popper-config='{"strategy":"fixed"}'
+      aria-expanded="false"
+    >
+      <span class="d-inline-block text-center">
+        <strong>{{ label }}</strong><br />
+        <span class="text-muted small fw-normal">({{ field_code|fuel_header_code }})</span>
+      </span>
+      {% if _start_year_filter|length > 0 %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+    </button>
+    <ul class="dropdown-menu fr-thead-filter-menu fr-thead-year-menu text-start" style="width: min(14rem, 90vw);">
+      {% for year in _filter_years %}
+      <li>
+        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+          <input type="checkbox" name="start_year" value="{{ year }}" form="frListFilterForm"
+            {% if year in _start_year_filter %}checked{% endif %} />
+          <span>{{ year }}</span>
+        </label>
+      </li>
+      {% endfor %}
+      <li><hr class="dropdown-divider" /></li>
+      <li class="px-3 pb-2 d-flex justify-content-between gap-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary filter-reset-btn" data-filter-name="start_year">Сбросить</button>
+        <button type="button" class="btn btn-sm btn-primary filter-apply-btn" data-filter-name="start_year">Ок</button>
+      </li>
+    </ul>
+  </div>
+  {% if _start_year_filter|length > 0 %}
+  <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="start_year"
+    title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
+  {% endif %}
+</div>
+{% elif attr == 'oes' %}
+<div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+  <div class="dropdown">
+    <button
+      class="btn dropdown-toggle filter-button"
+      type="button"
+      data-bs-toggle="dropdown"
+      data-bs-auto-close="outside"
+      data-bs-popper-config='{"strategy":"fixed"}'
+      aria-expanded="false"
+    >
+      <span class="d-inline-block text-center">
+        <strong>{{ label }}</strong><br />
+        <span class="text-muted small fw-normal">({{ field_code|fuel_header_code }})</span>
+      </span>
+      {% if _ues_filter|length > 0 %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+    </button>
+    <ul class="dropdown-menu fr-thead-filter-menu fr-thead-ues-menu text-start" style="width: min(22rem, 90vw);">
+      {% for ues in _ues_list if ues.name|lower == 'не указано' %}
+      <li>
+        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+          <input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" form="frListFilterForm"
+            {% if (ues.id|string) in _ues_filter_str %}checked{% endif %} />
+          <span>{{ ues.name }}</span>
+        </label>
+      </li>
+      {% endfor %}
+      {% for ues in _ues_list if ues.name|lower != 'не указано' %}
+      <li>
+        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+          <input type="checkbox" name="union_energy_system_filter" value="{{ ues.id }}" form="frListFilterForm"
+            {% if (ues.id|string) in _ues_filter_str %}checked{% endif %} />
+          <span>{{ ues.name }}</span>
+        </label>
+      </li>
+      {% endfor %}
+      <li><hr class="dropdown-divider" /></li>
+      <li class="px-3 pb-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary w-100 filter-reset-btn" data-filter-name="union_energy_system_filter">Сбросить фильтр ОЭС</button>
+      </li>
+    </ul>
+  </div>
+  {% if _ues_filter|length > 0 %}
+  <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="union_energy_system_filter"
+    title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
+  {% endif %}
+</div>
+{% elif attr == 'obl' %}
+<div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+  <div class="dropdown">
+    <button
+      class="btn dropdown-toggle filter-button"
+      type="button"
+      data-bs-toggle="dropdown"
+      data-bs-auto-close="outside"
+      data-bs-popper-config='{"strategy":"fixed"}'
+      aria-expanded="false"
+    >
+      <span class="d-inline-block text-center">
+        <strong>{{ label }}</strong><br />
+        <span class="text-muted small fw-normal">({{ field_code|fuel_header_code }})</span>
+      </span>
+      {% if _res_filter|length > 0 %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+    </button>
+    <ul class="dropdown-menu fr-thead-filter-menu fr-thead-res-menu text-start" style="width: min(22rem, 90vw);">
+      {% for res in _res_list if res.name|lower == 'не указано' %}
+      <li>
+        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+          <input type="checkbox" name="regional_energy_system_filter" value="{{ res.id }}" form="frListFilterForm"
+            {% if (res.id|string) in _res_filter_str %}checked{% endif %} />
+          <span>{{ res.name }}</span>
+        </label>
+      </li>
+      {% endfor %}
+      {% for res in _res_list if res.name|lower != 'не указано' %}
+      <li>
+        <label class="dropdown-item d-flex align-items-center gap-2" style="white-space: normal;">
+          <input type="checkbox" name="regional_energy_system_filter" value="{{ res.id }}" form="frListFilterForm"
+            {% if (res.id|string) in _res_filter_str %}checked{% endif %} />
+          <span>{{ res.name }}</span>
+        </label>
+      </li>
+      {% endfor %}
+      <li><hr class="dropdown-divider" /></li>
+      <li class="px-3 pb-2">
+        <button type="button" class="btn btn-sm btn-outline-secondary w-100 filter-reset-btn" data-filter-name="regional_energy_system_filter">Сбросить фильтр РЭС</button>
+      </li>
+    </ul>
+  </div>
+  {% if _res_filter|length > 0 %}
+  <button type="button" class="btn btn-sm btn-outline-danger filter-clear-btn" data-filter-name="regional_energy_system_filter"
+    title="Сбросить фильтр" style="padding: 2px 6px; line-height: 1;"><i class="bi bi-x-lg"></i></button>
+  {% endif %}
+</div>
+{% else %}
+{{ label }}<br /><span class="text-muted small">({{ field_code|fuel_header_code }})</span>
+{% endif %}
+{% endmacro %}
+{% macro fr_cell_value(row, attr) %}
+{% set v = row|attr(attr) if row else none %}
+{% if v is none %}—
+{% elif attr == 'year' %}
+  {% set ys = _code_str(v)|trim %}{{ ys if ys else '—' }}
+{% elif attr == 'oes' %}
+  {% set ok = _code_str(v)|trim %}
+  {% set oname = _oes_name_map.get(ok) if ok else none %}
+  <span title="oes={{ ok }}">{% if oname %}{{ oname }}{% elif ok %}{{ ok }}{% else %}—{% endif %}</span>
+{% elif attr == 'obl' %}
+  {% set ok = _code_str(v)|trim %}
+  {% set oes_ok = _code_str(row.oes)|trim if row and row.oes is not none else '' %}
+  {% if ok and oes_ok and (ok|int) == ((oes_ok|int) + 100) %}
+  <span title="obl={{ ok }} (прочие)">—</span>
+  {% else %}
+  {% set oname = _obl_name_map.get(ok) if ok else none %}
+  <span title="obl={{ ok }}">{% if oname %}{{ oname }}{% elif ok %}{{ ok }}{% else %}—{% endif %}</span>
+  {% endif %}
+{% elif attr in ('restriction_name', 'kcur') %}
+  {% if v == '' %}—{% else %}{{ v }}{% endif %}
+{% else %}
+  {{ v|format_decimal_trim(rounding_digits) }}
+{% endif %}
+{% endmacro %}
+{% macro fr_edit_input(suffix, attr, row) %}
+{% set v = row|attr(attr) if row else none %}
+{% if attr == 'year' %}
+{% set ysel = _code_str(v)|trim %}
+<select
+  class="form-select form-select-lg text-center fuel-param-input"
+  name="fr_{{ suffix }}_year"
+  aria-label="Год"
+>
+  <option value="" {% if not ysel %}selected{% endif %}>—</option>
+  {% if ysel and ysel not in (_filter_years|map('string')|list) %}
+  <option value="{{ ysel }}" selected>{{ ysel }}</option>
+  {% endif %}
+  {% for y in _filter_years %}
+  <option value="{{ y }}" {% if ysel and ysel == (y|string) %}selected{% endif %}>{{ y }}</option>
+  {% endfor %}
+</select>
+{% elif attr == 'oes' %}
+<select
+  class="form-select form-select-lg text-start fuel-param-input"
+  name="fr_{{ suffix }}_oes"
+  aria-label="ОЭС"
+>
+  <option value="" selected>—</option>
+  {% for ues in _ues_list if ues.name|lower == 'не указано' %}
+  <option value="{{ ues.id }}">{{ ues.name }}</option>
+  {% endfor %}
+  {% for ues in _ues_list if ues.name|lower != 'не указано' %}
+  <option value="{{ ues.id }}">{{ ues.name }}</option>
+  {% endfor %}
+</select>
+{% elif attr == 'obl' %}
+<select
+  class="form-select form-select-lg text-start fuel-param-input"
+  name="fr_{{ suffix }}_obl"
+  aria-label="Региональная энергосистема"
+>
+  <option value="" selected>—</option>
+  {% for res in _res_list if res.name|lower == 'не указано' %}
+  <option value="{{ res.id }}">{{ res.name }}</option>
+  {% endfor %}
+  {% for res in _res_list if res.name|lower != 'не указано' %}
+  <option value="{{ res.id }}">{{ res.name }}</option>
+  {% endfor %}
+</select>
+{% elif attr == 'restriction_name' or attr == 'kcur' %}
+<input
+  type="text"
+  class="form-control form-control-lg text-center fuel-param-input"
+  maxlength="50"
+  name="fr_{{ suffix }}_{{ attr }}"
+  value="{% if v is not none %}{{ v }}{% endif %}"
+  autocomplete="off"
+/>
+{% else %}
+<input
+  type="text"
+  inputmode="decimal"
+  class="form-control form-control-lg text-center fuel-param-input"
+  name="fr_{{ suffix }}_{{ attr }}"
+  value="{% if v is not none %}{{ v|format_decimal_trim(rounding_digits) }}{% endif %}"
+  autocomplete="off"
+  {%
+  if
+  v
+  is
+  not
+  none
+  %}title="{{ (v|format_decimal_trim(0))|e }}"
+  {%
+  endif
+  %}
+/>
+{% endif %}
+{% endmacro %}
+{% macro fr_key_hidden(suffix, attr, row) %}
+{% set v = row|attr(attr) if row else none %}
+{% if attr == 'restriction_name' %}
+<input type="hidden" name="fr_{{ suffix }}_restriction_name" value="{% if v is not none %}{{ v }}{% endif %}" />
+{% else %}
+<input type="hidden" name="fr_{{ suffix }}_{{ attr }}" value="{{ _code_str(v)|trim }}" />
+{% endif %}
+{% endmacro %}
+{% macro fr_edit_row(suffix, row) %}
+{% set is_new = row is none %}
+<tr class="text-center align-middle fr-edit-row" data-fr-suffix="{{ suffix }}">
+  <td class="p-1">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-danger fr-delete-btn"
+      title="Удалить строку"
+      data-fr-delete-id="{% if row %}{{ row.id }}{% endif %}"
+      data-fr-suffix="{{ suffix }}"
+    >
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </td>
+  {% for attr, label, field_code in restriction_headings %}
+  {% if attr in _key_attrs and not is_new %}
+  <td class="text-center px-2{% if attr in ('oes', 'obl', 'restriction_name') %} text-start{% endif %}{% if attr == 'restriction_name' %} fr-col-name{% elif attr in ('oes', 'obl') %} fr-col-ref{% endif %}">
+    {{ fr_cell_value(row, attr) }}
+    {{ fr_key_hidden(suffix, attr, row) }}
+  </td>
+  {% elif attr in _edit_attrs %}
+  <td class="p-0 {% if attr == 'restriction_name' %}fr-col-name{% elif attr in ('oes', 'obl') %}fr-col-ref{% endif %}">
+    {{ fr_edit_input(suffix, attr, row) }}
+  </td>
+  {% else %}
+  <td class="text-center fr-readonly px-2">{{ fr_cell_value(row, attr) }}</td>
+  {% endif %}
+  {% endfor %}
+</tr>
+{% endmacro %}
 
 <div class="container-fluid mt-2">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3">
-        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль «Топливо»</a>
-        {% set calc_qs = request.query_string.decode('utf-8') if request.query_string else '' %}
-        <a href="{{ url_for('fuel_bp.fuel_calculation_form') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}" class="btn btn-secondary fs-5">Расчёт</a>
-        <a href="{{ url_for('fuel_bp.distribution_parameters_list') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}" class="btn btn-secondary fs-5">Параметры распределения</a>
+  <div
+    class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-3"
+  >
+    <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"
+      ><i class="bi bi-gear-wide-connected"></i> Модуль «Топливо»</a
+    >
+    {% set calc_qs = _qs_no_edit %}
+    <a
+      href="{{ url_for('fuel_bp.fuel_calculation_form') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}"
+      class="btn btn-secondary fs-5"
+      >Расчёт</a
+    >
+    <a
+      href="{{ url_for('fuel_bp.distribution_parameters_list') }}{% if calc_qs %}?{{ calc_qs }}{% endif %}"
+      class="btn btn-secondary fs-5"
+      >Параметры распределения</a
+    >
+  </div>
+
+  <h2 class="text-center mb-3">Ограничения</h2>
+
+  <div id="restrictionsStickyControls" class="restrictions-sticky-controls">
+  <div class="col-12 mb-2">
+    <div
+      class="d-flex justify-content-start align-items-center flex-wrap gap-2 w-100"
+    >
+      {% if can_edit %}
+      <button
+        id="importExportToggleBtn"
+        class="btn btn-outline-secondary text-dark"
+        type="button"
+        data-bs-toggle="collapse"
+        data-bs-target="#restrictionsImportExportCollapse"
+        aria-expanded="false"
+        aria-controls="restrictionsImportExportCollapse"
+      >
+        📁 Импорт / Экспорт
+      </button>
+      {% endif %}
     </div>
+  </div>
 
-    <h2 class="mb-3">Ограничения</h2>
-    <p class="text-muted small mb-3">Данные в порядке сортировки по полю <code>obl</code> (как при открытии формы в Access: <code>Me.OrderBy = &quot;obl&quot;</code>).</p>
-
-    <div class="col-12 mb-3">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 w-100">
-            <button class="btn {% if has_active_filters|default(false) %}btn-warning{% else %}btn-primary{% endif %} text-white"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#restrictionsFiltersCollapse"
-                    aria-expanded="true"
-                    aria-controls="restrictionsFiltersCollapse">
-                Фильтры
-            </button>
-            <div class="d-flex align-items-center gap-1">
-                <label for="rounding_digits_top" class="mb-0 text-nowrap">Округл:</label>
-                <select id="rounding_digits_top" class="form-select" style="min-width: 9rem;">
-                    <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-                    <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-                    <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-                    <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-                    <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
-    <div class="collapse show mt-2" id="restrictionsFiltersCollapse">
-        <form method="GET" action="{{ url_for('fuel_bp.fuel_restrictions_list') }}" class="card card-body mb-3">
-            {% for key, values in request.args.lists() %}
-                {% if key not in ['union_energy_system_filter', 'start_year', 'rounding_digits'] %}
-                    {% for v in values %}
-                        <input type="hidden" name="{{ key }}" value="{{ v }}">
-                    {% endfor %}
-                {% endif %}
-            {% endfor %}
-            <input type="hidden" name="rounding_digits" id="rounding_digits_hidden" value="{{ rounding_digits }}">
-            <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-4">
-                    <label class="form-label fw-semibold mb-1" for="union_energy_system_filter_r">ОЭС</label>
-                    <select id="union_energy_system_filter_r" name="union_energy_system_filter" class="form-select">
-                        <option value="" {% if _ues_selected is none %}selected{% endif %}>Все ОЭС</option>
-                        {% for ues in union_energy_system_list if ues.name|lower == 'не указано' %}
-                        <option value="{{ ues.id }}" {% if _ues_selected is not none and ues.id == _ues_selected %}selected{% endif %}>{{ ues.name }}</option>
-                        {% endfor %}
-                        {% for ues in union_energy_system_list if ues.name|lower != 'не указано' %}
-                        <option value="{{ ues.id }}" {% if _ues_selected is not none and ues.id == _ues_selected %}selected{% endif %}>{{ ues.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-12 col-md-3">
-                    <label class="form-label fw-semibold mb-1" for="start_year_r">Год расчёта</label>
-                    <select name="start_year" id="start_year_r" class="form-select">
-                        <option value="" {% if start_year is none %}selected{% endif %}>Все годы</option>
-                        {% for year in filter_year_list %}
-                        <option value="{{ year }}" {% if start_year is not none and start_year == year %}selected{% endif %}>{{ year }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-primary">Применить</button>
-                </div>
-            </div>
+  {% if can_edit %}
+  <div class="col-12 mb-2">
+    <div class="collapse power-demand-import-export-collapse" id="restrictionsImportExportCollapse">
+      <div
+        class="d-flex justify-content-between align-items-start w-100 flex-wrap gap-2 mt-2"
+      >
+        <form
+          method="GET"
+          action="{{ url_for('fuel_bp.fuel_restrictions_export') }}"
+          class="d-inline"
+        >
+          {% for key, values in request.args.lists() %} {% if key != 'edit' %}
+          {% for v in values %}
+          <input type="hidden" name="{{ key }}" value="{{ v }}" />
+          {% endfor %} {% endif %} {% endfor %}
+          <button
+            type="submit"
+            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+            style="white-space: nowrap"
+          >
+            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт
+            в Excel
+          </button>
         </form>
-    </div>
-
-    <script>
-    (function() {
-        var sel = document.getElementById('rounding_digits_top');
-        var hidden = document.getElementById('rounding_digits_hidden');
-        var form = hidden && hidden.closest('form');
-        function sync() {
-            if (sel && hidden) hidden.value = sel.value;
-        }
-        if (sel && hidden) {
-            sel.addEventListener('change', function() {
-                sync();
-                if (form) form.submit();
+        <form
+          action="{{ url_for('fuel_bp.fuel_restrictions_import') }}"
+          method="POST"
+          enctype="multipart/form-data"
+          class="d-flex align-items-center flex-wrap gap-2 ms-auto"
+          id="restrictionsImportForm"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <input
+            type="hidden"
+            name="restrictions_import_return_qs"
+            value="{{ _qs_no_edit|e }}"
+          />
+          <input
+            type="file"
+            name="file"
+            class="d-none"
+            accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            id="restrictionsImportFile"
+            required
+          />
+          <button
+            type="button"
+            class="btn btn-outline-primary d-inline-flex align-items-center gap-2"
+            id="restrictionsImportBtn"
+          >
+            <i class="bi bi-upload"></i> Импорт из Excel
+          </button>
+        </form>
+      </div>
+      <script>
+        (function () {
+          var form = document.getElementById("restrictionsImportForm");
+          var btn = document.getElementById("restrictionsImportBtn");
+          var fileInput = document.getElementById("restrictionsImportFile");
+          if (form && btn && fileInput) {
+            btn.addEventListener("click", function () {
+              fileInput.click();
             });
-            sync();
-        }
-    })();
-    </script>
-
-    <div class="table-responsive border rounded">
-        <table class="table table-hover table-striped table-bordered align-middle mb-0 restrictions-table">
-            <thead class="table-success">
-                <tr class="text-center">
-                    {% for attr, label in restriction_headings %}
-                    <th>{{ label }}</th>
-                    {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in restriction_rows %}
-                <tr class="text-center">
-                    {% for attr, label in restriction_headings %}
-                    <td class="text-center">
-                        {% set v = attribute(row, attr) %}
-                        {% if v is none %}
-                            —
-                        {% elif attr in ('restriction_name', 'kcur') %}
-                            {% if v == '' %}—{% else %}{{ v }}{% endif %}
-                        {% else %}
-                            {{ v|format_decimal_trim(rounding_digits) }}
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="{{ restriction_headings|length }}" class="text-center text-muted py-4">
-                        Нет строк. При необходимости загрузите данные в таблицу <code>gs_fue_restrictions</code> или ослабьте фильтр.
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+            fileInput.addEventListener("change", function () {
+              if (fileInput.files && fileInput.files.length > 0) form.submit();
+            });
+            form.addEventListener("submit", function () {
+              btn.disabled = true;
+              btn.innerHTML =
+                '<span class="spinner-border spinner-border-sm me-1"></span> Импорт...';
+            });
+          }
+        })();
+      </script>
     </div>
+  </div>
+  {% endif %}
+
+  <form id="frListFilterForm" class="d-none" aria-hidden="true"></form>
+
+  <div
+    class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2"
+  >
+    <div class="flex-shrink-0 d-flex flex-wrap gap-2 align-items-center">
+      <a
+        href="{{ url_for('fuel_bp.fuel_restrictions_list') }}"
+        class="btn btn-outline-danger"
+        id="frFiltersResetBtn"
+        title="Сбросить все фильтры"
+        >Сбросить</a
+      >
+    </div>
+    <div
+      class="d-flex align-items-center flex-wrap gap-2 flex-shrink-0 ms-auto"
+    >
+      {% if edit_mode %}
+      <button type="button" class="btn btn-outline-success" id="frAddRowBtn">
+        Добавить строку
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-danger"
+        id="frToggleDeleteBtn"
+        aria-pressed="false"
+        title="Показать крестики для удаления строк"
+      >
+        Удалить строки
+      </button>
+      <button
+        type="submit"
+        class="btn btn-outline-primary"
+        form="restrictionsEditForm"
+      >
+        Сохранить
+      </button>
+      {% endif %}
+      <div
+        class="d-flex align-items-center gap-1"
+        style="min-width: 16rem"
+      >
+        <label
+          for="rounding_digits"
+          class="mb-0 flex-shrink-0"
+          style="white-space: nowrap"
+          >Округл:</label
+        >
+        <select
+          id="rounding_digits"
+          name="rounding_digits"
+          class="form-select"
+          style="min-width: 140px"
+        >
+          <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>
+            Не округлять
+          </option>
+          <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>
+            1 знак
+          </option>
+          <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>
+            2 знака
+          </option>
+          <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>
+            3 знака
+          </option>
+          <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>
+            Целое число
+          </option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      function navigateWithQuery(updater) {
+        var params = new URLSearchParams(window.location.search);
+        updater(params);
+        window.location.href =
+          window.location.pathname +
+          (params.toString() ? "?" + params.toString() : "");
+      }
+      var sel = document.getElementById("rounding_digits");
+      if (sel) {
+        sel.addEventListener("change", function () {
+          navigateWithQuery(function (params) {
+            params.set("rounding_digits", sel.value);
+          });
+        });
+      }
+    })();
+  </script>
+  </div><!-- /#restrictionsStickyControls -->
+
+  <script>
+    (function () {
+      document.addEventListener("DOMContentLoaded", function () {
+        var tables = document.querySelectorAll(".restrictions-table");
+        if (!tables.length) return;
+
+        function navigateWithQuery(updater) {
+          var params = new URLSearchParams(window.location.search);
+          updater(params);
+          window.location.href =
+            window.location.pathname +
+            (params.toString() ? "?" + params.toString() : "");
+        }
+
+        function applyCheckboxFilter(menuSelector, paramName) {
+          navigateWithQuery(function (params) {
+            params.delete(paramName);
+            document
+              .querySelectorAll(menuSelector + ' input[name="' + paramName + '"]:checked')
+              .forEach(function (cb) {
+                params.append(paramName, cb.value);
+              });
+          });
+        }
+
+        tables.forEach(function (table) {
+          table
+            .querySelectorAll('.fr-thead-ues-menu input[name="union_energy_system_filter"]')
+            .forEach(function (cb) {
+              cb.addEventListener("change", function () {
+                applyCheckboxFilter(".fr-thead-ues-menu", "union_energy_system_filter");
+              });
+            });
+          table
+            .querySelectorAll('.fr-thead-res-menu input[name="regional_energy_system_filter"]')
+            .forEach(function (cb) {
+              cb.addEventListener("change", function () {
+                applyCheckboxFilter(
+                  ".fr-thead-res-menu",
+                  "regional_energy_system_filter",
+                );
+              });
+            });
+
+          table.querySelectorAll(".filter-reset-btn").forEach(function (button) {
+            button.addEventListener("click", function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var filterName = this.getAttribute("data-filter-name");
+              if (filterName === "union_energy_system_filter") {
+                navigateWithQuery(function (params) {
+                  params.delete("union_energy_system_filter");
+                });
+                return;
+              }
+              if (filterName === "regional_energy_system_filter") {
+                navigateWithQuery(function (params) {
+                  params.delete("regional_energy_system_filter");
+                });
+                return;
+              }
+              if (filterName === "start_year") {
+                table
+                  .querySelectorAll('.fr-thead-year-menu input[name="start_year"]')
+                  .forEach(function (cb) {
+                    cb.checked = false;
+                  });
+              }
+            });
+          });
+
+          table.querySelectorAll(".filter-apply-btn").forEach(function (button) {
+            button.addEventListener("click", function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var filterName = this.getAttribute("data-filter-name");
+              if (filterName !== "start_year") return;
+              navigateWithQuery(function (params) {
+                params.delete("start_year");
+                table
+                  .querySelectorAll('.fr-thead-year-menu input[name="start_year"]:checked')
+                  .forEach(function (cb) {
+                    params.append("start_year", cb.value);
+                  });
+              });
+            });
+          });
+
+          table.querySelectorAll(".filter-clear-btn").forEach(function (button) {
+            button.addEventListener("click", function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var filterName = this.getAttribute("data-filter-name");
+              if (!filterName) return;
+              navigateWithQuery(function (params) {
+                params.delete(filterName);
+              });
+            });
+          });
+        });
+      });
+    })();
+  </script>
+
+  {% if edit_mode %}
+  <form
+    method="POST"
+    action="{{ url_for('fuel_bp.fuel_restrictions_save') }}"
+    id="restrictionsEditForm"
+    class="mb-0"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input
+      type="hidden"
+      name="restrictions_edit_row_ids"
+      id="restrictionsEditRowIdsInput"
+      value="{{ restriction_rows | map(attribute='id') | join(',') }}"
+    />
+    <input
+      type="hidden"
+      name="restrictions_new_row_tokens"
+      id="restrictionsNewRowTokensInput"
+      value=""
+    />
+    <input
+      type="hidden"
+      name="restrictions_delete_ids"
+      id="restrictionsDeleteIdsInput"
+      value=""
+    />
+    <input
+      type="hidden"
+      name="restrictions_save_return_qs"
+      value="{{ _qs_no_edit|e }}{% if _qs_no_edit %}&{% endif %}edit=1"
+    />
+    <input
+      type="hidden"
+      name="restrictions_save_rounding_digits"
+      value="{{ rounding_digits }}"
+    />
+    <div
+      class="table-responsive"
+      id="restrictionsTableContainer"
+    >
+      <table
+        class="table table-hover table-striped table-bordered align-middle mb-0 restrictions-table restrictions-edit-table"
+        id="restrictionsTable"
+      >
+        <thead class="table-success">
+          <tr class="text-center">
+            <th style="width: 2.5rem"></th>
+            {% for attr, label, field_code in restriction_headings %}
+            <th>{{ fr_thead_cell(attr, label, field_code) }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody id="restrictionsTbody">
+          {% for row in restriction_rows %} {{ fr_edit_row(row.id, row) }} {%
+          else %}
+          <tr id="restrictionsEmptyHintRow">
+            <td
+              colspan="{{ restriction_headings|length + 1 }}"
+              class="text-center text-muted py-4"
+            >
+              Нет строк. Нажмите «Добавить строку» или перенесите данные из
+              Access-таблицы <code>Ограничения</code>.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <template id="restrictionsNewRowTemplate">
+      {{ fr_edit_row('__TOKEN__', none) }}
+    </template>
+  </form>
+
+  <script>
+    (function () {
+      var tbody = document.getElementById("restrictionsTbody");
+      var tmpl = document.getElementById("restrictionsNewRowTemplate");
+      var addBtn = document.getElementById("frAddRowBtn");
+      var delBtn = document.getElementById("frToggleDeleteBtn");
+      var container = document.getElementById("restrictionsTableContainer");
+      var newTokensInput = document.getElementById(
+        "restrictionsNewRowTokensInput",
+      );
+      var deleteIdsInput = document.getElementById(
+        "restrictionsDeleteIdsInput",
+      );
+      var emptyHint = document.getElementById("restrictionsEmptyHintRow");
+      var nextNew = 1;
+      var newTokens = [];
+      var deleteIds = [];
+
+      function syncTokens() {
+        if (newTokensInput) newTokensInput.value = newTokens.join(",");
+        if (deleteIdsInput) deleteIdsInput.value = deleteIds.join(",");
+      }
+
+      if (addBtn && tmpl && tbody) {
+        addBtn.addEventListener("click", function () {
+          var token = "new_" + nextNew++;
+          newTokens.push(token);
+          syncTokens();
+          if (emptyHint) emptyHint.remove();
+          var html = tmpl.innerHTML.split("__TOKEN__").join(token);
+          var wrap = document.createElement("tbody");
+          wrap.innerHTML = html.trim();
+          var row = wrap.firstElementChild;
+          if (!row) return;
+          // Prefill year / ОЭС / РЭС from URL filters when possible.
+          var params = new URLSearchParams(window.location.search);
+          var yearInp = row.querySelector('[name="fr_' + token + '_year"]');
+          var oesInp = row.querySelector('[name="fr_' + token + '_oes"]');
+          var oblInp = row.querySelector('[name="fr_' + token + '_obl"]');
+          var koblInp = row.querySelector('[name="fr_' + token + '_kobl"]');
+          if (yearInp) {
+            var years = params.getAll("start_year");
+            if (years.length === 1) yearInp.value = years[0];
+          }
+          if (oesInp) {
+            var ues = params.getAll("union_energy_system_filter");
+            if (ues.length === 1) oesInp.value = ues[0];
+          }
+          if (oblInp) {
+            var res = params.getAll("regional_energy_system_filter");
+            if (res.length === 1) oblInp.value = res[0];
+          }
+          if (koblInp && !koblInp.value) koblInp.value = "1";
+          tbody.insertBefore(row, tbody.firstChild);
+        });
+      }
+
+      if (delBtn && container) {
+        delBtn.addEventListener("click", function () {
+          var on = delBtn.getAttribute("aria-pressed") === "true";
+          on = !on;
+          delBtn.setAttribute("aria-pressed", on ? "true" : "false");
+          container.classList.toggle("restrictions-delete-mode", on);
+          delBtn.classList.toggle("btn-danger", on);
+          delBtn.classList.toggle("btn-outline-danger", !on);
+        });
+      }
+
+      if (tbody) {
+        tbody.addEventListener("click", function (ev) {
+          var btn = ev.target.closest(
+            "[data-fr-delete-id], [data-fr-suffix].fr-delete-btn, .fr-delete-btn",
+          );
+          if (!btn || !btn.classList.contains("fr-delete-btn")) return;
+          var row = btn.closest("tr");
+          if (!row) return;
+          var id = btn.getAttribute("data-fr-delete-id");
+          var suffix =
+            btn.getAttribute("data-fr-suffix") ||
+            row.getAttribute("data-fr-suffix") ||
+            "";
+          if (id) {
+            deleteIds.push(id);
+            // убрать из списка редактируемых id
+            var idsInput = document.getElementById(
+              "restrictionsEditRowIdsInput",
+            );
+            if (idsInput) {
+              idsInput.value = idsInput.value
+                .split(",")
+                .map(function (x) {
+                  return x.trim();
+                })
+                .filter(function (x) {
+                  return x && x !== String(id);
+                })
+                .join(",");
+            }
+          } else if (suffix && suffix.indexOf("new_") === 0) {
+            newTokens = newTokens.filter(function (t) {
+              return t !== suffix;
+            });
+          }
+          syncTokens();
+          row.remove();
+        });
+      }
+    })();
+  </script>
+  {% else %}
+  <div class="table-responsive" id="restrictionsTableContainer">
+    <table
+      class="table table-hover table-striped table-bordered align-middle mb-0 restrictions-table"
+    >
+      <thead class="table-success">
+        <tr class="text-center">
+          {% for attr, label, field_code in restriction_headings %}
+          <th>{{ fr_thead_cell(attr, label, field_code) }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in restriction_rows %}
+        <tr class="text-center">
+          {% for attr, label, field_code in restriction_headings %}
+          <td class="text-center{% if attr in ('oes', 'obl', 'restriction_name') %} text-start px-2{% endif %}">{{ fr_cell_value(row, attr) }}</td>
+          {% endfor %}
+        </tr>
+        {% else %}
+        <tr>
+          <td
+            colspan="{{ restriction_headings|length }}"
+            class="text-center text-muted py-4"
+          >
+            Нет строк. Нажмите «Добавить строку» или перенесите данные из
+            Access-таблицы
+            <code>Ограничения</code> (БД «Топливо на ГС.mdb») в
+            <code>gs_fue_restrictions</code>.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>
 
-{% endif %}
-{% endblock %}
+<script>
+  (function () {
+    function updateRestrictionsStickyHeights() {
+      var controls = document.getElementById("restrictionsStickyControls");
+      var h = controls
+        ? Math.ceil(
+            controls.getBoundingClientRect().height || controls.offsetHeight || 0
+          )
+        : 0;
+      document.documentElement.style.setProperty(
+        "--restrictions-controls-sticky-height",
+        h + "px"
+      );
+    }
+
+    function bind() {
+      updateRestrictionsStickyHeights();
+      var controls = document.getElementById("restrictionsStickyControls");
+      if (controls && typeof ResizeObserver !== "undefined") {
+        var ro = new ResizeObserver(function () {
+          updateRestrictionsStickyHeights();
+        });
+        ro.observe(controls);
+      }
+      document.addEventListener("shown.bs.collapse", updateRestrictionsStickyHeights);
+      document.addEventListener("hidden.bs.collapse", updateRestrictionsStickyHeights);
+      window.addEventListener("resize", updateRestrictionsStickyHeights);
+      window.addEventListener("load", updateRestrictionsStickyHeights);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bind);
+    } else {
+      bind();
+    }
+  })();
+</script>
+
+{% endif %} {% endblock %}

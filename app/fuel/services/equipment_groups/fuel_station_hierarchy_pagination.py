@@ -8,12 +8,14 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from decimal import Decimal
 from typing import Any
 
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     should_suppress_fuel_params_station_summary_row,
+)
+from app.fuel.services.equipment_groups.equipment_group_extra_fuel_params_services import (
+    sum_extra_fuel_attrs_for_rows,
 )
 from app.fuel.services.stations.stations_equipment_groups_services import (
     get_standalone_equipment_group_ids,
@@ -24,21 +26,12 @@ def _rows_from_group_block(gb: dict) -> list:
     return gb.get("rows") or []
 
 
-def _compute_summary_for_attrs(rows: list, summary_attr_names: list[str]) -> dict:
-    summary: dict[str, Decimal] = {}
-    for attr in summary_attr_names:
-        total = Decimal(0)
-        for _eg, param in rows:
-            if param is None:
-                continue
-            val = getattr(param, attr, None)
-            if val is not None:
-                try:
-                    total += Decimal(str(val))
-                except (TypeError, ValueError):
-                    pass
-        summary[attr] = total
-    return summary
+def _compute_summary_for_attrs(
+    rows: list,
+    summary_attr_names: list[str],
+    children_by_parent: dict | None = None,
+) -> dict:
+    return sum_extra_fuel_attrs_for_rows(rows, summary_attr_names, children_by_parent)
 
 
 def count_fuel_eg_groups_in_hierarchy(hierarchy_flat: list | None) -> int:
@@ -61,6 +54,7 @@ def paginate_fuel_eg_station_hierarchy(
     page: int,
     per_page: int | str | None,
     summary_attr_names: list[str],
+    children_by_parent: dict | None = None,
 ) -> tuple[list, int, int, int]:
     """
     Возвращает:
@@ -68,6 +62,9 @@ def paginate_fuel_eg_station_hierarchy(
       - общее число групп оборудования (по всем страницам);
       - число страниц;
       - номер текущей страницы.
+
+    children_by_parent — опционально: для страниц, где родительские столбцы
+    считаются суммой листовых полей (доп. топливные параметры).
     """
     flat_items: list[dict[str, Any]] = []
     for est_block in hierarchy_flat or []:
@@ -175,7 +172,9 @@ def paginate_fuel_eg_station_hierarchy(
                             "station_name": station_block.get("station_name"),
                             "group_blocks": gbs,
                             "station_summary": _compute_summary_for_attrs(
-                                station_rows, summary_attr_names
+                                station_rows,
+                                summary_attr_names,
+                                children_by_parent,
                             ),
                             "is_virtual": station_block.get("is_virtual", False),
                             "suppress_station_summary": should_suppress_fuel_params_station_summary_row(
@@ -199,7 +198,9 @@ def paginate_fuel_eg_station_hierarchy(
                             "station_name": st_key[1],
                             "group_blocks": gbs,
                             "station_summary": _compute_summary_for_attrs(
-                                station_rows, summary_attr_names
+                                station_rows,
+                                summary_attr_names,
+                                children_by_parent,
                             ),
                             "is_virtual": False,
                             "suppress_station_summary": should_suppress_fuel_params_station_summary_row(
@@ -227,7 +228,9 @@ def paginate_fuel_eg_station_hierarchy(
                         ],
                         "station_blocks": station_blocks_out,
                         "res_summary": _compute_summary_for_attrs(
-                            all_res_rows, summary_attr_names
+                            all_res_rows,
+                            summary_attr_names,
+                            children_by_parent,
                         ),
                     }
                 )

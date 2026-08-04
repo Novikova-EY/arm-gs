@@ -16,9 +16,8 @@ from app.fuel.models.fue_equipment_group_heat_and_tariffs_model import (
     EquipmentGroupHeatAndTariffs,
 )
 
-
 HEAT_AND_TARIFFS_COLUMNS = [
-    ("numb1120", "NUMB1120", False),
+    ("numb1120", "Код группы оборудования", False),
     ("kod_goroda", "kod_goroda", False),
     ("name_goroda", "name_goroda", False),
     ("var_razv", "var_razv", False),
@@ -31,7 +30,7 @@ HEAT_AND_TARIFFS_COLUMNS = [
 
 # Колонки-идентификаторы (слева) и метрики (строки) при отображении годов столбцами
 HEAT_AND_TARIFFS_IDENTITY_COLUMNS = [
-    ("numb1120", "NUMB1120", False),
+    ("numb1120", "Код группы оборудования", False),
     ("kod_goroda", "kod_goroda", False),
     ("name_goroda", "name_goroda", False),
     ("var_razv", "var_razv", False),
@@ -68,7 +67,7 @@ def _fake_equipment_group(param: EquipmentGroupHeatAndTariffs) -> SimpleNamespac
 
 def get_equipment_groups_with_heat_and_tariffs_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,
@@ -145,8 +144,8 @@ def get_equipment_groups_with_heat_and_tariffs_data(
         if k not in ("page", "start_year", "end_year")
     }
     equipment_group_name_filter = (
-        (_filters.get("equipment_group_name_filter") or "").strip() or None
-    )
+        _filters.get("equipment_group_name_filter") or ""
+    ).strip() or None
     has_territorial = any(_filters.get(k) for k in territorial_keys)
 
     if has_territorial or equipment_group_name_filter:
@@ -155,15 +154,12 @@ def get_equipment_groups_with_heat_and_tariffs_data(
             get_filtered_standalone_equipment_group_ids,
         )
 
-        filtered_ids = (
-            get_filtered_equipment_group_ids(
-                _filters, start_year=_start, end_year=_end
-            )
-            | get_filtered_standalone_equipment_group_ids(
-                _filters,
-                version_id=current_version_id,
-                strict_version=True,
-            )
+        filtered_ids = get_filtered_equipment_group_ids(
+            _filters, start_year=_start, end_year=_end
+        ) | get_filtered_standalone_equipment_group_ids(
+            _filters,
+            version_id=current_version_id,
+            strict_version=True,
         )
         name_clauses = []
         if equipment_group_name_filter:
@@ -247,7 +243,9 @@ def _pivot_heat_and_tariffs_group_block(eg_rows, years):
         values_by_year = {}
         for y in years:
             param = by_year.get(y)
-            values_by_year[y] = getattr(param, attr, None) if param is not None else None
+            values_by_year[y] = (
+                getattr(param, attr, None) if param is not None else None
+            )
         metric_rows.append(
             {
                 "attr": attr,
@@ -313,8 +311,8 @@ def refresh_heat_and_tariffs_year_summaries(hierarchy_flat, years):
                             )
                             gb.update(pivoted)
                         station_rows.extend(gb.get("rows") or [])
-                    station_block["station_summary"] = compute_heat_and_tariffs_year_summary(
-                        station_rows, years
+                    station_block["station_summary"] = (
+                        compute_heat_and_tariffs_year_summary(station_rows, years)
                     )
                     all_res_rows.extend(station_rows)
                 res_block["res_summary"] = compute_heat_and_tariffs_year_summary(
@@ -324,7 +322,7 @@ def refresh_heat_and_tariffs_year_summaries(hierarchy_flat, years):
 
 
 def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
-    """Строит иерархию: energy_system_type → UES → РЭС → станция → группа/ЭТО.
+    """Строит иерархию: energy_system_type → UES → РЭС → станция → группа оборудования.
 
     Группы схлопнуты по годам: identity + metric_rows (Q/TARIF) × years.
     """
@@ -395,7 +393,9 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
         return (1 if eid == -1 else 0, est_names.get(eid, ""))
 
     def _sort_key_ues(uid):
-        return union_energy_system_hierarchy_sort_key(uid, ues_names, ues_display_orders)
+        return union_energy_system_hierarchy_sort_key(
+            uid, ues_names, ues_display_orders
+        )
 
     def _sort_key_res(rid):
         return (1 if rid == -1 else 0, res_names.get(rid, ""))

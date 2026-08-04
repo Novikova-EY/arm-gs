@@ -1,0 +1,226 @@
+Version =19
+VersionRequired =19
+Checksum =-440772165
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =7
+    BorderStyle =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2792
+    DatasheetFontHeight =10
+    ItemSuffix =14
+    Left =6228
+    Top =132
+    Right =8976
+    Bottom =1548
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x2356f6d64d3fe240
+    End
+    GUID = Begin
+        0xe1f3b9fa503d134c9595ea47e8755349
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =2175
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x8f0d55132c4f134091a55d401238ba20
+            End
+            Begin
+                Begin OptionGroup
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Left =30
+                    Width =2762
+                    Height =1600
+                    Name ="sw"
+                    AfterUpdate ="[Event Procedure]"
+                    DefaultValue ="1"
+                    GUID = Begin
+                        0xb2a9f5d2acbb924fb3146bc7cff7d245
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =216
+                            Top =238
+                            OptionValue =1
+                            Name ="Переключатель3"
+                            GUID = Begin
+                                0x67e68d78ea21b84a9b89e563dd968215
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =446
+                                    Top =210
+                                    Width =2268
+                                    Height =240
+                                    Name ="Надпись4"
+                                    Caption ="Всего, в т.ч. по типам обор."
+                                    GUID = Begin
+                                        0x22bdf26cb9a2b04aa21dd527fab6786a
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =216
+                            Top =568
+                            OptionValue =2
+                            Name ="Переключатель5"
+                            GUID = Begin
+                                0x33cceed95b560c418a66f64e96193332
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =446
+                                    Top =540
+                                    Width =2268
+                                    Height =240
+                                    Name ="Надпись6"
+                                    Caption ="Всего,в т.ч. по ведомствам"
+                                    GUID = Begin
+                                        0x106cfa478eeeef41b124f3a54b660e06
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =216
+                            Top =908
+                            OptionValue =3
+                            Name ="Переключатель9"
+                            GUID = Begin
+                                0xdc776b4b0ad11a43b982293f4380e1e6
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =446
+                                    Top =872
+                                    Width =2268
+                                    Height =240
+                                    Name ="Надпись10"
+                                    Caption ="Всего, в т.ч. действ.,новые"
+                                    GUID = Begin
+                                        0x35a816f976b2c94f9271ecbaf7adbb07
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =216
+                            Top =1247
+                            OptionValue =4
+                            Name ="Переключатель12"
+                            GUID = Begin
+                                0xf9a32f89fcb8dd47b76ca3603a7783e9
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =446
+                                    Top =1204
+                                    Width =1485
+                                    Height =240
+                                    Name ="Надпись13"
+                                    Caption ="Всего"
+                                    GUID = Begin
+                                        0xef07eb5ad2849742a39b6db422da327a
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Top =1700
+                    Width =1320
+                    Height =315
+                    TabIndex =1
+                    Name ="param"
+                    ControlSource ="=IIf([sw]=1,\"об\",IIf([sw]=2,\"вед\",IIf([sw]=3,\"дн\",\"всего\")))"
+                    GUID = Begin
+                        0x862683664b71f146843856477f67eb1d
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Open(Cancel As Integer)
+Call sw_AfterUpdate
+End Sub
+
+Public Sub sw_AfterUpdate()
+Dim db As Database, Qoes As QueryDef
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set Qoes = db.QueryDefs(Forms("Настройка_отчета")![Список_запросов]!Name)
+sqloes = Qoes.SQL
+If sw = 1 Then
+sqloes = repbetw(sqloes, "ON ", "= имена_итогов_1", "typeob(w.obor) ")
+End If
+If sw = 2 Then
+sqloes = repbetw(sqloes, "ON ", "= имена_итогов_1", "iif(w.ved<3,1,2) ")
+End If
+If sw = 3 Then
+sqloes = repbetw(sqloes, "ON ", "= имена_итогов_1", "iif(Имена_станций.D=1,1,2) ")
+End If
+If sw = 4 Then
+sqloes = repbetw(sqloes, "ON ", "= имена_итогов_1", "iif(w.ved<3,1,2) ")
+End If
+Qoes.SQL = sqloes
+End Sub

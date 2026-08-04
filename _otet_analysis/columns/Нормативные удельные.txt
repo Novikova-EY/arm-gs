@@ -1,0 +1,7 @@
+TABLE: Нормативные удельные
+1	Name	DBTYPE_WVARCHAR
+2	bek	DBTYPE_R8
+3	betp	DBTYPE_R8
+4	data	DBTYPE_WVARCHAR
+5	numb	DBTYPE_R8
+6	numb1	DBTYPE_R8

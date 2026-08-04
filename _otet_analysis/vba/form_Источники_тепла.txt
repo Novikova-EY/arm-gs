@@ -1,0 +1,132 @@
+Version =20
+VersionRequired =20
+Checksum =1484186399
+Begin Form
+    NavigationButtons = NotDefault
+    FilterOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =55
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2835
+    DatasheetFontHeight =10
+    ItemSuffix =4
+    Left =6360
+    Top =4500
+    Right =12195
+    Bottom =7320
+    DatasheetGridlinesColor =12632256
+    Filter ="code=1"
+    RecSrcDt = Begin
+        0x2762aee333e2e240
+    End
+    GUID = Begin
+        0x303624054b108f49ba3d158c8a5705f4
+    End
+    NameMap = Begin
+        0x0acc0e5500000000691efc030433c64c8b7fcdaad86cc1db000000007e4b896b ,
+        0x8e6be54000000000000000002104420430043d04460438043804320030003000 ,
+        0x3300000000000000c4d7c98b907e464fac4dcf86dd78ad9307000000691efc03 ,
+        0x0433c64c8b7fcdaad86cc1db5100000000000000a25d1cfa96b0ba4784447f3a ,
+        0x3a7f3a4400000000df26538eb84ce54069a8011bd0114e0a18043c0435043d04 ,
+        0x30045f004104420430043d0446043804390400000000000002ab3a21fe53c849 ,
+        0x90d5752ecf1aa65407000000a25d1cfa96b0ba4784447f3a3a7f3a444d004100 ,
+        0x49004e00000000000000638d2ca41dc82440828479febcb4c85107000000a25d ,
+        0x1cfa96b0ba4784447f3a3a7f3a441204350434043e043c044104420432043e04 ,
+        0x000000000000d79c235de3d4f24794753dabeaf78cd607000000a25d1cfa96b0 ,
+        0xba4784447f3a3a7f3a444e0041004d0045000000000000004fd4a7c61d222a42 ,
+        0x99092bbc1d9cca0a07000000a25d1cfa96b0ba4784447f3a3a7f3a4463006f00 ,
+        0x6400650067006f0072000000000000008b07923e01c248468a69b5e34c817f22 ,
+        0x07000000a25d1cfa96b0ba4784447f3a3a7f3a444f0042004c00000000000000 ,
+        0x9600a4bba9e82340bc6d1f65006dacd807000000a25d1cfa96b0ba4784447f3a ,
+        0x3a7f3a444e0055004d004200000000000000c51075cf03f0d7428890310d8307 ,
+        0x436207000000691efc030433c64c8b7fcdaad86cc1db4e0055004d0042003100 ,
+        0x310032003000000000000000000000000000000000000000000000000c000000 ,
+        0x030000000000000000000000000000000000
+    End
+    RecordSource ="SELECT [Имена_станций].[NAME], [Станции2003].[Q], [Имена_станций].[codegor], [Им"
+        "ена_станций].[OBL], [Имена_станций].[NUMB] FROM Станции2003 INNER JOIN Имена_ста"
+        "нций ON [Станции2003].[NUMB1120]=[Имена_станций].[NUMB] WHERE ((([Станции2003].["
+        "Q])>0) And (([Имена_станций].[MAIN])=0 Or ([Имена_станций].[MAIN]) Is Null) And "
+        "(([Имена_станций].[Ведомство])=1)); "
+    OnCurrent ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin UnboundObjectFrame
+            SpecialEffect =2
+            OldBorderStyle =1
+            Width =4536
+            Height =2835
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xf6f3396fb99d174ab6ebdb45306f74e4
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Width =1701
+                    ColumnWidth =3072
+                    Name ="Источники тепла РАО и АО"
+                    ControlSource ="NAME"
+                    EventProcPrefix ="Источники_тепла_РАО_и_АО"
+                    GUID = Begin
+                        0xbbbabe1a9955cb4b89288a64f1945cdd
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1701
+                    ColumnWidth =660
+                    TabIndex =1
+                    Name ="Q"
+                    ControlSource ="Q"
+                    GUID = Begin
+                        0x83968536b89af84b8d1aa07284666531
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    ColumnHidden = NotDefault
+                    OverlapFlags =87
+                    Left =2268
+                    ColumnWidth =900
+                    TabIndex =2
+                    Name ="codegor"
+                    ControlSource ="codegor"
+                    GUID = Begin
+                        0x24ffdeaa8078c445be177241ec01e0b1
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database

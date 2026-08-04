@@ -1,0 +1,273 @@
+Version =19
+VersionRequired =19
+Checksum =-6137755
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =8
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =6237
+    DatasheetFontHeight =10
+    ItemSuffix =16
+    Left =300
+    Top =1356
+    Right =7068
+    Bottom =5736
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xd554787cf232e240
+    End
+    GUID = Begin
+        0xaf014c16c18b9a45adda8126531a7082
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Список_из_варианта"
+    OnCurrent ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    PrtMip = Begin
+        0x8905000089050000890500008905000000000000201c0000e010000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x4850204c617365724a65742031323030205365726965732050434c2036000000 ,
+        0x000418009400b803033f80000100090000000000640001000700580202000100 ,
+        0x5802000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000001000000 ,
+        0x00000000000000000000000000000000000000004c042e004850204c61736572 ,
+        0x4a65742031323030205365726965732050434c20360000000000000000000400 ,
+        0x320036018603789c658f3d2fc35118c5cfb9b77529a503ad08d17867e857a8a4 ,
+        0x0cfd00a8dd20c8f334ba10f1368a84818dc1e62b606735db8c12341243bdb6ee ,
+        0xfd777487739edfbd2737cfa954fe1f432cf384ded6780619a5362045638f6c1a ,
+        0x3a4199a28c5127a9c39411ca00496c3185f20e659b6ed72320addc3774f100fb ,
+        0x8eae250c720b6fe3cc059b630252a22c32d07c93b4490b9eb4f906b7c14e64ef ,
+        0xabd9f797ea73edf1f5a90ed924fc7aca1882aff00136c60cf4d04a1bb506f985 ,
+        0xfc4006a91fd06f481dda43495332942cb59736c92548273545eda2bd61a3a1d7 ,
+        0x9421aa3336cfbd0e771516767d91f647fa06af2d8435be1f8e72413dc622bc8c ,
+        0x50ee8c1c58c91b99365a30f6dc5e60fd2ba4e251ea344af9df3ed10d5b60c9d8 ,
+        0x192fe559cab10df74526a1094a3ba58351b9553a5fd4cf7fffc6531800000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x000000000000000000000000000000000000000000000000
+    End
+    PrtDevNames = Begin
+        0x080011002f00010077696e73706f6f6c004850204c617365724a657420313230 ,
+        0x30205365726965732050434c2036004c5054313a000000000000000000000000 ,
+        0x0000000000000000
+    End
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =4712
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x5f7ce1eebe82f047bba71444bf21455e
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Width =2835
+                    ColumnWidth =3015
+                    FontWeight =700
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    GUID = Begin
+                        0xdc73cb02a8266446a678b8919276c585
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Top =396
+                    Width =5670
+                    Height =1695
+                    TabIndex =1
+                    Name ="Qo"
+                    SourceObject ="Form.Тепло(отчет)"
+                    LinkChildFields ="NUMB1120"
+                    LinkMasterFields ="linko"
+                    GUID = Begin
+                        0xa91ba5fdad2ced47b84553390a1ab518
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =85
+                    Top =2267
+                    Width =5670
+                    Height =2445
+                    TabIndex =2
+                    Name ="Qr"
+                    SourceObject ="Form.Тепло(расчет)"
+                    LinkChildFields ="NUMB1120"
+                    LinkMasterFields ="NUMB1120"
+                    GUID = Begin
+                        0x982e875e3edbda498e8c91652f709848
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2835
+                    ColumnWidth =480
+                    TabIndex =3
+                    Name ="VED"
+                    ControlSource ="VED"
+                    Format ="#"
+                    GUID = Begin
+                        0x97049d7502d38f42afe7372a4865db17
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =3402
+                    TabIndex =4
+                    ForeColor =255
+                    Name ="psum"
+                    ControlSource ="=IIf(z([ved])=0,\"Сумма\",\"\")"
+                    FontName ="Times New Roman Cyr"
+                    GUID = Begin
+                        0x6154315684be8f47b90276ecf0020ae4
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    Left =4536
+                    TabIndex =5
+                    ForeColor =255
+                    Name ="calc"
+                    FontName ="Times New Roman Cyr"
+                    GUID = Begin
+                        0xe3e3d69caab3d042be98e705f98f4889
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =3969
+                    TabIndex =6
+                    Name ="maxht"
+                    ControlSource ="=IIf(IsError([Qo].[Form]![maxht]),0,[Qo].[Form]![maxht])"
+                    GUID = Begin
+                        0xcb8223537659f349a9c0fe4433aecf2a
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =95
+                    Left =5103
+                    ColumnWidth =645
+                    TabIndex =7
+                    Name ="MAIN"
+                    ControlSource ="MAIN"
+                    GUID = Begin
+                        0x1c2be23de59b7840ad856c42f4e0690f
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =247
+                    Left =4875
+                    Top =30
+                    TabIndex =8
+                    Name ="Qfixf"
+                    ControlSource ="Qfix"
+                    OnMouseDown ="[Event Procedure]"
+                    GUID = Begin
+                        0xe87f48a25ee73542bdd8aab4a0e95e0a
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =247
+                            Left =5105
+                            Width =855
+                            Height =240
+                            Name ="надписьQfix"
+                            Caption ="Qфикс"
+                            GUID = Begin
+                                0xb9dfe2bce9a9a9489bf579634bc872e2
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Private Sub Form_Current()
+If z(VED) = 0 Then calc = 0 Else calc = 1
+End Sub
+
+Private Sub Qfixf_MouseDown(Button As Integer, Shift As Integer, X As Single, y As Single)
+Dim db As Database, QfixT As Recordset
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set QfixT = db.OpenRecordset("Фиксированное_тепло")
+With QfixT
+.Index = "code"
+If Not Qfixf Then
+.AddNew
+!code = numb1120
+.Update
+Else
+.Delete
+End If
+End With
+nrec = CurrentRecord
+Debug.Print nrec
+Requery
+DoCmd.GoToRecord , , acGoTo, nrec
+End Sub

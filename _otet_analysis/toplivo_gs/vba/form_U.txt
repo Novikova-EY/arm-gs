@@ -1,0 +1,259 @@
+Version =21
+VersionRequired =20
+Checksum =-1036458825
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    DefaultView =2
+    ScrollBars =0
+    TabularCharSet =204
+    GridX =5
+    GridY =5
+    Width =6336
+    RowHeight =240
+    ItemSuffix =1
+    Left =285
+    Top =4650
+    Right =5505
+    Bottom =5865
+    AfterDelConfirm ="[Event Procedure]"
+    RecSrcDt = Begin
+        0x1f4a3eaa0f38e340
+    End
+    RecordSource ="Удельные(Схема)"
+    BeforeUpdate ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    FilterOnLoad =0
+    AllowLayoutView =0
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin TextBox
+            AutoLabel = NotDefault
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =576
+            LabelX =-1701
+        End
+        Begin Section
+            Height =240
+            Name ="ОбластьДанных0"
+            GUID = Begin
+                0x500d830601d39c4dbfb82d4e206e511d
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    ColumnWidth =570
+                    ColumnOrder =0
+                    Name ="year"
+                    ControlSource ="year"
+                    GUID = Begin
+                        0x744bbf6297093d489c13e60ff1679d11
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =255
+                    ColumnWidth =660
+                    ColumnOrder =1
+                    TabIndex =1
+                    Name ="snk"
+                    ControlSource ="snk"
+                    Format ="#"
+                    GUID = Begin
+                        0x7f77572515086744977969dfd40da13e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =127
+                    Left =576
+                    ColumnWidth =660
+                    ColumnOrder =2
+                    TabIndex =2
+                    Name ="btp"
+                    ControlSource ="btp"
+                    Format ="#"
+                    GUID = Begin
+                        0x00c56db7acd91141ba1f22964349e7a3
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =127
+                    Left =1152
+                    ColumnWidth =660
+                    ColumnOrder =3
+                    TabIndex =3
+                    Name ="sntp"
+                    ControlSource ="sntp"
+                    Format ="#"
+                    GUID = Begin
+                        0x148f7feb2f551d48925cc9812e4231fd
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =127
+                    Left =1728
+                    ColumnWidth =660
+                    ColumnOrder =4
+                    TabIndex =4
+                    Name ="Bk"
+                    ControlSource ="Bk"
+                    Format ="#"
+                    GUID = Begin
+                        0x8b431b6580bd224ab78016f549ad3bb5
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =2304
+                    ColumnWidth =660
+                    ColumnOrder =5
+                    TabIndex =5
+                    Name ="y"
+                    ControlSource ="y"
+                    Format ="#"
+                    GUID = Begin
+                        0xf0cdf7be17d0fb47ba3fca448437342d
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =5760
+                    ColumnWidth =975
+                    ColumnOrder =11
+                    TabIndex =6
+                    Name ="numb1120"
+                    ControlSource ="numb1120"
+                    GUID = Begin
+                        0x2b3cbce9e4e39f4595e24e81aded3318
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =3456
+                    ColumnWidth =660
+                    ColumnOrder =6
+                    TabIndex =7
+                    Name ="Kh"
+                    ControlSource ="Kh"
+                    GUID = Begin
+                        0xaeaab7fc82d15e41bd81a090fc9aaa65
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =4032
+                    ColumnWidth =660
+                    ColumnOrder =7
+                    TabIndex =8
+                    Name ="bbas"
+                    ControlSource ="bbas"
+                    GUID = Begin
+                        0xe5d4efc9f1303d4ea1b3f993cf073789
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =4608
+                    ColumnWidth =660
+                    ColumnOrder =8
+                    TabIndex =9
+                    Name ="Ksn"
+                    ControlSource ="Ksn"
+                    GUID = Begin
+                        0x045a70582ab3384a8d86edf24b006ae7
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =5184
+                    ColumnWidth =660
+                    ColumnOrder =9
+                    TabIndex =10
+                    Name ="snbas"
+                    ControlSource ="snbas"
+                    GUID = Begin
+                        0xf2f8426ed7fb2f4e931a51fbb1174f24
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    Left =2880
+                    ColumnWidth =408
+                    ColumnOrder =10
+                    TabIndex =11
+                    Name ="fbt"
+                    ControlSource ="fbt"
+                    GUID = Begin
+                        0x12276cee0f47164bb97a2357489a705d
+                    End
+
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database   'Сравнение строк средствами баз данных
+Dim insert As Boolean
+Private Sub Form_AfterDelConfirm(Status As Integer)
+If Me.CurrentRecord > 1 Then
+DoCmd.GoToRecord , , a_prev
+SNK = SNK
+Refresh
+Else
+bmsg = MsgBox("Проверьте наличие удельных", vbOKOnly)
+End If
+End Sub
+
+Private Sub Form_AfterUpdate()
+Dim w As Form, code As Double, U As Form
+Set w = Parent!wform.Form
+Set U = Parent!uform.Form
+cr = CurrentRecord
+If insert Then
+Requery
+insert = False
+End If
+Parent.wform.SetFocus
+Do While ((z(w.year) > U.year) Or (z(w.year) = 0))
+DoCmd.GoToRecord , , a_prev
+Loop
+code = w.numb1120
+var = w!v
+Do While (code = w.numb1120 And var = w!v)
+w.NUST = w.NUST
+DoCmd.GoToRecord , , A_NEXT
+i = i + 1
+Loop
+DoCmd.GoToRecord , , a_prev
+Parent.uform.SetFocus
+If cr - 1 > 0 Then DoCmd.GoToRecord , , acNext, cr - 1
+End Sub
+
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+If InStr(Parent.wform.Form.filter, "year") > 0 Or Parent!Фильтр2 Then
+bm = MsgBox("В этом режиме менять удельные и формулы топлива нельзя", vbOKOnly)
+Cancel = 1
+End If
+
+End Sub

@@ -1,0 +1,108 @@
+Version =19
+VersionRequired =19
+Checksum =440772164
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =4755
+    DatasheetFontHeight =10
+    ItemSuffix =3
+    Left =960
+    Top =2490
+    Right =5925
+    Bottom =5475
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xdb10bbef9346e240
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =2265
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x79e28c901485d611be1c0050bf59f750
+            End
+            Begin
+                Begin ListBox
+                    OverlapFlags =85
+                    Left =135
+                    Top =105
+                    Width =2961
+                    Height =1987
+                    Name ="list"
+                    RowSourceType ="Table/Query"
+                    GUID = Begin
+                        0x7ae28c901485d611be1c0050bf59f750
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3420
+                    Top =375
+                    Width =855
+                    Height =495
+                    TabIndex =1
+                    Name ="OK"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x81e28c901485d611be1c0050bf59f750
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+
+Private Sub Form_Open(Cancel As Integer)
+list.RowSource = Left(OpenArgs, InStr(OpenArgs, "/") - 1)
+End Sub
+
+Private Sub OK_Click()
+Forms(Mid(OpenArgs, InStr(OpenArgs, "/") + 1))!fromlist = list.Column(1, list.ListIndex)
+End Sub

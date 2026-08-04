@@ -1,0 +1,109 @@
+Version =19
+VersionRequired =19
+Checksum =440772180
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =5
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2835
+    DatasheetFontHeight =10
+    ItemSuffix =3
+    Left =1212
+    Top =1128
+    Right =3780
+    Bottom =3120
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x5e32184f4e07e240
+    End
+    GUID = Begin
+        0x1f0f874b62eb914a9ec2087fae036cba
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Список_запросов"
+    OnCurrent ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            Visible = NotDefault
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x1a518d603be2a54cb2bf48aff5a2e469
+            End
+            Begin
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =93
+                    Width =1701
+                    ColumnWidth =2460
+                    Name ="Запрос"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x43a57e20222e134aa5760f54dbab98ee
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1701
+                    ColumnWidth =270
+                    TabIndex =1
+                    Name ="p"
+                    ControlSource ="p"
+                    GUID = Begin
+                        0x81d093c920785444a23bd3412990aded
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =2268
+                    TabIndex =2
+                    Name ="f"
+                    ControlSource ="f"
+                    GUID = Begin
+                        0x8ab2244a3374204a9c3881e60e8ba9a2
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Current()
+If z(p) > 0 Then
+Parent!param.SourceObject = f
+Parent!param.Visible = True
+Call Form_paramobl.sw_AfterUpdate
+Else
+Parent!param.SourceObject = "dummy"
+End If
+End Sub

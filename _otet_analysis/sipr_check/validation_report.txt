@@ -1,0 +1,14 @@
+param=ТЭС Волгаэнерго year=2031
+energy 534/534
+H 76/77
+fuel_main 0/1
+sumE=68450.87260206715749 Etarget=68451 delta=0.12739793284251
+knps match=True kngt=True knpg=True
+
+TOP ENERGY FAILS:
+
+TOP H FAILS:
+(False, '108', '', Decimal('4793.75'), Decimal('4121.789907126916666666666667'), Decimal('671.960092873083333333333333'))
+
+TOP FUEL FAILS:
+(False, '315', '', 'GAZ', Decimal('206.755505216434'), Decimal('44.8245935309228912'), 'gazpp=21,68;gaz_prir', Decimal('161.9309116855111088'))

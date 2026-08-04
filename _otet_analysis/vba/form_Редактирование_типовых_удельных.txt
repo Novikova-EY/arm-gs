@@ -1,0 +1,165 @@
+Version =20
+VersionRequired =20
+Checksum =1034540360
+Begin Form
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =7
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =10215
+    DatasheetFontHeight =10
+    ItemSuffix =9
+    Left =600
+    Top =1116
+    Right =11028
+    Bottom =6492
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xe586ccd2143fe240
+    End
+    GUID = Begin
+        0xdef4867866e34e488c1f6fd351618cf5
+    End
+    NameMap = Begin
+        0x0acc0e550000000037bade516b95cf429d313af186ead51f0000000046b4588c ,
+        0xb84ce540000000009e5e235c6d00610069006e00000000000000366ffe3a2a86 ,
+        0x19458961efbc4f2e9975010000005475dea8b84ce5409419f710d47113002204 ,
+        0x38043f043e0432044b0435045f004304340435043b044c043d044b0435045f00 ,
+        0x40043004410445043e0434044b04000000000000000000000000000000000000 ,
+        0x000000000c000000030000000000000000000000000000000000
+    End
+    RecordSource ="main"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =6240
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x1c502ce6ddf034469196b9536524d8bd
+            End
+            Begin
+                Begin Subform
+                    OverlapFlags =85
+                    Width =7815
+                    Height =6240
+                    Name ="typelist"
+                    SourceObject ="Form.Типовые_удельные_расходы"
+                    GUID = Begin
+                        0x96074f08fb0f9b4dacc343c4e02e1358
+                    End
+                End
+                Begin ComboBox
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    ListWidth =1440
+                    Left =8050
+                    Top =566
+                    Width =1695
+                    Height =330
+                    TabIndex =1
+                    GUID = Begin
+                        0x1fca8b75bf133043bed3262c5451e2d6
+                    End
+                    Name ="filter1"
+                    RowSourceType ="Value List"
+                    RowSource ="\"Все\";\"ПГУ-К\";\"ПГУ-Т\";\"ГТУ-К\";\"ГТУ-Т\";\"ПГУ\";\"ГТУ\""
+                    ColumnWidths ="1440"
+                    DefaultValue ="\"Все\""
+                    OnChange ="[Event Procedure]"
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =8050
+                    Top =1700
+                    Width =915
+                    Height =555
+                    TabIndex =2
+                    Name ="справка"
+                    Caption ="справка"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x331905310100174ca48c27ab61cccdda
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub filter1_Change()
+With typelist.Form
+If filter1 = "Все" Then
+.FilterOn = False
+Else
+If filter1 = "ПГУ-К" Then f = "type=""ПГУ"" or type=""ПГУ(ГУ)"""
+If filter1 = "ПГУ-Т" Then f = "type=""ПГУ(Т)"" or type=""ПГУ(ГУ.Т)"""
+If filter1 = "ГТУ-К" Then f = "type=""ГТ"""
+If filter1 = "ГТУ-Т" Then f = "type=""ГТ(Т)"""
+If filter1 = "ПГУ" Then f = "type like ""*ПГУ*"""
+If filter1 = "ГТУ" Then f = "type like ""*ГТ*"""
+.Filter = f
+.FilterOn = True
+End If
+.OrderBy = "ordtype,nmin"
+.OrderByOn = True
+End With
+End Sub
+
+Private Sub Кнопка7_Click()
+typelist.Form.Requery
+End Sub
+
+Private Sub Справка_Click()
+txt = "Для ПГУ-К" & Chr(13) & "bk задается для 6500 часов" & Chr(13)
+txt = txt & "bk для h часов:bkh=bk+Kh*(6500-h)/1000"
+bm = MsgBox(txt, vbOKOnly, "справка")
+End Sub

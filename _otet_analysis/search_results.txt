@@ -1,0 +1,488 @@
+﻿=== TABLES/VIEWS matching keywords ===
+LINK	╙фхы№э√х(╤їхьр)
+TABLE	└╧┴_EWTP_2009
+TABLE	═юЁьрЄштэ√х єфхы№э√х
+TABLE	╧хЁхт-ъю¤ЇЇ
+TABLE	╤яшёюъ-трЁшрэЄют
+TABLE	╥хъє∙шщ_трЁшрэЄ
+TABLE	╥шяют√х_єфхы№э√х_Ёрёїюф√
+TABLE	╙фхы№э√х эютюую ш  ьюфхЁэ юсюЁєф
+TABLE	╙фхы№э√х(рЁїшт)
+TABLE	╙фхы№э√х1999
+TABLE	╙фхы№э√х2000
+TABLE	╙фхы№э√х2001
+TABLE	╙фхы№э√х2002
+TABLE	╙фхы№э√х2003
+TABLE	╙фхы№э√х2004
+TABLE	╙фхы№э√х2005
+TABLE	╙фхы№э√х2006
+TABLE	╙фхы№э√х2007
+TABLE	╙фхы№э√х2008
+TABLE	╙фхы№э√х2009
+TABLE	╙фхы№э√х2010
+TABLE	╙фхы№э√х2011
+TABLE	╙фхы№э√х2012
+TABLE	╙фхы№э√х2013
+TABLE	╙фхы№э√х2014
+TABLE	╙фхы№э√х2014old
+TABLE	╙фхы№э√х2015
+TABLE	╙фхы№э√х2016
+TABLE	╙фхы№э√х2017
+TABLE	╙фхы№э√х2018
+TABLE	╙фхы№э√х2019
+TABLE	╙фхы№э√х2020
+TABLE	╙фхы№э√х2021
+TABLE	╙фхы№э√х2022
+TABLE	╙фхы№э√х2023
+TABLE	╙фхы№э√х2024
+TABLE	╙фхы№э√х_рэрышч
+TABLE	╘юЁьєы√_Єюяыштр2020
+TABLE	╘юЁьєы√_Єюяыштр_юЄў╕Є
+TABLE	╘юЁьєы√_Єюяыштр_юЄў╕Є_фю чрьхэ√ 2018-2021
+VIEW	─ы  Ёрёў╕Єр ЇюЁьєы Єюяыштр_└э 
+VIEW	╩юэЄЁюы№_єфхы№э√ї
+VIEW	╧юшёъ яютЄюЁхэшщ фы  ╙фхы№э√х(рЁїшт)
+VIEW	╧ЁютхЁър eotp ш ewtp
+VIEW	╧ЁютхЁър ved_фы  ЁрёўхЄр btp_└э 
+VIEW	╧ЁюёьюЄЁ юЄў╕Єэ ш яхЁёяхъЄ єхфы№э√ї_└э 
+VIEW	╧ЁюёьюЄЁ єфхы№э√ї юсюЁєфютрэш _└э 
+VIEW	╨рёў╕Є эшч°хщ ЄхяыюЄ√ ёуюЁрэш 
+VIEW	╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр
+VIEW	╨рёў╕Є ёЁхфэхщ Ўхэ√ єуы  (яЁюёьюЄЁ)
+VIEW	╨рёў╕Є Ўхэ√ 2
+VIEW	╙фхы№э√х Єюяыштэ√х чрЄЁрЄ√
+VIEW	╙фхы№э√х_фы _яхўрЄш
+VIEW	╘юЁьєы√ Єюяыштр_юЄў╕Є
+VIEW	ЁрёўхЄэ√щ_ЄрЁшЇ
+
+=== VBA/FORM hits ===
+
+FILE form_┬юыур.txt matches=['eotp', 'ewtp'] size=17774
+  158:                    Name ="EOTP"
+  159:                    ControlSource ="EOTP"
+  403:                    Name ="EWTP"
+  404:                    ControlSource ="EWTP"
+  480:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+
+FILE form_┬юёЄюъ.txt matches=['eotp', 'ewtp'] size=20335
+  166:                    Name ="EOTP"
+  167:                    ControlSource ="EOTP"
+  455:                    Name ="EWTP"
+  456:                    ControlSource ="EWTP"
+  540:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+
+FILE form_┬√сюЁ_трЁшрэЄр.txt matches=['трЁшрэЄ'] size=38802
+  384:                    Name ="╤яшёюъ_трЁшрэЄют"
+  385:                    SourceObject ="Form.╤яшёюъ_трЁшрэЄют"
+  705:Private Sub Form_Open(Cancel As Integer)
+  707:Set cv = db.OpenRecordset("╥хъє∙шщ_трЁшрэЄ", DB_OPEN_TABLE)
+  711:Private Sub ╩эюяър4_Click()
+  714:Set sv = ╤яшёюъ_трЁшрэЄют.Form.RecordsetClone
+  715:sv.Bookmark = ╤яшёюъ_трЁшрэЄют.Form.Bookmark
+
+FILE form_╨хфръЄшЁютрэшх_юЄўхЄэ√ї_фрээ√ї.txt matches=['трЁшрэЄ', 'Calc'] size=49041
+  842:Private Declare Function GetWindowRect Lib "User32" (ByVal hwnd As Long, crect As rect) As Long
+  843:Private Declare Function MoveWindow Lib "User32" (ByVal hwnd As Long, ByVal x As Long, ByVal y As Long, ByVal w As Long, ByVal h As Long, ByVal B As Long) As Long
+  851:Private Sub Form_Close()
+  864:Private Sub Form_Open(Cancel As Integer)
+  866:DoCmd.OpenForm "т√сюЁ_трЁшрэЄр", , , , , acDialog, "╨хфръЄшЁютрэшх_юЄўхЄэ√ї_фрээ√ї"
+  926:Private Sub nat1_AfterUpdate()
+  939:Private Sub nat1_DblClick(Cancel As Integer)
+  951:Private Sub nat1_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
+  955:Private Sub ┬хфюьёЄтю_Change()
+  984:Private Sub ┬ёЄртър_Click()
+  989:Private Sub ├юф√_Click()
+  994:Private Sub ─шруЁрььр_Click()
+  1001:Private Sub ╚Єюу_Click()
+  1034:Private Sub ╚Єюу_MouseMove(Button As Integer, Shift As Integer, x As Single, y As Single)
+  1040:Private Sub ╩эюяър10_Click()
+  1046:Private Sub ╩эюяър28_Click()
+  1050:Private Sub ╬ЄўхЄ_Click()
+  1057:Private Sub ╤яЁртър_Click()
+  1061:Private Sub ╥шя_╚Єюур_Change()
+  1069:Private Sub ╥єЁсшэ√_Click()
+  1078:Private Sub єЁютхэ№_AfterUpdate()
+  1096:Private Sub ╘шы№ЄЁ_AfterUpdate()
+  1110:.Recalc
+  1136:Private Sub ╘шы№ЄЁ3_Click()
+  1159:Private Sub ╙фрыхэшх_Click()
+
+FILE form_╨хфръЄшЁютрэшх_Єшяют√ї_єфхы№э√ї.txt matches=['єфхы№э', 'Єшяют'] size=4900
+  89:                    SourceObject ="Form.╥шяют√х_єфхы№э√х_Ёрёїюф√"
+  138:Private Sub filter1_Change()
+  157:Private Sub ╩эюяър7_Click()
+  161:Private Sub ╤яЁртър_Click()
+
+FILE form_╤хтхЁю-╟рярф.txt matches=['eotp', 'ewtp'] size=20630
+  166:                    Name ="EOTP"
+  167:                    ControlSource ="EOTP"
+  477:                    Name ="EWTP"
+  478:                    ControlSource ="EWTP"
+  552:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+
+FILE form_╤шсшЁ№.txt matches=['eotp', 'ewtp'] size=20054
+  166:                    Name ="EOTP"
+  167:                    ControlSource ="EOTP"
+  477:                    Name ="EWTP"
+  478:                    ControlSource ="EWTP"
+  538:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+
+FILE form_╤юёЄртэ√х-ёЄрэЎшш.txt matches=['ЁрёўхЄ', 'eotp', 'ewtp', 'Ёрёў'] size=20357
+  254:                            Caption ="╤яюёюс ЁрёўхЄр"
+  395:Dim eotpst As Double, best As Double, snkst As Double, sntst As Double
+  401:Private Sub Form_Current()
+  419:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+  423:Private Sub Form_Open(Cancel As Integer)
+  428:Public Sub setform(fname As String)
+  438:Private Sub ╩эюяър11_Click()
+  440:Dim be1 As Double, be2 As Double, eotp1 As Double
+  461:eotp1 = (best * 1000 - eotpst * be2) / (be1 - be2)
+  462:df!EOTP = eotpst - eotp1
+  465:df!EOTP = eotp1
+  468:Private Sub ╩эюяър12_Click()
+  482:df!E = (df!EOTP + z(df!Q) * z(df!SNt) / 1000) / (1 - z(df!SNK) / 100)
+  484:df!EUST = df!EOTP * df!EURT / 1000
+  500:Private Sub ╩эюяър16_Click()
+  514:eotpst = z(data.Form!EOTP)
+  539:df!EWTP = df!E * z(rf!ptp) / 100
+  618:df!EOTP = df!E * (1 - z(df!SNK) / 100) - z(df!Q) * z(df!SNt) / 1000
+  619:df!EUST = df!EOTP * df!EURT / 1000
+
+FILE form_╤яшёюъ_трЁшрэЄют.txt matches=['трЁшрэЄ'] size=2758
+  21:    OrderBy ="[╤яшёюъ-трЁшрэЄют].[name]"
+  36:    RecordSource ="╤яшёюъ-трЁшрэЄют"
+  89:Private Sub Form_Open(Cancel As Integer)
+  92:Set cv = db.OpenRecordset("╥хъє∙шщ_трЁшрэЄ", DB_OPEN_TABLE)
+
+FILE form_╤яшёюъ_юс·хъЄют.txt matches=['трЁшрэЄ'] size=2254
+  65:                    Name ="┬рЁшрэЄ"
+
+FILE form_ёяшёюъ_ёЄрэЎшщ.txt matches=['трЁшрэЄ'] size=14936
+  261:Private Sub Form_Close()
+  272:Private Sub OK_Click()
+  281:bm = MsgBox("╤ЄрэЎш  єцх яЁшёєЄёЄтєхЄ т фрээюь трЁшрэЄх", vbOKOnly)
+
+FILE form_╤ЄрэЎшш_юЄўхЄ.txt matches=['eotp', 'ewtp'] size=99740
+  440:                    Name ="sumeotp"
+  1031:                    Name ="sumewtp"
+  1215:                    ControlSource ="EOTP"
+  1944:                    ControlSource ="EWTP"
+  2174:Public Sub Form_AfterUpdate()
+  2296:Private Sub Form_Current()
+  2350:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+  2357:Private Sub Form_Open(Cancel As Integer)
+  2363:Public Sub nt_AfterUpdate()
+  2367:Public Sub verifynt(NT As Double, NUMB1120 As Double)
+  2388:Private Sub PROCH_BeforeUpdate(Cancel As Integer)
+
+FILE form_╥рЁшЇэ√х ЁрёёЄю эш .txt matches=['ЁрёўхЄ', 'Ёрёў'] size=3858
+  40:    RecordSource ="ЁрёўхЄэ√щ_ЄрЁшЇ"
+
+FILE form_╥шяют√х_єфхы№э√х_Ёрёїюф√.txt matches=['єфхы№э', 'Єшяют', 'btp'] size=7332
+  33:    RecordSource ="╥шяют√х_єфхы№э√х_Ёрёїюф√"
+  145:                    Name ="btp"
+  146:                    ControlSource ="btp"
+  227:Private Sub Form_AfterInsert()
+  236:Private Sub Form_AfterUpdate()
+
+FILE form_╙Ёры.txt matches=['eotp', 'ewtp'] size=18905
+  163:                    Name ="EOTP"
+  164:                    ControlSource ="EOTP"
+  446:                    Name ="EWTP"
+  447:                    ControlSource ="EWTP"
+  508:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+
+FILE form_╓хэЄЁ.txt matches=['eotp', 'ewtp'] size=20558
+  165:                    Name ="EOTP"
+  166:                    ControlSource ="EOTP"
+  476:                    Name ="EWTP"
+  477:                    ControlSource ="EWTP"
+  551:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+
+FILE form_▐у.txt matches=['eotp', 'ewtp'] size=15971
+  155:                    Name ="EOTP"
+  156:                    ControlSource ="EOTP"
+  371:                    Name ="EWTP"
+  372:                    ControlSource ="EWTP"
+  434:Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+
+FILE mod_╠юфєы№1.txt matches=['єфхы№э', 'btp', 'eotp', 'ewtp'] size=11307
+  1:Public Function det3(m() As Double) As Double
+  13:Public Function repbetw(s As Variant, s1 As String, s2 As String, s3 As Variant) As Variant
+  19:Function namegt(gt) As String
+  28:Function gradtopl(B, GAZ, MAZUT, tt) As Double
+  36:Function adoFindfield(flist As ADODB.Fields, namet As String) As Integer
+  47:Function Findfield(flist As Fields, namet As String) As Integer
+  58:Public Function Nivh(hb As Double, ph As Double) As Double
+  72:Function insertclst(ByVal NUMB1120 As Double, ByVal split As Integer, MAIN As Double) As Double
+  113:Function max2(x As Double, y As Double) As Double
+  117:Function perc(x, y)
+  121:Function resetoptions()
+  127:Function setoptions()
+  133:Public Function typeob(ob As Double) As Double
+  140:Function z(x) As Double
+  144:Function ╩эюяър5_Click()
+  149:Set U = db.OpenRecordset("╙фхы№э√х", DB_OPEN_TABLE)
+  160:w("ewtp") = w("qotr") * U("y") / 1000
+  170:Sub ╤ўхЄ_Click()
+  193:w.EWTP = z(w.QOTR) * z(U!y) / 1000
+  194:ekotp = (z(w.E) - z(w.EWTP)) * (1 - z(U("snk")) / 100)
+  195:etpotp = z(w.EWTP) * z(U("sntp"))
+  196:w.EOTP = ekotp + etpotp
+  197:w.EUST = (ekotp * z(U("bk")) + etpotp * z(U("btp"))) / 1000
+  198:If w.EOTP > 0 Then w.EURT = w.EUST / w.EOTP * 1000 Else w.EURT = 0
+  266:Public Function Interval(bk As Double, bkcp As Double) As Double
+  280:Public Function link()
+  285:Public Function Min2(x As Double, y As Double) As Double
+  289:Public Function betw(s As Variant, s1 As String, s2 As String) As String
+  300:Public Function CNT(nt99 As Double, nt05 As Double, nt10 As Double, nt15 As Double) As String
+  309:Public Function QOTR(Q As Double, Potr As Double, ntb As Double, NT As Double, HT As Double)
+  321:Public Function test()
+  327:Public Function Update(source As String, dest As String, sindxs As String, app As Boolean) As Boolean
+  408:Public Function repstring(s1 As String, s2 As String, s3 As String) As String
+  412:Public Function maxval(ParamArray x())
+  419:Public Function nyear(YEAR As Double, list As String) As Integer
+  424:Public Function kn(k As Variant, ka As Double, y As Double) As Variant
+
+=== QUERY name hits ===
+
+QUERY: EWTP яю уюфрь
+TRANSFORM Sum([╤ЄрэЎшш(рЁїшт)].ewtp) AS [Sum-ewtp]
+SELECT [╤ЄрэЎшш(рЁїшт)].name, [╤ЄрэЎшш(рЁїшт)].numb1
+FROM [╤ЄрэЎшш(рЁїшт)]
+WHERE ((([╤ЄрэЎшш(рЁїшт)].year)=1990 Or ([╤ЄрэЎшш(рЁїшт)].year)=2000 Or ([╤ЄрэЎшш(рЁїшт)].year)=2005 Or ([╤ЄрэЎшш(рЁїшт)].year)=2010 Or ([╤ЄрэЎшш(рЁїшт)].year)=2015 Or ([╤ЄрэЎшш(рЁїшт)].year)=2020) AND (([╤ЄрэЎшш(рЁїшт)].ved)>0))
+GROUP BY [╤ЄрэЎшш(рЁїшт)].name, [╤ЄрэЎшш(рЁїшт)].numb1
+ORDER BY [╤ЄрэЎшш(рЁїшт)].numb1
+PIVOT [╤ЄрэЎшш(рЁїшт)].Year;
+
+
+QUERY: └эрышч єфхы№э√ї эр ╥▌╓
+SELECT [╤ЄрэЎшш_89-2001].NAME, [╤ЄрэЎшш_89-2001].Year, [╤ЄрэЎшш_89-2001].E, [╤ЄрэЎшш_89-2001].ewtp, [ewtp]/[e]*100 AS ptp, [╤ЄрэЎшш_89-2001].eurt, [╤ЄрэЎшш_89-2001].NUMB1120
+FROM [╤ЄрэЎшш_89-2001]
+WHERE ((([╤ЄрэЎшш_89-2001].E)>0))
+ORDER BY [╤ЄрэЎшш_89-2001].numb1, [╤ЄрэЎшш_89-2001].Year;
+
+
+QUERY: └эрышч_єфхы№э√ї
+SELECT ┬хё№_юЄўхЄ.name, ┬хё№_юЄўхЄ.year, ┬хё№_юЄўхЄ.E, ┬хё№_юЄўхЄ.ewtp
+FROM ┬хё№_юЄўхЄ INNER JOIN ╚ьхэр_ёЄрэЎшщ ON ┬хё№_юЄўхЄ.numb1120=╚ьхэр_ёЄрэЎшщ.NUMB
+WHERE (((┬хё№_юЄўхЄ.year)>1997) AND ((┬хё№_юЄўхЄ.ewtp)>0) AND ((┬хё№_юЄўхЄ.obl)=30) AND ((╚ьхэр_ёЄрэЎшщ.MAIN) Is Null))
+ORDER BY ┬хё№_юЄўхЄ.numb1, ┬хё№_юЄўхЄ.year;
+
+
+QUERY: ─ы  Ёрёў╕Єр ЇюЁьєы Єюяыштр_└э 
+SELECT ╚ьхэр_ёЄрэЎшщ.NAME, St.NUMB1120, St.Year, St.NUST, St.B, St.GAZ, St.ISK_GAZ, St.MAZUT, St.TORF, St.SLAN, St.PROCH, Dop.domen_g, Dop.koks_g, Dop.prochgaz, Dop.tvproch, Dop.szh_gaz, Dop.inoe, St.UGOL, St.DON, St.PODM, St.PECH, St.ARKT, St.KUZN, St.URAL, St.BASHK, St.KAZAH, St.KAN, St.TUNG, St.IRKUT, St.HAK, St.TUV, St.BUR, St.CHIT, St.AMUR, St.PRIM, St.URG, St.USHUM, St.YAKUT, St.MAG, St.SAH, St.KAMCH, St.CHUKOT, Dop.gazpp, Dop.intin, Dop.vork, Dop.kuzngd, Dop.kuznt, Dop.kuznss, Dop.kuznun, Dop.sver, Dop.chel, Dop.kizel, Dop.ekib, Dop.maikub, Dop.nazar, Dop.ibor, Dop.berez, Dop.per, Dop.irbei, Dop.kansk, Dop.jer, Dop.karab, Dop.azey, Dop.mug, Dop.cher, Dop.gusin, Dop.tugn, Dop.okino, Dop.har, Dop.urt, Dop.tataur, Dop.tarbag, Dop.zab_kam, Dop.neru, Dop.zyryan, Dop.pyak, Dop.rai, Dop.er
+
+QUERY: ─ы _уЁрЇшъют_єфхы№э√ї
+SELECT ┬хё№_юЄўхЄ.name, ┬хё№_юЄўхЄ.year, [ewtp]/[E]*100 AS p, ┬хё№_юЄўхЄ.eurt
+FROM ┬хё№_юЄўхЄ
+WHERE (((┬хё№_юЄўхЄ.year)>1995) AND ((┬хё№_юЄўхЄ.E)>0))
+ORDER BY ┬хё№_юЄўхЄ.numb1, ┬хё№_юЄўхЄ.year;
+
+
+QUERY: ─юсртыхэшх т ╙фхы№э√х(рЁїшт)_└э 
+INSERT INTO [╙фхы№э√х(рЁїшт)]
+SELECT DISTINCTROW ╙фхы№э√х2023.*
+FROM ╙фхы№э√х2023 LEFT JOIN [╙фхы№э√х(рЁїшт)] ON ╙фхы№э√х2023.NUMB1120 = [╙фхы№э√х(рЁїшт)].NUMB1120;
+
+
+QUERY: ─юсртыхэшх шч ╤ЄрэЎшш_╤їхьр т ╙фхы№э√х_рэрышч
+INSERT INTO ╙фхы№э√х_рэрышч ( E, eurt, [year], numb1120, D_ewtp, D_otr, name )
+SELECT DISTINCTROW [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].E, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].EURT, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].YEAR, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NUMB1120, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].D_ewtp, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].D_otr, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NAME
+FROM ╙фхы№э√х_рэрышч INNER JOIN [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї] ON ╙фхы№э√х_рэрышч.numb1120=[╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NUMB1120
+WHERE ((([╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].YEAR)>2018));
+
+
+QUERY: ╩юэЄЁюы№_єфхы№э√ї
+SELECT ╤ЄрэЎшш2024.OES, ╚ьхэр_юсырёЄхщ.NAME, ╤ЄрэЎшш2024.NAME, ╤ЄрэЎшш2024.B, [EOTP]*[eurt]/1000+[Q]*[turt]/1000 AS Bras, Abs([B]-[Bras]) AS d, IIf([EOTP]>0,[eust]/[EOTP]*1000,0) AS be, ╤ЄрэЎшш2024.EURT, Abs([eurt]-[be]) AS d2, IIf([Q]>0,[tust]/[Q]*1000,0) AS bt, ╤ЄрэЎшш2024.TURT, Abs([turt]-[bt]) AS d3, ╤ЄрэЎшш2024.EOTP, ╤ЄрэЎшш2024.Q
+FROM ╤ЄрэЎшш2024 INNER JOIN ╚ьхэр_юсырёЄхщ ON ╤ЄрэЎшш2024.OBL = ╚ьхэр_юсырёЄхщ.OBL;
+
+
+QUERY: ╩юяшЁютрэшх ъю¤ЇЇшЎшхэЄют эрЄєЁ√ яю gaz_prir, maztop
+UPDATE ═рЄєЁр99 SET ═рЄєЁр99.gaz_prir = [═рЄєЁр99]![GAZ], ═рЄєЁр99.maztop = [═рЄєЁр99]![MAZUT]
+WHERE (((═рЄєЁр99.YEAR)>2009));
+
+
+QUERY: ╬сэютыхэшх Єшяют юсюЁєфютрэш  ╤ЄрэЎшш(рЁїшт)
+UPDATE ╚ьхэр_ёЄрэЎшщ INNER JOIN [╤ЄрэЎшш(рЁїшт)] ON ╚ьхэр_ёЄрэЎшщ.NUMB=[╤ЄрэЎшш(рЁїшт)].numb1120 SET [╤ЄрэЎшш(рЁїшт)].obor = ╚ьхэр_ёЄрэЎшщ!Єшя
+WHERE ((([╤ЄрэЎшш(рЁїшт)].year)=2012));
+
+
+QUERY: ╧юшёъ яютЄюЁхэшщ фы  ╙фхы№э√х(рЁїшт)
+SELECT [╙фхы№э√х(рЁїшт)].YEAR, [╙фхы№э√х(рЁїшт)].NUMB1120, [╙фхы№э√х(рЁїшт)].NAME
+FROM [╙фхы№э√х(рЁїшт)]
+WHERE ((([╙фхы№э√х(рЁїшт)].YEAR) In (SELECT [YEAR] FROM [╙фхы№э√х(рЁїшт)] As Tmp GROUP BY [YEAR],[NUMB1120] HAVING Count(*)>1  And [NUMB1120] = [╙фхы№э√х(рЁїшт)].[NUMB1120])))
+ORDER BY [╙фхы№э√х(рЁїшт)].YEAR, [╙фхы№э√х(рЁїшт)].NUMB1120;
+
+
+QUERY: ╧юшёъ яютЄюЁхэшщ фы  ╙фхы№э√х2011_2
+SELECT ╙фхы№э√х2011_2.YEAR AS ┬√Ёрцхэшх1, ╙фхы№э√х2011_2.NUMB1120 AS ┬√Ёрцхэшх2, ╙фхы№э√х2011_2.NAME AS ┬√Ёрцхэшх3
+FROM ╙фхы№э√х2011_2
+WHERE ((([╙фхы№э√х2011_2].[YEAR]) In (SELECT [YEAR] FROM [╙фхы№э√х2011_2] As Tmp GROUP BY [YEAR],[NUMB1120] HAVING Count(*)>1  And [NUMB1120] = [╙фхы№э√х2011_2].[NUMB1120])))
+ORDER BY ╙фхы№э√х2011_2.YEAR, ╙фхы№э√х2011_2.NUMB1120;
+
+
+QUERY: ╧ЁютхЁър eotp ш ewtp
+SELECT ╤ЄрэЎшш2024.NAME, ╤ЄрэЎшш2024.Year, [E]-[eotp] AS sn, [E]-[ewtp] AS Ekon, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME, ╤ЄрэЎшш2024.NUST
+FROM ╚ьхэр_╬▌╤ INNER JOIN (╚ьхэр_юсырёЄхщ INNER JOIN ╤ЄрэЎшш2024 ON ╚ьхэр_юсырёЄхщ.OBL = ╤ЄрэЎшш2024.OBL) ON ╚ьхэр_╬▌╤.oes = ╤ЄрэЎшш2024.OES
+WHERE ((([E]-[ewtp])<0));
+
+
+QUERY: ╧ЁютхЁър ved_фы  ЁрёўхЄр btp_└э 
+SELECT ╤ЄрэЎшш2024.NUMB1120, ╤ЄрэЎшш2024.OES, ╚ьхэр_юсырёЄхщ.NAME AS obl, ╚ьхэр_ёЄрэЎшщ.NAME, ╤ЄрэЎшш2024.EWTP, ╤ЄрэЎшш2024.EOTP, ╤ЄрэЎшш2024.QOTR, ╙фхы№э√х2024.BTP, ╤ЄрэЎшш2024.VED, ╤ЄрэЎшш2024.OBOR
+FROM ((╙фхы№э√х2024 INNER JOIN ╤ЄрэЎшш2024 ON ╙фхы№э√х2024.NUMB1120 = ╤ЄрэЎшш2024.NUMB1120) INNER JOIN ╚ьхэр_ёЄрэЎшщ ON ╤ЄрэЎшш2024.NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╤ЄрэЎшш2024.OBL = ╚ьхэр_юсырёЄхщ.OBL
+WHERE (((╤ЄрэЎшш2024.EWTP)>0) AND ((╤ЄрэЎшш2024.EOTP)>0) AND ((╙фхы№э√х2024.BTP)=0 Or (╙фхы№э√х2024.BTP) Is Null))
+ORDER BY ╤ЄрэЎшш2024.OES, ╤ЄрэЎшш2024.numb1;
+
+
+QUERY: ╧ЁюёьюЄЁ юЄў╕Єэ ш яхЁёяхъЄ єхфы№э√ї_└э 
+SELECT ╙фхы№э√х_рэрышч.name, ╙фхы№э√х_рэрышч.year, ╙фхы№э√х_рэрышч.E, ╙фхы№э√х_рэрышч.D_ewtp, ╙фхы№э√х_рэрышч.D_otr, ╙фхы№э√х_рэрышч.eurt, ╙фхы№э√х_рэрышч.BTP, ╙фхы№э√х_рэрышч.BK, ╙фхы№э√х_рэрышч.Y, ╙фхы№э√х_рэрышч.numb1120, KOEFF.k
+FROM (╚ьхэр_ёЄрэЎшщ INNER JOIN ╙фхы№э√х_рэрышч ON ╚ьхэр_ёЄрэЎшщ.NUMB = ╙фхы№э√х_рэрышч.numb1120) LEFT JOIN KOEFF ON ╚ьхэр_ёЄрэЎшщ.NUMB = KOEFF.NUMB
+ORDER BY ╚ьхэр_ёЄрэЎшщ.ordnumb, ╙фхы№э√х_рэрышч.year;
+
+
+QUERY: ╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї
+SELECT [╤ЄрэЎшш(╤їхьр)].NAME, [╤ЄрэЎшш(╤їхьр)].YEAR, [╤ЄрэЎшш(╤їхьр)].E, IIf([E]>0,[ewtp]/[E],0) AS D_ewtp, IIf([Q]>0,[qotr]/[Q],0) AS D_otr, [╤ЄрэЎшш(╤їхьр)].EURT, [╤ЄрэЎшш(╤їхьр)].NUMB1120
+FROM [╤ЄрэЎшш(╤їхьр)]
+WHERE ((([╤ЄрэЎшш(╤їхьр)].YEAR)>2018))
+ORDER BY [╤ЄрэЎшш(╤їхьр)].numb1, [╤ЄрэЎшш(╤їхьр)].YEAR;
+
+
+QUERY: ╧ЁюёьюЄЁ єфхы№э√ї юсюЁєфютрэш _└э 
+SELECT ╙фхы№э√х2021.NAME, ╥єЁсшэ√.opesname, ╙фхы№э√х2021.Y, ╙фхы№э√х2021.BTP, ╙фхы№э√х2021.SNTP, ╙фхы№э√х2021.BK, ╙фхы№э√х2021.SNK, ╥єЁсшэ√.numb1120, ╥єЁсшэ√.stnumb, ╙фхы№э√х2021.NUMB1120, ╤ЄрэЎшш_фы _ётюфэющ_2021.dolya_ewtp
+FROM ╤ЄрэЎшш_фы _ётюфэющ_2021 INNER JOIN (╙фхы№э√х2021 LEFT JOIN ╥єЁсшэ√ ON ╙фхы№э√х2021.NUMB1120 = ╥єЁсшэ√.grcode) ON ╤ЄрэЎшш_фы _ётюфэющ_2021.NUMB1120 = ╙фхы№э√х2021.NUMB1120
+ORDER BY ╥єЁсшэ√.numb1120, ╥єЁсшэ√.stnumb;
+
+
+QUERY: ЁрёўхЄэ√щ_ЄрЁшЇ
+SELECT [╧юёЄртъш єуы ].¤ыхъЄЁюёЄрэЎш , [╧юёЄртъш єуы ].numb, [╧юёЄртъш єуы ].[цф ёЄ яюыєў], [╧юёЄртъш єуы ].єуюы№, [╧юёЄртъш єуы ].[цф ёЄрэЎш  юЄяЁ], [╧юёЄртъш єуы ].ЁрёёЄю эшх, (select ёЁхфэ from [╚1_╧ю ёэ√х_ЁрёёЄю эш ] where (ЁрёёЄю эшх>=эрў and ЁрёёЄю эшх<=ъюэ)) AS L, (select ╩я3Є2 from ╩я3Є2 where ЁрёёЄю эшх>=[эрў] and ЁрёёЄю эшх<=[ъюэ]) AS k1, Round(IIf([L]<=160,1.23,IIf([L]<3000,1.041-0.00006*[L]+31/[L],0.87)),2) AS KL, 2132+(8.116+0.0338*70)*[KL]*[L] AS ╚1, 1126+1.304*[L]*0.87 AS ┬4, [ш1]*[k1]+[т4] AS ╥1, (2132+(8.116+0.0338*70)*0.87*3550)*0.63+1126+1.304*0.87*3550 AS ╥3500, (IIf([ЁрёёЄю эшх]<3500,[╥1],[╥3500]+0.333*([╥1]-[╥3500])))/70 AS T
+FROM [╧юёЄртъш єуы ];
+
+
+QUERY: ╨рёў╕Є эшч°хщ ЄхяыюЄ√ ёуюЁрэш 
+SELECT ═рЄєЁр99.YEAR, ╚ьхэр_ёЄрэЎшщ.NAME, [nazar]*7000 AS [nazar-koef], [kansk]*7000 AS kan_koef, [gusin]*7000 AS gus_koeff, [tugn]*7000 AS tugn_koef, [urt]*7000 AS urt_koef, [zyryan]*7000 AS zyr_koef, [rai]*7000 AS rai_koeff, [erk]*7000 AS erk_koef, [ogodj]*7000 AS ogodj_koef, [ekib]*7000 AS ekib_koef, [maikub]*7000 AS maikub_koef, [karag]*7000 AS karag_koef, [karajyra]*7000 AS karajyra_koef, [teniz]*7000 AS teniz_koef, *
+FROM ╚ьхэр_ёЄрэЎшщ INNER JOIN ═рЄєЁр99 ON ╚ьхэр_ёЄрэЎшщ.NUMB = ═рЄєЁр99.NUMB1120
+WHERE (((═рЄєЁр99.YEAR)>2016) AND (([teniz]*7000)>0));
+
+
+QUERY: ╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр
+SELECT NUMB1120, AVG(IIF(gaz_c IS NOT NULL OR gaz_c > 0, gaz_c, NULL)) AS avg_gaz_c, SUM(IIF(DON_c > 0, DON_c, 0)
+        + IIF(PODM_c > 0, PODM_c, 0)
+
+        + IIF(vork_c > 0, vork_c, 0)
+        + IIF(intin_c > 0, intin_c, 0)
+       
+        + IIF(kuzngd_c > 0, kuzngd_c, 0)
+        + IIF(kuznt_c > 0, kuznt_c, 0)
+        + IIF(kuznss_c > 0, kuznss_c, 0)
+        + IIF(kuznun_c > 0, kuznun_c, 0)
+        + IIF(URAL_c > 0, URAL_c, 0)
+        + IIF(sver_c > 0, sver_c, 0)
+        + IIF(chel_c > 0, chel_c, 0)
+        + IIF(kizel_c > 0, kizel_c, 0)
+        + IIF(BASHK_c > 0, BASHK_c, 0)
+  
+        + IIF(ekib_c > 0, ekib_c, 0)
+        + IIF(maikub_c > 0, maikub_c, 0)
+
+        + IIF(nazar_c > 0, nazar_c, 0)
+        + IIF(ibor_c > 0, ibor_c, 0)
+        + IIF(berez_c > 0, berez_c, 0)
+        + IIF(pe
+
+QUERY: ╨рёў╕Є ёЁхфэхщ Ўхэ√ єуы  (яЁюёьюЄЁ)
+SELECT ╚ьхэр_юсырёЄхщ.OBL, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME AS oblname, Avg(IIf([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_gaz_c>0,[╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_gaz_c,Null)) AS avg_gaz_c, Avg(IIf([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_ugol>0,[╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].avg_ugol,Null)) AS avg_ugol, ╚ьхэр_юсырёЄхщ.Terr_Belyaev
+FROM (([╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр] INNER JOIN ╚ьхэр_ёЄрэЎшщ ON [╨рёў╕Є ёЁхфэхщ Ўхэ√ Єюяыштр].NUMB1120 = ╚ьхэр_ёЄрэЎшщ.NUMB) INNER JOIN ╚ьхэр_╬▌╤ ON ╚ьхэр_ёЄрэЎшщ.OES = ╚ьхэр_╬▌╤.oes) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╚ьхэр_ёЄрэЎшщ.OBL = ╚ьхэр_юсырёЄхщ.OBL
+GROUP BY ╚ьхэр_юсырёЄхщ.OBL, ╚ьхэр_╬▌╤.nameoes, ╚ьхэр_юсырёЄхщ.NAME, ╚ьхэр_юсырёЄхщ.Terr_Belyaev;
+
+
+QUERY: ╨рёў╕Є Ўхэ√ 2
+SELECT Avg(╤ЄюшьюёЄ№2021.GAZ) AS [Avg-GAZ], Avg([╤ЄюшьюёЄ№2021]![gaz]/[╤ЄрэЎшш2021]![gaz]) AS Ўхэр, ╤ЄрэЎшш2021.OBL, ╚ьхэр_юсырёЄхщ.NAME
+FROM (╤ЄрэЎшш2021 INNER JOIN ╤ЄюшьюёЄ№2021 ON (╤ЄрэЎшш2021.NUMB1120 = ╤ЄюшьюёЄ№2021.NUMB1120) AND (╤ЄрэЎшш2021.YEAR = ╤ЄюшьюёЄ№2021.YEAR)) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╤ЄрэЎшш2021.OBL = ╚ьхэр_юсырёЄхщ.OBL
+GROUP BY ╤ЄрэЎшш2021.OBL, ╚ьхэр_юсырёЄхщ.NAME
+HAVING (((Avg(╤ЄюшьюёЄ№2021.GAZ))>0));
+
+
+QUERY: ╙фхы№э√х Єюяыштэ√х чрЄЁрЄ√
+SELECT [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].gruppa_oborud, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].numb1120, [╥юяыштэ√х чрЄЁрЄ√].Year, [Zatr_E]/[eotp] AS ud_topl_E, [Zatr_Q]/[Qotp] AS ud_topl_Q, [ZATRATY_SUM]/[B] AS cena, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].nameoes, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].nov_Belyaev, [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].NAME
+FROM [╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)] RIGHT JOIN [╥юяыштэ√х чрЄЁрЄ√] ON ([╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].Year = [╥юяыштэ√х чрЄЁрЄ√].Year) AND ([╤ЄрэЎшш_фы _ётюфэющ(рЁїшт)].numb1120 = [╥юяыштэ√х чрЄЁрЄ√].NUMB1120);
+
+
+QUERY: ╙фхы№э√х_фы _яхўрЄш
+SELECT DISTINCTROW ╙фхы№э√х2013.*, ╚ьхэр_ёЄрэЎшщ.ordnumb, ╚ьхэр_ёЄрэЎшщ.OES
+FROM ╚ьхэр_ёЄрэЎшщ INNER JOIN ╙фхы№э√х2013 ON ╚ьхэр_ёЄрэЎшщ.NUMB=╙фхы№э√х2013.NUMB1120;
+
+
+QUERY: ╘юЁьєы√ Єюяыштр_юЄў╕Є
+SELECT ╘юЁьєы√_Єюяыштр_юЄў╕Є.NAME AS ╤ЄрэЎш , ╘юЁьєы√_Єюяыштр_юЄў╕Є.NUMB1120, ╘юЁьєы√_Єюяыштр_юЄў╕Є.YEAR, ╘юЁьєы√_Єюяыштр_юЄў╕Є.formtxt, ╚ьхэр_юсырёЄхщ.NAME AS ╬сырёЄ№
+FROM (╚ьхэр_ёЄрэЎшщ INNER JOIN ╘юЁьєы√_Єюяыштр_юЄў╕Є ON ╚ьхэр_ёЄрэЎшщ.NUMB = ╘юЁьєы√_Єюяыштр_юЄў╕Є.NUMB1120) INNER JOIN ╚ьхэр_юсырёЄхщ ON ╚ьхэр_ёЄрэЎшщ.OBL = ╚ьхэр_юсырёЄхщ.OBL
+ORDER BY ╚ьхэр_ёЄрэЎшщ.ordnumb, ╘юЁьєы√_Єюяыштр_юЄў╕Є.YEAR;
+
+
+=== PROCEDURE name hits ===
+EWTP яю уюфрь
+TRANSFORM Sum([╤ЄрэЎшш(рЁїшт)].ewtp) AS [Sum-ewtp]
+SELECT [╤ЄрэЎшш(рЁїшт)].name, [╤ЄрэЎшш(рЁїшт)].numb1
+FROM [╤ЄрэЎшш(рЁїшт)]
+WHERE ((([╤ЄрэЎшш(рЁїшт)].year)=1990 Or ([╤ЄрэЎшш(рЁїшт)].year)=2000 Or ([╤ЄрэЎшш(рЁїшт)].year)=2005 Or ([╤ЄрэЎшш(рЁїшт)].year)=2010 Or ([╤ЄрэЎшш(рЁїшт)].year)=2015 Or ([╤ЄрэЎшш(рЁїшт)].year)=2020) AND (([╤ЄрэЎшш(рЁїшт)].ved)>0))
+GROUP BY [╤ЄрэЎшш(рЁїшт)].name, [╤ЄрэЎшш(рЁїшт)].numb1
+ORDER BY [╤ЄрэЎшш(рЁїшт)].numb1
+PIVOT [╤ЄрэЎшш(рЁїшт)].Year;
+
+---
+└эрышч єфхы№э√ї эр ╥▌╓
+SELECT [╤ЄрэЎшш_89-2001].NAME, [╤ЄрэЎшш_89-2001].Year, [╤ЄрэЎшш_89-2001].E, [╤ЄрэЎшш_89-2001].ewtp, [ewtp]/[e]*100 AS ptp, [╤ЄрэЎшш_89-2001].eurt, [╤ЄрэЎшш_89-2001].NUMB1120
+FROM [╤ЄрэЎшш_89-2001]
+WHERE ((([╤ЄрэЎшш_89-2001].E)>0))
+ORDER BY [╤ЄрэЎшш_89-2001].numb1, [╤ЄрэЎшш_89-2001].Year;
+
+---
+└эрышч_єфхы№э√ї
+SELECT ┬хё№_юЄўхЄ.name, ┬хё№_юЄўхЄ.year, ┬хё№_юЄўхЄ.E, ┬хё№_юЄўхЄ.ewtp
+FROM ┬хё№_юЄўхЄ INNER JOIN ╚ьхэр_ёЄрэЎшщ ON ┬хё№_юЄўхЄ.numb1120=╚ьхэр_ёЄрэЎшщ.NUMB
+WHERE (((┬хё№_юЄўхЄ.year)>1997) AND ((┬хё№_юЄўхЄ.ewtp)>0) AND ((┬хё№_юЄўхЄ.obl)=30) AND ((╚ьхэр_ёЄрэЎшщ.MAIN) Is Null))
+ORDER BY ┬хё№_юЄўхЄ.numb1, ┬хё№_юЄўхЄ.year;
+
+---
+─ы _уЁрЇшъют_єфхы№э√ї
+SELECT ┬хё№_юЄўхЄ.name, ┬хё№_юЄўхЄ.year, [ewtp]/[E]*100 AS p, ┬хё№_юЄўхЄ.eurt
+FROM ┬хё№_юЄўхЄ
+WHERE (((┬хё№_юЄўхЄ.year)>1995) AND ((┬хё№_юЄўхЄ.E)>0))
+ORDER BY ┬хё№_юЄўхЄ.numb1, ┬хё№_юЄўхЄ.year;
+
+---
+─юсртыхэшх т ╙фхы№э√х(рЁїшт)_└э 
+INSERT INTO [╙фхы№э√х(рЁїшт)]
+SELECT DISTINCTROW ╙фхы№э√х2023.*
+FROM ╙фхы№э√х2023 LEFT JOIN [╙фхы№э√х(рЁїшт)] ON ╙фхы№э√х2023.NUMB1120 = [╙фхы№э√х(рЁїшт)].NUMB1120;
+
+---
+─юсртыхэшх шч ╤ЄрэЎшш_╤їхьр т ╙фхы№э√х_рэрышч
+INSERT INTO ╙фхы№э√х_рэрышч ( E, eurt, [year], numb1120, D_ewtp, D_otr, name )
+SELECT DISTINCTROW [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].E, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].EURT, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].YEAR, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NUMB1120, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].D_ewtp, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].D_otr, [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї].NAME
+FROM ╙фхы№э√х_рэрышч INNER JOIN [╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї] ON ╙фхы№э√х_рэрышч.numb1120=[╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї є
+---
+╩юяшЁютрэшх ъю¤ЇЇшЎшхэЄют эрЄєЁ√ яю gaz_prir, maztop
+UPDATE ═рЄєЁр99 SET ═рЄєЁр99.gaz_prir = [═рЄєЁр99]![GAZ], ═рЄєЁр99.maztop = [═рЄєЁр99]![MAZUT]
+WHERE (((═рЄєЁр99.YEAR)>2009));
+
+---
+╬сэютыхэшх Єшяют юсюЁєфютрэш  ╤ЄрэЎшш(рЁїшт)
+UPDATE ╚ьхэр_ёЄрэЎшщ INNER JOIN [╤ЄрэЎшш(рЁїшт)] ON ╚ьхэр_ёЄрэЎшщ.NUMB=[╤ЄрэЎшш(рЁїшт)].numb1120 SET [╤ЄрэЎшш(рЁїшт)].obor = ╚ьхэр_ёЄрэЎшщ!Єшя
+WHERE ((([╤ЄрэЎшш(рЁїшт)].year)=2012));
+
+---
+╧юшёъ яютЄюЁхэшщ фы  ╙фхы№э√х2011_2
+SELECT ╙фхы№э√х2011_2.YEAR AS ┬√Ёрцхэшх1, ╙фхы№э√х2011_2.NUMB1120 AS ┬√Ёрцхэшх2, ╙фхы№э√х2011_2.NAME AS ┬√Ёрцхэшх3
+FROM ╙фхы№э√х2011_2
+WHERE ((([╙фхы№э√х2011_2].[YEAR]) In (SELECT [YEAR] FROM [╙фхы№э√х2011_2] As Tmp GROUP BY [YEAR],[NUMB1120] HAVING Count(*)>1  And [NUMB1120] = [╙фхы№э√х2011_2].[NUMB1120])))
+ORDER BY ╙фхы№э√х2011_2.YEAR, ╙фхы№э√х2011_2.NUMB1120;
+
+---
+╧ЁюёьюЄЁ яхЁёяхъЄштэ√ї єфхы№э√ї
+SELECT [╤ЄрэЎшш(╤їхьр)].NAME, [╤ЄрэЎшш(╤їхьр)].YEAR, [╤ЄрэЎшш(╤їхьр)].E, IIf([E]>0,[ewtp]/[E],0) AS D_ewtp, IIf([Q]>0,[qotr]/[Q],0) AS D_otr, [╤ЄрэЎшш(╤їхьр)].EURT, [╤ЄрэЎшш(╤їхьр)].NUMB1120
+FROM [╤ЄрэЎшш(╤їхьр)]
+WHERE ((([╤ЄрэЎшш(╤їхьр)].YEAR)>2018))
+ORDER BY [╤ЄрэЎшш(╤їхьр)].numb1, [╤ЄрэЎшш(╤їхьр)].YEAR;
+
+---

@@ -1,0 +1,312 @@
+Version =20
+VersionRequired =20
+Checksum =-969650355
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5669
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =600
+    Top =1188
+    Right =6552
+    Bottom =2832
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x7272981d0e25e240
+    End
+    GUID = Begin
+        0x58ca2280e9cd6545ada48152e4a1779a
+    End
+    NameMap = Begin
+        0x0acc0e550000000037bade516b95cf429d313af186ead51f0000000046b4588c ,
+        0xb84ce54000000000000000006d00610069006e00000000000000000000000000 ,
+        0x000000000000000000000c000000030000000000000000000000000000000000
+    End
+    RecordSource ="main"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =1701
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x4918d757381d0e459750bc863b44a4de
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3401
+                    Top =283
+                    Width =1134
+                    Height =454
+                    Name ="Кнопка0"
+                    Caption ="Загрузка"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xdb657dd3f671744ea720ecd268b794c8
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Dim gfound As Boolean, antep As Double
+Dim out As Recordset
+Dim lista As Recordset, msgf As Recordset
+Private Sub Кнопка0_Click()
+Dim db As Database, turb As Recordset, clst As Recordset
+Dim ntnew As Recordset
+Dim ttype(50) As Variant, tyear(50) As Double, tnumb(50) As Double, tnt(50) As Double
+Dim grstt(20) As Variant
+Dim grnt(20) As Variant, grpt(20) As Variant, grstnt(20) As Variant, grstcode(20) As Variant
+Set db = Application.DBEngine.Workspaces(0).Databases(0)
+Set lista = db.OpenRecordset("Списки_агрегатов")
+Set turb = db.OpenRecordset("Турбины")
+Set clst = db.OpenRecordset("Имена_станций")
+turb.Index = "numb1120"
+Set ntnew = db.OpenRecordset("Тепловые_мощности")
+ntnew.Index = "type"
+Set out = db.OpenRecordset("Мощности(ОПЭС)")
+out.Index = "codeyear"
+Set msgf = db.OpenRecordset("Сообщения")
+NUMB1120 = 0
+lista.MoveFirst
+nexta:
+If NUMB1120 <> lista!stcode Then
+'Другая станция
+'Считывание агрегатов станции из таблицы Турбины
+stfound = True
+turb.Seek "=", lista!stcode
+If turb.NoMatch Then
+stfound = False
+If lista!YEAR < 2000 Then
+sendmsg ("станция не найдена в таблице турбин")
+GoTo nextagr
+Else:
+GoTo skipturb
+End If
+End If
+i = 0
+Do While (turb!NUMB1120 = lista!stcode)
+ttype(i) = turb!opesname
+tyear(i) = z(turb!yearin)
+tnumb(i) = z(turb!stnumb)
+tnt(i) = z(turb!NT)
+i = i + 1
+turb.MoveNext
+If turb.EOF Then GoTo outturb
+Loop
+outturb: na = i
+'Считывание групп оборудования
+skipturb:
+clst.Index = "numb"
+clst.Seek "=", lista!stcode
+ordnumb = clst!ordnumb
+clst.Index = "numb2"
+clst.Seek "=", ordnumb
+If z(clst!COMP) <> 1 Then 'групп нет
+ng = 1
+grstt(0) = clst!stt
+grnt(0) = clst!NT
+grstnt(0) = clst!stnt
+grpt(0) = clst!pt
+grstcode(0) = lista!stcode
+Else 'группы есть
+j = 0
+clst.MoveNext
+Do While (clst!MAIN = lista!stcode)
+grstt(j) = clst!stt
+grnt(j) = clst!NT
+grstnt(j) = clst!stnt
+grpt(j) = clst!pt
+grstcode(j) = clst!NUMB
+j = j + 1
+clst.MoveNext
+Loop
+ng = j
+End If 'анализ comp
+End If 'другая стания
+'Классификация
+a = split(lista!Name & "-", "-")
+astt = a(0)
+If UBound(a) > 1 Then
+ip1 = InStr(a(1), "(")
+If ip1 > 0 Then
+ip2 = InStr(a(1), ")")
+stype = Mid(a(1), ip1, ip2 - ip1 + 1)
+astt = astt & stype
+a(1) = Replace(a(1), stype, "")
+End If
+ant = a(1)
+End If
+If UBound(a) > 2 Then
+apt = a(2)
+End If
+antep = 0
+'Поиск агрегата в таблице Турбины
+If lista!YEAR < 2000 Then 'Действующий агрегат
+If stfound Then
+For i = 0 To na - 1
+If tnumb(i) = lista!stnumb Then ' агрегат найден
+antep = tnt(i)
+If ttype(i) <> lista!Name Then
+sendmsg ("Не совпадает тип " & ttype(i) & " " & lista!Name)
+End If
+If tyear(i) <> lista!YEAR Then
+sendmsg ("Не совпадает год " & tyear(i) & " " & lista!YEAR)
+End If
+GoTo tfound
+End If ' агрегат найден
+Next i
+stnumbnotfound (lista!stnumb)
+GoTo tfound
+End If ' stfound
+Else ' новый агрегат
+If stfound Then
+For i = 0 To na - 1
+If tnumb(i) = lista!stnumb Then
+If ttype(i) = lista!Name Then
+sendmsg ("замена ")
+antep = tnt(i)
+GoTo tfound
+Else
+sendmsg ("замена " & ttype(i) & " " & lista!Name)
+End If
+End If
+Next i
+End If ' stfound
+'Новый агрегат
+If matcht("ТЭЦ", astt) Or InStr(astt, "(Т)") > 0 Then
+ntnew.Seek "=", lista!Name
+If ntnew.NoMatch Then
+antep = 0
+sendmsg ("не найдена тепловая мощность" & lista!Name)
+Else
+antep = z(ntnew!NT)
+If lista!stcode = 27 Then Debug.Print antep
+End If
+End If
+tfound:
+End If
+'Поиск  группы
+gfound = False
+For j = 0 To ng - 1
+If Not (IsNull(grstnt(j))) Then 'поиск по номеру
+If InStr(grstnt(j), ";" & Format(lista!stnumb, "#") & ";") > 0 Then
+groupfound (grstcode(j))
+End If
+End If
+Next j
+If Not gfound Then
+For j = 0 To ng - 1
+If grstt(j) <> "КЭС" And grstt(j) <> "ТЭЦ" And grstt(j) <> "ПСУ" Then
+If grstt(j) = astt And matchn(grnt(j), ant) And matchp(grpt(j), apt) Then groupfound (grstcode(j))
+End If
+Next j
+If Not gfound Then
+For j = 0 To ng - 1
+If matcht(grstt(j), astt) And matchn(grnt(j), ant) And matchp(grpt(j), apt) Then groupfound (grstcode(j))
+Next j
+End If
+End If
+If Not gfound Then sendmsg ("группа не найдена " & lista!Name)
+'Следующий агрегат
+nextagr:
+NUMB1120 = lista!stcode
+lista.MoveNext
+lista.MoveNext 'пропуск располагаемой мощности
+If lista!stcode = 0 Then GoTo nextagr
+If Not (lista.EOF) Then GoTo nexta
+End Sub
+'Подпрограммы
+Sub stnumbnotfound(n As Double)
+sendmsg ("агрегат не найден")
+End Sub
+Function matchn(gnt As Variant, ant As Variant) As Boolean
+matchn = False
+If IsNull(gnt) Then
+matchn = True
+Else
+it = InStr(gnt, "-")
+If it = 0 Then
+nt1 = CDbl(gnt)
+nt2 = CDbl(gnt)
+Else
+nt1 = CDbl(left(gnt, it - 1))
+nt2 = CDbl(Mid(gnt, it + 1))
+End If
+If ant = "..." Then matchn = True Else If CDbl(ant) >= nt1 And CDbl(ant) <= nt2 Then matchn = True
+End If
+End Function
+Function matchp(gpt As Variant, apt As Variant) As Boolean
+matchp = False
+If IsNull(gpt) Then
+matchp = True
+Else
+If left(gpt, 2) = "<=" Then
+pt1 = 0
+pt2 = CDbl(Mid(gpt, 3))
+Else
+pt1 = CDbl(gpt)
+pt2 = CDbl(gpt)
+End If
+If CDbl(apt) >= pt1 And CDbl(apt) <= pt2 Then matchp = True
+End If
+End Function
+Sub groupfound(stcode As Double) 'Группа найдена
+gfound = True
+years = Array("2000", "2001", "2002", "2003", "2004", "2005", "2010", "2015", "2020")
+For i = 0 To UBound(years)
+out.Seek "=", stcode, years(i)
+If out.NoMatch Then
+out.AddNew
+out!NUMB1120 = stcode
+out!YEAR = years(i)
+Else: out.Edit
+End If
+out!ne = z(out!ne) + z(lista(years(i)))
+If z(lista(years(i))) > 0 Then out!NT = z(out!NT) + antep
+If lista!stcode = 27 Then Debug.Print antep; out!NT
+out!p = 1
+out.Update
+Next i
+End Sub
+
+Function matcht(gstt As Variant, astt As Variant) As Boolean
+matcht = False
+If IsNull(gstt) Then matcht = True
+If gstt = "КЭС" And astt = "К" Then matcht = True
+If gstt = "ТЭЦ" And InStr("Т;ПТ;П;Р;ПР;ТЭЦ", astt) > 0 Then matcht = True
+If gstt = "ПСУ" And astt <> "ПГУ" And astt <> "ГТ" Then matcht = True
+If gstt = "ПГУ" And InStr(astt, "ПГУ") > 0 Then matcht = True
+If gstt = "ГТ" And InStr(astt, "ГТ") > 0 Then matcht = True
+End Function
+Sub sendmsg(txt As String)
+msgf.AddNew
+msgf!NUMB1120 = lista!stcode
+msgf!stnumb = lista!stnumb
+msgf!msgtxt = txt
+msgf.Update
+End Sub

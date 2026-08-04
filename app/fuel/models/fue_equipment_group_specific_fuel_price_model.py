@@ -133,6 +133,7 @@ class EquipmentGroupSpecificFuelPrice(db.Model):
     sah_c = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Служебные поля
+    # Код группы оборудования
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
     sost = db.Column(db.String(80), nullable=True)
     group = db.Column(db.String(80), nullable=True)

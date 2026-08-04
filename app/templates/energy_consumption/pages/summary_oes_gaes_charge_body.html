@@ -410,7 +410,7 @@
                     id="pdEcSummarySiprToggle"
                     class="btn btn-outline-primary text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки по данным СиПР (значения млн кВт·ч — СиПР; во всплывающей подсказке ячейки — потребление без СиПР)">
+                    title="Показать строки по данным СиПР (значения млн кВтч — СиПР; во всплывающей подсказке ячейки — потребление без СиПР)">
                 СиПР
             </button>
             {% if active_summary in ('oes', 'fo', 'ez') %}
@@ -637,15 +637,15 @@
                     <div class="list-group">
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="normal">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_ec_mln" data-pd-row-key="energy_consumption_mln_kvt_ch" checked>
-                            <span>Потребление электрической энергии, млн кВт·ч</span>
+                            <span>Потребление электрической энергии, млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="sipr">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_ec_sipr" data-pd-row-key="energy_consumption_sipr_mln_kvt_ch" checked>
-                            <span>Потребление электрической энергии (СиПР), млн кВт·ч</span>
+                            <span>Потребление электрической энергии (СиПР), млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="sipr">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_ec_abs_sipr" data-pd-row-key="energy_consumption_sipr_abs_growth_mln" checked>
-                            <span>Абсолютный прирост (СиПР), млн кВт·ч</span>
+                            <span>Абсолютный прирост (СиПР), млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="normal">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" id="oesRowChk_ec_yoy" data-pd-row-key="energy_consumption_yoy_growth_pct" checked>
@@ -679,15 +679,15 @@
                     <div class="list-group">
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="normal">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_mln_kvt_ch" checked>
-                            <span>Потребление электрической энергии, млн кВт·ч</span>
+                            <span>Потребление электрической энергии, млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="sipr">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_sipr_mln_kvt_ch" checked>
-                            <span>Потребление электрической энергии (СиПР), млн кВт·ч</span>
+                            <span>Потребление электрической энергии (СиПР), млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="sipr">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_sipr_abs_growth_mln" checked>
-                            <span>Абсолютный прирост (СиПР), млн кВт·ч</span>
+                            <span>Абсолютный прирост (СиПР), млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="normal">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_yoy_growth_pct" checked>
@@ -721,15 +721,15 @@
                     <div class="list-group">
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="normal">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_mln_kvt_ch" checked>
-                            <span>Потребление электрической энергии, млн кВт·ч</span>
+                            <span>Потребление электрической энергии, млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="sipr">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_sipr_mln_kvt_ch" checked>
-                            <span>Потребление электрической энергии (СиПР), млн кВт·ч</span>
+                            <span>Потребление электрической энергии (СиПР), млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="sipr">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_sipr_abs_growth_mln" checked>
-                            <span>Абсолютный прирост (СиПР), млн кВт·ч</span>
+                            <span>Абсолютный прирост (СиПР), млн кВтч</span>
                         </label>
                         <label class="list-group-item d-flex align-items-center gap-2" data-pd-ec-row-mode="normal">
                             <input class="form-check-input mt-0 flex-shrink-0" type="checkbox" data-pd-row-key="energy_consumption_yoy_growth_pct" checked>
@@ -1276,7 +1276,7 @@
                         {% elif active_summary == 'oes' and row.parameter_key == 'energy_consumption_mln_kvt_ch' and row.get('pd_ec_tites_oes_root') %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ec_oes_tites_mln_tooltip|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается строка ТИТЭС"></i></span>
                         {% elif active_summary == 'oes' and row.demand_model_name == 'RussiaFederationEnergyConsumptionParameter' and row.parameter_key == 'energy_consumption_mln_kvt_ch' %}
-                        <span class="text-wrap">Потребление электрической энергии, <strong>млрд кВт·ч</strong></span>
+                        <span class="text-wrap">Потребление электрической энергии, <strong>млрд кВтч</strong></span>
                         {% elif row.parameter_key == 'energy_consumption_sipr_abs_growth_mln' and not _pd_ec_oes_ees_manual_hide_formula %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ec_sipr_abs_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта строки"></i></span>
                         {% elif row.parameter_key == 'energy_consumption_yoy_growth_pct' and not _pd_ec_oes_ees_manual_hide_formula %}
@@ -1285,7 +1285,7 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ec_sipr_yoy_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается"></i></span>
                         {% elif row.parameter_key == 'gaes_charge_consumption_mln_kvt_ch' %}
                         {% set _gaes_charge_st = row.gaes_charge_row_station_name or 'Без названия' %}
-                        <span class="text-wrap">Потребление электрической энергии ГАЭС на заряд, млн кВт·ч ({% if row.gaes_station_id %}<a href="{{ url_for('station_bp.station_details', station_id=row.gaes_station_id, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, rounding_digits_gaes=rounding_digits) }}"
+                        <span class="text-wrap">Потребление электрической энергии ГАЭС на заряд, млн кВтч ({% if row.gaes_station_id %}<a href="{{ url_for('station_bp.station_details', station_id=row.gaes_station_id, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, rounding_digits_gaes=rounding_digits) }}"
                                class="fw-bold link-primary link-underline-opacity-75"
                                target="_blank"
                                rel="noopener noreferrer"
@@ -1391,7 +1391,7 @@
                     {% set _ues_combined_ees_medium_only = summary_route_variant == 'coeff' and _is_medium_year and row.demand_model_name == 'UnionEnergySystemEnergyConsumptionParameter' and row.parameter_key == 'combined_on_ees' %}
                     {% set _plan_hide = false %}
                     {% set _yr_tt = (row.year_numeric_tooltips|default([]))[ix] if (row.year_numeric_tooltips|default([]))|length > ix else '' %}
-                    {% set _cell_tt = ('Потребление электрической энергии, млн кВт·ч: ' ~ _yr_tt) if (row.parameter_key == 'energy_consumption_sipr_mln_kvt_ch' and _yr_tt) else _yr_tt %}
+                    {% set _cell_tt = ('Потребление электрической энергии, млн кВтч: ' ~ _yr_tt) if (row.parameter_key == 'energy_consumption_sipr_mln_kvt_ch' and _yr_tt) else _yr_tt %}
                     {% set _gaes_ch_ymin = row.get('gaes_charge_display_year_min') %}
                     {% set _gaes_ch_ymax = row.get('gaes_charge_display_year_max') %}
                     {% set _gaes_station_year_out_of_range = _ec_gaes_charge_station_editable and _gaes_ch_ymin is not none and _yr < _gaes_ch_ymin %}

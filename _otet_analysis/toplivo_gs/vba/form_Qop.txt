@@ -1,0 +1,144 @@
+Version =20
+VersionRequired =20
+Checksum =1640642112
+Begin Form
+    NavigationButtons = NotDefault
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2834
+    DatasheetFontHeight =12
+    ItemSuffix =5
+    Left =4290
+    Top =1635
+    Right =6810
+    Bottom =3045
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x1f9e9b9ab63de340
+    End
+    RecordSource ="SELECT [Станции(макет)].[YEAR], [Станции(макет)].[Q] FROM [Станции(макет)]; "
+    DatasheetFontName ="Times New Roman Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xe5860bc6a4c1604e837a36719cf19885
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    TextFontFamily =18
+                    ColumnWidth =600
+                    FontWeight =300
+                    Name ="year"
+                    ControlSource ="YEAR"
+                    FontName ="Times New Roman"
+                    GUID = Begin
+                        0x84909825c272a94ab371575948b6c474
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    TextFontFamily =18
+                    Left =567
+                    ColumnWidth =600
+                    TabIndex =1
+                    Name ="Q"
+                    ControlSource ="Q"
+                    Format ="#"
+                    FontName ="Times New Roman"
+                    GUID = Begin
+                        0x46c73a52587fe649a6f5d53473500df0
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =255
+                    Left =1133
+                    Height =283
+                    ColumnWidth =576
+                    TabIndex =2
+                    Name ="k"
+                    ControlSource ="=ppf1([year])"
+                    Format ="#"
+                    GUID = Begin
+                        0xd00058e08f4e17488aaa3a963b172f0e
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =127
+                    Left =1700
+                    Height =283
+                    ColumnWidth =780
+                    TabIndex =3
+                    Name ="p"
+                    ControlSource ="=([k]-1)*100"
+                    Format ="#"
+                    GUID = Begin
+                        0xa2d9bf489f8e6c4b8462934f09f4ee22
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =119
+                    Left =2267
+                    Height =283
+                    TabIndex =4
+                    Name ="pa"
+                    ControlSource ="=IIf([k]>0,(Exp(Log([k])/IIf([year]=2010,4,5))-1)*100,0)"
+                    Format ="#"
+                    GUID = Begin
+                        0x14e8e902773fe2418f7faf3f64de238d
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Function ppf1(y As Double)
+Dim cform As Form, rs As DAO.Recordset
+Set rs = Me.RecordsetClone
+If y > 2006 Then
+rs.FindFirst "year=" & Format(y, "#")
+qc = Me.Form.RecordsetClone!Q
+Debug.Print "qc="; qc
+rs.MovePrevious
+If z(rs!Q) <> 0 Then pw = (qc / rs!Q) Else pw = 0
+ppf1 = pw
+End If
+End Function

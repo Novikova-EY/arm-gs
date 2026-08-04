@@ -1,0 +1,2730 @@
+Version =21
+VersionRequired =20
+Checksum =1264032638
+Begin Form
+    TabularCharSet =204
+    GridX =5
+    GridY =5
+    Width =11225
+    ItemSuffix =143
+    Left =60
+    Top =1515
+    Right =11565
+    Bottom =6870
+    RecSrcDt = Begin
+        0x5881965d6ee5e140
+    End
+    RecordSource ="Параметры-распределения"
+    OnCurrent ="[Event Procedure]"
+    OnOpen ="[Event Procedure]"
+    PrtMip = Begin
+        0xae050000a4050000a4050000a405000000000000201c0000e010000001000000 ,
+        0x010000006801000000000000a10700000100000001000000
+    End
+    PrtDevMode = Begin
+        0x00e147be244a4e00b0ea4817010000001c5a4a17d35f4a1707000000a0494e00 ,
+        0x010403069c00d40543ff8007010009009a0b3408640001000f00580202000100 ,
+        0x5802030000004134003da81298494e0000000000ff5f4a17ff6b485600000000 ,
+        0x244a4e00287b0000000000000000000000000000010000000000000001000000 ,
+        0x0200000001000000000000000000000000000000000000000000000050524956 ,
+        0x4220000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000180000000000102710271027 ,
+        0x000010270000000000000000b000a40300000000000000000000000000000000 ,
+        0x0000000000000000030000000000000030021000503403002888040000000000 ,
+        0x00000000000000000000000000000000000000000000000046469ff205000000 ,
+        0x04000000ff00ff00010000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0100000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000b0000000534d544a000000001000a000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x3002000045424441000001000100000001000000010000000100000000000000 ,
+        0x5300740061006e00640061007200640000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000001000000
+    End
+    PrtDevNames = Begin
+        0x08001c0026000100000000000000000000000000000000000000000000000000 ,
+        0x000000000000446f63756d656e74735c2a2e70646600
+    End
+    FilterOnLoad =0
+    AllowLayoutView =0
+    PrtDevModeW = Begin
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x01040306dc00d40543ff8007010009009a0b3408640001000f00580202000100 ,
+        0x5802030000004100340000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000010000000000000001000000 ,
+        0x0200000001000000000000000000000000000000000000000000000050524956 ,
+        0x4220000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000180000000000102710271027 ,
+        0x000010270000000000000000b000a40300000000000000000000000000000000 ,
+        0x0000000000000000030000000000000030021000503403002888040000000000 ,
+        0x00000000000000000000000000000000000000000000000046469ff205000000 ,
+        0x04000000ff00ff00010000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0100000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000000000000b0000000534d544a000000001000a000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x3002000045424441000001000100000001000000010000000100000000000000 ,
+        0x5300740061006e00640061007200640000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x00000000000000000000000001000000
+    End
+    PrtDevNamesW = Begin
+        0x0400180022000100000000000000000000000000000000000000000000000000 ,
+        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+        0x0000000044006f00630075006d0065006e00740073005c002a002e0070006400 ,
+        0x66000000
+    End
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            TextFontCharSet =204
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            TextFontFamily =2
+            Width =1701
+            Height =283
+            BorderLineStyle =0
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =491
+            Height =270
+            LabelX =0
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin CustomControl
+            SpecialEffect =2
+            Width =4536
+            Height =2835
+        End
+        Begin ToggleButton
+            TextFontCharSet =204
+            TextFontFamily =2
+            Width =283
+            Height =283
+            BorderLineStyle =0
+        End
+        Begin Section
+            Height =6916
+            BackColor =8421440
+            Name ="ОбластьДанных0"
+            GUID = Begin
+                0x9ada86bc9b5d1041833c5d586e45a5b3
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =4049
+                    Top =1540
+                    Width =851
+                    Height =240
+                    ColumnOrder =41
+                    TabIndex =8
+                    Name ="bq"
+                    Format ="#"
+                    GUID = Begin
+                        0xba8d94036b4b764ca7bede85b4563f9e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =93
+                    Left =4049
+                    Top =2020
+                    Width =851
+                    Height =240
+                    ColumnOrder =22
+                    TabIndex =30
+                    Name ="potr"
+                    Format ="#"
+                    GUID = Begin
+                        0x880011ca52408f43be5a67a5f300a5ad
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =93
+                    Left =2347
+                    Top =2020
+                    Width =851
+                    Height =240
+                    ColumnOrder =23
+                    TabIndex =29
+                    Name ="pe"
+                    Format ="#"
+                    GUID = Begin
+                        0x8c9d97fc0589a34c9078626b5d3abcab
+                    End
+
+                End
+                Begin TextBox
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =2347
+                    Top =680
+                    Width =851
+                    Height =240
+                    ColumnWidth =540
+                    ColumnOrder =46
+                    TabIndex =3
+                    Name ="e"
+                    ControlSource ="e"
+                    GUID = Begin
+                        0xe946123b6e35ec4494610f3f300c4358
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =93
+                    Left =6122
+                    Top =113
+                    Width =1026
+                    Height =340
+                    Name ="Кнопка5"
+                    Caption ="Коэфф"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xa0570442b42bd74fa51f4575b5f430d7
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin TextBox
+                    OverlapFlags =215
+                    Left =3628
+                    Width =576
+                    Height =240
+                    ColumnWidth =465
+                    ColumnOrder =48
+                    FontSize =10
+                    FontWeight =700
+                    TabIndex =1
+                    Name ="cyear"
+                    ControlSource ="year"
+                    GUID = Begin
+                        0x667025f974f85046be25ae81d763d0b7
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Left =3628
+                            Width =420
+                            Height =240
+                            Name ="Текст6"
+                            Caption ="year:"
+                            GUID = Begin
+                                0x19dbdd0a48830441ba0d6b9cbb0c4ec0
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =223
+                    Left =4535
+                    Top =6576
+                    Width =2616
+                    Height =240
+                    ColumnWidth =540
+                    ColumnOrder =47
+                    TabIndex =2
+                    Name ="filter1"
+                    ControlSource ="filter"
+                    GUID = Begin
+                        0xf1ca85259ffad0438cf5fefda26207ae
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Left =4535
+                            Top =6576
+                            Width =405
+                            Height =240
+                            Name ="Текст7"
+                            Caption ="filter:"
+                            GUID = Begin
+                                0x8dd5a52d6b022d4181e5fa12401f2d32
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OldBorderStyle =0
+                    OverlapFlags =93
+                    Left =3784
+                    Top =680
+                    Width =1134
+                    Height =240
+                    ColumnWidth =450
+                    ColumnOrder =45
+                    TabIndex =4
+                    Name ="k"
+                    ControlSource ="k"
+                    GUID = Begin
+                        0xe692370d9e457d47895743403252daed
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =223
+                    Left =1496
+                    Top =1540
+                    Width =851
+                    Height =240
+                    ColumnOrder =44
+                    TabIndex =5
+                    Name ="bnust"
+                    Format ="#"
+                    GUID = Begin
+                        0x0d6294b0ab4e274c9d51b538a8943f7c
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Left =1496
+                            Top =1670
+                            Width =690
+                            Height =240
+                            Name ="Текст16"
+                            Caption ="Поле15:"
+                            GUID = Begin
+                                0x848552ad28c34d4d90b8d6e36c17b987
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2347
+                    Top =1540
+                    Width =851
+                    Height =240
+                    ColumnOrder =43
+                    TabIndex =6
+                    Name ="be"
+                    Format ="#"
+                    GUID = Begin
+                        0x85427e00f28af0408666334a602588fc
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3198
+                    Top =1540
+                    Width =851
+                    Height =240
+                    ColumnOrder =42
+                    TabIndex =7
+                    Name ="betp"
+                    Format ="#"
+                    GUID = Begin
+                        0x8fc142ee3e15ef4995137dde1e1a9ce6
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =4900
+                    Top =1540
+                    Width =851
+                    Height =240
+                    ColumnOrder =40
+                    TabIndex =9
+                    Name ="bqotr"
+                    Format ="#"
+                    GUID = Begin
+                        0x84c4e83e1493ef4da27fda2e040eddd2
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =95
+                    Left =6122
+                    Top =453
+                    Width =1026
+                    Height =343
+                    TabIndex =10
+                    Name ="Кнопка27"
+                    Caption ="Распред"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x38d4a3e461fba749bfee99d05c8b83dd
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =223
+                    Left =1496
+                    Top =1780
+                    Width =851
+                    Height =240
+                    ColumnOrder =39
+                    TabIndex =11
+                    Name ="cnust"
+                    Format ="#"
+                    GUID = Begin
+                        0x0fcc78ddea838b45a75e7f23541e77e5
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OldBorderStyle =0
+                    OverlapFlags =95
+                    Left =2347
+                    Top =920
+                    Width =851
+                    Height =227
+                    ColumnOrder =38
+                    TabIndex =12
+                    Name ="ce"
+                    Format ="#"
+                    GUID = Begin
+                        0xd6fc1b8a9fa19741be4e1b05e0e15612
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3198
+                    Top =1780
+                    Width =851
+                    Height =240
+                    ColumnOrder =37
+                    TabIndex =13
+                    Name ="cetp"
+                    Format ="#"
+                    GUID = Begin
+                        0x6e95e42f78e57d48a3aed2c1b0540824
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =4049
+                    Top =1780
+                    Width =851
+                    Height =240
+                    ColumnOrder =36
+                    TabIndex =14
+                    Name ="cq"
+                    Format ="#"
+                    GUID = Begin
+                        0x37b83bcb105fa24e9ba2746f39aecf2e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =4900
+                    Top =1780
+                    Width =851
+                    Height =240
+                    ColumnOrder =35
+                    TabIndex =15
+                    Name ="cqotr"
+                    Format ="#"
+                    GUID = Begin
+                        0x47d05c69d4fac24c951788da61087fd1
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =5751
+                    Top =1540
+                    Width =581
+                    Height =240
+                    ColumnOrder =34
+                    TabIndex =16
+                    Name ="bptp"
+                    Format ="#"
+                    GUID = Begin
+                        0xa370d9c4aeef004aae6d3ca28897efbb
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =5751
+                    Top =1780
+                    Width =566
+                    Height =240
+                    ColumnOrder =33
+                    TabIndex =17
+                    Name ="cptp"
+                    Format ="#"
+                    GUID = Begin
+                        0xfdf4a36764be294c8e3ab326a62864da
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =255
+                    Left =6317
+                    Top =1541
+                    Width =851
+                    Height =240
+                    ColumnOrder =32
+                    TabIndex =18
+                    Name ="bh"
+                    Format ="#"
+                    GUID = Begin
+                        0x33195573000bcc409420e8d8a311dac3
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =119
+                    Left =6317
+                    Top =1781
+                    Width =851
+                    Height =240
+                    ColumnOrder =31
+                    TabIndex =19
+                    Name ="ch"
+                    Format ="#"
+                    GUID = Begin
+                        0xb06c6f8b61b79c4fa6fc55493e4a294f
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =87
+                    Left =4900
+                    Top =2020
+                    Width =851
+                    Height =240
+                    ColumnOrder =30
+                    TabIndex =20
+                    Name ="ph1"
+                    Format ="#"
+                    GUID = Begin
+                        0xcd2b28e9b27c3a419076b6320a3b0bca
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =87
+                    Left =6122
+                    Top =793
+                    Width =1026
+                    Height =340
+                    TabIndex =21
+                    Name ="Кнопка49"
+                    Caption ="Топливо"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x9a3f14410cb4db408f9e5a7fe8ccac5f
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =1496
+                    Top =1330
+                    Width =851
+                    Height =210
+                    Name ="Текст58"
+                    Caption ="Nуст"
+                    GUID = Begin
+                        0xfa5d1f750dd99549bd2ffe38e425d539
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =2347
+                    Top =1330
+                    Width =851
+                    Height =210
+                    Name ="Текст59"
+                    Caption ="E"
+                    GUID = Begin
+                        0xaafbb868aab6934f97026656feca4152
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =3198
+                    Top =1330
+                    Width =851
+                    Height =210
+                    Name ="Текст60"
+                    Caption ="Eтп"
+                    GUID = Begin
+                        0xc0dd0c674a452d45841f020f1f60401b
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =4049
+                    Top =1330
+                    Width =851
+                    Height =210
+                    Name ="Текст61"
+                    Caption ="Q"
+                    GUID = Begin
+                        0xfede41d626db974e976db3b46123469c
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =4900
+                    Top =1330
+                    Width =851
+                    Height =210
+                    Name ="Текст62"
+                    Caption ="Qотр"
+                    GUID = Begin
+                        0x94bb9d0540972c488c68bfc71efc2942
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =127
+                    TextAlign =2
+                    Left =5751
+                    Top =1330
+                    Width =566
+                    Height =210
+                    Name ="Текст63"
+                    Caption ="%тп"
+                    GUID = Begin
+                        0xe482f9d524442347a6454ad1e7686cd3
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =119
+                    TextAlign =2
+                    Left =6317
+                    Top =1331
+                    Width =851
+                    Height =210
+                    Name ="Текст64"
+                    Caption ="H"
+                    GUID = Begin
+                        0x38a38f766b8d99488c2d6bc8e73caae9
+                    End
+                End
+                Begin Label
+                    OverlapFlags =87
+                    TextAlign =2
+                    Left =3514
+                    Top =680
+                    Width =270
+                    Height =240
+                    Name ="Текст68"
+                    Caption ="К="
+                    GUID = Begin
+                        0x24c46ce23a7b6949830a1aaef4d9ca79
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =1496
+                    Top =680
+                    Width =851
+                    Height =227
+                    Name ="ed"
+                    Caption ="Eраспред"
+                    GUID = Begin
+                        0x5c68fb0b40d97c40bf0447649d83f2bc
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =223
+                    Top =6576
+                    Width =1136
+                    Height =240
+                    ColumnWidth =1140
+                    ColumnOrder =29
+                    TabIndex =22
+                    Name ="wname"
+                    ControlSource ="wname"
+                    GUID = Begin
+                        0x0121ce9e6cfbe14e85137993b75c4200
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Top =6576
+                            Width =630
+                            Height =240
+                            Name ="Текст70"
+                            Caption ="wname:"
+                            GUID = Begin
+                                0x10375b360f819b46865b6078105f65a2
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =223
+                    Left =1133
+                    Top =6576
+                    Width =1136
+                    Height =240
+                    ColumnWidth =870
+                    ColumnOrder =28
+                    TabIndex =23
+                    Name ="uname"
+                    ControlSource ="uname"
+                    GUID = Begin
+                        0xe93fdae33840334ab6776e41af76e232
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =95
+                            Left =1133
+                            Top =6576
+                            Width =600
+                            Height =240
+                            Name ="Текст71"
+                            Caption ="uname:"
+                            GUID = Begin
+                                0xccdbe66c91b4be4586e89e55779a41e7
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =223
+                    Left =2267
+                    Top =6576
+                    Width =1136
+                    Height =240
+                    ColumnOrder =27
+                    TabIndex =24
+                    Name ="toplname"
+                    ControlSource ="toplname"
+                    GUID = Begin
+                        0x3470d3584029d44f8555acc63201360a
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =95
+                            Left =2267
+                            Top =6576
+                            Width =765
+                            Height =240
+                            Name ="Текст73"
+                            Caption ="toplname:"
+                            GUID = Begin
+                                0x205335a2a9975a44902ec079bba186c9
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =215
+                    Left =3401
+                    Top =6576
+                    Width =1136
+                    Height =240
+                    ColumnOrder =26
+                    TabIndex =25
+                    Name ="dopname"
+                    ControlSource ="dopname"
+                    GUID = Begin
+                        0x0c92191bd25ebd4fb65b42dadfb05b60
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =95
+                            Left =3401
+                            Top =6576
+                            Width =780
+                            Height =240
+                            Name ="Текст74"
+                            Caption ="dopname:"
+                            GUID = Begin
+                                0x2be47dd7e191db4bbbf66b562a2ed91a
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =215
+                    Width =3401
+                    Height =240
+                    ColumnOrder =25
+                    FontSize =10
+                    FontWeight =700
+                    TabIndex =26
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0xc1741c1760a9294ea0fee23e89000616
+                    End
+
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =510
+                            Height =240
+                            Name ="Текст75"
+                            Caption ="name:"
+                            GUID = Begin
+                                0x8433681d792bf048b592f88354c6e487
+                            End
+                        End
+                    End
+                End
+                Begin CustomControl
+                    Enabled = NotDefault
+                    SizeMode =1
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Left =1700
+                    Top =2494
+                    Width =4530
+                    Height =240
+                    AutoActivate =1
+                    TabIndex =27
+                    Name ="pb"
+                    OleData = Begin
+                        0x000e0000d0cf11e0a1b11ae1000000000000000000000000000000003e000300 ,
+                        0xfeff090006000000000000000000000001000000020000000000000000100000 ,
+                        0x0400000001000000feffffff0000000003000000ffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff02000000223a05358985d111b16a00c0 ,
+                        0xf0283628000000000000000000000000a05b068d7bb6bf010700000000010000 ,
+                        0x0000000003004100630063006500730073004f0062006a005300690074006500 ,
+                        0x4400610074006100000000000000000000000000000000000000000000000000 ,
+                        0x0000000026000200ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x000000000000000000000000000000000000000000000000000000005c000000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffff01000000ffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000200000050000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fefffffffdfffffffffffffffffffffffffffffffffffffffeffffff ,
+                        0xfeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff02000000223a05358985d111b16a00c0 ,
+                        0xf0283628000000000000000000000000400befd17bb6bf010500000000010000 ,
+                        0x0000000003004100630063006500730073004f0062006a005300690074006500 ,
+                        0x4400610074006100000000000000000000000000000000000000000000000000 ,
+                        0x0000000026000200ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x000000000000000000000000000000000000000000000000000000005c000000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffff01000000ffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000200000050000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fffffffffffffffffefffffffdfffffffefffffffeffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff01000000feffffff03000000feffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff5c000000000000000100000000000000000000000000000000000000 ,
+                        0x2400000038000000000000000000000000000000000000000000000039333638 ,
+                        0x323635452d383546452d313164312d384245332d303030304638373534444131 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x000000002143341208000000361f0000a7010000018aab97000006001c000000 ,
+                        0x000000000000c8420000000001efcdab000005000000000006000000ffffffff ,
+                        0xffffffff98f562001fdeecbd0100050098f56200000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    OLEClass ="ProgCtrl"
+                    Class ="MSComctlLib.ProgCtrl.2"
+                    GUID = Begin
+                        0x4454e497faad47469701cc8b51660c20
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =87
+                    Left =3198
+                    Top =2020
+                    Width =851
+                    Height =240
+                    ColumnOrder =24
+                    TabIndex =28
+                    Name ="pq"
+                    Format ="#"
+                    GUID = Begin
+                        0x52a52e1a1de9064997a21f7b586f59af
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =929
+                    Top =1540
+                    Width =567
+                    Height =240
+                    ColumnOrder =21
+                    TabIndex =31
+                    Name ="byear"
+                    ControlSource ="byear"
+                    GUID = Begin
+                        0x0f15e28b0b143040a92dcc7fa483debd
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    TextAlign =3
+                    Left =929
+                    Top =1780
+                    Width =567
+                    Height =240
+                    ColumnOrder =49
+                    TabIndex =32
+                    Name ="cyear1"
+                    ControlSource ="=[cyear]"
+                    GUID = Begin
+                        0x8e49e49fab24844a9856da76555b4d27
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =7937
+                    Top =1600
+                    Width =567
+                    Height =240
+                    ColumnOrder =20
+                    TabIndex =33
+                    Name ="cnustn"
+                    Format ="#"
+                    GUID = Begin
+                        0x409bc0e5e937764e977b804e93246ffc
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =8504
+                    Top =1600
+                    Width =720
+                    Height =240
+                    ColumnOrder =19
+                    TabIndex =34
+                    Name ="hd"
+                    Format ="#"
+                    GUID = Begin
+                        0x9d6d2a13e975c7469422189d59bf1f5d
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =95
+                    Left =9224
+                    Top =1600
+                    Width =720
+                    Height =240
+                    ColumnOrder =18
+                    TabIndex =35
+                    Name ="kn"
+                    ControlSource ="kn"
+                    Format ="#"
+                    GUID = Begin
+                        0xf9771001a699384b804b693b1fb1a78b
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =95
+                    Left =8504
+                    Top =1840
+                    Width =720
+                    Height =240
+                    ColumnOrder =17
+                    TabIndex =36
+                    Name ="ph"
+                    Format ="#"
+                    GUID = Begin
+                        0x95f89633fe3f0443a8b7277124a59577
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =7937
+                    Top =113
+                    Width =576
+                    Height =576
+                    TabIndex =37
+                    Name ="Кнопка97"
+                    Caption ="Фикс"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000020000000200000000100080000000000000400000000000000000000 ,
+                        0x0000000000000000000000000000bf0000bf000000bfbf00bf000000bf00bf00 ,
+                        0xbfbf0000c0c0c000c0dcc000f0c8a40000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0xf0fbff00a4a0a000808080000000ff0000ff000000ffff00ff000000ff00ff00 ,
+                        0xffff0000ffffff00070707070707070707070707070707070707070707070707 ,
+                        0x0707070707070707070707070707070707070707070707070707070707070707 ,
+                        0x0707070707070707070707070707070707070707000000000000000707070707 ,
+                        0x0707070707070707070707070707070707070700f8f8f8f8f8f8f80007070707 ,
+                        0x0707070707070707070707070707070707070700000000000000000007070707 ,
+                        0x070707070707070707070707070707070707070007f8f8f8f8f8f80007070707 ,
+                        0x0707070707070707070707070707070707070700000000000000000007070707 ,
+                        0x07070707070707070707070707070707070700ff070707070707070700070707 ,
+                        0x0707070707070707070707070707070707070000000000000000000000070707 ,
+                        0x0707070707070707070707070707070707000000f8f8f8f8f8f8f80000000707 ,
+                        0x0707070707070707070707070707070707000707fffffffffffff8f8f8000707 ,
+                        0x07070707070707070707070707070707000707fffffffffffffffffff8f80007 ,
+                        0x070707070707070707070707070707000707fffffffffffffffffffffff8f800 ,
+                        0x0707070707070707070707070707070007fffffffffffffffffff8fffffff800 ,
+                        0x0707070707070707070707070707000707fffffffffffffffff8fffffffff8f8 ,
+                        0x00070707070707070707070707070007ffffffff07070707f8fffffffffffff8 ,
+                        0x00000707070707070707070707070007ffffff00000000f807fffffffffffff8 ,
+                        0x00070707070707070707070707070007ffffffffffffff0007fffffffffffff8 ,
+                        0x0000070707070707070707070707000707ffffffffffff0007fffffffffffff8 ,
+                        0x0007070707070707070707070707070007ffffffffffff0007ffffffffff0700 ,
+                        0x070707070707070707070707070707000707ffffffffff0007ffffffff070700 ,
+                        0x07070707070707070707070707070707000707ffffffff00ffffffff07070007 ,
+                        0x070707070707070707070707070707070700070707ffffffffff070707000707 ,
+                        0x0707070707070707070707070707070707000000070707070707070000000707 ,
+                        0x0707070707070707070707070707070707070000000000000000000000070707 ,
+                        0x07070707070707070707070707070707070700ff070707070707070700070707 ,
+                        0x0707070707070707070707070707070707070700000000000000000007070707 ,
+                        0x0707070707070707070707070707070707070700ff0707070707f80007070707 ,
+                        0x0707070707070707070707070707070707070700000000000000000007070707 ,
+                        0x0707070707070707070707070707070707070700ff0707070707f80007070707 ,
+                        0x0707070707070707070707070707070707070707000000000000000707070707 ,
+                        0x0707070707070707070707070707070707070707070707070707070707070707 ,
+                        0x0707070707070707800000008000000080000000800000008000000080000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    ControlTipText ="Фиксированные часы"
+                    GUID = Begin
+                        0x1aa8c07ea32a1645ae35eca67e306b4c
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+                Begin Label
+                    OverlapFlags =87
+                    TextFontFamily =18
+                    Left =1496
+                    Top =907
+                    Width =851
+                    Height =227
+                    FontSize =10
+                    Name ="Надпись98"
+                    Caption ="Eтек"
+                    FontName ="Times New Roman Cyr"
+                    GUID = Begin
+                        0x62e06ad6c73acb4b9addcfa20f45760e
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =7937
+                    Top =1360
+                    Width =567
+                    Height =240
+                    Name ="Надпись100"
+                    Caption ="Nнов"
+                    GUID = Begin
+                        0x6e52ff3d5785014ebd98ad4de3f2dd50
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =95
+                    TextAlign =2
+                    Left =8504
+                    Top =1360
+                    Width =720
+                    Height =240
+                    Name ="Надпись101"
+                    Caption ="Hдейств"
+                    GUID = Begin
+                        0x92c7aadd6d17eb438745a0ebad3fe985
+                    End
+                End
+                Begin Label
+                    OldBorderStyle =1
+                    OverlapFlags =87
+                    TextAlign =2
+                    Left =9224
+                    Top =1360
+                    Width =720
+                    Height =240
+                    Name ="Надпись102"
+                    Caption ="Кнов"
+                    GUID = Begin
+                        0xa27d85dcd7a6ba4bbe8b54f81f213c32
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =93
+                    Left =8966
+                    Top =2834
+                    Width =576
+                    Height =576
+                    TabIndex =38
+                    Name ="next"
+                    Caption ="next"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x28000000110000000f0000000100040000000000b40000000000000000000000 ,
+                        0x1000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff0000ff000000ffff00ff000000ff00ff00 ,
+                        0xffff0000ffffff00888888888888888888888888888888888888888880000000 ,
+                        0x8888800888888888800000008888800088888888840000008888800008888888 ,
+                        0x8004322688888000008888888040e26288888000000888888440366688888000 ,
+                        0x000088888111a3338888800000088888899deaee8888800000888888888caaaa ,
+                        0x8888800008888888811133228888800088888888811909108888800888888888 ,
+                        0x8ff865f088888888888888888f8765f088888888888888888f0865f000000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    GUID = Begin
+                        0x7701e1ed4000f3419c60c00e052d99d4
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin CommandButton
+                    OverlapFlags =95
+                    Left =9542
+                    Top =2834
+                    Width =576
+                    Height =576
+                    TabIndex =39
+                    Name ="prev"
+                    Caption ="prev"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x28000000110000000f0000000100040000000000b40000000000000000000000 ,
+                        0x1000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff0000ff000000ffff00ff000000ff00ff00 ,
+                        0xffff0000ffffff00888888888888888888888888888888888888888880000000 ,
+                        0x8888888800888888800000008888888000888888840000008888880000888888 ,
+                        0x8004322688888000008888888040e26288880000008888888440366688800000 ,
+                        0x008888888111a3338888000000888888899deaee8888800000888888888caaaa ,
+                        0x8888880000888888811133228888888000888888811909108888888800888888 ,
+                        0x8ff865f088888888888888888f8765f088888888888888888f0865f000000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    GUID = Begin
+                        0x35a1634dcda9884a8cdecdb077901310
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    ColumnCount =2
+                    ListWidth =2880
+                    Left =6689
+                    Top =2834
+                    Width =1474
+                    Height =340
+                    ColumnOrder =16
+                    TabIndex =40
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"10\";\"100\""
+                    GUID = Begin
+                        0xb8b6e9e6f6635948bfb7f003048c8278
+                    End
+                    Name ="oeslst"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [Имена_ОЭС].[name], [Имена_ОЭС].[oes] FROM Имена_ОЭС; "
+                    ColumnWidths ="2430;450"
+                    AfterUpdate ="[Event Procedure]"
+                    DefaultValue ="\"Севзапэнерго\""
+
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    ColumnCount =2
+                    ListWidth =1441
+                    Left =6689
+                    Top =3401
+                    Width =1474
+                    Height =340
+                    ColumnOrder =15
+                    TabIndex =41
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"10\";\"100\""
+                    GUID = Begin
+                        0xe657751d0cde7a47986c08472f0689cd
+                    End
+                    Name ="type"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [Список_типов].[name], [Список_типов].[cond] FROM Список_типов;"
+                    ColumnWidths ="1440;3690"
+                    DefaultValue ="\"ТЭС\""
+
+                End
+                Begin CommandButton
+                    OverlapFlags =87
+                    Left =8390
+                    Top =2834
+                    Width =576
+                    Height =576
+                    TabIndex =42
+                    Name ="first"
+                    Caption ="first"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadadaadadadadadadadad00000adada00000a ,
+                        0x0f000dadad0f000d0f000adada0f000a0000000d0000000d00f000000f00000a ,
+                        0x00f000a00f00000d00f000d00f00000aa0000000000000adda0f000a0f000ada ,
+                        0xad00000d00000daddad000dad000dadaada0f0ada0f0adaddad000dad000dada ,
+                        0xadadadadadadadad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    GUID = Begin
+                        0x3283a7f9e3ff30498823e685afd04700
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    ColumnCount =2
+                    ListWidth =2268
+                    Left =6689
+                    Top =3968
+                    Width =2389
+                    Height =340
+                    ColumnOrder =14
+                    TabIndex =43
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"10\";\"100\""
+                    GUID = Begin
+                        0xa39ea339247de646b5b7bed720c94c0b
+                    End
+                    Name ="varlst"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [Список-вариантов].[name], [Список-вариантов].[wname] FROM [Список-вариан"
+                        "тов]; "
+                    ColumnWidths ="2268;2268"
+
+                End
+                Begin CommandButton
+                    OverlapFlags =95
+                    Left =9542
+                    Top =3410
+                    Width =576
+                    Height =576
+                    TabIndex =44
+                    Name ="Добавить"
+                    Caption ="Добавить"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadada0000000dadadadadffffff0adadadada ,
+                        0xffffff0dadadadadffffff0adadadada0000000dadadadaddadadada4ad00000 ,
+                        0xadadada44da0efefdadada444440fefeadadada44da0efefdadadada4ad00000 ,
+                        0x0000000dadadadadffffff0adadadadaffffff0dadadadadffffff0adadadada ,
+                        0x0000000dadadadad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    GUID = Begin
+                        0x567f1a149b9e9f4b88a3faf062b58ef8
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Left =6689
+                    Top =4535
+                    Width =2267
+                    Height =340
+                    ColumnOrder =13
+                    TabIndex =45
+                    Name ="cond"
+                    GUID = Begin
+                        0xa2c9120ea60895458930b2bee52a02b2
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =87
+                    Left =10118
+                    Top =3410
+                    Width =576
+                    Height =576
+                    TabIndex =46
+                    Name ="Справка"
+                    Caption ="Кнопка125"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadadaadadadadadadadaddadadad000dadada ,
+                        0xadadad0bb00dadaddadada0bb00adadaadadada00dadadaddadada0b00dadada ,
+                        0xadadad0b00adadaddadada0b00dadadaadadad0bb00dadaddada00d0bb00dada ,
+                        0xada0b00d0bb00daddad0b00ad0b00adaada0bb000bb00daddada0bbbbb00dada ,
+                        0xadada000000dadad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0x989581f1d5dc8843b6f07a480b6c1aed
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                    Overlaps =1
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =7937
+                    Top =1840
+                    Width =567
+                    Height =240
+                    ColumnOrder =11
+                    TabIndex =47
+                    Name ="cnustnps"
+                    Format ="#"
+                    GUID = Begin
+                        0xa1dd31a47b23db42b5e6c28bdcb42c70
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =7937
+                    Top =2080
+                    Width =567
+                    Height =240
+                    ColumnOrder =10
+                    TabIndex =48
+                    Name ="cnustngt"
+                    Format ="#"
+                    GUID = Begin
+                        0x966acc2f1e6066498e923e08f7bcea80
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =7937
+                    Top =2320
+                    Width =567
+                    Height =240
+                    ColumnOrder =12
+                    TabIndex =49
+                    Name ="cnustnpg"
+                    Format ="#"
+                    GUID = Begin
+                        0x2c3c90796a812d459a12c022b2503ac4
+                    End
+
+                End
+                Begin Label
+                    OverlapFlags =93
+                    Left =7370
+                    Top =1840
+                    Width =453
+                    Height =240
+                    Name ="Надпись129"
+                    Caption ="ПС"
+                    GUID = Begin
+                        0xfb1ba94b66611b4c9a8d3f2dfe0094cb
+                    End
+                End
+                Begin Label
+                    OverlapFlags =95
+                    Left =7370
+                    Top =2080
+                    Width =453
+                    Height =240
+                    Name ="Надпись130"
+                    Caption ="ГТ"
+                    GUID = Begin
+                        0xc9731ec8cff1684da80aa4c18526a51b
+                    End
+                End
+                Begin Label
+                    OverlapFlags =87
+                    Left =7370
+                    Top =2320
+                    Width =453
+                    Height =240
+                    Name ="Надпись131"
+                    Caption ="ПГ"
+                    GUID = Begin
+                        0x47505b99fe323b4181b7b5fff8768b2f
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =95
+                    Left =9224
+                    Top =1840
+                    Width =720
+                    Height =240
+                    ColumnOrder =6
+                    TabIndex =50
+                    Name ="knps"
+                    ControlSource ="knps"
+                    Format ="#"
+                    GUID = Begin
+                        0xb8131d789a7f644197abf7893a1fa06a
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =95
+                    Left =9224
+                    Top =2080
+                    Width =720
+                    Height =240
+                    ColumnOrder =9
+                    TabIndex =51
+                    Name ="kngt"
+                    ControlSource ="kngt"
+                    Format ="#"
+                    GUID = Begin
+                        0x5b6f73b9da577049a123fccc0e0ac53c
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =95
+                    Left =9224
+                    Top =2320
+                    Width =720
+                    Height =240
+                    ColumnOrder =7
+                    TabIndex =52
+                    Name ="knpg"
+                    ControlSource ="knpg"
+                    Format ="#"
+                    GUID = Begin
+                        0x643488926deb464eb4b32cc8c95d075e
+                    End
+
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =2834
+                    Top =3401
+                    Width =1704
+                    Height =576
+                    TabIndex =53
+                    Name ="Статистика"
+                    Caption ="Статистика"
+                    OnClick ="[Event Procedure]"
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0xffab1f16259ddb4fbd136084d3987c24
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1133
+                    Top =4535
+                    Width =1704
+                    Height =576
+                    TabIndex =54
+                    Name ="Ограничения"
+                    Caption ="Ограничения"
+                    OnClick ="[Event Procedure]"
+                    ObjectPalette = Begin
+                        0x000301000000000000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0x908afb9d27aa6f4b991e9f1edadbffd6
+                    End
+
+                    WebImagePaddingLeft =2
+                    WebImagePaddingTop =2
+                    WebImagePaddingRight =1
+                    WebImagePaddingBottom =1
+                End
+                Begin TextBox
+                    OldBorderStyle =0
+                    OverlapFlags =85
+                    Left =5028
+                    Top =680
+                    Width =594
+                    Height =240
+                    ColumnOrder =4
+                    TabIndex =55
+                    Name ="doptim"
+                    ControlSource ="doptim"
+                    GUID = Begin
+                        0xd3243bd9bbb2bc46b5ec985725d3f569
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    IMESentenceMode =3
+                    Left =7151
+                    Top =6576
+                    Width =676
+                    Height =240
+                    ColumnOrder =5
+                    TabIndex =56
+                    Name ="lim"
+                    ControlSource ="lim"
+                    GUID = Begin
+                        0xe2deb231f6b3ec468ffea6329c409e90
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =95
+                    Left =9944
+                    Top =1840
+                    Width =720
+                    Height =240
+                    ColumnOrder =3
+                    TabIndex =57
+                    Name ="hnps"
+                    ControlSource ="hnps"
+                    Format ="#"
+                    BeforeUpdate ="[Event Procedure]"
+                    GUID = Begin
+                        0xd081bc2c129f3d4e8b299976f4887c8e
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =95
+                    Left =9944
+                    Top =2080
+                    Width =720
+                    Height =240
+                    ColumnOrder =1
+                    TabIndex =58
+                    Name ="hngt"
+                    ControlSource ="hngt"
+                    Format ="#"
+                    AfterUpdate ="[Event Procedure]"
+                    GUID = Begin
+                        0xd23d1f8daf551a48a6936c2dfb355355
+                    End
+
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =87
+                    Left =9944
+                    Top =2320
+                    Width =720
+                    Height =240
+                    ColumnOrder =0
+                    TabIndex =59
+                    Name ="hnpg"
+                    ControlSource ="hnpg"
+                    Format ="#"
+                    AfterUpdate ="[Event Procedure]"
+                    GUID = Begin
+                        0x6bb22028ef995f4cbac81333bd5a3019
+                    End
+
+                End
+                Begin CustomControl
+                    Enabled = NotDefault
+                    SizeMode =1
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Left =1700
+                    Top =2854
+                    Width =4530
+                    Height =240
+                    AutoActivate =1
+                    TabIndex =60
+                    Name ="prestr"
+                    OleData = Begin
+                        0x00120000d0cf11e0a1b11ae1000000000000000000000000000000003e000300 ,
+                        0xfeff090006000000000000000000000001000000000000000000000000100000 ,
+                        0x0600000001000000feffffff0000000001000000ffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff01000000223a05358985d111b16a00c0 ,
+                        0xf0283628000000000000000000000000d098d68812aeca010700000000010000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffff02000000ffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000200000050000000 ,
+                        0x0000000003004100630063006500730073004f0062006a005300690074006500 ,
+                        0x4400610074006100000000000000000000000000000000000000000000000000 ,
+                        0x0000000026000200ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x000000000000000000000000000000000000000000000000000000005c000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fefffffffdfffffffffffffffffffffffffffffffffffffffeffffff ,
+                        0xfeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff01000000223a05358985d111b16a00c0 ,
+                        0xf028362800000000000000000000000040d1595312aeca010500000080000000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000050000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fffffffffffffffffefffffffdfffffffefffffffeffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff01000000feffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff21433412080000002c1f0000a7010000018aab97000006001c000000 ,
+                        0x000000000000c8420000000001efcdab00000500c85b1c0006000000ffffffff ,
+                        0xffffffffc0e813001fdeecbd01000500c0e81300303030304638373534444131 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x000000002143341208000000361f0000a7010000018aab97000006001c000000 ,
+                        0x000000000000c8420000000001efcdab000005000000000006000000ffffffff ,
+                        0xffffffff98f562001fdeecbd0100050098f56200000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000001000000feffffff03000000feffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff5c000000000000000100000000000000000000000000000000000000 ,
+                        0x2400000038000000000000000000000000000000000000000000000039333638 ,
+                        0x323635452d383546452d313164312d384245332d303030304638373534444131 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000021433412080000002c1f0000a7010000018aab97000006001c000000 ,
+                        0x000000000000c8420000000001efcdab00000500c85b1c0006000000ffffffff ,
+                        0xffffffff04d513001fdeecbd0100050004d51300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    OLEClass ="ProgCtrl"
+                    Class ="MSComctlLib.ProgCtrl.2"
+                    GUID = Begin
+                        0xc378b3f7e2ec154a9d5cac38219185b1
+                    End
+
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+
+
+Private Sub first_Click()
+Dim R As DAO.Recordset
+i = oeslst.ListIndex
+i1 = [type].ListIndex
+i2 = varlst.ListIndex
+codeoes = oeslst.Column(1, i)
+typetxt = [type].Column(1, i1)
+vartxt = varlst.Column(1, i2)
+fltrtxt = "(oes=" & codeoes & ") and (" & typetxt & ")"
+Debug.Print fltrtxt
+Set R = RecordsetClone
+R.FindFirst "filter=" & """" & fltrtxt & """  and wname=""" & vartxt & """"
+If R.NoMatch Then
+bmsg = MsgBox("Запись не найдена", vbOKOnly)
+GoTo endp
+End If
+Bookmark = R.Bookmark
+endp:
+End Sub
+
+Private Sub Form_Current()
+ce = Null
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+varlst = DFirst("[name]", "Список-вариантов")
+End Sub
+
+Private Sub hngt_AfterUpdate()
+kngt = hngt / ch
+End Sub
+
+Private Sub hnpg_AfterUpdate()
+knpg = hnpg / ch
+End Sub
+
+Private Sub hnps_BeforeUpdate(Cancel As Integer)
+knps = hnps / ch
+End Sub
+
+Private Sub next_Click()
+DoCmd.GoToRecord , , acNext
+End Sub
+
+Private Sub oes_AfterUpdate()
+End Sub
+
+Private Sub prev_Click()
+DoCmd.GoToRecord , , acPrevious
+End Sub
+
+
+
+Private Sub Добавить_Click()
+Dim db As Database, vars As DAO.Recordset
+Set db = CurrentDb
+i = oeslst.ListIndex
+i1 = [type].ListIndex
+i2 = varlst.ListIndex
+codeoes = oeslst.Column(1, i)
+vartxt = varlst.Column(1, i2)
+typetxt = [type].Column(1, i1)
+tname = [type].Column(0, i1) & " " & oeslst
+If [type].Column(0, i1) = "Другой" Then
+DoCmd.OpenForm "Условие", acNormal, , , , acDialog, "Расчет"
+typetxt = Replace(Me!cond, "w.", "")
+tname = InputBox("Введите название", vbOKOnly)
+End If
+fltrtxt = "(oes=" & codeoes & ")"
+Set vars = db.OpenRecordset("Список-вариантов", DB_OPEN_DYNASET)
+vars.FindFirst "name=""" & varlst & """"
+ay = split(vars!years, ",")
+ny = UBound(ay) + 1
+Set R = RecordsetClone
+If R.RecordCount = 0 Then
+n1 = 1
+n2 = 100
+Else:
+R.FindFirst "filter=""" & fltrtxt & " and (" & typetxt & ")"" And wname = """ & vartxt & """"
+If Not R.NoMatch Then
+bmsg = MsgBox("Запись уже существует")
+GoTo endp
+End If
+R.FindLast "filter like ""*" & fltrtxt & "*"""
+If R.NoMatch Then
+n1 = (codeoes - 1) * 100
+n2 = n1 + 100
+Else
+R.FindLast "filter like ""*" & fltrtxt & "*"" And wname = """ & vartxt & """"
+n1 = R!numb
+R.MoveNext
+If R.EOF Then n2 = n1 + 100 Else n2 = R!numb
+End If
+End If
+Call setoptions
+step = IIf(n1 + ny < n2, 1, (n2 - n1) / IIf(ny < 10, 10, 100))
+bklvalue = IIf(codeoes = 6 Or codeoes = 7 Or codeoes = 9, 450, 400)
+For i = 0 To ny - 1
+If ay(i) <> "2007" Then
+sqlins = "INSERT INTO [параметры-распределения] (name,[year],filter,wname,uname,toplname,dopname,byear,numb,bkl)"
+sqlins = sqlins & " values(" & """" & tname & """," & ay(i) & "," & """(oes=" & codeoes & ") and (" & typetxt & ")""" & ",""" & vars!wname & """"
+sqlins = sqlins & ",""" & vars!uname & """,""" & vars!topleur & """,""" & vars!dopname & """," & vars!byear & "," & Replace(n1 + 1 + i * step, ",", ".") & "," & bklvalue & ");"
+DoCmd.RunSQL sqlins
+End If
+Next i
+Requery
+Call resetoptions
+endp:
+End Sub
+
+Private Sub Кнопка27_Click()
+'распределение
+Dim db As Database, w As DAO.Recordset, U As DAO.Recordset, otet As Database, class As DAO.Recordset
+Dim hb As Double, csume As Double, Kh As Double, kl As Double, koptim As Double
+Dim bm As String, nit As Integer, doptim As Double, nustb As Double, e1 As Double
+Dim kplus As Double, kmin As Double, ke As Double
+Dim restr As DAO.Recordset
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set w = db.OpenRecordset(wname, DB_OPEN_DYNASET)
+Set U = db.OpenRecordset(uname, DB_OPEN_TABLE)
+Set otet = DBEngine.OpenDatabase("F:/Базы данных/ОТЭТ")
+Set class = otet.OpenRecordset("Имена_станций", DB_OPEN_TABLE)
+koblreset = 0
+prestr.Value = 0
+prestr.Min = 0
+prestr.Max = 15
+irestr = 1
+BDis:
+class.Index = "numb"
+pb.Max = 15
+pb.Min = 0
+pb.Value = 0
+doptim = Me.doptim
+If (ph > 1 - doptim) And (ph < 1) Then
+kmin = 2 * ph - 1
+kplus = 1
+ElseIf (ph > 1) And (ph < 1 + doptim) Then
+kmin = 1
+kplus = 2 * ph - 1
+Else
+kmin = ph - doptim
+kplus = ph + doptim
+End If
+U.Index = "numb2"
+nit = 1
+kl = k - 0.1
+Kh = k + 0.1
+kln = kn - 0.1
+khn = kn + 0.1
+again:
+csume = 0
+kobl = 1
+brestr = False
+For i = 0 To Forms.Count - 1
+If Forms(i).Name = "Анализ_по_областям" Then
+Set restr = Forms(i).Form!Ограничения.Form.RecordsetClone
+brestr = True
+GoTo restrfound
+End If
+Next i
+If koblreset = 0 Then
+Call setoptions
+ioes = InStr(filter1, "oes")
+codeoes = Mid(filter1, ioes + 4, 1)
+sqllim = "update Ограничения set kobl=1 where oes=" & codeoes & ";"
+Debug.Print sqllim
+DoCmd.RunSQL (sqllim)
+koblreset = 1
+Call resetoptions
+End If
+restrfound:
+w.FindFirst filter1
+Do Until w.NoMatch
+If w("year") = byear Then
+hb = z(w("h"))
+nustb = z(w!NUST)
+End If
+If w("year") = cyear Then
+If brestr Then 'ограничения по областям
+restr.FindFirst "obl=" & w!OBL
+If Not (restr.NoMatch) Then 'есть ограничения
+kobl = restr!kobl
+Else 'нет ограничений
+restr.FindFirst "obl=" & 100 + w!oes
+kobl = restr!kobl
+End If 'есть ограничения или нет
+End If 'ограничения по областям
+U.Seek ">=", w("numb1120"), w!v, byear
+If U.NoMatch Then GoTo skip1
+Do While (U!numb1120 = w!numb1120)
+If U!year > w!year Then GoTo endu
+If U!year <= w!year Then bm = U.Bookmark
+U.MoveNext
+If U.EOF Then GoTo endu
+Loop
+endu: U.Bookmark = bm
+w.Edit
+If z(w!NUST) > 0 And z(w!NR) = 0 And z(w!HFIX) <> 1 Then
+class.Seek "=", w!numb1120
+stname = class!Name
+bmsg = MsgBox(stname & " нет располагаемой мощности.Зафиксировать H=0?", vbYesNo)
+If bmsg = vbYes Then
+w!H = 0
+w!HFIX = 1
+End If
+End If
+If z(w("hfix")) = 1 Then GoTo calce
+If hb = 0 Then
+If w("obor") = 20 Or w("obor") = 90 Then w("h") = ch * kngt
+If w("obor") = 21 Or w("obor") = 91 Then w("h") = ch * knpg
+If w("obor") <> 20 And w("obor") <> 90 And w("obor") <> 21 And w("obor") <> 91 Then w("h") = ch * knps
+GoTo calce
+End If
+If U!Bk < 350 Then
+koptim = kplus
+ElseIf U!Bk > 550 Then
+koptim = kmin
+Else
+koptim = kmin + (kplus - kmin) * (2.75 - z(U!Bk) / 200)
+End If
+ke = Nivh(hb, ph)
+w!H = hb * koptim * k * ke * kobl
+If hb > 7000 And w!H > hb Then w!H = hb
+If hb > 6000 And hb < 7000 And hd < 6000 And w!H > hb * 1.05 Then
+If hb * 1.05 < 7000 Then w!H = hb * 1.05 Else w!H = 7000
+Else: If w!H > 7000 Then w!H = 7000
+End If
+'Debug.Print w!numb1120; w!H; hb; hd
+calce:
+If (w!OBOR >= 8) And (w!OBOR <= 10) Then
+w!E = w!EWTP
+Else
+If z(w!NUST) > nustb And z(w!H) > ch And nustb > 0 And z(w!HFIX <> 1) Then
+e1 = (nustb * z(w!H) + (z(w!NUST) - nustb) * ch) / 1000
+Else: e1 = z(w!NUST) * z(w!H) / 1000
+End If
+w!E = max2(e1, z(w!EWTP) * 1.04)
+End If
+If z(w!NUST) > 0 Then w!H = w!E / w!NUST * 1000
+csume = csume + z(w!E)
+w.Update
+End If
+skip1: w.FindNext filter1
+Loop
+ce = csume
+If (Abs(E - csume) < 0.3) Or nit > 15 Then GoTo enddis
+If bnust > 0 Then
+If E > csume Then kl = k Else Kh = k
+Else
+If E > csume Then kln = kn Else khn = kn
+knps = knps * kn / ((kln + khn) / 2)
+kngt = kngt * kn / ((kln + khn) / 2)
+knpg = knpg * kn / ((kln + khn) / 2)
+kn = (kln + khn) / 2
+End If
+pb.Value = nit
+nit = nit + 1
+k = (kl + Kh) / 2
+GoTo again
+enddis:
+pb.Value = 15
+If brestr Then
+lim = 1
+Call Ограничения_Click
+irestr = irestr + 1
+prestr.Value = irestr
+If irestr < 15 Then GoTo BDis
+'With Forms("анализ_по_областям").Form!Ограничения.Form
+'.Recalc
+'.Requery
+'End With
+Else
+lim = 0
+End If
+End Sub
+
+Private Sub Кнопка49_Click()
+Dim s As String, w1 As DAO.Recordset
+Dim db As Database, marks As DAO.Recordset, w As DAO.Recordset, U As DAO.Recordset, topl As DAO.Recordset
+Dim dop As DAO.Recordset, bm As String, bm1 As String
+Dim j As Integer, j1 As Integer, j2 As Integer, j3 As Integer, j4 As Integer, j5 As Integer
+Dim ekotp As Double, etpotp As Double, sumtopl As Double, sumug As Double, pt As Double
+Dim namet As String, nameb As String, ugli As String, ugli1 As String
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set w = db.OpenRecordset(wname, DB_OPEN_DYNASET)
+Set U = db.OpenRecordset(uname, DB_OPEN_TABLE)
+Set topl = db.OpenRecordset(toplname, DB_OPEN_TABLE)
+Set dop = db.OpenRecordset(dopname, DB_OPEN_TABLE)
+dop.Index = "numb1"
+U.Index = "numb2"
+topl.Index = "numb2"
+pb.Max = 100
+pb.Min = 0
+pb.Value = 0
+s = "SELECT count(numb1)as n FROM [" & wname & "]where(" & filter1 & "and (year=" & cyear & "));"
+Set w1 = db.OpenRecordset(s)
+n = w1!n
+w1.Close
+nrec = 1
+w.FindFirst filter1
+Do Until w.NoMatch
+If z(w("year")) = cyear Then
+U.Seek ">=", w("numb1120"), w!v, byear
+If U.NoMatch Then GoTo skip2
+Do While (U!numb1120 = w!numb1120)
+If U!year > w!year Then GoTo endu2
+If U!year <= w!year Then bm = U.Bookmark
+U.MoveNext
+If U.EOF Then GoTo endu2
+Loop
+endu2: U.Bookmark = bm
+
+w.Edit
+w!EWTP = z(w!QOTR) * z(U!y) / 1000
+If (w!VED = 1 Or w!VED = 4) And U!Ksn > 0 And w!NUST > 0 Then
+ekotp = (z(w!E) - z(w!EWTP)) * (1 - (U!snbas - ((w!E / w!NUST) / 8.76) * U!Ksn) / 100)
+Else
+ekotp = (z(w!E) - z(w!EWTP)) * (1 - z(U("snk")) / 100)
+End If
+etpotp = z(w("ewtp")) * z(U("sntp"))
+w("eotp") = ekotp + etpotp
+Debug.Print w!VED
+If (w!VED = 1 Or w!VED = 4) And U!Kh > 0 And w!NUST > 0 Then
+w!EUST = w!EOTP * (U!bbas - ((w!E / w!NUST) / 8.76) * U!Kh) / 1000
+Else
+w!EUST = (ekotp * z(U("bk")) + etpotp * z(U("btp"))) / 1000
+End If
+If w("eotp") > 0 Then w("eurt") = w("eust") / w("eotp") * 1000 Else w("eurt") = 0
+w("tust") = z(w("q")) * z(w("turt")) / 1000
+w("b") = w("eust") + w("tust")
+topl.Seek ">=", w("numb1120"), w!v, byear
+If topl.NoMatch Then GoTo skip2
+Do While (topl!numb1120 = w!numb1120)
+If topl!year > w!year Then GoTo endtop2
+If topl!year <= w!year Then bm1 = topl.Bookmark
+topl.MoveNext
+Loop
+endtop2: topl.Bookmark = bm1
+'новые формулы
+topls = ",gaz,mazut,torf,slan,gtt,proch,"
+ugli = ",ugol,kuzn,kan,hak,tung,tuv,irkut,kazah,bur,chit,don,podm,pech,alt,ural,bashk,karag,amur,urg,prim,luch,yakut,sah,mag,chukot,kamch,ushum,tal"
+ugli1 = ",nazar,ibor,berez,per,irbei,kansk,gusin,tugn,okino,azey,cher,jer,karab,mug,har,urt,tataur,tarbag,zab_kam,vork,intin,sver,chel,kizel,sosv,neru,zyryan,pyak,rai,erk,svo,bikin,razdol,hankai,bering,anad,ekib,maikub,kuznt,kuzngd,kuznss,kuznun,gazpp,koksdom,prochgaz,tvproch,"
+bdop = False
+If Not (IsNull(topl("formtxt"))) Then
+ost = w!B
+at = split(topl!formtxt & ";", ";")
+sumugol = 0
+lev = 0
+bpech = False
+bkuzn = False
+bkan = False
+btung = False
+bural = False
+birkut = False
+bbur = False
+bchit = False
+byakut = False
+bamur = False
+bprim = False
+bkazah = False
+bchukot = False
+bgazpp = False
+bproch = False
+usedt = ","
+For i = 0 To UBound(at) - 1
+dopugol = False
+ie = InStr(at(i), "=")
+If ie > 0 Then
+namet = Mid(at(i), 1, ie - 1)
+If Mid(namet, 1, 1) = "/" Then
+lev = 1
+namet = Mid(namet, 2)
+End If
+Else
+namet = at(i)
+nametost = namet
+End If
+usedt = usedt & namet & ","
+If namet = "intin" Or namet = "vork" Then bpech = True
+If namet = "kuznt" Or namet = "kuznss" Or namet = "kuzngd" Or namet = "kuznun" Then bkuzn = True
+If namet = "nazar" Or namet = "ibor" Or namet = "berez" Or namet = "per" Or namet = "irbei" Or namet = "kansk" Then bkan = True
+If namet = "sver" Or namet = "chel" Or namet = "kizel" Or namet = "sosv" Then bural = True
+If namet = "azey" Or namet = "mug" Or namet = "cher" Then birkut = True
+If namet = "gusin" Or namet = "tugn" Or namet = "okino" Then bbur = True
+If namet = "har" Or namet = "urt" Or namet = "tataur" Or namet = "tarbag" Or namet = "zab_kam" Then bchit = True
+If namet = "neru" Or namet = "zyryan" Or namet = "pyak" Then byakut = True
+If namet = "rai" Or namet = "erk" Or namet = "svo" Then bamur = True
+If namet = "gazpp" Then bgazpp = True
+If namet = "koksdom" Or namet = "prochgaz" Or namet = "tvproch" Then bproch = True
+If namet = "jer" Or namet = "karab" Then btung = True
+If namet = "bikin" Or namet = "razdol" Or namet = "hankai" Then bprim = True
+If namet = "bering" Or namet = "anad" Then bchukot = True
+If namet = "ekib" Or namet = "maikub" Then bkazah = True
+If InStr(ugli1, "," & namet & ",") > 0 Then 'доп угли
+dopugol = True
+If Not bdop Then
+dop.Seek "=", w("numb1"), w!v, w!year
+If dop.NoMatch Then
+dop.AddNew
+dop!numb1 = w!numb1
+dop!numb1120 = w!numb1120
+dop!year = w!year
+dop.Update
+dop.Move 0, dop.LastModified
+End If
+dop.Edit
+bdop = True
+End If ' not bdop
+End If 'доп угли
+If ie > 0 Then
+ptvalue = CDbl(Mid(at(i), ie + 1))
+If ptvalue >= 0 Then 'проценты
+If lev = 0 Then tvalue = w!B * ptvalue / 100 Else tvalue = ost * ptvalue / 100
+Else
+If dopugol Then tvalue = z(dop(namet)) Else tvalue = z(w(namet))
+End If 'проценты или абсолютн
+ost = ost - tvalue
+If Not dopugol Then 'основные угли
+w(namet) = tvalue
+Else 'доп угли
+dop(namet) = tvalue
+End If 'доп угли
+End If ' ie>0
+Next i
+If InStr(ugli1, "," & nametost & ",") > 0 Then dop(nametost) = ost Else w(nametost) = ost
+If Not bdop Then
+dop.Seek "=", w("numb1"), w!v, w!year
+If dop.NoMatch Then GoTo sumdop
+dop.Edit
+End If
+For i = 0 To dop.Fields.Count - 1
+fname = dop.Fields(i).Name
+If InStr(1, ugli1, "," & fname & ",", vbTextCompare) > 0 And InStr(1, usedt, "," & fname & ",", vbTextCompare) = 0 Then dop(fname) = 0
+Next i
+dop.Update
+sumdop:
+If bpech Then
+w("pech") = dop("intin") + dop("vork")
+usedt = usedt & "pech,"
+End If
+If bkuzn Then
+w("kuzn") = dop("kuznt") + dop("kuznss") + dop("kuzngd") + dop("kuznun")
+usedt = usedt & "kuzn,"
+End If
+If bkan Then
+w("kan") = dop("nazar") + dop("ibor") + dop("berez") + dop("per") + dop("irbei") + dop("kansk")
+usedt = usedt & "kan,"
+End If
+If bural Then
+w("ural") = dop("sver") + dop("chel") + dop("kizel") + dop("sosv")
+usedt = usedt & "ural,"
+End If
+If birkut Then
+w("irkut") = dop("azey") + dop("mug") + dop("cher")
+usedt = usedt & "irkut,"
+End If
+If bbur Then
+w("bur") = dop("gusin") + dop("tugn") + dop("okino")
+usedt = usedt & "bur,"
+End If
+If bchit Then
+w("chit") = dop("har") + dop("urt") + dop("tataur") + dop("tarbag") + dop("zab_kam")
+usedt = usedt & "chit,"
+End If
+If byakut Then
+w("yakut") = dop("neru") + dop("pyak") + dop("zyryan")
+usedt = usedt & "yakut,"
+End If
+If bamur Then
+w("amur") = dop("rai") + dop("erk") + dop("svo")
+usedt = usedt & "amur,"
+End If
+If bgazpp Then
+w("gaz") = w("gaz") + dop("gazpp")
+usedt = usedt & "gaz,"
+End If
+If bproch Then
+w("proch") = dop("koksdom") + dop("prochgaz") + dop("tvproch")
+usedt = usedt & "proch,"
+End If
+If btung Then
+w("tung") = dop("jer") + dop("karab")
+usedt = usedt & "tung,"
+End If
+If bprim Then
+w("prim") = dop("bikin") + dop("razdol") + dop("hankai")
+usedt = usedt & "prim,"
+End If
+If bchukot Then
+w("chukot") = dop("bering") + dop("anad")
+usedt = usedt & "chukot,"
+End If
+If bkazah Then
+w("kazah") = dop("ekib") + dop("maikub")
+usedt = usedt & "kazah,"
+End If
+For i = 0 To w.Fields.Count - 1
+fname = w.Fields(i).Name
+fname1 = fname
+If InStr(1, topls & ugli, "," & fname & ",", vbTextCompare) > 0 And InStr(1, usedt, "," & fname & ",", vbTextCompare) = 0 Then w(fname) = 0
+If InStr(1, ugli, "," & fname & ",", vbTextCompare) > 0 And fname <> "ugol" Then sumugol = sumugol + w(fname)
+Next i
+w("ugol") = sumugol
+End If
+'  новые формулы конец
+w.Update
+pb.Value = nrec / n * 100
+nrec = nrec + 1
+End If
+skip2: w.FindNext filter1
+Loop
+End Sub
+
+Private Sub Кнопка5_Click()
+'коэффициенты
+Dim db As Database, w As DAO.Recordset, U As DAO.Recordset
+Dim bsumnust As Double, bsume As Double, bsumetp As Double, bsumq As Double, bsumqotr As Double
+Dim csumnust As Double, csumetp As Double, csumq As Double, csumqotr As Double
+Dim bm As String, bnust1 As Double, csumnustn As Double, knew As Double
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set w = db.OpenRecordset(wname, DB_OPEN_DYNASET)
+Set U = db.OpenRecordset(uname, DB_OPEN_TABLE)
+U.Index = "numb2"
+w.FindFirst filter1
+bsumnust = 0
+bsume = 0
+bsumetp = 0
+bsumq = 0
+bsumqotr = 0
+csumnust = 0
+csumnustn = 0
+csumnustngt = 0
+csumnustnpg = 0
+csumetp = 0
+csumq = 0
+csumqotr = 0
+Do Until w.NoMatch
+'Debug.Print W!year; " "; z(W!NUST)
+If w("year") = byear Then
+bsumnust = bsumnust + z(w("nust"))
+bnust1 = z(w("nust"))
+bsume = bsume + z(w("e"))
+bsumetp = bsumetp + z(w("ewtp"))
+bsumq = bsumq + z(w("q"))
+bsumqotr = bsumqotr + z(w("qotr"))
+End If
+If w("year") = cyear Then
+U.Seek ">=", w("numb1120"), w!v, byear
+If U.NoMatch Then GoTo Skip
+Do While (U!numb1120 = w!numb1120)
+If U!year > w!year Then GoTo endu1
+If U!year <= w!year Then bm = U.Bookmark
+U.MoveNext
+If U.EOF Then GoTo endu1
+Loop
+endu1:
+U.Bookmark = bm
+w.Edit
+w("ewtp") = w("qotr") * U("y") / 1000
+csumnust = csumnust + z(w("nust"))
+If bnust1 = 0 Then
+csumnustn = csumnustn + z(w("nust"))
+If w("obor") = 20 Or w("obor") = 90 Then csumnustngt = csumnustngt + z(w("nust"))
+If w("obor") = 21 Or w("obor") = 91 Then csumnustnpg = csumnustnpg + z(w("nust"))
+End If
+csumetp = csumetp + z(w("ewtp"))
+csumq = csumq + z(w("q"))
+csumqotr = csumqotr + z(w("qotr"))
+w.Update
+End If
+Skip: w.FindNext filter1
+Loop
+bnust = bsumnust
+BE = bsume
+betp = bsumetp
+bq = bsumq
+bqotr = bsumqotr
+cnust = csumnust
+cnustn = csumnustn
+cnustngt = csumnustngt
+cnustnpg = csumnustnpg
+cnustnps = cnustn - cnustngt - cnustnpg
+cetp = csumetp
+cq = csumq
+cqotr = csumqotr
+If bsume > 0 Then bptp = bsumetp / bsume * 100 Else bptp = 0
+cptp = csumetp / E * 100
+If bsumnust > 0 Then bh = bsume / bsumnust * 1000 Else bh = 0
+ch = E / csumnust * 1000
+If bh > 0 Then ph1 = ch / bh Else ph1 = 0
+If BE > 0 Then pe = E / BE Else pe = 0
+If (cnust - cnustn) > 0 Then hd = (E - (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) * ch / 1000) / (cnust - cnustn) * 1000 Else hd = 0
+If cnustn > 0 Then kn = (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) / cnustn
+If bh > 0 Then ph = hd / bh Else ph = 0
+If bq > 0 Then pq = cq / bq Else pq = 0
+If bqotr > 0 Then potr = cqotr / bqotr Else potr = 0
+End Sub
+
+Private Sub Кнопка97_Click()
+DoCmd.OpenForm "Фиксированные_часы", , , filter1
+End Sub
+Private Sub Кнопка125_Click()
+On Error GoTo Err_Кнопка125_Click
+
+
+    Screen.PreviousControl.SetFocus
+    DoCmd.FindNext
+
+Exit_Кнопка125_Click:
+    Exit Sub
+
+Err_Кнопка125_Click:
+    MsgBox Err.Description
+    Resume Exit_Кнопка125_Click
+    
+End Sub
+
+Private Sub Ограничения_Click()
+Dim restr As DAO.Recordset, sumobl As DAO.Recordset, sumobldis As DAO.Recordset, sumproch As DAO.Recordset, sumprochdis As DAO.Recordset, db As Database
+lim = Forms("Расчет").Form!lim
+DoCmd.OpenForm "Анализ_по_областям", acNormal
+i = InStr(filter1, "oes=")
+codeoes = Mid(filter1, i + 4, 1)
+Forms("Анализ_по_областям").Form!Ограничения.Form.filter = "(oes=" & codeoes & ") and (year=" & cyear & ")"
+Forms("Анализ_по_областям").Form!Ограничения.Form.FilterOn = True
+Set restr = Forms("Анализ_по_областям").Form!Ограничения.Form.RecordsetClone
+restr.MoveFirst
+fltrproch = ""
+deltaoes = 0
+Do While restr!OBL <> 100 + codeoes
+fltrproch = fltrproch & IIf(fltrproch = "", "", " or ") & "obl=" & restr!OBL
+sumoblsql = "Select SUM(E) as esum,SUM(NUST) as nsum from [" & wname & "] where (ved>0) and (year=" & cyear & ") and (obl=" & restr!OBL & ");"
+sumobldissql = "Select SUM(E) as esum,SUM(NUST) as nsum,SUM(ewtp) as etpsum from [" & wname & "] where " & filter1 & " and (year=" & cyear & ") and (obl=" & restr!OBL & ");"
+Set db = CurrentDb
+Set sumobl = db.OpenRecordset(sumoblsql)
+Set sumobldis = db.OpenRecordset(sumobldissql)
+restr.Edit
+If lim = 0 Then restr!kobl = 1
+restr!ecur = sumobl!esum
+restr!H = sumobl!esum / sumobl!nsum * 1000
+restr!ecurdis = sumobldis!esum
+restr!Hdis = sumobldis!esum / sumobldis!nsum * 1000
+restr!etp = sumobldis!etpsum
+If z(restr!emin) > 0 And restr!ecur < restr!emin Then 'ниже минимума
+restr!kobl = restr!kobl * (restr!emin - restr!ecur + restr!ecurdis) / restr!ecurdis
+deltaoes = deltaoes + restr!emin - restr!ecur
+End If 'ниже минимума
+If z(restr!emax) > 0 And restr!ecur > restr!emax Then 'выше максимума
+restr!kobl = restr!kobl * (restr!emax - restr!ecur + restr!ecurdis) / restr!ecurdis
+deltaoes = deltaoes + restr!emax - restr!ecur
+End If 'выше максимума
+restr.Update
+esumrestr = esumrestr + sumobl!esum
+restr.MoveNext
+Loop
+sumprochsql = "Select SUM(E) as esum,SUM(NUST) as nsum from [" & wname & "] where (ved>0) and (year=" & cyear & ") and (oes=" & codeoes & ") and not(" & fltrproch & ");"
+Set sumproch = db.OpenRecordset(sumprochsql)
+sumprochdissql = "Select SUM(E) as esum,SUM(NUST) as nsum,SUM(ewtp) as etpsum from [" & wname & "] where (ved>0) and (year=" & cyear & ") and (" & filter1 & ") and not(" & fltrproch & ");"
+Set sumprochdis = db.OpenRecordset(sumprochdissql)
+restr.Edit
+restr!ecur = sumproch!esum
+restr!H = sumproch!esum / sumproch!nsum * 1000
+restr!ecurdis = sumprochdis!esum
+restr!kobl = restr!kobl * (sumprochdis!esum - deltaoes) / sumprochdis!esum
+restr!etp = sumprochdis!etpsum
+restr.Update
+Forms("Расчет").Form!lim = 1
+End Sub
+
+
+
+Private Sub Справка_Click()
+fltroes = "oes=" & oeslst.Column(1, oeslst.ListIndex)
+fltr = "instr(filter,""" & fltroes & """)>0"
+Debug.Print fltr
+DoCmd.OpenForm "Справка_расчет", acNormal
+Forms("Справка_расчет").Form!sdis.Form.filter = fltr
+Forms("Справка_расчет").Form!sdis.Form.FilterOn = True
+End Sub
+Private Sub Кнопка135_Click()
+On Error GoTo Err_Кнопка135_Click
+
+
+    Screen.PreviousControl.SetFocus
+    DoCmd.FindNext
+
+Exit_Кнопка135_Click:
+    Exit Sub
+
+Err_Кнопка135_Click:
+    MsgBox Err.Description
+    Resume Exit_Кнопка135_Click
+    
+End Sub
+
+Private Sub Статистика_Click()
+DoCmd.OpenForm "Статистика", acNormal
+With Forms("Статистика").Form!Sres.Form
+rs = Forms("Статистика").Form!Sres.Form.RecordSource
+rs1 = Replace(rs, "Станции(макет)", wname)
+.RecordSource = rs1
+.filter = "(year=" & cyear & ") and (" & filter1 & ")"
+.FilterOn = True
+.OrderBy = "ordnumb"
+.OrderByOn = True
+End With
+End Sub
+Private Sub Кнопка136_Click()
+On Error GoTo Err_Кнопка136_Click
+
+
+    Screen.PreviousControl.SetFocus
+    DoCmd.FindNext
+
+Exit_Кнопка136_Click:
+    Exit Sub
+
+Err_Кнопка136_Click:
+    MsgBox Err.Description
+    Resume Exit_Кнопка136_Click
+    
+End Sub

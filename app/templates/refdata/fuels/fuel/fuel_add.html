@@ -45,7 +45,7 @@
 
         <div class="mb-3">
             <label for="parent" class="form-label">Родительский вид</label>
-            {{ form.parent(class="form-select", id="parent") }}
+            {{ form.parent(class="form-select searchable-select", id="parent") }}
             {% if form.parent.errors %}
                 <div class="text-danger">{{ form.parent.errors|join(', ') }}</div>
             {% endif %}

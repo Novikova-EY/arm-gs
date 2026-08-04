@@ -51,6 +51,7 @@ class EquipmentGroupElectricityProductionCost(db.Model):
     zatr_p = db.Column(db.Numeric(36, 16), nullable=True)
     zatr_q = db.Column(db.Numeric(36, 16), nullable=True)
 
+    # Код группы оборудования
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
 
     database_version_id = db.Column(

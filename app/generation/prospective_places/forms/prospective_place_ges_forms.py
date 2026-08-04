@@ -166,11 +166,11 @@ class ProspectivePlaceGesTepSourceEditForm(FlaskForm):
         validators=[Optional()],
     )
     generation_average_multiyear_million_kwh = StringField(
-        "Среднемноголетняя выработка электроэнергии, млн кВт·ч",
+        "Среднемноголетняя выработка электроэнергии, млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     generation_medium_water_50pct_million_kwh = StringField(
-        "Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду), млн кВт·ч",
+        "Выработка электроэнергии при средневодных условиях (50% обеспеченности по каскаду), млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     generation_medium_water_management_year = StringField(
@@ -178,7 +178,7 @@ class ProspectivePlaceGesTepSourceEditForm(FlaskForm):
         validators=[Optional(), Length(max=255)],
     )
     generation_low_water_95pct_million_kwh = StringField(
-        "Выработка электроэнергии при маловодных условиях (95% обеспеченности по каскаду), млн кВт·ч",
+        "Выработка электроэнергии при маловодных условиях (95% обеспеченности по каскаду), млн кВтч",
         validators=[Optional(), Length(max=100)],
     )
     generation_low_water_management_year = StringField(

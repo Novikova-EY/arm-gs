@@ -255,7 +255,7 @@
 {% set is_station_decentralized_zone = is_station_decentralized_zone | default(false) %}
 {% set can_edit_any = can_edit or can_edit_fuel or can_edit_fuel_dz %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
-{# id / external_code — не для reader/guest; только admin и editor #}
+{# id / external_code / Код КТО — не для reader/guest; только admin и editor #}
 {% set can_view_internal_ids = current_user.is_authenticated and (
     current_user.has_admin
     or (current_user.role_names | select('in', [
@@ -509,13 +509,23 @@
                                 </div>
                             </div>
                             {% if can_view_internal_ids %}
-                            <div class="row g-2 align-items-center mb-0">
+                            <div class="row g-2 align-items-center mb-2">
                                 <div class="col-5 text-start fw-semibold">external_code:</div>
                                 <div class="col-7 text-start">
                                     {% if can_edit_external_code %}
                                         {{ form.external_code(class="form-control", maxlength="36", spellcheck="false", autocomplete="off") }}
                                     {% else %}
                                         {{ station.external_code if station.external_code else '—' }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-0">
+                                <div class="col-5 text-start fw-semibold">Код КТО:</div>
+                                <div class="col-7 text-start">
+                                    {% if can_edit_external_code %}
+                                        {{ form.kto(class="form-control", maxlength="80", spellcheck="false", autocomplete="off") }}
+                                    {% else %}
+                                        {{ station.kto if station.kto else '—' }}
                                     {% endif %}
                                 </div>
                             </div>
@@ -881,7 +891,7 @@
             <div class="row g-3">
                 <div class="col-12">
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
-                        <h3 class="mb-0 ms-3">Выработка электроэнергии электростанцией, млн кВт·ч</h3>
+                        <h3 class="mb-0 ms-3">Выработка электроэнергии электростанцией, млн кВтч</h3>
                         <div class="d-flex align-items-center gap-2 ms-auto">
                             <div class="d-flex align-items-center gap-1 station-toolbar-rounding">
                                 <label for="rounding_digits_gen" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
@@ -936,7 +946,7 @@
                         </div>
                         {% if is_gaes_station %}
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
-                            <h3 class="mb-0 ms-3">Потребление электрической энергии ГАЭС на заряд, млн кВт·ч</h3>
+                            <h3 class="mb-0 ms-3">Потребление электрической энергии ГАЭС на заряд, млн кВтч</h3>
                             <div class="d-flex align-items-center gap-2 ms-auto">
                                 <div class="d-flex align-items-center gap-1 station-toolbar-rounding">
                                     <label for="rounding_digits_gaes" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
@@ -979,7 +989,8 @@
                                     name="all_versions"
                                     value="1"
                                     class="btn btn-outline-success fs-5"
-                                    title="Применить только таблицу «Потребление ГАЭС на заряд» во всех версиях БД (по external_code станции)"
+                                    data-is-gaes="{{ 1 if is_gaes_station else 0 }}"
+                                    title="{% if is_gaes_station %}Применить код КТО, таблицы «Выработка электроэнергии» и «Потребление ГАЭС на заряд» во всех версиях БД (по external_code станции){% else %}Применить код КТО и таблицу «Выработка электроэнергии электростанцией» во всех версиях БД (по external_code станции){% endif %}"
                                     onclick="return confirmStationMachinesSaveAllVersions(this);">Сохранить во всех версиях</button>
                             {% endif %}
                             <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
@@ -1876,16 +1887,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 /**
- * Двойное подтверждение сохранения агрегатов во всех версиях БД (station_details).
+ * Двойное подтверждение сохранения кода КТО, выработки (и заряда ГАЭС) во всех версиях БД.
  */
 window.confirmStationMachinesSaveAllVersions = function (btn) {
     var form = btn && btn.form ? btn.form : document.getElementById('stationUnifiedSaveForm');
     if (!form) return false;
 
-    var msg1 = 'Сохранить таблицу заряда ГАЭС во ВСЕХ версиях базы данных?\n\n'
-        + 'Будет синхронизирована только таблица «Потребление ГАЭС на заряд» '
-        + 'для всех копий электростанции с тем же external_code в каждой версии БД.\n\n'
-        + 'Общая информация, агрегаты и выработка не изменяются.';
+    var isGaes = btn && String(btn.getAttribute('data-is-gaes') || '') === '1';
+    var msg1 = isGaes
+        ? ('Сохранить код КТО, таблицы выработки и заряда ГАЭС во ВСЕХ версиях базы данных?\n\n'
+            + 'Будут синхронизированы код КТО, таблицы «Выработка электроэнергии электростанцией» '
+            + 'и «Потребление ГАЭС на заряд» для всех копий электростанции с тем же '
+            + 'external_code в каждой версии БД.\n\n'
+            + 'Остальная общая информация и агрегаты не изменяются.')
+        : ('Сохранить код КТО и таблицу выработки во ВСЕХ версиях базы данных?\n\n'
+            + 'Будут синхронизированы код КТО и таблица «Выработка электроэнергии электростанцией, млн кВтч» '
+            + 'для всех копий электростанции с тем же external_code в каждой версии БД.\n\n'
+            + 'Остальная общая информация и агрегаты не изменяются.');
     if (!confirm(msg1)) {
         return false;
     }

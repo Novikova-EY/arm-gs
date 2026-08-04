@@ -1,0 +1,247 @@
+Version =21
+VersionRequired =20
+Checksum =-676628233
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =7941
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =290
+    Top =780
+    Right =15260
+    Bottom =9430
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xfe0465a78d36e240
+    End
+    GUID = Begin
+        0x68dc601ac00e0344a8fdc79c30e46848
+    End
+    NameMap = Begin
+        0x0acc0e5500000000be0ea420381a554b88c64f115962de01000000002ad5c922 ,
+        0xce33e640000000000000000018043c0435043d0430045f004104420430043d04 ,
+        0x4604380439040000000000000ac108126ce4db4d8cae172945f3821707000000 ,
+        0xbe0ea420381a554b88c64f115962de014e0041004d004500000000000000f170 ,
+        0xb901ae274041a048f1c58a311bf207000000be0ea420381a554b88c64f115962 ,
+        0xde0143004f004d0050000000000000000758550f4ce541448873bfaa12c2d29d ,
+        0x07000000be0ea420381a554b88c64f115962de014d00410049004e0000000000 ,
+        0x00004e07c6f4cc25d1448c3697d8176bc6c307000000be0ea420381a554b88c6 ,
+        0x4f115962de01440000000000000030c4a1ded6406d4fa92599111c320a300700 ,
+        0x0000be0ea420381a554b88c64f115962de015200000000000000e91b041aee34 ,
+        0xeb48ae03cc497f36fdff07000000be0ea420381a554b88c64f115962de014404 ,
+        0x3e0440044d043c04000000000000f5f39a500c758b41aa94b90e787d14350700 ,
+        0x0000be0ea420381a554b88c64f115962de014f0042004c00000000000000f75b ,
+        0xa03db368834ea43bcd2c58a76c4b07000000be0ea420381a554b88c64f115962 ,
+        0xde0144004500500000000000000056eee4f85b89d443b5dde9160948c9510700 ,
+        0x0000be0ea420381a554b88c64f115962de014f00450053000000000000005ab6 ,
+        0x9b4acd978b46b8b36e4990172dd307000000be0ea420381a554b88c64f115962 ,
+        0xde01450052000000000000005d80fa58ad479d4aa8bdaf57aea416b107000000 ,
+        0xbe0ea420381a554b88c64f115962de014e0055004d0042000000000000000000 ,
+        0x00000000000000000000000000000c0000000500000000000000000000000000 ,
+        0x00000000
+    End
+    RecordSource ="Имена_станций"
+    OnCurrent ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    FilterOnLoad =0
+    DatasheetGridlinesColor12 =12632256
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            BorderLineStyle =0
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            BorderLineStyle =0
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x4f2c2b8af609a64e8f8d98078f209552
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Width =2271
+                    ColumnWidth =3690
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    GUID = Begin
+                        0x90147decd800d64db849b3b56b9d3482
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2271
+                    ColumnWidth =735
+                    TabIndex =1
+                    Name ="COMP"
+                    ControlSource ="COMP"
+                    GUID = Begin
+                        0x404b34d02710af439a54d852fc7beb08
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2838
+                    ColumnWidth =645
+                    TabIndex =2
+                    Name ="MAIN"
+                    ControlSource ="MAIN"
+                    GUID = Begin
+                        0x11132c9cf185604681472ca11479265d
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3405
+                    ColumnWidth =465
+                    TabIndex =3
+                    Name ="D"
+                    ControlSource ="D"
+                    GUID = Begin
+                        0x0d085918433c1f47b62833cc8315a756
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3972
+                    ColumnWidth =700
+                    TabIndex =4
+                    Name ="R"
+                    ControlSource ="R"
+                    GUID = Begin
+                        0x7c36e76c28b47547aaefe2c7e5fc0bcd
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =4539
+                    ColumnWidth =810
+                    TabIndex =5
+                    Name ="форэм"
+                    ControlSource ="форэм"
+                    GUID = Begin
+                        0xd7fd43b9085963488aedbaafcd672a76
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =5106
+                    ColumnWidth =555
+                    TabIndex =6
+                    Name ="OBL"
+                    ControlSource ="OBL"
+                    GUID = Begin
+                        0xa0c03c26f9ad294ca7b8ccaf02ac77c2
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =5673
+                    ColumnWidth =540
+                    TabIndex =7
+                    Name ="DEP"
+                    ControlSource ="DEP"
+                    GUID = Begin
+                        0x6b3e1ee2e9717e418befddf48472c5c9
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =6240
+                    ColumnWidth =555
+                    TabIndex =8
+                    Name ="OES"
+                    ControlSource ="OES"
+                    GUID = Begin
+                        0x83aba1789bfed54caf955797f4d0a58e
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =6807
+                    ColumnWidth =405
+                    TabIndex =9
+                    Name ="ER"
+                    ControlSource ="ER"
+                    GUID = Begin
+                        0xbc28ce0d0f20b84c8674c0faaaf88766
+                    End
+
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =7374
+                    ColumnWidth =720
+                    TabIndex =10
+                    Name ="NUMB"
+                    ControlSource ="NUMB"
+                    GUID = Begin
+                        0xb23776b8e4c7264993098cfcb01b4b2d
+                    End
+
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Current()
+For i = 0 To Forms.Count - 1
+If Forms(i).Name = "Турбины" Then
+With Forms("Турбины")
+If z(MAIN) > 0 Then f = "grcode=" & NUMB Else f = "numb1120=" & NUMB
+.Filter = f
+.FilterOn = True
+End With
+End If
+Next i
+End Sub

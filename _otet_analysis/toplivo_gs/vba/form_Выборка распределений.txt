@@ -1,0 +1,74 @@
+Version =19
+VersionRequired =19
+Checksum =440772197
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =2265
+    DatasheetFontHeight =12
+    ItemSuffix =1
+    Left =864
+    Top =672
+    Right =4920
+    Bottom =2952
+    DatasheetGridlinesColor =12632256
+    OrderBy ="[Параметры-распределения].numb"
+    RecSrcDt = Begin
+        0x4b598678ec5ae340
+    End
+    GUID = Begin
+        0x052431ba6acd49459e57c293437e524d
+    End
+    NameMap = Begin
+        0x0acc0e55000000002438cc7c8f1453428df68e6eea530506000000009153ff59 ,
+        0xed5ae340000000000000000012044b0431043e0440043a0430045f0040043004 ,
+        0x41043f0440043504340435043b0435043d04380439040000000000008bcffa72 ,
+        0x0c2fef40bf4ae903be4c4a42070000002438cc7c8f1453428df68e6eea530506 ,
+        0x6e0061006d0065000000
+    End
+    RecordSource ="Выборка_распределений"
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xe57f3af3461f954ba1ed35a21348b008
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Width =2265
+                    ColumnWidth =2844
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x872ea3fb73a237418a2bd4f8ed73cb9c
+                    End
+                End
+            End
+        End
+    End
+End

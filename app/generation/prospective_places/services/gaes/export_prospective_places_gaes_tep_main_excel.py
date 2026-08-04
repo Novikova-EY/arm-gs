@@ -177,7 +177,7 @@ def _write_gaes_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) -
     c = ws.cell(
         row=2,
         column=19,
-        value="Годовое потребление электроэнергии ГАЭС на заряд, млн кВт·ч",
+        value="Годовое потребление электроэнергии ГАЭС на заряд, млн кВтч",
     )
     _style_cell(c, font=header_font, fill=header_fill, align=center, border=thin)
     _apply_border_to_range(ws, 2, 2, 19, 21, thin)
@@ -490,7 +490,7 @@ def _write_gaes_tep_main_sheet_source_prices(ws, tep_groups: list[dict]) -> None
     c = ws.cell(
         row=2,
         column=19,
-        value="Годовое потребление электроэнергии ГАЭС на заряд, млн кВт·ч",
+        value="Годовое потребление электроэнергии ГАЭС на заряд, млн кВтч",
     )
     _style_cell(c, font=header_font, fill=header_fill, align=center, border=thin)
     _apply_border_to_range(ws, 2, 2, 19, 21, thin)

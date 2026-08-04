@@ -63,6 +63,33 @@
         return base;
     }
 
+    function clear(scope) {
+        if (!scope) {
+            var table = getTableEl();
+            scope = defaultScope(table);
+        }
+        removeSession(storageKey(scope));
+        scheduledScopes[scope] = false;
+    }
+
+    /**
+     * Сброс вертикального скролла таблицы к верху.
+     * На max/oes/fo/ez скролл у .page-table-scroll; на coeff — у .pd-coeff-summary-scroll-wrap.
+     */
+    function scrollTableTop(opts) {
+        opts = opts || {};
+        var vScroll = getVScrollEl(opts);
+        var hScroll = getHScrollEl(opts);
+        if (vScroll) {
+            vScroll.scrollTop = 0;
+        } else {
+            window.scrollTo(0, 0);
+        }
+        if (hScroll) {
+            hScroll.scrollLeft = 0;
+        }
+    }
+
     function buildSummaryRowAnchor(tr) {
         if (!tr) {
             return null;
@@ -606,6 +633,8 @@
         restore: restore,
         schedule: scheduleRestore,
         reload: reload,
+        clear: clear,
+        scrollTableTop: scrollTableTop,
         defaultScope: defaultScope
     };
 

@@ -22,7 +22,7 @@ from app.refdata.models.electricity_production_cost.electricity_production_cost_
 
 
 ELECTRICITY_PRODUCTION_COST_COLUMNS = [
-    ("numb1120", "NUMB1120", False),
+    ("numb1120", "Код группы оборудования", False),
     ("year_number", "Year", False),
     ("cost_code", "code_zatr", False),
     ("cost_name", "name_zatr", False),
@@ -51,7 +51,7 @@ def build_cost_code_name_map() -> dict[int, str]:
 
 def get_equipment_groups_with_electricity_production_cost_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,

@@ -1,0 +1,116 @@
+Version =20
+VersionRequired =20
+Checksum =-1204193449
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =6009
+    DatasheetFontHeight =10
+    ItemSuffix =4
+    Left =600
+    Top =336
+    Right =7488
+    Bottom =2628
+    DatasheetGridlinesColor =12632256
+    OrderBy ="[Поставки угля].электростанция"
+    RecSrcDt = Begin
+        0x88d7f5d33084e240
+    End
+    GUID = Begin
+        0x2dba18b9825ba64d915488b8e68148d2
+    End
+    NameMap = Begin
+        0x0acc0e550000000075efdc0a2c249742a85a08ebcb9a434300000000366ca998 ,
+        0xb84ce54000000000000000004004300441044704350442043d044b0439045f00 ,
+        0x42043004400438044404000000000000f03cb29fd49ae84789251a6eced5cabb ,
+        0x0700000075efdc0a2c249742a85a08ebcb9a4343430433043e043b044c040000 ,
+        0x000000001aba4333630078428d810f7890126c230700000075efdc0a2c249742 ,
+        0xa85a08ebcb9a43433604340420004104420430043d04460438044f0420003e04 ,
+        0x42043f0440040000000000007621d6260e61ce45b44450f210f3e85a07000000 ,
+        0x75efdc0a2c249742a85a08ebcb9a4343400430044104410442043e044f043d04 ,
+        0x38043504000000000000c199504ecef76146b8d3d9060570e6440700000075ef ,
+        0xdc0a2c249742a85a08ebcb9a4343540000000000000000000000000000000000 ,
+        0x0000000000000c000000030000000000000000000000000000000000
+    End
+    RecordSource ="расчетный_тариф"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x7914b47f52f4924cb36e4e52adc002e1
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    ColumnWidth =1545
+                    Name ="уголь"
+                    ControlSource ="уголь"
+                    GUID = Begin
+                        0x4d52026b23f17344a9c3516ada2cbab1
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1701
+                    Width =1986
+                    ColumnWidth =2625
+                    TabIndex =1
+                    Name ="жд станция отправления"
+                    ControlSource ="жд станция отпр"
+                    EventProcPrefix ="Ctlжд_станция_отправления"
+                    GUID = Begin
+                        0x627a3601729c5d4f83f26376d2f05a84
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3687
+                    ColumnWidth =1290
+                    TabIndex =2
+                    Name ="расстояние"
+                    ControlSource ="расстояние"
+                    GUID = Begin
+                        0x6d4ca68ef0355f4d8f65db0efb50b265
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =5388
+                    Width =621
+                    ColumnWidth =810
+                    TabIndex =3
+                    Name ="Tариф"
+                    ControlSource ="T"
+                    Format ="#"
+                    GUID = Begin
+                        0x184c0c5a122b6c419a6ad0eb1f4a939c
+                    End
+                End
+            End
+        End
+    End
+End

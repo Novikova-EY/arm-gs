@@ -1,0 +1,82 @@
+Version =19
+VersionRequired =19
+Checksum =440772168
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =11235
+    DatasheetFontHeight =10
+    ItemSuffix =2
+    Left =864
+    Top =336
+    Right =12468
+    Bottom =7308
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x7407d8e975d6e240
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="SELECT Имена_ОЭС.name, [Различия с отчетом].ОЭС, [Различия с отчетом].Примечание"
+        " FROM [Различия с отчетом] INNER JOIN Имена_ОЭС ON [Различия с отчетом].ОЭС = Им"
+        "ена_ОЭС.oes;"
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =6916
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x2bf1050d5c79b14c99b8ff2588bd6279
+            End
+            Begin
+                Begin TextBox
+                    EnterKeyBehavior = NotDefault
+                    ScrollBars =2
+                    OverlapFlags =85
+                    Top =566
+                    Width =11235
+                    Height =6348
+                    ColumnWidth =10332
+                    Name ="Примечание"
+                    ControlSource ="Примечание"
+                    GUID = Begin
+                        0x483b4bbff3d3404a9b1f8e7b9290281f
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Width =1755
+                    ColumnWidth =1800
+                    TabIndex =1
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0xf832c09620123143ad8f5aec722ad472
+                    End
+                End
+            End
+        End
+    End
+End

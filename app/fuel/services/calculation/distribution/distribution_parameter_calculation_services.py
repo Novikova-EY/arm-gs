@@ -26,10 +26,11 @@ from sqlalchemy.orm import Session, joinedload
 from app.extensions import db
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.fuel.models.fue_distribution_parameter_model import DistributionParameter
-from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.years.year_model import Year
-from app.fuel.services.adapters.access_filter_adapter import AccessFilterAdapter
+from app.fuel.services.calculation.equipment_group_selection import (
+    select_equipment_group_ids_for_calculation,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_batch_calculation_services import (
     BatchCalculationResult,
     EquipmentGroupFuelBatchCalculationService,
@@ -80,19 +81,11 @@ class DistributionParameterCalculationService:
         row: DistributionParameter,
         effective_db_version: int | None,
     ) -> list[int]:
-        query = self.session.query(EquipmentGroup)
-
-        if effective_db_version is not None and hasattr(EquipmentGroup, "database_version_id"):
-            query = query.filter(
-                (EquipmentGroup.database_version_id == effective_db_version)
-                | (EquipmentGroup.database_version_id.is_(None))
-            )
-
-        expr = AccessFilterAdapter.build_expression(row.filter_text or "")
-        if expr is not None:
-            query = query.filter(expr)
-
-        return [x.id for x in query.order_by(EquipmentGroup.id).all()]
+        return select_equipment_group_ids_for_calculation(
+            self.session,
+            filter_text=row.filter_text,
+            effective_db_version=effective_db_version,
+        )
 
     @staticmethod
     def _calendar_year_number(row: DistributionParameter) -> int:

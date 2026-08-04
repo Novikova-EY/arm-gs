@@ -1,12 +1,13 @@
 """Маршруты справочника «Виды топлива» для раздела fuel/refdata."""
 
-from flask import render_template, request, redirect, url_for, flash, send_file, session, current_app
+from flask import render_template, request, redirect, url_for, flash, send_file, session, current_app, jsonify
 from collections import Counter
 from datetime import datetime
 
 from flask_login import login_required
 
 from app.fuel.routes import fuel_bp
+from app.auth.routes.decorators import roles_required
 
 from app.fuel.refdata.forms.fuel_forms import FuelFilterForm, AddFuelForm
 from app.common.services.choices_cache_service import choices_cache
@@ -19,6 +20,8 @@ from app.fuel.refdata.services.fuel_services import (
     import_fuel_service,
     export_fuel_service,
 )
+from app.refdata.services.fuels.fuel_services import build_fuel_import_payload
+from app.refdata.routes.fuels.fuel_routes import _wants_json_response
 from app.refdata.models.fuels.fuel_type_model import FuelType
 from app.refdata.models.fuels.fuel_model import Fuel
 from app.logs.services.logging_service import log_to_db
@@ -269,27 +272,39 @@ def fuel_refdata_add_fuel():
 
 @fuel_bp.route("/refdata/import_fuel", methods=["POST"])
 @login_required
+@roles_required(["admin"])
 def fuel_refdata_import_fuel():
-    """Маршрут для импорта данных из Excel."""
+    """Импорт состава видов топлива из Excel во все версии БД (только роль admin)."""
 
     user = session.get('username', 'Неизвестный пользователь')
+    wants_json = _wants_json_response()
+
+    def _error(message: str, status: int = 400):
+        if wants_json:
+            return jsonify(ok=False, error=message), status
+        flash(message, "danger")
+        return redirect(url_for("fuel_bp.fuel_refdata_fuel_list"))
+
     if 'file' not in request.files:
-        flash("Файл не найден.", "danger")
-        return redirect(url_for("fuel_bp.fuel_refdata_fuel_list"))
+        return _error("Файл не найден.")
     file = request.files['file']
-    if file.mimetype not in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
-        flash("Неверный формат файла.", "danger")
-    if not file.filename.endswith((".xlsx", ".xls")):
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.fuel_refdata_fuel_list"))
+    if not file or not file.filename:
+        return _error("Файл не выбран.")
+    if not file.filename.lower().endswith((".xlsx", ".xls")):
+        return _error("Неверный формат файла.")
     try:
-        imported_count = import_fuel_service(file, user)
-        flash(f"Импортировано записей: {imported_count}.", "success")
+        result = import_fuel_service(file, user)
+        payload = build_fuel_import_payload(result)
+        if wants_json:
+            return jsonify(payload)
+        flash(payload["message"], "success")
+        if payload.get("hints"):
+            flash(payload["hints"][0], "warning")
     except ValueError as e:
-        flash(str(e), "danger")
+        return _error(str(e))
     except Exception as e:
         current_app.logger.error(f"Ошибка импорта: {e}")
-        flash("Ошибка импорта данных.", "danger")
+        return _error("Ошибка импорта данных.", status=500)
     return redirect(url_for("fuel_bp.fuel_refdata_fuel_list"))
 
 

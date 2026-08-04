@@ -1,0 +1,294 @@
+Version =19
+VersionRequired =19
+Checksum =440772172
+Begin Form
+    AutoCenter = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5670
+    DatasheetFontHeight =10
+    ItemSuffix =10
+    Left =2760
+    Top =2475
+    Right =6960
+    Bottom =3105
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x3cc759769614e240
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    RecordSource ="Кузнецкий_по_маркам"
+    Caption ="подчиненная форма Кузнецкий_по_маркам1"
+    BeforeUpdate ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            BackColor =-2147483633
+            ForeColor =-2147483630
+        End
+        Begin Rectangle
+            SpecialEffect =3
+            BackStyle =0
+            Width =850
+            Height =850
+        End
+        Begin Line
+            SpecialEffect =3
+            Width =1701
+        End
+        Begin Image
+            BackStyle =0
+            OldBorderStyle =0
+            PictureAlignment =2
+            Width =1701
+            Height =1701
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            FontName ="MS Sans Serif"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin BoundObjectFrame
+            SpecialEffect =2
+            OldBorderStyle =0
+            BackStyle =0
+            Width =4536
+            Height =2835
+            LabelX =-1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            BackColor =-2147483643
+            ForeColor =-2147483640
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            BackColor =-2147483643
+            ForeColor =-2147483640
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            BackColor =-2147483643
+            ForeColor =-2147483640
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin UnboundObjectFrame
+            SpecialEffect =2
+            OldBorderStyle =1
+            Width =4536
+            Height =2835
+        End
+        Begin ToggleButton
+            TextFontCharSet =204
+            Width =283
+            Height =283
+            FontSize =8
+            FontWeight =400
+            FontName ="MS Sans Serif"
+        End
+        Begin Tab
+            TextFontCharSet =204
+            BackStyle =0
+            Width =5103
+            Height =3402
+        End
+        Begin FormHeader
+            Height =354
+            BackColor =-2147483633
+            Name ="ЗаголовокФормы"
+            GUID = Begin
+                0xbf164115af29d51193970080ad7e28b1
+            End
+            Begin
+                Begin Label
+                    OverlapFlags =85
+                    TextAlign =3
+                    Left =57
+                    Top =57
+                    Width =1026
+                    Height =240
+                    Name ="kuzngd_Надпись"
+                    Caption ="kuzngd"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0xc2164115af29d51193970080ad7e28b1
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    TextAlign =3
+                    Left =1140
+                    Top =57
+                    Width =1026
+                    Height =240
+                    Name ="kuznt_Надпись"
+                    Caption ="kuznt"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0xc4164115af29d51193970080ad7e28b1
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    TextAlign =3
+                    Left =2223
+                    Top =57
+                    Width =1026
+                    Height =240
+                    Name ="kuznss_Надпись"
+                    Caption ="kuznss"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0xc6164115af29d51193970080ad7e28b1
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    TextAlign =3
+                    Left =3306
+                    Top =57
+                    Width =2223
+                    Height =240
+                    Name ="kuznun_Надпись"
+                    Caption ="kuznun"
+                    Tag ="DetachedLabel"
+                    GUID = Begin
+                        0xc8164115af29d51193970080ad7e28b1
+                    End
+                End
+            End
+        End
+        Begin Section
+            Height =369
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xbb164115af29d51193970080ad7e28b1
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =85
+                    Left =57
+                    Top =57
+                    Width =1026
+                    Height =255
+                    ColumnWidth =840
+                    Name ="kuzngd"
+                    ControlSource ="kuzngd"
+                    Format ="Fixed"
+                    GUID = Begin
+                        0xc1164115af29d51193970080ad7e28b1
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =85
+                    Left =1140
+                    Top =57
+                    Width =1026
+                    Height =255
+                    ColumnWidth =660
+                    TabIndex =1
+                    Name ="kuznt"
+                    ControlSource ="kuznt"
+                    Format ="Fixed"
+                    GUID = Begin
+                        0xc3164115af29d51193970080ad7e28b1
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =85
+                    Left =2223
+                    Top =57
+                    Width =1026
+                    Height =255
+                    ColumnWidth =780
+                    TabIndex =2
+                    Name ="kuznss"
+                    ControlSource ="kuznss"
+                    Format ="Fixed"
+                    GUID = Begin
+                        0xc5164115af29d51193970080ad7e28b1
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =3306
+                    Top =57
+                    Width =2223
+                    Height =255
+                    ColumnWidth =840
+                    TabIndex =3
+                    Name ="kuznun"
+                    ControlSource ="kuznun"
+                    GUID = Begin
+                        0xc7164115af29d51193970080ad7e28b1
+                    End
+                End
+            End
+        End
+        Begin FormFooter
+            Height =0
+            BackColor =-2147483633
+            Name ="ПримечаниеФормы"
+            GUID = Begin
+                0xc0164115af29d51193970080ad7e28b1
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_BeforeUpdate(Cancel As Integer)
+Parent!KUZN = Parent!KUZN
+End Sub

@@ -62,38 +62,43 @@ class EquipmentGroupFuelParam(db.Model):
     year_number = db.Column(db.Integer, nullable=True, index=True)
 
     # Мощность:
-    # Руст
+    # Суммарная установленная мощность, МВт
     nust = db.Column(db.Numeric(36, 16), nullable=True)
-    # Ррасп
+    # Суммарная располагаемая мощность, МВт
     nr = db.Column(db.Numeric(36, 16), nullable=True)
 
+    # ЧЧИУМ, ч (Access H)
+    h = db.Column(db.Numeric(36, 16), nullable=True)
+    # Признак фиксации ЧЧИУМ (Access HFIX): 1 — не пересчитывать H формулой распределения
+    hfix = db.Column(db.Integer, nullable=True)
+
     # Электроэнергия в тыс.кВтч:
-    # Выр
+    # Выработка ЭЭ, тыс.кВтч
     e = db.Column(db.Numeric(36, 16), nullable=True)
-    # Этц
+    # Теплофикационная выработка ЭЭ, тыс.кВтч
     ewtp = db.Column(db.Numeric(36, 16), nullable=True)
-    # Отпуск
+    # Отпуск ЭЭ, тыс.кВтч
     eotp = db.Column(db.Numeric(36, 16), nullable=True)
-    # Уд.расх
+    # УРУТ на отпуск ЭЭ, г у.т./кВтч
     eurt = db.Column(db.Numeric(36, 16), nullable=True)
     # Расх топ ээ
     eust = db.Column(db.Numeric(36, 16), nullable=True)
-    # СН, %
+    # СН на выработку ЭЭ, %
     snk = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Тепло в Гкал:
-    # Отпуск, Гкал
+    # Отпуск ТЭ, тыс.Гкал
     q = db.Column(db.Numeric(36, 16), nullable=True)
-    # Отраб
+    # Тепловое потребление (отборов турбин), тыс.Гкал
     qotr = db.Column(db.Numeric(36, 16), nullable=True)
-    # Уд.расх
+    # УРУТ на отпуск ТЭ, кг у.т./⁠Гкал
     turt = db.Column(db.Numeric(36, 16), nullable=True)
-    # Расх топ тэ
+    # Расход усл. топлива на ТЭ, тыс. т у.т.
     tust = db.Column(db.Numeric(36, 16), nullable=True)
-    # СН, кВтч/Гкал
+    # СН, кВтч/⁠Гкал
     sn_t = db.Column(db.Numeric(36, 16), nullable=True)  # SNt
     
-    # Расх топл. 
+    # Расход топлива, всего
     b = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Расх по типам топлива
@@ -136,6 +141,7 @@ class EquipmentGroupFuelParam(db.Model):
     # Сумма тепловых мощностей, Гкал/ч
     nt_sum = db.Column(db.Numeric(36, 16), nullable=True)  # NTsum
     
+    # Код группы оборудования
     numb1120 = db.Column(db.Integer, nullable=True)
     numb1 = db.Column(db.Integer, nullable=True)
 
@@ -294,6 +300,32 @@ class EquipmentGroupFuelParam(db.Model):
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Подписи nust/nr/h для шапок (код поля — отдельно в скобках).
+    NUST_COLUMN_LABEL = "Суммарная установленная мощность, МВт"
+    NR_COLUMN_LABEL = "Суммарная располагаемая мощность, МВт"
+    H_COLUMN_LABEL = "ЧЧИУМ, ч"
+    # Подпись hfix для шапок (код Access HFIX — через fuel_header_access_codes).
+    HFIX_COLUMN_LABEL = "Признак фиксации ЧЧИУМ"
+    # Подпись eust для шапок («топлива на ЭЭ» непереносимо).
+    EUST_COLUMN_LABEL = "Расход топлива на ЭЭ, тут/⁠тыс.кВтч"
+    # Подпись eotp для шапок (неразрывный пробел между «Отпуск» и «ЭЭ»).
+    EOTP_COLUMN_LABEL = "Отпуск ЭЭ, тыс.кВтч"
+    # Подпись eurt для шапок (неразрывный пробел между «отпуск» и «ЭЭ»,
+    # между «г» и «у.т.»).
+    EURT_COLUMN_LABEL = "УРУТ на отпуск ЭЭ, г у.т./кВтч"
+    # Подпись q для шапок (неразрывный пробел между «Отпуск» и «ТЭ»).
+    Q_COLUMN_LABEL = "Отпуск ТЭ, тыс.Гкал"
+    # Подпись turt для шапок (неразрывный пробел между «отпуск» и «ТЭ»;
+    # «кг у.т./Гкал» целиком непереносимо).
+    TURT_COLUMN_LABEL = "УРУТ на отпуск ТЭ, кг у.т./⁠Гкал"
+    # Подпись tust для шапок («усл. топлива» и «на ТЭ» непереносимо;
+    # «тыс. т у.т.» целиком непереносимо).
+    TUST_COLUMN_LABEL = "Расход усл. топлива на ТЭ, тыс. т у.т."
+    # Подпись nt для шапок (код поля — отдельно в скобках).
+    NT_COLUMN_LABEL = "Тепловая мощность отборов, Гкал/ч"
+    # Подпись nt_sum для шапок (код поля — отдельно в скобках).
+    NT_SUM_COLUMN_LABEL = "Сумма тепловых мощностей, Гкал/ч"
 
     def __repr__(self) -> str:
         return (

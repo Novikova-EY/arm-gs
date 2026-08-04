@@ -52,7 +52,7 @@ def _normalize_column_name(col) -> str:
 EQUIPMENT_GROUP_FUEL_PARAM_FIELDS = [
     "name", "obor", "ved", "ved_cyrillic", "obl", "dep", "oes", "ees", "er", "gk", "be",
     "numb1120", "numb1",
-    "nust", "nr", "e", "eotp", "eurt", "eust", "q", "turt", "tust", "b",
+    "nust", "nr", "h", "hfix", "e", "eotp", "eurt", "eust", "q", "turt", "tust", "b",
     "gaz", "isk_gaz", "mazut", "torf", "slan", "proch", "ugol", "don", "podm", "pech",
     "arkt", "kuzn", "ural", "bashk", "kazah", "kan", "tung", "irkut", "hak", "tuv",
     "bur", "chit", "yakut", "amur", "urg", "ushum", "prim", "mag", "chukot", "kamch", "sah",
@@ -61,7 +61,7 @@ EQUIPMENT_GROUP_FUEL_PARAM_FIELDS = [
 
 INTEGER_FIELDS = frozenset([
     "obor", "ved", "ved_cyrillic", "ees",
-    "numb1120", "numb1",
+    "numb1120", "numb1", "hfix",
 ])
 
 STRING_FIELDS = frozenset([
@@ -69,7 +69,7 @@ STRING_FIELDS = frozenset([
 ])
 
 NUMERIC_FIELDS = frozenset([
-    "nust", "nr", "e", "eotp", "eurt", "eust", "q", "turt", "tust", "b",
+    "nust", "nr", "h", "e", "eotp", "eurt", "eust", "q", "turt", "tust", "b",
     "gaz", "isk_gaz", "mazut", "torf", "slan", "proch", "ugol", "don", "podm", "pech",
     "arkt", "kuzn", "ural", "bashk", "kazah", "kan", "tung", "irkut", "hak", "tuv",
     "bur", "chit", "yakut", "amur", "urg", "ushum", "prim", "mag", "chukot", "kamch", "sah",
@@ -79,8 +79,23 @@ NUMERIC_FIELDS = frozenset([
 COLUMN_ALIASES = {
     "numb1120": ["numb1120", "num1120", "номер1120", "numb", "ном1120", "agr_numb1120", "topl_agr_numb1120"],
     "ved_cyrillic": ["вед", "ved_cyrillic"],
+    "h": ["h", "часы", "hours"],
+    "hfix": [
+        "hfix",
+        "h_fix",
+        "фиксированные_часы",
+        "фиксация_часов",
+        "признак_фиксации_ччиум",
+        "признак фиксации ччиум",
+    ],
     "sn_t": ["sn_t", "snt", "sn t"],
+    # В выгрузках БД Топливо столбец часто без подчёркивания: NTsum → ntsum
+    "nt_sum": ["nt_sum", "ntsum", "nt sum", "n_t_sum"],
     "snk": ["snk"],
+    # Старые подписи экспорта / Access («Отпуск ээ», «Отпуск эл.эн.»).
+    "eotp": ["eotp", "отпуск ээ", "отпуск эл.эн", "отпуск эл.эн.", "отпуск ээ, тыс.квтч"],
+    # Старые подписи экспорта («Отпуск, Гкал», «Отпуск тепл.эн.»).
+    "q": ["q", "отпуск тэ", "отпуск тэ, тыс.гкал", "отпуск, гкал", "отпуск тепл.эн", "отпуск тепл.эн.", "отпуск тепла"],
     "equipment_group_id": ["equipment_group_id", "eq_group_id", "id_equipment_group"],
     "equipment_group_set_station_id": [
         "equipment_group_set_station_id", "eq_group_station_id", "link_id", "linkid",
@@ -91,6 +106,70 @@ COLUMN_ALIASES = {
     "station_external_code": ["station_external_code", "station_code", "код_станции", "external_code"],
     "station_name": ["station_name", "stname", "название_станции", "наименование_станции"],
 }
+
+# Маркерные столбцы «Доп_угли» (EquipmentGroupExtraFuelParam) vs «Станции» (основные параметры).
+_EXTRA_FUEL_MARKER_COLS = frozenset({"gaz_prir", "nazar", "kuzngd", "maztop", "tvproch"})
+_STATIONS_FUEL_MARKER_COLS = frozenset({"nust", "nr", "eotp", "nt", "ntsum", "nt_sum", "qotr"})
+
+
+def _basename_lower(filename: str | None) -> str:
+    name = (filename or "").strip().replace("\\", "/")
+    name = name.rsplit("/", 1)[-1]
+    return name.lower().replace("ё", "е")
+
+
+def detect_fuel_params_excel_import_kind(filename: str | None, file=None) -> str:
+    """
+    Определяет тип файла для одной кнопки импорта на stations_equipment_group_fuel_params:
+    - «stations» → EquipmentGroupFuelParam (Станции*.xlsx)
+    - «extra» → EquipmentGroupExtraFuelParam (Доп_угли*.xlsx)
+
+    Сначала по имени файла, при неоднозначности — по заголовкам листа (если передан file).
+    """
+    base = _basename_lower(filename)
+    if "доп" in base and "угл" in base:
+        return "extra"
+    if base.startswith("доп_угл") or base.startswith("допугл"):
+        return "extra"
+    # латиница / транслит: Dop_ugli2024.xlsx
+    if "dop" in base and "ugl" in base:
+        return "extra"
+    if "станци" in base or base.startswith("stanci"):
+        return "stations"
+
+    if file is not None:
+        try:
+            pos = None
+            if hasattr(file, "tell"):
+                try:
+                    pos = file.tell()
+                except Exception:
+                    pos = None
+            xls = pd.ExcelFile(file)
+            df_head = xls.parse(xls.sheet_names[0], header=0, nrows=0)
+            norms = {_normalize_column_name(c) for c in df_head.columns}
+            if norms & _EXTRA_FUEL_MARKER_COLS and not (norms & _STATIONS_FUEL_MARKER_COLS):
+                kind = "extra"
+            elif norms & _STATIONS_FUEL_MARKER_COLS:
+                kind = "stations"
+            elif norms & _EXTRA_FUEL_MARKER_COLS:
+                kind = "extra"
+            else:
+                kind = "stations"
+            if hasattr(file, "seek"):
+                try:
+                    file.seek(0 if pos is None else pos)
+                except Exception:
+                    pass
+            return kind
+        except Exception:
+            if hasattr(file, "seek"):
+                try:
+                    file.seek(0)
+                except Exception:
+                    pass
+
+    return "stations"
 
 
 def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:

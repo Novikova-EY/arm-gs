@@ -60,7 +60,7 @@ class MachineFuelParam(db.Model):
     # Тепловая мощность отборов, Гкал/ч
     nt = db.Column(db.Numeric(12, 6), nullable=True)
 
-    # Код электростанции
+    # Код группы оборудования
     numb1120 = db.Column(db.Integer, nullable=True)
 
     # Код группы оборудования (без связи с моделью)

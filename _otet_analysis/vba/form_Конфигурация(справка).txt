@@ -1,0 +1,203 @@
+Version =20
+VersionRequired =20
+Checksum =-995568526
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =3401
+    DatasheetFontHeight =10
+    ItemSuffix =7
+    Left =2952
+    Top =3564
+    Right =6492
+    Bottom =5460
+    DatasheetGridlinesColor =12632256
+    Filter ="stan=302"
+    RecSrcDt = Begin
+        0x4d85c71096dee240
+    End
+    GUID = Begin
+        0x155ad79d04561b44ae210cdbd78545e8
+    End
+    NameMap = Begin
+        0x0acc0e55000000007b4d22c71678ef46a12fb32cd92780fd00000000bbba0192 ,
+        0xb84ce5407cc34d0a307713001a043e043d044404380433044304400430044604 ,
+        0x3804380420003f043e0420004104420430043d04460438044f043c0400000000 ,
+        0x0000abf5d7b11a6ba745a3a6e37280e924ca070000007b4d22c71678ef46a12f ,
+        0xb32cd92780fd4e0047005400000000000000ae2b6ab20270874ba7559779a6bb ,
+        0x2901070000007b4d22c71678ef46a12fb32cd92780fd13042204230400000000 ,
+        0x00004d465df411e1824d93cff84a2d118c32070000007b4d22c71678ef46a12f ,
+        0xb32cd92780fd4e004b005500000000000000adb025cb594b7e438636ccb7c43f ,
+        0x1087070000007b4d22c71678ef46a12fb32cd92780fd4e005000540000000000 ,
+        0x0000aeddeae9dc1eed479621e6e8954236b3070000007b4d22c71678ef46a12f ,
+        0xb32cd92780fd1a043e04420435043b04000000000000585960752c74b548ab94 ,
+        0x3c15f0b523c5070000007b4d22c71678ef46a12fb32cd92780fd1f0422040000 ,
+        0x00000000000000000000000000000000000000000c0000000300000000000000 ,
+        0x00000000000000000000
+    End
+    RecordSource ="Конфигурации по станциям"
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =852
+            BackColor =12632256
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xec3f386baaf4ce47897dc4e3d892439b
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =737
+                    Width =284
+                    ColumnWidth =552
+                    BackColor =14408667
+                    Name ="NGT"
+                    ControlSource ="NGT"
+                    Format ="#"
+                    GUID = Begin
+                        0xd49bd53f051c4541815f5ebc5bcd77a1
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1021
+                    Width =2379
+                    ColumnWidth =1944
+                    TabIndex =1
+                    BackColor =14408667
+                    Name ="ГТУ"
+                    ControlSource ="ГТУ"
+                    GUID = Begin
+                        0xa7a490a254afa949a92ae96db0567dae
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =737
+                    Top =284
+                    Width =284
+                    ColumnWidth =552
+                    TabIndex =2
+                    BackColor =14408667
+                    Name ="NKU"
+                    ControlSource ="NKU"
+                    Format ="#"
+                    GUID = Begin
+                        0x559e322959d4f94f940a4a1bac45537b
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =737
+                    Top =568
+                    Width =284
+                    ColumnWidth =516
+                    TabIndex =3
+                    BackColor =14408667
+                    Name ="NPT"
+                    ControlSource ="NPT"
+                    Format ="#"
+                    GUID = Begin
+                        0xe8c2001f6d152149a3e50a3e24e1644d
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1021
+                    Top =284
+                    Width =2379
+                    ColumnWidth =2424
+                    TabIndex =4
+                    BackColor =14408667
+                    Name ="Котел"
+                    ControlSource ="Котел"
+                    GUID = Begin
+                        0x981c6ae3b64f09428680b57a39a69f4b
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =1021
+                    Top =568
+                    Width =2379
+                    ColumnWidth =2712
+                    TabIndex =5
+                    BackColor =14408667
+                    Name ="ПТ"
+                    ControlSource ="ПТ"
+                    GUID = Begin
+                        0x9983aa693fb9694a923456465e88936f
+                    End
+                End
+                Begin Label
+                    BackStyle =1
+                    OverlapFlags =95
+                    Width =737
+                    Height =283
+                    BackColor =14408667
+                    Name ="Надпись4"
+                    Caption ="ГТУ"
+                    GUID = Begin
+                        0x83061fefc01c084c913e4b73b87ff771
+                    End
+                End
+                Begin Label
+                    BackStyle =1
+                    OverlapFlags =95
+                    Top =283
+                    Width =737
+                    Height =283
+                    BackColor =14408667
+                    Name ="Надпись5"
+                    Caption ="Котел"
+                    GUID = Begin
+                        0xe31f41bd9e7c924b8f29fbabf9721652
+                    End
+                End
+                Begin Label
+                    BackStyle =1
+                    OverlapFlags =87
+                    Top =566
+                    Width =737
+                    Height =283
+                    BackColor =14408667
+                    Name ="Надпись6"
+                    Caption ="ПТ"
+                    GUID = Begin
+                        0xdec40bfcfa9ebd45b2250937a38e16d2
+                    End
+                End
+            End
+        End
+    End
+End

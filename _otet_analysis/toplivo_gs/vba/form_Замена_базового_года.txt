@@ -1,0 +1,437 @@
+Version =19
+VersionRequired =19
+Checksum =-412984956
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =8
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =10755
+    DatasheetFontHeight =10
+    ItemSuffix =24
+    Left =1452
+    Top =816
+    Right =11460
+    Bottom =6864
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x25372715f63fe240
+    End
+    GUID = Begin
+        0x0697b0d5196ac243b4e2d57cba82f36d
+    End
+    NameMap = Begin
+        0x0acc0e5500000000387afc65789c2c4bba9c5e81404625e10000000088bfff34 ,
+        0x10e1e24000000000000000006d00610069006e00000000000000ee857f8d149f ,
+        0x5f41b49e76dd562affd100000000fd271ce010e1e24048121e000c8412002104 ,
+        0x3f04380441043e043a042d00320430044004380430043d0442043e0432040000 ,
+        0x0000000059a20714e311bc4f99635823a59bbf2507000000ee857f8d149f5f41 ,
+        0xb49e76dd562affd16e0061006d0065000000000000008e6340d3b58e9441878b ,
+        0x09cffa111d0007000000ee857f8d149f5f41b49e76dd562affd177006e006100 ,
+        0x6d00650000000000000005b140382d4fa44499cb88f8ee753b2807000000ee85 ,
+        0x7f8d149f5f41b49e76dd562affd175006e0061006d00650000000000000008cc ,
+        0x2262a5117d41b729e63eceae216d07000000ee857f8d149f5f41b49e76dd562a ,
+        0xffd164006f0070006e0061006d00650000000000000014906e5c1ed0014e8b28 ,
+        0xe546c2b1e2a307000000ee857f8d149f5f41b49e76dd562affd174006f007000 ,
+        0x6c00650075007200000000000000d46b0d9c6252c14ea137a0cac6e006c00700 ,
+        0x0000ee857f8d149f5f41b49e76dd562affd1620079006500610072000000
+    End
+    RecordSource ="main"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =6240
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x76580e60e37a834a8275fa079d95234b
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3969
+                    Top =1134
+                    Width =1134
+                    Height =567
+                    Name ="Замена1"
+                    Caption ="Станции и доп.угли"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x569f575bbaae18409c900d6f2490ab07
+                    End
+                End
+                Begin ListBox
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    ColumnCount =5
+                    Left =195
+                    Top =165
+                    Width =1350
+                    Height =1575
+                    TabIndex =1
+                    Name ="listvar"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [name], [wname], [uname], [dopname], [topleur], [byear] FROM [Список-вари"
+                        "антов]; "
+                    ColumnWidths ="1440;1440;1440;1440;1440"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xca9320ac3ebbc042aa3c0ddf93e95146
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    TextAlign =2
+                    Left =3630
+                    Top =165
+                    Width =1140
+                    Height =315
+                    TabIndex =2
+                    Name ="oldby"
+                    GUID = Begin
+                        0xa32c140cd267734da198a5ea9dcf4b25
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    TextAlign =2
+                    Left =6675
+                    Top =180
+                    Width =1125
+                    Height =330
+                    TabIndex =3
+                    Name ="newby"
+                    GUID = Begin
+                        0xdaf5bcd86ab3ae48902e7ef648c65cce
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =2070
+                    Top =150
+                    Width =795
+                    Height =240
+                    Name ="Надпись7"
+                    Caption ="Заменить"
+                    GUID = Begin
+                        0x5db93d71cedb724cbc0f4cd7609d8cd7
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =5490
+                    Top =150
+                    Width =255
+                    Height =240
+                    Name ="Надпись8"
+                    Caption ="на"
+                    GUID = Begin
+                        0x0f59908ce15ea14da222b1133dd3d814
+                    End
+                End
+                Begin ListBox
+                    RowSourceTypeInt =1
+                    OverlapFlags =85
+                    Left =195
+                    Top =2265
+                    Width =3210
+                    Height =2550
+                    TabIndex =4
+                    Name ="notfound"
+                    RowSourceType ="Value List"
+                    ColumnWidths ="1440"
+                    GUID = Begin
+                        0xdc8e3d6e8ca92940b27694e992db2eb9
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3990
+                    Top =2520
+                    Width =1110
+                    Height =570
+                    TabIndex =5
+                    Name ="Обновить"
+                    Caption ="Обновить"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xb6f125b63bfb804c806fee516eefea12
+                    End
+                End
+                Begin OptionGroup
+                    OverlapFlags =85
+                    Left =3990
+                    Top =3420
+                    Width =1550
+                    Height =1303
+                    TabIndex =6
+                    Name ="stanordop"
+                    AfterUpdate ="[Event Procedure]"
+                    DefaultValue ="1"
+                    GUID = Begin
+                        0x2728027311e9ac4fac04bdb8b1c4560f
+                    End
+                    Begin
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =4176
+                            Top =3629
+                            OptionValue =1
+                            Name ="stan"
+                            GUID = Begin
+                                0x8f421859b8c42340b14661f4a92f9936
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =4406
+                                    Top =3572
+                                    Width =720
+                                    Height =240
+                                    Name ="Надпись18"
+                                    Caption ="Станции"
+                                    GUID = Begin
+                                        0x0e1be7348707e044a52ae3503d60bcba
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =4176
+                            Top =3969
+                            OptionValue =2
+                            Name ="dopp"
+                            GUID = Begin
+                                0x77232c668a74924d87b9461ad03d439d
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =4406
+                                    Top =3912
+                                    Width =945
+                                    Height =240
+                                    Name ="Надпись20"
+                                    Caption ="Доп.угли +"
+                                    GUID = Begin
+                                        0x1ae7ef99fcfc22469f60daefc889159f
+                                    End
+                                End
+                            End
+                        End
+                        Begin OptionButton
+                            OverlapFlags =87
+                            Left =4170
+                            Top =4253
+                            OptionValue =3
+                            Name ="dopm"
+                            GUID = Begin
+                                0xfe1258c12a32ad4083483f6eff330f8f
+                            End
+                            Begin
+                                Begin Label
+                                    OverlapFlags =247
+                                    Left =4400
+                                    Top =4253
+                                    Width =885
+                                    Height =240
+                                    Name ="Надпись22"
+                                    Caption ="Доп.угли -"
+                                    GUID = Begin
+                                        0x7c1b8ca4c297e54c8a607b5b3b82d876
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =5670
+                    Top =1134
+                    Width =1134
+                    Height =567
+                    TabIndex =7
+                    Name ="Замена2"
+                    Caption ="Удельные и топливо"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x265ee22a0f1669428e1864f04401b8cb
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Dim dname As String, dopname As String, nfrsql As String
+Dim db As Database
+
+Private Sub Замена2_Click()
+Dim rvar As DAO.Recordset
+Set db = DBEngine.Workspaces(0).Databases(0)
+dname = listvar.Column(1, i)
+btrsql = "select numb1120,turt from [" & dname & "] where q>0 and year=" & newby & " and ved>0;"
+Debug.Print btrsql
+Set btr = db.CreateQueryDef("Отчетный_bt", btrsql)
+btpsql = "update [" & dname & "] as d inner join Отчетный_bt as s on d.numb1120=s.numb1120 set d.turt=s.turt where d.year>" & newby & ";"
+Debug.Print btpsql
+DoCmd.RunSQL (btpsql)
+db.QueryDefs.Delete ("Отчетный_bt")
+i = listvar.ListIndex
+uname = listvar.Column(2, i)
+toplname = listvar.Column(4, i)
+If oldby <> newby Then
+udelsql = "delete [#].* from [#] where year<" & newby + 1 & " and numb1120=any(select numb1120 from [#] where year=" & newby + 1 & ");"
+udelsql = Replace(udelsql, "#", uname)
+Debug.Print udelsql
+DoCmd.RunSQL udelsql
+topldelsql = Replace(udelsql, uname, toplname)
+DoCmd.RunSQL topldelsql
+usql = "update [" & uname & "] set year=" & newby + 1 & " where year=" & newby & ";"
+toplsql = Replace(usql, uname, toplname)
+Debug.Print usql
+Debug.Print toplsql
+DoCmd.RunSQL (usql)
+DoCmd.RunSQL (toplsql)
+End If
+usql = "Update ([" & uname & "] as d inner join vartobase on d.numb1120=vartobase.numb1120) inner join Удельные" & newby & " as s on vartobase.link=s.numb1120 "
+usql = usql & "set d.year=s.year,d.btp=s.btp,d.bk=s.bk,d.snk=s.snk,d.sntp=s.sntp,d.y=s.y where d.year=" & oldby & ";"
+Debug.Print oldby; usql
+DoCmd.RunSQL (usql)
+Set rvar = db.OpenRecordset("Список-вариантов", dbOpenDynaset)
+rvar.FindFirst "name=""" & listvar.Column(0, i) & """"
+rvar.Edit
+rvar!byear = newby
+rvar.Update
+End Sub
+
+Private Sub listvar_Click()
+i = listvar.ListIndex
+oldby = listvar.Column(5, i)
+End Sub
+
+Private Sub stanordop_AfterUpdate()
+If stanordop = 1 Then
+notfound.RowSource = nfrsql
+notfound.Requery
+End If
+If stanordop = 2 Then
+nfdopsql = "select name from [" & dopname & "] as d where d.year=" & oldby & " order by numb1;"
+notfound.RowSource = nfdopsql
+notfound.Requery
+End If
+If stanordop = 3 Then
+nfdopmsql = "select s.name from [" & "Доп_угли" & newby & "] as s LEFT JOIN " & dopname & " as d ON s.numb1120=d.numb1120 where d.numb1120 is null;"
+'Debug.Print nfdopmsql
+notfound.RowSource = nfdopmsql
+notfound.Requery
+End If
+End Sub
+
+Private Sub Замена1_Click()
+Dim upstan As QueryDef, vtb As QueryDef, updop As QueryDef
+i = listvar.ListIndex
+dname = listvar.Column(1, i)
+dopname = listvar.Column(3, i)
+upstancond = " (d.year=" & oldby & " or d.year=" & newby & ") AND s.year=" & newby & " "
+vtbcond = " d.year<" & newby + 1 & " AND (s.year=" & newby & " or s.year is null) and (r=1 or z(s.q)>0)"
+tonewsql = "UPDATE [" & dname & "] AS d INNER JOIN имена_станций ON d.numb1120=имена_станций.NUMB "
+tonewsql = tonewsql & "SET d.year=" & newby & " WHERE (d.year=" & oldby & ") AND ((имена_станций.R<>1) OR (имена_станций.R IS NULL));"
+Debug.Print "tonew="; tonewsql
+DoCmd.RunSQL (tonewsql)
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set upstan = db.QueryDefs("updatebase")
+Set vtb = db.QueryDefs("vartobase")
+Set updop = db.QueryDefs("updatebase(dop)")
+vtbsqlsave = vtb.SQL
+vtbsql = vtbsqlsave
+vtbsql = Replace(vtbsql, "Станции(макет)", dname)
+vtbsql = Replace(vtbsql, "Станции(архив)", "Станции" & newby)
+vtbsql = repbetw(vtbsql, "WHERE", ";", vtbcond)
+upstansql = upstan.SQL
+upstansql = Replace(upstansql, "Станции(макет)", dname)
+upstansql = Replace(upstansql, "Станции(архив)", "Станции" & newby)
+upstansql = repbetw(upstansql, "WHERE", ";", upstancond)
+insdopsql = "insert into [" & dopname & "] ([year],numb1120,numb1) select w.year,w.numb1120,w.numb1"
+insdopsql = insdopsql & " from [" & dname & "] as w left join [" & dopname & "] as d "
+insdopsql = insdopsql & " on w.year=d.year and w.numb1120=d.numb1120 and w.v=d.v"
+insdopsql = insdopsql & " where w.year=" & newby & " and z(pech)+z(ural)+z(kan)+z(irkut)+z(bur)>0 and d.numb1120 is null;"
+updopsql = updop.SQL
+updopsql = Replace(updopsql, "Доп_угли(макет)", dopname)
+updopsql = Replace(updopsql, "Доп_угли(архив)", "Доп_угли" & newby)
+updopsql = repbetw(updopsql, "WHERE", ";", upstancond)
+vtb.SQL = vtbsql
+'Debug.Print vtbsql
+Debug.Print upstansql
+'Debug.Print updopsql
+DoCmd.RunSQL (upstansql)
+Debug.Print insdopsql
+DoCmd.RunSQL insdopsql
+DoCmd.RunSQL (updopsql)
+vtb.SQL = vtbsqlsave
+notfound.RowSourceType = "Table/Query"
+rbysql = "UPDATE [" & dname & "] SET year=" & newby & " WHERE year=" & oldby & " and not(z(nust)>0 or z(e)>0 or z(q)>0);"
+'Debug.Print rbysql
+DoCmd.RunSQL (rbysql)
+nfrsql = "select name from [" & dname & "] as d where d.year=" & oldby & " order by numb1;"
+'Debug.Print nfrsql
+notfound.RowSource = nfrsql
+notfound.Requery
+End Sub
+
+
+Private Sub Обновить_Click()
+notfound.Requery
+End Sub

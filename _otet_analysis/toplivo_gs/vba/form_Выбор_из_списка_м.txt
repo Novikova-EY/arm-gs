@@ -1,0 +1,126 @@
+Version =19
+VersionRequired =19
+Checksum =-440772165
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =4755
+    DatasheetFontHeight =10
+    ItemSuffix =5
+    Left =960
+    Top =2496
+    Right =5928
+    Bottom =5472
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xdb10bbef9346e240
+    End
+    GUID = Begin
+        0xf439dbb9ab545b49ab7c4970f6f17b29
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =2265
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x9936e9726620654a9daab2766fa8c470
+            End
+            Begin
+                Begin ListBox
+                    OverlapFlags =85
+                    MultiSelect =1
+                    Left =135
+                    Top =105
+                    Width =2961
+                    Height =1987
+                    Name ="list"
+                    RowSourceType ="Table/Query"
+                    GUID = Begin
+                        0xa0d3abbcf00d0a4ea5bda4d73e834543
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =3420
+                    Top =375
+                    Width =855
+                    Height =495
+                    TabIndex =1
+                    Name ="OK"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xb2a898d37d8cae4f9e8947d2a8acb7ef
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+
+Private Sub Form_Open(Cancel As Integer)
+list.RowSource = Left(OpenArgs, InStr(OpenArgs, "/") - 1)
+End Sub
+
+Private Sub OK_Click()
+flist = ""
+For Each i In list.ItemsSelected
+flist = flist & ";" & list.Column(0, i)
+Next i
+Forms(Mid(OpenArgs, InStr(OpenArgs, "/") + 1))!fromlist = Mid(flist, 2)
+DoCmd.Close
+End Sub

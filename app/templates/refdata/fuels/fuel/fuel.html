@@ -4,7 +4,38 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container mt-2">
+<style>
+    /* Контейнер таблицы видов топлива — в 1,5 раза шире стандартного Bootstrap .container */
+    .fuel-list-container {
+        width: 100%;
+        margin-right: auto;
+        margin-left: auto;
+        padding-right: var(--bs-gutter-x, 0.75rem);
+        padding-left: var(--bs-gutter-x, 0.75rem);
+    }
+    @media (min-width: 576px)  { .fuel-list-container { max-width: 810px;  } }  /* 540 × 1.5 */
+    @media (min-width: 768px)  { .fuel-list-container { max-width: 1080px; } }  /* 720 × 1.5 */
+    @media (min-width: 992px)  { .fuel-list-container { max-width: 1440px; } }  /* 960 × 1.5 */
+    @media (min-width: 1200px) { .fuel-list-container { max-width: 1710px; } }  /* 1140 × 1.5 */
+    @media (min-width: 1400px) { .fuel-list-container { max-width: 1980px; } }  /* 1320 × 1.5 */
+
+    /* Фильтр «Родительский вид»: длинный список + поиск */
+    .fuel-parent-filter-menu {
+        min-width: 280px;
+        max-width: min(480px, 90vw);
+        max-height: 360px;
+        overflow-y: auto;
+        padding-top: 0.5rem;
+    }
+    .fuel-parent-filter-menu .fuel-parent-filter-search-wrap {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #fff;
+        padding: 0 0.5rem 0.5rem;
+    }
+</style>
+<div class="fuel-list-container mt-2">
 
     <h1 class="text-center mb-4">Список видов топлива</h1>
 
@@ -41,6 +72,13 @@
 
             <!-- ПРАВАЯ СТОРОНА: выбор кол-ва строк -->
             <div class="col-12 col-lg-4 text-lg-end">
+                <button type="button"
+                        class="btn btn-outline-success fw-bold"
+                        id="fuelHierarchyBtn"
+                        data-hierarchy-url="{{ url_for('refdata_bp.fuel_hierarchy') }}">
+                    Иерархия
+                </button>
+
                 <!-- Экспорт данных таблицы с фильтрами в Excel-->
                 <a class="btn btn-warning fw-bold"
                     href="{{ url_for('refdata_bp.export_fuel',
@@ -254,25 +292,78 @@
                             
                             <!-- Шапка таблицы. Столбец "Родительский вид" -->
                             <th class="text-center align-middle">
-                                <a href="{{ url_for('refdata_bp.fuel_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            fuel_filter=fuel_filter,
-                                            fuel_type_filter=fuel_type_filter,
-                                            nazvl_filter=nazvl_filter,
-                                            kmbur_filter=kmbur_filter,
-                                            sort_by='parent',
-                                            sort_dir='asc' if sort_by != 'parent' or sort_dir == 'desc' else 'desc') }}"
-                                            class="text-black">
-                                    Родительский вид
-                                    {% if sort_by == 'parent' %}
-                                        {% if sort_dir == 'asc' %}
-                                            ▲
-                                        {% else %}
-                                            ▼
-                                        {% endif %}
-                                    {% endif %}
-                                </a>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="mx-auto">
+                                        <a href="{{ url_for('refdata_bp.fuel_list',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    fuel_filter=fuel_filter,
+                                                    fuel_type_filter=fuel_type_filter,
+                                                    parent_filter=parent_filter,
+                                                    nazvl_filter=nazvl_filter,
+                                                    kmbur_filter=kmbur_filter,
+                                                    sort_by='parent',
+                                                    sort_dir='asc' if sort_by != 'parent' or sort_dir == 'desc' else 'desc') }}"
+                                        class="link-dark">
+                                            Родительский вид
+                                            {% if sort_by == 'parent' %}
+                                                {% if sort_dir == 'asc' %}
+                                                    ▲
+                                                {% else %}
+                                                    ▼
+                                                {% endif %}
+                                            {% endif %}
+                                        </a>
+                                    </span>
+                                    <div class="dropdown">
+                                        <button
+                                            class="btn btn-secondary btn-sm dropdown-toggle"
+                                            type="button"
+                                            id="parentFilterDropdownFuelAdmin"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end fuel-parent-filter-menu" aria-labelledby="parentFilterDropdownFuelAdmin">
+                                            <li class="fuel-parent-filter-search-wrap" onclick="event.stopPropagation()">
+                                                <input type="text"
+                                                       class="form-control form-control-sm fuel-parent-filter-search"
+                                                       placeholder="Поиск..."
+                                                       autocomplete="off">
+                                            </li>
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.fuel_list',
+                                                            page=pagination.page,
+                                                            fuel_filter=fuel_filter,
+                                                            fuel_type_filter=fuel_type_filter,
+                                                            parent_filter='',
+                                                            nazvl_filter=nazvl_filter,
+                                                            kmbur_filter=kmbur_filter,
+                                                            per_page=per_page,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}"
+                                                            class="dropdown-item">
+                                                    Все родительские виды
+                                                </a>
+                                            </li>
+                                            {% for id, name in fuel_parents %}
+                                                <li class="fuel-parent-filter-item">
+                                                    <a href="{{ url_for('refdata_bp.fuel_list',
+                                                        page=pagination.page,
+                                                        fuel_filter=fuel_filter,
+                                                        fuel_type_filter=fuel_type_filter,
+                                                        parent_filter=id,
+                                                        nazvl_filter=nazvl_filter,
+                                                        kmbur_filter=kmbur_filter,
+                                                        per_page=per_page,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" class="dropdown-item">
+                                                        {{ name }}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
                             </th>
 <!-- Шапка таблицы. Столбец "Короткое наименование" -->
                             <th class="text-center align-middle">
@@ -450,7 +541,7 @@
 
                                 <!-- Строки таблицы. Столбец "Родительский вид" -->
                                 <td>
-                                    <select name="fuel_parents[]" class="form-select">
+                                    <select name="fuel_parents[]" class="form-select searchable-select">
                                         {% for parent_id, parent_name in fuel_parents %}
                                         <option value="{{ parent_id }}"
                                             {% if (fuel.parent_id or 0) == parent_id %}selected{% endif %}>
@@ -462,7 +553,10 @@
 
                                 <!-- Строки таблицы. Столбец "Короткое наименование" -->
                                 <td>
-                                    <input type="text" name="fuel_nazvl[]" class="form-control" value="{{ fuel.nazvl or '' }}">
+                                    <input type="text" name="fuel_nazvl[]" class="form-control"
+                                           value="{{ fuel.nazvl or '' }}"
+                                           style="text-transform: lowercase;"
+                                           oninput="this.value = this.value.toLowerCase()">
                                 </td>
 
                                 <!-- Строки таблицы. Столбец "Тип угольного топлива" -->
@@ -629,25 +723,78 @@
                         
                             <!-- Шапка таблицы. Столбец "Родительский вид" -->
                             <th class="text-center align-middle">
-                                <a href="{{ url_for('refdata_bp.fuel_list',
-                                            page=pagination.page,
-                                            per_page=per_page,
-                                            fuel_filter=fuel_filter,
-                                            fuel_type_filter=fuel_type_filter,
-                                            nazvl_filter=nazvl_filter,
-                                            kmbur_filter=kmbur_filter,
-                                            sort_by='parent',
-                                            sort_dir='asc' if sort_by != 'parent' or sort_dir == 'desc' else 'desc') }}"
-                                            class="text-black">
-                                    Родительский вид
-                                    {% if sort_by == 'parent' %}
-                                        {% if sort_dir == 'asc' %}
-                                            ▲
-                                        {% else %}
-                                            ▼
-                                        {% endif %}
-                                    {% endif %}
-                                </a>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="mx-auto">
+                                        <a href="{{ url_for('refdata_bp.fuel_list',
+                                                    page=pagination.page,
+                                                    per_page=per_page,
+                                                    fuel_filter=fuel_filter,
+                                                    fuel_type_filter=fuel_type_filter,
+                                                    parent_filter=parent_filter,
+                                                    nazvl_filter=nazvl_filter,
+                                                    kmbur_filter=kmbur_filter,
+                                                    sort_by='parent',
+                                                    sort_dir='asc' if sort_by != 'parent' or sort_dir == 'desc' else 'desc') }}"
+                                        class="link-dark">
+                                            Родительский вид
+                                            {% if sort_by == 'parent' %}
+                                                {% if sort_dir == 'asc' %}
+                                                    ▲
+                                                {% else %}
+                                                    ▼
+                                                {% endif %}
+                                            {% endif %}
+                                        </a>
+                                    </span>
+                                    <div class="dropdown">
+                                        <button
+                                            class="btn btn-secondary btn-sm dropdown-toggle"
+                                            type="button"
+                                            id="parentFilterDropdownFuelReadonly"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end fuel-parent-filter-menu" aria-labelledby="parentFilterDropdownFuelReadonly">
+                                            <li class="fuel-parent-filter-search-wrap" onclick="event.stopPropagation()">
+                                                <input type="text"
+                                                       class="form-control form-control-sm fuel-parent-filter-search"
+                                                       placeholder="Поиск..."
+                                                       autocomplete="off">
+                                            </li>
+                                            <li>
+                                                <a href="{{ url_for('refdata_bp.fuel_list',
+                                                            page=pagination.page,
+                                                            fuel_filter=fuel_filter,
+                                                            fuel_type_filter=fuel_type_filter,
+                                                            parent_filter='',
+                                                            nazvl_filter=nazvl_filter,
+                                                            kmbur_filter=kmbur_filter,
+                                                            per_page=per_page,
+                                                            sort_by=sort_by,
+                                                            sort_dir=sort_dir) }}"
+                                                            class="dropdown-item">
+                                                    Все родительские виды
+                                                </a>
+                                            </li>
+                                            {% for id, name in fuel_parents %}
+                                                <li class="fuel-parent-filter-item">
+                                                    <a href="{{ url_for('refdata_bp.fuel_list',
+                                                        page=pagination.page,
+                                                        fuel_filter=fuel_filter,
+                                                        fuel_type_filter=fuel_type_filter,
+                                                        parent_filter=id,
+                                                        nazvl_filter=nazvl_filter,
+                                                        kmbur_filter=kmbur_filter,
+                                                        per_page=per_page,
+                                                        sort_by=sort_by,
+                                                        sort_dir=sort_dir) }}" class="dropdown-item">
+                                                        {{ name }}
+                                                    </a>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
                             </th>
 <!-- Шапка таблицы. Столбец "Короткое наименование" -->
                         <th class="text-center align-middle">
@@ -832,8 +979,389 @@
 
 </div>
 
+<!-- Модальное окно иерархии видов топлива -->
+<div class="modal fade" id="fuelHierarchyModal" tabindex="-1" aria-labelledby="fuelHierarchyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-4" id="fuelHierarchyModalLabel">Иерархия видов топлива</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                    <input type="search"
+                           id="fuelHierarchySearch"
+                           class="form-control"
+                           style="max-width: 320px;"
+                           placeholder="Поиск по названию / коду / NazvL">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="fuelHierarchyExpandAll">Развернуть всё</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="fuelHierarchyCollapseAll">Свернуть всё</button>
+                    <span class="text-muted small ms-auto" id="fuelHierarchyStats"></span>
+                </div>
+                <div id="fuelHierarchyTree" class="fuel-hierarchy-tree">
+                    <div class="text-muted">Загрузка…</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .fuel-hierarchy-tree {
+        font-size: 0.95rem;
+        line-height: 1.45;
+    }
+    .fuel-hierarchy-tree ul {
+        list-style: none;
+        margin: 0;
+        padding-left: 1.25rem;
+        border-left: 1px solid #dee2e6;
+    }
+    .fuel-hierarchy-tree > ul {
+        padding-left: 0;
+        border-left: none;
+    }
+    .fuel-hierarchy-tree li {
+        margin: 0.2rem 0;
+    }
+    .fuel-hierarchy-node {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.35rem;
+        padding: 0.2rem 0.35rem;
+        border-radius: 0.35rem;
+    }
+    .fuel-hierarchy-node:hover {
+        background: #f8f9fa;
+    }
+    .fuel-hierarchy-node.is-match {
+        background: #fff3cd;
+    }
+    .fuel-hierarchy-toggle {
+        border: none;
+        background: transparent;
+        width: 1.4rem;
+        height: 1.4rem;
+        line-height: 1;
+        padding: 0;
+        color: #198754;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+    .fuel-hierarchy-toggle.is-leaf {
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .fuel-hierarchy-kod {
+        color: #6c757d;
+        font-variant-numeric: tabular-nums;
+        min-width: 2.5rem;
+    }
+    .fuel-hierarchy-name {
+        font-weight: 600;
+    }
+    .fuel-hierarchy-type-label {
+        font-weight: 700;
+        color: #0f5132;
+    }
+    .fuel-hierarchy-badge {
+        display: inline-block;
+        margin-left: 0.35rem;
+        padding: 0.1rem 0.45rem;
+        border-radius: 0.35rem;
+        background: #d1e7dd;
+        color: #0f5132;
+        font-size: 0.8em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .fuel-hierarchy-meta {
+        color: #6c757d;
+        font-size: 0.85em;
+        margin-left: 0.35rem;
+    }
+    .fuel-hierarchy-node.is-fuel-type {
+        background: #e8f5e9;
+        border: 1px solid #c3e6cb;
+    }
+    .fuel-hierarchy-hidden {
+        display: none !important;
+    }
+</style>
+
 <!-- Скрипт подстройки высоты строк под содержимое ячеек -->
 <script src="{{ url_for('static', filename='js/refdata/textarea_autoresize.js') }}"></script>
+
+<script>
+(function () {
+    "use strict";
+
+    var hierarchyBtn = document.getElementById("fuelHierarchyBtn");
+    var hierarchyTreeEl = document.getElementById("fuelHierarchyTree");
+    var hierarchyStatsEl = document.getElementById("fuelHierarchyStats");
+    var hierarchySearchEl = document.getElementById("fuelHierarchySearch");
+    var hierarchyModalEl = document.getElementById("fuelHierarchyModal");
+    if (!hierarchyBtn || !hierarchyTreeEl || !hierarchyModalEl) {
+        return;
+    }
+
+    var hierarchyUrl = hierarchyBtn.getAttribute("data-hierarchy-url");
+    var hierarchyCache = null;
+
+    function escapeHtml(value) {
+        return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function renderNode(node) {
+        var children = node.children || [];
+        var hasChildren = children.length > 0;
+        var isFuelType = node.node_kind === "fuel_type";
+        var kodText = node.kod != null && node.kod !== "" ? String(node.kod) : "—";
+        var searchBits = [
+            kodText,
+            node.name || "",
+            node.nazvl || "",
+            node.fuel_type || "",
+            isFuelType ? "тип топлива" : "",
+        ];
+        var html =
+            '<li data-node-id="' + escapeHtml(String(node.id)) + '">' +
+            '<div class="fuel-hierarchy-node' + (isFuelType ? " is-fuel-type" : "") + '" data-search="' +
+            escapeHtml(searchBits.join(" ").toLowerCase()) +
+            '">' +
+            '<button type="button" class="fuel-hierarchy-toggle' +
+            (hasChildren ? "" : " is-leaf") +
+            '" aria-label="Свернуть/развернуть" aria-expanded="true">' +
+            (hasChildren ? "▾" : "•") +
+            "</button>";
+
+        if (isFuelType) {
+            html +=
+                '<span class="fuel-hierarchy-type-label">Тип топлива: ' +
+                escapeHtml(node.name || "не указано") +
+                "</span>" +
+                '<span class="fuel-hierarchy-meta">(' +
+                escapeHtml(String(children.length)) +
+                ")</span>";
+        } else {
+            var meta = node.nazvl
+                ? '<span class="fuel-hierarchy-meta">(' + escapeHtml(node.nazvl) + ")</span>"
+                : "";
+            var typeBadge = node.fuel_type
+                ? '<span class="fuel-hierarchy-badge">Тип: ' + escapeHtml(node.fuel_type) + "</span>"
+                : "";
+            html +=
+                '<span class="fuel-hierarchy-kod">' +
+                escapeHtml(kodText) +
+                "</span>" +
+                '<span class="fuel-hierarchy-name">' +
+                escapeHtml(node.name || "") +
+                "</span>" +
+                typeBadge +
+                meta;
+        }
+
+        html += "</div>";
+        if (hasChildren) {
+            html += '<ul class="fuel-hierarchy-children">';
+            children.forEach(function (child) {
+                html += renderNode(child);
+            });
+            html += "</ul>";
+        }
+        html += "</li>";
+        return html;
+    }
+
+    function renderTree(roots) {
+        if (!roots || !roots.length) {
+            hierarchyTreeEl.innerHTML = '<div class="text-muted">Нет данных для отображения.</div>';
+            return;
+        }
+        var html = "<ul>";
+        roots.forEach(function (root) {
+            html += renderNode(root);
+        });
+        html += "</ul>";
+        hierarchyTreeEl.innerHTML = html;
+    }
+
+    function setExpanded(li, expanded) {
+        var children = li.querySelector(":scope > ul.fuel-hierarchy-children");
+        var toggle = li.querySelector(":scope > .fuel-hierarchy-node > .fuel-hierarchy-toggle");
+        if (!children || !toggle || toggle.classList.contains("is-leaf")) {
+            return;
+        }
+        children.classList.toggle("fuel-hierarchy-hidden", !expanded);
+        toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+        toggle.textContent = expanded ? "▾" : "▸";
+    }
+
+    function expandAll(expanded) {
+        hierarchyTreeEl.querySelectorAll("li").forEach(function (li) {
+            setExpanded(li, expanded);
+        });
+    }
+
+    function applySearch(query) {
+        var q = (query || "").trim().toLowerCase();
+        var nodes = hierarchyTreeEl.querySelectorAll(".fuel-hierarchy-node");
+        nodes.forEach(function (nodeEl) {
+            nodeEl.classList.remove("is-match");
+            var li = nodeEl.closest("li");
+            if (li) {
+                li.classList.remove("fuel-hierarchy-hidden");
+            }
+        });
+        if (!q) {
+            return;
+        }
+        var matchedLis = new Set();
+        nodes.forEach(function (nodeEl) {
+            var hay = nodeEl.getAttribute("data-search") || "";
+            if (hay.indexOf(q) !== -1) {
+                nodeEl.classList.add("is-match");
+                var li = nodeEl.closest("li");
+                while (li) {
+                    matchedLis.add(li);
+                    setExpanded(li, true);
+                    var parentUl = li.parentElement;
+                    li = parentUl ? parentUl.closest("li") : null;
+                }
+            }
+        });
+        hierarchyTreeEl.querySelectorAll("li").forEach(function (li) {
+            if (!matchedLis.has(li)) {
+                li.classList.add("fuel-hierarchy-hidden");
+            }
+        });
+    }
+
+    hierarchyTreeEl.addEventListener("click", function (e) {
+        var toggle = e.target.closest(".fuel-hierarchy-toggle");
+        if (!toggle || toggle.classList.contains("is-leaf")) {
+            return;
+        }
+        var li = toggle.closest("li");
+        if (!li) {
+            return;
+        }
+        var expanded = toggle.getAttribute("aria-expanded") !== "false";
+        setExpanded(li, !expanded);
+    });
+
+    var expandAllBtn = document.getElementById("fuelHierarchyExpandAll");
+    var collapseAllBtn = document.getElementById("fuelHierarchyCollapseAll");
+    if (expandAllBtn) {
+        expandAllBtn.addEventListener("click", function () {
+            expandAll(true);
+        });
+    }
+    if (collapseAllBtn) {
+        collapseAllBtn.addEventListener("click", function () {
+            expandAll(false);
+        });
+    }
+    if (hierarchySearchEl) {
+        hierarchySearchEl.addEventListener("input", function () {
+            applySearch(hierarchySearchEl.value);
+        });
+    }
+
+    function openHierarchy() {
+        var modal = bootstrap.Modal.getOrCreateInstance(hierarchyModalEl);
+        modal.show();
+        if (hierarchyCache) {
+            renderTree(hierarchyCache.roots);
+            if (hierarchyStatsEl) {
+                hierarchyStatsEl.textContent =
+                    "Всего: " + hierarchyCache.total +
+                    ", типов: " + (hierarchyCache.fuel_types_count != null ? hierarchyCache.fuel_types_count : hierarchyCache.roots_count);
+            }
+            if (hierarchySearchEl) {
+                applySearch(hierarchySearchEl.value);
+            }
+            return;
+        }
+        hierarchyTreeEl.innerHTML = '<div class="text-muted">Загрузка…</div>';
+        fetch(hierarchyUrl, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
+            },
+        })
+            .then(function (resp) {
+                return resp.json().catch(function () {
+                    return null;
+                }).then(function (data) {
+                    return { resp: resp, data: data };
+                });
+            })
+            .then(function (pack) {
+                if (!pack.resp.ok || !pack.data || !pack.data.ok) {
+                    throw new Error(
+                        (pack.data && pack.data.error) || "Не удалось загрузить иерархию."
+                    );
+                }
+                hierarchyCache = pack.data;
+                renderTree(hierarchyCache.roots);
+                if (hierarchyStatsEl) {
+                    hierarchyStatsEl.textContent =
+                        "Всего: " + hierarchyCache.total +
+                        ", типов: " + (hierarchyCache.fuel_types_count != null ? hierarchyCache.fuel_types_count : hierarchyCache.roots_count);
+                }
+                if (hierarchySearchEl) {
+                    applySearch(hierarchySearchEl.value);
+                }
+            })
+            .catch(function (err) {
+                hierarchyTreeEl.innerHTML =
+                    '<div class="text-danger">' +
+                    escapeHtml(err && err.message ? err.message : "Ошибка загрузки.") +
+                    "</div>";
+            });
+    }
+
+    hierarchyBtn.addEventListener("click", openHierarchy);
+})();
+</script>
+
+<script>
+(function () {
+    "use strict";
+    function bindParentFilterSearch(menu) {
+        var input = menu.querySelector(".fuel-parent-filter-search");
+        if (!input) return;
+        var items = Array.prototype.slice.call(menu.querySelectorAll(".fuel-parent-filter-item"));
+        input.addEventListener("input", function () {
+            var term = String(input.value || "").trim().toLowerCase();
+            items.forEach(function (li) {
+                var text = (li.textContent || "").trim().toLowerCase();
+                li.classList.toggle("d-none", !!term && text.indexOf(term) === -1);
+            });
+        });
+        var dropdown = menu.closest(".dropdown");
+        if (dropdown) {
+            dropdown.addEventListener("shown.bs.dropdown", function () {
+                input.value = "";
+                items.forEach(function (li) { li.classList.remove("d-none"); });
+                setTimeout(function () { input.focus(); }, 0);
+            });
+        }
+    }
+    document.querySelectorAll(".fuel-parent-filter-menu").forEach(bindParentFilterSearch);
+})();
+</script>
 
 {% endif %}
 {% endblock %}

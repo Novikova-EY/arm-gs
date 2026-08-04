@@ -121,3 +121,115 @@ def recalculate_specific_fuel_prices_for_equipment_group(
         db.session.commit()
 
     return updates_count
+
+
+def recalculate_all_specific_fuel_prices(
+    year: int | None = None,
+    *,
+    equipment_group_id: int | None = None,
+    start_year: int | None = None,
+    end_year: int | None = None,
+    commit: bool = True,
+    all_versions: bool = False,
+) -> int:
+    """
+    Пересчитывает поля xxx_c в EquipmentGroupSpecificFuelPrice
+    по cost / объёмам топлива.
+
+    Использование:
+    - кнопка «Рассчитать цены топлива» на странице цены;
+    - после импорта стоимости / топливных параметров.
+
+    :param year: если задан — только этот год
+    :param equipment_group_id: ограничить одну группу
+    :param start_year, end_year: диапазон лет
+    :param commit: False при вызове из orchestrator до общего commit
+    :param all_versions: если True — без фильтра текущей версии БД
+    :return: число обработанных строк цены
+    """
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    _start = start_year
+    _end = end_year
+    if year is not None:
+        _start = year
+        _end = year
+    if _start is None or _end is None:
+        return 0
+
+    allowed_eg_ids = None
+    if equipment_group_id is not None or not all_versions:
+        eg_query = EquipmentGroup.query
+        if equipment_group_id is not None:
+            eg_query = eg_query.filter(EquipmentGroup.id == equipment_group_id)
+        if not all_versions:
+            current_version_id = get_current_db_version_id()
+            if current_version_id is not None:
+                eg_query = eg_query.filter(
+                    EquipmentGroup.database_version_id == current_version_id
+                )
+            else:
+                eg_query = eg_query.filter(
+                    EquipmentGroup.database_version_id.is_(None)
+                )
+        allowed_eg_ids = {
+            row.id for row in eg_query.with_entities(EquipmentGroup.id).all()
+        }
+        if not allowed_eg_ids:
+            return 0
+
+    def _load(model):
+        q = model.query.filter(
+            model.year_number >= _start,
+            model.year_number <= _end,
+        )
+        if allowed_eg_ids is not None:
+            q = q.filter(model.equipment_group_id.in_(allowed_eg_ids))
+        return {
+            (r.equipment_group_id, r.year_number): r
+            for r in q.all()
+            if r.equipment_group_id is not None and r.year_number is not None
+        }
+
+    fuel_params = _load(EquipmentGroupFuelParam)
+    extra_params = _load(EquipmentGroupExtraFuelParam)
+    costs = _load(EquipmentGroupSpecificFuelCost)
+    prices_existing = _load(EquipmentGroupSpecificFuelPrice)
+
+    keys = sorted(
+        set(fuel_params)
+        | set(extra_params)
+        | set(costs)
+        | set(prices_existing)
+    )
+    if not keys:
+        return 0
+
+    version_id = get_current_db_version_id()
+    updates_count = 0
+
+    with db.session.no_autoflush:
+        for eg_id, year_number in keys:
+            price = prices_existing.get((eg_id, year_number))
+            if price is None:
+                price = EquipmentGroupSpecificFuelPrice(
+                    equipment_group_id=eg_id,
+                    year_number=year_number,
+                    database_version_id=version_id,
+                )
+                set_db_version_on_create(price)
+                db.session.add(price)
+                prices_existing[(eg_id, year_number)] = price
+
+            fill_specific_fuel_price_from_calc(
+                price,
+                fuel_params.get((eg_id, year_number)),
+                extra_params.get((eg_id, year_number)),
+                costs.get((eg_id, year_number)),
+            )
+            updates_count += 1
+
+    if updates_count and commit:
+        db.session.commit()
+
+    return updates_count

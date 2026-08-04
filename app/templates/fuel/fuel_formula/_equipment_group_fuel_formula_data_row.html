@@ -1,39 +1,49 @@
-{# Одна строка таблицы «Формулы для расчета топлива по группам оборудования»; row_data: equipment_group, param, numb1120_merge_rowspan #}
-{% set merge_rs = row_data.numb1120_merge_rowspan %}
-{% set param = row_data.param %}
-{% set group_entity = row_data.equipment_group %}
-{% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
-<tr class="text-center align-middle">
-{% if merge_rs %}
-<td rowspan="{{ merge_rs }}" class="fuel-formula-lg align-middle">
+{# Одна строка таблицы формул: Group | Год | numb1120 (авто) | formtxt (edit для текущий/план) #}
+{# Ожидает: group_entity, group_name, gid, row_span, is_first_row, param, formula_value_columns #}
+{#           can_edit_bulk, formtxt_editable_years, nust_changed_from_prev_year_rows #}
+{% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
+{% set variant_num = param.variant_number if param is not none and param.variant_number is not none else 0 %}
+{% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
+{% set row_is_empty = not param %}
+{% set can_formtxt_edit = can_edit_bulk and gid and ynum != '' and formtxt_editable_years is defined and ynum in formtxt_editable_years %}
+<tr class="text-center align-middle"
+    data-fuel-edit-data-row="1"
+    data-fuel-group-id="{{ gid }}"
+    {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
+    {% if row_is_empty %}data-row-empty="1"{% endif %}>
+{% if is_first_row %}
+<td rowspan="{{ row_span }}" data-fuel-group-label="1">
     {% if group_entity and group_entity.id %}
-    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-        {{ group_name }}
-    </a>
-    {% else %}
-        {{ group_name }}
-    {% endif %}
+    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
+    {% else %}{{ group_name }}{% endif %}
 </td>
-{% for attr, label, is_numeric in formula_columns_merge %}
-<td rowspan="{{ merge_rs }}" class="fuel-formula-lg align-middle">
-    {% if param is none %}
-        —
-    {% elif is_numeric %}
-        {% set v = param|get_attr(attr) %}
-        {% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}
-    {% else %}
-        {% set v = param|get_attr(attr) %}
-        {{ v if v is not none else '—' }}
-    {% endif %}
-</td>
-{% endfor %}
 {% endif %}
-{% for attr, label, is_numeric in formula_columns_rest %}
-<td class="fuel-formula-lg{% if attr == 'formtxt' %} fuel-formula-formtxt-cell{% endif %}">
-    {% if param is none %}
-        —
+<td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if ynum != '' %}{{ ynum }}{% else %}—{% endif %}</td>
+{% for attr, label, is_numeric in formula_value_columns %}
+<td{% if nust_highlight_row %} class="table-warning{% if attr == 'formtxt' %} fuel-formula-formtxt-cell{% endif %}"{% elif attr == 'formtxt' %} class="fuel-formula-formtxt-cell"{% endif %}>
+    {% if attr == 'numb1120' %}
+        {# Как на ТЭП: показ numb1120 строки, иначе EquipmentGroup.numb; при сохранении всегда numb группы #}
+        {% set v = param|get_attr('numb1120') if param is not none and param else none %}
+        {% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}
+        {{ v if v is not none else '—' }}
     {% elif attr == 'formtxt' %}
-        <pre class="mb-0 text-start fuel-formula-formtxt-pre">{{ param.formtxt or '—' }}</pre>
+        {% if can_formtxt_edit %}
+            {% set raw_ft = param.formtxt if param and param.formtxt is not none else '' %}
+            {% set fname = 'g' ~ gid ~ '_fuel_formula_' ~ ynum ~ '_v' ~ variant_num ~ '_formtxt' %}
+            <input type="text"
+                   inputmode="text"
+                   autocomplete="off"
+                   name="{{ fname }}"
+                   class="form-control form-control-lg text-start fuel-formula-formtxt-input"
+                   value="{{ raw_ft }}"
+                   form="fuelFormulaBulkEditForm">
+        {% elif param is none or not param %}
+            —
+        {% else %}
+            <pre class="mb-0 text-start fuel-formula-formtxt-pre">{{ param.formtxt or '—' }}</pre>
+        {% endif %}
+    {% elif param is none or not param %}
+        —
     {% elif is_numeric %}
         {% set v = param|get_attr(attr) %}
         {% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}

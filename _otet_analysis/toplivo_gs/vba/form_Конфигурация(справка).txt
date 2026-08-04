@@ -1,0 +1,210 @@
+Version =20
+VersionRequired =20
+Checksum =-1494346639
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =3401
+    DatasheetFontHeight =10
+    ItemSuffix =7
+    Left =2952
+    Top =3564
+    Right =6492
+    Bottom =5460
+    DatasheetGridlinesColor =12632256
+    Filter ="stan=299"
+    RecSrcDt = Begin
+        0x4d85c71096dee240
+    End
+    RecordSource ="Конфигурации по станциям"
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =852
+            BackColor =12632256
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xb4703ed405b47f44a151f42da85160db
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =737
+                    Width =284
+                    ColumnWidth =552
+                    BackColor =14408667
+                    Name ="NGT"
+                    ControlSource ="NGT"
+                    Format ="#"
+                    GUID = Begin
+                        0x1ae75a1c74a72a4c9efdfcb19426646d
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1021
+                    Width =1251
+                    ColumnWidth =1944
+                    TabIndex =1
+                    BackColor =14408667
+                    Name ="ГТУ"
+                    ControlSource ="ГТУ"
+                    GUID = Begin
+                        0x8f550a4056fff846b67f4a9d8fd0184e
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =737
+                    Top =284
+                    Width =284
+                    ColumnWidth =552
+                    TabIndex =2
+                    BackColor =14408667
+                    Name ="NKU"
+                    ControlSource ="NKU"
+                    Format ="#"
+                    GUID = Begin
+                        0x6a0306d0d4f659479447919c0d377e25
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =737
+                    Top =568
+                    Width =284
+                    ColumnWidth =516
+                    TabIndex =3
+                    BackColor =14408667
+                    Name ="NPT"
+                    ControlSource ="NPT"
+                    Format ="#"
+                    GUID = Begin
+                        0x4ca4ec2f33042349808a2854d9cae565
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =1021
+                    Top =284
+                    Width =2379
+                    ColumnWidth =2424
+                    TabIndex =4
+                    BackColor =14408667
+                    Name ="Котел"
+                    ControlSource ="Котел"
+                    GUID = Begin
+                        0xf39bd693c312114d9de95cde9d0c787b
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =1021
+                    Top =568
+                    Width =2379
+                    ColumnWidth =2712
+                    TabIndex =5
+                    BackColor =14408667
+                    Name ="ПТ"
+                    ControlSource ="ПТ"
+                    GUID = Begin
+                        0xbb46d8eb22cec946929f65a0dc45ba90
+                    End
+                End
+                Begin Label
+                    BackStyle =1
+                    OverlapFlags =95
+                    Width =737
+                    Height =283
+                    BackColor =14408667
+                    Name ="Надпись4"
+                    Caption ="ГТУ"
+                    GUID = Begin
+                        0x43ec4ebb93dcd1438d0e9876fe17923b
+                    End
+                End
+                Begin Label
+                    BackStyle =1
+                    OverlapFlags =95
+                    Top =283
+                    Width =737
+                    Height =283
+                    BackColor =14408667
+                    Name ="Надпись5"
+                    Caption ="Котел"
+                    GUID = Begin
+                        0xcfad2dbd2da3c54e99f336a61a00de8e
+                    End
+                End
+                Begin Label
+                    BackStyle =1
+                    OverlapFlags =87
+                    Top =566
+                    Width =737
+                    Height =283
+                    BackColor =14408667
+                    Name ="Надпись6"
+                    Caption ="ПТ"
+                    GUID = Begin
+                        0xa344be3e4c300f4784c6a05bdedafa67
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    IMESentenceMode =3
+                    Left =2267
+                    ColumnWidth =600
+                    TabIndex =6
+                    BackColor =14408667
+                    Name ="NN"
+                    ControlSource ="NN"
+                    GUID = Begin
+                        0x560877c0ea4d73439dc0aa1428b3eb5b
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    IMESentenceMode =3
+                    Left =2834
+                    ColumnWidth =540
+                    TabIndex =7
+                    BackColor =14408667
+                    Name ="KPD"
+                    ControlSource ="KPD"
+                    GUID = Begin
+                        0x7b4ebcb759b5c14a8a5dc20cec0c5e95
+                    End
+                End
+            End
+        End
+    End
+End

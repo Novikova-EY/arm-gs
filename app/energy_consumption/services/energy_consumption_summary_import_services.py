@@ -681,7 +681,7 @@ def _ees_russia_gaes_import_perimeter_variant_from_excel(
     row: tuple[Any, ...],
     year_cols: dict[int, int],
 ) -> str | None:
-    """В шаблоне «млн. кВт·ч» строка «ЕЭС России … с зарядом ГАЭС» иногда помечена ``without_nt`` / ``with_nt``."""
+    """В шаблоне «млн. кВтч» строка «ЕЭС России … с зарядом ГАЭС» иногда помечена ``without_nt`` / ``with_nt``."""
     if not _is_ees_unified_import_label(
         _strip_import_variant_suffixes_from_label(label)
     ):
@@ -741,7 +741,7 @@ def _normalize_russia_federation_import_perimeter_variant(
     """Вариант периметра для ``RussiaFederationEnergyConsumptionParameter`` при импорте сводки.
 
     На листе «млн. кВт.ч» строка «Россия» часто помечена ``with_nt`` в колонке perimeter-variants
-    (как в дереве сводки), но в БД базовые значения «млн кВт·ч» хранятся с ``without_nt``
+    (как в дереве сводки), но в БД базовые значения «млн кВтч» хранятся с ``without_nt``
     (страница «Россия без НТ»). Явная подпись «Россия с НТ» → ``with_nt``.
     """
     label_n = _norm_entity_label(_normalize_import_label_typos(label))
@@ -810,7 +810,7 @@ def _south_union_energy_system_from_ctx(
 def _south_ues_import_perimeter_variant_from_excel(
     perimeter_variant_code: str | None,
 ) -> str | None:
-    """В шаблоне «млн. кВт·ч» строка «ОЭС Юга без НТ с зарядом ГАЭС» иногда помечена кодом with_nt_without_gaes."""
+    """В шаблоне «млн. кВтч» строка «ОЭС Юга без НТ с зарядом ГАЭС» иногда помечена кодом with_nt_without_gaes."""
     if perimeter_variant_code == CODE_WITH_NT_WITHOUT_GAES:
         return CODE_WITHOUT_NT_WITH_GAES
     return perimeter_variant_code
@@ -1455,10 +1455,19 @@ def _collapse_labels_to_bind_keys(
 
     Второй элемент — множество (id_subj_rf, год), для которых в файле уже есть сумма как по
     субъекту РФ (без дубля зеркалом с РЭС).
+
+    Если у сущности нет привязок вариантов периметра, явный код из Excel (например ``o1``)
+    сбрасывается в ``NULL``. Параллельная строка без кода и строка с таким кодом не
+    суммируются: иначе значения удваиваются (шаблон «Для работы в АРМе» для центральных
+    энергорайонов Магадана / Камчатки / Сахалина).
     """
     acc: defaultdict[tuple[Type[Any], str, int, int, str | None], Decimal] = defaultdict(
         lambda: Decimal("0")
     )
+    # Ключи, заполненные только после сброса явного PVC → NULL (ещё нет «родной» NULL-строки).
+    cleared_pvc_only_keys: set[
+        tuple[Type[Any], str, int, int, str | None]
+    ] = set()
     explicit_rd_subject_years: set[tuple[int, int]] = set()
     rd_model = RegionalDistrictEnergyConsumptionParameter
     for (label, year_n, pvc), total in acc_labels.items():
@@ -1494,6 +1503,7 @@ def _collapse_labels_to_bind_keys(
                         bind.parent_id,
                         effective_pvc,
                     )
+        pvc_cleared_to_null = False
         if model_supports_perimeter_variant(bind.demand_model):
             cleared_pvc = _import_perimeter_variant_without_entity_bindings(
                 bind.demand_model,
@@ -1502,6 +1512,7 @@ def _collapse_labels_to_bind_keys(
                 bind.perimeter_variant_code,
             )
             if cleared_pvc != bind.perimeter_variant_code:
+                pvc_cleared_to_null = True
                 effective_pvc = cleared_pvc
                 bind = _ImportBind(
                     bind.demand_model,
@@ -1516,7 +1527,18 @@ def _collapse_labels_to_bind_keys(
             year_n,
             effective_pvc,
         )
-        acc[key] += total
+        if pvc_cleared_to_null:
+            # Явный вариант сброшен в NULL: не суммировать с уже записанной NULL-строкой.
+            if key in acc:
+                continue
+            acc[key] += total
+            cleared_pvc_only_keys.add(key)
+        elif key in cleared_pvc_only_keys:
+            # «Родная» NULL-строка важнее сброшенного o1 — подменяем, не складываем.
+            acc[key] = total
+            cleared_pvc_only_keys.discard(key)
+        else:
+            acc[key] += total
         if bind.demand_model is rd_model:
             explicit_rd_subject_years.add((int(bind.parent_id), int(year_n)))
     return acc, frozenset(explicit_rd_subject_years)
@@ -1852,11 +1874,11 @@ def persist_all_energy_consumption_summary_computed_rows(
         skip_accumulator_keys_by_field=skip_accumulator_keys_by_field,
         user=user,
     )
-    from app.power_demand.services.pd_ec_consumption_index_cache import (
-        invalidate_pd_ec_consumption_index_cache,
+    from app.energy_consumption.services.ec_display_cache import (
+        invalidate_energy_consumption_display_caches,
     )
 
-    invalidate_pd_ec_consumption_index_cache(version_id=database_version_id)
+    invalidate_energy_consumption_display_caches(version_id=database_version_id)
     return touched
 
 
@@ -1925,7 +1947,7 @@ def import_energy_consumption_summary_from_xlsx_bytes(
     есть строка, сопоставленная как субъект РФ (а не как РЭС), копирование с РЭС не
     выполняется — иначе сумма на субъекте удваивается.
 
-    Если лист «млн. кВт.ч» есть, но это короткая заглушка без таблицы, показатели «млн. кВт·ч»
+    Если лист «млн. кВт.ч» есть, но это короткая заглушка без таблицы, показатели «млн. кВтч»
     из файла не обновляются (как при отсутствии данных на листе).
     """
     version_ids = _database_version_ids_for_energy_consumption_import()
@@ -2086,7 +2108,7 @@ def _import_energy_consumption_summary_from_xlsx_bytes_impl(
                 on_version_progress,
                 done_before,
                 versions_total,
-                f"версия {versions_done}/{versions_total}: запись млн. кВт·ч",
+                f"версия {versions_done}/{versions_total}: запись млн. кВтч",
             )
             n_mln += _apply_accumulator_for_version(
                 acc_m,

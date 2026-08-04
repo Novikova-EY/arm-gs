@@ -1,0 +1,171 @@
+Version =20
+VersionRequired =20
+Checksum =1962074834
+Begin Form
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =6746
+    DatasheetFontHeight =12
+    ItemSuffix =2
+    Left =348
+    Top =612
+    Right =6144
+    Bottom =2616
+    DatasheetGridlinesColor =12632256
+    OrderBy ="РЭУ1"
+    RecSrcDt = Begin
+        0x182db79d6c6be340
+    End
+    GUID = Begin
+        0xc2099167415ce7429ee497c2c522f867
+    End
+    NameMap = Begin
+        0x0acc0e5500000000250837a73d32334bb4631da070ef64d200000000b1061592 ,
+        0xb84ce54000000000000000003f0435044004350442043e043a0438045f004204 ,
+        0x300431043b040000000000000000000000000000000000000000000007000000 ,
+        0x250837a73d32334bb4631da070ef64d270000000000000000000000000000000 ,
+        0x000000000000000007000000250837a73d32334bb4631da070ef64d270006900 ,
+        0x6e00760000000000000000000000000000000000000000000000070000002508 ,
+        0x37a73d32334bb4631da070ef64d26f0065007300000000000000000000000000 ,
+        0x0000000000000000000007000000250837a73d32334bb4631da070ef64d26f00 ,
+        0x62006c0031000000000000000000000000000000000000000000000007000000 ,
+        0x250837a73d32334bb4631da070ef64d26f0062006c0032000000000000000000 ,
+        0x000000000000000000000000000007000000250837a73d32334bb4631da070ef ,
+        0x64d220042d042304310000000000000000000000000000000000000000000000 ,
+        0x07000000250837a73d32334bb4631da070ef64d220042d042304320000000000 ,
+        0x0000000000000000000000000000000000000c00000003000000000000000000 ,
+        0x0000000000000000
+    End
+    RecordSource ="перетоки_табл"
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            AutoLabel = NotDefault
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =240
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x1472d9ccf9bc004893b3c835b1f26ca8
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =1587
+                    ColumnWidth =600
+                    ColumnOrder =2
+                    Name ="p"
+                    ControlSource ="p"
+                    Format ="#"
+                    GUID = Begin
+                        0x62a1656a2ce8f441b7b3616514232b8a
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2154
+                    ColumnWidth =600
+                    ColumnOrder =3
+                    TabIndex =1
+                    Name ="pinv"
+                    ControlSource ="pinv"
+                    Format ="#"
+                    GUID = Begin
+                        0x575b1cbc7da18e46a368061033b40189
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2721
+                    ColumnWidth =600
+                    ColumnOrder =4
+                    TabIndex =2
+                    Name ="oes"
+                    ControlSource ="oes"
+                    GUID = Begin
+                        0xbe07d5045356564a969809cb053737b2
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =453
+                    ColumnWidth =540
+                    ColumnOrder =5
+                    TabIndex =3
+                    Name ="obl1"
+                    ControlSource ="obl1"
+                    GUID = Begin
+                        0x23ca3ba26bd3424d9991e7054fadb9c3
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =1020
+                    ColumnWidth =540
+                    ColumnOrder =6
+                    TabIndex =4
+                    Name ="obl2"
+                    ControlSource ="obl2"
+                    GUID = Begin
+                        0xc2e9c355dfc0e94cadcaeec4b53a3e5c
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3288
+                    Width =1701
+                    ColumnWidth =1692
+                    ColumnOrder =0
+                    TabIndex =5
+                    Name ="РЭУ1"
+                    ControlSource ="РЭУ1"
+                    GUID = Begin
+                        0x5679606c8ebdb94490ed6c6a2dbf4901
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =4989
+                    Width =1701
+                    ColumnWidth =1980
+                    ColumnOrder =1
+                    TabIndex =6
+                    Name ="РЭУ2"
+                    ControlSource ="РЭУ2"
+                    GUID = Begin
+                        0xfb94c5a2111afc42bf877debd2097dc9
+                    End
+                End
+            End
+        End
+    End
+End

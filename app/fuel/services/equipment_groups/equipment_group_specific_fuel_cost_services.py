@@ -112,14 +112,14 @@ SPECIFIC_FUEL_COST_COLUMNS = [
     ("dep", "DEP", False),
     ("oes", "OES", False),
     ("er", "ER", False),
-    ("numb1120", "Код электростанции", False),
+    ("numb1120", "Код группы оборудования", False),
     ("numb1", "NUMB1", False),
 ]
 
 
 def get_equipment_groups_with_specific_fuel_cost_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,

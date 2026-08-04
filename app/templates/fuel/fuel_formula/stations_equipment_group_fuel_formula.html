@@ -4,35 +4,6 @@
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<style>
-    .fuel-formula-table {
-        table-layout: auto;
-        width: 100%;
-    }
-    .fuel-formula-table td.fuel-formula-lg,
-    .fuel-formula-table th.fuel-formula-lg {
-        font-size: 1.25rem;
-    }
-    .fuel-formula-table td.fuel-formula-lg pre {
-        font-size: inherit;
-    }
-    .fuel-formula-table td.fuel-formula-formtxt-cell {
-        min-width: 0;
-        vertical-align: top;
-    }
-    .fuel-formula-table td.fuel-formula-formtxt-cell pre.fuel-formula-formtxt-pre {
-        display: block;
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-        margin: 0;
-        white-space: pre-wrap;
-        word-break: break-word;
-        overflow-wrap: anywhere;
-        overflow-x: hidden;
-        overflow-y: visible;
-    }
-</style>
 
 <div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
     <div class="text-center">
@@ -40,92 +11,218 @@
             <span class="visually-hidden">Загрузка...</span>
         </div>
         <p class="mt-3 h4">Загрузка данных...</p>
-        <p class="text-muted">Это может занять некоторое время</p>
     </div>
 </div>
 
-<div class="container-fluid mt-2">
-    <div class="table-responsive" id="stationsTableContainer">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+{# Как equipment_group_specific_fuel_consumption_edit_data: при прокрутке уходит только заголовок; кнопки и фильтры липкие #}
+<div class="fuel-calc-edit-shell d-flex flex-column">
+<div class="fuel-calc-edit-top overflow-auto" style="flex: 1 1 0; min-height: 0;">
+<div class="fuel-calc-edit-pane-content w-100 mt-2 px-0">
+    <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-nav bg-body">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 py-1">
+        {% if calculation_back_url is defined and calculation_back_url %}
+        <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
+        {% endif %}
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
         <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}" class="btn btn-secondary fs-5">Удельные показатели</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+    </div>
+    </div><!-- /.fuel-calc-edit-sticky-nav -->
+
+    <div class="col-12 mb-2 fuel-calc-edit-page-title">
+        <h2 class="text-center mb-4">Структура топливного баланса</h2>
     </div>
 
-    <div class="col-12 mb-2">
-        <h2 class="text-center mb-4">Структура топливного баланса</h2>
-        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-            <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
-                ➕ Добавить электростанцию
-            </a>
-            <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
-                ➕ Добавить группу оборудования
-            </a>
+    <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-filters bg-body">
+    {% include 'fuel/fuel_formula/stations_equipment_group_fuel_formula_filters.html' %}
+    </div><!-- /.fuel-calc-edit-sticky-filters -->
+
+    <div id="stationsTableContainer">
+
+    {% if current_user.is_authenticated and current_user.has_admin and year_list_for_edit %}
+    <div class="modal fade" id="fuelEditDataHeatBulkAddYearModal" tabindex="-1" aria-labelledby="fuelEditDataHeatBulkAddYearModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('fuel_bp.equipment_group_fuel_formulas_add_year') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% for key, value in request.args.items(multi=True) %}
+                    <input type="hidden" name="r_{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fuelEditDataHeatBulkAddYearModalLabel">Добавить год</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelFormulaAddYearBase">Базовый год</label>
+                        <select name="id_base_year" id="fuelFormulaAddYearBase" class="form-select form-select-lg" aria-label="Базовый год" required>
+                            <option value="">—</option>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelFormulaAddYearTarget">Расчитываемый год</label>
+                        <select name="id_target_year" id="fuelFormulaAddYearTarget" class="form-select form-select-lg" aria-label="Расчитываемый год" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить в таблицу</button>
+                </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    {% include 'fuel/fuel_formula/stations_equipment_group_fuel_formula_filters.html' %}
+    <div class="modal fade" id="fuelEditDataHeatBulkAddPeriodModal" tabindex="-1" aria-labelledby="fuelEditDataHeatBulkAddPeriodModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('fuel_bp.equipment_group_fuel_formulas_add_period') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% for key, value in request.args.items(multi=True) %}
+                    <input type="hidden" name="r_{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fuelEditDataHeatBulkAddPeriodModalLabel">Добавить период</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelFormulaAddPeriodBase">Базовый год</label>
+                        <select name="id_base_year" id="fuelFormulaAddPeriodBase" class="form-select form-select-lg" aria-label="Базовый год для периода" required>
+                            <option value="">—</option>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelFormulaAddPeriodFrom">Расчитываемый год с</label>
+                        <select name="id_year_from" id="fuelFormulaAddPeriodFrom" class="form-select form-select-lg" aria-label="Начало периода" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="fuelFormulaAddPeriodTo">Расчитываемый год по</label>
+                        <select name="id_year_to" id="fuelFormulaAddPeriodTo" class="form-select form-select-lg" aria-label="Конец периода" required>
+                            {% for y in year_list_for_edit %}
+                            <option value="{{ y.id }}">{{ y.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить период в таблицу</button>
+                </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
-{% set column_count = 1 + (formula_columns_merge|length) + (formula_columns_rest|length) %}
+{% set can_edit_bulk = current_user.is_authenticated and current_user.has_admin %}
+{% set formtxt_editable_years = formtxt_editable_years|default([]) %}
+{% set formula_value_columns = [
+    ('numb1120', 'Код группы оборудования', false),
+    ('formtxt', 'Формула топливного баланса', false),
+] %}
+{% set column_count = formula_value_columns|length + 2 %}
 
-    <table class="table table-hover table-striped table-bordered table-responsive fuel-formula-table" data-auto-export-excel="off" data-export-title="Структура топливного баланса">
+    {% if can_edit_bulk %}
+    <form method="POST" action="{{ url_for('fuel_bp.equipment_group_fuel_formulas_save') }}" id="fuelFormulaBulkEditForm" class="mb-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="save_return_qs" value="{{ request.query_string.decode('utf-8')|e }}">
+        <input type="hidden" name="start_year" value="{{ start_year }}">
+        <input type="hidden" name="end_year" value="{{ end_year }}">
+        <input type="hidden" name="bulk_edit_group_ids" value="{{ bulk_edit_equipment_group_ids|default([])|join(',') }}">
+    {% endif %}
+    <table class="table table-hover table-striped table-bordered table-responsive" id="fuelFormulaTable" data-auto-export-excel="off" data-export-title="Структура топливного баланса">
         <thead class="table-success">
-            <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                <th class="fuel-formula-lg">Группа оборудования</th>
-                {% for attr, label, is_numeric in formula_columns_merge %}
-                <th class="fuel-formula-lg">
+            <tr class="text-center align-middle" style="word-wrap: break-word;">
+                <th style="min-width: 9rem;">Группа оборудования</th>
+                <th style="min-width: 3.5rem;">Год</th>
+                {% for attr, label, is_numeric in formula_value_columns %}
+                <th style="min-width: {% if attr == 'formtxt' %}16rem{% else %}4rem{% endif %};">
                     {{ label }}
-                    <br><span class="text-muted small">({{ attr }})</span>
-                </th>
-                {% endfor %}
-                {% for attr, label, is_numeric in formula_columns_rest %}
-                <th class="fuel-formula-lg">
-                    {{ label }}
-                    <br><span class="text-muted small">({{ attr }})</span>
+                    <br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% endfor %}
             </tr>
         </thead>
-
         <tbody>
             {% if equipment_group_fuel_formula_hierarchy and equipment_group_fuel_formula_hierarchy|length > 0 %}
             {% for est_block in equipment_group_fuel_formula_hierarchy %}
-                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                <tr class="table-light text-center fw-bold">
                     <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
                 </tr>
                 {% for ues_block in est_block.ues_list %}
-                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                    <tr class="table-primary text-center fw-bold">
                         <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
                     </tr>
                     {% for res_block in ues_block.res_list %}
-                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                        <tr class="table-secondary text-center fw-bold">
                             <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
                         </tr>
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
-                                {% for row_data in group_block.rows %}
+                                {% set group_entity = group_block.equipment_group %}
+                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% set row_span = group_block.rows|length %}
+                                {% if row_span > 0 %}
+                                {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
+                                {% for row in group_block.rows %}
+                                    {% set param = row[1] %}
+                                    {% set is_first_row = loop.first %}
                                     {% include 'fuel/fuel_formula/_equipment_group_fuel_formula_data_row.html' %}
                                 {% endfor %}
+                                {% endif %}
                         {% endfor %}
                         {% endfor %}
                     {% endfor %}
                 {% endfor %}
             {% endfor %}
             {% else %}
-            {% for row_data in equipment_group_fuel_formula_rows|default([]) %}
+            {% for group_rows in equipment_group_fuel_formula_row_groups|default([]) %}
+                {% set row_span = group_rows|length %}
+                {% set group_entity = group_rows[0][0] %}
+                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
+                {% for row in group_rows %}
+                {% set param = row[1] %}
+                {% set is_first_row = loop.first %}
                 {% include 'fuel/fuel_formula/_equipment_group_fuel_formula_data_row.html' %}
+                {% endfor %}
             {% else %}
-            <tr>
-                <td colspan="{{ column_count }}" class="text-muted text-center py-4">Нет данных.</td>
-            </tr>
+                <tr>
+                    <td colspan="{{ column_count }}" class="text-muted text-center py-4">Нет данных за выбранный интервал лет и фильтры.</td>
+                </tr>
             {% endfor %}
             {% endif %}
         </tbody>
     </table>
+    {% if can_edit_bulk %}
+    </form>
+    {% endif %}
 
-    </div>
-</div>
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = 'fuel_bp.equipment_group_fuel_formulas_page' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
+
+    </div><!-- /#stationsTableContainer -->
+</div><!-- /.fuel-calc-edit-pane-content -->
+</div><!-- /.fuel-calc-edit-top -->
+</div><!-- /.fuel-calc-edit-shell -->
 
 <script id="filters-data" type="application/json">
     {{ {
@@ -163,36 +260,195 @@
         'fd_to_est_mapping': fd_to_est_mapping
     } | tojson | safe }}
 </script>
-
+<style>
+    /* Высота блока: под реальную шапку (#appTopBar) и отступы body */
+    .fuel-calc-edit-shell {
+        height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+        min-height: 560px;
+        max-height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+        box-sizing: border-box;
+        width: 100%;
+        max-width: 100%;
+    }
+    /* Вся страница (кнопки, заголовок, фильтры, таблица) — 0,75 ширины */
+    .fuel-calc-edit-shell .fuel-calc-edit-pane-content {
+        width: 75%;
+        max-width: 75%;
+        margin-left: auto;
+        margin-right: auto;
+        box-sizing: border-box;
+    }
+    /* Липкие кнопки и фильтры; заголовок прокручивается */
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-stack {
+        position: sticky;
+        left: 0;
+        z-index: 40;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        background-color: var(--bs-body-bg, #fff);
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-nav {
+        top: 0;
+        z-index: 42;
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters {
+        top: var(--fuel-calc-edit-nav-sticky-height, 0px);
+        z-index: 41;
+        display: flow-root;
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters .power-demand-filters-collapse,
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters .power-demand-import-export-collapse {
+        overflow: visible !important;
+    }
+    .fuel-calc-edit-top .fuel-calc-edit-sticky-filters > .col-12.mb-2:last-child {
+        margin-bottom: 0.5rem !important;
+    }
+    /* Как в редактируемых полях (form-control-lg): единый размер шрифта на странице */
+    .fuel-calc-edit-shell {
+        font-size: 1.25rem;
+    }
+    .fuel-calc-edit-shell .form-control-lg {
+        font-size: 1.25rem;
+    }
+    .fuel-calc-edit-shell #fuelFormulaTable {
+        font-size: 1.25rem;
+    }
+    .fuel-calc-edit-shell #fuelFormulaTable thead th .small,
+    .fuel-calc-edit-shell #fuelFormulaTable .text-muted.small {
+        font-size: 0.85em;
+    }
+    .fuel-calc-edit-shell #fuelFormulaTable td.fuel-formula-formtxt-cell {
+        min-width: 0;
+        vertical-align: middle;
+        text-align: left;
+    }
+    .fuel-calc-edit-shell #fuelFormulaTable td.fuel-formula-formtxt-cell pre.fuel-formula-formtxt-pre {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        overflow-x: hidden;
+        overflow-y: visible;
+        font-size: inherit;
+        font-family: inherit;
+    }
+    /* Поля formtxt — как на ТЭП (specific_fc): без «белых окон» внутри строки */
+    #fuelFormulaTable tbody td.fuel-formula-formtxt-cell:has(> input.form-control) {
+        padding: 0 !important;
+        vertical-align: middle;
+    }
+    #fuelFormulaTable tbody td.fuel-formula-formtxt-cell > input.form-control {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: 2.5rem;
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.2rem 0.35rem;
+        font-size: inherit;
+        line-height: 1.3;
+        background-color: transparent;
+        background-clip: padding-box;
+    }
+    #fuelFormulaTable tbody td.fuel-formula-formtxt-cell > input.form-control:focus {
+        box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+        outline: 0;
+        background-color: transparent;
+    }
+    /*
+      overflow на #stationsTableContainer ломает sticky у thead относительно .fuel-calc-edit-top.
+      Горизонтальный и вертикальный скролл — у .fuel-calc-edit-top (overflow-auto).
+    */
+    .fuel-calc-edit-shell #stationsTableContainer {
+        max-height: none !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .fuel-calc-edit-top #stationsTableContainer #fuelFormulaTable thead th {
+        position: sticky;
+        top: var(--fuel-calc-edit-controls-sticky-height, 0px);
+        z-index: 35;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+    }
+    /* Nуст изменился к предыдущему году: жёлтые ячейки поверх table-striped */
+    #fuelFormulaTable tbody td.table-warning {
+        --bs-table-bg: var(--bs-warning-bg-subtle, #fff3cd);
+        background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;
+    }
+    #fuelFormulaTable tbody tr.fuel-edit-empty-row-hidden {
+        display: none !important;
+    }
+</style>
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    if (typeof initializeStationFilters === "function") {
-        initializeStationFilters();
-    }
-
+    if (typeof initializeStationFilters === "function") initializeStationFilters();
     if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
             new bootstrap.Tooltip(el);
         });
     }
+    var loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+
+    var exportBtn = document.getElementById('exportFuelFormulasToExcel');
+    var table = document.getElementById('fuelFormulaTable');
+    if (exportBtn && table && typeof window.__clientTableExportToExcel === 'function') {
+        exportBtn.addEventListener('click', function () {
+            window.__clientTableExportToExcel(exportBtn, table);
+        });
+    }
+
+    var editTop = document.querySelector(".fuel-calc-edit-top");
+    var stickyNav = document.querySelector(".fuel-calc-edit-sticky-nav");
+    var stickyFilters = document.querySelector(".fuel-calc-edit-sticky-filters");
+    function updateFuelCalcEditStickyHeights() {
+        if (!editTop) return;
+        var navH = stickyNav ? Math.ceil(stickyNav.getBoundingClientRect().height || stickyNav.offsetHeight || 0) : 0;
+        var filtersH = stickyFilters ? Math.ceil(stickyFilters.getBoundingClientRect().height || stickyFilters.offsetHeight || 0) : 0;
+        var thead = document.querySelector("#fuelFormulaTable > thead");
+        var gap = 0;
+        if (stickyFilters && thead) {
+            if (editTop.scrollTop <= 1) {
+                gap = Math.max(0, Math.round(
+                    thead.getBoundingClientRect().top - stickyFilters.getBoundingClientRect().bottom
+                ));
+                editTop.dataset.fuelCalcEditTheadGap = String(gap);
+            } else {
+                gap = parseInt(editTop.dataset.fuelCalcEditTheadGap || "0", 10) || 0;
+            }
+        }
+        editTop.style.setProperty("--fuel-calc-edit-nav-sticky-height", navH + "px");
+        editTop.style.setProperty("--fuel-calc-edit-controls-sticky-height", (navH + filtersH + gap) + "px");
+    }
+    updateFuelCalcEditStickyHeights();
+    window.addEventListener("resize", updateFuelCalcEditStickyHeights);
+    document.addEventListener("shown.bs.collapse", updateFuelCalcEditStickyHeights);
+    document.addEventListener("hidden.bs.collapse", updateFuelCalcEditStickyHeights);
+    if (editTop) {
+        editTop.addEventListener("scroll", function () {
+            if (editTop.scrollTop <= 1) {
+                updateFuelCalcEditStickyHeights();
+            }
+        }, { passive: true });
+    }
+    if (typeof ResizeObserver !== "undefined") {
+        var ro = new ResizeObserver(updateFuelCalcEditStickyHeights);
+        if (stickyNav) ro.observe(stickyNav);
+        if (stickyFilters) ro.observe(stickyFilters);
+        if (editTop) ro.observe(editTop);
+    }
 });
 </script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const loadingOverlay = document.getElementById('loading-overlay');
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
-
-        const exportBtn = document.getElementById('exportFuelFormulasToExcel');
-        const table = document.querySelector('table.fuel-formula-table');
-        if (exportBtn && table && typeof window.__clientTableExportToExcel === 'function') {
-            exportBtn.addEventListener('click', function () {
-                window.__clientTableExportToExcel(exportBtn, table);
-            });
-        }
-    });
-</script>
-
 {% endif %}
 {% endblock %}

@@ -14,6 +14,9 @@ from app.common.services.database_version_filter import get_current_db_version_i
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
+    EquipmentGroupSpecificFuelConsumption,
+)
 from app.fuel.models.external_mapping.fue_em_business_unit_model import (
     BusinessUnitExternalMapping,
 )
@@ -38,10 +41,16 @@ from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
 
 # Названия параметров для страницы equipment_group_details (как на stations_equipment_group_fuel_params)
 FUEL_PARAM_LABELS = {
-    "nust": "Руст", "nr": "Ррасп", "e": "Выр", "ewtp": "Этц", "eotp": "Отпуск ээ",
-    "eurt": "Уд.расх ээ", "eust": "Расх топ ээ", "snk": "СН, %",
-    "q": "Отпуск, Гкал", "qotr": "Отраб", "turt": "Уд.расх тэ", "tust": "Расх топ тэ", "sn_t": "СН, кВтч/Гкал",
-    "b": "Расх топл.",
+    "nust": EquipmentGroupFuelParam.NUST_COLUMN_LABEL,
+    "nr": EquipmentGroupFuelParam.NR_COLUMN_LABEL,
+    "h": EquipmentGroupFuelParam.H_COLUMN_LABEL,
+    "hfix": EquipmentGroupFuelParam.HFIX_COLUMN_LABEL,
+    "e": "Выработка ЭЭ, тыс.кВтч", "ewtp": "Теплофикационная выработка ЭЭ, тыс.кВтч",
+    "eotp": EquipmentGroupFuelParam.EOTP_COLUMN_LABEL,
+    "eurt": EquipmentGroupFuelParam.EURT_COLUMN_LABEL, "eust": "Расх топ ээ",
+    "snk": EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL,
+    "q": EquipmentGroupFuelParam.Q_COLUMN_LABEL, "qotr": "Тепловое потребление (отборов турбин), тыс.Гкал", "turt": EquipmentGroupFuelParam.TURT_COLUMN_LABEL, "tust": EquipmentGroupFuelParam.TUST_COLUMN_LABEL, "sn_t": "СН, кВтч/⁠Гкал",
+    "b": "Расход топлива, всего",
     "gaz": "Газ", "isk_gaz": "Иск. газ", "mazut": "Мазут", "torf": "Торф", "slan": "Сланцы",
     "proch": "Прочее", "ugol": "Уголь", "don": "Дон", "podm": "Подм", "pech": "Печ",
     "arkt": "Арктикуголь", "kuzn": "Кузбасс", "ural": "Урал", "bashk": "Башкортостан", "kazah": "Казахстан",
@@ -49,8 +58,8 @@ FUEL_PARAM_LABELS = {
     "bur": "Бурятия", "chit": "Чита", "yakut": "Якутия", "amur": "Амур", "urg": "Юрга",
     "ushum": "Ушумун", "prim": "Приморье", "mag": "Магадан", "chukot": "Чукотка", "kamch": "Камчатка",
     "sah": "Сахалин",
-    "nt": "Тепл. мощн. отборов", "nt_sum": "Сумма NT",
-    "numb1120": "Код электростанции", "numb1": "Номер",
+    "nt": EquipmentGroupFuelParam.NT_COLUMN_LABEL, "nt_sum": EquipmentGroupFuelParam.NT_SUM_COLUMN_LABEL,
+    "numb1120": "Код группы оборудования", "numb1": "Номер",
     "obor": "OBOR", "ved": "VED", "ved_cyrillic": "вед", "obl": "OBL", "dep": "DEP",
     "oes": "OES", "ees": "EES", "er": "ER", "gk": "GK", "be": "BE",
 }
@@ -58,8 +67,8 @@ FUEL_PARAM_LABELS = {
 # Наименования для таблицы «Основные параметры» — как в разделе «Общая информация»
 # на странице equipment_group_edit / stations_equipment_groups
 MAIN_PARAM_LABELS = {
-    "obor": "Группа оборудования (obor)",
-    "ved": "Ведомство (ved)",
+    "obor": "Группа оборудования (OBOR)",
+    "ved": "Ведомство (VED)",
     "ved_cyrillic": "Ведомство (вед)",
     "obl": "Субъект РФ",
     "dep": "Департамент",
@@ -68,7 +77,7 @@ MAIN_PARAM_LABELS = {
     "er": "Экономический район",
     "gk": "Генерирующая компания",
     "be": "Тип генерирующей компании",
-    "numb1120": "Код электростанции",
+    "numb1120": "Код группы оборудования",
     "numb1": "Номер",
 }
 
@@ -201,7 +210,7 @@ EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS = [
     "numb1120", "numb1",
 ]
 EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS = [
-    "nust", "nr", "e", "eotp", "eurt", "eust", "q", "turt", "tust",
+    "nust", "nr", "h", "hfix", "e", "eotp", "eurt", "eust", "q", "turt", "tust",
 ]
 EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS = [
     "b", "gaz", "isk_gaz", "mazut", "torf", "slan", "proch", "ugol", "don", "podm",
@@ -393,7 +402,7 @@ def get_equipment_group_ids_for_fuel_params_filters(
 
 def get_equipment_groups_with_fuel_params_data(
     filters=None,
-    per_page=10,
+    per_page=25,
     page=1,
     start_year=None,
     end_year=None,

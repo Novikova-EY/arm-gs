@@ -1,0 +1,2 @@
+SELECT Станции2024.OES, Имена_областей.NAME, Станции2024.NAME, Станции2024.B, [EOTP]*[eurt]/1000+[Q]*[turt]/1000 AS Bras, Abs([B]-[Bras]) AS d, IIf([EOTP]>0,[eust]/[EOTP]*1000,0) AS be, Станции2024.EURT, Abs([eurt]-[be]) AS d2, IIf([Q]>0,[tust]/[Q]*1000,0) AS bt, Станции2024.TURT, Abs([turt]-[bt]) AS d3, Станции2024.EOTP, Станции2024.Q
+FROM Станции2024 INNER JOIN Имена_областей ON Станции2024.OBL = Имена_областей.OBL;

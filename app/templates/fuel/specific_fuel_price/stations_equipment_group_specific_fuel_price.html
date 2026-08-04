@@ -39,47 +39,77 @@
     <!-- Фильтры -->
     {% include 'fuel/specific_fuel_price/stations_equipment_group_specific_fuel_price_filters.html' %}
 
-{% set specific_price_columns = specific_fuel_price_columns %}
+    {% if show_calc_mismatch|default(false) %}
+    <div class="alert alert-warning py-2" role="alert">
+        Временный фильтр: показаны только строки, где хотя бы одно поле xxx_c
+        отличается от соответствующего xxx_c_calc
+        (NULL и 0 считаются одинаковыми — оба «—»; микроразница
+        в 6–7-м знаке после запятой не учитывается).
+        Найдено: <strong>{{ calc_mismatch_count|default(0) }}</strong>.
+        Расходящиеся ячейки подсвечены.
+    </div>
+    {% endif %}
+
+{# Метрики вне групп «Виды топлива» (rowspan=2). #}
+{% set fuel_header_metric_cols = ('numb1120',) %}
+{% set fuel_param_header_use_fixed_label = fuel_header_metric_cols %}
+{# Столбцы и группировка по Fuel.parent_id; _calc — отдельный блок #}
+{% set _fuel_hier = fuel_param_column_hierarchy|default({}) %}
+{% set specific_price_columns = _fuel_hier.get('fuel_param_columns') if _fuel_hier.get('fuel_param_columns') else specific_fuel_price_columns %}
+{% set fuel_group_parents = _fuel_hier.get('group_parents') if _fuel_hier.get('group_parents') is not none else [] %}
+{% set fuel_collapse_under = _fuel_hier.get('collapse_under') if _fuel_hier.get('collapse_under') is not none else {} %}
+{% set base_fuel_attrs = _fuel_hier.get('base_fuel_attrs') if _fuel_hier.get('base_fuel_attrs') is not none else [] %}
+{% set calc_fuel_attrs = _fuel_hier.get('calc_fuel_attrs') if _fuel_hier.get('calc_fuel_attrs') is not none else [] %}
 {% set column_count = specific_price_columns|length + 1 %}
-{% set collapsible_attrs = ['gazpp_c', 'gaz_prir_c', 'gazpp_c_calc', 'gaz_prir_c_calc'] %}
-{% set collapsible_mazut_attrs = ['disel_c', 'maztop_c', 'disel_c_calc', 'maztop_c_calc'] %}
-{% set collapsible_proch_attrs = ['tvproch_c', 'szh_gaz_c', 'inoe_c', 'tvproch_c_calc', 'szh_gaz_c_calc', 'inoe_c_calc'] %}
-{% set collapsible_ugol_attrs = ['podm_c', 'pech_c', 'vork_c', 'intin_c', 'kuzn_c', 'kuzngd_c', 'kuznt_c', 'kuznss_c', 'kuznun_c', 'ural_c', 'sver_c', 'chel_c', 'kizel_c', 'bashk_c', 'kazah_c', 'ekib_c', 'maikub_c', 'karag_c', 'karajyra_c', 'teniz_c', 'kan_c', 'nazar_c', 'ibor_c', 'berez_c', 'per_c', 'irbei_c', 'kansk_c', 'irkut_c', 'azey_c', 'mug_c', 'cher_c', 'tung_c', 'jer_c', 'karab_c', 'hak_c', 'tuv_c', 'bur_c', 'gusin_c', 'tugn_c', 'okino_c', 'chit_c', 'har_c', 'urt_c', 'tataur_c', 'tarbag_c', 'zab_kam_c', 'amur_c', 'rai_c', 'erk_c', 'ogodj_c', 'svo_c', 'urg_c', 'ushum_c', 'prim_c', 'bikin_c', 'razdol_c', 'hankai_c', 'yakut_c', 'neru_c', 'zyryan_c', 'pyak_c', 'mag_c', 'chukot_c', 'anad_c', 'bering_c', 'kamch_c', 'sah_c', 'podm_c_calc', 'pech_c_calc', 'vork_c_calc', 'intin_c_calc', 'kuzn_c_calc', 'kuzngd_c_calc', 'kuznt_c_calc', 'kuznss_c_calc', 'kuznun_c_calc', 'ural_c_calc', 'sver_c_calc', 'chel_c_calc', 'kizel_c_calc', 'bashk_c_calc', 'kazah_c_calc', 'ekib_c_calc', 'maikub_c_calc', 'karag_c_calc', 'karajyra_c_calc', 'teniz_c_calc', 'kan_c_calc', 'nazar_c_calc', 'ibor_c_calc', 'berez_c_calc', 'per_c_calc', 'irbei_c_calc', 'kansk_c_calc', 'irkut_c_calc', 'azey_c_calc', 'mug_c_calc', 'cher_c_calc', 'tung_c_calc', 'jer_c_calc', 'karab_c_calc', 'hak_c_calc', 'tuv_c_calc', 'bur_c_calc', 'gusin_c_calc', 'tugn_c_calc', 'okino_c_calc', 'chit_c_calc', 'har_c_calc', 'urt_c_calc', 'tataur_c_calc', 'tarbag_c_calc', 'zab_kam_c_calc', 'amur_c_calc', 'rai_c_calc', 'erk_c_calc', 'ogodj_c_calc', 'svo_c_calc', 'urg_c_calc', 'ushum_c_calc', 'prim_c_calc', 'bikin_c_calc', 'razdol_c_calc', 'hankai_c_calc', 'yakut_c_calc', 'neru_c_calc', 'zyryan_c_calc', 'pyak_c_calc', 'mag_c_calc', 'chukot_c_calc', 'anad_c_calc', 'bering_c_calc', 'kamch_c_calc', 'sah_c_calc'] %}
+{% set fuel_type_col_count = namespace(n=(base_fuel_attrs|length), m=(calc_fuel_attrs|length)) %}
+{% if not base_fuel_attrs and not calc_fuel_attrs %}
+    {% for attr, label, is_numeric in specific_price_columns %}
+        {% if attr.endswith('_c_calc') %}
+            {% set fuel_type_col_count.m = fuel_type_col_count.m + 1 %}
+        {% elif attr.endswith('_c') %}
+            {% set fuel_type_col_count.n = fuel_type_col_count.n + 1 %}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+{% set has_two_row_header = (fuel_type_col_count.n + fuel_type_col_count.m) > 0 %}
 
     <table class="table table-hover table-striped table-bordered" id="specificFuelPriceTable">
         <thead class="table-success">
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                <th style="min-width: 140px;">Группа оборудования</th>
+                <th rowspan="{{ 2 if has_two_row_header else 1 }}" style="min-width: 140px;">Группа оборудования</th>
                 {% for attr, label, is_numeric in specific_price_columns %}
+                {% if attr in fuel_header_metric_cols %}
+                <th rowspan="{{ 2 if has_two_row_header else 1 }}" style="min-width: 60px;" class="specific-price-col-{{ attr }}" data-column="{{ attr }}">
+                    {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                </th>
+                {% endif %}
+                {% endfor %}
+                {% if fuel_type_col_count.n %}
+                <th colspan="{{ fuel_type_col_count.n }}" class="fuel-types-group-header" data-fuel-group="base">Виды топлива</th>
+                {% endif %}
+                {% if fuel_type_col_count.m %}
+                <th colspan="{{ fuel_type_col_count.m }}" class="fuel-types-group-header" data-fuel-group="calc">Виды топлива (расчет)</th>
+                {% endif %}
+            </tr>
+            {% if has_two_row_header %}
+            <tr class="text-center align-middle fuel-types-header-row" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                {% for attr, label, is_numeric in specific_price_columns %}
+                {% if attr not in fuel_header_metric_cols %}
+                {% set nazvl_key = attr[:-7] if attr.endswith('_c_calc') else (attr[:-2] if attr.endswith('_c') else attr) %}
                 <th style="min-width: 60px;" class="specific-price-col-{{ attr }}" data-column="{{ attr }}"
-                    {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %}
-                    {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %}
-                    {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %}
-                    {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>
-                    {{ (fuel_nazvl_to_name or {}).get(attr[:-2] if attr|length >= 2 and attr[-2:] == '_c' else (attr[:-8] if attr|length >= 8 and attr[-8:] == '_c_calc' else attr), label) }}{% if price_formulas is defined and price_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ price_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ attr }})</span>
-                    {% if attr == 'gaz_c' %}
-                    <span id="gasGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть: Газ прир., Газ попут." aria-label="Группировка столбцов газа">
-                        <i class="bi bi-plus-square gas-group-icon" data-state="collapsed"></i>
-                    </span>
-                    {% endif %}
-                    {% if attr == 'mazut_c' %}
-                    <span id="mazutGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть: Дизель, Мазут топочный" aria-label="Группировка столбцов мазута">
-                        <i class="bi bi-plus-square mazut-group-icon" data-state="collapsed"></i>
-                    </span>
-                    {% endif %}
-                    {% if attr == 'proch_c' %}
-                    <span id="prochGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть: Прочие виды тв. топлива, Газ сжиженный, inoe" aria-label="Группировка столбцов PROCH">
-                        <i class="bi bi-plus-square proch-group-icon" data-state="collapsed"></i>
-                    </span>
-                    {% endif %}
-                    {% if attr == 'don_c' %}
-                    <span id="ugolGroupToggle" class="ms-1 cursor-pointer" title="Показать/скрыть столбцы углей по маркам (UGOL)" aria-label="Группировка столбцов угля">
-                        <i class="bi bi-plus-square ugol-group-icon" data-state="collapsed"></i>
+                    data-fuel-group="{{ 'calc' if attr.endswith('_c_calc') else 'base' }}"
+                    {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}>
+                    {% if attr in fuel_param_header_use_fixed_label %}{{ label }}{% else %}{{ (fuel_nazvl_to_name or {}).get(nazvl_key|lower, label) }}{% endif %}{% if price_formulas is defined and price_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ price_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                    {% if attr in fuel_group_parents %}
+                    <span class="ms-1 cursor-pointer fuel-hier-toggle" data-fuel-hier-parent="{{ attr }}" title="Показать/скрыть дочерние виды топлива" aria-label="Группировка столбцов: {{ attr }}">
+                        <i class="bi bi-plus-square fuel-hier-icon" data-state="collapsed"></i>
                     </span>
                     {% endif %}
                 </th>
+                {% endif %}
                 {% endfor %}
             </tr>
+            {% endif %}
         </thead>
 
         <tbody>
@@ -102,6 +132,7 @@
                                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
                                 {% for row in group_block.rows %}
                                     {% set param = row[1] %}
+                                    {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
                                     <tr class="text-center align-middle">
                                         <td>
                                             {% if group_entity and group_entity.id %}
@@ -113,7 +144,7 @@
                                             {% endif %}
                                         </td>
                                         {% for attr, label, is_numeric in specific_price_columns %}
-                                        <td class="specific-price-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %} {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %} {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %} {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr.endswith('_calc') and is_numeric %}{{ render_numeric_or_dash((param._price_calc or {}).get(attr[:-5])) }}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                        <td class="specific-price-col-{{ attr }}{% if attr in mismatch_attrs %} table-danger{% endif %}" data-column="{{ attr }}" {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}>{% if param is none %}—{% elif attr.endswith('_calc') and is_numeric %}{{ render_numeric_or_dash((param._price_calc or {}).get(attr[:-5])) }}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}
@@ -127,6 +158,7 @@
                 {% set group_entity = row[0] %}
                 {% set param = row[1] %}
                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
                 <tr class="text-center align-middle">
                     <td>
                         {% if group_entity and group_entity.id %}
@@ -138,7 +170,7 @@
                         {% endif %}
                     </td>
                     {% for attr, label, is_numeric in specific_price_columns %}
-                    <td class="specific-price-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_attrs %}data-collapsible="1"{% endif %} {% if attr in collapsible_mazut_attrs %}data-collapsible-mazut="1"{% endif %} {% if attr in collapsible_proch_attrs %}data-collapsible-proch="1"{% endif %} {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr.endswith('_calc') and is_numeric %}{{ render_numeric_or_dash((param._price_calc or {}).get(attr[:-5])) }}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                    <td class="specific-price-col-{{ attr }}{% if attr in mismatch_attrs %} table-danger{% endif %}" data-column="{{ attr }}" {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}>{% if param is none %}—{% elif attr.endswith('_calc') and is_numeric %}{{ render_numeric_or_dash((param._price_calc or {}).get(attr[:-5])) }}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
                     {% endfor %}
                 </tr>
             {% endfor %}
@@ -210,42 +242,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
 <style>
     .cursor-pointer { cursor: pointer; }
-    .gas-group-icon, .ugol-group-icon, .mazut-group-icon, .proch-group-icon { font-size: 1rem; color: var(--bs-primary); }
-    .gas-group-icon:hover, .ugol-group-icon:hover, .mazut-group-icon:hover, .proch-group-icon:hover { opacity: 0.8; }
-    /* Скрытые столбцы группировки (gazpp_c, gaz_prir_c + _calc) — по умолчанию скрыты */
-    #specificFuelPriceTable th[data-collapsible="1"],
-    #specificFuelPriceTable td[data-collapsible="1"] {
+    .fuel-hier-icon { font-size: 1rem; color: var(--bs-primary); }
+    .fuel-hier-icon:hover { opacity: 0.8; }
+    #specificFuelPriceTable th[data-fuel-hier-under],
+    #specificFuelPriceTable td[data-fuel-hier-under] {
         display: none;
     }
-    #specificFuelPriceTable.gas-group-expanded th[data-collapsible="1"],
-    #specificFuelPriceTable.gas-group-expanded td[data-collapsible="1"] {
-        display: table-cell;
-    }
-    /* Скрытые столбцы группировки MAZUT (disel_c, maztop_c + _calc) */
-    #specificFuelPriceTable th[data-collapsible-mazut="1"],
-    #specificFuelPriceTable td[data-collapsible-mazut="1"] {
-        display: none;
-    }
-    #specificFuelPriceTable.mazut-group-expanded th[data-collapsible-mazut="1"],
-    #specificFuelPriceTable.mazut-group-expanded td[data-collapsible-mazut="1"] {
-        display: table-cell;
-    }
-    /* Скрытые столбцы группировки PROCH (tvproch_c, szh_gaz_c, inoe_c + _calc) */
-    #specificFuelPriceTable th[data-collapsible-proch="1"],
-    #specificFuelPriceTable td[data-collapsible-proch="1"] {
-        display: none;
-    }
-    #specificFuelPriceTable.proch-group-expanded th[data-collapsible-proch="1"],
-    #specificFuelPriceTable.proch-group-expanded td[data-collapsible-proch="1"] {
-        display: table-cell;
-    }
-    /* Скрытые столбцы группировки UGOL (podm_c … sah_c + _calc) */
-    #specificFuelPriceTable th[data-collapsible-ugol="1"],
-    #specificFuelPriceTable td[data-collapsible-ugol="1"] {
-        display: none;
-    }
-    #specificFuelPriceTable.ugol-group-expanded th[data-collapsible-ugol="1"],
-    #specificFuelPriceTable.ugol-group-expanded td[data-collapsible-ugol="1"] {
+    #specificFuelPriceTable th[data-fuel-hier-under].fuel-hier-col-visible,
+    #specificFuelPriceTable td[data-fuel-hier-under].fuel-hier-col-visible {
         display: table-cell;
     }
 </style>
@@ -262,141 +266,157 @@ document.addEventListener("DOMContentLoaded", function() {
             window.location.href = url.toString();
         });
 
-        // Группировка столбцов (gazpp_c, gaz_prir_c) — как в Excel
         const table = document.getElementById('specificFuelPriceTable');
-        const gasToggle = document.getElementById('gasGroupToggle');
-        const gasIcon = gasToggle?.querySelector('.gas-group-icon');
-        const GAS_STORAGE_KEY = 'specificFuelPrice_gasGroupExpanded';
+        const HIER_STORAGE_KEY = 'specificFuelPrice_fuelHierExpanded';
+        const toggles = table
+            ? Array.from(table.querySelectorAll('.fuel-hier-toggle[data-fuel-hier-parent]'))
+            : [];
+        const expandedMap = {};
 
-        function updateGasGroupState(expanded) {
-            if (expanded) {
-                table?.classList.add('gas-group-expanded');
-                if (gasIcon) {
-                    gasIcon.classList.remove('bi-plus-square');
-                    gasIcon.classList.add('bi-dash-square');
-                    gasIcon.setAttribute('data-state', 'expanded');
+        function loadExpandedMap() {
+            try {
+                const raw = localStorage.getItem(HIER_STORAGE_KEY);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') {
+                    Object.keys(parsed).forEach(function (k) {
+                        if (parsed[k]) expandedMap[k] = true;
+                    });
                 }
-            } else {
-                table?.classList.remove('gas-group-expanded');
-                if (gasIcon) {
-                    gasIcon.classList.remove('bi-dash-square');
-                    gasIcon.classList.add('bi-plus-square');
-                    gasIcon.setAttribute('data-state', 'collapsed');
+            } catch (_) {}
+            // Миграция со старых ключей группировки
+            try {
+                if (localStorage.getItem('specificFuelPrice_gasGroupExpanded') === '1') {
+                    expandedMap['gaz_c'] = true;
+                    expandedMap['gaz_c_calc'] = true;
                 }
-            }
-            try { localStorage.setItem(GAS_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
+                if (localStorage.getItem('specificFuelPrice_mazutGroupExpanded') === '1') {
+                    expandedMap['mazut_c'] = true;
+                    expandedMap['mazut_c_calc'] = true;
+                }
+                if (localStorage.getItem('specificFuelPrice_prochGroupExpanded') === '1') {
+                    expandedMap['proch_c'] = true;
+                    expandedMap['proch_c_calc'] = true;
+                }
+                if (localStorage.getItem('specificFuelPrice_ugolGroupExpanded') === '1') {
+                    expandedMap['ugol_c'] = true;
+                    expandedMap['ugol_c_calc'] = true;
+                    expandedMap['don_c'] = true;
+                    expandedMap['don_c_calc'] = true;
+                }
+            } catch (_) {}
         }
 
-        if (gasToggle && table) {
-            const saved = typeof localStorage !== 'undefined' && localStorage.getItem(GAS_STORAGE_KEY) === '1';
-            if (saved) updateGasGroupState(true);
+        function saveExpandedMap() {
+            try {
+                localStorage.setItem(HIER_STORAGE_KEY, JSON.stringify(expandedMap));
+            } catch (_) {}
+        }
 
-            gasToggle.addEventListener('click', function() {
-                const expanded = table.classList.contains('gas-group-expanded');
-                updateGasGroupState(!expanded);
+        function isAncestorChainExpanded(attr) {
+            let under = null;
+            const th = table.querySelector('thead th[data-column="' + attr + '"]');
+            if (th) under = th.getAttribute('data-fuel-hier-under');
+            const seen = {};
+            while (under) {
+                if (seen[under]) break;
+                seen[under] = true;
+                if (!expandedMap[under]) return false;
+                const parentTh = table.querySelector('thead th[data-column="' + under + '"]');
+                under = parentTh ? parentTh.getAttribute('data-fuel-hier-under') : null;
+            }
+            return true;
+        }
+
+        function syncFuelTypesGroupColspan() {
+            if (!table) return;
+            ['base', 'calc'].forEach(function (group) {
+                const groupTh = table.querySelector(
+                    'thead th.fuel-types-group-header[data-fuel-group="' + group + '"]'
+                );
+                if (!groupTh) return;
+                let visible = 0;
+                table.querySelectorAll(
+                    'thead tr.fuel-types-header-row th[data-column][data-fuel-group="' + group + '"]'
+                ).forEach(function (th) {
+                    if (
+                        th.hasAttribute('data-fuel-hier-under') &&
+                        !th.classList.contains('fuel-hier-col-visible')
+                    ) {
+                        return;
+                    }
+                    visible += 1;
+                });
+                if (visible < 1) {
+                    groupTh.style.display = 'none';
+                    return;
+                }
+                groupTh.style.display = '';
+                groupTh.colSpan = visible;
             });
         }
 
-        // Группировка столбцов MAZUT (disel_c, maztop_c)
-        const mazutToggle = document.getElementById('mazutGroupToggle');
-        const mazutIcon = mazutToggle?.querySelector('.mazut-group-icon');
-        const MAZUT_STORAGE_KEY = 'specificFuelPrice_mazutGroupExpanded';
-
-        function updateMazutGroupState(expanded) {
-            if (expanded) {
-                table?.classList.add('mazut-group-expanded');
-                if (mazutIcon) {
-                    mazutIcon.classList.remove('bi-plus-square');
-                    mazutIcon.classList.add('bi-dash-square');
-                    mazutIcon.setAttribute('data-state', 'expanded');
-                }
-            } else {
-                table?.classList.remove('mazut-group-expanded');
-                if (mazutIcon) {
-                    mazutIcon.classList.remove('bi-dash-square');
-                    mazutIcon.classList.add('bi-plus-square');
-                    mazutIcon.setAttribute('data-state', 'collapsed');
-                }
-            }
-            try { localStorage.setItem(MAZUT_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
-        }
-
-        if (mazutToggle && table) {
-            const mazutSaved = typeof localStorage !== 'undefined' && localStorage.getItem(MAZUT_STORAGE_KEY) === '1';
-            if (mazutSaved) updateMazutGroupState(true);
-
-            mazutToggle.addEventListener('click', function() {
-                const expanded = table.classList.contains('mazut-group-expanded');
-                updateMazutGroupState(!expanded);
+        function refreshFuelHierVisibility() {
+            if (!table) return;
+            table.querySelectorAll('[data-fuel-hier-under]').forEach(function (el) {
+                const parent = el.getAttribute('data-fuel-hier-under');
+                const show = !!expandedMap[parent] && isAncestorChainExpanded(parent);
+                el.classList.toggle('fuel-hier-col-visible', show);
             });
-        }
-
-        // Группировка столбцов PROCH (tvproch_c, szh_gaz_c, inoe_c)
-        const prochToggle = document.getElementById('prochGroupToggle');
-        const prochIcon = prochToggle?.querySelector('.proch-group-icon');
-        const PROCH_STORAGE_KEY = 'specificFuelPrice_prochGroupExpanded';
-
-        function updateProchGroupState(expanded) {
-            if (expanded) {
-                table?.classList.add('proch-group-expanded');
-                if (prochIcon) {
-                    prochIcon.classList.remove('bi-plus-square');
-                    prochIcon.classList.add('bi-dash-square');
-                    prochIcon.setAttribute('data-state', 'expanded');
+            toggles.forEach(function (btn) {
+                const parent = btn.getAttribute('data-fuel-hier-parent');
+                const icon = btn.querySelector('.fuel-hier-icon');
+                const expanded = !!expandedMap[parent];
+                if (icon) {
+                    icon.classList.toggle('bi-plus-square', !expanded);
+                    icon.classList.toggle('bi-dash-square', expanded);
+                    icon.setAttribute('data-state', expanded ? 'expanded' : 'collapsed');
                 }
-            } else {
-                table?.classList.remove('proch-group-expanded');
-                if (prochIcon) {
-                    prochIcon.classList.remove('bi-dash-square');
-                    prochIcon.classList.add('bi-plus-square');
-                    prochIcon.setAttribute('data-state', 'collapsed');
-                }
-            }
-            try { localStorage.setItem(PROCH_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
-        }
-
-        if (prochToggle && table) {
-            const prochSaved = typeof localStorage !== 'undefined' && localStorage.getItem(PROCH_STORAGE_KEY) === '1';
-            if (prochSaved) updateProchGroupState(true);
-
-            prochToggle.addEventListener('click', function() {
-                const expanded = table.classList.contains('proch-group-expanded');
-                updateProchGroupState(!expanded);
             });
+            syncFuelTypesGroupColspan();
         }
 
-        // Группировка столбцов UGOL (podm_c … sah_c), доноцкий (don_c) — заголовок
-        const ugolToggle = document.getElementById('ugolGroupToggle');
-        const ugolIcon = ugolToggle?.querySelector('.ugol-group-icon');
-        const UGOL_STORAGE_KEY = 'specificFuelPrice_ugolGroupExpanded';
-
-        function updateUgolGroupState(expanded) {
+        function setParentExpanded(parent, expanded) {
             if (expanded) {
-                table?.classList.add('ugol-group-expanded');
-                if (ugolIcon) {
-                    ugolIcon.classList.remove('bi-plus-square');
-                    ugolIcon.classList.add('bi-dash-square');
-                    ugolIcon.setAttribute('data-state', 'expanded');
-                }
+                expandedMap[parent] = true;
             } else {
-                table?.classList.remove('ugol-group-expanded');
-                if (ugolIcon) {
-                    ugolIcon.classList.remove('bi-dash-square');
-                    ugolIcon.classList.add('bi-plus-square');
-                    ugolIcon.setAttribute('data-state', 'collapsed');
-                }
+                delete expandedMap[parent];
+                toggles.forEach(function (btn) {
+                    const p = btn.getAttribute('data-fuel-hier-parent');
+                    if (!p || p === parent) return;
+                    const th = table.querySelector('thead th[data-column="' + p + '"]');
+                    let under = th ? th.getAttribute('data-fuel-hier-under') : null;
+                    const seen = {};
+                    while (under) {
+                        if (under === parent) {
+                            delete expandedMap[p];
+                            break;
+                        }
+                        if (seen[under]) break;
+                        seen[under] = true;
+                        const pth = table.querySelector('thead th[data-column="' + under + '"]');
+                        under = pth ? pth.getAttribute('data-fuel-hier-under') : null;
+                    }
+                });
             }
-            try { localStorage.setItem(UGOL_STORAGE_KEY, expanded ? '1' : '0'); } catch (_) {}
+            saveExpandedMap();
+            refreshFuelHierVisibility();
         }
 
-        if (ugolToggle && table) {
-            const ugolSaved = typeof localStorage !== 'undefined' && localStorage.getItem(UGOL_STORAGE_KEY) === '1';
-            if (ugolSaved) updateUgolGroupState(true);
-
-            ugolToggle.addEventListener('click', function() {
-                const expanded = table.classList.contains('ugol-group-expanded');
-                updateUgolGroupState(!expanded);
+        if (table && toggles.length) {
+            loadExpandedMap();
+            refreshFuelHierVisibility();
+            toggles.forEach(function (btn) {
+                btn.addEventListener('click', function (ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const parent = btn.getAttribute('data-fuel-hier-parent');
+                    if (!parent) return;
+                    setParentExpanded(parent, !expandedMap[parent]);
+                });
             });
+        } else if (table) {
+            syncFuelTypesGroupColspan();
         }
     });
 </script>

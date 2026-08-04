@@ -1,0 +1,247 @@
+Version =20
+VersionRequired =20
+Checksum =-1929410373
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =9864
+    DatasheetFontHeight =12
+    ItemSuffix =10
+    Left =540
+    Top =648
+    Right =9864
+    Bottom =5208
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x90f100b7ed67e340
+    End
+    GUID = Begin
+        0xa6798e95b99d2f4f9a6f429de7784ec1
+    End
+    NameMap = Begin
+        0x0acc0e5500000000c2099167415ce7429ee497c2c522f867010000009cc6bba9 ,
+        0xb84ce540290000008caf960a21043504420438040000000000008b6998f5e77c ,
+        0x8c46bf8d7d6466a5570c00000000cc4ce08fb84ce5403086500a000000001804 ,
+        0x3c0435043d0430045f003e0431043b0430044104420435043904000000000000 ,
+        0x4b85f8621a6cc741bce8f62e576c6213070000008b6998f5e77c8c46bf8d7d64 ,
+        0x66a5570c20042d0423040000000000004b80b2acf5439043882d3e109c6c8a18 ,
+        0x070000008b6998f5e77c8c46bf8d7d6466a5570c4f0042004c00000000000000 ,
+        0xb80a15f02892a14e8655daa71ef6ebf9070000008b6998f5e77c8c46bf8d7d64 ,
+        0x66a5570c4f004500530000000000000000000000000000000000000000000000 ,
+        0x0c000000030000000000000000000000000000000000
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =283
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =2551
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xefdf9bb97e4b3340bf99e958dfb61839
+            End
+            Begin
+                Begin Subform
+                    OverlapFlags =215
+                    Width =6060
+                    Height =2268
+                    Name ="Сети"
+                    SourceObject ="Form.Сети"
+                    GUID = Begin
+                        0xececf27d62f4084190b99cd0b20e183b
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Width =396
+                            Height =228
+                            Name ="Сети Надпись"
+                            Caption ="Сети"
+                            EventProcPrefix ="Сети_Надпись"
+                            GUID = Begin
+                                0x7ed391ca7e67d4478bfd22041c6297a5
+                            End
+                        End
+                    End
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    ColumnCount =2
+                    ListWidth =1848
+                    Left =6236
+                    Top =566
+                    Height =340
+                    TabIndex =1
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"10\";\"100\""
+                    GUID = Begin
+                        0xa7d68d3f3021d74a92390199915810c7
+                    End
+                    Name ="REU1"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [Имена_областей].[РЭУ], [Имена_областей].[OBL], [Имена_областей].[OES] FR"
+                        "OM Имена_областей ORDER BY [Имена_областей].[OES]; "
+                    ColumnWidths ="1440;408"
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =8503
+                    Top =566
+                    Width =1128
+                    Height =396
+                    TabIndex =2
+                    Name ="Кнопка4"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0xdd88924e8166d34cbbe6a3dfc83e6a1a
+                    End
+                End
+                Begin ComboBox
+                    OverlapFlags =85
+                    ColumnCount =2
+                    ListWidth =1848
+                    Left =6236
+                    Top =1026
+                    Height =340
+                    TabIndex =3
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"10\";\"100\""
+                    GUID = Begin
+                        0xd14b4ac02e0b364787f863e3a29358e7
+                    End
+                    Name ="REU2"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [Имена_областей].[РЭУ], [Имена_областей].[OBL], [Имена_областей].[OES] FR"
+                        "OM Имена_областей ORDER BY [Имена_областей].[OES]; "
+                    ColumnWidths ="1441;408"
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =6236
+                    Top =108
+                    TabIndex =4
+                    Name ="Year"
+                    AfterUpdate ="[Event Procedure]"
+                    DefaultValue ="2010"
+                    GUID = Begin
+                        0x4cfa90bf7b6ad64881323102c84f19f1
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Left =4535
+                            Top =113
+                            Width =552
+                            Height =228
+                            Name ="Надпись7"
+                            Caption ="Поле6:"
+                            GUID = Begin
+                                0x95945309a8ebf74faf888ab0db273307
+                            End
+                        End
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =7380
+                    Top =108
+                    Height =284
+                    TabIndex =5
+                    Name ="oes"
+                    AfterUpdate ="[Event Procedure]"
+                    DefaultValue ="1"
+                    GUID = Begin
+                        0xc31625674159c247a9577b6adb40ccde
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+
+
+
+Private Sub oes_AfterUpdate()
+REU1.RowSource = "SELECT РЭУ,obl,oes FROM имена_областей WHERE oes=" & OES & ";"
+REU2.RowSource = "SELECT РЭУ,obl,oes FROM имена_областей WHERE oes=" & OES & ";"
+Сети.Form.Filter = "oes=" & OES & " and Year=" & YEAR
+Сети.Form.FilterOn = True
+Debug.Print Сети.Form.Filter
+End Sub
+
+
+Private Sub Year_AfterUpdate()
+Сети.Form.Filter = "oes=" & OES & " and Year=" & YEAR
+Сети.Form.FilterOn = True
+Debug.Print Сети.Form.Filter
+End Sub
+
+Private Sub Кнопка4_Click()
+Dim net As DAO.Recordset
+If z(Сети.Form!ID) <> 0 Then
+sqlnet = "select max([Перетоки_табл].id) as maxid from [Перетоки_табл] where oes=" & OES & ";"
+Set net = CurrentDb.OpenRecordset(sqlnet)
+net.MoveFirst
+Сети.Form!ID = net!maxid + 1
+End If
+Сети.Form!obl1 = REU1.Column(1, REU1.ListIndex)
+Сети.Form!РЭУ1 = REU1.Column(0, REU1.ListIndex)
+Сети.Form!obl2 = REU2.Column(1, REU2.ListIndex)
+Сети.Form!РЭУ2 = REU2.Column(0, REU2.ListIndex)
+Сети.Form!OES = REU1.Column(2, REU1.ListIndex)
+Сети.Form!YEAR = YEAR
+End Sub

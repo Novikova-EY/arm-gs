@@ -256,3 +256,69 @@ def test_ees_russia_with_nt_equals_without_nt_plus_nt_subjects(
     )
     assert without_calc["year_values"] == ["30 000"]
     assert with_nt_calc["year_values"] == ["30 500"]
+
+
+def test_ees_russia_calculated_max_via_ez_sums_energy_zone_combined_on_ees() -> None:
+    """«Через ЭЗ» = сумма combined_on_ees по энергозонам."""
+    from app.power_demand.services.demand_summary_services import (
+        enrich_ees_russia_calculated_max_via_ez,
+    )
+
+    years = [2025]
+    rows = _ees_russia_block(variant="without_nt_without_gaes") + [
+        {
+            "demand_model_name": "EnergySystemTypeDemandParameter",
+            "parameter_key": "calculated_max_ees_via_ez_mw",
+            "show_entity_cell": False,
+            "entity_rowspan": 1,
+            "perimeter_variant_code": "without_nt_without_gaes",
+            "year_values": ["—"],
+            "year_numeric_tooltips": [""],
+        },
+        {
+            "demand_model_name": "EnergyZoneDemandParameter",
+            "parameter_key": "combined_on_ees",
+            "parent_fk_column": "id_energy_zone",
+            "parent_id": 1,
+            "id_energy_zone": 1,
+            "year_values": ["10 000"],
+            "year_numeric_tooltips": ["10 000"],
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_label": "1 — Зона А",
+            "entity_kind": "group",
+        },
+        {
+            "demand_model_name": "EnergyZoneDemandParameter",
+            "parameter_key": "combined_on_ees",
+            "parent_fk_column": "id_energy_zone",
+            "parent_id": 2,
+            "id_energy_zone": 2,
+            "year_values": ["7 500"],
+            "year_numeric_tooltips": ["7 500"],
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_label": "2 — Зона Б",
+            "entity_kind": "group",
+        },
+        {
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "parameter_key": "combined_on_ees",
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": 101,
+            "id_energy_zone": 1,
+            "year_values": ["999"],
+            "year_numeric_tooltips": ["999"],
+            "show_entity_cell": True,
+            "entity_rowspan": 1,
+            "entity_label": "РЭС (не суммировать)",
+        },
+    ]
+    rows[0]["entity_rowspan"] = 3
+
+    enrich_ees_russia_calculated_max_via_ez(rows, years, rounding_digits=0)
+
+    via_ez = next(
+        r for r in rows if r.get("parameter_key") == "calculated_max_ees_via_ez_mw"
+    )
+    assert via_ez["year_values"] == ["17 500"]

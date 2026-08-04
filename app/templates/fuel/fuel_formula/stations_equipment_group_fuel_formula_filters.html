@@ -1,11 +1,18 @@
 {# Фильтры для страницы «Формулы для расчета топлива по группам оборудования» #}
+{# Как ТЭП edit_data: «Добавить год/период», «Пустые строки», «Сохранить»; пагинация как на удельных. #}
 {% set filters_action = url_for('fuel_bp.equipment_group_fuel_formulas_page') %}
 {% set use_equipment_group_filter = true %}
-{% set hide_pagination_and_per_page = true %}
+{% set total_count_label = 'групп оборудования' %}
+{% set per_page_count_label = 'групп оборудования' %}
+{% set per_page_all_label = 'группы оборудования' %}
+{% set show_fuel_calc_edit_hide_empty_toggle = true %}
+{% set show_fuel_calc_edit_save_in_filters = true %}
+{% set show_fuel_calc_edit_add_year_period = true %}
+{% set fuel_calc_edit_save_form_id = 'fuelFormulaBulkEditForm' %}
 {% set import_redirect_endpoint = 'fuel_bp.equipment_group_fuel_formulas_page' %}
-{% set hide_year_range = true %}
 {% set hide_filters_third_row_reset = true %}
 {% set show_fuel_formula_import = true %}
 {% set show_fuel_formula_page = true %}
 {% set import_fuel_formula_action = url_for('fuel_bp.import_equipment_group_fuel_formula') %}
+{% set center_top_pagination = true %}
 {% include 'fuel/_shared/station_filters.html' %}

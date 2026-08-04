@@ -132,7 +132,7 @@ _VERSION_CONTEXT_UNSET = object()
 _FEDERAL_DISTRICT_SUMMARY_EXCLUDED_NAMES_CF = frozenset({"новые территории"})
 _NEW_TERRITORIES_SUBJECTS_AGGREGATE_LABEL = "Новые территории"
 _NT_UNDER_SOUTH_FORMULA_TOOLTIP = (
-    "Потребление «Новые территории», млн кВт·ч = "
+    "Потребление «Новые территории», млн кВтч = "
     "сумма потребления ЭЭ всех субъектов РФ, входящих в блок «Новые территории»"
 )
 _NEW_TERRITORIES_UES_NAME_TOKEN_CF = "новые территории"
@@ -159,13 +159,13 @@ _TITES_SAKHA_YAKUTIA_EXTRA_EU_BASE_LABELS_CF = frozenset(
 _TITES_OES_SAKHA_YAKUTIA_EXTRA_ENERGY_UNITS_THROUGH_YEAR = 2018
 _SAKHA_TITES_THROUGH_YEAR_ENTITY_KIND = "sakha_tites_through_year"
 _EES_RUSSIA_WITHOUT_NT_WITH_GAES_FORMULA_TOOLTIP = (
-    "Потребление ЭЭС России без НТ с зарядом ГАЭС, млн кВт·ч = "
+    "Потребление ЭЭС России без НТ с зарядом ГАЭС, млн кВтч = "
     "Первая синхронная зона без НТ с зарядом ГАЭС (с ЭС Калининградской области) + "
     "Вторая синхронная зона + "
     "ТИТЭС"
 )
 _EES_RUSSIA_WITH_NT_WITH_GAES_FORMULA_TOOLTIP = (
-    "Потребление ЭЭС России с НТ с зарядом ГАЭС, млн кВт·ч = "
+    "Потребление ЭЭС России с НТ с зарядом ГАЭС, млн кВтч = "
     "Первая синхронная зона с НТ с зарядом ГАЭС + "
     "Вторая синхронная зона + "
     "Синхронная зона Калининградской области + "
@@ -192,14 +192,14 @@ _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES = frozenset(
 )
 _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP = (
     "Потребление Первая синхронная зона с НТ с зарядом ГАЭС (с ЭС Калининградской области), "
-    "млн кВт·ч = сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону "
+    "млн кВтч = сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону "
     "(в т.ч. ОЭС Северо-Запада с ЭС Калининградской области) + "
     "заряд ГАЭС + "
     "потребление ЭЭ Новыми территориями"
 )
 _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP = (
     "Потребление Первая синхронная зона с НТ без заряда ГАЭС (без ЭС Калининградской области), "
-    "млн кВт·ч = "
+    "млн кВтч = "
     "Первая синхронная зона с НТ с зарядом ГАЭС (с ЭС Калининградской области) − "
     "заряд ГАЭС"
 )
@@ -220,7 +220,7 @@ _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_CODES = frozenset(
 )
 _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP = (
     "Потребление Первая синхронная зона без НТ с зарядом ГАЭС (без ЭС Калининградской области), "
-    "млн кВт·ч = "
+    "млн кВтч = "
     "сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону "
     "(как на странице «Первая синхронная зона без НТ», без заряда ГАЭС; "
     "для ОЭС Юга — без НТ с зарядом ГАЭС), "
@@ -231,7 +231,7 @@ _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_VARIANT = (
 )
 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP = (
     "Потребление Первая синхронная зона без НТ без заряда ГАЭС (с ЭС Калининградской области), "
-    "млн кВт·ч = "
+    "млн кВтч = "
     "Первая синхронная зона без НТ с зарядом ГАЭС (с ЭС Калининградской области) − "
     "заряд ГАЭС"
 )
@@ -255,17 +255,17 @@ _FIRST_SA_VARIANT_DISPLAY_ORDER: dict[str, int] = {
 }
 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP = (
     "Потребление Первая синхронная зона без НТ без заряда ГАЭС (без ЭС Калининградской области), "
-    "млн кВт·ч = "
+    "млн кВтч = "
     "Первая синхронная зона без НТ с зарядом ГАЭС (без ЭС Калининградской области) − "
     "заряд ГАЭС"
 )
 _UES_EAST_NAME_CF = "оэс востока"
 _KALININGRAD_ES_NAME_CF = "эс калининградской области"
 _SECOND_SA_FROM_UES_EAST_FORMULA_TOOLTIP = (
-    "Потребление Вторая синхронная зона, млн кВт·ч = ОЭС Востока"
+    "Потребление Вторая синхронная зона, млн кВтч = ОЭС Востока"
 )
 _KALININGRAD_SA_FROM_ES_FORMULA_TOOLTIP = (
-    "Потребление Синхронная зона Калининградской области, млн кВт·ч = "
+    "Потребление Синхронная зона Калининградской области, млн кВтч = "
     "ЭС Калининградской области"
 )
 _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_UES_VERIFICATION_LABEL = (
@@ -285,10 +285,10 @@ _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_UES_VERIFICATION_LABEL = (
 _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_UES_VERIFICATION_TOOLTIP = (
     "Проверка первой синхронной зоны без НТ с зарядом ГАЭС = "
     "Первая синхронная зона без НТ с зарядом ГАЭС − "
-    "сумма значений «Потребление электрической энергии, млн кВт·ч» всех ОЭС, "
+    "сумма значений «Потребление электрической энергии, млн кВтч» всех ОЭС, "
     "входящих в первую синхронную зону без НТ. "
     "Для варианта с ``_kaliningrad`` из суммы начиная с «Год с» вычитается "
-    "«Потребление электрической энергии, млн кВт·ч» ЭС Калининградской области"
+    "«Потребление электрической энергии, млн кВтч» ЭС Калининградской области"
 )
 _EES_RUSSIA_WITH_NT_WITH_GAES_KALININGRAD_SPLIT_VERIFICATION_LABEL = (
     "Проверка ЕЭС России с НТ с зарядом ГАЭС"
@@ -353,7 +353,7 @@ ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY = "energy_consumption_sipr_yoy_growth_
 _ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS = 2
 
 GAES_CHARGE_PARAMETER_KEY = "gaes_charge_consumption_mln_kvt_ch"
-GAES_CHARGE_PARAMETER_LABEL = "Потребление электрической энергии ГАЭС на заряд, млн кВт·ч"
+GAES_CHARGE_PARAMETER_LABEL = "Потребление электрической энергии ГАЭС на заряд, млн кВтч"
 _SUMMARY_ALWAYS_VISIBLE_PARAMETER_KEYS = frozenset({GAES_CHARGE_PARAMETER_KEY})
 _SIPR_INTEGER_DISPLAY_PARAMETER_KEYS = frozenset(
     {
@@ -386,9 +386,9 @@ _SUMMARY_TABLE_VARIANT_LABEL_STRIP_SUFFIXES = (
 )
 
 PARAMETERS_ENERGY_CONSUMPTION: tuple[tuple[str, str], ...] = (
-    ("energy_consumption_mln_kvt_ch", "Потребление электрической энергии, млн кВт·ч"),
-    ("energy_consumption_sipr_mln_kvt_ch", "Потребление электрической энергии (СиПР), млн кВт·ч"),
-    (ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY, "Абсолютный прирост потребления электрической энергии (СиПР), млн кВт·ч"),
+    ("energy_consumption_mln_kvt_ch", "Потребление электрической энергии, млн кВтч"),
+    ("energy_consumption_sipr_mln_kvt_ch", "Потребление электрической энергии (СиПР), млн кВтч"),
+    (ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY, "Абсолютный прирост потребления электрической энергии (СиПР), млн кВтч"),
     (ENERGY_CONSUMPTION_YOY_PARAMETER_KEY, "Годовой темп прироста, %"),
     (ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY, "Годовой темп прироста (СиПР), %"),
 )
@@ -399,7 +399,7 @@ _EC_SUMMARY_VERIFICATION_PARAMETERS: tuple[tuple[str, str], ...] = tuple(
     if "Годовой темп прироста" not in item[1]
 )
 _EC_SUMMARY_VERIFY_FOR_DISPLAY_DECIMALS = 6
-# Строки «Проверка …» — 6 знаков (см. _format_verification_*); потребление млн кВт·ч — rounding_digits из URL;
+# Строки «Проверка …» — 6 знаков (см. _format_verification_*); потребление млн кВтч — rounding_digits из URL;
 # в режиме «СиПР» (кнопка) целые значения задаёт syncPdEcSummaryTableSiprIntegerDisplay в шаблоне.
 
 
@@ -421,7 +421,7 @@ def _decimal_or_none(value: Any) -> Decimal | None:
 
 
 def _effective_energy_consumption_sipr_raw(sipr: Any, ec: Any) -> Any:
-    """Значение для строки «Потребление (СиПР)»: СиПР, иначе потребление, млн кВт·ч."""
+    """Значение для строки «Потребление (СиПР)»: СиПР, иначе потребление, млн кВтч."""
     return sipr if sipr is not None else ec
 
 
@@ -429,7 +429,7 @@ def _effective_sipr_values_by_year(
     raw_ec: dict[int, Any],
     raw_sipr: dict[int, Any],
 ) -> dict[int, Any]:
-    """Ряд СиПР по годам с подстановкой потребления, млн кВт·ч, где СиПР не задан."""
+    """Ряд СиПР по годам с подстановкой потребления, млн кВтч, где СиПР не задан."""
     out: dict[int, Any] = {}
     for sk in set(raw_ec.keys()) | set(raw_sipr.keys()):
         out[sk] = _effective_energy_consumption_sipr_raw(raw_sipr.get(sk), raw_ec.get(sk))
@@ -7400,7 +7400,7 @@ def apply_sipr_consumption_display_fallback_to_summary_rows(
     summary_rows: list[dict[str, Any]],
     years: list[int],
 ) -> None:
-    """В ячейках строки СиПР без значения подставить отображение из строки потребления, млн кВт·ч."""
+    """В ячейках строки СиПР без значения подставить отображение из строки потребления, млн кВтч."""
     if not years:
         return
     ec_rows: dict[tuple[Any, ...], dict[str, Any]] = {}
@@ -10286,13 +10286,13 @@ _CZ_RUSSIA_WITHOUT_NT_FORMULA_UES_VARIANT_CODES: tuple[str, ...] = (
 )
 _CZ_RUSSIA_WITHOUT_NT_FORMULA_FROM_YEAR = 2022
 _CZ_RUSSIA_WITH_NT_FORMULA_TOOLTIP = (
-    "Потребление ЦЗ России с НТ, млн кВт·ч = "
+    "Потребление ЦЗ России с НТ, млн кВтч = "
     "ОЭС Северо-Запада + ОЭС Центра с зарядом ГАЭС + ОЭС Средней Волги + "
     "ОЭС Юга с НТ с зарядом ГАЭС + ОЭС Урала + "
     "Энергозона Сибири + Энергозона Востока"
 )
 _CZ_RUSSIA_WITHOUT_NT_FORMULA_TOOLTIP = (
-    "Потребление ЦЗ России без НТ, млн кВт·ч = "
+    "Потребление ЦЗ России без НТ, млн кВтч = "
     "ОЭС Северо-Запада + ОЭС Центра с зарядом ГАЭС + ОЭС Средней Волги + "
     "ОЭС Юга без НТ с зарядом ГАЭС + ОЭС Урала + "
     "Энергозона Сибири + Энергозона Востока "
@@ -10301,14 +10301,14 @@ _CZ_RUSSIA_WITHOUT_NT_FORMULA_TOOLTIP = (
 _SUMMARY_TABLE_CZ_NT_REFERENCE_LABEL = "СПРАВОЧНО. Новые территории."
 _SUMMARY_TABLE_CZ_NT_REFERENCE_FORMULA_FROM_YEAR = 2024
 _SUMMARY_TABLE_CZ_NT_REFERENCE_FORMULA_TOOLTIP = (
-    "Потребление «Справочно. Новые территории», млн кВт·ч = "
+    "Потребление «Справочно. Новые территории», млн кВтч = "
     "ЦЗ России с НТ − ЦЗ России без НТ "
     f"(с {_SUMMARY_TABLE_CZ_NT_REFERENCE_FORMULA_FROM_YEAR} г.)"
 )
 _SUMMARY_TABLE_DECENTRALIZED_ZONE_LABEL = "Децентрализованная зона"
 _SUMMARY_TABLE_DECENTRALIZED_ZONE_RUSSIA_SCALE = Decimal(1000)
 _SUMMARY_TABLE_DECENTRALIZED_ZONE_FORMULA_TOOLTIP = (
-    "Потребление «Децентрализованная зона», млн кВт·ч = "
+    "Потребление «Децентрализованная зона», млн кВтч = "
     "Россия с НТ × 1000 − ЭЭС России без НТ с зарядом ГАЭС"
 )
 
@@ -11549,7 +11549,7 @@ _FO_FORMULA_TOOLTIP = (
     "Потребление по ФО = сумма потребления ЭЭ всех РЭС, входящих в данный ФО"
 )
 _EZ_FORMULA_TOOLTIP = (
-    "Потребление ЭЭ энергозоны, млн кВт·ч = сумма потребления ЭЭ "
+    "Потребление ЭЭ энергозоны, млн кВтч = сумма потребления ЭЭ "
     "всех РЭС, входящих в эту энергозону"
 )
 _SOUTH_FO_WITH_NT_FORMULA_TOOLTIP = (
@@ -11581,7 +11581,7 @@ _TITES_OES_SAKHA_EXTRA_TOOLTIP_SUFFIX = (
     f"только до {_TITES_OES_SAKHA_YAKUTIA_EXTRA_ENERGY_UNITS_THROUGH_YEAR} года включительно"
 )
 _TITES_OES_FORMULA_TOOLTIP = (
-    "Потребление ТИТЭС, млн кВт·ч = сумма потребления ЭЭ всех энергорайонов, "
+    "Потребление ТИТЭС, млн кВтч = сумма потребления ЭЭ всех энергорайонов, "
     "входящих в ТИТЭС, + Западный и Центральный энергорайоны ЭС Республики Саха (Якутия) "
     "(строки с вариантом О-1 не учитываются). "
     f"{_TITES_OES_SAKHA_EXTRA_TOOLTIP_SUFFIX}"

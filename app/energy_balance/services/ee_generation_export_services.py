@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Экспорт страницы «Выработка ЭЭ» в Excel."""
+"""Экспорт страницы «Выработка ЭЭ» в Excel."""
 
 from __future__ import annotations
 
@@ -268,7 +268,7 @@ def export_ee_generation_to_excel(
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Выработка ЭЭ"
+    ws.title = "Выработка ЭЭ"
 
     header_fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
     header_font = Font(bold=True, size=11)

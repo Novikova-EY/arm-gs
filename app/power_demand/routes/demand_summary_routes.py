@@ -48,7 +48,7 @@ from app.power_demand.services.pd_summary_entity_pagination import (
 )
 from app.power_demand.services.pd_summary_page_cache import (
     cached_load_pd_summary_data,
-    clear_pd_summary_page_cache,
+    invalidate_power_demand_display_caches,
 )
 from app.power_demand.services.demand_summary_services import (
     EZ_EXPORT_PARAMETER_KEYS,
@@ -1073,7 +1073,7 @@ def demand_summary_save_cell():
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
-    clear_pd_summary_page_cache()
+    invalidate_power_demand_display_caches()
     return jsonify(ok=True, display_value=display)
 
 
@@ -1128,7 +1128,7 @@ def demand_summary_save_perimeter_variant():
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
-    clear_pd_summary_page_cache()
+    invalidate_power_demand_display_caches()
     return jsonify(ok=True, updated=updated)
 
 
@@ -1182,7 +1182,7 @@ def demand_summary_save_block_variant():
         )
     except ValueError as e:
         return jsonify(ok=False, error=str(e)), 400
-    clear_pd_summary_page_cache()
+    invalidate_power_demand_display_caches()
     return jsonify(ok=True)
 
 

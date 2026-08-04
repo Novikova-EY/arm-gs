@@ -1,0 +1,81 @@
+Version =20
+VersionRequired =20
+Checksum =-550349895
+Begin Form
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    ScrollBars =2
+    TabularCharSet =204
+    TabularFamily =5
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =1701
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =1800
+    Top =180
+    Right =4848
+    Bottom =1800
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x9831f19f4d07e240
+    End
+    GUID = Begin
+        0x0d8f248f1a373e48bae6e0509961475b
+    End
+    NameMap = Begin
+        0x0acc0e5500000000b93ae7c26dae2346b3aa09ffefca8fd6000000004015fc8c ,
+        0xb84ce540000000000000000021043f04380441043e043a045f003c0430043a04 ,
+        0x350442043e0432040000000000001d4803e121787c4f8945295ae19b70960700 ,
+        0x0000b93ae7c26dae2346b3aa09ffefca8fd66e0061006d006500000000000000 ,
+        0x000000000000000000000000000000000c000000030000000000000000000000 ,
+        0x000000000000
+    End
+    RecordSource ="Список_макетов"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =283
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x4b03b05eed2e62468ebdf3a26a95948e
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =85
+                    ColumnWidth =2460
+                    Name ="Макет"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0xcc562f860612c841b2aff2a6c22edf3e
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database

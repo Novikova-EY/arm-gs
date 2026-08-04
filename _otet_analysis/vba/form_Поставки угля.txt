@@ -1,0 +1,193 @@
+Version =20
+VersionRequired =20
+Checksum =475790400
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =9977
+    DatasheetFontHeight =10
+    ItemSuffix =14
+    Left =600
+    Top =720
+    Right =8292
+    Bottom =4716
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x7ab5dd11d383e240
+    End
+    GUID = Begin
+        0xd4e58ff5c81d5f4b86d0f12ad9a893d0
+    End
+    NameMap = Begin
+        0x0acc0e55000000002dba18b9825ba64d915488b8e68148d201000000c1beff73 ,
+        0xaf84e34001000000303c920a220430044004380444043d044b04350420004004 ,
+        0x30044104410442043e044f043d0438044f0400000000000075efdc0a2c249742 ,
+        0xa85a08ebcb9a434300000000366ca998b84ce5406873130000801b0040043004 ,
+        0x41044704350442043d044b0439045f0042043004400438044404000000000000 ,
+        0xb8d7398da1f9d74f99be8c899a8cb8f20700000075efdc0a2c249742a85a08eb ,
+        0xcb9a43436e0075006d0062000000000000009c3afbe2f9351647a02d5ecaa3a6 ,
+        0x8898000000004446df9db84ce54070794f0a000000002104420430043d044604 ,
+        0x380438045f003f043e043b04430447043004420435043b0438045f0043043304 ,
+        0x3b044f0400000000000096fcc47cecf96e42a6e40827481c4f64070000009c3a ,
+        0xfbe2f9351647a02d5ecaa3a688984e0061006d006500000000000000b8d7398d ,
+        0xa1f9d74f99be8c899a8cb8f2070000009c3afbe2f9351647a02d5ecaa3a68898 ,
+        0x6e0075006d00620000000000000095155c3fae775b42844bb687d9f1b1ee0700 ,
+        0x00009c3afbe2f9351647a02d5ecaa3a688987300310000000000000000000000 ,
+        0x0000000000000000000000000c00000003000000000000000000000000000000 ,
+        0x0000
+    End
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Subform
+            SpecialEffect =2
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            CanGrow = NotDefault
+            Height =3855
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x8a38919deebd7d449299adb1e798a01e
+            End
+            Begin
+                Begin ComboBox
+                    OverlapFlags =93
+                    ColumnCount =3
+                    ListWidth =2880
+                    Top =510
+                    Width =2842
+                    Height =351
+                    ColumnInfo ="\"\";\"\";\"\";\"\";\"\";\"\";\"10\";\"0\""
+                    GUID = Begin
+                        0x42d95e52e917284ba43011564c6f661b
+                    End
+                    Name ="L1"
+                    RowSourceType ="Table/Query"
+                    RowSource ="SELECT [Станции_получатели_угля].[Name], [Станции_получатели_угля].[numb], [Стан"
+                        "ции_получатели_угля].[s1] FROM Станции_получатели_угля; "
+                    ColumnWidths ="4253;1441"
+                    OnChange ="[Event Procedure]"
+                End
+                Begin Label
+                    OverlapFlags =215
+                    TextAlign =2
+                    Top =226
+                    Width =2834
+                    Height =284
+                    Name ="Надпись6"
+                    Caption ="Электростанция"
+                    GUID = Begin
+                        0xcc8e678f439be1449e6dd77cb9418265
+                    End
+                End
+                Begin Label
+                    OverlapFlags =93
+                    TextAlign =2
+                    Left =3004
+                    Top =226
+                    Width =2100
+                    Height =285
+                    Name ="Надпись7"
+                    Caption ="ж/д станция получения"
+                    GUID = Begin
+                        0xffb131ee54d76f4e8c6042178c57eb22
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =3004
+                    Top =510
+                    Width =2098
+                    Height =397
+                    TabIndex =1
+                    Name ="rec"
+                    GUID = Begin
+                        0x3507004f43e530468463b7431224d63e
+                    End
+                End
+                Begin Subform
+                    OverlapFlags =247
+                    Top =1133
+                    Width =6585
+                    Height =2715
+                    TabIndex =2
+                    Name ="Тарифные расстояния"
+                    SourceObject ="Form.Тарифные расстояния"
+                    LinkChildFields ="numb"
+                    LinkMasterFields ="numb"
+                    EventProcPrefix ="Тарифные_расстояния"
+                    GUID = Begin
+                        0x71255f3b13b6d7499b77bc88b7cc8ee6
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =223
+                    Top =3118
+                    Width =3401
+                    Height =283
+                    TabIndex =3
+                    Name ="numb"
+                    GUID = Begin
+                        0x8c63e34a632e9b4cb9aa71bb5d487051
+                    End
+                    Begin
+                        Begin Label
+                            OverlapFlags =93
+                            Top =3118
+                            Width =690
+                            Height =240
+                            Name ="Надпись13"
+                            Caption ="Поле12:"
+                            GUID = Begin
+                                0x8e60e1fed8863a49a53d8e446bdc3f4f
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub L1_Change()
+i = L1.ListIndex
+rec = L1.Column(2, i)
+NUMB = L1.Column(1, i)
+End Sub

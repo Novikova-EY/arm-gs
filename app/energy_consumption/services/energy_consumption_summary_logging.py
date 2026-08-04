@@ -25,7 +25,7 @@ ACTION_TITLE_BY_SCOPE = {
 }
 
 GAES_CHARGE_TABLE_LABEL = (
-    "Потребление электрической энергии ГАЭС на заряд, млн кВт·ч"
+    "Потребление электрической энергии ГАЭС на заряд, млн кВтч"
 )
 
 def _is_gaes_charge_station_log(log: Log) -> bool:
@@ -191,7 +191,7 @@ def log_gaes_charge_from_summary_table(
         user,
         (
             f"Изменения в электростанции {station_name} ({rd_name}), "
-            f"потребление электроэнергии ГАЭС на заряд (млн кВт·ч) "
+            f"потребление электроэнергии ГАЭС на заряд (млн кВтч) "
             f"(со сводной таблицы потребления)"
         ),
         details=change_line,

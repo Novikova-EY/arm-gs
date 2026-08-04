@@ -209,7 +209,6 @@
             {% endif %}
         </td>
 
-        <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
         {% for year in range(start_year, end_year + 1) %}
         {% set pp = pgu.powers_by_year.get(year) %}
         {% set p_ust_full = pp.p_ust | format_decimal(0) if pp and pp.p_ust and pp.p_ust != 0 else '' %}

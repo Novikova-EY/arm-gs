@@ -1,0 +1,966 @@
+Version =20
+VersionRequired =20
+Checksum =-803984402
+Begin Form
+    PopUp = NotDefault
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =9120
+    DatasheetFontHeight =10
+    ItemSuffix =66
+    Left =168
+    Top =4548
+    Right =9288
+    Bottom =7560
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xcfa3f68a4e0ce240
+    End
+    GUID = Begin
+        0x170c32ede0ba1344a922a18950ae21fb
+    End
+    NameMap = Begin
+        0x0acc0e550000000037bade516b95cf429d313af186ead51f0000000046b4588c ,
+        0xb84ce54000000000000000006d00610069006e00000000000000e473508148e9 ,
+        0xa24ba5d4882fc52a4f9a000000006581ff8cb84ce54000000000000000002104 ,
+        0x3f04380441043e043a045f00430441043b043e04320438043904000000000000 ,
+        0x81c75171f17cf24fb38bb8eae48b648407000000e473508148e9a24ba5d4882f ,
+        0xc52a4f9a63006c006100730073000000000000001658e56dc493e34499132b8a ,
+        0xf79f23eb07000000e473508148e9a24ba5d4882fc52a4f9a6e0061006d006500 ,
+        0x000000000000f5efa5ab9149bd479cce93ba389ca08607000000e473508148e9 ,
+        0xa24ba5d4882fc52a4f9a6600690065006c006400000000000000aaa48eb91a0b ,
+        0x524199c98224f8fcfb1d07000000e473508148e9a24ba5d4882fc52a4f9a6300 ,
+        0x6f006e006400000000000000165242ec22ba584492107a54f752413100000000 ,
+        0x07a1a98cb84ce540b06d4e0a0000000018043c0435043d0430045f001e042d04 ,
+        0x2104000000000000359cb797fd80fc4fbc767f615b4e66e80700000037bade51 ,
+        0x6b95cf429d313af186ead51f4e0041004d004500000000000000d0f254d8429e ,
+        0x584eb9a4fcf7504d870607000000165242ec22ba584492107a54f75241316f00 ,
+        0x6500730000000000000060ff638083d63a429cb320962480272d00000000616a ,
+        0xad8cb84ce540f001500a0000000018043c0435043d0430045f004d043a045f00 ,
+        0x4004300439043e043d043e043204000000000000f17df6adc22865428d1445ca ,
+        0xcb0b36110700000060ff638083d63a429cb320962480272d4e0041004d004500 ,
+        0x00000000000033f2663336da6c47ad26632a5e7febef0700000060ff638083d6 ,
+        0x3a429cb320962480272d65007200000000000000a5b3e31524113b42969e47a8 ,
+        0x328b458e070000000000000000000000000000000000000073006f0075007200 ,
+        0x630065000000000000008b6998f5e77c8c46bf8d7d6466a5570c00000000cc4c ,
+        0xe08fb84ce540a0cf4e0a0000000018043c0435043d0430045f003e0431043b04 ,
+        0x30044104420435043904000000000000f689c20a9c16eb49ba4094661dfd0fa2 ,
+        0x070000008b6998f5e77c8c46bf8d7d6466a5570c4e0041004d00450000000000 ,
+        0x00004b80b2acf5439043882d3e109c6c8a18070000008b6998f5e77c8c46bf8d ,
+        0x7d6466a5570c4f0042004c00000000000000a25d1cfa96b0ba4784447f3a3a7f ,
+        0x3a4400000000df26538eb84ce540108a4e0a0000000018043c0435043d043004 ,
+        0x5f004104420430043d04460438043904000000000000d79c235de3d4f2479475 ,
+        0x3dabeaf78cd607000000a25d1cfa96b0ba4784447f3a3a7f3a444e0041004d00 ,
+        0x45000000000000009600a4bba9e82340bc6d1f65006dacd807000000a25d1cfa ,
+        0x96b0ba4784447f3a3a7f3a446e0075006d006200000000000000000000000000 ,
+        0x000000000000000000000c000000030000000000000000000000000000000000
+    End
+    RecordSource ="main"
+    OnOpen ="[Event Procedure]"
+    OnClose ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin OptionButton
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin OptionGroup
+            SpecialEffect =3
+            Width =1701
+            Height =1701
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ListBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            Height =1417
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Tab
+            TextFontCharSet =204
+            Width =5103
+            Height =3402
+            FontName ="Tahoma"
+        End
+        Begin Page
+            Width =1701
+            Height =1701
+        End
+        Begin Section
+            Height =3255
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xc19059f81460c444912af1e6ddc0648b
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =8205
+                    Top =225
+                    Width =680
+                    Height =510
+                    TabIndex =1
+                    Name ="Кнопка7"
+                    Caption ="OK"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0xe42f2b0596893448b590b74740647e5e
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =8205
+                    Top =960
+                    Width =680
+                    Height =510
+                    TabIndex =2
+                    Name ="Показать"
+                    OnClick ="[Event Procedure]"
+                    PictureData = Begin
+                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                        0xffff0000ffffff00dadadadadadadada000000000000ad000ffffffffff0d000 ,
+                        0x0fffffff0000700d0ffffff0788707da0fffff0788e770ad0fffff08888780da ,
+                        0x0fffff08e88780ad0fffff07ee8770da0ffffff078870dad0fffffff0000dada ,
+                        0x0ffffffffff0adad0fffffff0000dada0fffffff080dadad0fffffff00dadada ,
+                        0x000000000dadadad000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x000000000000000000000000000000000000000000000000
+                    End
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    GUID = Begin
+                        0x859370392fe3344d9e52fd1d2102a89e
+                    End
+                End
+                Begin Tab
+                    MultiRow = NotDefault
+                    OverlapFlags =85
+                    Style =1
+                    Width =7920
+                    Height =3255
+                    TabFixedWidth =1191
+                    TabFixedHeight =284
+                    Name ="Группы_условий"
+                    GUID = Begin
+                        0x97776cf2af0ed74ba1cace1fa0d2a2e6
+                    End
+                    Begin
+                        Begin Page
+                            OverlapFlags =215
+                            Left =108
+                            Top =720
+                            Width =7704
+                            Height =2424
+                            Name ="Уровень"
+                            GUID = Begin
+                                0x6db40fa9a41ee749ae0b2c388279c7a5
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =120
+                                    Top =735
+                                    Width =2370
+                                    Height =2160
+                                    Name ="Список5"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Список_условий].[name], [Список_условий].[field], [Список_условий].[clas"
+                                        "s], [Список_условий].[cond] FROM Список_условий WHERE ((([Список_условий].[class"
+                                        "])=\"уровень\")); "
+                                    ColumnWidths ="2520;510;960;1425"
+                                    GUID = Begin
+                                        0x2e406ec52eafa4409fe2ff5cee8ab210
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =215
+                            Left =108
+                            Top =720
+                            Width =7704
+                            Height =2424
+                            Name ="Ведомство"
+                            Caption ="Ведомство"
+                            GUID = Begin
+                                0x0ff6f98ce395d64d9694c75c9fa2ca1e
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =135
+                                    Top =735
+                                    Width =2295
+                                    Height =2115
+                                    Name ="Список11"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Список_условий].[name], [Список_условий].[field], [Список_условий].[clas"
+                                        "s], [Список_условий].[cond] FROM Список_условий WHERE ((([Список_условий].[class"
+                                        "])=\"ведомство\")); "
+                                    ColumnWidths ="2385;510;960;1425"
+                                    GUID = Begin
+                                        0xfb82d28f7394f9409ba2965c380535d4
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =215
+                            Left =108
+                            Top =645
+                            Width =7704
+                            Height =2499
+                            Name ="Годы"
+                            Caption ="Годы"
+                            GUID = Begin
+                                0x079de24855176b4098c498537c197dc1
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =150
+                                    Top =645
+                                    Width =2190
+                                    Height =2235
+                                    Name ="Список13"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Список_условий].[name], [Список_условий].[field], [Список_условий].[clas"
+                                        "s], [Список_условий].[cond] FROM Список_условий WHERE ((([Список_условий].[class"
+                                        "])=\"годы\")); "
+                                    ColumnWidths ="2310;510;960;1440"
+                                    GUID = Begin
+                                        0x52de72c30f288f4688d299b1fa92ada8
+                                    End
+                                End
+                                Begin ListBox
+                                    RowSourceTypeInt =1
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =2
+                                    Left =3195
+                                    Top =990
+                                    Height =1335
+                                    TabIndex =1
+                                    Name ="af"
+                                    RowSourceType ="Value List"
+                                    RowSource ="\"1990-1999\";\"1990;1991;1992;1993;1994;1995;1996;1997;1998;1999\";\"2005-2020\""
+                                        ";\"2005;2010;2015;2020\";\"2001-2004\";\"2001;2002;2003;2004\""
+                                    ColumnWidths ="1701;2835"
+                                    OnClick ="[Event Procedure]"
+                                    GUID = Begin
+                                        0x79f01cba7077d2419cf979f76ca57bfb
+                                    End
+                                    Begin
+                                        Begin Label
+                                            OverlapFlags =223
+                                            Left =1494
+                                            Top =990
+                                            Width =855
+                                            Height =240
+                                            Name ="Столбец1_подпись"
+                                            Caption ="Столбец1"
+                                            GUID = Begin
+                                                0x11c2b53aa2a2e04297a9b5b2a0e5e8c7
+                                            End
+                                        End
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =215
+                            Left =108
+                            Top =705
+                            Width =7704
+                            Height =2439
+                            Name ="Топливо"
+                            Caption ="Топливо"
+                            GUID = Begin
+                                0xee86ab9c3d0b7746a88c8ea8440e5f22
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =195
+                                    Top =705
+                                    Width =2160
+                                    Height =2175
+                                    Name ="Список15"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Список_условий].[name], [Список_условий].[field], [Список_условий].[clas"
+                                        "s], [Список_условий].[cond] FROM Список_условий WHERE ((([Список_условий].[class"
+                                        "])=\"топливо\")); "
+                                    ColumnWidths ="2940;510;960;1425"
+                                    GUID = Begin
+                                        0xfaa220a59777514fa10f5ce68e16f506
+                                    End
+                                End
+                                Begin OptionGroup
+                                    OverlapFlags =215
+                                    Left =3240
+                                    Top =945
+                                    Width =801
+                                    Height =943
+                                    TabIndex =1
+                                    Name ="modif"
+                                    DefaultValue ="1"
+                                    GUID = Begin
+                                        0xaa50652fb61cc4489e857e3e4fa40859
+                                    End
+                                    Begin
+                                        Begin OptionButton
+                                            OverlapFlags =215
+                                            Left =3426
+                                            Top =1183
+                                            OptionValue =1
+                                            Name ="Переключатель49"
+                                            GUID = Begin
+                                                0xce33441c2b7f654ba0ce995427b090d4
+                                            End
+                                            Begin
+                                                Begin Label
+                                                    OverlapFlags =247
+                                                    Left =3656
+                                                    Top =1155
+                                                    Width =285
+                                                    Height =240
+                                                    Name ="Надпись50"
+                                                    Caption =">0"
+                                                    GUID = Begin
+                                                        0x8ae92c44bcf658429d378931372274b5
+                                                    End
+                                                End
+                                            End
+                                        End
+                                        Begin OptionButton
+                                            OverlapFlags =215
+                                            Left =3426
+                                            Top =1513
+                                            OptionValue =2
+                                            Name ="Переключатель51"
+                                            GUID = Begin
+                                                0xb720c97d04fe6e418031ee49ea1e94ed
+                                            End
+                                            Begin
+                                                Begin Label
+                                                    OverlapFlags =247
+                                                    Left =3656
+                                                    Top =1485
+                                                    Width =240
+                                                    Height =240
+                                                    Name ="Надпись52"
+                                                    Caption ="%"
+                                                    GUID = Begin
+                                                        0x93d938cb433c064dba06b3cd09337039
+                                                    End
+                                                End
+                                            End
+                                        End
+                                    End
+                                End
+                                Begin TextBox
+                                    OverlapFlags =215
+                                    Left =4170
+                                    Top =1485
+                                    Width =1785
+                                    TabIndex =2
+                                    Name ="paramТопливо"
+                                    GUID = Begin
+                                        0x32af12a49b41934d903eb3128e3fa932
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =680
+                            Width =7704
+                            Height =2464
+                            Name ="ОЭС"
+                            GUID = Begin
+                                0x05d4e3073d8fed41a65640570da32fdd
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =215
+                                    Top =680
+                                    Width =2160
+                                    Height =2175
+                                    Name ="Список39"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [NAME], [oes], \"w.oes\" AS field, \"query\" AS source FROM Имена_ОЭС; "
+                                    ColumnWidths ="2945;510;960;1429"
+                                    GUID = Begin
+                                        0x57841d44b4a5a24a8b136297a6ce1ccc
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =615
+                            Width =7704
+                            Height =2529
+                            Name ="эр"
+                            Caption ="Экон.р-н"
+                            GUID = Begin
+                                0x4d823c4090d9eb438164ce94b07c0175
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =180
+                                    Top =615
+                                    Width =2160
+                                    Height =2175
+                                    Name ="Список27"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Имена_эк_районов].[NAME], [Имена_эк_районов].[er], \"w.er\" AS field, \""
+                                        "query\" AS source FROM Имена_эк_районов; "
+                                    ColumnWidths ="2944;510;960;1428"
+                                    GUID = Begin
+                                        0xdbab1e934fac3846a1574520072914d4
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =680
+                            Width =7704
+                            Height =2464
+                            Name ="Области"
+                            Caption ="Области"
+                            GUID = Begin
+                                0x2a85de6a68287e4297cf17b0e11f7f9c
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =215
+                                    Top =680
+                                    Width =2160
+                                    Height =2175
+                                    Name ="Список21"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Имена_областей].[NAME], [Имена_областей].[OBL], \"w.obl\" AS field, \"qu"
+                                        "ery\" AS source FROM Имена_областей; "
+                                    ColumnWidths ="2943;510;960;1427"
+                                    GUID = Begin
+                                        0x7b2659bfba60fb409175b07ecb3b597e
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =680
+                            Width =7704
+                            Height =2464
+                            Name ="Станции"
+                            GUID = Begin
+                                0x137b7111b7abfa4a8692e6f31c5bf3a9
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =215
+                                    Top =680
+                                    Width =2160
+                                    Height =2175
+                                    Name ="liststan"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Имена_станций].[NAME], [имена_станций].[numb], \"w.numb1120\" AS field, "
+                                        "\"query\" AS source FROM Имена_станций; "
+                                    ColumnWidths ="2944;510;960;1428"
+                                    GUID = Begin
+                                        0x4de08edcf08a344e9134189a6d6dc53c
+                                    End
+                                End
+                                Begin CommandButton
+                                    OverlapFlags =247
+                                    Left =3645
+                                    Top =960
+                                    Width =576
+                                    Height =576
+                                    TabIndex =1
+                                    Name ="Поиск"
+                                    Caption ="Кнопка34"
+                                    OnClick ="[Event Procedure]"
+                                    PictureData = Begin
+                                        0x2800000010000000100000000100040000000000800000000000000000000000 ,
+                                        0x0000000000000000000000000000800000800000008080008000000080008000 ,
+                                        0x8080000080808000c0c0c0000000ff00c0c0c00000ffff00ff000000c0c0c000 ,
+                                        0xffff0000ffffff00dadadadadadadadaadadadadadadadad00000adada00000a ,
+                                        0x0f000dadad0f000d0f000adada0f000a0000000d0000000d00f000000f00000a ,
+                                        0x00f000a00f00000d00f000d00f00000aa0000000000000adda0f000a0f000ada ,
+                                        0xad00000d00000daddad000dad000dadaada0f0ada0f0adaddad000dad000dada ,
+                                        0xadadadadadadadad000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                                        0x0000000000000000
+                                    End
+                                    ObjectPalette = Begin
+                                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                                        0xffffff0000000000
+                                    End
+                                    GUID = Begin
+                                        0xa9d712fa6dbfcb42994e572bbd552eeb
+                                    End
+                                End
+                                Begin TextBox
+                                    OverlapFlags =247
+                                    Left =4470
+                                    Top =1095
+                                    Width =2085
+                                    Height =270
+                                    Name ="simage"
+                                    GUID = Begin
+                                        0x27e517b49b7e414aab865de8776f114f
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =680
+                            Width =7704
+                            Height =2464
+                            Name ="ДН"
+                            Caption ="Действ/новые"
+                            GUID = Begin
+                                0x8477023cfc770a46adbfc308b2981ef8
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =215
+                                    Top =680
+                                    Width =2160
+                                    Height =2175
+                                    Name ="Список29"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Список_условий].[name], [Список_условий].[field], [Список_условий].[clas"
+                                        "s], [Список_условий].[cond] FROM Список_условий WHERE ((([Список_условий].[class"
+                                        "])=\"дн\")); "
+                                    ColumnWidths ="2942;510;960;1426"
+                                    GUID = Begin
+                                        0xa72541405d0f0e4396e6dffcb25f1715
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =680
+                            Width =7704
+                            Height =2464
+                            Name ="Оборуд"
+                            Caption ="Оборуд"
+                            GUID = Begin
+                                0xfb4c464e09074a49802be7c0a355f6e7
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =215
+                                    Top =680
+                                    Width =2160
+                                    Height =2175
+                                    Name ="Список31"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Список_условий].[name], [Список_условий].[field], [Список_условий].[clas"
+                                        "s], [Список_условий].[cond] FROM Список_условий WHERE ((([Список_условий].[class"
+                                        "])=\"оборуд\")); "
+                                    ColumnWidths ="2943;510;960;1427"
+                                    GUID = Begin
+                                        0xd9d5dd24f696754db4d62de1a160d8a7
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =720
+                            Width =7704
+                            Height =2424
+                            Name ="Турбины"
+                            GUID = Begin
+                                0x46543c2bed413b47b145dc2d923fd89e
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    ColumnCount =4
+                                    Left =283
+                                    Top =793
+                                    Width =2154
+                                    Height =1927
+                                    Name ="Список61"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [Список_условий].[name], [Список_условий].[field], [Список_условий].[clas"
+                                        "s], [Список_условий].[cond] FROM Список_условий WHERE ((([Список_условий].[class"
+                                        "])=\"турбины\")); "
+                                    GUID = Begin
+                                        0x94d0304482bacf43b78ff04b12474ed8
+                                    End
+                                End
+                                Begin TextBox
+                                    OverlapFlags =247
+                                    Left =4082
+                                    Top =1190
+                                    Width =2098
+                                    Height =394
+                                    Name ="paramТурбины"
+                                    GUID = Begin
+                                        0xd3b78ab78c00854f904dae43d47a299e
+                                    End
+                                End
+                            End
+                        End
+                        Begin Page
+                            OverlapFlags =247
+                            Left =108
+                            Top =615
+                            Width =7704
+                            Height =2529
+                            Name ="Прочее"
+                            GUID = Begin
+                                0x654279834eb2e34ca76f356ee7ba47a9
+                            End
+                            Begin
+                                Begin ListBox
+                                    OverlapFlags =247
+                                    MultiSelect =1
+                                    ColumnCount =4
+                                    Left =375
+                                    Top =615
+                                    Width =2160
+                                    Height =2268
+                                    Name ="listproch0"
+                                    RowSourceType ="Table/Query"
+                                    RowSource ="SELECT [name], [field], [class], [cond] FROM Список_условий WHERE (((class)=\"пр"
+                                        "очее\")); "
+                                    ColumnWidths ="2944;510;960;1428"
+                                    OnClick ="[Event Procedure]"
+                                    GUID = Begin
+                                        0x60b0a60553e93b429b93c5da13921285
+                                    End
+                                End
+                                Begin ListBox
+                                    RowSourceTypeInt =1
+                                    OverlapFlags =247
+                                    ColumnCount =2
+                                    Left =4620
+                                    Top =615
+                                    Width =2268
+                                    Height =2268
+                                    TabIndex =1
+                                    Name ="listrestr"
+                                    RowSourceType ="Value List"
+                                    ColumnWidths ="852;1418"
+                                    GUID = Begin
+                                        0xe3087a2a3b787f438d38fcdf6bce9a2e
+                                    End
+                                End
+                                Begin TextBox
+                                    OverlapFlags =247
+                                    Left =2775
+                                    Top =615
+                                    Width =1530
+                                    Height =360
+                                    TabIndex =2
+                                    Name ="restr"
+                                    AfterUpdate ="[Event Procedure]"
+                                    GUID = Begin
+                                        0x4a8a55bf6f98c44abaad15b818a8fdbc
+                                    End
+                                    Begin
+                                        Begin Label
+                                            OverlapFlags =255
+                                            Left =1074
+                                            Top =720
+                                            Width =690
+                                            Height =240
+                                            Name ="Надпись45"
+                                            Caption ="Поле44:"
+                                            GUID = Begin
+                                                0xc6791bf43d6368499f4ee4c51c52cd23
+                                            End
+                                        End
+                                    End
+                                End
+                            End
+                        End
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub af_Click()
+Dim list As ListBox
+Set list = af.Parent.Controls(0)
+i = af.ListIndex
+For j = 0 To list.ListCount - 1
+If InStr(";" & af.Column(1, i) & ";", ";" & list.Column(0, j) & ";") > 0 Then
+If af.Selected(i) Then list.Selected(j) = True Else list.Selected(j) = False
+End If
+Next j
+End Sub
+
+
+Private Sub Form_Close()
+If OpenArgs = "Справка" Then
+Forms(OpenArgs)!condmode = 1
+End If
+End Sub
+
+Private Sub Form_Open(Cancel As Integer)
+rs = ""
+With Группы_условий
+If OpenArgs = "Справка" Then
+If Forms(OpenArgs)!condmode = 2 Then
+oldcond = Forms(OpenArgs)!savecond
+aoldcond = split(oldcond, ";")
+For j1 = 0 To UBound(aoldcond)
+apage = split(aoldcond(j1), ",")
+Set oldlist = .Pages(apage(0)).Controls(0)
+For j2 = 1 To UBound(apage)
+afield = split(apage(j2), ":")
+oldlist.Selected(afield(0)) = True
+If .Pages(apage(0)).Name = "прочее" Then
+If rs <> "" Then rs = rs & ";"
+rs = rs & oldlist.Column(0, afield(0)) & ";" & afield(1)
+Else
+If UBound(afield) > 0 Then
+If afield(1) <> "" Then .Pages(apage(0)).Controls("modif") = afield(1)
+If UBound(afield) > 1 Then .Pages(apage(0)).Controls("param") = afield(2)
+End If
+End If ' прочее или нет
+Next j2 'поля
+If .Pages(apage(0)).Name = "прочее" Then
+.Pages("прочее").Controls("listrestr").RowSource = rs
+End If
+Next j1 'группы
+End If
+End If
+End With
+End Sub
+
+Private Sub listproch0_Click()
+i = listproch0.ListIndex
+rs = listrestr.RowSource
+If listproch0.Selected(i) Then
+rs = rs & listproch0.Column(0, i) & ";;"
+Else
+For j = 0 To listrestr.ListCount - 1
+If listrestr.Column(0, j) = listproch0.Column(0, i) Then
+rt = listrestr.Column(1, j)
+rs = Replace(rs, listproch0.Column(0, i) & ";" & rt & ";", "")
+End If
+Next j
+End If
+listrestr.RowSource = rs
+End Sub
+
+Private Sub restr_AfterUpdate()
+With listrestr
+i = .ListIndex
+oldr = .Column(0, i) & ";" & .Column(1, i) & ";"
+newr = .Column(0, i) & ";" & restr & ";"
+.RowSource = Replace(.RowSource, oldr, newr)
+End With
+End Sub
+
+Private Sub Поиск_Click()
+Dim list As ListBox
+Set list = liststan
+list.SetFocus
+i0 = list.ListIndex
+For i = i0 + 1 To list.ListCount - 1
+If InStr(list.Column(0, i), simage) > 0 Then GoTo down
+Next i
+For i = i0 - 1 To 0 Step -1
+If InStr(list.Column(0, i), simage) > 0 Then iup = i
+Next i
+If iup = 0 And InStr(list.Column(0, i), simage) = 0 Then
+B = MsgBox("Станция не найдена", vbOKOnly)
+GoTo endp
+End If
+For j = i0 - 1 To iup Step -1
+SendKeys "{UP}"
+Next j
+GoTo endp
+down:
+For j = i0 + 1 To i
+SendKeys "{down}"
+Next j
+endp:
+End Sub
+
+Private Sub Кнопка7_Click()
+Dim list As ListBox, i As Integer, j As Integer, wtext As String
+Dim wtext1 As String, field As String, condtext As String
+Dim oldlist As ListBox
+wtext1 = ""
+savecond = ""
+For j = 0 To Группы_условий.Pages.Count - 1
+Set list = Группы_условий.Pages(j).Controls(0)
+If list.ItemsSelected.Count > 0 Then
+If savecond <> "" Then savecond = savecond & ";"
+savecond = savecond & Группы_условий.Pages(j).Name
+wtext = ""
+For i = 0 To list.ListCount - 1
+If list.Selected(i) Then
+savecond = savecond & "," & i
+field = list.Column(1, i)
+condtext = list.Column(3, i)
+If wtext <> "" Then wtext = wtext & IIf(Группы_условий.Pages(j).Name = "прочее", " AND ", " OR ")
+If list.Column(3, i) = "query" Then
+wtext = wtext & list.Column(2, i) & "=" & Format(list.Column(1, i), "0")
+Else
+If InStr(condtext, ";") > 0 Then
+modif = Группы_условий.Pages(j).Controls("modif").Value
+acond = split(condtext, ";")
+condtext = acond(modif - 1)
+savecond = savecond & ":" & modif
+End If
+wtext = wtext & repstring(condtext, "#", field)
+If InStr(wtext, "@1") > 0 Then
+Debug.Print "param" & Группы_условий.Pages(j).Name
+wtext = Replace(wtext, "@1", Группы_условий.Pages(j).Controls("param" & Группы_условий.Pages(j).Name))
+savecond = savecond & ":" & Группы_условий.Pages(j).Controls("param" & Группы_условий.Pages(j).Name)
+End If
+If InStr(wtext, "@2") > 0 Then
+With Группы_условий.Pages(j).Controls("listrestr")
+For i1 = 0 To .ListCount - 1
+If .Column(0, i1) = list.Column(0, i) Then
+restrtxt = .Column(1, i1)
+savecond = savecond & ":" & restrtxt
+restrtxt = Replace(restrtxt, "&", " and " & field)
+wtext = Replace(wtext, "@2", restrtxt)
+End If
+Next i1
+End With
+End If ' @
+End If
+End If
+Next
+If wtext1 <> "" Then wtext1 = wtext1 & " AND "
+wtext1 = wtext1 & "(" & wtext & ")"
+End If
+Next
+Forms(OpenArgs)!cond = wtext1
+If OpenArgs = "Справка" Then Forms(OpenArgs)!savecond = savecond
+DoCmd.Close
+End Sub
+
+Private Sub Показать_Click()
+Dim list As ListBox
+msg = ""
+For j = 0 To Группы_условий.Pages.Count - 1
+With Группы_условий.Pages(j)
+Set list = .Controls(0)
+If list.ItemsSelected.Count > 0 Then
+msg = msg & .Name & "="
+For Each i In list.ItemsSelected
+msg = msg & list.Column(0, i) & ","
+Next i
+msg = left(msg, Len(msg) - 1)
+msg = msg & Chr(13)
+End If
+End With
+Next j
+bm = MsgBox(msg, vbOKOnly, "Выбранные ограничения")
+End Sub

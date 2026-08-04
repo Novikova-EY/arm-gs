@@ -1,0 +1,101 @@
+Version =20
+VersionRequired =20
+Checksum =-933723593
+Begin Form
+    PopUp = NotDefault
+    AutoCenter = NotDefault
+    NavigationButtons = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    BorderStyle =3
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =1941
+    DatasheetFontHeight =10
+    ItemSuffix =2
+    Left =6960
+    Top =2148
+    Right =10248
+    Bottom =5592
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x9cf73af3931be240
+    End
+    RecordSource ="Итог"
+    DatasheetFontName ="Arial Cyr"
+    OnActivate ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =299
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x3d25ab38e5c7be49b1994995f112ca61
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    Left =567
+                    ColumnWidth =720
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    Format ="#"
+                    GUID = Begin
+                        0xc2e969f3e7c87b4499236275e3af226f
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =87
+                    Left =1134
+                    Width =807
+                    ColumnWidth =912
+                    TabIndex =1
+                    Name ="Сумма"
+                    ControlSource ="Сумма"
+                    Format ="#"
+                    GUID = Begin
+                        0x5a9b298d15196b43acd4b1ff193bf743
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    ColumnWidth =555
+                    TabIndex =2
+                    Name ="OES"
+                    ControlSource ="OES"
+                    GUID = Begin
+                        0xbdab68a6e1cdf64ca70a9ab07c340752
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database

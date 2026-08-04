@@ -1,0 +1,641 @@
+Version =19
+VersionRequired =19
+Checksum =440772168
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    TabularCharSet =204
+    TabularFamily =255
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =5669
+    DatasheetFontHeight =12
+    ItemSuffix =14
+    Left =540
+    Top =660
+    Right =6492
+    Bottom =2748
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x594fe8df1468e340
+    End
+    GUID = Begin
+        0x097ef52741a036429337169105da66c1
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin CheckBox
+            SpecialEffect =2
+            LabelX =230
+            LabelY =-30
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin CustomControl
+            SpecialEffect =2
+            Width =4536
+            Height =2835
+        End
+        Begin Section
+            Height =2097
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xc796698c0d13b44bb9709fd9a3ac4a65
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =1020
+                    Top =396
+                    Width =1080
+                    Height =360
+                    Name ="Кнопка0"
+                    Caption ="Перетоки"
+                    OnClick ="[Event Procedure]"
+                    GUID = Begin
+                        0x377888cf5e25ae44905cb391b47e51a3
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =2834
+                    Top =226
+                    Width =567
+                    Height =284
+                    ColumnOrder =1
+                    TabIndex =1
+                    Name ="year"
+                    GUID = Begin
+                        0x17ab2563973cd547966f98d6a615cfe0
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =85
+                    Left =2834
+                    Top =630
+                    Width =567
+                    Height =284
+                    ColumnOrder =2
+                    TabIndex =2
+                    Name ="oes"
+                    GUID = Begin
+                        0x63d4ef1d4dbab44ca008cad596796fac
+                    End
+                End
+                Begin CustomControl
+                    Enabled = NotDefault
+                    SizeMode =1
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Left =566
+                    Top =1133
+                    Width =2832
+                    Height =240
+                    AutoActivate =1
+                    TabIndex =3
+                    Name ="pb"
+                    OleData = Begin
+                        0x00120000d0cf11e0a1b11ae1000000000000000000000000000000003e000300 ,
+                        0xfeff090006000000000000000000000001000000000000000000000000100000 ,
+                        0x0600000001000000feffffff0000000001000000ffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff01000000223a05358985d111b16a00c0 ,
+                        0xf0283628000000000000000000000000e0be87584e3fc9010700000000010000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffff02000000ffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000200000050000000 ,
+                        0x0000000003004100630063006500730073004f0062006a005300690074006500 ,
+                        0x4400610074006100000000000000000000000000000000000000000000000000 ,
+                        0x0000000026000200ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x000000000000000000000000000000000000000000000000000000005c000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fefffffffdfffffffffffffffffffffffffffffffffffffffeffffff ,
+                        0xfeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff01000000223a05358985d111b16a00c0 ,
+                        0xf0283628000000000000000000000000c0f582284e3fc9010500000000010000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffff02000000ffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000200000050000000 ,
+                        0x0000000003004100630063006500730073004f0062006a005300690074006500 ,
+                        0x4400610074006100000000000000000000000000000000000000000000000000 ,
+                        0x0000000026000200ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x000000000000000000000000000000000000000000000000000000005c000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fffffffffffffffffefffffffdfffffffefffffffeffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff01000000feffffff03000000feffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff5c000000000000000100000000000000000000000000000000000000 ,
+                        0x2400000038000000000000000000000000000000000000000000000039333638 ,
+                        0x323635452d383546452d313164312d384245332d303030304638373534444131 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x000000002143341208000000be0b0000a7010000018aab97000006001c000000 ,
+                        0x00000000000080400000000001efcdab00000500c005480906000000ffffffff ,
+                        0xffffffffa0f612001fdeecbd01000500a0f61200000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000001000000feffffff03000000feffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff5c000000000000000100000000000000000000000000000000000000 ,
+                        0x2400000038000000000000000000000000000000000000000000000039333638 ,
+                        0x323635452d383546452d313164312d384245332d303030304638373534444131 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000214334120800000083130000a7010000018aab97000006001c000000 ,
+                        0x00000000000080400000000001efcdab00000500c005480906000000ffffffff ,
+                        0xffffffffa0f612001fdeecbd01000500a0f61200000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000
+                    End
+                    OLEClass ="ProgCtrl"
+                    Class ="MSComctlLib.ProgCtrl.2"
+                    GUID = Begin
+                        0x5ab43bf0190bff479753ed257e70a932
+                    End
+                End
+                Begin CustomControl
+                    Enabled = NotDefault
+                    SizeMode =1
+                    SpecialEffect =0
+                    OverlapFlags =85
+                    Left =566
+                    Top =1493
+                    Width =2832
+                    Height =240
+                    AutoActivate =1
+                    TabIndex =4
+                    Name ="pb1"
+                    OleData = Begin
+                        0x00120000d0cf11e0a1b11ae1000000000000000000000000000000003e000300 ,
+                        0xfeff090006000000000000000000000001000000000000000000000000100000 ,
+                        0x0600000001000000feffffff0000000001000000ffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff01000000223a05358985d111b16a00c0 ,
+                        0xf0283628000000000000000000000000a0ec03994e3fc9010700000000010000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffff02000000ffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000200000050000000 ,
+                        0x0000000003004100630063006500730073004f0062006a005300690074006500 ,
+                        0x4400610074006100000000000000000000000000000000000000000000000000 ,
+                        0x0000000026000200ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x000000000000000000000000000000000000000000000000000000005c000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fefffffffdfffffffffffffffffffffffffffffffffffffffeffffff ,
+                        0xfeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff52006f006f007400200045006e007400720079000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000016000500ffffffffffffffff01000000223a05358985d111b16a00c0 ,
+                        0xf0283628000000000000000000000000f0a0ec924e3fc9010500000080000000 ,
+                        0x0000000043006f006e00740065006e0074007300000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000012000201ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000050000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x0000000000000000ffffffffffffffffffffffff000000000000000000000000 ,
+                        0x0000000000000000000000000000000000000000000000000000000000000000 ,
+                        0x00000000fffffffffffffffffefffffffdfffffffefffffffeffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff01000000feffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff214334120800000083130000a7010000018aab97000006001c000000 ,
+                        0x00000000000080400000000001efcdab00000500a08f200006000000ffffffff ,
+                        0xffffffff54e912001fdeecbd0100050054e912002c042d042e042f0430043104 ,
+                        0x320433043404350436043704380439043a043b043c043d043e043f0440044104 ,
+                        0x420443044404450446044704480449044a044b044c044d044e044f0470007000 ,
+                        0x6000700070004000700070003000400060003000b00070007000700070005000 ,
+                        0x6000400070006000a00060006000600080007000800080007000700080008000 ,
+                        0x4000500070006000a000800090007000900080008000800080008000c0008000 ,
+                        0x70007000d000d000d000d000d000d000d000d000d000d000d000d000d000d000 ,
+                        0xd000d000d000d000d000d000d000d000d000d000d000d000d000d000d000d000 ,
+                        0xd000d00040004000500090007000c00090003000500050008000800040005000 ,
+                        0x4000500070007000700070007000700070007000700070005000500090009000 ,
+                        0x90006000c000800070008000800070007000800080004000500070006000a000 ,
+                        0x800090007000900080008000800080008000c000800070007000500050005000 ,
+                        0x900070007000700070006000700070004000700070003000400060003000b000 ,
+                        0x700070007000700050006000400070006000a000600060006000600060006000 ,
+                        0x9000d00001000000feffffff03000000feffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ,
+                        0xffffffff5c000000000000000100000000000000000000000000000000000000 ,
+                        0x2400000038000000000000000000000000000000000000000000000039333638 ,
+                        0x323635452d383546452d313164312d384245332d303030304638373534444131 ,
+                        0x320433043404350436043704380439043a043b043c043d043e043f0440044104 ,
+                        0x42044304214334120800000083130000a7010000018aab97000006001c000000 ,
+                        0x00000000000080400000000001efcdab00000500a08f200006000000ffffffff ,
+                        0xffffffffc0dc12001fdeecbd01000500c0dc1200800080007000700080008000 ,
+                        0x4000500070006000a000800090007000900080008000800080008000c0008000 ,
+                        0x70007000d000d000d000d000d000d000d000d000d000d000d000d000d000d000 ,
+                        0xd000d000d000d000d000d000d000d000d000d000d000d000d000d000d000d000 ,
+                        0xd000d00040004000500090007000c00090003000500050008000800040005000 ,
+                        0x4000500070007000700070007000700070007000700070005000500090009000 ,
+                        0x90006000c000800070008000800070007000800080004000500070006000a000 ,
+                        0x800090007000900080008000800080008000c000800070007000500050005000 ,
+                        0x900070007000700070006000700070004000700070003000400060003000b000 ,
+                        0x700070007000700050006000400070006000a000600060006000600060006000 ,
+                        0x9000d00000000000
+                    End
+                    OLEClass ="ProgCtrl"
+                    Class ="MSComctlLib.ProgCtrl.2"
+                    GUID = Begin
+                        0xf74b74f474c15c418f64e113ee9b05b4
+                    End
+                End
+                Begin CheckBox
+                    OverlapFlags =85
+                    Left =4032
+                    Top =210
+                    Width =192
+                    Height =204
+                    ColumnOrder =0
+                    TabIndex =5
+                    Name ="Queu"
+                    DefaultValue ="False"
+                    GUID = Begin
+                        0x9207d8130e116949a203d4277932322a
+                    End
+                End
+                Begin Label
+                    OverlapFlags =85
+                    Left =4308
+                    Top =192
+                    Width =864
+                    Height =228
+                    Name ="Надпись13"
+                    Caption ="по очереди"
+                    GUID = Begin
+                        0xc3a0ceb8281f5f4dac95f42ac14a7b84
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Кнопка0_Click()
+Dim db As Database, trans As DAO.Recordset, def As DAO.Recordset, isb As DAO.Recordset, links As DAO.Recordset
+Dim p(50) As Double, t(50) As Double, isbs(50) As Double, s(50) As Double, oblk(50) As Double
+Dim id(4, 50) As Double, prot As DAO.Recordset
+Dim Qlinks As QueryDef, Qdef As QueryDef, Qisb As QueryDef
+Set db = CurrentDb
+Set Qdef = db.QueryDefs("дефициты_год")
+Qdef![год] = year
+Qdef![ОЭС] = oes
+Set Qisb = db.QueryDefs("дефициты_год")
+Qisb![год] = year
+Qisb![ОЭС] = oes
+Set trans = db.OpenRecordset("перетоки_табл")
+Set prot = db.OpenRecordset("протокол")
+trans.Index = "ndx1"
+prot.Index = "ndx1"
+sqlinitD = "UPDATE Дефициты SET Дефициты.Dwork = [D] where year=" & year & "and oes=" & oes & ";"
+sqlinitT = "UPDATE Перетоки_табл SET Pwork = null,t=0 where year=" & year & "and oes=" & oes & ";"
+sqldelp = "Delete Протокол.* from Протокол where year=" & year & " and oes=" & oes & ";"
+db.Execute (sqldelp) 'очистка prot
+qh = 1
+If Queu Then ql = 1 Else ql = 0
+db.Execute (sqlinitD) 'инициациализация Dwork
+db.Execute (sqlinitT) 'инициациализация Pwork,T
+nxtq:
+l = 1
+pb.Max = 4
+pb.Min = 0
+pb.Value = 0
+pb1.Min = 0
+nxtstep:
+pb.Value = l
+Set def = Qdef.OpenRecordset
+Set isb = Qisb.OpenRecordset
+Set Qlinks = db.QueryDefs("L" & l & "_РЭУ")
+Qlinks![год] = year
+Qlinks![ОЭС] = oes
+def.MoveFirst
+Do While Not (def.EOF)
+breu:
+bdu = False
+If def!dwork < 0 Then 'дефицитная область
+If def!Q >= ql And def!Q <= qh Then 'очередь
+Qlinks![введите РЭУ] = def!OBL
+Debug.Print def!РЭУ; def!dwork; def!dn; l; Time
+Set links = Qlinks.OpenRecordset(DB_OPEN_DYNASET)
+defwork = def!dwork
+' форимирование массива связей с избыточными РЭУ
+i = 0
+If links.RecordCount = 0 Then GoTo nxtreu
+pb1.Max = links.RecordCount
+pb1.Value = 0
+links.MoveFirst
+nxtlink:
+trans.Seek "=", year, links("id" & l)
+isb.FindFirst "obl=" & links!oblk
+For j = 0 To l - 1 ' по количеству звеньев
+id(j, i) = links("id" & j + 1)
+Next j
+isbs(i) = isb!D
+p(i) = links!pwork
+s(i) = links!s
+t(i) = 0
+oblk(i) = links!oblk
+i = i + 1
+links.MoveNext
+If Not (links.EOF) Then GoTo nxtlink
+nlink = i - 1
+sumt = 0
+For i = 0 To nlink
+pb1.Value = i
+If s(i) >= Abs(defwork) Then
+t(i) = defwork
+defwork = 0
+Debug.Print id(0, i); id(1, i); id(2, i); id(3, i); "p="; p(i); defwork; isbs(i); t(i); s(i); def!dn; def!D
+GoTo wres
+Else
+t(i) = -s(i)
+defwork = defwork - t(i)
+End If
+Debug.Print id(0, i); id(1, i); id(2, i); id(3, i); "p="; p(i); defwork; isbs(i); t(i); s(i); def!dn; def!D
+bdu = DblUse(i, id, nlink, l, oblk)
+If bdu Then GoTo wres
+Next i
+wres: 'вывод результатов расчета
+'Debug.Print "вывод результатов "; def!РЭУ
+For i = 0 To nlink
+prot.AddNew
+prot!year = year
+prot!oes = oes
+prot!OBL = def!OBL
+prot!step = l
+prot!nlink = i
+For j = 0 To l - 1
+trans.Seek "=", year, id(j, i)
+oblb = IIf(j = 0, def!OBL, oble)
+trans.Edit
+If trans!obl1 = oblb Then
+trans!t = trans!t + t(i)
+oble = trans!obl2
+Else:
+trans!t = trans!t - t(i)
+oble = trans!obl1
+End If
+If t(i) <> 0 Then trans!pwork = IIf(IsNull(trans!pwork), IIf(trans!obl1 = oblb, trans!pinv, trans!p) - Abs(t(i) * def!dn / def!D), trans!pwork - Abs(t(i) * def!dn / def!D))
+trans.Update
+prot("id" & j + 1) = id(j, i)
+Next j
+prot!t = t(i)
+'Debug.Print "протокол "; prot!nlink; prot!id1; prot!id2; prot!id3; prot!id4; prot!t
+prot.Update
+isb.FindFirst "obl=" & oble
+isb.Edit
+isb!dwork = isb!dwork + t(i)
+isb.Update
+Next i
+def.Edit
+If def!dwork < 0 Then def!dwork = defwork
+def.Update
+Debug.Print "def="; def!OBL; def!dwork; defwork
+End If 'очередь
+End If 'дефицитная область
+If bdu Then GoTo breu
+nxtreu:
+def.MoveNext
+Loop
+Debug.Print "шаг "; l
+If l < 4 Then
+l = l + 1
+GoTo nxtstep
+End If
+endq:
+pb.Value = 0
+If Queu Then
+If ql > 0 Then
+ql = 0
+qh = ql
+GoTo nxtq
+End If
+End If
+End Sub
+Public Function DblUse(i, id, nlink, l, oblk) As Boolean
+DblUse = False
+If i = nlink Then GoTo endf
+For i1 = i + 1 To nlink
+If oblk(i) = oblk(i1) Then
+Debug.Print "повторное использование "; oblk(i)
+DblUse = True
+GoTo endf
+End If
+If l = 1 Then GoTo endf
+For j1 = 0 To l - 1
+For j2 = 0 To l - 1
+If id(j1, i1) = id(j2, i) Then
+Debug.Print "повторное использование "; id(j1, i1); id(j2, i)
+DblUse = True
+GoTo endf
+End If
+Next j2
+Next j1
+Next i1
+endf:
+End Function

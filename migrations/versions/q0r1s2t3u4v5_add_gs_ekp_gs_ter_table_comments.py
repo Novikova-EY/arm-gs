@@ -62,7 +62,7 @@ _SCHEMA_COMMENTS: dict[str, dict[str, dict[str, str]]] = {
             "id_federal_district": _FEDERAL_DISTRICT_FK,
             "id_economic_activity_type": _ECONOMIC_ACTIVITY_TYPE_FK,
             "year_number": _YEAR_NUMBER,
-            "energy_consumption_mln_kvt_ch": "Потребление электроэнергии, млн кВт·ч",
+            "energy_consumption_mln_kvt_ch": "Потребление электроэнергии, млн кВтч",
         },
         "gs_ekp_federal_district_population_params": {
             "_table": "Численность населения по федеральному округу и году (долгосрочный прогноз)",
@@ -98,7 +98,7 @@ _SCHEMA_COMMENTS: dict[str, dict[str, dict[str, str]]] = {
             "_table": "Потребление ЭЭ по ВЭД для РФ в целом (долгосрочный прогноз)",
             "id_economic_activity_type": _ECONOMIC_ACTIVITY_TYPE_FK,
             "year_number": _YEAR_NUMBER,
-            "energy_consumption_mln_kvt_ch": "Потребление электроэнергии, млн кВт·ч",
+            "energy_consumption_mln_kvt_ch": "Потребление электроэнергии, млн кВтч",
         },
         "gs_ekp_russia_federation_product_output_params": {
             "_table": (
@@ -136,12 +136,12 @@ _SCHEMA_COMMENTS: dict[str, dict[str, dict[str, str]]] = {
             "direction": "Направление перетока",
         },
         "gs_ter_energy_unit_power_transfer_values": {
-            "_table": "Значения перетока электроэнергии по годам (млн кВт·ч)",
+            "_table": "Значения перетока электроэнергии по годам (млн кВтч)",
             "id_energy_unit_power_transfer": (
                 "Переток энергоузла (FK -> gs_ter.gs_ter_energy_unit_power_transfers)"
             ),
             "year_number": "Год",
-            "transfer_mln_kvt_ch": "Переток электроэнергии, млн кВт·ч",
+            "transfer_mln_kvt_ch": "Переток электроэнергии, млн кВтч",
         },
     },
 }

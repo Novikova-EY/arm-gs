@@ -16,7 +16,7 @@
 {% set pd_coeff_fixed_cols = 9 + (1 if show_perimeter_variant_column else 0) %}
 {% set pd_summary_hist_editable_keys = ('max_power', 'peak_datetime', 'avg_temp', 'entity_note') %}
 {% set pd_summary_hist_restricted = active_summary in ('oes', 'fo', 'ez') %}
-{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours', 'peak_combined_on_ees_usage_hours', 'peak_combined_on_oes_usage_hours', 'peak_combined_on_es_usage_hours', 'peak_combined_on_fo_usage_hours', 'peak_combined_on_cz_usage_hours', 'peak_combined_on_ez_usage_hours') %}
+{% set pd_readonly_parameter_keys = ('calculated_max_power_mw', 'calculated_max_fo_mw', 'calculated_max_sa_mw', 'calculated_combined_on_cz_mw', 'calculated_combined_on_ees_mw', 'calculated_max_ees_russia_mw', 'calculated_max_ees_via_oes_mw', 'calculated_max_ees_via_es_mw', 'calculated_max_ees_via_ez_mw', 'calculated_max_power_consumption_mw', 'peak_max_power_usage_hours', 'peak_combined_on_ees_usage_hours', 'peak_combined_on_oes_usage_hours', 'peak_combined_on_es_usage_hours', 'peak_combined_on_fo_usage_hours', 'peak_combined_on_cz_usage_hours', 'peak_combined_on_ez_usage_hours') %}
 {% set pd_formula_texts = pd_formula_texts | default({}) %}
 {# _pd_* формулы — в контексте из Python (см. inject_pd_formula_template_variables) #}
 {% set show_hist_col = summary_route_variant != 'coeff' %}
@@ -315,7 +315,7 @@
                     id="pdPdSummaryEeToggle"
                     class="btn btn-outline-danger text-nowrap flex-shrink-0"
                     aria-pressed="false"
-                    title="Показать строки «Потребление электрической энергии, млн кВт·ч» (светло-красный фон)">
+                    title="Показать строки «Потребление электрической энергии, млн кВтч» (светло-красный фон)">
                 Потребление ЭЭ
             </button>
             <button type="button"
@@ -1181,6 +1181,8 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_es_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'ez' and row.demand_model_name in ('EnergySystemTypeDemandParameter', 'EesRussiaWithNtDemandParameter') and row.parameter_key == 'calculated_max_ees_via_ez_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_oes_ees_russia_calc_max_via_ez_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_fo_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_fo_calc_max_mw_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'calculated_max_power_mw' %}
@@ -1253,6 +1255,8 @@
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_oes_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key == 'verify_for_calculated_max_ees_via_es_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_es_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
+                        {% elif active_summary == 'ez' and row.parameter_key == 'verify_for_calculated_max_ees_via_ez_mw' %}
+                        <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _pd_ees_russia_verify_calc_max_via_ez_formula|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'fo' and row.entity_kind == 'centralized_zone' and row.parameter_key == 'cz_calculated_max_cz_russia_mw' %}
                         <span class="text-wrap">{{ row.parameter_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ row.pd_fo_cz_calc_max_tooltip|default('')|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Формула расчёта"></i></span>
                         {% elif active_summary == 'oes' and row.parameter_key == 'calculated_max_power_mw' and row.get('pd_formula_text_key') == 'chukotka_rd_calc_max_mw' %}
@@ -1851,7 +1855,7 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=20"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=21"></script>
 {% endif %}
 
 <script>
@@ -2150,6 +2154,15 @@ if (summaryTable) {
         return null;
     }
     function pdSummaryNavigateServerEntityPagination(page, pageSize) {
+        // Не тащить позицию после save на другую страницу пагинации.
+        if (window.armGsPageScrollRestore) {
+            try {
+                var navTable = document.getElementById("powerDemandSummaryTable");
+                window.armGsPageScrollRestore.clear(
+                    window.armGsPageScrollRestore.defaultScope(navTable)
+                );
+            } catch (eNavClr) { /* */ }
+        }
         var params = new URLSearchParams(window.location.search || "");
         if (pageSize > 0) {
             params.set("pd_page_size", String(pageSize));
@@ -2843,11 +2856,63 @@ if (summaryTable) {
             }
         }
 
+        function clearSummaryNoteFieldHeights() {
+            summaryTable.querySelectorAll("td.summary-entity-note-cell > .summary-entity-note-wrap").forEach(function (wrap) {
+                wrap.style.height = "";
+                var ta = wrap.querySelector("textarea.power-demand-summary-note-field");
+                if (!ta) {
+                    return;
+                }
+                ta.style.height = "";
+                ta.style.minHeight = "";
+                ta.style.paddingTop = "";
+                ta.style.paddingBottom = "";
+            });
+        }
+
+        function syncSummaryNoteFieldHeights() {
+            // Сброс зафиксированных px-высот: иначе после скрытия строк фильтром
+            // старая высота «Примечания» растягивает оставшиеся строки блока.
+            clearSummaryNoteFieldHeights();
+            void summaryTable.offsetHeight;
+
+            summaryTable.querySelectorAll("td.summary-entity-note-cell > .summary-entity-note-wrap").forEach(function (wrap) {
+                var td = wrap.closest("td.summary-entity-note-cell");
+                if (!td || td.offsetHeight < 1) {
+                    return;
+                }
+                var cellH = td.clientHeight;
+                wrap.style.height = cellH + "px";
+                var ta = wrap.querySelector("textarea.power-demand-summary-note-field");
+                if (!ta) {
+                    return;
+                }
+                ta.style.height = "auto";
+                ta.style.minHeight = "0";
+                ta.style.paddingTop = "0";
+                ta.style.paddingBottom = "0";
+                var contentH = ta.scrollHeight;
+                ta.style.height = cellH + "px";
+                ta.style.minHeight = cellH + "px";
+                if (contentH <= cellH) {
+                    var padTotal = cellH - contentH;
+                    var padTop = Math.floor(padTotal / 2);
+                    ta.style.paddingTop = padTop + "px";
+                    ta.style.paddingBottom = (padTotal - padTop) + "px";
+                } else {
+                    ta.style.paddingTop = "0.2rem";
+                    ta.style.paddingBottom = "0.2rem";
+                }
+            });
+        }
+
         function repositionEntityCellsAndRowspans() {
             var tbody = summaryTable.querySelector("tbody");
             if (!tbody) {
                 return;
             }
+            // До смены rowspan убрать px-высоты примечаний, иначе блок не сожмётся.
+            clearSummaryNoteFieldHeights();
             var startRows = tbody.querySelectorAll(
                 'tr.summary-row-param[data-is-block-start="1"]'
             );
@@ -2939,37 +3004,6 @@ if (summaryTable) {
             clampRowspansBeforeAggregationHeaders(tbody);
             syncSummaryNoteFieldHeights();
             applyPdBlockRowBackgrounds();
-        }
-
-        function syncSummaryNoteFieldHeights() {
-            summaryTable.querySelectorAll("td.summary-entity-note-cell > .summary-entity-note-wrap").forEach(function (wrap) {
-                var td = wrap.closest("td.summary-entity-note-cell");
-                if (!td || td.offsetHeight < 1) {
-                    return;
-                }
-                var cellH = td.clientHeight;
-                wrap.style.height = cellH + "px";
-                var ta = wrap.querySelector("textarea.power-demand-summary-note-field");
-                if (!ta) {
-                    return;
-                }
-                ta.style.height = "auto";
-                ta.style.minHeight = "0";
-                ta.style.paddingTop = "0";
-                ta.style.paddingBottom = "0";
-                var contentH = ta.scrollHeight;
-                ta.style.height = cellH + "px";
-                ta.style.minHeight = cellH + "px";
-                if (contentH <= cellH) {
-                    var padTotal = cellH - contentH;
-                    var padTop = Math.floor(padTotal / 2);
-                    ta.style.paddingTop = padTop + "px";
-                    ta.style.paddingBottom = (padTotal - padTop) + "px";
-                } else {
-                    ta.style.paddingTop = "0.2rem";
-                    ta.style.paddingBottom = "0.2rem";
-                }
-            });
         }
 
         if (!summaryTable.dataset.pdNoteFieldInputBound) {
@@ -3300,6 +3334,7 @@ if (summaryTable) {
                 "calculated_max_ees_via_oes_mw",
                 "calculated_max_ees_russia_mw",
                 "calculated_max_ees_via_es_mw",
+                "calculated_max_ees_via_ez_mw",
             ];
         }
         return [];
@@ -3608,6 +3643,7 @@ if (summaryTable) {
                 "calculated_max_ees_via_oes_mw",
                 "calculated_max_ees_russia_mw",
                 "calculated_max_ees_via_es_mw",
+                "calculated_max_ees_via_ez_mw",
             ],
             defaultHiddenKeys: rowPickerDefaultHidden,
             storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeysV2" : "powerDemandSummaryEzVisibleRowKeysV2",
@@ -4271,11 +4307,13 @@ if (summaryTable) {
      * Важно: не ставить transform на thead th — ломает порядок отрисовки sticky.
      * Специфичность с tr:nth-child — чтобы перебить style.css (z-index 50/49).
      * Подписи без rowspan + пустые cont-ячейки во 2-й строке (иначе Chrome рисует period поверх).
+     * z-index ≤ 1051: ниже .pd-ec-summary-sticky-stack (1052) и Select2/фильтров (1054),
+     * иначе при раскрытии «Фильтры» шапка таблицы наезжает на панель (как на /coeff/federal_districts/).
      */
     .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.summary-entity-col,
     .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-entity-col,
     .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-entity-col {
-        z-index: 1200 !important;
+        z-index: 1050 !important;
         background-color: #d1e7dd !important;
         background-image: none !important;
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
@@ -4283,7 +4321,7 @@ if (summaryTable) {
     .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.summary-parameter-col,
     .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-parameter-col,
     .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-parameter-col {
-        z-index: 1201 !important;
+        z-index: 1051 !important;
         background-color: #d1e7dd !important;
         background-image: none !important;
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
@@ -5445,7 +5483,8 @@ document.addEventListener("DOMContentLoaded", function () {
             calculated_max_fo_mw: true,
             calculated_combined_on_ees_mw: true,
             calculated_max_ees_via_oes_mw: true,
-            calculated_max_ees_via_es_mw: true
+            calculated_max_ees_via_es_mw: true,
+            calculated_max_ees_via_ez_mw: true
         };
 
         function getRoundingDigitsForParameter(pk) {
@@ -7125,6 +7164,10 @@ document.addEventListener("DOMContentLoaded", function () {
         "X-CSRFToken": "{{ csrf_token }}"
     };
 
+    function expandTwoDigitYear(yy) {
+        return yy <= 68 ? 2000 + yy : 1900 + yy;
+    }
+
     function normalizePeakDatetimeText(val) {
         var text = String(val == null ? "" : val)
             .replace(/\u00a0/g, " ")
@@ -7139,9 +7182,60 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         var s = parts.length ? parts.join(" ") : text.trim();
         s = s.replace(/\s+/g, " ").trim();
-        if (s.length >= 2 && s.charAt(0) === s.charAt(s.length - 1) && "\"'«»".indexOf(s.charAt(0)) >= 0) {
+        var qmarks = "\"'«»“”";
+        while (
+            s.length >= 2 &&
+            s.charAt(0) === s.charAt(s.length - 1) &&
+            qmarks.indexOf(s.charAt(0)) >= 0
+        ) {
             s = s.slice(1, -1).trim();
         }
+        s = s.replace(/^["'«»“”]+|["'«»“”]+$/g, "").trim();
+        // «10.01.23 18-00» → время через двоеточие
+        s = s.replace(
+            /((?:\d{1,2}\.){2}\d{2,4})\s+(\d{1,2})-(\d{2})(?::(\d{2}))?/,
+            function (_m, datePart, hh, mm, ss) {
+                var out =
+                    datePart +
+                    " " +
+                    String(parseInt(hh, 10)).padStart(2, "0") +
+                    ":" +
+                    mm;
+                if (ss) {
+                    out += ":" + ss;
+                }
+                return out;
+            }
+        );
+        // Двузначный год и выравнивание ДД.ММ
+        s = s.replace(/\b(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})\b/, function (_m, d, mo, yRaw) {
+            var y = parseInt(yRaw, 10);
+            if (yRaw.length === 2) {
+                y = expandTwoDigitYear(y);
+            }
+            return (
+                String(parseInt(d, 10)).padStart(2, "0") +
+                "." +
+                String(parseInt(mo, 10)).padStart(2, "0") +
+                "." +
+                String(y).padStart(4, "0")
+            );
+        });
+        s = s.replace(
+            /((?:\d{2}\.){2}\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/,
+            function (_m, datePart, hh, mm, ss) {
+                var out =
+                    datePart +
+                    " " +
+                    String(parseInt(hh, 10)).padStart(2, "0") +
+                    ":" +
+                    mm;
+                if (ss) {
+                    out += ":" + ss;
+                }
+                return out;
+            }
+        );
         return s;
     }
 

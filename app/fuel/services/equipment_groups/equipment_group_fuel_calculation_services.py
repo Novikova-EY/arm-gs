@@ -173,14 +173,23 @@ GROUPS = {
     "chit": ["har", "urt", "tataur", "tarbag", "zab_kam"],
     "yakut": ["neru", "pyak", "zyryan"],
     "amur": ["rai", "erk", "svo", "ogodj"],
+    # Как в СиПР MDB / ARM: gaz := gaz_prir + gazpp (не Access gaz += gazpp)
     "gaz": ["gaz_prir", "gazpp"],
-    "mazut": ["disel", "maztop", "nft_proch"],
-    "isk_gaz": ["koks_g", "prochgaz", "domen_g"],
-    "proch": ["szh_gaz", "inoe", "tvproch"],
     "tung": ["jer", "karab"],
     "prim": ["bikin", "razdol", "hankai"],
     "chukot": ["bering", "anad"],
     "kazah": ["ekib", "maikub", "karag", "karajyra", "teniz"],
+    "mazut": ["disel", "maztop", "nft_proch"],
+    "isk_gaz": ["koks_g", "prochgaz", "domen_g"],
+}
+
+# Access: w("proch") = dop("koksdom")+dop("prochgaz")+dop("tvproch")
+ACCESS_PROCH_CHILDREN = ("koks_g", "prochgaz", "tvproch")
+ACCESS_PROCH_TRIGGERS = frozenset({"koks_g", "koksdom", "prochgaz", "tvproch"})
+
+# Access formtxt-имя → поле ExtraFuelParam
+FORMTXT_EXTRA_ALIASES = {
+    "koksdom": "koks_g",
 }
 
 
@@ -364,32 +373,54 @@ class EquipmentGroupFuelCalculationService:
             database_version_id=effective_db_version,
         )
 
+        # Access Кнопка49: If U.NoMatch Then GoTo skip2 — до Update, строка не меняется.
+        if consumption is None:
+            return fuel_param
+
+        # Access: If topl.NoMatch Then GoTo skip2 — энергия в Edit-буфере тоже не сохраняется.
+        if not (formula and formula.formtxt):
+            return fuel_param
+
         # 1. Энергетический блок
         self._calculate_energy_part(
             fuel_param=fuel_param,
             consumption=consumption,
         )
 
+        # Снимок полей до обнуления — для Access «name=-1» (абсолют из текущего поля).
+        prior_main = {
+            name: d0(getattr(fuel_param, name, None))
+            for name in (TOPLS | UGLI)
+            if hasattr(fuel_param, name)
+        }
+        prior_extra = {
+            name: d0(getattr(extra_param, name, None))
+            for name in UGLI1
+            if hasattr(extra_param, name)
+        }
+
         # 2. Перед разбором formtxt очищаем только расчетные топливные колонки
         self._reset_main_fuel_fields(fuel_param)
         self._reset_extra_fuel_fields(extra_param)
 
         # 3. Разбор формулы топлива
-        if formula and formula.formtxt:
-            parsed = self._parse_formtxt(
-                formtxt=formula.formtxt,
-                total_b=d0(fuel_param.b),
-                strict=strict_formula_validation,
-            )
-            self._apply_parsed_values(
-                fuel_param=fuel_param,
-                extra_param=extra_param,
-                parsed=parsed,
-            )
-            self._aggregate_main_fuels(
-                fuel_param=fuel_param,
-                extra_param=extra_param,
-            )
+        parsed = self._parse_formtxt(
+            formtxt=formula.formtxt,
+            total_b=d0(fuel_param.b),
+            prior_main=prior_main,
+            prior_extra=prior_extra,
+            strict=strict_formula_validation,
+        )
+        self._apply_parsed_values(
+            fuel_param=fuel_param,
+            extra_param=extra_param,
+            parsed=parsed,
+        )
+        self._aggregate_main_fuels(
+            fuel_param=fuel_param,
+            extra_param=extra_param,
+            used_names=parsed.used_names,
+        )
 
         # 4. Фиксируем database_version_id у целевых строк
         self._stamp_fuel_param_rows_version(
@@ -629,6 +660,7 @@ class EquipmentGroupFuelCalculationService:
         Энергетический блок расчета.
         Порт логики Access-модуля: расчет EWTP, EOTP, EUST, EURT, TUST и B
         по текущей строке параметров группы и актуальной строке удельных показателей.
+        Ветвь VED∈{1,4}: snbas/Ksn для ekotp и bbas/Kh для EUST.
         """
         if consumption is None:
             return
@@ -637,18 +669,47 @@ class EquipmentGroupFuelCalculationService:
         e = d0(fuel_param.e)
         q = d0(fuel_param.q)
         turt = d0(fuel_param.turt)
+        nust = d0(fuel_param.nust)
 
         y = d0(consumption.y)
         snk = d0(consumption.snk)
         sntp = d0(consumption.sntp)
         bk = d0(consumption.bk)
         btp = d0(consumption.btp)
+        snbas = d0(getattr(consumption, "snbas", None))
+        ksn = d0(getattr(consumption, "ksn", None))
+        bbas = d0(getattr(consumption, "bbas", None))
+        kh = d0(getattr(consumption, "kh", None))
+
+        ved = fuel_param.ved
+        if ved is None:
+            group = getattr(fuel_param, "equipment_group", None)
+            if group is not None:
+                ved = getattr(group, "vedomstvo", None)
+        try:
+            ved_i = int(ved) if ved is not None else None
+        except (TypeError, ValueError):
+            ved_i = None
 
         ewtp = qotr * y / Decimal("1000")
-        ekotp = (e - ewtp) * (Decimal("1") - snk / Decimal("100"))
+        hours_util = (e / nust) / Decimal("8.76") if nust > 0 else Decimal("0")
+
+        if ved_i in (1, 4) and ksn > 0 and nust > 0:
+            # Access: (1 - (snbas - ((E/NUST)/8.76)*Ksn)/100)
+            sn_eff = snbas - hours_util * ksn
+            ekotp = (e - ewtp) * (Decimal("1") - sn_eff / Decimal("100"))
+        else:
+            ekotp = (e - ewtp) * (Decimal("1") - snk / Decimal("100"))
+
         etpotp = ewtp * sntp
         eotp = ekotp + etpotp
-        eust = (ekotp * bk + etpotp * btp) / Decimal("1000")
+
+        if ved_i in (1, 4) and kh > 0 and nust > 0:
+            # Access: EOTP * (bbas - ((E/NUST)/8.76)*Kh) / 1000
+            eust = eotp * (bbas - hours_util * kh) / Decimal("1000")
+        else:
+            eust = (ekotp * bk + etpotp * btp) / Decimal("1000")
+
         eurt = eust / eotp * Decimal("1000") if eotp != 0 else Decimal("0")
         tust = q * turt / Decimal("1000")
         b = eust + tust
@@ -665,9 +726,13 @@ class EquipmentGroupFuelCalculationService:
         *,
         formtxt: str,
         total_b: Decimal,
+        prior_main: Dict[str, Decimal] | None = None,
+        prior_extra: Dict[str, Decimal] | None = None,
         strict: bool = False,
     ) -> ParsedFuelFormula:
         result = ParsedFuelFormula()
+        prior_main = prior_main or {}
+        prior_extra = prior_extra or {}
 
         if not formtxt or not str(formtxt).strip():
             return result
@@ -702,8 +767,17 @@ class EquipmentGroupFuelCalculationService:
                         raise ValueError(f"Не удалось разобрать число в token={part!r}: {exc}") from exc
                     continue
 
-                base = remaining if lev_from_rest else total_b
-                value = base * pct / Decimal("100")
+                field_name = FORMTXT_EXTRA_ALIASES.get(name, name)
+                # Access: ptvalue >= 0 → процент; иначе абсолют из текущего поля w/dop.
+                if pct >= 0:
+                    base = remaining if lev_from_rest else total_b
+                    value = base * pct / Decimal("100")
+                else:
+                    if field_name in UGLI1 or name in UGLI1:
+                        value = d0(prior_extra.get(field_name, prior_extra.get(name)))
+                    else:
+                        value = d0(prior_main.get(field_name, prior_main.get(name)))
+
                 remaining -= value
 
                 if strict and remaining < Decimal("0"):
@@ -713,10 +787,11 @@ class EquipmentGroupFuelCalculationService:
                     )
 
                 result.used_names.add(name)
-                if name in UGLI1:
-                    result.extra_values[name] = value
+                result.used_names.add(field_name)
+                if field_name in UGLI1:
+                    result.extra_values[field_name] = value
                 else:
-                    result.main_values[name] = value
+                    result.main_values[field_name] = value
 
             else:
                 name = part.strip().lower()
@@ -724,7 +799,9 @@ class EquipmentGroupFuelCalculationService:
                     if strict:
                         raise ValueError(f"Пустой остаточный token={part!r}")
                     continue
-                result.residual_name = name
+                result.residual_name = FORMTXT_EXTRA_ALIASES.get(name, name)
+                result.used_names.add(name)
+                result.used_names.add(result.residual_name)
 
         if result.residual_name:
             result.used_names.add(result.residual_name)
@@ -755,18 +832,31 @@ class EquipmentGroupFuelCalculationService:
         *,
         fuel_param: EquipmentGroupFuelParam,
         extra_param: EquipmentGroupExtraFuelParam,
+        used_names: set[str] | None = None,
     ) -> None:
         """
-        Отдельный этап после formtxt: укрупнённые группы на основной записи из extra_param,
-        затем ugol как сумма угольных полей (кроме самого ugol). Энергобаланс не трогает.
+        Укрупнение бассейнов из extra_param, если лист встретился в formtxt (used_names).
+        gaz: GROUPS gaz_prir+gazpp (как в СиПР MDB / ARM), не Access gaz+=gazpp.
+        proch: Access-корзина koks_g+prochgaz+tvproch при триггере в formtxt.
         """
+        used = {str(n).lower() for n in (used_names or set())}
+
         for group_name, children in GROUPS.items():
+            if not any(child in used for child in children):
+                continue
             total = sum(
                 (d0(getattr(extra_param, child, None)) for child in children),
                 Decimal("0"),
             )
             if hasattr(fuel_param, group_name):
                 setattr(fuel_param, group_name, total)
+
+        # Access: If bproch Then w("proch") = dop(koksdom)+dop(prochgaz)+dop(tvproch)
+        if used & ACCESS_PROCH_TRIGGERS and hasattr(fuel_param, "proch"):
+            fuel_param.proch = sum(
+                (d0(getattr(extra_param, child, None)) for child in ACCESS_PROCH_CHILDREN),
+                Decimal("0"),
+            )
 
         sum_ugol = Decimal("0")
         for field_name in UGLI:

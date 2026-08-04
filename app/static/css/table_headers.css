@@ -1,0 +1,94 @@
+/*
+  Шапка таблиц (.table-success / .table-light / .table-primary):
+  непрозрачный фон, тонкие светло-серые границы, без прозрачных щелей у sticky-th.
+  border-collapse: separate — иначе у sticky границы «ломаются».
+*/
+
+.table:has(> thead.table-success),
+.table:has(> thead.table-light),
+.table:has(> thead.table-primary),
+.table:has(> thead > tr.table-success),
+.table:has(> thead > tr.table-light),
+.table:has(> thead > tr.table-primary) {
+    border-collapse: separate !important;
+    border-spacing: 0;
+}
+
+.table > thead.table-success,
+.table > thead:has(> tr.table-success) {
+    background-color: var(--bs-success-bg-subtle, #d1e7dd);
+}
+.table > thead.table-light,
+.table > thead:has(> tr.table-light) {
+    background-color: var(--bs-light-bg-subtle, #f8f9fa);
+}
+.table > thead.table-primary,
+.table > thead:has(> tr.table-primary) {
+    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
+}
+
+.table > thead.table-success > tr > th,
+.table > thead.table-light > tr > th,
+.table > thead.table-primary > tr > th,
+.table > thead > tr.table-success > th,
+.table > thead > tr.table-light > th,
+.table > thead > tr.table-primary > th {
+    background-clip: border-box !important;
+    /* Сетка 1px: правая + нижняя; левый/верхний край — у крайних ячеек */
+    border-style: solid !important;
+    border-color: #adb5bd !important;
+    border-width: 0 1px 1px 0 !important;
+    box-shadow: none !important;
+}
+
+.table > thead.table-success > tr > th,
+.table > thead > tr.table-success > th {
+    background-color: var(--bs-success-bg-subtle, #d1e7dd) !important;
+}
+.table > thead.table-light > tr > th,
+.table > thead > tr.table-light > th {
+    background-color: var(--bs-light-bg-subtle, #f8f9fa) !important;
+}
+.table > thead.table-primary > tr > th,
+.table > thead > tr.table-primary > th {
+    background-color: var(--bs-primary-bg-subtle, #cfe2ff) !important;
+}
+
+.table > thead.table-success > tr > th:first-child,
+.table > thead.table-light > tr > th:first-child,
+.table > thead.table-primary > tr > th:first-child,
+.table > thead > tr.table-success > th:first-child,
+.table > thead > tr.table-light > th:first-child,
+.table > thead > tr.table-primary > th:first-child {
+    border-left-width: 1px !important;
+}
+
+.table > thead.table-success > tr:first-child > th,
+.table > thead.table-light > tr:first-child > th,
+.table > thead.table-primary > tr:first-child > th,
+.table > thead > tr.table-success:first-child > th,
+.table > thead > tr.table-light:first-child > th,
+.table > thead > tr.table-primary:first-child > th {
+    border-top-width: 1px !important;
+}
+
+/* tbody: та же схема границ, чтобы при separate не было двойных линий */
+.table:has(> thead.table-success) > tbody > tr > *,
+.table:has(> thead.table-light) > tbody > tr > *,
+.table:has(> thead.table-primary) > tbody > tr > *,
+.table:has(> thead > tr.table-success) > tbody > tr > *,
+.table:has(> thead > tr.table-light) > tbody > tr > *,
+.table:has(> thead > tr.table-primary) > tbody > tr > * {
+    border-style: solid !important;
+    border-color: var(--bs-table-border-color, var(--bs-border-color, #dee2e6)) !important;
+    border-width: 0 1px 1px 0 !important;
+}
+
+.table:has(> thead.table-success) > tbody > tr > *:first-child,
+.table:has(> thead.table-light) > tbody > tr > *:first-child,
+.table:has(> thead.table-primary) > tbody > tr > *:first-child,
+.table:has(> thead > tr.table-success) > tbody > tr > *:first-child,
+.table:has(> thead > tr.table-light) > tbody > tr > *:first-child,
+.table:has(> thead > tr.table-primary) > tbody > tr > *:first-child {
+    border-left-width: 1px !important;
+}

@@ -1,0 +1,176 @@
+Version =19
+VersionRequired =19
+Checksum =-440772174
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    DividingLines = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =0
+    ScrollBars =0
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =6732
+    DatasheetFontHeight =12
+    ItemSuffix =4
+    Left =888
+    Top =1644
+    Right =7380
+    Bottom =3948
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x468bf70cb36be340
+    End
+    GUID = Begin
+        0xa4e8431c41453f4f87cb7c7209b1bf52
+    End
+    NameMap = Begin
+        0x0acc0e55
+    End
+    DatasheetFontName ="Times New Roman CYR"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =2832
+            BackColor =8421440
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x98cd2ab4d7e32148bf184d0232e559c5
+            End
+            Begin
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =576
+                    Top =192
+                    Width =1248
+                    Height =360
+                    Name ="Кнопка0"
+                    Caption ="Коды областей"
+                    OnClick ="[Event Procedure]"
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0x823a32bd63aa454fae1b2fd50e9a9745
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =564
+                    Top =816
+                    Width =1860
+                    Height =360
+                    TabIndex =1
+                    Name ="Кнопка1"
+                    Caption ="Обнуление ГЭС,АЭС,НИ"
+                    OnClick ="[Event Procedure]"
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0x64d9903f9276d841b5c9976051031701
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =564
+                    Top =1452
+                    Width =1212
+                    Height =360
+                    TabIndex =2
+                    Name ="Кнопка2"
+                    Caption ="Не ТЭС"
+                    OnClick ="[Event Procedure]"
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0x2f6cd633ee66564eaa215db8f956653d
+                    End
+                End
+                Begin CommandButton
+                    OverlapFlags =85
+                    Left =540
+                    Top =2136
+                    Width =1680
+                    Height =360
+                    TabIndex =3
+                    Name ="Кнопка3"
+                    Caption ="Электропотребление"
+                    OnClick ="[Event Procedure]"
+                    ObjectPalette = Begin
+                        0x0003100000000000800000000080000080800000000080008000800000808000 ,
+                        0x80808000c0c0c000ff000000c0c0c000ffff00000000ff00c0c0c00000ffff00 ,
+                        0xffffff0000000000
+                    End
+                    ControlTipText ="Найти далее"
+                    GUID = Begin
+                        0x3f7b5478d536544ca1a38c9ae84cb106
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Кнопка0_Click()
+sql1 = CurrentDb.QueryDefs("Коды_областей_в_НеТЭС").SQL
+DoCmd.RunSQL (sql1)
+End Sub
+Private Sub Кнопка1_Click()
+sql1 = "Update Дефициты SET Eгэс=0,Eаэс=0,Eни=0"
+CurrentDb.Execute (sql1)
+End Sub
+Private Sub Кнопка2_Click()
+Dim years As DAO.Recordset
+Stype = "АЭС,ГЭС,НВИЭ"
+sf = "Eаэс,Eгэс,Eни"
+atype = split(Stype, ",")
+af = split(sf, ",")
+sqly = "SELECT Дефициты.year FROM Дефициты GROUP BY Дефициты.year;"
+Set years = CurrentDb.OpenRecordset(sqly)
+years.MoveFirst
+nxty:
+y = years!year
+For i = 0 To 2
+sql1 = "UPDATE Дефициты INNER JOIN НеТЭС ON Дефициты.obl = НеТЭС.obl SET Дефициты.ffff = [НеТЭС]![2015]*1000"
+sql1 = sql1 & " WHERE (((Дефициты.year)=2015) AND ((НеТЭС.type)=""tttt""));"
+sql2 = Replace(sql1, "2015", Format(y, "####"))
+sql2 = Replace(sql2, "tttt", atype(i))
+sql2 = Replace(sql2, "ffff", af(i))
+Debug.Print sql2
+CurrentDb.Execute (sql2)
+Next i
+years.MoveNext
+If Not (years.EOF) Then GoTo nxty
+End Sub
+Private Sub Кнопка3_Click()
+CurrentDb.Execute ("Из_электропотр_в_дефициты")
+End Sub

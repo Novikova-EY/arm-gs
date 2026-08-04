@@ -140,16 +140,70 @@ def resolve_coeff_k_for_save(
     )
 
 
+def _expand_two_digit_year(yy: int) -> int:
+    """Как strptime %y: 00–68 → 2000–2068, 69–99 → 1969–1999."""
+    return 2000 + yy if yy <= 68 else 1900 + yy
+
+
 def _normalize_peak_datetime_text(value: Any) -> str:
-    """Склеивает дату и время из многострочного вставки Excel («ДД.ММ.ГГГГ\\nЧЧ:ММ»)."""
+    """Склеивает дату и время из многострочного вставки Excel («ДД.ММ.ГГГГ\\nЧЧ:ММ»).
+
+    Также приводит варианты Excel вроде «"10.01.23 18-00"»:
+    кавычки, двузначный год, время через дефис.
+    """
     if value is None:
         return ""
     text = str(value).replace("\u00a0", " ").replace("\u202f", " ")
     parts = [p.strip() for p in re.split(r"[\r\n]+", text) if p.strip()]
     s = " ".join(parts) if parts else text.strip()
     s = re.sub(r"\s+", " ", s).strip()
-    if len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'«»":
+    while len(s) >= 2 and s[0] == s[-1] and s[0] in "\"'«»“”":
         s = s[1:-1].strip()
+    s = s.strip("\"'«»“”").strip()
+
+    # Время после даты: «18-00» / «18-00:00» → «18:00»
+    def _hyphen_time(m: re.Match) -> str:
+        hh = int(m.group(2))
+        mm = m.group(3)
+        ss = m.group(4)
+        out = f"{m.group(1)} {hh:02d}:{mm}"
+        if ss:
+            out += f":{ss}"
+        return out
+
+    s = re.sub(
+        r"((?:\d{1,2}\.){2}\d{2,4})\s+(\d{1,2})-(\d{2})(?::(\d{2}))?",
+        _hyphen_time,
+        s,
+    )
+
+    # ДД.ММ.ГГ / Д.М.ГГГГ → ДД.ММ.ГГГГ
+    def _canon_date(m: re.Match) -> str:
+        d = int(m.group(1))
+        mo = int(m.group(2))
+        y_raw = m.group(3)
+        y = int(y_raw)
+        if len(y_raw) == 2:
+            y = _expand_two_digit_year(y)
+        return f"{d:02d}.{mo:02d}.{y:04d}"
+
+    s = re.sub(r"\b(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})\b", _canon_date, s)
+
+    # Ч:ММ → ЧЧ:ММ (если время уже через двоеточие)
+    def _pad_time(m: re.Match) -> str:
+        hh = int(m.group(2))
+        mm = m.group(3)
+        ss = m.group(4)
+        out = f"{m.group(1)} {hh:02d}:{mm}"
+        if ss:
+            out += f":{ss}"
+        return out
+
+    s = re.sub(
+        r"((?:\d{2}\.){2}\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?",
+        _pad_time,
+        s,
+    )
     return s
 
 
@@ -191,7 +245,7 @@ def _parse_peak_datetime_msk(s: str):
 
 
 def parse_peak_datetime(value: Any):
-    """«ДД.ММ.ГГГГ ЧЧ:ММ» (мск), с секундами, перенос между датой и временем или «ГГГГ» → aware datetime."""
+    """«ДД.ММ.ГГГГ ЧЧ:ММ» (мск) и Excel-варианты («"10.01.23 18-00"», перенос, «ГГГГ») → aware datetime."""
     s = _normalize_peak_datetime_text(value)
     if not s:
         return None
@@ -460,6 +514,24 @@ def peek_stored_perimeter_variant_code_for_parent(
 _LEGACY_NT_TREE_DISPLAY_CODES = frozenset({CODE_WITH_NT, CODE_WITHOUT_NT})
 
 
+def summary_block_includes_unassigned_null_pvc(
+    display_perimeter_variant_code: str | None,
+) -> bool:
+    """Строки с ``perimeter_variant_code IS NULL`` относятся к базовому периметру «без НТ».
+
+    Их нельзя подмешивать в блок «с НТ»: иначе оба блока получают одни и те же
+    ``data-row-id``, и сохранение ячейки падает на проверке варианта периметра.
+    """
+    display = (
+        str(display_perimeter_variant_code).strip()
+        if display_perimeter_variant_code not in (None, "")
+        else None
+    )
+    if display is None:
+        return True
+    return legacy_nt_group_for_perimeter_code(display) != CODE_WITH_NT
+
+
 def _summary_demand_row_slice_key(row: Any) -> tuple[bool, int | None]:
     is_hist = bool(getattr(row, "is_historical_maximum", False))
     year_n = getattr(row, "year_number", None)
@@ -549,16 +621,17 @@ def get_demand_rows_for_summary_block(
             ),
             prefer=(i == 0),
         )
-    _merge_summary_demand_rows_by_slice(
-        by_slice,
-        get_demand_rows(
-            demand_model,
-            fk_column_name,
-            parent_id,
-            perimeter_variant_code=None,
-        ),
-        prefer=False,
-    )
+    if summary_block_includes_unassigned_null_pvc(display):
+        _merge_summary_demand_rows_by_slice(
+            by_slice,
+            get_demand_rows(
+                demand_model,
+                fk_column_name,
+                parent_id,
+                perimeter_variant_code=None,
+            ),
+            prefer=False,
+        )
     return sorted(
         by_slice.values(),
         key=lambda r: (
@@ -892,6 +965,11 @@ def save_demand_rows_from_post(
     except IntegrityError:
         db.session.rollback()
         raise
+    from app.power_demand.services.pd_summary_page_cache import (
+        invalidate_power_demand_display_caches,
+    )
+
+    invalidate_power_demand_display_caches()
     return saved, deleted_n
 
 
@@ -1138,6 +1216,26 @@ def _summary_block_pvc_can_upgrade_marker(
     return False
 
 
+def _summary_row_pvc_compatible_with_target(
+    row_pvc: str | None, target_pvc: str | None
+) -> bool:
+    """Совместимость pvc строки БД с вариантом блока сводки при сохранении по ``row_id``.
+
+    - ``NULL`` — legacy без варианта: можно назначить на «без НТ» (не на «с НТ»).
+    - Один код в той же НТ-группе (GAES) — допустим upgrade/совпадение группы.
+    """
+    if row_pvc == target_pvc:
+        return True
+    if row_pvc is None:
+        target_group = legacy_nt_group_for_perimeter_code(
+            str(target_pvc) if target_pvc not in (None, "") else None
+        )
+        return target_group != CODE_WITH_NT
+    if target_pvc is None:
+        return False
+    return _summary_block_pvc_can_upgrade_marker(str(row_pvc), str(target_pvc))
+
+
 def find_demand_row_for_summary_slice_resolving_pvc(
     model: Type[Any],
     *,
@@ -1203,6 +1301,12 @@ def find_demand_row_for_summary_slice_resolving_pvc(
         perimeter_variant_code=None,
     )
     if unassigned is not None and getattr(unassigned, "perimeter_variant_code", None) is None:
+        # Legacy NULL принадлежит базовому периметру «без НТ», не «с НТ».
+        target_group = legacy_nt_group_for_perimeter_code(
+            str(target_pvc) if target_pvc not in (None, "") else None
+        )
+        if target_group == CODE_WITH_NT:
+            return None
         if target_pvc is not None:
             unassigned.perimeter_variant_code = target_pvc
         return unassigned
@@ -1796,8 +1900,12 @@ def save_demand_summary_cell(
                     raise ValueError("Строка не соответствует выбранному объекту.")
             if pvc is not _UNSET and hasattr(erow0, "perimeter_variant_code"):
                 row_pvc = getattr(erow0, "perimeter_variant_code", None)
-                if row_pvc != pvc:
-                    raise ValueError("Строка не соответствует выбранному варианту периметра.")
+                if row_pvc != pvc and not _summary_row_pvc_compatible_with_target(
+                    row_pvc, pvc
+                ):
+                    raise ValueError(
+                        "Строка не соответствует выбранному варианту периметра."
+                    )
             if not getattr(erow0, "is_historical_maximum", False):
                 raise ValueError("Примечание сводки привязано к строке исторического максимума.")
             if parent_fk_column is not None:
@@ -1895,8 +2003,12 @@ def save_demand_summary_cell(
                 raise ValueError("Строка не соответствует выбранному объекту.")
         if pvc is not _UNSET and hasattr(row0, "perimeter_variant_code"):
             row_pvc = getattr(row0, "perimeter_variant_code", None)
-            if row_pvc != pvc:
-                raise ValueError("Строка не соответствует выбранному варианту периметра ОЭС Юга.")
+            if row_pvc != pvc and not _summary_row_pvc_compatible_with_target(
+                row_pvc, pvc
+            ):
+                raise ValueError(
+                    "Строка не соответствует выбранному варианту периметра."
+                )
         if parent_fk_column is not None:
             anchor_parent_id = getattr(row0, parent_fk_column, None)
         is_hist = bool(row0.is_historical_maximum)
@@ -2344,44 +2456,50 @@ def _reassign_summary_entity_perimeter_variant_all_versions(
         )
     user = _username()
     updated = 0
-    for vid in version_ids:
-        parent_id_v = _resolve_summary_parent_id_for_all_versions(
-            demand_model_name,
-            parent_fk_column,
-            anchor_parent_id,
-            vid,
-        )
-        source_rows = _find_source_rows_for_reassign_in_version(
-            model,
-            parent_fk_column=parent_fk_column,
-            parent_id=parent_id_v,
-            database_version_id=vid,
-            from_pvc=from_pvc,
-        )
-        if source_rows:
-            for row in source_rows:
-                if getattr(row, "perimeter_variant_code", None) == to_pvc:
-                    continue
-                _assert_summary_perimeter_variant_reassign_allowed(
-                    model,
-                    row,
-                    parent_fk_column=parent_fk_column,
-                    parent_id=parent_id_v,
-                    to_variant_code=to_pvc,
-                    database_version_id=vid,
-                )
-                row.perimeter_variant_code = to_pvc
-                row.modified_by = user
-                updated += 1
-        else:
-            if _ensure_summary_block_variant_marker_row(
+    try:
+        for vid in version_ids:
+            parent_id_v = _resolve_summary_parent_id_for_all_versions(
+                demand_model_name,
+                parent_fk_column,
+                anchor_parent_id,
+                vid,
+            )
+            source_rows = _find_source_rows_for_reassign_in_version(
                 model,
                 parent_fk_column=parent_fk_column,
                 parent_id=parent_id_v,
                 database_version_id=vid,
-                perimeter_variant_code=to_pvc,
-            ):
-                updated += 1
+                from_pvc=from_pvc,
+            )
+            if source_rows:
+                for row in source_rows:
+                    if getattr(row, "perimeter_variant_code", None) == to_pvc:
+                        continue
+                    _assert_summary_perimeter_variant_reassign_allowed(
+                        model,
+                        row,
+                        parent_fk_column=parent_fk_column,
+                        parent_id=parent_id_v,
+                        to_variant_code=to_pvc,
+                        database_version_id=vid,
+                    )
+                    row.perimeter_variant_code = to_pvc
+                    row.modified_by = user
+                    updated += 1
+            else:
+                if _ensure_summary_block_variant_marker_row(
+                    model,
+                    parent_fk_column=parent_fk_column,
+                    parent_id=parent_id_v,
+                    database_version_id=vid,
+                    perimeter_variant_code=to_pvc,
+                ):
+                    updated += 1
+    except IntegrityError as exc:
+        db.session.rollback()
+        raise ValueError(
+            "Не удалось сохранить вариант периметра (конфликт данных по году)."
+        ) from exc
     return updated
 
 

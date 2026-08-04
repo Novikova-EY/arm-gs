@@ -33,7 +33,7 @@ class RussiaFederationElectricalIntensityYearParameter(db.Model, AuditMixin):
         back_populates="rf_electrical_intensity_year_parameters",
         lazy="noload",
     )
-    # Значение показателя за год (кВт·ч/тыс. руб., зависит от row_kind)
+    # Значение показателя за год (кВтч/тыс. руб., зависит от row_kind)
     parameter_value = db.Column(Numeric(25, 10), nullable=True)
     note = db.Column(db.Text, nullable=True)
 

@@ -1,0 +1,588 @@
+Version =20
+VersionRequired =20
+Checksum =-315719118
+Begin Form
+    PopUp = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =25521
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =360
+    Top =2235
+    Right =10515
+    Bottom =7440
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x7307ff2fb52de240
+    End
+    RecordSource ="Топливо(станции)"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x16a50ceacbe8d511be1c0050bf59f750
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    TextAlign =1
+                    Width =2841
+                    ColumnWidth =2910
+                    Name ="NAME"
+                    ControlSource ="NAME"
+                    Format ="#"
+                    GUID = Begin
+                        0x1aa50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2841
+                    ColumnWidth =720
+                    TabIndex =1
+                    Name ="YEAR"
+                    ControlSource ="YEAR"
+                    Format ="#"
+                    GUID = Begin
+                        0x1ca50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3408
+                    ColumnWidth =615
+                    TabIndex =2
+                    Name ="UGOL"
+                    ControlSource ="UGOL"
+                    Format ="#"
+                    GUID = Begin
+                        0x1da50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3975
+                    ColumnWidth =510
+                    TabIndex =3
+                    Name ="DON"
+                    ControlSource ="DON"
+                    Format ="#"
+                    GUID = Begin
+                        0x1ea50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =4542
+                    ColumnWidth =645
+                    TabIndex =4
+                    Name ="PODM"
+                    ControlSource ="PODM"
+                    Format ="#"
+                    GUID = Begin
+                        0x1fa50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =5109
+                    ColumnWidth =600
+                    TabIndex =5
+                    Name ="PECH"
+                    ControlSource ="PECH"
+                    Format ="#"
+                    GUID = Begin
+                        0x20a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =5676
+                    ColumnWidth =555
+                    TabIndex =6
+                    Name ="vork"
+                    ControlSource ="vork"
+                    Format ="#"
+                    GUID = Begin
+                        0x21a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =6243
+                    ColumnWidth =390
+                    TabIndex =7
+                    Name ="int"
+                    ControlSource ="int"
+                    Format ="#"
+                    GUID = Begin
+                        0x22a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =6810
+                    ColumnWidth =615
+                    TabIndex =8
+                    Name ="KUZN"
+                    ControlSource ="KUZN"
+                    Format ="#"
+                    GUID = Begin
+                        0x24a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =7377
+                    ColumnWidth =840
+                    TabIndex =9
+                    Name ="kuzngd"
+                    ControlSource ="kuzngd"
+                    Format ="#"
+                    GUID = Begin
+                        0x25a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =7944
+                    ColumnWidth =660
+                    TabIndex =10
+                    Name ="kuznt"
+                    ControlSource ="kuznt"
+                    Format ="#"
+                    GUID = Begin
+                        0x26a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =8511
+                    ColumnWidth =780
+                    TabIndex =11
+                    Name ="kuznss"
+                    ControlSource ="kuznss"
+                    Format ="#"
+                    GUID = Begin
+                        0x27a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =9078
+                    ColumnWidth =840
+                    TabIndex =12
+                    Name ="kuznun"
+                    ControlSource ="kuznun"
+                    Format ="#"
+                    GUID = Begin
+                        0x28a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =9645
+                    ColumnWidth =600
+                    TabIndex =13
+                    Name ="URAL"
+                    ControlSource ="URAL"
+                    Format ="#"
+                    GUID = Begin
+                        0x29a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =10212
+                    ColumnWidth =540
+                    TabIndex =14
+                    Name ="sver"
+                    ControlSource ="sver"
+                    Format ="#"
+                    GUID = Begin
+                        0x2aa50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =10779
+                    ColumnWidth =555
+                    TabIndex =15
+                    Name ="chel"
+                    ControlSource ="chel"
+                    Format ="#"
+                    GUID = Begin
+                        0x2ba50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =11346
+                    ColumnWidth =600
+                    TabIndex =16
+                    Name ="kizel"
+                    ControlSource ="kizel"
+                    Format ="#"
+                    GUID = Begin
+                        0x2ca50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =11913
+                    ColumnWidth =720
+                    TabIndex =17
+                    Name ="BASHK"
+                    ControlSource ="BASHK"
+                    Format ="#"
+                    GUID = Begin
+                        0x2da50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =12480
+                    ColumnWidth =525
+                    TabIndex =18
+                    Name ="EKIB"
+                    ControlSource ="EKIB"
+                    Format ="#"
+                    GUID = Begin
+                        0x2ea50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =13047
+                    ColumnWidth =690
+                    TabIndex =19
+                    Name ="KARAG"
+                    ControlSource ="KARAG"
+                    Format ="#"
+                    GUID = Begin
+                        0x2fa50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =13614
+                    ColumnWidth =480
+                    TabIndex =20
+                    Name ="KAN"
+                    ControlSource ="KAN"
+                    Format ="#"
+                    GUID = Begin
+                        0x30a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =14181
+                    ColumnWidth =630
+                    TabIndex =21
+                    Name ="nazar"
+                    ControlSource ="nazar"
+                    Format ="#"
+                    GUID = Begin
+                        0x31a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =14748
+                    ColumnWidth =690
+                    TabIndex =22
+                    Name ="ibor"
+                    ControlSource ="ibor"
+                    Format ="#"
+                    GUID = Begin
+                        0x32a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =15315
+                    ColumnWidth =615
+                    TabIndex =23
+                    Name ="berez"
+                    ControlSource ="berez"
+                    Format ="#"
+                    GUID = Begin
+                        0x33a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =15882
+                    ColumnWidth =465
+                    TabIndex =24
+                    Name ="per"
+                    ControlSource ="per"
+                    Format ="#"
+                    GUID = Begin
+                        0x34a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =16449
+                    ColumnWidth =675
+                    TabIndex =25
+                    Name ="IRKUT"
+                    ControlSource ="IRKUT"
+                    Format ="#"
+                    GUID = Begin
+                        0x35a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =17016
+                    ColumnWidth =600
+                    TabIndex =26
+                    Name ="azey"
+                    ControlSource ="azey"
+                    Format ="#"
+                    GUID = Begin
+                        0x36a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =17583
+                    ColumnWidth =570
+                    TabIndex =27
+                    Name ="cher"
+                    ControlSource ="cher"
+                    Format ="#"
+                    GUID = Begin
+                        0x37a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =18150
+                    ColumnWidth =480
+                    TabIndex =28
+                    Name ="HAK"
+                    ControlSource ="HAK"
+                    Format ="#"
+                    GUID = Begin
+                        0x38a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =18717
+                    ColumnWidth =480
+                    TabIndex =29
+                    Name ="TUV"
+                    ControlSource ="TUV"
+                    Format ="#"
+                    GUID = Begin
+                        0x39a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =19284
+                    ColumnWidth =495
+                    TabIndex =30
+                    Name ="BUR"
+                    ControlSource ="BUR"
+                    Format ="#"
+                    GUID = Begin
+                        0x3aa50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =19851
+                    ColumnWidth =660
+                    TabIndex =31
+                    Name ="gusin"
+                    ControlSource ="gusin"
+                    Format ="#"
+                    GUID = Begin
+                        0x3ba50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =20418
+                    ColumnWidth =570
+                    TabIndex =32
+                    Name ="tugn"
+                    ControlSource ="tugn"
+                    Format ="#"
+                    GUID = Begin
+                        0x3ca50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =20985
+                    ColumnWidth =540
+                    TabIndex =33
+                    Name ="CHIT"
+                    ControlSource ="CHIT"
+                    Format ="#"
+                    GUID = Begin
+                        0x3da50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =21552
+                    ColumnWidth =495
+                    TabIndex =34
+                    Name ="YAKUT"
+                    ControlSource ="YAKUT"
+                    Format ="#"
+                    GUID = Begin
+                        0x3ea50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =22119
+                    ColumnWidth =675
+                    TabIndex =35
+                    Name ="RAICH"
+                    ControlSource ="RAICH"
+                    Format ="#"
+                    GUID = Begin
+                        0x3fa50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =22686
+                    ColumnWidth =510
+                    TabIndex =36
+                    Name ="URG"
+                    ControlSource ="URG"
+                    Format ="#"
+                    GUID = Begin
+                        0x40a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =23253
+                    ColumnWidth =570
+                    TabIndex =37
+                    Name ="PRIM"
+                    ControlSource ="PRIM"
+                    Format ="#"
+                    GUID = Begin
+                        0x41a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =23820
+                    ColumnWidth =600
+                    TabIndex =38
+                    Name ="LUCH"
+                    ControlSource ="LUCH"
+                    Format ="#"
+                    GUID = Begin
+                        0x42a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =24387
+                    ColumnWidth =510
+                    TabIndex =39
+                    Name ="MAG"
+                    ControlSource ="MAG"
+                    Format ="#"
+                    GUID = Begin
+                        0x43a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =87
+                    Left =24954
+                    ColumnWidth =480
+                    TabIndex =40
+                    Name ="SAH"
+                    ControlSource ="SAH"
+                    Format ="#"
+                    GUID = Begin
+                        0x44a50ceacbe8d511be1c0050bf59f750
+                    End
+                End
+            End
+        End
+    End
+End

@@ -1,115 +1,414 @@
-{# ТЭП АЭС. aes_tep_show_price_years: true — исходные данные (столбцы «год»); false — в ценах года (расчётные удельные, без годов). #}
-{% set aes_tep_show_price_years = aes_tep_show_price_years | default(true) %}
-{% set aes_tep_ncols = 21 if aes_tep_show_price_years else 17 %}
+{# ТЭП АЭС. aes_tep_show_price_years: true — исходные данные (столбцы «год»);
+false — в ценах года (расчётные удельные, без годов). #} {% set
+aes_tep_show_price_years = aes_tep_show_price_years | default(true) %} {% set
+aes_tep_ncols = 21 if aes_tep_show_price_years else 17 %}
 <div class="table-responsive">
-    <table class="table table-hover table-striped table-bordered prospective-places-aes-table tep-aes-page-table mb-0" style="text-align: center;">
-        <thead class="table-success">
-            {% if aes_tep_show_price_years %}
-            <tr class="text-center align-middle">
-                <th rowspan="2" style="min-width: 48px;">№ п/п</th>
-                <th rowspan="2" style="min-width: 140px;">Наименование площадки</th>
-                <th rowspan="2" style="min-width: 90px;">Станционный номер блока</th>
-                <th rowspan="2" style="min-width: 120px;">Тип энергоблока</th>
-                <th rowspan="2" style="min-width: 85px;">Мощность энергоблока, МВт</th>
-                <th rowspan="2" style="min-width: 100px;">Возможный срок реализации</th>
-                <th rowspan="2" style="min-width: 90px;">Срок эксплуатации АЭС, лет</th>
-                <th rowspan="2" style="min-width: 90px;">Срок строительства АЭС, лет</th>
-                <th rowspan="2" style="min-width: 110px;">Предельное годовое число часов использования мощности энергоблока, час</th>
-                <th colspan="2" style="min-width: 200px; white-space: normal;">Удельная топливная составляющая эксплуатационных затрат в ценах текущего года</th>
-                <th colspan="2" style="min-width: 200px; white-space: normal;">Удельные условно постоянные эксплуатационные затраты (без амортизационных отчислений)</th>
-                <th rowspan="2" style="min-width: 110px; white-space: normal;">Относительная величина расхода электрической энергии на собственные нужды АЭС, %</th>
-                <th colspan="2" style="min-width: 200px; white-space: normal;">Удельные капиталовложения в строительство АЭС в ценах текущего года (без НДС)</th>
-                <th colspan="2" style="min-width: 180px; white-space: normal;">Удельные затраты на вывод из эксплуатации</th>
-                <th rowspan="2" style="min-width: 100px; white-space: normal;">Вероятность аварийного состояния</th>
-                <th colspan="2" style="min-width: 160px; white-space: normal;">Относительная продолжительность плановых простоев:</th>
-            </tr>
-            <tr class="text-center align-middle table-success">
-                <th style="min-width: 100px; white-space: normal;">руб./кВт·ч</th>
-                <th style="min-width: 52px;">год</th>
-                <th style="min-width: 100px; white-space: normal;">тыс. руб./кВт</th>
-                <th style="min-width: 52px;">год</th>
-                <th style="min-width: 100px; white-space: normal;">тыс. руб./кВт</th>
-                <th style="min-width: 52px;">год</th>
-                <th style="min-width: 100px; white-space: normal;">тыс. руб./кВт</th>
-                <th style="min-width: 52px;">год</th>
-                <th>ОЗП</th>
-                <th>ВЛП</th>
-            </tr>
-            {% else %}
-            <tr class="text-center align-middle">
-                <th rowspan="2" style="min-width: 48px;">№ п/п</th>
-                <th rowspan="2" style="min-width: 140px;">Наименование площадки</th>
-                <th rowspan="2" style="min-width: 90px;">Станционный номер блока</th>
-                <th rowspan="2" style="min-width: 120px;">Тип энергоблока</th>
-                <th rowspan="2" style="min-width: 85px;">Мощность энергоблока, МВт</th>
-                <th rowspan="2" style="min-width: 100px;">Возможный срок реализации</th>
-                <th rowspan="2" style="min-width: 90px;">Срок эксплуатации АЭС, лет</th>
-                <th rowspan="2" style="min-width: 90px;">Срок строительства АЭС, лет</th>
-                <th rowspan="2" style="min-width: 110px;">Предельное годовое число часов использования мощности энергоблока, час</th>
-                <th rowspan="2" style="min-width: 120px; white-space: normal;">Удельная топливная составляющая эксплуатационных затрат<br><span class="fw-normal">руб./кВт·ч</span></th>
-                <th rowspan="2" style="min-width: 120px; white-space: normal;">Удельные условно постоянные эксплуатационные затраты (без амортизационных отчислений)<br><span class="fw-normal">тыс. руб./кВт</span></th>
-                <th rowspan="2" style="min-width: 110px; white-space: normal;">Относительная величина расхода электрической энергии на собственные нужды АЭС, %</th>
-                <th rowspan="2" style="min-width: 120px; white-space: normal;">Удельные капиталовложения в строительство АЭС (без НДС)<br><span class="fw-normal">тыс. руб./кВт</span></th>
-                <th rowspan="2" style="min-width: 120px; white-space: normal;">Удельные затраты на вывод из эксплуатации<br><span class="fw-normal">тыс. руб./кВт</span></th>
-                <th rowspan="2" style="min-width: 100px; white-space: normal;">Вероятность аварийного состояния</th>
-                <th colspan="2" style="min-width: 160px; white-space: normal;">Относительная продолжительность плановых простоев:</th>
-            </tr>
-            <tr class="text-center align-middle table-success">
-                <th>ОЗП</th>
-                <th>ВЛП</th>
-            </tr>
-            {% endif %}
-        </thead>
-        <tbody>
-            {% if tep_rows %}
-                {% for row in tep_rows %}
-                <tr>
-                    <td class="text-center align-middle">{{ row.idx }}</td>
-                    {% if row.show_station_cell %}
-                    <td class="text-center align-middle" rowspan="{{ row.station_rowspan }}"><a href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=row.place_id) }}">{{ row.site_name }}</a></td>
-                    {% endif %}
-                    <td class="text-center align-middle">{% if can_edit %}<a href="{{ url_for('prospective_places_bp.machine_prospective_place_aes_details', place_id=row.place_id, machine_id=row.machine_id) }}" class="text-decoration-none">{{ row.machine.station_block_number }}</a>{% else %}{{ row.machine.station_block_number }}{% endif %}</td>
-                    <td class="text-center align-middle">{{ row.machine.unit_type }}</td>
-                    <td class="text-center align-middle">{{ row.machine.unit_capacity_mw }}</td>
-                    <td class="text-center align-middle">{{ row.machine.possible_implementation_period }}</td>
-                    {% set m = row.merged_tep %}
-                    {% set n = row.station_rowspan %}
-                    {% set first = row.is_first_in_station %}
-                    {% if first or not m.service_life_years %}<td class="text-center align-middle"{% if m.service_life_years and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.service_life_years }}</td>{% endif %}
-                    {% if first or not m.construction_period_years %}<td class="text-center align-middle"{% if m.construction_period_years and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.construction_period_years }}</td>{% endif %}
-                    {% if first or not m.max_annual_operating_hours %}<td class="text-center align-middle"{% if m.max_annual_operating_hours and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.max_annual_operating_hours }}</td>{% endif %}
-                    {% if first or not m.specific_fuel_cost_rub_per_kwh %}<td class="text-center align-middle"{% if m.specific_fuel_cost_rub_per_kwh and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.specific_fuel_cost_rub_per_kwh }}</td>{% endif %}
-                    {% if aes_tep_show_price_years %}
-                    {% if first or not m.id_year_specific_fuel_cost %}<td class="text-center align-middle"{% if m.id_year_specific_fuel_cost and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.year_specific_fuel_cost }}</td>{% endif %}
-                    {% endif %}
-                    {% if first or not m.specific_fixed_operating_costs_thous_rub_per_kw %}<td class="text-center align-middle"{% if m.specific_fixed_operating_costs_thous_rub_per_kw and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.specific_fixed_operating_costs_thous_rub_per_kw }}</td>{% endif %}
-                    {% if aes_tep_show_price_years %}
-                    {% if first or not m.id_year_specific_fixed_operating_costs %}<td class="text-center align-middle"{% if m.id_year_specific_fixed_operating_costs and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.year_specific_fixed_operating_costs }}</td>{% endif %}
-                    {% endif %}
-                    {% if first or not m.relative_auxiliary_power_consumption_pct %}<td class="text-center align-middle"{% if m.relative_auxiliary_power_consumption_pct and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.relative_auxiliary_power_consumption_pct }}</td>{% endif %}
-                    {% if first or not m.specific_capital_investment_thous_rub_per_kw %}<td class="text-center align-middle"{% if m.specific_capital_investment_thous_rub_per_kw and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.specific_capital_investment_thous_rub_per_kw }}</td>{% endif %}
-                    {% if aes_tep_show_price_years %}
-                    {% if first or not m.id_year_specific_capital_investment %}<td class="text-center align-middle"{% if m.id_year_specific_capital_investment and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.year_specific_capital_investment }}</td>{% endif %}
-                    {% endif %}
-                    {% if first or not m.specific_decommissioning_cost_thous_rub_per_kw %}<td class="text-center align-middle"{% if m.specific_decommissioning_cost_thous_rub_per_kw and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.specific_decommissioning_cost_thous_rub_per_kw }}</td>{% endif %}
-                    {% if aes_tep_show_price_years %}
-                    {% if first or not m.id_year_specific_decommissioning %}<td class="text-center align-middle"{% if m.id_year_specific_decommissioning and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.year_specific_decommissioning }}</td>{% endif %}
-                    {% endif %}
-                    {% if first or not m.emergency_state_probability %}<td class="text-center align-middle"{% if m.emergency_state_probability and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.emergency_state_probability }}</td>{% endif %}
-                    {% if first or not m.ozp %}<td class="text-center align-middle"{% if m.ozp and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.ozp }}</td>{% endif %}
-                    {% if first or not m.vlp %}<td class="text-center align-middle"{% if m.vlp and first %} rowspan="{{ n }}"{% endif %}>{{ row.tep.vlp }}</td>{% endif %}
-                </tr>
-                {% endfor %}
-                <tr class="table-secondary fw-semibold">
-                    <td colspan="4" class="text-end pe-3">Всего:</td>
-                    <td class="text-center">{{ (tep_total_mw|round(0))|int if tep_total_mw else '—' }}</td>
-                    <td colspan="{{ aes_tep_ncols - 5 }}"></td>
-                </tr>
-            {% else %}
-                <tr>
-                    <td colspan="{{ aes_tep_ncols }}" class="text-center text-muted">Нет данных</td>
-                </tr>
-            {% endif %}
-        </tbody>
-    </table>
+  <table
+    class="table table-hover table-striped table-bordered prospective-places-aes-table tep-aes-page-table mb-0"
+    style="text-align: center"
+  >
+    <thead class="table-success">
+      {% if aes_tep_show_price_years %}
+      <tr class="text-center align-middle">
+        <th rowspan="2" style="min-width: 48px">№ п/п</th>
+        <th rowspan="2" style="min-width: 140px">Наименование площадки</th>
+        <th rowspan="2" style="min-width: 90px">Станционный номер блока</th>
+        <th rowspan="2" style="min-width: 120px">Тип энергоблока</th>
+        <th rowspan="2" style="min-width: 85px">Мощность энергоблока, МВт</th>
+        <th rowspan="2" style="min-width: 100px">Возможный срок реализации</th>
+        <th rowspan="2" style="min-width: 90px">Срок эксплуатации АЭС, лет</th>
+        <th rowspan="2" style="min-width: 90px">Срок строительства АЭС, лет</th>
+        <th rowspan="2" style="min-width: 110px">
+          Предельное годовое число часов использования мощности энергоблока, час
+        </th>
+        <th colspan="2" style="min-width: 200px; white-space: normal">
+          Удельная топливная составляющая эксплуатационных затрат в ценах
+          текущего года
+        </th>
+        <th colspan="2" style="min-width: 200px; white-space: normal">
+          Удельные условно постоянные эксплуатационные затраты (без
+          амортизационных отчислений)
+        </th>
+        <th rowspan="2" style="min-width: 110px; white-space: normal">
+          Относительная величина расхода электрической энергии на собственные
+          нужды АЭС, %
+        </th>
+        <th colspan="2" style="min-width: 200px; white-space: normal">
+          Удельные капиталовложения в строительство АЭС в ценах текущего года
+          (без НДС)
+        </th>
+        <th colspan="2" style="min-width: 180px; white-space: normal">
+          Удельные затраты на вывод из эксплуатации
+        </th>
+        <th rowspan="2" style="min-width: 100px; white-space: normal">
+          Вероятность аварийного состояния
+        </th>
+        <th colspan="2" style="min-width: 160px; white-space: normal">
+          Относительная продолжительность плановых простоев:
+        </th>
+      </tr>
+      <tr class="text-center align-middle table-success">
+        <th style="min-width: 100px; white-space: normal">руб./кВтч</th>
+        <th style="min-width: 52px">год</th>
+        <th style="min-width: 100px; white-space: normal">тыс. руб./кВт</th>
+        <th style="min-width: 52px">год</th>
+        <th style="min-width: 100px; white-space: normal">тыс. руб./кВт</th>
+        <th style="min-width: 52px">год</th>
+        <th style="min-width: 100px; white-space: normal">тыс. руб./кВт</th>
+        <th style="min-width: 52px">год</th>
+        <th>ОЗП</th>
+        <th>ВЛП</th>
+      </tr>
+      {% else %}
+      <tr class="text-center align-middle">
+        <th rowspan="2" style="min-width: 48px">№ п/п</th>
+        <th rowspan="2" style="min-width: 140px">Наименование площадки</th>
+        <th rowspan="2" style="min-width: 90px">Станционный номер блока</th>
+        <th rowspan="2" style="min-width: 120px">Тип энергоблока</th>
+        <th rowspan="2" style="min-width: 85px">Мощность энергоблока, МВт</th>
+        <th rowspan="2" style="min-width: 100px">Возможный срок реализации</th>
+        <th rowspan="2" style="min-width: 90px">Срок эксплуатации АЭС, лет</th>
+        <th rowspan="2" style="min-width: 90px">Срок строительства АЭС, лет</th>
+        <th rowspan="2" style="min-width: 110px">
+          Предельное годовое число часов использования мощности энергоблока, час
+        </th>
+        <th rowspan="2" style="min-width: 120px; white-space: normal">
+          Удельная топливная составляющая эксплуатационных затрат<br /><span
+            class="fw-normal"
+            >руб./кВтч</span
+          >
+        </th>
+        <th rowspan="2" style="min-width: 120px; white-space: normal">
+          Удельные условно постоянные эксплуатационные затраты (без
+          амортизационных отчислений)<br /><span class="fw-normal"
+            >тыс. руб./кВт</span
+          >
+        </th>
+        <th rowspan="2" style="min-width: 110px; white-space: normal">
+          Относительная величина расхода электрической энергии на собственные
+          нужды АЭС, %
+        </th>
+        <th rowspan="2" style="min-width: 120px; white-space: normal">
+          Удельные капиталовложения в строительство АЭС (без НДС)<br /><span
+            class="fw-normal"
+            >тыс. руб./кВт</span
+          >
+        </th>
+        <th rowspan="2" style="min-width: 120px; white-space: normal">
+          Удельные затраты на вывод из эксплуатации<br /><span class="fw-normal"
+            >тыс. руб./кВт</span
+          >
+        </th>
+        <th rowspan="2" style="min-width: 100px; white-space: normal">
+          Вероятность аварийного состояния
+        </th>
+        <th colspan="2" style="min-width: 160px; white-space: normal">
+          Относительная продолжительность плановых простоев:
+        </th>
+      </tr>
+      <tr class="text-center align-middle table-success">
+        <th>ОЗП</th>
+        <th>ВЛП</th>
+      </tr>
+      {% endif %}
+    </thead>
+    <tbody>
+      {% if tep_rows %} {% for row in tep_rows %}
+      <tr>
+        <td class="text-center align-middle">{{ row.idx }}</td>
+        {% if row.show_station_cell %}
+        <td
+          class="text-center align-middle"
+          rowspan="{{ row.station_rowspan }}"
+        >
+          <a
+            href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=row.place_id) }}"
+            >{{ row.site_name }}</a
+          >
+        </td>
+        {% endif %}
+        <td class="text-center align-middle">
+          {% if can_edit %}<a
+            href="{{ url_for('prospective_places_bp.machine_prospective_place_aes_details', place_id=row.place_id, machine_id=row.machine_id) }}"
+            class="text-decoration-none"
+            >{{ row.machine.station_block_number }}</a
+          >{% else %}{{ row.machine.station_block_number }}{% endif %}
+        </td>
+        <td class="text-center align-middle">{{ row.machine.unit_type }}</td>
+        <td class="text-center align-middle">
+          {{ row.machine.unit_capacity_mw }}
+        </td>
+        <td class="text-center align-middle">
+          {{ row.machine.possible_implementation_period }}
+        </td>
+        {% set m = row.merged_tep %} {% set n = row.station_rowspan %} {% set
+        first = row.is_first_in_station %} {% if first or not
+        m.service_life_years %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.service_life_years
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.service_life_years }}
+        </td>
+        {% endif %} {% if first or not m.construction_period_years %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.construction_period_years
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.construction_period_years }}
+        </td>
+        {% endif %} {% if first or not m.max_annual_operating_hours %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.max_annual_operating_hours
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.max_annual_operating_hours }}
+        </td>
+        {% endif %} {% if first or not m.specific_fuel_cost_rub_per_kwh %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.specific_fuel_cost_rub_per_kwh
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.specific_fuel_cost_rub_per_kwh }}
+        </td>
+        {% endif %} {% if aes_tep_show_price_years %} {% if first or not
+        m.id_year_specific_fuel_cost %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.id_year_specific_fuel_cost
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.year_specific_fuel_cost }}
+        </td>
+        {% endif %} {% endif %} {% if first or not
+        m.specific_fixed_operating_costs_thous_rub_per_kw %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.specific_fixed_operating_costs_thous_rub_per_kw
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.specific_fixed_operating_costs_thous_rub_per_kw }}
+        </td>
+        {% endif %} {% if aes_tep_show_price_years %} {% if first or not
+        m.id_year_specific_fixed_operating_costs %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.id_year_specific_fixed_operating_costs
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.year_specific_fixed_operating_costs }}
+        </td>
+        {% endif %} {% endif %} {% if first or not
+        m.relative_auxiliary_power_consumption_pct %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.relative_auxiliary_power_consumption_pct
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.relative_auxiliary_power_consumption_pct }}
+        </td>
+        {% endif %} {% if first or not
+        m.specific_capital_investment_thous_rub_per_kw %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.specific_capital_investment_thous_rub_per_kw
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.specific_capital_investment_thous_rub_per_kw }}
+        </td>
+        {% endif %} {% if aes_tep_show_price_years %} {% if first or not
+        m.id_year_specific_capital_investment %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.id_year_specific_capital_investment
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.year_specific_capital_investment }}
+        </td>
+        {% endif %} {% endif %} {% if first or not
+        m.specific_decommissioning_cost_thous_rub_per_kw %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.specific_decommissioning_cost_thous_rub_per_kw
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.specific_decommissioning_cost_thous_rub_per_kw }}
+        </td>
+        {% endif %} {% if aes_tep_show_price_years %} {% if first or not
+        m.id_year_specific_decommissioning %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.id_year_specific_decommissioning
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.year_specific_decommissioning }}
+        </td>
+        {% endif %} {% endif %} {% if first or not m.emergency_state_probability
+        %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.emergency_state_probability
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.emergency_state_probability }}
+        </td>
+        {% endif %} {% if first or not m.ozp %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.ozp
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.ozp }}
+        </td>
+        {% endif %} {% if first or not m.vlp %}
+        <td
+          class="text-center align-middle"
+          {%
+          if
+          m.vlp
+          and
+          first
+          %}
+          rowspan="{{ n }}"
+          {%
+          endif
+          %}
+        >
+          {{ row.tep.vlp }}
+        </td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+      <tr class="table-secondary fw-semibold">
+        <td colspan="4" class="text-end pe-3">Всего:</td>
+        <td class="text-center">
+          {{ (tep_total_mw|round(0))|int if tep_total_mw else '—' }}
+        </td>
+        <td colspan="{{ aes_tep_ncols - 5 }}"></td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="{{ aes_tep_ncols }}" class="text-center text-muted">
+          Нет данных
+        </td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
 </div>

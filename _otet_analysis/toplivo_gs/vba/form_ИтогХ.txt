@@ -1,0 +1,194 @@
+Version =20
+VersionRequired =20
+Checksum =-173369082
+Begin Form
+    PopUp = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =0
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =12765
+    DatasheetFontHeight =10
+    ItemSuffix =26
+    Left =1608
+    Top =3168
+    Right =10176
+    Bottom =5556
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0xc2e81a45cf8ae240
+    End
+    RecordSource ="ИтогХ"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =851
+            Height =284
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin Section
+            Height =284
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x5ac7d87098d7a747b8387fc6ab5d0b85
+            End
+            Begin
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =93
+                    ColumnWidth =945
+                    ColumnOrder =0
+                    Name ="type"
+                    ControlSource ="type"
+                    Format ="#"
+                    GUID = Begin
+                        0x1ef335f2ec36944b852f44ba74c3fef9
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =850
+                    ColumnWidth =780
+                    ColumnOrder =10
+                    TabIndex =1
+                    Name ="2014"
+                    ControlSource ="2014"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2014"
+                    GUID = Begin
+                        0x841bb7b88ed5844eb05abdf82a47eaa9
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =1700
+                    ColumnWidth =816
+                    TabIndex =2
+                    Name ="2015"
+                    ControlSource ="2015"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2015"
+                    GUID = Begin
+                        0xfcf53bd7bd3110408943a5565943f09c
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =2551
+                    ColumnWidth =792
+                    TabIndex =3
+                    Name ="2016"
+                    ControlSource ="2016"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2016"
+                    GUID = Begin
+                        0xbe17b60d45922848ad1824d86d5eb513
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =255
+                    Left =3401
+                    ColumnWidth =816
+                    TabIndex =4
+                    Name ="2017"
+                    ControlSource ="2017"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2017"
+                    GUID = Begin
+                        0xd78ed11f78b54f49a7b8a45cd8b19abc
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =4251
+                    ColumnWidth =828
+                    TabIndex =5
+                    Name ="2018"
+                    ControlSource ="2018"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2018"
+                    GUID = Begin
+                        0x2c9181e189634d4b89326f695db99f0c
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =5102
+                    ColumnWidth =888
+                    TabIndex =6
+                    Name ="2019"
+                    ControlSource ="2019"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2019"
+                    GUID = Begin
+                        0x5f1f95a6a05a2441ba8c3e3166ffdefc
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =5952
+                    ColumnWidth =792
+                    TabIndex =7
+                    Name ="2020"
+                    ControlSource ="2020"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2020"
+                    GUID = Begin
+                        0x4b6d03e16d5d6c439946b7f4ae11c5a2
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =127
+                    Left =6803
+                    ColumnWidth =756
+                    TabIndex =8
+                    Name ="2021"
+                    ControlSource ="2021"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2021"
+                    GUID = Begin
+                        0x0c6dd914911c1a408c45add45a3187eb
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =119
+                    Left =7653
+                    ColumnWidth =864
+                    TabIndex =9
+                    Name ="2022"
+                    ControlSource ="2022"
+                    Format ="#"
+                    EventProcPrefix ="Ctl2022"
+                    GUID = Begin
+                        0x7e1a7a9b99dbc3409f5f49e44cfabef9
+                    End
+                End
+            End
+        End
+    End
+End

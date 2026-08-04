@@ -178,6 +178,7 @@ function initializeStationFilters() {
     function scheduleFiltersFormSubmit() {
         const filtersForm =
             document.querySelector('#filtersCollapse form') ||
+            document.querySelector('#dpListFilterForm') ||
             document.querySelector('#distributionFiltersCollapse form');
         if (!filtersForm) return;
         if (filtersForm._submitTimer) {
@@ -576,6 +577,7 @@ function initializeStationFilters() {
     // Поля могут быть вне <form> (атрибут form=...) — например фильтры в шапке таблицы параметров распределения.
     const filtersForm =
         document.querySelector('#filtersCollapse form') ||
+        document.querySelector('#dpListFilterForm') ||
         document.querySelector('#distributionFiltersCollapse form');
     if (filtersForm) {
         const filterSelectors = [

@@ -1,7 +1,7 @@
-{# Фрагмент как на stations_equipment_group_extra_fuel_params: только таблица. #}
+{# Фрагмент предпросмотра доп. топливных параметров для batch recalc. #}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
 {% set extra_fuel_param_columns = [
-    ('numb1120', 'Код электростанции', false),
+    ('numb1120', 'Код группы оборудования', false),
     ('gaz_prir', 'gaz_prir', true), ('gazpp', 'gazpp', true), ('disel', 'disel', true), ('maztop', 'maztop', true),
     ('gtt', 'gtt', true), ('nft_proch', 'nft_proch', true), ('domen_g', 'domen_g', true), ('koks_g', 'koks_g', true),
     ('prochgaz', 'prochgaz', true), ('tvproch', 'tvproch', true), ('szh_gaz', 'szh_gaz', true), ('inoe', 'inoe', true),
@@ -27,7 +27,7 @@
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                 <th style="width: 120px;">Группа оборудования</th>
                 {% for attr, label, is_numeric in extra_fuel_param_columns %}
-                <th style="width: 70px;">{{ fuel_nazvl_to_name.get(attr, label) }}<br><span class="text-muted small">({{ attr }})</span></th>
+                <th style="width: 70px;">{{ fuel_nazvl_to_name.get(attr, label) }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span></th>
                 {% endfor %}
             </tr>
         </thead>

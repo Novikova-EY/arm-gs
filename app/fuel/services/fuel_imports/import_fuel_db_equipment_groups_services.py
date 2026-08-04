@@ -64,6 +64,8 @@ _GE_NUMB_SOURCE_COLUMN_NORMALS = frozenset(
     (
         "numb1120",
         "topl_numb",
+        _normalize_column_name("Код группы оборудования (numb)"),
+        # Старый заголовок экспорта (до переименования)
         _normalize_column_name("Код электростанции (numb)"),
     )
 )
@@ -181,7 +183,7 @@ for _fld in EQUIPMENT_GROUP_UPDATE_FIELDS:
         lst.append(_fld)
 # name и name_ext оба берут значение из topl_name (ge_name_ext)
 EQUIPMENT_GROUP_FIELD_TO_COLUMNS.setdefault("name", []).insert(0, "ge_name_ext")
-# numb только из ge_numb (источники: topl_NUMB, numb1120, «Код электростанции (numb)» — см. _coalesce_ge_numb_source_columns)
+# numb только из ge_numb (источники: topl_NUMB, numb1120, «Код группы оборудования (numb)» — см. _coalesce_ge_numb_source_columns)
 EQUIPMENT_GROUP_FIELD_TO_COLUMNS["numb"] = ["ge_numb"]
 MACHINE_FUEL_PARAM_INTEGER_FIELDS = frozenset([
     "numb1120", "numb", "stnumb", "yearin",
@@ -321,9 +323,9 @@ def _coalesce_equipment_group_name_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def _coalesce_ge_numb_source_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
-    numb1120, topl_NUMB и «Код электростанции (numb)» (экспорт /fuel/stations_equipment_groups) → одна колонка ge_numb.
+    numb1120, topl_NUMB и «Код группы оборудования (numb)» (экспорт /fuel/stations_equipment_groups) → одна колонка ge_numb.
 
-    В экспорте нет topl_NUMB: numb дублируется в numb1120 и в «Код электростанции (numb)»; без слияния импорт
+    В экспорте нет topl_NUMB: numb дублируется в numb1120 и в «Код группы оборудования (numb)»; без слияния импорт
     не получал ge_numb и шаг 4.2 не сопоставлял строки с EquipmentGroup.numb в БД.
     """
     norms = _GE_NUMB_SOURCE_COLUMN_NORMALS | {"ge_numb"}
@@ -365,7 +367,14 @@ def _apply_column_aliases(df: pd.DataFrame) -> pd.DataFrame:
     add_aliases("ge_name_ext", ["topl_name", "name_ext"])
     add_aliases("ge_niv", ["topl_niv"])
     add_aliases("ge_comp", ["topl_comp"])
-    add_aliases("ge_main", ["topl_main"])
+    add_aliases(
+        "ge_main",
+        [
+            "topl_main",
+            "Код группы оборудования (main)",
+            "Код электростанции (main)",
+        ],
+    )
     add_aliases("ge_numb", ["topl_numb"])
     add_aliases("ge_ordnumb", ["topl_ordnumb"])
     add_aliases("ge_d", ["topl_d"])

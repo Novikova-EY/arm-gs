@@ -144,7 +144,7 @@
                         {% if can_edit %}<input type="text" name="name_ext" class="form-control" value="{{ equipment_group.name_ext or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.name_ext or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Код электростанции (numb)</label>
+                        <label class="form-label fw-semibold">Код группы оборудования (numb)</label>
                         {% if can_edit %}<input type="number" name="numb" class="form-control" value="{{ equipment_group.numb if equipment_group.numb is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
@@ -176,7 +176,7 @@
                         {% if can_edit %}<input type="number" name="comp" class="form-control" value="{{ equipment_group.comp if equipment_group.comp is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Код электростанции (main)</label>
+                        <label class="form-label fw-semibold">Код группы оборудования (main)</label>
                         {% if can_edit %}<input type="number" name="main" class="form-control" value="{{ equipment_group.main if equipment_group.main is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>{% endif %}
                     </div>
                     <div class="w-100"></div>
@@ -252,11 +252,11 @@
                         <button type="submit" name="delete_all_versions" value="1" class="btn btn-outline-danger fs-5" title="Удалить группу оборудования во всех версиях БД" onclick="return confirm('Удалить группу оборудования во всех версиях БД? Это действие нельзя отменить.');">Удалить во всех версиях</button>
                     </div>
                     <div class="d-flex gap-2 flex-wrap">
-                        <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
+                        <button type="submit" class="btn btn-outline-primary">Сохранить</button>
                         <button type="submit"
                                 name="all_versions"
                                 value="1"
-                                class="btn btn-outline-success fs-5"
+                                class="btn btn-outline-success"
                                 title="Применить изменения карточки группы оборудования во всех версиях БД (по external_code)"
                                 onclick="return confirmEquipmentGroupHeaderSaveAllVersions(this);">Сохранить во всех версиях</button>
                         <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>
@@ -334,7 +334,7 @@
                                     <th rowspan="2" style="width: 80px;">Тип агрегата ТЭС</th>
                                     <th rowspan="2" class="col-equipment-group-type" style="width: 120px;">Тип<br>группы<br>оборуд.</th>
                                     <th rowspan="2" class="col-fuel-type">Топливо <br> (по СО ЕЭС)</th>
-                                    <th rowspan="2" style="width: 90px; white-space: normal;">Тепловая мощность,<br>Гкал/час</th>
+                                    <th rowspan="2" style="width: 90px; white-space: normal;">Тепловая мощность отборов, Гкал/ч<br><span class="text-muted small">({{ 'nt'|fuel_header_code }})</span></th>
                                     <th colspan="{{ end_year - start_year + 1 }}">Установленная электрическая мощность, МВт</th>
                                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                                     <th rowspan="2" class="col-note">Примечание</th>
@@ -419,7 +419,7 @@
                             {% for label, values_by_year in table1_params_grid %}
                             {% set attr = table1_attrs[loop.index0] %}
                             <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
@@ -461,7 +461,7 @@
                             {% for label, values_by_year in table2_params_grid %}
                             {% set attr = table2_attrs[loop.index0] %}
                             <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
@@ -511,7 +511,7 @@
                                 <td class="first-column text-start">
                                     {% if is_calc_row %}<span class="text-muted me-1" title="Расчётная строка">∑</span>{% endif %}
                                     <span class="fw-bold">{{ label }}</span>
-                                    <span class="text-muted small">({{ attr }})</span>
+                                    <span class="text-muted small">({{ attr|fuel_header_code }})</span>
                                     {% if is_calc_row %}<span class="badge bg-light text-dark border ms-1">auto</span>{% endif %}
                                     {% if consumption_formulas is defined and consumption_formulas.get(attr) %}
                                     <span class="ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr)|e }}" style="cursor: help;">ⓘ</span>
@@ -560,7 +560,7 @@
                             {% for label, values_by_year in table3_params_grid %}
                             {% set attr = table3_attrs[loop.index0] %}
                             <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
@@ -602,7 +602,7 @@
                             {% for label, values_by_year in table4_cost_grid %}
                             {% set attr = table4_cost_attrs[loop.index0] %}
                             <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr }})</span></td>
+                                <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
                                     {% set v_full = v|format_decimal(0) if v is not none else '' %}
@@ -651,7 +651,7 @@
                                 <td class="first-column text-start">
                                     <span class="text-muted me-1" title="Расчётная строка">∑</span>
                                     <span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr[:-7] if attr|length >= 7 and attr[-5:] == '_calc' else (attr[:-2] if attr|length >= 2 and attr[-2:] == '_c' else attr), label) }}</span>
-                                    <span class="text-muted small">({{ attr }})</span>
+                                    <span class="text-muted small">({{ attr|fuel_header_code }})</span>
                                     <span class="badge bg-light text-dark border ms-1">auto</span>
                                     {% if price_formulas is defined and price_formulas.get(attr) %}
                                     <span class="ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ price_formulas.get(attr)|e }}" style="cursor: help;">ⓘ</span>
@@ -717,11 +717,11 @@
         {% if can_edit %}
         <div class="d-flex justify-content-end gap-2 mt-3 mb-3 flex-wrap">
             <input type="hidden" name="save_fuel_params" value="1">
-            <button type="submit" class="btn btn-outline-primary fs-5" title="Сохранить: основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
+            <button type="submit" class="btn btn-outline-primary" title="Сохранить: основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
             <button type="submit"
                     name="all_versions"
                     value="1"
-                    class="btn btn-outline-success fs-5"
+                    class="btn btn-outline-success"
                     title="Применить топливные параметры, удельные показатели, стоимость и цену во всех версиях БД (по external_code)"
                     onclick="return confirmEquipmentGroupFuelParamsSaveAllVersions(this);">Сохранить параметры топлива во всех версиях</button>
             <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" class="btn btn-outline-danger fs-5">Отмена</a>

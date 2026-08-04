@@ -132,7 +132,7 @@ def _write_ges_tep_main_sheet_current_year_prices(ws, tep_groups: list[dict]) ->
         _apply_border_to_range(ws, 2, 4, col, col, thin)
 
     ws.merge_cells(start_row=2, start_column=11, end_row=2, end_column=15)
-    c = ws.cell(row=2, column=11, value="Выработка электроэнергии,\nмлн кВт·ч")
+    c = ws.cell(row=2, column=11, value="Выработка электроэнергии,\nмлн кВтч")
     _style_cell(c, font=header_font, fill=header_fill, align=center, border=thin)
     _apply_border_to_range(ws, 2, 2, 11, 15, thin)
 
@@ -406,7 +406,7 @@ def _write_ges_tep_main_sheet_source_prices(ws, tep_groups: list[dict]) -> None:
         _apply_border_to_range(ws, 2, 4, col, col, thin)
 
     ws.merge_cells(start_row=2, start_column=11, end_row=2, end_column=15)
-    c = ws.cell(row=2, column=11, value="Выработка электроэнергии,\nмлн кВт·ч")
+    c = ws.cell(row=2, column=11, value="Выработка электроэнергии,\nмлн кВтч")
     _style_cell(c, font=header_font, fill=header_fill, align=center, border=thin)
     _apply_border_to_range(ws, 2, 2, 11, 15, thin)
 

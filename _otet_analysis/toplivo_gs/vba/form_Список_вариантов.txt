@@ -1,0 +1,102 @@
+Version =19
+VersionRequired =19
+Checksum =-440772131
+Begin Form
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =5
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =6123
+    DatasheetFontHeight =10
+    ItemSuffix =2
+    Left =1800
+    Top =720
+    Right =4932
+    Bottom =2352
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x87225482ae05e240
+    End
+    GUID = Begin
+        0xcfebbc1a10a94c47ac2e47a9d5c83f69
+    End
+    NameMap = Begin
+        0x0acc0e5500000000e5920c48025f6441992a6aa3ca93dc08000000008f52931c ,
+        0xae76e340000000000000000021043f04380441043e043a042d00320430044004 ,
+        0x380430043d0442043e043204000000000000de458046c07adc49b0a760907dff ,
+        0x05fa07000000e5920c48025f6441992a6aa3ca93dc086e0061006d0065000000 ,
+        0x00000000cf2f985ee2633148ad6912cbfb7e93de07000000e5920c48025f6441 ,
+        0x992a6aa3ca93dc0877006e0061006d0065000000
+    End
+    RecordSource ="Список-вариантов"
+    OnOpen ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            FELineBreak = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =283
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0xb69e4e9cc1379a4b98fb414d58fd0905
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =85
+                    Width =4401
+                    ColumnWidth =2865
+                    Name ="name"
+                    ControlSource ="name"
+                    GUID = Begin
+                        0x3d7712ef64d67e4ba95ecf2afb0b3be3
+                    End
+                End
+                Begin TextBox
+                    Visible = NotDefault
+                    OverlapFlags =85
+                    Left =4422
+                    ColumnWidth =2805
+                    TabIndex =1
+                    Name ="wname"
+                    ControlSource ="wname"
+                    GUID = Begin
+                        0x3ee0ff424d75a942a11677ef29d08927
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+
+Private Sub Form_Open(Cancel As Integer)
+Dim db As Database, cv As DAO.Recordset, sv As DAO.Recordset, s As String
+Set db = DBEngine.Workspaces(0).Databases(0)
+Set cv = db.OpenRecordset("Текущий_вариант", DB_OPEN_TABLE)
+Set sv = RecordsetClone
+s = "name='" & cv!Name & "'"
+sv.FindFirst s
+Bookmark = sv.Bookmark
+End Sub

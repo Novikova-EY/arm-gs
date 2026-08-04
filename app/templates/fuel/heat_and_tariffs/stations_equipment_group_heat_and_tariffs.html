@@ -1,276 +1,342 @@
-{% extends 'base.html' %}
-{% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+{% extends 'base.html' %} {% from 'fuel/_shared/_value_macros.html' import
+render_numeric_or_dash %} {% block title %}Тепло и тарифы из СТ{% endblock %} {%
+block content %} {% if current_user.is_authenticated %}
 
-{% block title %}Тепло и тарифы из СТ{% endblock %}
-
-{% block content %}
-{% if current_user.is_authenticated %}
-
-<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-    <div class="text-center">
-        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-            <span class="visually-hidden">Загрузка...</span>
-        </div>
-        <p class="mt-3 h4">Загрузка данных...</p>
-        <p class="text-muted">Это может занять некоторое время</p>
+<div
+  id="loading-overlay"
+  style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  "
+>
+  <div class="text-center">
+    <div
+      class="spinner-border text-primary"
+      role="status"
+      style="width: 3rem; height: 3rem"
+    >
+      <span class="visually-hidden">Загрузка...</span>
     </div>
+    <p class="mt-3 h4">Загрузка данных...</p>
+    <p class="text-muted">Это может занять некоторое время</p>
+  </div>
 </div>
 
 <div class="container-fluid mt-2">
+  <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+    <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"
+      ><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a
+    >
+    <a
+      href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
+      class="btn btn-secondary fs-5"
+      >Группы оборудования</a
+    >
+    <a
+      href="{{ url_for('station_bp.station_list') }}"
+      class="btn btn-secondary fs-5"
+      >Электростанции РФ</a
+    >
+  </div>
+
+  <div class="col-12 mb-2">
+    <h2 class="text-center mb-4">Тепло и тарифы из схем теплоснабжения</h2>
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
-        <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
+      <a
+        href="{{ url_for('station_bp.add_station') }}"
+        class="btn btn-outline-success text-dark"
+      >
+        ➕ Добавить электростанцию
+      </a>
+      <a
+        href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}"
+        class="btn btn-outline-primary text-dark"
+      >
+        ➕ Добавить группу оборудования
+      </a>
     </div>
+  </div>
 
-    <div class="col-12 mb-2">
-        <h2 class="text-center mb-4">Тепло и тарифы из схем теплоснабжения</h2>
-        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-            <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
-                ➕ Добавить электростанцию
-            </a>
-            <a href="{{ url_for('fuel_bp.add_equipment_group', **request.args) }}" class="btn btn-outline-primary text-dark">
-                ➕ Добавить группу оборудования
-            </a>
-        </div>
-    </div>
+  {% include
+  'fuel/heat_and_tariffs/stations_equipment_group_heat_and_tariffs_filters.html'
+  %} {% set identity_columns = heat_and_tariffs_identity_columns|default([]) %}
+  {% set metric_columns = heat_and_tariffs_metric_columns|default([]) %} {% set
+  years = years|default([]) %} {% set metric_count = metric_columns|length if
+  metric_columns else 2 %} {% set column_count = 1 + identity_columns|length + 1
+  + years|length %} {% set identity_colspan = 1 + identity_columns|length %}
 
-    {% include 'fuel/heat_and_tariffs/stations_equipment_group_heat_and_tariffs_filters.html' %}
+  <style>
+    #heatAndTariffsScrollWrap {
+      overflow-x: auto;
+      overflow-y: visible;
+      max-width: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+    #heatAndTariffsTable {
+      width: max-content;
+      min-width: 100%;
+      margin-bottom: 0;
+    }
+    #heatAndTariffsTable .hat-year-col {
+      white-space: nowrap;
+      min-width: 4.5rem;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+    #heatAndTariffsTable thead .hat-year-col {
+      white-space: nowrap;
+    }
+  </style>
 
-{% set identity_columns = heat_and_tariffs_identity_columns|default([]) %}
-{% set metric_columns = heat_and_tariffs_metric_columns|default([]) %}
-{% set years = years|default([]) %}
-{% set metric_count = metric_columns|length if metric_columns else 2 %}
-{% set column_count = 1 + identity_columns|length + 1 + years|length %}
-{% set identity_colspan = 1 + identity_columns|length %}
-
-    <style>
-        #heatAndTariffsScrollWrap {
-            overflow-x: auto;
-            overflow-y: visible;
-            max-width: 100%;
-            -webkit-overflow-scrolling: touch;
-        }
-        #heatAndTariffsTable {
-            width: max-content;
-            min-width: 100%;
-            margin-bottom: 0;
-        }
-        #heatAndTariffsTable .hat-year-col {
-            white-space: nowrap;
-            min-width: 4.5rem;
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-        }
-        #heatAndTariffsTable thead .hat-year-col {
-            white-space: nowrap;
-        }
-    </style>
-
-    <div class="table-responsive" id="heatAndTariffsScrollWrap">
-    <table class="table table-hover table-striped table-bordered" id="heatAndTariffsTable">
-        <thead class="table-success">
-            <tr class="text-center align-middle">
-                <th style="min-width: 140px;">Группа оборудования / ЭТО</th>
-                {% for attr, label, is_numeric in identity_columns %}
-                <th style="min-width: 80px;" class="hat-col-{{ attr }}" data-column="{{ attr }}">
-                    {{ label }}<br><span class="text-muted small">({{ attr }})</span>
-                </th>
-                {% endfor %}
-                <th style="min-width: 90px;">Показатель</th>
-                {% for year in years %}
-                <th class="hat-year-col text-center align-middle" data-year="{{ year }}">
-                    {{ year }}
-                    {% if year_features is defined and year in year_features and year_features[year] %}
-                    <div class="text-muted small" style="white-space: nowrap;">{{ year_features[year] }}</div>
-                    {% endif %}
-                </th>
-                {% endfor %}
-            </tr>
-        </thead>
-
-        <tbody>
-            {% if equipment_group_heat_and_tariffs_hierarchy and equipment_group_heat_and_tariffs_hierarchy|length > 0 %}
-            {% for est_block in equipment_group_heat_and_tariffs_hierarchy %}
-                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
-                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
-                </tr>
-                {% for ues_block in est_block.ues_list %}
-                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
-                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
-                    </tr>
-                    {% for res_block in ues_block.res_list %}
-                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
-                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
-                        </tr>
-                        {% for station_block in res_block.station_blocks %}
-                        {% for group_block in station_block.group_blocks %}
-                                {% set group_entity = group_block.equipment_group %}
-                                {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
-                                {% set identity = group_block.identity|default({}) %}
-                                {% set metric_rows = group_block.metric_rows|default([]) %}
-                                {% set n_metrics = metric_rows|length if metric_rows else metric_count %}
-                                {% for metric in metric_rows %}
-                                    <tr class="text-center align-middle">
-                                        {% if loop.first %}
-                                        <td rowspan="{{ n_metrics }}">
-                                            {% if group_entity and group_entity.id and group_entity.id > 0 %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                                                {{ group_name }}
-                                            </a>
-                                            {% else %}
-                                                {{ group_name }}
-                                            {% endif %}
-                                        </td>
-                                        {% for attr, label, is_numeric in identity_columns %}
-                                        <td rowspan="{{ n_metrics }}" class="hat-col-{{ attr }}" data-column="{{ attr }}">
-                                            {{ identity.get(attr)|default('—') }}
-                                        </td>
-                                        {% endfor %}
-                                        {% endif %}
-                                        <td class="hat-metric-label">
-                                            <span class="fw-bold">{{ metric.label }}</span>
-                                            <span class="text-muted small">({{ metric.attr }})</span>
-                                        </td>
-                                        {% for year in years %}
-                                        <td class="hat-year-col" data-year="{{ year }}" data-column="{{ metric.attr }}">
-                                            {{ render_numeric_or_dash(metric.values_by_year.get(year) if metric.values_by_year else none) }}
-                                        </td>
-                                        {% endfor %}
-                                    </tr>
-                                {% endfor %}
-                        {% endfor %}
-                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') and not station_block.get('suppress_station_summary') %}
-                            {% set station_summary = station_block.station_summary|default({}) %}
-                            {% for attr, label, is_numeric in metric_columns %}
-                            <tr class="text-center align-middle table-warning" style="font-weight: bold;">
-                                {% if loop.first %}
-                                <td rowspan="{{ metric_count }}" colspan="{{ identity_colspan }}">{{ station_block.station_name }}, всего</td>
-                                {% endif %}
-                                <td class="hat-metric-label">{{ label }}</td>
-                                {% for year in years %}
-                                <td class="hat-year-col" data-year="{{ year }}">
-                                    {% if attr == 'q' and station_summary.get('q') %}
-                                        {{ render_numeric_or_dash(station_summary.q.get(year)) }}
-                                    {% else %}—{% endif %}
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        {% endif %}
-                        {% endfor %}
-                        {% if res_block.group_blocks %}
-                            {% set res_summary = res_block.res_summary|default({}) %}
-                            {% for attr, label, is_numeric in metric_columns %}
-                            <tr class="text-center align-middle table-info" style="font-weight: bold;">
-                                {% if loop.first %}
-                                <td rowspan="{{ metric_count }}" colspan="{{ identity_colspan }}">{{ res_block.res_name }}, всего</td>
-                                {% endif %}
-                                <td class="hat-metric-label">{{ label }}</td>
-                                {% for year in years %}
-                                <td class="hat-year-col" data-year="{{ year }}">
-                                    {% if attr == 'q' and res_summary.get('q') %}
-                                        {{ render_numeric_or_dash(res_summary.q.get(year)) }}
-                                    {% else %}—{% endif %}
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        {% endif %}
-                    {% endfor %}
-                {% endfor %}
-            {% endfor %}
-            {% else %}
-            <tr>
-                <td colspan="{{ column_count }}" class="text-center text-muted">Нет данных за выбранный период</td>
-            </tr>
+  <div class="table-responsive" id="heatAndTariffsScrollWrap">
+    <table
+      class="table table-hover table-striped table-bordered"
+      id="heatAndTariffsTable"
+    >
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th style="min-width: 140px">Группа оборудования</th>
+          {% for attr, label, is_numeric in identity_columns %}
+          <th
+            style="min-width: 80px"
+            class="hat-col-{{ attr }}"
+            data-column="{{ attr }}"
+          >
+            {{ label }}<br /><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+          </th>
+          {% endfor %}
+          <th style="min-width: 90px">Показатель</th>
+          {% for year in years %}
+          <th
+            class="hat-year-col text-center align-middle"
+            data-year="{{ year }}"
+          >
+            {{ year }} {% if year_features is defined and year in year_features
+            and year_features[year] %}
+            <div class="text-muted small" style="white-space: nowrap">
+              {{ year_features[year] }}
+            </div>
             {% endif %}
-        </tbody>
-    </table>
-    </div>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
 
-    <div class="mt-2">
-        {% if per_page is not none %}
-            {% set pagination_endpoint = 'fuel_bp.stations_equipment_group_heat_and_tariffs' %}
-            {% include 'generation/includes/pagination_station.html' %}
+      <tbody>
+        {% if equipment_group_heat_and_tariffs_hierarchy and
+        equipment_group_heat_and_tariffs_hierarchy|length > 0 %} {% for
+        est_block in equipment_group_heat_and_tariffs_hierarchy %}
+        <tr
+          class="table-light text-center"
+          style="vertical-align: middle; font-weight: bold"
+        >
+          <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+        </tr>
+        {% for ues_block in est_block.ues_list %}
+        <tr
+          class="table-primary text-center"
+          style="vertical-align: middle; font-weight: bold"
+        >
+          <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+        </tr>
+        {% for res_block in ues_block.res_list %}
+        <tr
+          class="table-secondary text-center"
+          style="vertical-align: middle; font-weight: bold"
+        >
+          <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+        </tr>
+        {% for station_block in res_block.station_blocks %} {% for group_block
+        in station_block.group_blocks %} {% set group_entity =
+        group_block.equipment_group %} {% set group_name = (group_entity.name if
+        group_entity and group_entity.name else (group_entity.name_ext if
+        group_entity and group_entity.name_ext else '—')) %} {% set identity =
+        group_block.identity|default({}) %} {% set metric_rows =
+        group_block.metric_rows|default([]) %} {% set n_metrics =
+        metric_rows|length if metric_rows else metric_count %} {% for metric in
+        metric_rows %}
+        <tr class="text-center align-middle">
+          {% if loop.first %}
+          <td rowspan="{{ n_metrics }}">
+            {% if group_entity and group_entity.id and group_entity.id > 0 %}
+            <a
+              href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}"
+              class="text-decoration-none"
+            >
+              {{ group_name }}
+            </a>
+            {% else %} {{ group_name }} {% endif %}
+          </td>
+          {% for attr, label, is_numeric in identity_columns %}
+          <td
+            rowspan="{{ n_metrics }}"
+            class="hat-col-{{ attr }}"
+            data-column="{{ attr }}"
+          >
+            {{ identity.get(attr)|default('—') }}
+          </td>
+          {% endfor %} {% endif %}
+          <td class="hat-metric-label">
+            <span class="fw-bold">{{ metric.label }}</span>
+            <span class="text-muted small">({{ metric.attr }})</span>
+          </td>
+          {% for year in years %}
+          <td
+            class="hat-year-col"
+            data-year="{{ year }}"
+            data-column="{{ metric.attr }}"
+          >
+            {{ render_numeric_or_dash(metric.values_by_year.get(year) if
+            metric.values_by_year else none) }}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %} {% endfor %} {% if station_block.group_blocks|length > 1
+        and not station_block.get('is_virtual') and not
+        station_block.get('suppress_station_summary') %} {% set station_summary
+        = station_block.station_summary|default({}) %} {% for attr, label,
+        is_numeric in metric_columns %}
+        <tr
+          class="text-center align-middle table-warning"
+          style="font-weight: bold"
+        >
+          {% if loop.first %}
+          <td rowspan="{{ metric_count }}" colspan="{{ identity_colspan }}">
+            {{ station_block.station_name }}, всего
+          </td>
+          {% endif %}
+          <td class="hat-metric-label">{{ label }}</td>
+          {% for year in years %}
+          <td class="hat-year-col" data-year="{{ year }}">
+            {% if attr == 'q' and station_summary.get('q') %} {{
+            render_numeric_or_dash(station_summary.q.get(year)) }} {% else %}—{%
+            endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %} {% endif %} {% endfor %} {% if res_block.group_blocks %} {%
+        set res_summary = res_block.res_summary|default({}) %} {% for attr,
+        label, is_numeric in metric_columns %}
+        <tr
+          class="text-center align-middle table-info"
+          style="font-weight: bold"
+        >
+          {% if loop.first %}
+          <td rowspan="{{ metric_count }}" colspan="{{ identity_colspan }}">
+            {{ res_block.res_name }}, всего
+          </td>
+          {% endif %}
+          <td class="hat-metric-label">{{ label }}</td>
+          {% for year in years %}
+          <td class="hat-year-col" data-year="{{ year }}">
+            {% if attr == 'q' and res_summary.get('q') %} {{
+            render_numeric_or_dash(res_summary.q.get(year)) }} {% else %}—{%
+            endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %} {% endif %} {% endfor %} {% endfor %} {% endfor %} {% else
+        %}
+        <tr>
+          <td colspan="{{ column_count }}" class="text-center text-muted">
+            Нет данных за выбранный период
+          </td>
+        </tr>
         {% endif %}
-    </div>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="mt-2">
+    {% if per_page is not none %} {% set pagination_endpoint =
+    'fuel_bp.stations_equipment_group_heat_and_tariffs' %} {% include
+    'generation/includes/pagination_station.html' %} {% endif %}
+  </div>
 </div>
 
 <script id="filters-data" type="application/json">
-    {{ {
-        'energy_system_type_list': energy_system_type_list,
-        'union_energy_system_list': union_energy_system_list,
-        'regional_energy_system_list': regional_energy_system_list,
-        'federal_district_list': federal_district_list,
-        'regional_district_list': regional_district_list,
-        'energy_system_type_filter': energy_system_type_filter,
-        'union_energy_system_filter': union_energy_system_filter,
-        'regional_energy_system_filter': regional_energy_system_filter,
-        'federal_district_filter': federal_district_filter,
-        'regional_district_filter': regional_district_filter,
-        'regional_energy_system_mapping': regional_energy_system_mapping,
-        'regional_district_mapping': regional_district_mapping,
-        'est_to_ues_mapping': est_to_ues_mapping,
-        'est_to_res_mapping': est_to_res_mapping,
-        'est_to_rd_mapping': est_to_rd_mapping,
-        'est_to_fd_mapping': est_to_fd_mapping,
-        'ues_to_est_mapping': ues_to_est_mapping,
-        'ues_to_res_mapping': ues_to_res_mapping,
-        'ues_to_rd_mapping': ues_to_rd_mapping,
-        'ues_to_fd_mapping': ues_to_fd_mapping,
-        'res_to_est_mapping': res_to_est_mapping,
-        'res_to_ues_mapping_one': res_to_ues_mapping_one,
-        'res_to_rd_mapping': res_to_rd_mapping,
-        'res_to_fd_mapping': res_to_fd_mapping,
-        'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
-        'rd_to_res_mapping': rd_to_res_mapping,
-        'rd_to_ues_mapping': rd_to_ues_mapping,
-        'rd_to_est_mapping': rd_to_est_mapping,
-        'fd_to_rd_mapping': fd_to_rd_mapping,
-        'fd_to_res_mapping': fd_to_res_mapping,
-        'fd_to_ues_mapping': fd_to_ues_mapping,
-        'fd_to_est_mapping': fd_to_est_mapping
-    } | tojson | safe }}
+  {{ {
+      'energy_system_type_list': energy_system_type_list,
+      'union_energy_system_list': union_energy_system_list,
+      'regional_energy_system_list': regional_energy_system_list,
+      'federal_district_list': federal_district_list,
+      'regional_district_list': regional_district_list,
+      'energy_system_type_filter': energy_system_type_filter,
+      'union_energy_system_filter': union_energy_system_filter,
+      'regional_energy_system_filter': regional_energy_system_filter,
+      'federal_district_filter': federal_district_filter,
+      'regional_district_filter': regional_district_filter,
+      'regional_energy_system_mapping': regional_energy_system_mapping,
+      'regional_district_mapping': regional_district_mapping,
+      'est_to_ues_mapping': est_to_ues_mapping,
+      'est_to_res_mapping': est_to_res_mapping,
+      'est_to_rd_mapping': est_to_rd_mapping,
+      'est_to_fd_mapping': est_to_fd_mapping,
+      'ues_to_est_mapping': ues_to_est_mapping,
+      'ues_to_res_mapping': ues_to_res_mapping,
+      'ues_to_rd_mapping': ues_to_rd_mapping,
+      'ues_to_fd_mapping': ues_to_fd_mapping,
+      'res_to_est_mapping': res_to_est_mapping,
+      'res_to_ues_mapping_one': res_to_ues_mapping_one,
+      'res_to_rd_mapping': res_to_rd_mapping,
+      'res_to_fd_mapping': res_to_fd_mapping,
+      'rd_to_fd_mapping_one': rd_to_fd_mapping_one,
+      'rd_to_res_mapping': rd_to_res_mapping,
+      'rd_to_ues_mapping': rd_to_ues_mapping,
+      'rd_to_est_mapping': rd_to_est_mapping,
+      'fd_to_rd_mapping': fd_to_rd_mapping,
+      'fd_to_res_mapping': fd_to_res_mapping,
+      'fd_to_ues_mapping': fd_to_ues_mapping,
+      'fd_to_est_mapping': fd_to_est_mapping
+  } | tojson | safe }}
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("DOMContentLoaded", function () {
     if (typeof initializeStationFilters === "function") {
-        initializeStationFilters();
+      initializeStationFilters();
     }
     var overlay = document.getElementById("loading-overlay");
     if (overlay) {
-        overlay.style.display = "none";
+      overlay.style.display = "none";
     }
-});
+  });
 </script>
 
 <script>
-(function() {
+  (function () {
     var exportBtn = document.getElementById("exportHeatAndTariffsButton");
     var exportForm = document.getElementById("exportHeatAndTariffsForm");
     if (exportBtn && exportForm) {
-        exportBtn.addEventListener("click", function() {
-            exportBtn.disabled = true;
-            exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Экспорт...';
-            exportForm.submit();
-            setTimeout(function() {
-                exportBtn.disabled = false;
-                exportBtn.innerHTML = '<i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel';
-            }, 5000);
-        });
+      exportBtn.addEventListener("click", function () {
+        exportBtn.disabled = true;
+        exportBtn.innerHTML =
+          '<span class="spinner-border spinner-border-sm me-1"></span> Экспорт...';
+        exportForm.submit();
+        setTimeout(function () {
+          exportBtn.disabled = false;
+          exportBtn.innerHTML =
+            '<i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel';
+        }, 5000);
+      });
     }
     var roundingSelect = document.getElementById("rounding_digits");
     if (roundingSelect) {
-        roundingSelect.addEventListener("change", function() {
-            var form = document.getElementById("stationFilterForm");
-            if (form) form.submit();
-        });
+      roundingSelect.addEventListener("change", function () {
+        var form = document.getElementById("stationFilterForm");
+        if (form) form.submit();
+      });
     }
-})();
+  })();
 </script>
 
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

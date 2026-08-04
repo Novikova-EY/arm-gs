@@ -35,6 +35,7 @@ PD_READONLY_PARAMETER_KEYS_MAX: frozenset[str] = frozenset(
         "calculated_max_ees_russia_mw",
         "calculated_max_ees_via_oes_mw",
         "calculated_max_ees_via_es_mw",
+        "calculated_max_ees_via_ez_mw",
         "calculated_max_power_consumption_mw",
         "peak_max_power_usage_hours",
         *peak_combined_usage_hours_keys(),
@@ -169,10 +170,10 @@ def enrich_row_formula_tooltip_gaps(
         )
     elif dm == "FederalDistrictDemandParameter":
         if pk == "calculated_max_fo_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get("fo_calc_max_mw", "")
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base("fo_calc_max_mw")
         elif pk == "calculated_max_power_mw":
-            row["pd_parameter_formula_tooltip"] = formula_texts.get(
-                "fo_calc_max_power_mw", ""
+            row["pd_parameter_formula_tooltip"] = _text_for_nt_base(
+                "fo_calc_max_power_mw"
             )
         elif pk == "calculated_combined_on_cz_mw":
             # Coeff ФО использует тот же набор строк, что /summary/federal_districts/.

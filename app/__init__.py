@@ -572,6 +572,25 @@ def create_app():
         """Возвращает getattr(obj, attr, None) для динамического доступа к атрибутам в шаблонах."""
         return getattr(obj, attr, None)
 
+    @app.template_filter("fuel_header_code")
+    def fuel_header_code_filter(attr):
+        """Код поля в скобках шапки: регистр Access (СиПР), кроме numb1120/year."""
+        from app.fuel.services.fuel_header_access_codes import fuel_header_code
+
+        return fuel_header_code(attr)
+
+    @app.template_filter("extra_fuel_attr")
+    def extra_fuel_attr_filter(obj, attr, children_by_parent=None):
+        """
+        Значение доп. топливного параметра: листовое поле или сумма потомков
+        (gaz/ugol/… не хранятся в ExtraFuelParam).
+        """
+        from app.fuel.services.equipment_groups.equipment_group_extra_fuel_params_services import (
+            resolve_extra_fuel_param_value,
+        )
+
+        return resolve_extra_fuel_param_value(obj, attr, children_by_parent)
+
     @app.template_filter("format_decimal")
     def format_decimal_filter(value, digits=None):
         if digits is None:
@@ -723,11 +742,18 @@ def create_app():
             perimeter_variant_display_label_for_entity,
         )
 
+        from app.fuel.services.fuel_header_access_codes import (
+            FUEL_HEADER_ACCESS_CODES,
+            fuel_header_code,
+        )
+
         return dict(
             current_db_version=current_version,
             csrf_token=csrf_token,
             perimeter_variant_display_label=perimeter_variant_display_label,
             perimeter_variant_display_label_for_entity=perimeter_variant_display_label_for_entity,
+            FUEL_HEADER_ACCESS_CODES=FUEL_HEADER_ACCESS_CODES,
+            fuel_header_code=fuel_header_code,
         )
     
     # Регистрация блюпринтов

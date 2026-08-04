@@ -1,0 +1,241 @@
+Version =20
+VersionRequired =20
+Checksum =919079751
+Begin Form
+    OrderByOn = NotDefault
+    AllowDesignChanges = NotDefault
+    DefaultView =2
+    TabularCharSet =204
+    TabularFamily =7
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =7371
+    DatasheetFontHeight =10
+    ItemSuffix =4
+    Left =288
+    Right =7788
+    Bottom =5916
+    DatasheetGridlinesColor =12632256
+    AfterInsert ="[Event Procedure]"
+    Filter ="type=\"œ√”\" or type=\"œ√”(√”)\""
+    OrderBy ="ordtype, nmin"
+    RecSrcDt = Begin
+        0xcf4edfa0143fe240
+    End
+    GUID = Begin
+        0x366ffe3a2a8619458961efbc4f2e9975
+    End
+    NameMap = Begin
+        0x0acc0e5500000000000000000000000000000000000000000c00000003000000 ,
+        0x0000000000000000000000000000
+    End
+    RecordSource ="“ËÔÓ‚˚Â_Û‰ÂÎ¸Ì˚Â_‡ÒıÓ‰˚"
+    BeforeInsert ="[Event Procedure]"
+    AfterUpdate ="[Event Procedure]"
+    DatasheetFontName ="Arial Cyr"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+            FontName ="Tahoma"
+        End
+        Begin CommandButton
+            TextFontCharSet =204
+            Width =1701
+            Height =283
+            FontSize =8
+            FontWeight =400
+            ForeColor =-2147483630
+            FontName ="Tahoma"
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            FELineBreak = NotDefault
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =567
+            LabelX =-1701
+            FontName ="Tahoma"
+            AsianLineBreak =255
+        End
+        Begin ComboBox
+            SpecialEffect =2
+            TextFontCharSet =204
+            Width =1701
+            LabelX =-1701
+            FontName ="Tahoma"
+        End
+        Begin Section
+            Height =255
+            BackColor =-2147483633
+            Name ="Œ·Î‡ÒÚ¸ƒ‡ÌÌ˚ı"
+            GUID = Begin
+                0xeea503eca87e7242b1f090bfd3042adc
+            End
+            Begin
+                Begin TextBox
+                    OverlapFlags =93
+                    Left =1701
+                    ColumnWidth =630
+                    ColumnOrder =1
+                    Name ="nmin"
+                    ControlSource ="nmin"
+                    GUID = Begin
+                        0x9e153ba1c74c1248b19af7d68ac286fc
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2268
+                    ColumnWidth =690
+                    ColumnOrder =2
+                    TabIndex =1
+                    Name ="nmax"
+                    ControlSource ="nmax"
+                    GUID = Begin
+                        0x9d6d7796bf48b54d96a4d8e10fb481fe
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =2835
+                    ColumnWidth =465
+                    ColumnOrder =3
+                    TabIndex =2
+                    Name ="snk"
+                    ControlSource ="snk"
+                    GUID = Begin
+                        0xcffc5e3699b8a7458e2bfe4716a98782
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =3402
+                    ColumnWidth =540
+                    ColumnOrder =4
+                    TabIndex =3
+                    Name ="sntp"
+                    ControlSource ="sntp"
+                    GUID = Begin
+                        0x86e824fb952c1341a1b73c5d89715d7a
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =0
+                    OverlapFlags =95
+                    Left =3969
+                    ColumnWidth =465
+                    ColumnOrder =5
+                    TabIndex =4
+                    Name ="bk"
+                    ControlSource ="bk"
+                    Format ="#"
+                    GUID = Begin
+                        0xa4ff34a3fb3a1742be9f3c69b326f63a
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =4536
+                    ColumnWidth =450
+                    ColumnOrder =6
+                    TabIndex =5
+                    Name ="btp"
+                    ControlSource ="btp"
+                    GUID = Begin
+                        0xc88bf7d00c8d9149ad1a135d885f55c3
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =5103
+                    ColumnWidth =465
+                    ColumnOrder =7
+                    TabIndex =6
+                    Name ="bt"
+                    ControlSource ="bt"
+                    GUID = Begin
+                        0x7f5db89dbc18f449bfa1b47682629d6e
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =95
+                    Left =5670
+                    ColumnWidth =465
+                    ColumnOrder =8
+                    TabIndex =7
+                    Name ="y"
+                    ControlSource ="y"
+                    GUID = Begin
+                        0x4dc44e33ba551149b24d1e7aa5b72bd3
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =2
+                    OverlapFlags =93
+                    Left =6804
+                    ColumnWidth =630
+                    ColumnOrder =9
+                    TabIndex =8
+                    Name ="Kh"
+                    ControlSource ="Kh"
+                    Format ="#"
+                    GUID = Begin
+                        0x8191fe22df487f43ae836ddc5f60ede4
+                    End
+                End
+                Begin ComboBox
+                    RowSourceTypeInt =1
+                    OverlapFlags =87
+                    ColumnCount =2
+                    ListWidth =1440
+                    ColumnOrder =0
+                    TabIndex =9
+                    GUID = Begin
+                        0xebbdb241b0a8b14e992918140fd4dc2a
+                    End
+                    Name ="type"
+                    ControlSource ="type"
+                    RowSourceType ="Value List"
+                    RowSource ="\"œ√”\";1;\"œ√”(√”)\";2;\"œ√”(“)\";3;\"œ√”(√”.“)\";4;\"√“\";5;\"√“(“)\";6"
+                    ColumnWidths ="1440"
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    Left =6237
+                    ColumnWidth =600
+                    TabIndex =10
+                    Name ="bbas"
+                    ControlSource ="bbas"
+                    GUID = Begin
+                        0x2b4fa3d93bdfc442b377ef1d52993ce6
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Dim ins As Boolean
+Private Sub Form_AfterInsert()
+For i = 0 To [Type].ListCount - 1
+If [Type].Column(0, i) = [Type] Then
+ordtype = [Type].Column(1, i)
+End If
+Next i
+ins = True
+End Sub
+
+Private Sub Form_AfterUpdate()
+If ins Then
+Requery
+ins = False
+End If
+End Sub

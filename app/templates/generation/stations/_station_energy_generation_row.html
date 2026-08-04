@@ -1,41 +1,55 @@
-{# Одна строка таблицы выработки электроэнергии (обновляется при смене округления). #}
-{% set can_edit_energy = can_edit_station_energy if can_edit_station_energy is defined else can_edit %}
+{# Одна строка таблицы выработки электроэнергии (обновляется при смене
+округления). #} {% set can_edit_energy = can_edit_station_energy if
+can_edit_station_energy is defined else can_edit %}
 <tr>
-    <td class="text-start align-middle fw-semibold" style="min-width: 260px; vertical-align: middle; white-space: normal;">
-        Выработка<br>электроэнергии,<br>млн кВт·ч<br><span class="text-muted fw-normal" style="font-size: 0.85em;">(год)</span>
-    </td>
-    {% for year in range(start_year, end_year + 1) %}
-    {% set v = station.station_energy_by_year.get(year) %}
-    {% set v_full = (v | format_decimal(0)) if v is not none else '' %}
-    <td class="text-center align-middle"{% if v_full %} title="{{ v_full | e }}"{% endif %}>
-        {% if can_edit_energy %}
-            {% if v is none %}
-            <input type="hidden" name="st_gen_{{ year }}_orig" value="">
-            <input type="text"
-                   class="form-control text-center"
-                   name="st_gen_{{ year }}"
-                   inputmode="decimal"
-                   autocomplete="off"
-                   value=""
-                   style="min-width: 6rem;">
-            {% else %}
-            {% set disp = format_station_energy_gen_display(v) %}
-            <input type="hidden" name="st_gen_{{ year }}_orig" value="{{ disp }}">
-            <input type="text"
-                   class="form-control text-center"
-                   name="st_gen_{{ year }}"
-                   inputmode="decimal"
-                   autocomplete="off"
-                   value="{{ disp }}"
-                   style="min-width: 6rem;">
-            {% endif %}
-        {% else %}
-            {% if v is not none %}
-                {{ format_station_energy_gen_display(v) }}
-            {% else %}
-                —
-            {% endif %}
-        {% endif %}
-    </td>
-    {% endfor %}
+  <td
+    class="text-start align-middle fw-semibold"
+    style="min-width: 260px; vertical-align: middle; white-space: normal"
+  >
+    Выработка<br />электроэнергии,<br />млн кВтч<br /><span
+      class="text-muted fw-normal"
+      style="font-size: 0.85em"
+      >(год)</span
+    >
+  </td>
+  {% for year in range(start_year, end_year + 1) %} {% set v =
+  station.station_energy_by_year.get(year) %} {% set v_full = (v |
+  format_decimal(0)) if v is not none else '' %}
+  <td
+    class="text-center align-middle"
+    {%
+    if
+    v_full
+    %}
+    title="{{ v_full | e }}"
+    {%
+    endif
+    %}
+  >
+    {% if can_edit_energy %} {% if v is none %}
+    <input type="hidden" name="st_gen_{{ year }}_orig" value="" />
+    <input
+      type="text"
+      class="form-control text-center"
+      name="st_gen_{{ year }}"
+      inputmode="decimal"
+      autocomplete="off"
+      value=""
+      style="min-width: 6rem"
+    />
+    {% else %} {% set disp = format_station_energy_gen_display(v) %}
+    <input type="hidden" name="st_gen_{{ year }}_orig" value="{{ disp }}" />
+    <input
+      type="text"
+      class="form-control text-center"
+      name="st_gen_{{ year }}"
+      inputmode="decimal"
+      autocomplete="off"
+      value="{{ disp }}"
+      style="min-width: 6rem"
+    />
+    {% endif %} {% else %} {% if v is not none %} {{
+    format_station_energy_gen_display(v) }} {% else %} — {% endif %} {% endif %}
+  </td>
+  {% endfor %}
 </tr>

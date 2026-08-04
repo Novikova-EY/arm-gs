@@ -47,7 +47,7 @@
         if (/\d{1,2}\.\d{1,2}\.\d{2,4}/.test(s)) {
             return true;
         }
-        if (/\d{1,2}:\d{2}/.test(s)) {
+        if (/\d{1,2}[:\-]\d{2}/.test(s)) {
             return true;
         }
         return false;

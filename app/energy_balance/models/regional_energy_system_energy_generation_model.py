@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-RegionalEnergySystemEnergyGeneration — контрольная выработка ЭЭ по РЭС (млн кВт·ч).
+RegionalEnergySystemEnergyGeneration — контрольная выработка ЭЭ по РЭС (млн кВтч).
 
 Итоговые значения строки «Выработка» из сводов ОЭС по каждой региональной
 энергосистеме. Используются для проверки загруженных данных:
@@ -87,7 +87,7 @@ class RegionalEnergySystemEnergyGeneration(db.Model, AuditMixin):
         foreign_keys=[id_regional_energy_system],
     )
 
-    # Выработка электроэнергии, млн кВт·ч
+    # Выработка электроэнергии, млн кВтч
     electricity_generation = db.Column(Numeric(25, 16))
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)

@@ -1,0 +1,183 @@
+Version =20
+VersionRequired =20
+Checksum =-2114842707
+Begin Form
+    RecordSelectors = NotDefault
+    NavigationButtons = NotDefault
+    DividingLines = NotDefault
+    KeyPreview = NotDefault
+    DefaultView =2
+    ScrollBars =0
+    TabularCharSet =204
+    PictureAlignment =2
+    DatasheetGridlinesBehavior =3
+    GridY =10
+    Width =3978
+    DatasheetFontHeight =10
+    ItemSuffix =1
+    Left =408
+    Top =4308
+    Right =5016
+    Bottom =5100
+    DatasheetGridlinesColor =12632256
+    RecSrcDt = Begin
+        0x666df1eccd59e340
+    End
+    GUID = Begin
+        0x277acb031ccaec4791e322609fd9a7a3
+    End
+    NameMap = Begin
+        0x0acc0e55000000008841c82ad75a0f4499118881d86e54ab00000000342ae68c ,
+        0xb84ce540a817f7109e5e235c2004300437043104380432043a04300432003000 ,
+        0x30003700000000000000e20014f193250b44b535f29af75f8a8d070000008841 ,
+        0xc82ad75a0f4499118881d86e54ab6b004e004204000000000000759f64dbde96 ,
+        0x4145911fef3c1292920d070000008841c82ad75a0f4499118881d86e54ab3304 ,
+        0x300437040000000000009af4e8d4bc528a4c806bf41d539c96bb070000008841 ,
+        0xc82ad75a0f4499118881d86e54ab3c04300437044304420400000000000019bc ,
+        0x9fe1dcfd8e44a7c8adba39c91524070000008841c82ad75a0f4499118881d86e ,
+        0x54ab430433043e043b044c040000000000008acce81e3d8c5e43a50420530765 ,
+        0x9012070000008841c82ad75a0f4499118881d86e54ab70007400700000000000 ,
+        0x00000f8f76efaeb3524c8d2699871cef3cfc070000008841c82ad75a0f449911 ,
+        0x8881d86e54ab6b006e00650000000000000021a5444a38ad7346850d2d910535 ,
+        0x0b5d070000008841c82ad75a0f4499118881d86e54ab70006500000000000000 ,
+        0x000000000000000000000000000000000c000000030000000000000000000000 ,
+        0x000000000000
+    End
+    RecordSource ="Разбивка2007"
+    DatasheetFontName ="Arial Cyr"
+    OnKeyDown ="[Event Procedure]"
+    NoSaveCTIWhenDisabled =1
+    Begin
+        Begin Label
+            BackStyle =0
+            TextFontCharSet =204
+        End
+        Begin TextBox
+            AutoLabel = NotDefault
+            SpecialEffect =2
+            OldBorderStyle =0
+            TextFontCharSet =204
+            Width =576
+            LabelX =-1701
+        End
+        Begin Section
+            Height =271
+            BackColor =-2147483633
+            Name ="ОбластьДанных"
+            GUID = Begin
+                0x69ceeb7e696950489d84cbe0b9a7e26e
+            End
+            Begin
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Left =576
+                    Width =567
+                    Height =270
+                    ColumnWidth =480
+                    ColumnOrder =1
+                    Name ="kNт"
+                    ControlSource ="kNт"
+                    GUID = Begin
+                        0x66b4d6d1adf19c46ad937c489a43470e
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =93
+                    Left =1710
+                    Width =567
+                    Height =270
+                    ColumnWidth =450
+                    ColumnOrder =3
+                    TabIndex =1
+                    Name ="газ"
+                    ControlSource ="газ"
+                    GUID = Begin
+                        0xb825f23a64c69342af06b21709854f18
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =2277
+                    Width =567
+                    Height =270
+                    ColumnWidth =705
+                    ColumnOrder =4
+                    TabIndex =2
+                    Name ="мазут"
+                    ControlSource ="мазут"
+                    GUID = Begin
+                        0x32e9695e63555147934474c87baf1a4e
+                    End
+                End
+                Begin TextBox
+                    SpecialEffect =0
+                    OverlapFlags =95
+                    Left =2844
+                    Width =567
+                    Height =270
+                    ColumnWidth =690
+                    ColumnOrder =5
+                    TabIndex =3
+                    Name ="уголь"
+                    ControlSource ="уголь"
+                    GUID = Begin
+                        0x691e91731cf50a49b597495baff48c0d
+                    End
+                End
+                Begin TextBox
+                    DecimalPlaces =1
+                    OverlapFlags =119
+                    Left =1143
+                    Width =567
+                    Height =270
+                    ColumnWidth =465
+                    ColumnOrder =2
+                    TabIndex =4
+                    Name ="ptp"
+                    ControlSource ="ptp"
+                    Format ="#"
+                    GUID = Begin
+                        0xc035a438fb6b4e4ab3567fdb22f88191
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =87
+                    ColumnWidth =495
+                    ColumnOrder =0
+                    TabIndex =5
+                    Name ="kne"
+                    ControlSource ="kne"
+                    GUID = Begin
+                        0xf5f9cc5210da184192c26ed0975f6e2a
+                    End
+                End
+                Begin TextBox
+                    OverlapFlags =119
+                    Left =3411
+                    Width =567
+                    Height =271
+                    TabIndex =6
+                    Name ="pe"
+                    ControlSource ="pe"
+                    GUID = Begin
+                        0xd7a0979c2a293540b7c026c75bda739c
+                    End
+                End
+            End
+        End
+    End
+End
+CodeBehindForm
+Attribute VB_GlobalNameSpace = False
+Attribute VB_Creatable = True
+Attribute VB_PredeclaredId = True
+Attribute VB_Exposed = False
+Option Compare Database
+Option Explicit
+
+Private Sub Form_KeyDown(KeyCode As Integer, Shift As Integer)
+If KeyCode = 114 Then Parent!data.SetFocus
+End Sub

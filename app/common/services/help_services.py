@@ -222,6 +222,34 @@ def format_decimal_trim_for_display(value, digits=None) -> str:
     return strip_trailing_fraction_zeros_comma(s)
 
 
+def parse_decimal_from_display(raw) -> Decimal | None:
+    """
+    Разбор числа из UI: пробелы/nbsp группировки тысяч, запятая или точка как десятичный разделитель.
+    Пустое / «—» → None. Невалидная строка → InvalidOperation.
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, Decimal):
+        return raw
+    if isinstance(raw, bool):
+        raise InvalidOperation("bool is not a decimal")
+    if isinstance(raw, (int, float)):
+        return Decimal(str(raw))
+    s = str(raw).strip()
+    if s == "" or s in ("—", "-", "–"):
+        return None
+    s = (
+        s.replace("\u2212", "-")
+        .replace("\u2013", "-")
+        .replace("\u2014", "-")
+        .replace("\u00a0", "")
+        .replace("\u202f", "")
+        .replace(" ", "")
+        .replace(",", ".")
+    )
+    return Decimal(s)
+
+
 def format_number_trim_trailing(value) -> str:
     """
     Показ числа со значащей дробной частью, без «хвоста» нулей (85; 85,5; 85,555),

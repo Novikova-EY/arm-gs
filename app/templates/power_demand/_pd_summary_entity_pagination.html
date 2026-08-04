@@ -9,7 +9,7 @@
         — {{ pag.section_titles | join(', ') }}
         {% endif %}
     </div>
-    <ul class="pagination justify-content-center mb-0 flex-wrap">
+    <ul class="pagination justify-content-center mb-0 flex-wrap" id="pdSummaryServerEntityPaginationLinks">
         <li class="page-item{% if not pag.has_prev %} disabled{% endif %}">
             {% if pag.has_prev %}
             {% set prev_args = pag_args.copy() %}
@@ -53,4 +53,24 @@
         </li>
     </ul>
 </nav>
+<script>
+(function () {
+    var nav = document.getElementById("pdSummaryServerEntityPaginationLinks");
+    if (!nav || !window.armGsPageScrollRestore) {
+        return;
+    }
+    nav.addEventListener("click", function (ev) {
+        var a = ev.target && ev.target.closest ? ev.target.closest("a.page-link") : null;
+        if (!a || !a.getAttribute("href")) {
+            return;
+        }
+        try {
+            var table = document.getElementById("powerDemandSummaryTable");
+            window.armGsPageScrollRestore.clear(
+                window.armGsPageScrollRestore.defaultScope(table)
+            );
+        } catch (ePagClr) { /* */ }
+    });
+})();
+</script>
 {% endif %}

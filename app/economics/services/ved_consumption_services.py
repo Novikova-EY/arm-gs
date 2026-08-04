@@ -551,7 +551,7 @@ def _log_ved_cell_if_changed(
         f"ВЭД={_ved_name_for_log(ved_id, ved_cache)}",
         f"год={year_n}",
         (
-            f"Потребление, млн кВт·ч: {_fmt_log_value(old_val)} → "
+            f"Потребление, млн кВтч: {_fmt_log_value(old_val)} → "
             f"{_fmt_log_value(new_val)}"
         ),
     ]

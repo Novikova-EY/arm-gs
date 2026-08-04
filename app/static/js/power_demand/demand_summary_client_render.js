@@ -1506,6 +1506,7 @@
         calculated_max_ees_russia_mw: "max_power",
         calculated_max_ees_via_oes_mw: "calculated_max_ees_russia_mw",
         calculated_max_ees_via_es_mw: "calculated_max_ees_via_oes_mw",
+        calculated_max_ees_via_ez_mw: "calculated_max_ees_via_es_mw",
         calculated_max_sa_mw: "combined_on_ees",
         calculated_max_fo_mw: "max_power",
         calculated_combined_on_cz_mw: "combined_on_cz",
@@ -1516,6 +1517,7 @@
         verify_for_calculated_max_ees_russia_mw: "calculated_max_ees_russia_mw",
         verify_for_calculated_max_ees_via_oes_mw: "calculated_max_ees_via_oes_mw",
         verify_for_calculated_max_ees_via_es_mw: "calculated_max_ees_via_es_mw",
+        verify_for_calculated_max_ees_via_ez_mw: "calculated_max_ees_via_ez_mw",
         verify_for_calculated_max_sa_mw: "calculated_max_sa_mw",
         peak_combined_on_ees_usage_hours: "combined_on_ees",
         peak_combined_on_cz_usage_hours: "combined_on_cz",
@@ -3145,7 +3147,44 @@
         return window.__pdSummaryEnsureSegments(optionalSegs);
     }
 
+    function scrollSummaryToTopAfterPagination() {
+        // Не тот контейнер, что powerDemandSummaryScrollWrap на max:
+        // Y-скролл у .page-table-scroll (см. style.css). Иначе после «Вперёд»
+        // остаёмся внизу таблицы. Также сбрасываем pending save-restore.
+        var table =
+            document.getElementById("powerDemandSummaryTable") ||
+            document.querySelector("table.power-demand-summary-table");
+        var scrollWrap = document.getElementById("powerDemandSummaryScrollWrap");
+        if (window.armGsPageScrollRestore) {
+            try {
+                window.armGsPageScrollRestore.clear(
+                    window.armGsPageScrollRestore.defaultScope(table)
+                );
+            } catch (eClr) { /* */ }
+            window.armGsPageScrollRestore.scrollTableTop({
+                table: table || undefined,
+                hScrollEl: scrollWrap || undefined
+            });
+            return;
+        }
+        if (
+            scrollWrap &&
+            scrollWrap.classList.contains("pd-coeff-summary-scroll-wrap")
+        ) {
+            scrollWrap.scrollTop = 0;
+            return;
+        }
+        var pageWrap = document.querySelector(".page-table-scroll");
+        if (pageWrap) {
+            pageWrap.scrollTop = 0;
+        } else if (scrollWrap) {
+            scrollWrap.scrollTop = 0;
+        }
+    }
+
     function loadEntityPaginationPage(page, pageSize) {
+        // Сначала вверх + clear save-restore (клик был внизу таблицы).
+        scrollSummaryToTopAfterPagination();
         syncEntityPaginationUrl(page, pageSize);
         resetLoadedSegmentsState();
         var tbody =
@@ -3155,10 +3194,6 @@
             return Promise.reject(new Error("tbody не найден"));
         }
         pdSummaryShowSegmentLoading();
-        var scrollWrap = document.getElementById("powerDemandSummaryScrollWrap");
-        if (scrollWrap) {
-            scrollWrap.scrollTop = 0;
-        }
         return fetchSegmentPayload(defaultSegments())
             .then(function (payload) {
                 return renderSummaryTableBody(payload).then(function () {
@@ -3190,6 +3225,23 @@
             .finally(function () {
                 pdSummaryHideSegmentLoading();
                 reapplyVisibilityAfterSegmentChange();
+                // Повторно после перерисовки tbody / optional-сегментов.
+                if (window.armGsPageScrollRestore) {
+                    var table =
+                        document.getElementById("powerDemandSummaryTable") ||
+                        document.querySelector(
+                            "table.power-demand-summary-table"
+                        );
+                    var scrollWrap = document.getElementById(
+                        "powerDemandSummaryScrollWrap"
+                    );
+                    window.armGsPageScrollRestore.scrollTableTop({
+                        table: table || undefined,
+                        hScrollEl: scrollWrap || undefined
+                    });
+                } else {
+                    scrollSummaryToTopAfterPagination();
+                }
             });
     }
 

@@ -98,7 +98,7 @@ PEAK_MAX_POWER_USAGE_HOURS_LABEL = (
 
 ENERGY_CONSUMPTION_MLN_KVT_CH_KEY = "energy_consumption_mln_kvt_ch"
 ENERGY_CONSUMPTION_MLN_KVT_CH_LABEL = (
-    "Потребление электрической энергии, млн кВт·ч"
+    "Потребление электрической энергии, млн кВтч"
 )
 
 COMBINED_ON_PARAMETER_KEYS_FOR_CHI: tuple[str, ...] = (
@@ -180,9 +180,9 @@ _PD_TO_EC: dict[str, tuple[type, str | None]] = {
 }
 
 _OES_CHI_PD_MODELS = frozenset(_PD_TO_EC.keys())
-# Потребление РФ в RussiaFederationEnergyConsumptionParameter хранится в млрд кВт·ч.
+# Потребление РФ в RussiaFederationEnergyConsumptionParameter хранится в млрд кВтч.
 _RUSSIA_FEDERATION_EC_CHI_NUMERATOR_SCALE = 1000.0
-# Итоговое ЧЧИ на сводках ОЭС / ФО / ЭЗ: (потребление, млн кВт·ч) / (мощность, МВт) × 1000.
+# Итоговое ЧЧИ на сводках ОЭС / ФО / ЭЗ: (потребление, млн кВтч) / (мощность, МВт) × 1000.
 _CHI_RESULT_DISPLAY_SCALE = 1000.0
 # digits=-1 в format_decimal_for_display: округление до целого (0 = без округления).
 _CHI_ROUNDING_DIGITS = -1
@@ -585,17 +585,10 @@ def _chi_ec_consumption_mln_for_south_fd_with_nt(
     fk_column: str | None,
     years: list[int],
 ) -> float | None:
-    """Южный ФО с НТ: потребление без НТ + субъекты НТ (как на сводке потребления), с 2023 года."""
-    from app.power_demand.services.perimeter_variant_tree_rules import (
-        NEW_TERRITORIES_FROM_YEAR,
-    )
+    """Южный ФО с НТ: потребление без НТ + субъекты НТ (как на сводке потребления).
 
-    if slice_key != "hist":
-        try:
-            if int(slice_key) < int(NEW_TERRITORIES_FROM_YEAR):
-                return None
-        except (TypeError, ValueError):
-            return None
+    Если сумма по субъектам НТ равна 0 или пуста — нет значения ЧЧИ.
+    """
     without_anchor = _anchor_with_paired_without_nt_pvc(anchor)
     base_hit = _lookup_ec_consumption_for_chi(
         ec_model_name,
@@ -607,6 +600,8 @@ def _chi_ec_consumption_mln_for_south_fd_with_nt(
         years=years,
     )
     nt_hit = _sum_nt_subjects_ec_mln_for_chi(slice_key, ec_index=ec_index)
+    if nt_hit is None or float(nt_hit) == 0.0:
+        return None
     combined = _sum_optional_ec_mln_parts(base_hit, nt_hit)
     if combined is None:
         return None
@@ -705,7 +700,7 @@ def _divide_combined_peak_usage_hours(
     ec_mln_kvt_ch: float | None,
     combined_on_mw: float | None,
 ) -> float | None:
-    """ЧЧИ совмещённого: (потребление, млн кВт·ч) / (совмещённое, МВт) × 1000."""
+    """ЧЧИ совмещённого: (потребление, млн кВтч) / (совмещённое, МВт) × 1000."""
     return _divide_hours(ec_mln_kvt_ch, combined_on_mw)
 
 
@@ -1130,7 +1125,7 @@ def inject_combined_peak_usage_hours_rows(
     years: list[int],
     _rounding_digits: int,
 ) -> None:
-    """ЧЧИ совмещённого потребления: потребление ЭЭ (млн кВт·ч) / combined_on (МВт) × 1000."""
+    """ЧЧИ совмещённого потребления: потребление ЭЭ (млн кВтч) / combined_on (МВт) × 1000."""
     if not summary_rows or not years:
         return
 
@@ -1241,7 +1236,7 @@ def _build_energy_consumption_row_for_block(
     cz_hub_index: CzHubEcIndex | None = None,
     ees_sa_hub_index: EesSaHubEcIndex | None = None,
 ) -> dict[str, Any] | None:
-    """Строка «Потребление электрической энергии, млн кВт·ч» (только чтение) для блока сводки."""
+    """Строка «Потребление электрической энергии, млн кВтч» (только чтение) для блока сводки."""
     anchor = block[0]
     pd_model_name = str(anchor.get("demand_model_name") or "")
     if pd_model_name not in _OES_CHI_PD_MODELS:

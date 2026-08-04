@@ -138,6 +138,7 @@ class EquipmentGroupSpecificFuelCost(db.Model):
     dep = db.Column(db.String(80), nullable=True)
     oes = db.Column(db.String(80), nullable=True)
     er = db.Column(db.String(80), nullable=True)
+    # Код группы оборудования
     numb1120 = db.Column(db.Integer, nullable=True, index=True)
     numb1 = db.Column(db.Integer, nullable=True)
 

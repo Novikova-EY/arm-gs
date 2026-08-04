@@ -9,7 +9,7 @@
                 {% if show_specific_fuel_price_export|default(false) %}
                 <!-- Экспорт цены для групп оборудования -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_price') }}" id="exportSpecificFuelPriceForm">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -22,7 +22,7 @@
                 {% elif show_electricity_production_cost_export|default(false) %}
                 <!-- Экспорт затрат ТЭС на производство ЭЭ и ТЭ -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_electricity_production_cost') }}" id="exportElectricityProductionCostForm">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -35,7 +35,7 @@
                 {% elif show_heat_and_tariffs_export|default(false) %}
                 <!-- Экспорт тепла и тарифов из СТ -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_heat_and_tariffs') }}" id="exportHeatAndTariffsForm">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -48,7 +48,7 @@
                 {% elif show_specific_fuel_cost_export|default(false) %}
                 <!-- Экспорт стоимости для групп оборудования -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_cost') }}" id="exportSpecificFuelCostForm">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -61,7 +61,7 @@
                 {% elif show_specific_fuel_consumption_export|default(false) %}
                 <!-- Экспорт удельных показателей -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_consumption') }}" id="exportSpecificFuelConsumptionForm">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -71,21 +71,9 @@
                         <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
                     </button>
                 </form>
-                {% elif show_extra_fuel_params_export|default(false) %}
-                <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_extra_fuel_params') }}" id="exportExtraFuelParamsForm">
-                    {% for key, value in request.args.items() %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endfor %}
-                    <button type="button"
-                            id="exportExtraFuelParamsButton"
-                            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
-                            style="white-space: nowrap;">
-                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
-                    </button>
-                </form>
                 {% elif show_natural_fuel_export|default(false) %}
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_natural_fuel') }}" id="exportNaturalFuelForm">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -99,7 +87,7 @@
                 {% elif show_fuel_params_export|default(false) %}
                 <!-- Экспорт топливных параметров (страница fuel_params) -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_fuel_params') }}" id="exportFuelParamsForm">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -119,7 +107,7 @@
                       action="{{ export_ee_generation_action|default(url_for('energy_balance_bp.export_ee_generation')) }}"
                       id="exportEeGenerationForm"
                       class="d-inline m-0">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -134,7 +122,7 @@
                       action="{{ export_ee_transfers_action|default(url_for('energy_balance_bp.export_ee_transfers')) }}"
                       id="exportEeTransfersForm"
                       class="d-inline m-0">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button"
@@ -147,7 +135,7 @@
                 {% else %}
                 <!-- Экспорт в Excel (страница groups) -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_groups') }}" id="exportExcelFormFull">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <button type="button" id="exportExcelFull" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
@@ -163,7 +151,7 @@
             <div class="overflow-x-auto" style="max-width: 100%;">
             <form method="POST" action="{{ fuel_params_year_copy_action }}" id="fuelParamsYearCopyForm" class="d-flex align-items-center gap-2 flex-wrap">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                {% for key, value in request.args.items() %}
+                {% for key, value in request.args.items(multi=True) %}
                 <input type="hidden" name="r_{{ key }}" value="{{ value }}">
                 {% endfor %}
                 <label for="copy_source_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год исходных данных:</label>
@@ -211,7 +199,7 @@
                     {{ form.csrf_token }}
                     <input type="hidden" name="redirect_to" value="{{ import_specific_fuel_consumption_redirect_to|default('fuel_bp.stations_equipment_group_fuel_params') }}">
                     <input type="hidden" name="year" id="importSpecificFuelConsumptionYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -259,7 +247,7 @@
                     class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelPriceForm">
                     {{ form.csrf_token }}
                     <input type="hidden" name="year" id="importSpecificFuelPriceYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -306,7 +294,7 @@
                     class="d-flex align-items-center flex-wrap gap-2" id="importElectricityProductionCostForm">
                     {{ form.csrf_token }}
                     <input type="hidden" name="year" id="importElectricityProductionCostYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -352,7 +340,7 @@
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center flex-wrap gap-2" id="importHeatAndTariffsForm">
                     {{ form.csrf_token }}
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -389,7 +377,7 @@
                     class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelCostForm">
                     {{ form.csrf_token }}
                     <input type="hidden" name="year" id="importSpecificFuelCostYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -436,7 +424,7 @@
                     class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelConsumptionCalcForm">
                     {{ form.csrf_token }}
                     <input type="hidden" name="year" id="importSpecificFuelConsumptionCalcYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -477,60 +465,13 @@
                     }
                 })();
                 </script>
-                {% elif show_extra_fuel_params_import|default(false) %}
-                <form action="{{ import_extra_fuel_params_action|default(url_for('fuel_bp.import_equipment_group_extra_fuel_params')) }}"
-                    method="POST" enctype="multipart/form-data"
-                    class="d-flex align-items-center flex-wrap gap-2" id="importExtraFuelParamsForm">
-                    {{ form.csrf_token }}
-                    <input type="hidden" name="year" id="importExtraFuelParamsYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
-                        {% if key != 'year' %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                        {% endif %}
-                    {% endfor %}
-                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importExtraFuelParamsFile" required>
-                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importExtraFuelParamsBtn">
-                        <i class="bi bi-upload"></i> Импорт из Excel
-                    </button>
-                </form>
-                <script>
-                (function() {
-                    var form = document.getElementById('importExtraFuelParamsForm');
-                    var btn = document.getElementById('importExtraFuelParamsBtn');
-                    var fileInput = document.getElementById('importExtraFuelParamsFile');
-                    if (form && btn && fileInput) {
-                        btn.addEventListener('click', function() {
-                            fileInput.click();
-                        });
-                        fileInput.addEventListener('change', function() {
-                            if (fileInput.files && fileInput.files.length > 0) {
-                                var yearSelect = document.getElementById('year');
-                                var yearInput = document.getElementById('importExtraFuelParamsYear');
-                                if (yearSelect && yearInput) {
-                                    yearInput.value = yearSelect.value;
-                                }
-                                form.submit();
-                            }
-                        });
-                        form.addEventListener('submit', function() {
-                            var yearSelect = document.getElementById('year');
-                            var yearInput = document.getElementById('importExtraFuelParamsYear');
-                            if (yearSelect && yearInput) {
-                                yearInput.value = yearSelect.value;
-                            }
-                            btn.disabled = true;
-                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
-                        });
-                    }
-                })();
-                </script>
                 {% elif show_natural_fuel_import|default(false) %}
                 <form action="{{ import_natural_fuel_action|default(url_for('fuel_bp.import_equipment_group_natural_fuel')) }}"
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center flex-wrap gap-2" id="importNaturalFuelForm">
                     {{ form.csrf_token }}
                     <input type="hidden" name="year" id="importNaturalFuelYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
@@ -578,13 +519,13 @@
                     class="d-flex align-items-center flex-wrap gap-2" id="importFuelParamsForm">
                     {{ form.csrf_token }}
                     <input type="hidden" name="year" id="importFuelParamsYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         {% if key != 'year' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelParamsFile" required>
-                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelParamsBtn">
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelParamsBtn" title="Станции*.xlsx — основные параметры; Доп_угли*.xlsx — детализация топлива">
                         <i class="bi bi-upload"></i> Импорт из Excel
                     </button>
                 </form>
@@ -625,7 +566,7 @@
                         method="POST" enctype="multipart/form-data"
                         class="d-inline m-0" id="importEeGenerationForm">
                         {{ form.csrf_token }}
-                        {% for key, value in request.args.items() %}
+                        {% for key, value in request.args.items(multi=True) %}
                             <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endfor %}
                         <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importEeGenerationFile" required>
@@ -666,7 +607,7 @@
                         method="POST" enctype="multipart/form-data"
                         class="d-inline m-0" id="importEeTransfersForm">
                         {{ form.csrf_token }}
-                        {% for key, value in request.args.items() %}
+                        {% for key, value in request.args.items(multi=True) %}
                             <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endfor %}
                         <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importEeTransfersFile" required>
@@ -704,7 +645,7 @@
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center flex-wrap gap-2" id="importFuelFormulaForm">
                     {{ form.csrf_token }}
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelFormulaFile" required>
@@ -740,7 +681,7 @@
                     class="d-flex align-items-center flex-wrap gap-2" id="importFuelDbForm">
                     {{ form.csrf_token }}
                     <input type="hidden" name="redirect_to" value="{{ import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') }}">
-                    {% for key, value in request.args.items() %}
+                    {% for key, value in request.args.items(multi=True) %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endfor %}
                     {% if import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') == 'fuel_bp.stations_equipment_groups' %}

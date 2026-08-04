@@ -4,7 +4,7 @@ Revision ID: c4d5e6f7a8b0
 Revises: b3c4d5e6f7a9
 Create Date: 2026-03-30
 
-Среднемноголетняя выработка электроэнергии, млрд кВт·ч в ges_tep_source_project_indicators.
+Среднемноголетняя выработка электроэнергии, млрд кВтч в ges_tep_source_project_indicators.
 """
 import os
 import sys
