@@ -13,10 +13,15 @@ from app.fuel.services.calculation.distribution.distribution_stage_services impo
     DistributionStageService,
     d0,
 )
+from app.fuel.services.equipment_groups.composite_calc_consistency_check_services import (
+    find_composite_energy_level_issues,
+    flash_text_for_composite_energy_level_issues,
+)
 from app.fuel.routes.coefficient_stage_routes import _store_coeff_last_run_in_session
 from app.fuel.routes.equipment_group_fuel_batch_ui_routes import _csrf_ok
 from app.fuel.routes.fuel_calculation_common import (
     FUEL_DISTRIBUTION_LAST_RUN_SESSION_KEY,
+    FUEL_NR_HFIX_PENDING_SESSION_KEY,
     redirect_back_after_post,
 )
 from app.fuel.routes import fuel_bp
@@ -27,6 +32,31 @@ def _parse_distribution_e(raw) -> Decimal | None:
         return parse_decimal_from_display(raw)
     except InvalidOperation as e:
         raise ValueError("Некорректное числовое значение поля «Ераспред».") from e
+
+
+def _store_nr_hfix_pending(*, dp_id: int, year_number: int, candidates) -> None:
+    session[FUEL_NR_HFIX_PENDING_SESSION_KEY] = {
+        "distribution_parameter_id": dp_id,
+        "year_number": year_number,
+        "candidates": [
+            {
+                "equipment_group_id": c.equipment_group_id,
+                "name": c.name,
+                "year_number": c.year_number,
+                "nust": str(c.nust),
+                "nr": str(c.nr),
+                "h": str(c.h) if c.h is not None else None,
+                "hfix": c.hfix,
+            }
+            for c in candidates
+        ],
+    }
+    session.modified = True
+
+
+def _clear_nr_hfix_pending() -> None:
+    session.pop(FUEL_NR_HFIX_PENDING_SESSION_KEY, None)
+    session.modified = True
 
 
 @fuel_bp.route("/calculation/run_distribution", methods=["POST"])
@@ -69,7 +99,42 @@ def run_distribution_stage():
             "yes",
         )
 
-        run = DistributionStageService(session=db.session).run_for_distribution_parameter(
+        service = DistributionStageService(session=db.session)
+        nr_action = str(request.form.get("nr_hfix_action") or "").strip().lower()
+
+        # Access MsgBox: сначала список станций без NR, потом фиксация / отказ и Распред.
+        if nr_action not in ("apply", "skip"):
+            candidates = service.find_nr_hfix_candidates(distribution_parameter_id=dp_id)
+            if candidates:
+                _store_nr_hfix_pending(
+                    dp_id=dp_id,
+                    year_number=int(row.year.number),
+                    candidates=candidates,
+                )
+                flash(
+                    f"Распред приостановлен: у {len(candidates)} станций "
+                    f"Nуст>0 при NR=0 (нет располагаемой мощности). "
+                    f"Отметьте, для каких зафиксировать H=0 (как MsgBox Yes в Access), "
+                    f"затем продолжите Распред.",
+                    "warning",
+                )
+                return redirect_back_after_post()
+        else:
+            _clear_nr_hfix_pending()
+            if nr_action == "apply":
+                selected_ids = request.form.getlist("nr_hfix_group_id", type=int)
+                fixed = service.apply_nr_hfix_zero(
+                    distribution_parameter_id=dp_id,
+                    equipment_group_ids=selected_ids,
+                    commit=True,
+                )
+                if fixed:
+                    flash(
+                        f"Зафиксировано H=0 / HFIX=1 для {fixed} станций (аналог MsgBox Yes).",
+                        "info",
+                    )
+
+        run = service.run_for_distribution_parameter(
             distribution_parameter_id=dp_id,
             apply_restrictions=apply_restrictions,
             commit=True,
@@ -121,6 +186,15 @@ def run_distribution_stage():
             f"{converge_note}.",
             flash_level,
         )
+        composite_issues = find_composite_energy_level_issues(
+            db.session,
+            database_version_id=service._resolve_effective_db_version(row, None),
+            year_number=run.year_number,
+            selected_group_ids=run.selected_group_ids,
+        )
+        composite_flash = flash_text_for_composite_energy_level_issues(composite_issues)
+        if composite_flash:
+            flash(composite_flash, "warning")
     except ValueError as e:
         db.session.rollback()
         flash(str(e), "danger")

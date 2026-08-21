@@ -83,7 +83,8 @@ class EquipmentGroupSpecificFuelConsumption(db.Model):
     # УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч
     bk_calc = db.Column(db.Numeric(36, 16), nullable=True)
 
-    # СН на выработку ЭЭ, %
+    # СН на выработку ЭЭ, % — то же значение, что SNK на странице
+    # топливных параметров (sn_ee / e · 100 при наличии входов, иначе FuelParam.snk)
     snk_calc = db.Column(db.Numeric(36, 16), nullable=True)
 
     # Код группы оборудования

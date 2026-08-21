@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Read/query/display для страницы «Тепло и тарифы из СТ».
+Read/query/display для страницы «Тепло и тарифы (схемы теплоснабжения)».
 """
 
 from collections import defaultdict
@@ -14,6 +14,10 @@ from app.extensions import db
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_heat_and_tariffs_model import (
     EquipmentGroupHeatAndTariffs,
+)
+from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services import (
+    resolve_composite_parents_by_numb,
+    territorial_ids_for_equipment_group,
 )
 
 HEAT_AND_TARIFFS_COLUMNS = [
@@ -204,12 +208,22 @@ def get_equipment_groups_with_heat_and_tariffs_data(
             eg = _fake_equipment_group(param)
         rows.append((eg, param))
 
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        apply_numb1120_filter_to_eg_param_rows,
+    )
+
+    rows, numb1120_filter_choices = apply_numb1120_filter_to_eg_param_rows(
+        rows, _filters
+    )
+    total_count = len(rows)
+
     return {
         "rows": rows,
         "total_count": total_count,
         "total_pages": 1,
         "page": 1,
         "per_page": total_count or 1,
+        "numb1120_filter_choices": numb1120_filter_choices,
     }
 
 
@@ -337,6 +351,10 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
         get_union_energy_systems_map,
         union_energy_system_hierarchy_sort_key,
     )
+    from app.fuel.services.equipment_groups.composite_display_cluster_services import (
+        apply_simple_station_summaries,
+        build_station_blocks_from_group_items,
+    )
     from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
         _equipment_group_station_sort_key,
         _get_equipment_group_station_mapping_with_display_order,
@@ -358,6 +376,8 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
         for eg, _ in (rows or [])
         if eg is not None and getattr(eg, "id", None) is not None and eg.id > 0
     ]
+    _vid = get_current_db_version_id()
+    parent_by_numb = resolve_composite_parents_by_numb(rows, database_version_id=_vid)
     eg_station_metadata = _get_equipment_group_station_mapping_with_display_order(
         real_eg_ids, all_versions=True
     )
@@ -377,16 +397,9 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
     for eg, param in rows or []:
         if not eg:
             continue
-        res = getattr(eg, "regional_energy_system", None)
-        ues = getattr(res, "union_energy_system", None) if res else None
-        est_id = getattr(ues, "id_energy_system_type", None) if ues else None
-        ues_id = ues.id if ues else None
-        res_id = res.id if res else None
-
-        _est = est_id if est_id is not None else -1
-        _ues = ues_id if ues_id is not None else -1
-        _res = res_id if res_id is not None else -1
-
+        _est, _ues, _res = territorial_ids_for_equipment_group(
+            eg, parent_by_numb=parent_by_numb
+        )
         hierarchy[_est][_ues][_res][eg.id].append((eg, param))
 
     def _sort_key_est(eid):
@@ -430,15 +443,8 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
                     ),
                 )
 
-                by_station = defaultdict(list)
-                for eg_id, eg_rows in eg_items:
+                for _eg_id, eg_rows in eg_items:
                     all_res_rows.extend(eg_rows)
-                    eg = eg_rows[0][0] if eg_rows else None
-                    sample_param = eg_rows[0][1] if eg_rows else None
-                    station_key = _get_primary_station(eg_id, eg, sample_param)
-                    by_station[station_key].append(
-                        _pivot_heat_and_tariffs_group_block(eg_rows, years)
-                    )
 
                 res_summary = (
                     compute_heat_and_tariffs_year_summary(all_res_rows, years)
@@ -446,31 +452,37 @@ def build_equipment_group_heat_and_tariffs_hierarchy(rows, years=None):
                     else compute_heat_and_tariffs_year_summary([], years)
                 )
 
-                station_blocks = []
-                for station_key in sorted(by_station.keys(), key=_station_sort_key):
-                    group_blocks = by_station[station_key]
-                    station_rows = []
-                    for gb in group_blocks:
-                        station_rows.extend(gb["rows"])
-                    station_summary = compute_heat_and_tariffs_year_summary(
-                        station_rows, years
-                    )
-                    st_id, st_name = station_key if station_key else (None, "—")
-                    station_blocks.append(
-                        {
-                            "station_id": st_id,
-                            "station_name": st_name,
-                            "group_blocks": group_blocks,
-                            "station_summary": station_summary,
-                            "is_virtual": st_id is None,
-                            "suppress_station_summary": should_suppress_fuel_params_station_summary_row(
-                                st_id,
-                                st_name,
-                                group_blocks,
-                                set(),
-                            ),
-                        }
-                    )
+                station_blocks = build_station_blocks_from_group_items(
+                    eg_items,
+                    eg_to_stations,
+                    allow_station_composite_fallback=False,
+                    should_suppress_summary=should_suppress_fuel_params_station_summary_row,
+                    parent_by_numb=parent_by_numb,
+                )
+                # Enrich до pivot: нужны сырые rows [(eg, param), ...].
+                apply_simple_station_summaries(
+                    station_blocks,
+                    lambda rows: compute_heat_and_tariffs_year_summary(rows, years),
+                    parent_by_numb=parent_by_numb,
+                )
+                for sb in station_blocks:
+                    new_gbs = []
+                    for gb in sb.get("group_blocks") or []:
+                        pivoted = _pivot_heat_and_tariffs_group_block(
+                            gb.get("rows") or [], years
+                        )
+                        for key in (
+                            "is_composite_total_row",
+                            "is_composite_parent",
+                            "is_composite_child",
+                            "show_composite_cluster",
+                            "use_station_summary",
+                        ):
+                            if key in gb:
+                                pivoted[key] = gb[key]
+                        new_gbs.append(pivoted)
+                    sb["group_blocks"] = new_gbs
+                    sb["is_virtual"] = sb.get("station_id") is None
 
                 res_list.append(
                     {

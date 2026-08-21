@@ -13,8 +13,6 @@ import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import pandas as pd
-from sqlalchemy import cast
-from sqlalchemy.types import String
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
@@ -226,17 +224,21 @@ def import_equipment_group_specific_fuel_consumption_from_excel(
             skipped_no_k += 1
             continue
 
-        groups = (
-            EquipmentGroup.query
-            .filter(cast(EquipmentGroup.numb, String) == numb_str)
-            .all()
+        from app.fuel.services.fuel_imports.fuel_import_all_versions import (
+            lookup_imported_row,
+            resolve_equipment_group_import_targets,
         )
-        if not groups:
+
+        targets = resolve_equipment_group_import_targets(
+            numb_str,
+            fill_missing_versions=True,
+            require_group_match=True,
+        )
+        if not targets:
             skipped_no_match += 1
             continue
 
-        for eg in groups:
-            version_id = getattr(eg, "database_version_id", None)
+        for equipment_group_id, version_id in targets:
             year_query = Year.query.filter_by(number=year)
             if version_id is not None:
                 year_query = year_query.filter_by(database_version_id=version_id)
@@ -246,18 +248,19 @@ def import_equipment_group_specific_fuel_consumption_from_excel(
                 skipped_no_year += 1
                 continue
 
-            consumption = EquipmentGroupSpecificFuelConsumption.query.filter_by(
-                equipment_group_id=eg.id,
+            consumption = lookup_imported_row(
+                EquipmentGroupSpecificFuelConsumption,
+                equipment_group_id=equipment_group_id,
                 year_number=year,
                 database_version_id=version_id,
-            ).first()
+            )
             if consumption is None:
                 consumption = EquipmentGroupSpecificFuelConsumption(
-                    equipment_group_id=eg.id,
+                    equipment_group_id=equipment_group_id,
                     year_number=year,
                     database_version_id=version_id,
                     k=k_val,
-                    numb1120=_safe_int(eg.numb),
+                    numb1120=_safe_int(numb_str),
                 )
                 set_db_version_on_create(consumption)
                 db.session.add(consumption)
@@ -268,7 +271,7 @@ def import_equipment_group_specific_fuel_consumption_from_excel(
                 if consumption.k != k_val:
                     consumption.k = k_val
                     changed = True
-                eg_numb = _safe_int(eg.numb)
+                eg_numb = _safe_int(numb_str)
                 if eg_numb is not None and consumption.numb1120 != eg_numb:
                     consumption.numb1120 = eg_numb
                     changed = True
@@ -285,7 +288,7 @@ def import_equipment_group_specific_fuel_consumption_from_excel(
 
     elapsed = time.perf_counter() - t0
     message = (
-        "Загрузка коэффициента экономии от теплофикации завершена (год {year}). "
+        "Загрузка коэффициента экономии от теплофикации завершена (год {year}, во все версии БД). "
         "Создано записей: {created}, обновлено: {updated}, "
         "пропущено (нет совпадения по NUMB): {skipped_no_match}, "
         "пропущено (нет значения k): {skipped_no_k}, "
@@ -390,20 +393,16 @@ def _numb1120_for_match(value) -> str | None:
 
 
 def _resolve_equipment_groups_for_calc(row):
-    """
-    Возвращает список (equipment_group_id, database_version_id) для строки.
-    Сопоставление по numb1120 = EquipmentGroup.numb (все версии БД).
-    """
-    numb1120_str = _numb1120_for_match(_extract_cell_value(row, "numb1120"))
-    if not numb1120_str:
-        return []
-
-    groups = (
-        EquipmentGroup.query
-        .filter(cast(EquipmentGroup.numb, String) == numb1120_str)
-        .all()
+    """Цели записи во все версии БД (numb + external_code; без ГО — (None, version))."""
+    from app.fuel.services.fuel_imports.fuel_import_all_versions import (
+        resolve_equipment_group_import_targets,
     )
-    return [(g.id, g.database_version_id) for g in groups]
+
+    return resolve_equipment_group_import_targets(
+        _extract_cell_value(row, "numb1120"),
+        fill_missing_versions=True,
+        require_group_match=True,
+    )
 
 
 def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
@@ -488,16 +487,26 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
 
         numb1120_val = _safe_int(_extract_cell_value(row, "numb1120"))
 
+        from app.fuel.services.fuel_imports.fuel_import_all_versions import (
+            lookup_imported_row,
+        )
+
         for equipment_group_id, eg_database_version_id in equipment_groups:
-            eg = db.session.get(EquipmentGroup, equipment_group_id)
+            eg = (
+                db.session.get(EquipmentGroup, equipment_group_id)
+                if equipment_group_id is not None
+                else None
+            )
             # Всегда берём numb из группы; Excel — только запасной вариант
             eg_numb = _safe_int(getattr(eg, "numb", None)) if eg is not None else None
             resolved_numb1120 = eg_numb if eg_numb is not None else numb1120_val
 
-            param = EquipmentGroupSpecificFuelConsumption.query.filter_by(
+            param = lookup_imported_row(
+                EquipmentGroupSpecificFuelConsumption,
                 equipment_group_id=equipment_group_id,
                 year_number=row_year,
-            ).first()
+                database_version_id=eg_database_version_id,
+            )
 
             if param is None:
                 param = EquipmentGroupSpecificFuelConsumption(
@@ -572,7 +581,7 @@ def import_equipment_group_specific_fuel_consumption_calculated_from_excel(
 
     elapsed = time.perf_counter() - t0
     message = (
-        "Загрузка расчетных значений удельных показателей завершена. "
+        "Загрузка расчетных значений удельных показателей завершена (во все версии БД). "
         "Создано: {created}, обновлено: {updated}, "
         "пропущено (нет совпадения по NUMB1120): {skipped_no_match}."
     ).format(

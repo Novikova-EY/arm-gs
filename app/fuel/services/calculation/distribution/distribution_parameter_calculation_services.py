@@ -29,6 +29,7 @@ from app.fuel.models.fue_distribution_parameter_model import DistributionParamet
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.years.year_model import Year
 from app.fuel.services.calculation.equipment_group_selection import (
+    participating_group_ids_for_year,
     select_equipment_group_ids_for_calculation,
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_batch_calculation_services import (
@@ -81,10 +82,17 @@ class DistributionParameterCalculationService:
         row: DistributionParameter,
         effective_db_version: int | None,
     ) -> list[int]:
+        years: list[int] = []
+        if row.year is not None and getattr(row.year, "number", None) is not None:
+            years.append(int(row.year.number))
+        if row.base_year is not None and getattr(row.base_year, "number", None) is not None:
+            years.append(int(row.base_year.number))
+        year_numbers = sorted(set(years)) or None
         return select_equipment_group_ids_for_calculation(
             self.session,
             filter_text=row.filter_text,
             effective_db_version=effective_db_version,
+            year_numbers=year_numbers,
         )
 
     @staticmethod
@@ -131,6 +139,12 @@ class DistributionParameterCalculationService:
         )
 
         cal_year = self._calendar_year_number(row)
+        group_ids = participating_group_ids_for_year(
+            self.session,
+            group_ids,
+            year_number=cal_year,
+            effective_db_version=effective_db_version,
+        )
 
         batch_result = self.batch_service.calculate_for_many_groups(
             equipment_group_ids=group_ids,

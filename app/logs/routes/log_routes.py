@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request
 from flask_login import current_user
 from app.logs.models.log_model import Log
 from app.extensions import db
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, time
 from zoneinfo import ZoneInfo
 from sqlalchemy import text
 
@@ -10,11 +10,27 @@ MOSCOW = ZoneInfo("Europe/Moscow")
 
 logs_bp = Blueprint('logs', __name__)
 
+
+def _parse_date_arg(raw: str):
+    """Parse YYYY-MM-DD from query; return date or None."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
 @logs_bp.route('/logs', methods=['GET'])
 def view_logs():
     username_filter = request.args.get('username', '').strip()
     action_filter = request.args.get('action', '').strip()
     details_filter = request.args.get('details', '').strip()
+    date_from_raw = request.args.get('date_from', '').strip()
+    date_to_raw = request.args.get('date_to', '').strip()
+    date_from = _parse_date_arg(date_from_raw)
+    date_to = _parse_date_arg(date_to_raw)
 
     # Доступ к чувствительным данным — строго только для роли admin
     role_names = getattr(current_user, "role_names", []) or []
@@ -27,14 +43,15 @@ def view_logs():
             or "admin" in role_names
         )
     )
-    database_version_filter = request.args.get('database_version_id', '').strip() if is_strict_admin else ''
+    # Столбец «Версия» и фильтр по версии доступны всем; ранее — только admin
+    database_version_filter = request.args.get('database_version_id', '').strip()
     sort_by = request.args.get('sort_by', 'timestamp')
     sort_dir = request.args.get('sort_dir', 'desc')
-    per_page = request.args.get('per_page', 10, type=int)
+    per_page = request.args.get('per_page', 25, type=int)
     show_page_events = request.args.get('show_page_events', 'false').lower() == 'true'
     
     if per_page not in [10, 25, 50, 100]:
-        per_page = 10
+        per_page = 25
 
     query = Log.query
     
@@ -57,6 +74,14 @@ def view_logs():
         if database_version_id:
             query = query.filter(Log.database_version_id == database_version_id)
 
+    # Фильтр по дате: границы в МСК, сравнение с timestamp (UTC-aware в БД)
+    if date_from:
+        start_msk = datetime.combine(date_from, time.min, tzinfo=MOSCOW)
+        query = query.filter(Log.timestamp >= start_msk.astimezone(timezone.utc))
+    if date_to:
+        end_exclusive_msk = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=MOSCOW)
+        query = query.filter(Log.timestamp < end_exclusive_msk.astimezone(timezone.utc))
+
     if hasattr(Log, sort_by):
         column = getattr(Log, sort_by)
         query = query.order_by(db.desc(column) if sort_dir == 'desc' else db.asc(column))
@@ -66,23 +91,22 @@ def view_logs():
 
     versions_map = {}
     database_versions = []
-    if is_strict_admin:
-        from app.common.models.database_version_model import DatabaseVersion
-        version_ids = {log.database_version_id for log in logs.items if log.database_version_id}
-        if version_ids:
-            try:
-                versions = db.session.query(DatabaseVersion.id, DatabaseVersion.version_number).filter(
-                    DatabaseVersion.id.in_(version_ids)
-                ).all()
-                versions_map = {v.id: v.version_number for v in versions}
-            except Exception:
-                versions_map = {vid: str(vid) for vid in version_ids}
+    from app.common.models.database_version_model import DatabaseVersion
+    version_ids = {log.database_version_id for log in logs.items if log.database_version_id}
+    if version_ids:
         try:
-            database_versions = db.session.query(DatabaseVersion.id, DatabaseVersion.version_number).order_by(
-                DatabaseVersion.version_number.asc()
+            versions = db.session.query(DatabaseVersion.id, DatabaseVersion.version_number).filter(
+                DatabaseVersion.id.in_(version_ids)
             ).all()
+            versions_map = {v.id: v.version_number for v in versions}
         except Exception:
-            database_versions = []
+            versions_map = {vid: str(vid) for vid in version_ids}
+    try:
+        database_versions = db.session.query(DatabaseVersion.id, DatabaseVersion.version_number).order_by(
+            DatabaseVersion.version_number.asc()
+        ).all()
+    except Exception:
+        database_versions = []
 
     for log in logs.items:
         ts = log.timestamp
@@ -93,13 +117,11 @@ def view_logs():
         else:
             log.timestamp_msk = None
 
-        # Не отдаем тип/ID сущности не-admin даже в исходнике HTML
-        if is_strict_admin:
-            log.database_version_display = (
-                versions_map.get(log.database_version_id, '—')
-                if log.database_version_id
-                else '—'
-            )
+        log.database_version_display = (
+            versions_map.get(log.database_version_id, '—')
+            if log.database_version_id
+            else '—'
+        )
 
     # ✦ Контрольные часы (один раз за запрос)
     db_now_utc  = db.session.execute(text("SELECT now() AT TIME ZONE 'UTC'")).scalar()
@@ -113,6 +135,8 @@ def view_logs():
         username_filter=username_filter,
         action_filter=action_filter,
         details_filter=details_filter,
+        date_from=date_from_raw if date_from else '',
+        date_to=date_to_raw if date_to else '',
         database_version_filter=database_version_filter,
         sort_by=sort_by,
         sort_dir=sort_dir,

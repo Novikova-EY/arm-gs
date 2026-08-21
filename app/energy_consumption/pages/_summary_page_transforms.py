@@ -9,7 +9,8 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
     recompute_sipr_growth_metrics_for_summary_rows,
     _mark_summary_table_collapsed_nt_gaes_variant_row_rules,
     _mark_summary_table_nt_on_gaes_off_variant_row_rules,
-    apply_federal_district_centralized_zone_values_from_summary_table_hub,
+    apply_summary_page_shared_top_aggregate_values_from_summary_table_hub,
+    _reapply_first_synchronous_area_gaes_variant_formulas,
     apply_energy_zone_formula_to_summary_rows,
     apply_federal_district_formula_to_summary_rows,
     apply_fo_rd_gaes_territory_entity_labels,
@@ -258,19 +259,13 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             rounding_digits=int(context.get("rounding_digits") or 1),
         )
     if context.get("active_summary") in ("fo", "ez"):
-        # Верхние агрегаты (Россия / ЦЗ / ЭЭС / ЕЭС / СЗ) — как на /summary/oes/
-        # и /summary_table/: формулы ГАЭС и СЗ, без суммы ОЭС для типа «ЕЭС».
+        # Верхние агрегаты пересчитываются формулами, затем выравниваются с hub
+        # (ЦЗ / ЭЭС / ЕЭС / СЗ) — одинаково на /summary/oes|federal_districts|energy_zones/.
         apply_summary_table_formula_calculations(
             summary_rows,
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
             eu_source_rows_for_tites=eu_source_rows_for_tites,
-        )
-        # Те же проверки ЕЭС/первой СЗ, что на /summary/oes/ — общий верх сводной.
-        inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
         )
     if context.get("active_summary") == "oes":
         # На /summary/oes/ в режиме сводной таблицы значения «ЕЭС России» (тип ЭС)
@@ -294,11 +289,6 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
             eu_source_rows_for_tites=eu_source_rows_for_tites,
-        )
-        inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
-            summary_rows,
-            years=list(context.get("years") or []),
-            rounding_digits=int(context.get("rounding_digits") or 1),
         )
         inject_south_ues_new_territories_summary_rows(
             summary_rows,
@@ -365,15 +355,28 @@ def apply_max_summary_page_variant_behaviour(context: dict) -> dict:
     if context.get("active_summary") in ("oes", "fo", "ez"):
         # Как на /power_demand/summary/oes/: «ЦЗ России» остаётся в режиме «Сводная таблица».
         keep_centralized_zone_rows_in_territory_compact(summary_rows)
-    if context.get("active_summary") in ("fo", "ez"):
-        # Значения «ЦЗ России …» как на /summary_table/ (формула по ОЭС недоступна без UES).
-        apply_federal_district_centralized_zone_values_from_summary_table_hub(
+    if context.get("active_summary") in ("oes", "fo", "ez"):
+        # Общий верх сводной (ЦЗ / ЭЭС / ЕЭС / СЗ) — один hub /summary_table/.
+        apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
             summary_rows,
             years=list(context.get("years") or []),
             rounding_digits=int(context.get("rounding_digits") or 1),
             start_year=int(context.get("start_year") or 0),
             end_year=int(context.get("end_year") or 0),
             filter_year_list=list(context.get("filter_year_list") or []),
+            data_start_year=context.get("data_start_year"),
+            data_end_year=context.get("data_end_year"),
+        )
+        _reapply_first_synchronous_area_gaes_variant_formulas(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
+        )
+        # Проверки ЕЭС/первой СЗ — после выравнивания верха с hub.
+        inject_first_sa_without_nt_with_gaes_with_kaliningrad_ues_verification_after_ees_russia_rows(
+            summary_rows,
+            years=list(context.get("years") or []),
+            rounding_digits=int(context.get("rounding_digits") or 1),
         )
     _mark_summary_table_collapsed_nt_gaes_variant_row_rules(summary_rows)
     _mark_summary_table_nt_on_gaes_off_variant_row_rules(summary_rows)

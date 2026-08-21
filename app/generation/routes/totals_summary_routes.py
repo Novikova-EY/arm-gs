@@ -213,11 +213,21 @@ def totals_summary():
     ).all()
     tes_type_list = {tt.id: tt.name for tt in tes_type_names}
 
-    # Типы ТЭС, для которых не показывать разбивку по топливу (ТЭЦ, КЭС); для остальных (ДЭС, ДГА и т.д.) — показывать
+    # Типы ТЭС, для которых не показывать разбивку по топливу (ТЭЦ, КЭС);
+    # для остальных (ДЭС, ДГА и т.д.) — показывать разбивку по видам топлива.
+    def _tes_type_skips_fuel_breakdown(tt_name: str) -> bool:
+        n = (tt_name or "").strip().upper()
+        if not n:
+            return False
+        # Явно оставляем топливную разбивку для ДЭС/ДГА
+        if "ДЭС" in n or "ДГА" in n or "DES" in n or "DGA" in n:
+            return False
+        return ("ТЭЦ" in n) or ("КЭС" in n)
+
     tes_type_ids_no_fuel_breakdown = [
         tt_id
         for tt_id, tt_name in tes_type_list.items()
-        if tt_name and ("ТЭЦ" in tt_name or "КЭС" in tt_name)
+        if _tes_type_skips_fuel_breakdown(tt_name)
     ]
 
     # Получаем типы машин ТЭС для шаблона

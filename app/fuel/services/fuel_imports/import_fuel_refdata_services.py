@@ -178,6 +178,21 @@ def _normalize_name(value: object) -> str:
     )
 
 
+# Access (БД Топливо) → нормализованное UnionEnergySystem.name в АРМ.
+_UES_ACCESS_NAME_ALIASES: dict[str, str] = {
+    "норильск": "титэссибири",
+    "норильскэнрн": "титэссибири",
+}
+
+
+def _apply_ues_access_name_aliases(name_map: dict[str, object]) -> None:
+    """«Норильск» / «Норильск.эн.р-н» в Excel Топливо → ОЭС «ТИТЭС Сибири»."""
+    for alias, canonical in _UES_ACCESS_NAME_ALIASES.items():
+        target = name_map.get(canonical)
+        if target is not None and alias not in name_map:
+            name_map[alias] = target
+
+
 def _build_name_map_for_rows(rows, fields: list[str]):
     name_map: dict[str, object] = {}
     duplicates: set[str] = set()
@@ -216,7 +231,9 @@ def _build_ues_name_map(current_version_id: int | None):
         UnionEnergySystem.query, UnionEnergySystem, current_version_id
     )
     rows = query.all()
-    return _build_name_map_for_rows(rows, ["name", "name_full"])
+    name_map, duplicates = _build_name_map_for_rows(rows, ["name", "name_full"])
+    _apply_ues_access_name_aliases(name_map)
+    return name_map, duplicates
 
 
 def import_union_energy_system_mappings_from_excel(file, user: str):

@@ -152,20 +152,47 @@ def export_stations_equipment_group_specific_fuel_cost_to_excel(
                             )
                             or "—"
                         )
+                        is_total = bool(group_block.get("is_composite_total_row"))
+                        if is_total and not str(group_name).endswith(", всего"):
+                            group_name = f"{group_name}, всего"
+                        summary = station_block.get("station_summary") or {}
                         for _eg, param in group_block.get("rows") or []:
                             row_data = [
-                                equipment_group_id_cell(group_entity),
+                                equipment_group_id_cell(group_entity)
+                                if not is_total
+                                else (
+                                    str(getattr(group_entity, "numb", None))
+                                    if getattr(group_entity, "numb", None) is not None
+                                    else "—"
+                                ),
                                 group_name,
                             ]
                             for attr, _label, is_numeric in SPECIFIC_FUEL_COST_COLUMNS:
-                                row_data.append(
-                                    _format_cell_value(param, attr, is_numeric, rounding_digits)
-                                )
+                                if is_total or group_block.get("use_station_summary"):
+                                    row_data.append(
+                                        _format_summary_value(
+                                            summary, attr, is_numeric, rounding_digits
+                                        )
+                                    )
+                                else:
+                                    row_data.append(
+                                        _format_cell_value(
+                                            param, attr, is_numeric, rounding_digits
+                                        )
+                                    )
                             _bump_lengths(row_data)
                             ws.append(apply_nbsp_to_row(row_data))
+                            if is_total:
+                                style_data_row(
+                                    ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
+                                )
 
                     gb_count = len(station_block.get("group_blocks") or [])
-                    if gb_count > 1 and not station_block.get("is_virtual"):
+                    if (
+                        gb_count > 1
+                        and not station_block.get("is_virtual")
+                        and not station_block.get("suppress_station_summary")
+                    ):
                         st_name = station_block.get("station_name") or "—"
                         label = f"{st_name}, всего"
                         summary = station_block.get("station_summary") or {}

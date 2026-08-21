@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 
 from sqlalchemy import and_, func, or_
@@ -42,6 +42,7 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_calculation_service
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_calc_services import (
     calc_bk_calc,
     calc_btp_calc,
+    calc_snk_calc,
     calc_sntp_calc,
     calc_y_calc,
 )
@@ -49,11 +50,20 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
     EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS,
     EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS,
     EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS,
+    FUEL_PARAM_LABELS,
+    FUEL_PARAM_VED_DISPLAY,
     FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS,
     build_equipment_group_fuel_params_hierarchy,
+    should_suppress_aggregate_rows_for_filters,
     build_name_maps_from_rows,
     get_equipment_group_ids_for_fuel_params_filters,
     get_equipment_groups_with_fuel_params_data,
+    displayed_fuel_param_snk,
+    displayed_fuel_param_snt,
+    fill_missing_hours_on_fuel_param,
+)
+from app.fuel.services.equipment_groups.composite_parts_sum_check_services import (
+    build_composite_parts_sum_mismatch_by_row,
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_write_services import (
     sanitize_equipment_group_fuel_param_foreign_keys,
@@ -68,11 +78,13 @@ FUEL_EDIT_DATA_PARAM_COLUMNS: tuple[tuple[str, str, bool], ...] = (
     ("nr", EquipmentGroupFuelParam.NR_COLUMN_LABEL, True),
     ("h", EquipmentGroupFuelParam.H_COLUMN_LABEL, True),
     ("hfix", EquipmentGroupFuelParam.HFIX_COLUMN_LABEL, False),
+    ("ved", "Тип ТЭС", False),
     ("e", "Выработка ЭЭ, тыс.кВтч", True),
     ("ewtp", "Теплофикационная выработка ЭЭ, тыс.кВтч", True),
     ("eotp", EquipmentGroupFuelParam.EOTP_COLUMN_LABEL, True),
     ("eust", EquipmentGroupFuelParam.EUST_COLUMN_LABEL, True),
     ("eurt", EquipmentGroupFuelParam.EURT_COLUMN_LABEL, True),
+    ("sn_ee", EquipmentGroupFuelParam.SN_EE_COLUMN_LABEL, True),
     ("snk", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
     ("nt", EquipmentGroupFuelParam.NT_COLUMN_LABEL, True),
     ("nt_sum", EquipmentGroupFuelParam.NT_SUM_COLUMN_LABEL, True),
@@ -80,7 +92,8 @@ FUEL_EDIT_DATA_PARAM_COLUMNS: tuple[tuple[str, str, bool], ...] = (
     ("qotr", "Тепловое потребление (отборов турбин), тыс.Гкал", True),
     ("turt", EquipmentGroupFuelParam.TURT_COLUMN_LABEL, True),
     ("tust", EquipmentGroupFuelParam.TUST_COLUMN_LABEL, True),
-    ("sn_t", "СН, кВтч/⁠Гкал", True),
+    ("sn_te", EquipmentGroupFuelParam.SN_TE_COLUMN_LABEL, True),
+    ("sn_t", EquipmentGroupFuelParam.SN_T_COLUMN_LABEL, True),
     ("b", "Всего", True),
     ("gaz", "Газ", True),
     ("isk_gaz", "Иск. газ", True),
@@ -119,9 +132,49 @@ FUEL_EDIT_DATA_PARAM_COLUMNS: tuple[tuple[str, str, bool], ...] = (
 FUEL_PARAM_RATIO_WARN_THRESHOLD = Decimal("8000")
 FUEL_PARAM_RATIO_SCALE = Decimal("1000")
 FUEL_PARAM_HOURS_WARN_TITLE = (
-    "Число часов использования установленной тепловой мощности больше 8000 часов! "
+    "ЧЧИ тепловой мощности больше 8000 часов! "
     "Проверьте значение!"
 )
+
+
+def _format_hours_for_warn(value: Decimal) -> str:
+    """Целые часы для текста предупреждения (без лишних нулей)."""
+    text = format(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP), "f")
+    return text
+
+
+def build_hours_ratio_warn_message(
+    hours,
+    *,
+    threshold: Decimal = FUEL_PARAM_RATIO_WARN_THRESHOLD,
+) -> str:
+    """
+    Текст как у сверки Σ частей: нынешнее значение и допустимый порог.
+    Пример: «… мощности 9234 больше допустимого 8000! Проверьте значение!»
+    """
+    hours_d = _to_decimal_or_none(hours)
+    hours_s = _format_hours_for_warn(hours_d) if hours_d is not None else "?"
+    thr_s = _format_hours_for_warn(
+        threshold if isinstance(threshold, Decimal) else Decimal(str(threshold))
+    )
+    return (
+        f"Число часов использования установленной тепловой мощности {hours_s} "
+        f"больше допустимого {thr_s}! Проверьте значение!"
+    )
+
+
+def build_h_hours_warn_message(
+    hours,
+    *,
+    threshold: Decimal = FUEL_PARAM_RATIO_WARN_THRESHOLD,
+) -> str:
+    """Предупреждение по полю ЧЧИУМ (h): нынешнее и допустимое."""
+    hours_d = _to_decimal_or_none(hours)
+    hours_s = _format_hours_for_warn(hours_d) if hours_d is not None else "?"
+    thr_s = _format_hours_for_warn(
+        threshold if isinstance(threshold, Decimal) else Decimal(str(threshold))
+    )
+    return f"ЧЧИУМ {hours_s} ч больше допустимого {thr_s} ч! Проверьте значение!"
 
 
 def _nust_effective_for_compare(value) -> Decimal | None:
@@ -138,6 +191,42 @@ def _nust_changed_vs_previous(prev_nust, curr_nust) -> bool:
     return _nust_effective_for_compare(prev_nust) != _nust_effective_for_compare(curr_nust)
 
 
+_PREV_NONEMPTY_LOOKBACK_YEARS = 25
+_FUEL_PARAM_EMPTY_ROW_SKIP_ATTRS = frozenset(
+    {"numb1120", "numb1", "name", "year_number", "database_version_id", "equipment_group_id", "id"}
+)
+
+
+def _fuel_param_row_is_completely_empty(param) -> bool:
+    """Нет записи за год (_MissingYearFuelParam) или все показатели пустые."""
+    if not param:
+        return True
+    for attr, _label, is_numeric in FUEL_EDIT_DATA_PARAM_COLUMNS:
+        if attr in _FUEL_PARAM_EMPTY_ROW_SKIP_ATTRS:
+            continue
+        val = getattr(param, attr, None)
+        if val is None:
+            continue
+        if is_numeric:
+            return False
+        if str(val).strip() not in ("", "None"):
+            return False
+    return True
+
+
+def _prev_nonempty_fuel_param(by_eg_year: dict[int, dict[int, Any]], eid: int, year: int):
+    """Ближайший предыдущий год с непустой строкой параметров (не обязательно year−1)."""
+    years_map = by_eg_year.get(eid) or {}
+    for prev_y in range(year - 1, year - _PREV_NONEMPTY_LOOKBACK_YEARS - 1, -1):
+        if prev_y not in years_map:
+            continue
+        cand = years_map[prev_y]
+        if _fuel_param_row_is_completely_empty(cand):
+            continue
+        return cand
+    return None
+
+
 def _to_decimal_or_none(value) -> Decimal | None:
     if value is None:
         return None
@@ -149,19 +238,18 @@ def _numeric_values_equal_for_compare(prev_value, curr_value) -> bool:
     return _nust_effective_for_compare(prev_value) == _nust_effective_for_compare(curr_value)
 
 
-def _ratio_ge_threshold(
+def _ratio_hours(
     numerator,
     denominator,
     *,
-    threshold: Decimal = FUEL_PARAM_RATIO_WARN_THRESHOLD,
     scale: Decimal = FUEL_PARAM_RATIO_SCALE,
-) -> bool:
-    """True, если (numerator / denominator) * scale >= threshold."""
+) -> Decimal | None:
+    """(numerator / denominator) * scale, либо None если считать нельзя."""
     numer = _to_decimal_or_none(numerator)
     denom = _to_decimal_or_none(denominator)
     if numer is None or denom is None or denom == 0:
-        return False
-    return (numer / denom) * scale >= threshold
+        return None
+    return (numer / denom) * scale
 
 
 def _index_fuel_params_by_eg_year(rows: list) -> dict[int, dict[int, Any]]:
@@ -180,39 +268,76 @@ def _load_missing_prev_year_fuel_params_into_index(
     by_eg_year: dict[int, dict[int, Any]],
     display_pairs: list[tuple[int, int]],
 ) -> None:
-    """Догружает параметры за (год−1), если их нет в текущей выборке строк страницы."""
-    missing_by_version: dict[Any, set[tuple[int, int]]] = defaultdict(set)
+    """
+    Догружает параметры за предыдущие годы, пока не найдётся непустая строка.
+
+    Полностью пустой год (нет записи или все показатели пустые) пропускается —
+    сравнение Nуст идёт с годом до него.
+    """
+    pending: list[tuple[int, int]] = []
     for eid, year in display_pairs:
-        prev_y = year - 1
-        if prev_y in by_eg_year.get(eid, {}):
-            continue
         curr = by_eg_year.get(eid, {}).get(year)
-        version_id = getattr(curr, "database_version_id", None) if curr is not None else None
-        missing_by_version[version_id].add((eid, prev_y))
-
-    for version_id, pairs in missing_by_version.items():
-        if not pairs:
+        if _fuel_param_row_is_completely_empty(curr):
             continue
-        eg_ids = sorted({eid for eid, _y in pairs})
-        years = {y for _eid, y in pairs}
-        loaded = _bulk_fuel_params_by_group_and_years(eg_ids, years, version_id)
-        for (eid, y), param in loaded.items():
-            by_eg_year[eid][y] = param
+        pending.append((eid, year))
+    if not pending:
+        return
+
+    for offset in range(1, _PREV_NONEMPTY_LOOKBACK_YEARS + 1):
+        missing_by_version: dict[Any, set[tuple[int, int]]] = defaultdict(set)
+        still_need_lookback: list[tuple[int, int]] = []
+        for eid, year in pending:
+            prev_y = year - offset
+            years_map = by_eg_year.setdefault(eid, {})
+            if prev_y in years_map:
+                if _fuel_param_row_is_completely_empty(years_map[prev_y]):
+                    still_need_lookback.append((eid, year))
+                continue
+            curr = years_map.get(year)
+            version_id = getattr(curr, "database_version_id", None) if curr is not None else None
+            missing_by_version[version_id].add((eid, prev_y))
+            still_need_lookback.append((eid, year))
+
+        for version_id, pairs in missing_by_version.items():
+            if not pairs:
+                continue
+            eg_ids = sorted({eid for eid, _y in pairs})
+            years = {y for _eid, y in pairs}
+            loaded = _bulk_fuel_params_by_group_and_years(eg_ids, years, version_id)
+            for eid, y in pairs:
+                by_eg_year.setdefault(eid, {})[y] = loaded.get((eid, y))
+
+        pending = [
+            (eid, year)
+            for eid, year in still_need_lookback
+            if _fuel_param_row_is_completely_empty(
+                by_eg_year.get(eid, {}).get(year - offset)
+            )
+        ]
+        if not pending:
+            break
 
 
-def build_fuel_param_row_warn_sets(rows: list) -> dict[str, frozenset[str]]:
+def build_fuel_param_row_warn_sets(rows: list) -> dict[str, Any]:
     """
     Наборы ключей «{equipment_group_id}:{year_number}» для подсветки ячеек:
 
     - qotr_nt_ratio_warn_rows: (qotr/nt)*1000 >= 8000 (ячейка qotr)
     - q_nt_sum_ratio_warn_rows: (q/nt_sum)*1000 >= 8000 (ячейка q)
-    - qotr_composition_warn_rows: nust изменился к предыдущему году, а qotr тот же (ячейка qotr)
-    - nust_changed_from_prev_year_rows: nust изменился к предыдущему году (жёлтая строка)
+    - h_hours_warn_rows: h (ЧЧИУМ) >= 8000 (ячейка h)
+    - *_warn_msgs: тексты с нынешними часами и порогом
+    - qotr_composition_warn_rows: nust изменился к предыдущему непустому году, а qotr тот же (ячейка qotr)
+    - nust_changed_from_prev_year_rows: nust изменился к предыдущему непустому году (жёлтая строка).
+      Полностью пустая строка не подсвечивается; для сравнения берётся год до неё.
     """
-    empty = {
+    empty: dict[str, Any] = {
         "nust_changed_from_prev_year_rows": frozenset(),
         "qotr_nt_ratio_warn_rows": frozenset(),
         "q_nt_sum_ratio_warn_rows": frozenset(),
+        "h_hours_warn_rows": frozenset(),
+        "qotr_nt_ratio_warn_msgs": {},
+        "q_nt_sum_ratio_warn_msgs": {},
+        "h_hours_warn_msgs": {},
         "qotr_composition_warn_rows": frozenset(),
         "fuel_param_prev_compare": {},
     }
@@ -234,6 +359,10 @@ def build_fuel_param_row_warn_sets(rows: list) -> dict[str, frozenset[str]]:
     nust_changed: set[str] = set()
     qotr_nt_warn: set[str] = set()
     q_nt_sum_warn: set[str] = set()
+    h_hours_warn: set[str] = set()
+    qotr_nt_msgs: dict[str, str] = {}
+    q_nt_sum_msgs: dict[str, str] = {}
+    h_hours_msgs: dict[str, str] = {}
     composition_warn: set[str] = set()
     prev_compare: dict[str, dict[str, float | None]] = {}
 
@@ -249,12 +378,24 @@ def build_fuel_param_row_warn_sets(rows: list) -> dict[str, frozenset[str]]:
             continue
         key = f"{eid}:{year}"
 
-        if _ratio_ge_threshold(getattr(param, "qotr", None), getattr(param, "nt", None)):
+        qotr_hours = _ratio_hours(getattr(param, "qotr", None), getattr(param, "nt", None))
+        if qotr_hours is not None and qotr_hours >= FUEL_PARAM_RATIO_WARN_THRESHOLD:
             qotr_nt_warn.add(key)
-        if _ratio_ge_threshold(getattr(param, "q", None), getattr(param, "nt_sum", None)):
-            q_nt_sum_warn.add(key)
+            qotr_nt_msgs[key] = build_hours_ratio_warn_message(qotr_hours)
 
-        prev_param = by_eg_year.get(eid, {}).get(year - 1)
+        q_hours = _ratio_hours(getattr(param, "q", None), getattr(param, "nt_sum", None))
+        if q_hours is not None and q_hours >= FUEL_PARAM_RATIO_WARN_THRESHOLD:
+            q_nt_sum_warn.add(key)
+            q_nt_sum_msgs[key] = build_hours_ratio_warn_message(q_hours)
+
+        h_val = _to_decimal_or_none(getattr(param, "h", None))
+        if h_val is not None and h_val >= FUEL_PARAM_RATIO_WARN_THRESHOLD:
+            h_hours_warn.add(key)
+            h_hours_msgs[key] = build_h_hours_warn_message(h_val)
+
+        if _fuel_param_row_is_completely_empty(param):
+            continue
+        prev_param = _prev_nonempty_fuel_param(by_eg_year, eid, year)
         if prev_param is None:
             continue
         prev_compare[key] = {
@@ -276,6 +417,10 @@ def build_fuel_param_row_warn_sets(rows: list) -> dict[str, frozenset[str]]:
         "nust_changed_from_prev_year_rows": frozenset(nust_changed),
         "qotr_nt_ratio_warn_rows": frozenset(qotr_nt_warn),
         "q_nt_sum_ratio_warn_rows": frozenset(q_nt_sum_warn),
+        "h_hours_warn_rows": frozenset(h_hours_warn),
+        "qotr_nt_ratio_warn_msgs": qotr_nt_msgs,
+        "q_nt_sum_ratio_warn_msgs": q_nt_sum_msgs,
+        "h_hours_warn_msgs": h_hours_msgs,
         "qotr_composition_warn_rows": frozenset(composition_warn),
         "fuel_param_prev_compare": prev_compare,
     }
@@ -286,8 +431,8 @@ def _build_nust_changed_from_prev_year_keys(
     *,
     start_year: int | None = None,
 ) -> frozenset[str]:
-    """Совместимость: ключи строк, где nust отличается от предыдущего календарного года."""
-    del start_year  # сравнение идёт по календарному году−1 с догрузкой из БД при необходимости
+    """Совместимость: ключи строк, где nust отличается от предыдущего непустого года."""
+    del start_year  # сравнение с ближайшим непустым годом до текущего, с догрузкой из БД
     return build_fuel_param_row_warn_sets(rows)["nust_changed_from_prev_year_rows"]
 
 
@@ -622,6 +767,50 @@ def _expand_fuel_param_rows_for_year_interval(
     return out
 
 
+def _merge_expanded_rows_with_loaded_params(rows: list, loaded: dict) -> list:
+    """
+    Подменяет пустой год реальной строкой FuelParam, если она есть по (группа, год).
+
+    Join витрины требует совпадения database_version_id у EG и FuelParam, а
+    уникальность FuelParam — только (группа, год). Строка с «чужой» версией
+    пропадает с edit_data, хотя в карточке EG она видна.
+    """
+    out: list = []
+    for eg, param in rows or []:
+        if eg is None or getattr(eg, "id", None) is None:
+            out.append((eg, param))
+            continue
+        y = getattr(param, "year_number", None) if param is not None else None
+        if y is None:
+            out.append((eg, param))
+            continue
+        real = loaded.get((int(eg.id), int(y)))
+        out.append((eg, real if real is not None else param))
+    return out
+
+
+def _reattach_fuel_params_despite_version_mismatch(
+    rows: list,
+    start_year: int,
+    end_year: int,
+) -> list:
+    eg_ids = sorted(
+        {
+            int(eg.id)
+            for eg, _param in (rows or [])
+            if eg is not None and getattr(eg, "id", None) is not None
+        }
+    )
+    if not eg_ids:
+        return rows
+    loaded = _bulk_fuel_params_by_group_and_years(
+        eg_ids,
+        set(range(int(start_year), int(end_year) + 1)),
+        get_current_db_version_id(),
+    )
+    return _merge_expanded_rows_with_loaded_params(rows, loaded)
+
+
 def assemble_fuel_edit_data_param_columns() -> tuple[
     list[tuple[str, str, bool]], frozenset[str]
 ]:
@@ -694,9 +883,25 @@ def enrich_fuel_hierarchy_summaries_with_extra(
                 for station_block in res_block.get("station_blocks") or []:
                     station_rows: list = []
                     for gb in station_block.get("group_blocks") or []:
+                        # В итог станции не кладём родителя составной (как в enrich).
+                        if gb.get("is_composite_parent") or gb.get("is_composite_total_row"):
+                            continue
                         station_rows.extend(gb.get("rows") or [])
                     if station_block.get("station_summary") is not None and station_rows:
                         station_block["station_summary"].update(_sum_extra(station_rows))
+                    by_year: dict[int, list] = defaultdict(list)
+                    for eg, param in station_rows:
+                        y = getattr(param, "year_number", None) if param is not None else None
+                        if y is None:
+                            continue
+                        by_year[int(y)].append((eg, param))
+                    summary_by_year = station_block.get("station_summary_by_year")
+                    if summary_by_year is None:
+                        summary_by_year = {}
+                        station_block["station_summary_by_year"] = summary_by_year
+                    for ynum, y_rows in by_year.items():
+                        bucket = summary_by_year.setdefault(ynum, {})
+                        bucket.update(_sum_extra(y_rows))
 
 
 def _load_extra_fuel_param_by_group_year(
@@ -1011,15 +1216,17 @@ def split_fuel_param_columns_coal_vs_other(
     return non_coal, coal
 
 
-def _fuel_edit_detail_numeric_cell(value, *, rounding_digits: int) -> str:
+def _fuel_edit_detail_numeric_cell(
+    value, *, rounding_digits: int, show_zero: bool = False
+) -> str:
     """Как render_numeric_or_dash в шаблоне основных параметров."""
     if value is None:
         return "—"
     try:
         if isinstance(value, Decimal):
-            if value == 0:
+            if value == 0 and not show_zero:
                 return "—"
-        elif isinstance(value, (int, float)) and value == 0:
+        elif isinstance(value, (int, float)) and value == 0 and not show_zero:
             return "—"
     except Exception:
         pass
@@ -1296,7 +1503,7 @@ def build_fuel_calculation_edit_detail_panels_data(
                 v_btp_calc = calc_btp_calc(param, coeff_k)
                 v_sntp_calc = calc_sntp_calc(param)
                 v_bk_calc = calc_bk_calc(param, v_btp_calc, v_sntp_calc)
-                v_snk_calc = getattr(param, "snk", None)
+                v_snk_calc = calc_snk_calc(param)
             else:
                 v_snk_calc = getattr(r, "snk_calc", None) if r else None
                 v_btp_calc = getattr(r, "btp_calc", None) if r else None
@@ -1309,6 +1516,7 @@ def build_fuel_calculation_edit_detail_panels_data(
                     "snk_calc": _fuel_edit_detail_numeric_cell(
                         v_snk_calc,
                         rounding_digits=rounding_digits,
+                        show_zero=True,
                     ),
                     "btp_calc": _fuel_edit_detail_numeric_cell(
                         v_btp_calc,
@@ -1417,6 +1625,7 @@ _FUEL_PARAM_SHOW_ZERO_ATTRS = frozenset(
         "eotp",
         "eurt",
         "eust",
+        "sn_ee",
         "snk",
         "nt",
         "nt_sum",
@@ -1424,6 +1633,7 @@ _FUEL_PARAM_SHOW_ZERO_ATTRS = frozenset(
         "qotr",
         "turt",
         "tust",
+        "sn_te",
         "sn_t",
     }
 )
@@ -1588,7 +1798,9 @@ def get_fuel_calculation_edit_data_view_model(
         key=_group_sort_key,
     )
     hierarchy_for_paging = build_equipment_group_fuel_params_hierarchy(
-        rows_for_paging, use_equipment_group_hierarchy_only=False
+        rows_for_paging,
+        use_equipment_group_hierarchy_only=False,
+        suppress_aggregate_rows=should_suppress_aggregate_rows_for_filters(f),
     )
 
     if show_all or (
@@ -1657,6 +1869,9 @@ def get_fuel_calculation_edit_data_view_model(
     rows = _expand_fuel_param_rows_for_year_interval(
         rows_page_raw, start_year, end_year
     )
+    rows = _reattach_fuel_params_despite_version_mismatch(
+        rows, start_year, end_year
+    )
 
     def _row_sort_key(item: tuple) -> tuple:
         eg, param = item
@@ -1674,7 +1889,9 @@ def get_fuel_calculation_edit_data_view_model(
 
     name_maps = build_name_maps_from_rows(rows)
     hierarchy = build_equipment_group_fuel_params_hierarchy(
-        rows, use_equipment_group_hierarchy_only=False
+        rows,
+        use_equipment_group_hierarchy_only=False,
+        suppress_aggregate_rows=should_suppress_aggregate_rows_for_filters(f),
     )
     fuel_nazvl_to_name = build_fuel_nazvl_to_name_map()
     full_columns, fuel_extra_column_attrs = assemble_fuel_edit_data_param_columns()
@@ -1696,6 +1913,11 @@ def get_fuel_calculation_edit_data_view_model(
     )
 
     warn_sets = build_fuel_param_row_warn_sets(rows)
+    composite_parts_sum_mismatch_by_row = build_composite_parts_sum_mismatch_by_row(
+        hierarchy,
+        labels=FUEL_PARAM_LABELS,
+        rounding_digits=rounding_digits,
+    )
     deferred_fuel_columns = _build_deferred_fuel_columns_payload(
         full_columns=fuel_param_column_hierarchy.get("fuel_param_columns") or full_columns,
         fuel_param_column_hierarchy=fuel_param_column_hierarchy,
@@ -1711,6 +1933,7 @@ def get_fuel_calculation_edit_data_view_model(
         "equipment_group_fuel_param_row_groups": row_groups,
         "equipment_group_fuel_params_hierarchy": hierarchy,
         **warn_sets,
+        "composite_parts_sum_mismatch_by_row": composite_parts_sum_mismatch_by_row,
         "total_count": total_eg_count,
         "total_pages": total_pages,
         "page": current_page,
@@ -1731,7 +1954,26 @@ def get_fuel_calculation_edit_data_view_model(
         "end_year": end_year,
         "rounding_digits": rounding_digits,
         "bulk_edit_equipment_group_ids": bulk_edit_equipment_group_ids,
+        "numb1120_filter_choices": fuel_data.get("numb1120_filter_choices") or [],
+        "fuel_param_ved_labels": FUEL_PARAM_VED_DISPLAY,
     }
+
+
+def _prefer_matching_db_version(rows, version_id: int | None):
+    """
+    Одна строка на (группу, год): uq_equipment_group_fuel_param_group_year
+    не включает database_version_id. Если в грязных данных несколько строк —
+    предпочитаем текущую версию.
+    """
+    chosen = None
+    for row in rows:
+        if row is None:
+            continue
+        if version_id is not None and getattr(row, "database_version_id", None) == version_id:
+            return row
+        if chosen is None:
+            chosen = row
+    return chosen
 
 
 def _get_fuel_param_for_group_year(
@@ -1739,15 +1981,11 @@ def _get_fuel_param_for_group_year(
     year_number: int,
     version_id: int | None,
 ) -> EquipmentGroupFuelParam | None:
-    q = EquipmentGroupFuelParam.query.filter_by(
+    rows = EquipmentGroupFuelParam.query.filter_by(
         equipment_group_id=equipment_group_id,
         year_number=year_number,
-    )
-    if version_id is not None:
-        q = q.filter(EquipmentGroupFuelParam.database_version_id == version_id)
-    else:
-        q = q.filter(EquipmentGroupFuelParam.database_version_id.is_(None))
-    return q.first()
+    ).all()
+    return _prefer_matching_db_version(rows, version_id)
 
 
 def _bulk_fuel_params_by_group_and_years(
@@ -1758,6 +1996,9 @@ def _bulk_fuel_params_by_group_and_years(
     """
     Одна выборка строк EquipmentGroupFuelParam по списку групп и набору календарных годов
     (ускоряет «Добавить год/период» вместо N·M запросов _get_fuel_param_for_group_year).
+
+    Без фильтра по database_version_id: уникальность — (группа, год), иначе INSERT
+    падает с UniqueViolation, если строка уже есть с другой версией.
     """
     if not equipment_group_ids or not year_numbers:
         return {}
@@ -1766,14 +2007,15 @@ def _bulk_fuel_params_by_group_and_years(
         EquipmentGroupFuelParam.equipment_group_id.in_([int(x) for x in equipment_group_ids]),
         EquipmentGroupFuelParam.year_number.in_(year_list),
     )
-    if version_id is not None:
-        q = q.filter(EquipmentGroupFuelParam.database_version_id == version_id)
-    else:
-        q = q.filter(EquipmentGroupFuelParam.database_version_id.is_(None))
-    return {
-        (int(r.equipment_group_id), int(r.year_number)): r
-        for r in q.all()
-    }
+    result: dict[tuple[int, int], EquipmentGroupFuelParam] = {}
+    for r in q.all():
+        key = (int(r.equipment_group_id), int(r.year_number))
+        prev = result.get(key)
+        if prev is None:
+            result[key] = r
+        elif version_id is not None and r.database_version_id == version_id:
+            result[key] = r
+    return result
 
 
 def copy_fuel_params_between_years_for_filters(
@@ -1858,10 +2100,89 @@ def copy_fuel_params_between_years_for_filters(
     return copied, skipped, len(eg_ids)
 
 
-# Показатели тепла с базового года (q — отдельно: приоритет «Тепло и тарифы из СТ»).
+# Показатели тепла с базового года (q — отдельно: приоритет «Тепло и тарифы (схемы теплоснабжения)»).
+# qotr — с Access «Станции(Схема)» / импорта ТЭП (форму «Тепло» / calcq не считаем).
 # nt задаётся в _apply_nust_nr_… (см. _sum_nt_for_machines_with_nonzero_p_ust_sum_in_year).
 # hfix (+ h при фиксации): как в Access HFIX на каждом годе; иначе Распред пересчитает часы.
+# snk/sn_t — Access копирует ставки СН со строки станции; числители sn_ee/sn_te не копируем.
 _HEAT_FUEL_PARAM_COPY_ATTRS: tuple[str, ...] = ("q", "qotr", "nt_sum", "turt", "hfix")
+
+
+def _numeric_is_zero(value) -> bool:
+    if value is None:
+        return False
+    try:
+        return Decimal(str(value)) == 0
+    except (InvalidOperation, TypeError, ValueError):
+        return False
+
+
+def _copy_access_station_snk_snt(target, source, *, only_if_empty: bool = False) -> bool:
+    """
+    Access: SNK и SNt на строке «Станции» уезжают с размножением года.
+
+    На цель пишем отображаемые ставки базового года (формула при наличии
+    sn_ee/sn_te, иначе сохранённые). Числители не копируем — иначе на новой E
+    формула пересчитает SNK. Нули sn_ee/sn_te на цели сбрасываем в NULL,
+    иначе UI покажет SNK/SNT = 0 вместо копии.
+
+    only_if_empty: не затирать уже заданные ненулевые ставки (автодозаполнение
+    перед расчётом); «Добавить год» копирует всегда, как turt.
+
+    True, если объект изменился.
+    """
+    if target is None or source is None:
+        return False
+    changed = False
+    if not only_if_empty or _sn_rate_slot_is_empty(target, "snk"):
+        new_snk = displayed_fuel_param_snk(source)
+        if getattr(target, "snk", None) != new_snk:
+            target.snk = new_snk
+            changed = True
+    if not only_if_empty or _sn_rate_slot_is_empty(target, "sn_t"):
+        new_snt = displayed_fuel_param_snt(source)
+        if getattr(target, "sn_t", None) != new_snt:
+            target.sn_t = new_snt
+            changed = True
+    for attr in ("sn_ee", "sn_te"):
+        if _numeric_is_zero(getattr(target, attr, None)):
+            setattr(target, attr, None)
+            changed = True
+    return changed
+
+
+def _sn_rate_slot_is_empty(target, attr: str) -> bool:
+    shown = (
+        displayed_fuel_param_snk(target)
+        if attr == "snk"
+        else displayed_fuel_param_snt(target)
+    )
+    return shown is None or _numeric_is_zero(shown)
+
+# При создании строки за новый год («Добавить год/период») — идентификаторы Access
+# «Станции(Схема)» с базового года, в т.ч. VED (иначе filter1 ved>0 и ветки расчёта ломаются).
+# На уже существующей строке копируем только пустые из этого списка (не затираем ручной ввод).
+_HEAT_NEW_ROW_IDENTITY_ATTRS: tuple[str, ...] = tuple(
+    dict.fromkeys(("name",) + tuple(EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS))
+)
+
+
+def _seed_fuel_param_identity_from_source(
+    target: EquipmentGroupFuelParam,
+    source: EquipmentGroupFuelParam,
+    *,
+    new_row: bool,
+) -> None:
+    """
+    Проставляет identity-поля (ved, oes, obl, …) с базового года.
+    new_row=True — все поля; иначе только там, где на target ещё NULL.
+    """
+    for key in _HEAT_NEW_ROW_IDENTITY_ATTRS:
+        if not hasattr(target, key) or not hasattr(source, key):
+            continue
+        if not new_row and getattr(target, key, None) is not None:
+            continue
+        setattr(target, key, getattr(source, key, None))
 
 
 def _bulk_heat_and_tariffs_q_by_group_and_years(
@@ -1870,43 +2191,94 @@ def _bulk_heat_and_tariffs_q_by_group_and_years(
     version_id: int | None,
 ) -> dict[tuple[int, int], Any]:
     """
-    Q из EquipmentGroupHeatAndTariffs (страница «Тепло и тарифы из СТ») по группе и году.
+    Q из EquipmentGroupHeatAndTariffs (страница «Тепло и тарифы (схемы теплоснабжения)») по группе и году.
 
-    При нескольких записях за один год сумма ненулевых q (как сводки на той странице).
-    Ключ отсутствует, если записей нет или все q пустые — тогда q берут с базового года.
+    Сначала по equipment_group_id; если для группы нет записи — по numb1120 = EquipmentGroup.numb
+    (как Access «Тепло из СТ»). При нескольких записях за один год сумма ненулевых q.
+    Ключ отсутствует, если записей нет или все q пустые — тогда q не подставляем.
     """
     from app.fuel.models.fue_equipment_group_heat_and_tariffs_model import (
         EquipmentGroupHeatAndTariffs,
     )
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 
     if not equipment_group_ids or not year_numbers:
         return {}
     year_list = [int(x) for x in year_numbers]
     eg_list = [int(x) for x in equipment_group_ids]
-    q = db.session.query(
-        EquipmentGroupHeatAndTariffs.equipment_group_id,
-        EquipmentGroupHeatAndTariffs.year_number,
-        EquipmentGroupHeatAndTariffs.q,
-    ).filter(
-        EquipmentGroupHeatAndTariffs.equipment_group_id.in_(eg_list),
-        EquipmentGroupHeatAndTariffs.year_number.in_(year_list),
-    )
-    if version_id is not None:
-        q = q.filter(EquipmentGroupHeatAndTariffs.database_version_id == version_id)
-    else:
-        q = q.filter(EquipmentGroupHeatAndTariffs.database_version_id.is_(None))
+
+    def _hat_version_filter(query):
+        if version_id is not None:
+            return query.filter(EquipmentGroupHeatAndTariffs.database_version_id == version_id)
+        return query.filter(EquipmentGroupHeatAndTariffs.database_version_id.is_(None))
 
     sums: dict[tuple[int, int], Decimal] = {}
     has_value: dict[tuple[int, int], bool] = {}
-    for eg_id, year_number, q_val in q.all():
+
+    def _add(eg_id, year_number, q_val) -> None:
         if eg_id is None or year_number is None or q_val is None:
-            continue
+            return
         key = (int(eg_id), int(year_number))
         try:
             sums[key] = sums.get(key, Decimal(0)) + Decimal(str(q_val))
             has_value[key] = True
         except (TypeError, ValueError):
-            continue
+            return
+
+    q = _hat_version_filter(
+        db.session.query(
+            EquipmentGroupHeatAndTariffs.equipment_group_id,
+            EquipmentGroupHeatAndTariffs.year_number,
+            EquipmentGroupHeatAndTariffs.q,
+        ).filter(
+            EquipmentGroupHeatAndTariffs.equipment_group_id.in_(eg_list),
+            EquipmentGroupHeatAndTariffs.year_number.in_(year_list),
+        )
+    )
+    for eg_id, year_number, q_val in q.all():
+        _add(eg_id, year_number, q_val)
+
+    from_eg_id = set(has_value)
+    missing_eg = [
+        eg_id
+        for eg_id in eg_list
+        if any((eg_id, y) not in from_eg_id for y in year_list)
+    ]
+    if missing_eg:
+        numb_rows = (
+            db.session.query(EquipmentGroup.id, EquipmentGroup.numb)
+            .filter(EquipmentGroup.id.in_(missing_eg))
+            .all()
+        )
+        numb_to_eg: dict[int, list[int]] = {}
+        for eg_id, numb in numb_rows:
+            if eg_id is None or numb is None:
+                continue
+            try:
+                numb_i = int(numb)
+            except (TypeError, ValueError):
+                continue
+            numb_to_eg.setdefault(numb_i, []).append(int(eg_id))
+        if numb_to_eg:
+            q_numb = _hat_version_filter(
+                db.session.query(
+                    EquipmentGroupHeatAndTariffs.numb1120,
+                    EquipmentGroupHeatAndTariffs.year_number,
+                    EquipmentGroupHeatAndTariffs.q,
+                ).filter(
+                    EquipmentGroupHeatAndTariffs.numb1120.in_(list(numb_to_eg)),
+                    EquipmentGroupHeatAndTariffs.year_number.in_(year_list),
+                )
+            )
+            for numb, year_number, q_val in q_numb.all():
+                if numb is None or year_number is None:
+                    continue
+                year_i = int(year_number)
+                for eg_id in numb_to_eg.get(int(numb), []):
+                    if (eg_id, year_i) in from_eg_id:
+                        continue
+                    _add(eg_id, year_i, q_val)
+
     return {k: sums[k] for k in has_value}
 
 
@@ -1917,16 +2289,24 @@ def copy_heat_fuel_param_columns_for_filters(
     filter_end_year: int,
     source_year_number: int,
     target_year_numbers: list[int],
+    only_new_rows: bool = False,
 ) -> tuple[int, int, int]:
     """
     Заполняет тепловые показатели на заданные календарные годы для групп по фильтрам страницы.
 
-    q: из EquipmentGroupHeatAndTariffs (Q на «Тепло и тарифы из СТ») за целевой год;
+    q: из EquipmentGroupHeatAndTariffs (Q на «Тепло и тарифы (схемы теплоснабжения)») за целевой год;
     если там нет данных — с source_year_number.
-    qotr, nt_sum, turt: всегда с source_year_number.
+    qotr, nt_sum, turt: с source_year_number (qotr — как в Access на строке станции).
+    snk, sn_t: отображаемые ставки с source_year_number (как Access SNK/SNt
+    при размножении строки станции); sn_ee/sn_te не копируются.
 
-    Существующая строка за целевой год обновляется только по перечисленным полям;
-    при отсутствии строки создаётся новая.
+    Существующая строка за целевой год обновляется по тепловым полям; пустые identity
+    (ved, oes, obl, …) дозаполняются с базового года.
+    only_new_rows=True — не трогать уже существующие годы (посев промежуточных лет
+    перед расчётом, чтобы не сбросить QOTR расчётного года). Q из схем на существующие
+    годы накладывает apply_heat_and_tariffs_q_for_groups.
+    При отсутствии строки создаётся новая с identity + теплом с базового года
+    (как размножение строки «Станции(Схема)» в Access — без этого ved остаётся NULL).
 
     nust, nr, nt, nt_sum: см. _apply_nust_nr_for_target_from_source_or_machines (nt и nt_sum —
     сумма MachineFuelParam.nt по агрегатам группы с ненулевой суммой p_ust за целевой год; см.
@@ -1979,7 +2359,10 @@ def copy_heat_fuel_param_columns_for_filters(
             mids = _machine_ids_for_fuel_equipment_group(eg_id, version_id) if has_links else []
         for tyn in tyn_sorted:
             target = params_by_eg_year.get((eg_id, tyn))
-            if target is None:
+            new_row = target is None
+            if only_new_rows and not new_row:
+                continue
+            if new_row:
                 target = EquipmentGroupFuelParam(
                     equipment_group_id=eg_id,
                     year_number=tyn,
@@ -1987,6 +2370,12 @@ def copy_heat_fuel_param_columns_for_filters(
                 )
                 set_db_version_on_create(target)
                 db.session.add(target)
+                params_by_eg_year[(eg_id, tyn)] = target
+            elif version_id is not None and getattr(target, "database_version_id", None) is None:
+                target.database_version_id = version_id
+
+            _seed_fuel_param_identity_from_source(target, source, new_row=new_row)
+
             for key in _HEAT_FUEL_PARAM_COPY_ATTRS:
                 if key == "q":
                     hat_q = q_from_heat_tariffs.get((eg_id, tyn))
@@ -1997,6 +2386,8 @@ def copy_heat_fuel_param_columns_for_filters(
                     )
                 else:
                     setattr(target, key, getattr(source, key))
+
+            _copy_access_station_snk_snt(target, source)
 
             # Access: при HFIX=1 часы H тоже зафиксированы — копируем с базы.
             try:
@@ -2017,10 +2408,114 @@ def copy_heat_fuel_param_columns_for_filters(
                 cached_machine_ids=mids,
             )
 
+            fill_missing_hours_on_fuel_param(target)
+
             sanitize_equipment_group_fuel_param_foreign_keys(target)
             copied += 1
 
     return copied, skipped, len(eg_ids)
+
+
+def apply_heat_and_tariffs_q_for_groups(
+    equipment_group_ids: list[int],
+    target_year_numbers: list[int],
+    version_id: int | None = None,
+) -> int:
+    """
+    На существующих строках ТЭП подставляет Q из «Тепло и тарифы» за тот же календарный год.
+
+    Как Access: отпуск на прогнозный год берётся из «Тепло из СТ», а не копией базового года.
+    Уже заданный q (в т.ч. из импорта «Станции(Схема)») не затираем.
+    Нет записи СТ за год — q не меняем. QOTR и прочие поля не трогаем.
+    """
+    tyn_set = {int(x) for x in (target_year_numbers or []) if x is not None}
+    eg_ids_int = [int(x) for x in (equipment_group_ids or []) if x is not None]
+    if not tyn_set or not eg_ids_int:
+        return 0
+    if version_id is None:
+        version_id = get_current_db_version_id()
+    params_by_eg_year = _bulk_fuel_params_by_group_and_years(
+        eg_ids_int, tyn_set, version_id
+    )
+    q_from_heat_tariffs = _bulk_heat_and_tariffs_q_by_group_and_years(
+        eg_ids_int, tyn_set, version_id
+    )
+    if not q_from_heat_tariffs:
+        return 0
+    updated = 0
+    for (eg_id, year_number), hat_q in q_from_heat_tariffs.items():
+        target = params_by_eg_year.get((eg_id, year_number))
+        if target is None or hat_q is None:
+            continue
+        if target.q is not None:
+            continue
+        target.q = hat_q
+        updated += 1
+    return updated
+
+
+def apply_heat_and_tariffs_q_for_existing_rows(
+    filters: dict[str, Any],
+    *,
+    filter_start_year: int,
+    filter_end_year: int,
+    target_year_numbers: list[int],
+) -> int:
+    """Обёртка: группы по фильтрам страницы, затем apply_heat_and_tariffs_q_for_groups."""
+    f = {**filters}
+    f.pop("page", None)
+    eg_ids = get_equipment_group_ids_for_fuel_params_filters(
+        f, start_year=filter_start_year, end_year=filter_end_year
+    )
+    if not eg_ids:
+        return 0
+    return apply_heat_and_tariffs_q_for_groups(eg_ids, target_year_numbers)
+
+
+def fill_snk_snt_from_source_year_for_existing_rows(
+    filters: dict[str, Any],
+    *,
+    filter_start_year: int,
+    filter_end_year: int,
+    source_year_number: int,
+    target_year_numbers: list[int],
+) -> int:
+    """
+    На уже существующих строках целевых лет проставляет SNK/SNT с базового года.
+
+    Для строк, которые «Добавить год» уже создал без этих полей: не трогает q/turt.
+    """
+    tyn_set = {int(x) for x in (target_year_numbers or []) if x is not None}
+    tyn_set.discard(int(source_year_number))
+    if not tyn_set:
+        return 0
+
+    f = {**filters}
+    f.pop("page", None)
+    eg_ids = get_equipment_group_ids_for_fuel_params_filters(
+        f, start_year=filter_start_year, end_year=filter_end_year
+    )
+    if not eg_ids:
+        return 0
+
+    version_id = get_current_db_version_id()
+    years_to_load = {int(source_year_number), *tyn_set}
+    params_by_eg_year = _bulk_fuel_params_by_group_and_years(
+        [int(x) for x in eg_ids], years_to_load, version_id
+    )
+    updated = 0
+    for eg_id in eg_ids:
+        eg_id = int(eg_id)
+        source = params_by_eg_year.get((eg_id, int(source_year_number)))
+        if source is None:
+            continue
+        for tyn in tyn_set:
+            target = params_by_eg_year.get((eg_id, tyn))
+            if target is None:
+                continue
+            if _copy_access_station_snk_snt(target, source, only_if_empty=True):
+                updated += 1
+    return updated
 
 
 def _save_main_fuel_param_detail_panel_values(

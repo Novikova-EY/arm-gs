@@ -21,6 +21,28 @@ from app.common.services.database_version_filter import (
 _POWER_KEYS = ("p_ust", "p_ogr", "p_rasp")
 
 
+def is_machine_archived(machine: Any) -> bool:
+    """Архивный агрегат не участвует в агрегационных суммах мощностей."""
+    return bool(getattr(machine, "is_archived", False))
+
+
+def machine_not_archived_clause():
+    """SQL-условие: только неархивные агрегаты (NULL/False считаем активными)."""
+    return Machine.is_archived.isnot(True)
+
+
+def partition_machines_archived_last(machines: Iterable[Any]) -> list[Any]:
+    """Активные агрегаты сначала, архивные — в конце списка (порядок внутри групп сохраняется)."""
+    active: list[Any] = []
+    archived: list[Any] = []
+    for machine in machines or []:
+        if is_machine_archived(machine):
+            archived.append(machine)
+        else:
+            active.append(machine)
+    return active + archived
+
+
 def _to_decimal(value) -> Decimal:
     if value is None:
         return Decimal("0")
@@ -112,10 +134,15 @@ def assign_station_powers_from_filtered_machines(
     start_year: int,
     end_year: int,
 ) -> None:
-    """Заполняет station.powers_by_year суммой machine.powers_by_year (in-memory)."""
+    """Заполняет station.powers_by_year суммой machine.powers_by_year (in-memory).
+
+    Архивные агрегаты в сумму не входят.
+    """
     for station in stations:
         year_maps = []
         for machine in getattr(station, "machines", None) or []:
+            if is_machine_archived(machine):
+                continue
             year_maps.append(getattr(machine, "powers_by_year", None) or {})
         station.powers_by_year = aggregate_powers_from_year_maps(
             year_maps,
@@ -144,6 +171,7 @@ def load_station_powers_by_year(
         )
         .join(Machine, MachinePower.id_machine == Machine.id)
         .filter(Machine.id_station == station_id)
+        .filter(machine_not_archived_clause())
         .filter(MachinePower.year_number.between(start_year, end_year))
         .group_by(MachinePower.year_number)
     )
@@ -173,6 +201,7 @@ def load_stations_powers_by_year(
     """
     Пакетная загрузка сумм мощностей для множества станций.
 
+    Архивные агрегаты в суммы не входят.
     Returns: {station_id: {year: {p_ust, p_ogr, p_rasp}}}
     """
     station_id_list = [int(sid) for sid in station_ids if sid is not None]
@@ -190,6 +219,7 @@ def load_stations_powers_by_year(
         )
         .join(Machine, MachinePower.id_machine == Machine.id)
         .filter(Machine.id_station.in_(station_id_list))
+        .filter(machine_not_archived_clause())
         .filter(MachinePower.year_number.in_(year_list))
         .group_by(Machine.id_station, MachinePower.year_number)
     )

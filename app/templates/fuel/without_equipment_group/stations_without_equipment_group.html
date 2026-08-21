@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ page_title | default('Агрегаты без группы оборудования (проверка)') }}{% endblock %}
+{% block title %}{{ page_title | default('Агрегаты без группы оборудования') }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
 {% set _list_endpoint = station_list_endpoint | default('station_bp.station_list') %}
-{% set station_list_meta_colspan = 15 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 %}
+{% set station_list_meta_colspan = 12 %}
 {% set table_total_colspan = station_list_meta_colspan + 4 + 2 * (end_year - start_year) %}
 {% set edit_roles = ['admin', 'generation-admin', 'generation-editor'] %}
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
@@ -22,35 +22,80 @@
 </div>
 
 <div class="container-fluid mt-2">
-    {# Скроллим весь блок страницы: при прокрутке скрывается все над шапкой таблицы #}
-    <div class="table-responsive" id="stationsTableContainer">
+    <div class="page-table-scroll">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for(_list_endpoint) }}" class="btn btn-secondary fs-5">Агрегаты электростанций без групп оборудования</a>
-        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
+        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i> Изменения установленной мощности</a>
     </div>
 
-    <div class="col-12 mb-2">
-        <h2 class="text-center mb-4">{{ page_title | default('Агрегаты без группы оборудования (проверка)') }}</h2>
-        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+    <div class="w-100 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2">
+                <h2 class="text-center mb-4">{{ page_title | default('Агрегаты без группы оборудования') }}</h2>
+            </div>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+            {% set fuel_auto_assign_roles = ['admin', 'fuel-admin', 'fuel-editor', 'generation-admin', 'generation-editor'] %}
+            {% if current_user.role_names | select('in', fuel_auto_assign_roles) | list | length > 0 %}
+                <form method="POST"
+                      action="{{ url_for('fuel_bp.stations_without_equipment_group_auto_assign') }}"
+                      class="m-0"
+                      onsubmit="return confirm('Для всех агрегатов текущей выборки будет назначена группа оборудования так же, как при «Сохранить» на карточке агрегата (по типу группы и плановому году). Продолжить?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    {% for key, values in request.args.lists() %}
+                        {% for value in values %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endfor %}
+                    {% endfor %}
+                    <button type="submit" class="btn btn-outline-primary">
+                        Автоопределить группы оборудования
+                    </button>
+                </form>
+            {% endif %}
             {% if can_edit %}
                 <a href="{{ url_for('station_bp.add_station') }}" class="btn btn-outline-success text-dark">
                     ➕ Добавить электростанцию
                 </a>
             {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- Фильтры -->
-    {% include 'generation/stations/station_filters.html' %}
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+        {% include 'generation/stations/station_filters.html' %}
+    </div>
+
+    <style>
+    .page-table-scroll #stationsTableContainer table thead tr:nth-child(1) th {
+        top: var(--pd-summary-controls-sticky-height, 0px);
+    }
+    .page-table-scroll #stationsTableContainer table thead tr:nth-child(2) th {
+        top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
+    }
+    .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-filters-collapse,
+    .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
+        overflow: visible !important;
+    }
+    #stationsTableContainer tr.machine-archived,
+    #stationsTableContainer tr.machine-archived td {
+        color: #8a9096 !important;
+    }
+    #stationsTableContainer tr.machine-archived a {
+        color: #8a9096 !important;
+    }
+    #stationsTableContainer tr.machine-archived td {
+        background-color: rgba(108, 117, 125, 0.06);
+    }
+    </style>
 
     <!-- Таблица с данными -->
-        <table class="table table-hover table-striped table-bordered table-responsive">
+    <div class="table-responsive" id="stationsTableContainer">
+        <table class="table table-hover table-striped table-bordered table-responsive w-100">
 
             <!-- Шапка таблицы с данными -->
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th colspan="{{ 15 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 }}">Электростанция</th>
+                    <th colspan="{{ station_list_meta_colspan }}">Электростанция</th>
                     <th colspan="{{ end_year - start_year + 2 }}">Мощность</th>
                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                     <th rowspan="2" style="width: 240px; min-width: 240px;">
@@ -149,60 +194,6 @@
                         </div>
                     </th>
 
-                    <!-- Год ввода в эксплуатацию (date_exploitation или date_exploitation_expected) -->
-                    <th style="width: 80px; text-align: center;">
-                        <div class="d-flex align-items-center justify-content-center gap-1">
-                            <div class="dropdown">
-                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                    <strong>Ввод в <br>экспл.</strong>
-                                    {% if request.args.getlist('date_exploitation_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                                </button>
-                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="date_exploitation_filter"
-                                                value=""
-                                                {% if '' in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
-                                            не указано
-                                        </label>
-                                    </li>
-                                    {% for year in range(1900, end_year + 1) %}
-                                        <li>
-                                            <label class="dropdown-item">
-                                                <input type="checkbox" name="date_exploitation_filter"
-                                                    value="{{ year }}"
-                                                    {% if year|string in request.args.getlist('date_exploitation_filter') %}checked{% endif %}>
-                                                {{ year }}
-                                            </label>
-                                        </li>
-                                    {% endfor %}
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
-                                                data-filter-name="date_exploitation_filter">
-                                            Сбросить
-                                        </button>
-                                        <button type="button"
-                                                class="btn btn-sm btn-primary filter-apply-btn"
-                                                data-filter-name="date_exploitation_filter">
-                                            Ок
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                            {% if request.args.getlist('date_exploitation_filter') %}
-                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
-                                    type="button" 
-                                    data-filter-name="date_exploitation_filter"
-                                    title="Сбросить фильтр"
-                                    style="padding: 2px 6px; line-height: 1;">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </th>
-
                     <!-- Год вывода из эксплуатацию -->
                     <th style="width: 80px; text-align: center;">
                         <div class="d-flex align-items-center justify-content-center gap-1">
@@ -257,148 +248,6 @@
                         </div>
                     </th>
 
-                    <!-- Год модернизации -->
-                    <th style="width: 80px; text-align: center;">
-                        <div class="d-flex align-items-center justify-content-center gap-1">
-                            <div class="dropdown">
-                                <button class="btn dropdown-toggle filter-button" type="button" data-bs-toggle="dropdown">
-                                    <strong>Модерн.<br>с изм.<br>мощ-ти</strong>
-                                    {% if request.args.getlist('date_modernization_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                                </button>
-                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="date_modernization_expected_filter"
-                                                value=""
-                                                {% if '' in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
-                                            не указано
-                                        </label>
-                                    </li>
-                                    {% for year in range(1900, end_year + 1) %}
-                                        <li>
-                                            <label class="dropdown-item">
-                                                <input type="checkbox" name="date_modernization_expected_filter"
-                                                    value="{{ year }}"
-                                                    {% if year|string in request.args.getlist('date_modernization_expected_filter') %}checked{% endif %}>
-                                                {{ year }}
-                                            </label>
-                                        </li>
-                                    {% endfor %}
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
-                                                data-filter-name="date_modernization_expected_filter">
-                                            Сбросить
-                                        </button>
-                                        <button type="button"
-                                                class="btn btn-sm btn-primary filter-apply-btn"
-                                                data-filter-name="date_modernization_expected_filter">
-                                            Ок
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                            {% if request.args.getlist('date_modernization_expected_filter') %}
-                            <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
-                                    type="button" 
-                                    data-filter-name="date_modernization_expected_filter"
-                                    title="Сбросить фильтр"
-                                    style="padding: 2px 6px; line-height: 1;">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </th>
-
-                    <!-- Ожидаемый год модернизации без изменения мощности -->
-                    <th style="width: 80px; text-align: center;">
-                        <div class="d-flex align-items-center justify-content-center gap-1">
-                            <div class="dropdown">
-                                <button class="btn dropdown-toggle filter-button fw-normal" type="button" data-bs-toggle="dropdown">
-                                    <span class="fw-normal">Модерн.<br>без изм.<br>мощ-ти</span>
-                                    {% if request.args.getlist('date_modernization_no_power_expected_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                                </button>
-                                <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
-                                    <li>
-                                        <label class="dropdown-item">
-                                            <input type="checkbox" name="date_modernization_no_power_expected_filter"
-                                                value=""
-                                                {% if '' in request.args.getlist('date_modernization_no_power_expected_filter') %}checked{% endif %}>
-                                            не указано
-                                        </label>
-                                    </li>
-                                    {% for year in range(1900, end_year + 1) %}
-                                        <li>
-                                            <label class="dropdown-item">
-                                                <input type="checkbox" name="date_modernization_no_power_expected_filter"
-                                                    value="{{ year }}"
-                                                    {% if year|string in request.args.getlist('date_modernization_no_power_expected_filter') %}checked{% endif %}>
-                                                {{ year }}
-                                            </label>
-                                        </li>
-                                    {% endfor %}
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li class="px-3 pb-2 d-flex justify-content-between gap-2">
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-secondary filter-reset-btn"
-                                                data-filter-name="date_modernization_no_power_expected_filter">
-                                            Сбросить
-                                        </button>
-                                        <button type="button"
-                                                class="btn btn-sm btn-primary filter-apply-btn"
-                                                data-filter-name="date_modernization_no_power_expected_filter">
-                                            Ок
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                            {% if request.args.getlist('date_modernization_no_power_expected_filter') %}
-                            <button class="btn btn-sm btn-outline-danger filter-clear-btn"
-                                    type="button"
-                                    data-filter-name="date_modernization_no_power_expected_filter"
-                                    title="Сбросить фильтр"
-                                    style="padding: 2px 6px; line-height: 1;">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </th>
-
-                    <!-- Вид изменений (перемаркировка) -->
-                    <th style="width: 108px; text-align: center;">
-                        <div class="d-flex align-items-center justify-content-center gap-1">
-                            <div class="dropdown">
-                                <button class="btn dropdown-toggle filter-button fw-normal" type="button" data-bs-toggle="dropdown">
-                                    <span class="fw-normal">Вид<br>изменений</span>
-                                    {% if request.args.getlist('relabing_outcome_filter') %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
-                                </button>
-                                <ul class="dropdown-menu w-100">
-                                    {% set ro_sel = request.args.getlist('relabing_outcome_filter') %}
-                                    {% for val, label in relabing_outcome_filter_choices %}
-                                        <li>
-                                            <label class="dropdown-item">
-                                                <input type="checkbox" name="relabing_outcome_filter"
-                                                    value="{{ val }}"
-                                                    {% if val == '' and '' in ro_sel %}checked{% elif val != '' and val in ro_sel %}checked{% endif %}>
-                                                {{ label }}
-                                            </label>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                            {% if request.args.getlist('relabing_outcome_filter') %}
-                            <button class="btn btn-sm btn-outline-danger filter-clear-btn"
-                                    type="button"
-                                    data-filter-name="relabing_outcome_filter"
-                                    title="Сбросить фильтр"
-                                    style="padding: 2px 6px; line-height: 1;">
-                                <i class="bi bi-x-lg"></i>
-                            </button>
-                            {% endif %}
-                        </div>
-                    </th>
-                    
                     <!-- Тип  электростанции -->
                     <th style="width: 80px; text-align: center;">
                         <div class="d-flex align-items-center justify-content-center gap-1">
@@ -548,9 +397,11 @@
                     </th>
 
                     {% if request.endpoint == 'fuel_bp.stations_without_equipment_group' %}
-                    <!-- Тип группы оборудования (только на странице агрегатов без группы) -->
+                    <th style="width: 110px; text-align: center;">
+                        Код группы<br>оборудования<br>(numb)
+                    </th>
                     <th style="width: 120px; text-align: center;">
-                        Тип<br>группы<br>оборуд.
+                        Группа<br>оборуд.
                     </th>
                     {% endif %}
                     
@@ -626,7 +477,6 @@
                         </div>
                     </th>
                     {% endfor %}
-                </tr>
                 </tr>
             </thead>
 
@@ -757,14 +607,15 @@
             </tbody>
             
         </table>
+    </div>
 
-        <!-- Пагинация (скрывается при прокрутке вниз) -->
+        <!-- Пагинация -->
         <div class="mt-2">
             {% if per_page is not none %}
                 {% include 'generation/includes/pagination_station.html' %}
             {% endif %}
         </div>
-    </div>
+    </div><!-- /.page-table-scroll -->
 </div>
 {% endif %}
 

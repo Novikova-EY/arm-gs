@@ -18,9 +18,13 @@ def synchronous_area_display_order_sort_key(sa: SynchronousArea) -> tuple:
     return (1, 0, (getattr(sa, "name", None) or "").casefold(), int(sa.id))
 
 
-@lru_cache(maxsize=1)
 def get_synchronous_area_list_full():
-    """Получает полный список синхронных зон."""
+    """Получает полный список синхронных зон. Без кэша — версия из текущего запроса.
+
+    Нельзя класть ORM-объекты в ``lru_cache``: после commit/закрытия сессии
+    атрибуты протухают, а балансы мощности тогда падают в запасной каталог
+    с другими подписями кнопок и пустыми мощностями.
+    """
     current_version = get_current_version()
     query = SynchronousArea.query
     

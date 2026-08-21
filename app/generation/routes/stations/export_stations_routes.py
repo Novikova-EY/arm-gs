@@ -391,7 +391,9 @@ def export_station_list_to_excel(user, filters=None):
                     (p.p_ust for p in machine.machine_powers if p.year.number == year), 0
                 )
                 row[year] = f"{power_value:.1f}".replace('.', ',')
-                station_total_p_ust[year] += power_value  # Считаем суммарную мощность
+                # Архивные агрегаты не входят в суммы по электростанции
+                if not bool(getattr(machine, "is_archived", False)):
+                    station_total_p_ust[year] += power_value  # Считаем суммарную мощность
 
             data.append(row)
 

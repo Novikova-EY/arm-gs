@@ -1,5 +1,6 @@
+{% set _fuel_wo_eg = request.endpoint == 'fuel_bp.stations_without_equipment_group' %}
+{% set station_header_company_colspan = 3 if _fuel_wo_eg else 5 %}
 <tr>
-    {% set station_header_company_colspan = 6 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 5 %}
     <td class="text-center" colspan="4" style="vertical-align: middle; font-weight: bold;">
         {{ station.regional_district.name }}
     </td>
@@ -20,9 +21,10 @@
 
 {% for machine in station.machines %}
     {% set has_pgu = machine.pgu_machines|length > 0 %}
+    {% set archived_row_class = ' machine-archived' if machine.is_archived else '' %}
 
     {% if not has_pgu %}
-        <tr class="text-center machine-row" style="vertical-align: middle;">
+        <tr class="text-center machine-row{{ archived_row_class }}" style="vertical-align: middle;">
             {% if machine.group_rowspan > 0 %}
                 <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}" data-base-rowspan="{{ machine.group_base_rows or 1 }}" data-group-machine-count="{{ machine.group_machine_count or 0 }}">
                     {{ machine.machine_group }}
@@ -43,14 +45,17 @@
                 {{ machine.commission_display or '—' }}
             </td>
 
+            {% if not _fuel_wo_eg %}
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.exploitation_display or '—' }}
             </td>
+            {% endif %}
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.decompressing_display or '—' }}
             </td>
 
+            {% if not _fuel_wo_eg %}
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.modernization_power_change_display or '—' }}
             </td>
@@ -63,6 +68,7 @@
                 {% set ro = (machine.relabing_outcome or '') | trim %}
                 {{ ro if ro else '—' }}
             </td>
+            {% endif %}
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else '—' }}
@@ -84,9 +90,18 @@
                 {% endif %}
             </td>
 
-            {% if request.endpoint == 'fuel_bp.stations_without_equipment_group' %}
+            {% if _fuel_wo_eg %}
+            {% set fuel_eg = machine.machine_fuel_param.equipment_group if machine.machine_fuel_param else None %}
+            {% set fuel_eg_label = (fuel_eg.name or fuel_eg.name_ext or '—') if fuel_eg else '—' %}
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.equipment_group.name if machine.equipment_group and machine.equipment_group.name else '—' }}
+                {{ fuel_eg.numb if fuel_eg and fuel_eg.numb is not none else '—' }}
+            </td>
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% if fuel_eg and fuel_eg.id %}
+                <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=fuel_eg.id, **request.args) }}" class="text-decoration-none">{{ fuel_eg_label }}</a>
+                {% else %}
+                {{ fuel_eg_label }}
+                {% endif %}
             </td>
             {% endif %}
 
@@ -145,7 +160,7 @@
         </tr>
         
         <!-- Вторая строка: p_ogr -->
-        <tr class="text-center p-ogr-row machine-ogr-row">
+        <tr class="text-center p-ogr-row machine-ogr-row{{ archived_row_class }}">
             <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
             {% for year in range(start_year, end_year + 1) %}
                 {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
@@ -161,7 +176,7 @@
         </tr>
 
         <!-- Третья строка: p_rasp -->
-        <tr class="text-center p-rasp-row machine-rasp-row">
+        <tr class="text-center p-rasp-row machine-rasp-row{{ archived_row_class }}">
 
             <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
             {% for year in range(start_year, end_year + 1) %}
@@ -180,15 +195,15 @@
 
     {% else %}
 
-        <tr class="text-center machine-row" style="vertical-align: middle;">
+        <tr class="text-center machine-row{{ archived_row_class }}" style="vertical-align: middle;">
             {% if machine.group_rowspan > 0 %}
                 <td class="fuel-cell" rowspan="{{ machine.group_rowspan }}" data-base-rowspan="{{ machine.group_base_rows or 1 }}" data-group-machine-count="{{ machine.group_machine_count or 0 }}">
                     {{ machine.machine_group }}
                 </td>
             {% endif %}
 
-            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.machine_number }}
+            <td>
+                {{ machine.machine_number if machine.machine_number else '—' }}
             </td>
 
             <td >
@@ -201,26 +216,35 @@
                 {{ machine.commission_display or '—' }}
             </td>
 
+            {% if not _fuel_wo_eg %}
             <td >
                 {{ machine.exploitation_display or '—' }}
             </td>
+            {% endif %}
 
             <td >
                 {{ machine.decompressing_display or '—' }}
             </td>
 
+            {% if not _fuel_wo_eg %}
             <td >
                 {{ machine.modernization_power_change_display or '—' }}
             </td>
 
             <td >
-                {{ machine.date_modernization_no_power_change_expected if machine.date_modernization_no_power_change_expected is not none else '—' }}
+                {# Для ПГУ-родителя ожидаемая модернизация без изм. мощности — только у частей #}
+                {% if machine.pgu_machines and machine.pgu_machines|length > 0 %}
+                    —
+                {% else %}
+                    {{ machine.date_modernization_no_power_change_expected if machine.date_modernization_no_power_change_expected is not none else '—' }}
+                {% endif %}
             </td>
 
             <td >
                 {% set ro = (machine.relabing_outcome or '') | trim %}
                 {{ ro if ro else '—' }}
             </td>
+            {% endif %}
 
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
                 {{ machine.machine_station.station_type.name if machine.machine_station and machine.machine_station.station_type else '—' }}
@@ -242,9 +266,18 @@
                 {% endif %}
             </td>
 
-            {% if request.endpoint == 'fuel_bp.stations_without_equipment_group' %}
+            {% if _fuel_wo_eg %}
+            {% set fuel_eg = machine.machine_fuel_param.equipment_group if machine.machine_fuel_param else None %}
+            {% set fuel_eg_label = (fuel_eg.name or fuel_eg.name_ext or '—') if fuel_eg else '—' %}
             <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
-                {{ machine.equipment_group.name if machine.equipment_group and machine.equipment_group.name else '—' }}
+                {{ fuel_eg.numb if fuel_eg and fuel_eg.numb is not none else '—' }}
+            </td>
+            <td class="rowspan-td" rowspan="{{ machine.total_rows }}" data-machine-base-rowspan="{{ machine.base_rows or 1 }}">
+                {% if fuel_eg and fuel_eg.id %}
+                <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=fuel_eg.id, **request.args) }}" class="text-decoration-none">{{ fuel_eg_label }}</a>
+                {% else %}
+                {{ fuel_eg_label }}
+                {% endif %}
             </td>
             {% endif %}
 
@@ -299,20 +332,25 @@
         {# ПГУ строки — machine-row для корректной работы «Скрыть агрегаты» #}
         {% for pgu_machine in machine.pgu_machines %}
             <!-- Первая строка: p_ust -->
-            <tr class="text-center small text-muted machine-row" style="vertical-align: middle;">
+            <tr class="text-center small text-muted machine-row{{ archived_row_class }}" style="vertical-align: middle;">
                 {% set pgu_commission_value = pgu_machine.commission_display %}
                 {% set pgu_exploitation_value = pgu_machine.exploitation_display %}
+                <td>{{ pgu_machine.machine_number if pgu_machine.machine_number else '—' }}</td>
                 <td>
                     <a href="{{ url_for('station_bp.pgu_machine_details', station_id=station.id, machine_id=machine.id, pgu_machine_id=pgu_machine.id, **request.args) }}" class="text-decoration-none">
                         {{ pgu_machine.machine_name }}
                     </a>
                 </td>
                 <td>{{ pgu_commission_value or '—' }}</td>
+                {% if not _fuel_wo_eg %}
                 <td>{{ pgu_exploitation_value or '—' }}</td>
+                {% endif %}
                 <td>{{ pgu_machine.decompressing_display or '—' }}</td>
+                {% if not _fuel_wo_eg %}
                 <td>{{ pgu_machine.modernization_power_change_display or '—' }}</td>
                 <td>{{ pgu_machine.date_modernization_no_power_change_expected if pgu_machine.date_modernization_no_power_change_expected is not none else '—' }}</td>
-                <td>{% set ro = (machine.relabing_outcome or '') | trim %}{{ ro if ro else '—' }}</td>
+                <td>{% set ro = (pgu_machine.relabing_outcome or machine.relabing_outcome or '') | trim %}{{ ro if ro else '—' }}</td>
+                {% endif %}
                 <td>
                     {% if pgu_machine.tes_machine_type and pgu_machine.tes_machine_type.id != 0 %}
                         {% if pgu_machine.tes_machine_type.name and pgu_machine.tes_machine_type.name|lower != 'не указано' %}
@@ -330,12 +368,6 @@
                         &mdash;
                     {% endif %}
                 </td>
-
-                {% if request.endpoint == 'fuel_bp.stations_without_equipment_group' %}
-                <td>
-                    {{ machine.equipment_group.name if machine.equipment_group and machine.equipment_group.name else '—' }}
-                </td>
-                {% endif %}
 
                 <td class="text-center align-middle" style="font-weight: bold;">Руст</td>
 
@@ -357,8 +389,8 @@
         {% endfor %}
             
         <!-- Вторая строка: p_ogr -->
-        <tr class="text-center p-ogr-row machine-ogr-row">
-            <td colspan="{{ 9 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 8 }}"></td>
+        <tr class="text-center p-ogr-row machine-ogr-row{{ archived_row_class }}">
+            <td colspan="{{ 5 if _fuel_wo_eg else 8 }}"></td>
             <td class="text-center align-middle" style="font-weight: bold;">Рогр</td>
             {% for year in range(start_year, end_year + 1) %}
                 {% set p_ogr_value = machine.powers_by_year.get(year, {}).get("p_ogr") %}
@@ -375,8 +407,8 @@
         </tr>
 
         <!-- Третья строка: p_rasp -->
-        <tr class="text-center p-rasp-row machine-rasp-row">
-            <td colspan="{{ 8 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 7 }}"></td>
+        <tr class="text-center p-rasp-row machine-rasp-row{{ archived_row_class }}">
+            <td colspan="{{ 4 if _fuel_wo_eg else 7 }}"></td>
             <td></td>
             <td class="text-center align-middle" style="font-weight: bold;">Ррасп</td>
             {% for year in range(start_year, end_year + 1) %}

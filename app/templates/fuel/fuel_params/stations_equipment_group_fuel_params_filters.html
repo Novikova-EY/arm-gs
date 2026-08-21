@@ -9,6 +9,13 @@
 {% set show_fuel_params_import = true %}
 {% set show_fuel_params_export = true %}
 {% set show_fuel_calc_edit_save_in_filters = true %}
+{% set show_fuel_calc_edit_hide_empty_toggle = true %}
+{% set fuel_empty_rows_toggle_default_on = false %}
+{% set fuel_empty_rows_toggle_style = 'primary' %}
+{% set fuel_empty_rows_toggle_storage_key = 'fuelParamsPageShowEmptyRows' %}
+{% set fuel_empty_rows_toggle_empty_mode = 'only-numb' %}
+{% set fuel_empty_rows_toggle_title_off = 'Показать строки, у которых заполнен только код группы оборудования (numb)' %}
+{% set fuel_empty_rows_toggle_title_on = 'Скрыть строки, у которых заполнен только код группы оборудования (numb)' %}
 {% set show_fuel_detail_panels_toggle = true %}
 {% set import_fuel_params_action = url_for('fuel_bp.import_equipment_group_fuel_params') %}
 {% set selected_year = selected_year|default(start_year)|default(end_year) %}

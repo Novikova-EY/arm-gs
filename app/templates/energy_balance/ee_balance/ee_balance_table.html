@@ -1,0 +1,1177 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+  <div class="page-table-scroll">
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+      <div class="col-12 mb-2">
+        <div class="d-flex flex-wrap align-items-start gap-2 w-100">
+          <div class="d-flex flex-column gap-2 flex-grow-1" style="min-width:0;">
+            {% set nav_variant = 'nav' %}
+            {% set current_slug = sheet.slug %}
+            {% include 'energy_balance/ee_balance/_sheet_nav.html' %}
+          </div>
+          <a href="{{ station_list_url }}" class="btn btn-secondary fs-5 flex-shrink-0">
+            Электростанции РФ
+          </a>
+          <a href="{{ url_for('energy_balance_bp.ee_balance_hub') }}" class="btn btn-secondary fs-5 flex-shrink-0">
+            Расчет балансов электрической энергии
+          </a>
+          <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5 flex-shrink-0">
+            Модуль «Балансы ЭЭ и ЭМ»
+          </a>
+        </div>
+      </div>
+
+      <div class="col-12 mb-2 text-center">
+        <h2 class="mb-2">{{ page_title }}</h2>
+      </div>
+
+      <div class="col-12 mb-2">
+        <div class="d-flex align-items-center flex-wrap gap-2 w-100">
+          <form method="GET"
+                action="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
+                class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
+                id="eeBalanceYearForm">
+            {% for key, values in request.args.lists() %}
+              {% if key != 'start_year' and key != 'end_year' %}
+                {% for value in values %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+            <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+            <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+              {% for year in filter_year_list %}
+              <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+            <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+            <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+              {% for year in filter_year_list %}
+              <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-success">Применить</button>
+            <a href="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
+               class="btn btn-outline-danger">Сбросить</a>
+          </form>
+          <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+            <form method="GET"
+                  action="{{ url_for('energy_balance_bp.export_ee_balance') }}"
+                  id="eeBalanceExcelExportForm"
+                  class="d-inline m-0 flex-shrink-0">
+              {% if start_year is defined and start_year %}
+              <input type="hidden" name="start_year" value="{{ start_year }}">
+              {% endif %}
+              {% if end_year is defined and end_year %}
+              <input type="hidden" name="end_year" value="{{ end_year }}">
+              {% endif %}
+              <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+              <button type="button"
+                      id="eeBalanceExcelExportBtn"
+                      class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                      style="white-space: nowrap;"
+                      title="Выгрузить все листы баланса электрической энергии в Excel">
+                <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Выгрузить в Excel
+              </button>
+            </form>
+            <button type="button"
+                    id="pbShowFlowRowsToggle"
+                    class="btn btn-primary text-nowrap flex-shrink-0"
+                    aria-pressed="true"
+                    title="Скрыть строки перетока электрической энергии и дефицита с учётом перетока">
+              +Перетоки
+            </button>
+            <button type="button"
+                    id="pbShowEmptyRowsToggle"
+                    class="btn btn-primary text-nowrap flex-shrink-0"
+                    aria-pressed="true"
+                    title="Скрыть строки, у которых все значения пусты или равны нулю">
+              Пустые строки
+            </button>
+            <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
+            <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
+            <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
+              <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+              <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+              <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+              <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+              <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+            </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      /* Панель фильтров не уезжает вбок при горизонтальном скролле wrapper. */
+      .page-table-scroll > .pd-ec-summary-sticky-stack {
+        left: 0;
+      }
+      #eeBalanceTable.power-demand-summary-table {
+        width: 100%;
+        min-width: 100%;
+        table-layout: auto;
+        font-size: 1.15rem;
+      }
+      .page-table-scroll #eeBalanceTable thead th {
+        position: sticky;
+        top: var(--pd-summary-controls-sticky-height, 0px);
+        z-index: 50;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0
+          var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+        font-size: 1.28rem;
+      }
+      #eeBalanceTable col.pb-col-label,
+      #eeBalanceTable col.pb-col-unit {
+        width: 1%;
+      }
+      #eeBalanceTable col.pb-col-year {
+        width: auto;
+        min-width: 5.5rem;
+      }
+      #eeBalanceTable th.pb-label-col,
+      #eeBalanceTable td.pb-row-label {
+        width: 1%;
+        max-width: none;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        position: sticky;
+        left: 0;
+        --bs-table-bg-state: transparent;
+        background-clip: padding-box;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #eeBalanceTable thead th.pb-label-col {
+        z-index: 52;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+          4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #eeBalanceTable tbody td.pb-row-label {
+        z-index: 4;
+        background-color: var(--bs-body-bg, #fff);
+      }
+      #eeBalanceTable th.pb-unit-col,
+      #eeBalanceTable td.pb-unit-cell {
+        width: 1%;
+        min-width: 5.5rem;
+        white-space: nowrap;
+        position: sticky;
+        left: var(--pb-label-col-w, 0px);
+        --bs-table-bg-state: transparent;
+        background-clip: padding-box;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #eeBalanceTable thead th.pb-unit-col {
+        z-index: 51;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+          4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #eeBalanceTable tbody td.pb-unit-cell {
+        z-index: 3;
+        background-color: var(--bs-body-bg, #fff);
+      }
+      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-row-label,
+      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-unit-cell {
+        background-color: var(--bs-table-striped-bg, #f8f9fa);
+      }
+      #eeBalanceTable.table-hover > tbody > tr:hover > td.pb-row-label,
+      #eeBalanceTable.table-hover > tbody > tr:hover > td.pb-unit-cell {
+        background-color: var(--bs-table-hover-bg, #ececec);
+      }
+      #eeBalanceTable tbody tr.table-info > td.pb-row-label,
+      #eeBalanceTable tbody tr.table-info > td.pb-unit-cell {
+        background-color: var(--bs-table-info-bg, #cff4fc);
+      }
+      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-row-label,
+      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-unit-cell {
+        background-color: #b6effb;
+      }
+      #eeBalanceTable tbody tr.table-warning > td.pb-row-label,
+      #eeBalanceTable tbody tr.table-warning > td.pb-unit-cell {
+        background-color: var(--bs-table-warning-bg, #fff3cd);
+      }
+      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-row-label,
+      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-unit-cell {
+        background-color: #ffe69c;
+      }
+      #eeBalanceTable th.pb-year-col,
+      #eeBalanceTable td.pb-year-cell {
+        min-width: 5.5rem;
+        white-space: normal;
+      }
+      #eeBalanceTable .power-demand-year-feature-caption {
+        font-size: 0.95em;
+        line-height: 1.25;
+        margin-top: 0.2rem;
+        word-wrap: break-word;
+        white-space: normal;
+      }
+      #eeBalanceTable td.pb-indent-1 { padding-left: 1.75rem !important; }
+      #eeBalanceTable td.pb-indent-2 { padding-left: 3.25rem !important; }
+      #eeBalanceTable td.pb-indent-3 { padding-left: 4.75rem !important; }
+      #eeBalanceTable .pb-row-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-left: 0.35rem;
+        vertical-align: middle;
+      }
+      #eeBalanceTable .pb-custom-add,
+      #eeBalanceTable .pb-custom-delete {
+        padding: 0.05rem 0.35rem;
+        line-height: 1.2;
+      }
+      #eeBalanceTable input.pb-custom-label {
+        min-width: 14rem;
+        max-width: 28rem;
+        font-style: italic;
+      }
+      #eeBalanceTable input.pb-custom-value {
+        min-width: 5.5rem;
+        max-width: 8rem;
+        margin: 0 auto;
+        text-align: center;
+      }
+      #eeBalanceTable tbody tr.pb-custom-flow-row > td.pb-row-label,
+      #eeBalanceTable tbody tr.pb-custom-flow-row > td.pb-unit-cell {
+        background-color: var(--bs-table-warning-bg, #fff3cd);
+      }
+      #eeBalanceTable.pb-hide-empty tbody tr.pb-row-empty-hidden {
+        display: none !important;
+      }
+      #eeBalanceTable.pb-hide-flows tbody tr.pb-flow-block-row,
+      #eeBalanceTable.pb-hide-flows tbody tr.pb-custom-flow-row {
+        display: none !important;
+      }
+      #eeBalanceTable tbody tr.pb-flow-group-child-hidden {
+        display: none !important;
+      }
+      #eeBalanceTable .pb-flow-group-toggle {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        line-height: 1;
+        color: #0d6efd;
+        vertical-align: -0.15em;
+        margin-right: 0.35rem;
+      }
+      #eeBalanceTable .pb-flow-group-toggle .bi {
+        font-size: 1.05rem;
+      }
+    </style>
+
+      <table
+        class="table table-hover table-striped table-bordered align-middle power-demand-summary-table"
+        id="eeBalanceTable"
+      >
+        <colgroup>
+          <col class="pb-col-label">
+          <col class="pb-col-unit">
+          {% for year in years %}
+          <col class="pb-col-year">
+          {% endfor %}
+        </colgroup>
+        <thead class="table-success">
+          <tr class="text-center align-middle">
+            <th class="text-center align-middle pb-label-col">Наименование</th>
+            <th class="text-center align-middle pb-unit-col">Ед.изм.</th>
+            {% for year in years %}
+            <th class="text-center align-middle pb-year-col">
+              {{ year }}
+              <div class="text-wrap power-demand-year-feature-caption">
+                {% if year_features is defined and year in year_features %}
+                {{ year_features[year] }}
+                {% endif %}
+              </div>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr class="{{ row.css_class }}{% if row.is_custom %} pb-custom-flow-row{% endif %}{% if row.is_flow_block %} pb-flow-block-row{% endif %}{% if row.hide_when_empty %} pb-row-empty-hidden{% endif %}"
+              data-row-key="{{ row.key }}"
+              data-row-kind="{{ row.kind }}"
+              data-indent="{{ row.indent or 0 }}"
+              {% if row.editable_values %}data-editable="1"{% endif %}
+              {% if row.is_custom %}data-custom-id="{{ row.custom_id }}" data-direction="{{ row.custom_direction }}" data-parent-key="{{ row.custom_parent_key or row.flow_section or '' }}"{% if row.custom_origin_slug %} data-origin-slug="{{ row.custom_origin_slug }}" data-origin-key="{{ row.custom_origin_key }}"{% endif %}{% endif %}
+              {% if row.flow_section %}data-flow-section="{{ row.flow_section }}"{% endif %}
+              data-formula='{{ row.formula_client|tojson }}'
+              data-ext-raw='{{ (row.formula_ext_raw or {})|tojson }}'>
+            <td class="text-start pb-row-label{% if row.indent %} pb-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">
+              {% if row.is_custom %}
+              <div class="d-flex align-items-center gap-1">
+                {% if row.origin_sheet_name %}
+                <span class="text-muted small text-nowrap">{{ row.origin_sheet_name }}:</span>
+                {% endif %}
+                <input type="text"
+                       class="form-control form-control-sm pb-custom-label"
+                       value="{{ row.label }}"
+                       placeholder="Введите наименование"
+                       aria-label="Наименование строки">
+                {% if row.can_add_custom_flow %}
+                <button type="button"
+                        class="btn btn-outline-success btn-sm pb-custom-add"
+                        data-parent-key="{{ row.key }}"
+                        data-direction="{{ row.flow_section or row.custom_direction }}"
+                        title="Добавить вложенную строку"
+                        aria-label="Добавить вложенную строку">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+                {% endif %}
+                <button type="button"
+                        class="btn btn-outline-danger btn-sm pb-custom-delete"
+                        title="Удалить строку"
+                        aria-label="Удалить строку">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+              {% else %}
+              {% if row.key == 'flow_total' %}
+              <button type="button"
+                      class="pb-flow-group-toggle"
+                      id="pbFlowGroupToggle"
+                      aria-expanded="true"
+                      title="Свернуть группировку перетоков"
+                      aria-label="Свернуть группировку перетоков">
+                <i class="bi bi-dash-square" aria-hidden="true"></i>
+              </button>
+              {% endif %}
+              {{ row.label }}{% if row.formula_tooltip and row.key not in ('flow_in', 'flow_out') %}
+              <i class="bi bi-info-circle text-primary ms-1 pb-formula-tip"
+                 data-bs-toggle="tooltip"
+                 data-bs-placement="top"
+                 title="{{ row.formula_tooltip|e }}"
+                 style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;"
+                 aria-label="Формула расчёта"></i>{% endif %}
+              {% if row.can_add_custom_flow %}
+              <span class="pb-row-actions">
+                <button type="button"
+                        class="btn btn-outline-success btn-sm pb-custom-add"
+                        data-parent-key="{{ row.key }}"
+                        data-direction="{{ row.flow_section or row.key }}"
+                        title="Добавить строку"
+                        aria-label="Добавить строку">
+                  <i class="bi bi-plus-lg"></i>
+                </button>
+              </span>
+              {% endif %}
+              {% endif %}
+            </td>
+            <td class="text-center align-middle pb-unit-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">
+              {{ row.unit if row.unit is defined else '' }}
+            </td>
+            {% for year in years %}
+            <td class="text-center pb-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+                data-year="{{ year }}"
+                data-raw="{% if row.year_values_raw is defined and year in row.year_values_raw %}{{ row.year_values_raw[year] }}{% endif %}">
+              {% if row.editable_values %}
+              <input type="text"
+                     class="form-control form-control-sm pb-custom-value"
+                     data-year="{{ year }}"
+                     value="{{ row.year_values[year] if row.year_values is defined and year in row.year_values else '' }}"
+                     inputmode="decimal"
+                     aria-label="Значение за {{ year }}">
+              {% else %}
+              {{ row.year_values[year] if row.year_values is defined and year in row.year_values else '' }}
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#eeBalanceTable [data-bs-toggle="tooltip"]').forEach(function (el) {
+      new bootstrap.Tooltip(el);
+    });
+    document.getElementById('rounding_digits')?.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      url.searchParams.set('rounding_digits', this.value);
+      window.location.href = url.toString();
+    });
+    const table = document.getElementById('eeBalanceTable');
+    const labelTh = table?.querySelector('thead th.pb-label-col');
+    const syncLabelWidth = function () {
+      if (!table || !labelTh) return;
+      table.style.setProperty('--pb-label-col-w', labelTh.getBoundingClientRect().width + 'px');
+    };
+    syncLabelWidth();
+    if (window.ResizeObserver && labelTh) {
+      new ResizeObserver(syncLabelWidth).observe(labelTh);
+    }
+    window.addEventListener('resize', syncLabelWidth);
+
+    if (!table) return;
+
+    const YEARS = {{ years|tojson }};
+    const DIGITS = {{ rounding_digits|tojson }};
+    const UNIT = {{ (rows[0].unit if rows else 'млн.кВт·ч')|tojson }};
+    const ADD_URL = {{ url_for('energy_balance_bp.ee_balance_custom_flow_add', slug=sheet.slug)|tojson }};
+    const ITEM_URL_TMPL = {{ url_for('energy_balance_bp.ee_balance_custom_flow_item', slug=sheet.slug, row_id=0)|tojson }};
+    const CURRENT_SLUG = {{ sheet.slug|tojson }};
+    const EXPORT_VALUE_URL = {{ url_for('energy_balance_bp.ee_balance_export_value', slug=sheet.slug)|tojson }};
+    const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': CSRF || ''
+    };
+
+    function withSlug(url, originSlug) {
+      if (!originSlug || originSlug === CURRENT_SLUG) return url;
+      const needle = '/' + CURRENT_SLUG + '/';
+      const idx = url.indexOf(needle);
+      if (idx < 0) return url;
+      return url.slice(0, idx) + '/' + originSlug + '/' + url.slice(idx + needle.length);
+    }
+
+    function itemUrl(rowId, originSlug) {
+      return withSlug(ITEM_URL_TMPL, originSlug).replace(/\/0\/?$/, '/' + rowId + '/');
+    }
+
+    function addUrl(originSlug) {
+      return withSlug(ADD_URL, originSlug);
+    }
+
+    function parseRaw(text) {
+      if (text == null) return 0;
+      const s = String(text)
+        .trim()
+        .replace(/\u2212/g, '-')
+        .replace(/\u00a0/g, '')
+        .replace(/\u202f/g, '')
+        .replace(/\s/g, '')
+        .replace(',', '.');
+      if (!s || s === '—' || s === '-' || s === '–') return 0;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function formatNumber(n) {
+      if (n == null || !Number.isFinite(n)) return '';
+      let digits = DIGITS;
+      let value = n;
+      if (digits === -1) {
+        value = Math.round(n);
+        digits = 0;
+      }
+      let str;
+      if (digits === 0) {
+        str = String(value);
+        if (str.indexOf('e') !== -1 || str.indexOf('E') !== -1) {
+          str = value.toFixed(12).replace(/\.?0+$/, '');
+        }
+      } else {
+        str = value.toFixed(digits);
+      }
+      str = str.replace('.', ',');
+      const neg = str.charAt(0) === '-';
+      if (neg) str = str.slice(1);
+      let intPart = str;
+      let frac = null;
+      const comma = str.indexOf(',');
+      if (comma >= 0) {
+        intPart = str.slice(0, comma);
+        frac = str.slice(comma + 1);
+        if (DIGITS !== 0 && DIGITS !== -1) {
+          frac = frac.replace(/0+$/, '');
+        }
+      }
+      intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      let out = frac ? intPart + ',' + frac : intPart;
+      if (neg && out !== '0') out = '-' + out;
+      return out;
+    }
+
+    function parseFormula(tr) {
+      try {
+        const raw = tr.getAttribute('data-formula');
+        if (!raw || raw === 'null' || raw === 'None') return null;
+        const formula = JSON.parse(raw);
+        if (!formula || !Array.isArray(formula.terms) || !formula.terms.length) return null;
+        return formula;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function parseExt(tr) {
+      try {
+        return JSON.parse(tr.getAttribute('data-ext-raw') || '{}') || {};
+      } catch (err) {
+        return {};
+      }
+    }
+
+    function getCellRaw(tr, year) {
+      if (!tr || !tr.querySelector) return 0;
+      const td = tr.querySelector('td.pb-year-cell[data-year="' + year + '"]');
+      if (!td) return 0;
+      const input = td.querySelector('input.pb-custom-value');
+      if (input) return parseRaw(input.value);
+      if (td.dataset.raw) return parseRaw(td.dataset.raw);
+      return parseRaw(td.textContent);
+    }
+
+    function rowValuesEmpty(tr) {
+      for (let i = 0; i < YEARS.length; i++) {
+        if (getCellRaw(tr, YEARS[i]) !== 0) return false;
+      }
+      return true;
+    }
+
+    function applyEmptyRowsVisibility() {
+      const showEmpty = window.__pbShowEmptyRows === true;
+      const rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr[data-row-key]'));
+      const visible = rows.map(function (tr) {
+        return showEmpty || tr.classList.contains('pb-custom-flow-row') || tr.dataset.editable === '1' || !rowValuesEmpty(tr);
+      });
+      for (let i = 0; i < rows.length; i++) {
+        if (!visible[i]) continue;
+        let need = Number(rows[i].dataset.indent || 0);
+        for (let j = i - 1; j >= 0; j--) {
+          const jIndent = Number(rows[j].dataset.indent || 0);
+          if (jIndent < need) {
+            visible[j] = true;
+            need = jIndent;
+          }
+          if (need <= 0) break;
+        }
+      }
+      rows.forEach(function (tr, i) {
+        tr.classList.toggle('pb-row-empty-hidden', !visible[i]);
+      });
+      table.classList.toggle('pb-hide-empty', !showEmpty);
+      syncLabelWidth();
+    }
+
+    function syncEmptyRowsToggleUi() {
+      const btn = document.getElementById('pbShowEmptyRowsToggle');
+      if (!btn) return;
+      const on = window.__pbShowEmptyRows === true;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.classList.toggle('btn-primary', on);
+      btn.classList.toggle('btn-outline-primary', !on);
+      btn.title = on
+        ? 'Скрыть строки, у которых все значения пусты или равны нулю'
+        : 'Показать строки, у которых все значения пусты или равны нулю';
+    }
+
+    function applyFlowGroupVisibility() {
+      const parent = table.querySelector('tbody tr[data-row-key="flow_total"]');
+      const btn = document.getElementById('pbFlowGroupToggle');
+      const expanded = window.__pbFlowGroupExpanded !== false;
+      if (parent) {
+        parent.classList.toggle('pb-flow-group-collapsed', !expanded);
+        const parentIndent = Number(parent.dataset.indent || 0);
+        let el = parent.nextElementSibling;
+        while (el && Number(el.dataset.indent || 0) > parentIndent) {
+          el.classList.toggle('pb-flow-group-child-hidden', !expanded);
+          el = el.nextElementSibling;
+        }
+      }
+      if (btn) {
+        btn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        btn.title = expanded
+          ? 'Свернуть группировку перетоков'
+          : 'Развернуть группировку перетоков';
+        btn.setAttribute('aria-label', btn.title);
+        const icon = btn.querySelector('i');
+        if (icon) {
+          icon.classList.toggle('bi-dash-square', expanded);
+          icon.classList.toggle('bi-plus-square', !expanded);
+        }
+      }
+      syncLabelWidth();
+    }
+
+    function applyFlowRowsVisibility() {
+      if (!table) return;
+      table.classList.toggle('pb-hide-flows', window.__pbShowFlowRows !== true);
+      syncLabelWidth();
+    }
+
+    function syncFlowRowsToggleUi() {
+      const btn = document.getElementById('pbShowFlowRowsToggle');
+      if (!btn) return;
+      const on = window.__pbShowFlowRows === true;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.classList.toggle('btn-primary', on);
+      btn.classList.toggle('btn-outline-primary', !on);
+      btn.title = on
+        ? 'Скрыть строки перетока электрической энергии и дефицита с учётом перетока'
+        : 'Показать строки перетока электрической энергии и дефицита с учётом перетока';
+    }
+
+    function setFormulaCell(tr, year, rawValue) {
+      const td = tr.querySelector('td.pb-year-cell[data-year="' + year + '"]');
+      if (!td) return;
+      td.dataset.raw = String(rawValue);
+      if (td.querySelector('input.pb-custom-value')) return;
+      td.textContent = formatNumber(rawValue);
+    }
+
+    function setFormula(tr, formula) {
+      if (!formula || !formula.terms || !formula.terms.length) {
+        tr.setAttribute('data-formula', 'null');
+        return;
+      }
+      tr.setAttribute('data-formula', JSON.stringify(formula));
+    }
+
+    function addFormulaTerm(parentTr, childKey) {
+      let formula = parseFormula(parentTr) || { terms: [] };
+      if (!formula.terms.some(function (term) { return term.row_key === childKey && !term.slug; })) {
+        formula.terms.push({ row_key: childKey });
+      }
+      setFormula(parentTr, formula);
+    }
+
+    function removeFormulaTerm(parentTr, childKey) {
+      const formula = parseFormula(parentTr);
+      if (!formula) return;
+      formula.terms = formula.terms.filter(function (term) {
+        return !(term.row_key === childKey && !term.slug);
+      });
+      if (!formula.terms.length) {
+        setFormula(parentTr, null);
+        YEARS.forEach(function (year) {
+          const td = parentTr.querySelector('td.pb-year-cell[data-year="' + year + '"]');
+          if (!td || td.querySelector('input')) return;
+          const ext = parseExt(parentTr);
+          const base = parseRaw(ext[year] != null ? ext[year] : ext[String(year)]);
+          if (!base) {
+            td.dataset.raw = '';
+            td.textContent = '';
+          }
+        });
+        return;
+      }
+      setFormula(parentTr, formula);
+    }
+
+    function recalcTable() {
+      const rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr[data-row-key]'));
+      const byKey = {};
+      rows.forEach(function (tr) { byKey[tr.dataset.rowKey] = tr; });
+      const remaining = new Set();
+      rows.forEach(function (tr) {
+        if (parseFormula(tr)) remaining.add(tr.dataset.rowKey);
+      });
+      for (let guard = 0; guard < remaining.size + 2; guard++) {
+        if (!remaining.size) break;
+        let progressed = false;
+        remaining.forEach(function (key) {
+          const tr = byKey[key];
+          const formula = parseFormula(tr);
+          if (!formula) {
+            remaining.delete(key);
+            progressed = true;
+            return;
+          }
+          const deps = formula.terms
+            .filter(function (term) { return term.row_key && !term.slug && !('const' in term); })
+            .map(function (term) { return term.row_key; });
+          if (deps.some(function (dep) { return remaining.has(dep); })) return;
+          const ext = parseExt(tr);
+          YEARS.forEach(function (year) {
+            let total = parseRaw(ext[year] != null ? ext[year] : ext[String(year)]);
+            formula.terms.forEach(function (term) {
+              if (term.slug || ('const' in term)) return;
+              const coeff = term.coeff == null ? 1 : Number(term.coeff);
+              total += coeff * getCellRaw(byKey[term.row_key], year);
+            });
+            setFormulaCell(tr, year, total);
+          });
+          remaining.delete(key);
+          progressed = true;
+        });
+        if (!progressed) break;
+      }
+      applyEmptyRowsVisibility();
+      applyFlowGroupVisibility();
+    }
+
+    function convertToComputedRow(tr) {
+      if (!tr) return;
+      YEARS.forEach(function (year) {
+        const td = tr.querySelector('td.pb-year-cell[data-year="' + year + '"]');
+        if (!td) return;
+        const input = td.querySelector('input.pb-custom-value');
+        if (!input) return;
+        td.dataset.raw = String(parseRaw(input.value));
+        td.textContent = '';
+      });
+    }
+
+    function convertToEditableRow(tr) {
+      if (!tr || !tr.classList.contains('pb-custom-flow-row')) return;
+      YEARS.forEach(function (year) {
+        const td = tr.querySelector('td.pb-year-cell[data-year="' + year + '"]');
+        if (!td || td.querySelector('input.pb-custom-value')) return;
+        const raw = td.dataset.raw || '';
+        const display = raw === '' || raw == null ? '' : formatNumber(parseRaw(raw));
+        td.innerHTML = '';
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-control form-control-sm pb-custom-value';
+        input.setAttribute('data-year', String(year));
+        input.setAttribute('inputmode', 'decimal');
+        input.value = display;
+        td.appendChild(input);
+      });
+    }
+
+    function removeDescendantRows(tr) {
+      const indent = Number(tr.dataset.indent || 0);
+      let el = tr.nextElementSibling;
+      while (el && Number(el.dataset.indent || 0) > indent) {
+        const next = el.nextElementSibling;
+        el.remove();
+        el = next;
+      }
+    }
+
+    function findSectionEnd(parentKey) {
+      const parent = table.querySelector('tbody tr[data-row-key="' + parentKey + '"]');
+      if (!parent) return null;
+      const parentIndent = Number(parent.dataset.indent || 0);
+      let last = parent;
+      let el = parent.nextElementSibling;
+      while (el && Number(el.dataset.indent || 0) > parentIndent) {
+        last = el;
+        el = el.nextElementSibling;
+      }
+      return last;
+    }
+
+    function buildCustomRow(row, indent, direction) {
+      const childIndent = indent == null ? 2 : indent;
+      const tr = document.createElement('tr');
+      tr.className = 'table-warning pb-custom-flow-row pb-flow-block-row';
+      tr.dataset.rowKey = row.key;
+      tr.dataset.rowKind = 'transfer';
+      tr.dataset.indent = String(childIndent);
+      tr.dataset.customId = String(row.id);
+      tr.dataset.direction = direction || row.direction;
+      tr.dataset.parentKey = row.parent_key || '';
+      tr.dataset.flowSection = direction || row.direction;
+      tr.setAttribute('data-formula', 'null');
+      tr.setAttribute('data-ext-raw', '{}');
+
+      const italicClass = childIndent >= 3 ? ' fst-italic' : '';
+      const labelTd = document.createElement('td');
+      labelTd.className = 'text-start pb-row-label pb-indent-' + childIndent + italicClass;
+      let labelHtml =
+        '<div class="d-flex align-items-center gap-1">' +
+        '<input type="text" class="form-control form-control-sm pb-custom-label" value="" placeholder="Введите наименование" aria-label="Наименование строки">';
+      if (childIndent === 2) {
+        labelHtml +=
+          '<button type="button" class="btn btn-outline-success btn-sm pb-custom-add" data-parent-key="' +
+          row.key +
+          '" data-direction="' +
+          (direction || row.direction) +
+          '" title="Добавить вложенную строку" aria-label="Добавить вложенную строку">' +
+          '<i class="bi bi-plus-lg"></i></button>';
+      }
+      labelHtml +=
+        '<button type="button" class="btn btn-outline-danger btn-sm pb-custom-delete" title="Удалить строку" aria-label="Удалить строку">' +
+        '<i class="bi bi-trash"></i></button></div>';
+      labelTd.innerHTML = labelHtml;
+      tr.appendChild(labelTd);
+
+      const unitTd = document.createElement('td');
+      unitTd.className = 'text-center align-middle pb-unit-cell' + italicClass;
+      unitTd.textContent = UNIT || 'млн.кВт·ч';
+      tr.appendChild(unitTd);
+
+      YEARS.forEach(function (year) {
+        const td = document.createElement('td');
+        td.className = 'text-center pb-year-cell' + italicClass;
+        td.dataset.year = String(year);
+        td.dataset.raw = '';
+        td.innerHTML =
+          '<input type="text" class="form-control form-control-sm pb-custom-value" data-year="' +
+          year +
+          '" value="" inputmode="decimal" aria-label="Значение за ' +
+          year +
+          '">';
+        tr.appendChild(td);
+      });
+      return tr;
+    }
+
+    async function api(url, method, body) {
+      const response = await fetch(url, {
+        method: method,
+        credentials: 'same-origin',
+        headers: headers,
+        body: body ? JSON.stringify(body) : null
+      });
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (err) {
+        data = {};
+      }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || 'Ошибка сохранения');
+      }
+      return data;
+    }
+
+    const labelTimers = {};
+    const valueTimers = {};
+
+    table.addEventListener('click', function (event) {
+      const addBtn = event.target.closest('.pb-custom-add');
+      if (addBtn) {
+        const parentTr = addBtn.closest('tr');
+        const parentKey = addBtn.getAttribute('data-parent-key') || addBtn.getAttribute('data-direction');
+        const direction = addBtn.getAttribute('data-direction') || parentKey;
+        const originSlug = (parentTr && parentTr.dataset.originSlug) || '';
+        const postParent = (parentTr && parentTr.dataset.originKey) || parentKey;
+        addBtn.disabled = true;
+        api(addUrl(originSlug), 'POST', { direction: direction, parent_key: postParent })
+          .then(function (data) {
+            const row = data.row;
+            const childIndent = parentTr ? Number(parentTr.dataset.indent || 0) + 1 : 2;
+            const tr = buildCustomRow(row, childIndent, direction);
+            const originKey = row.key;
+            if (originSlug) {
+              tr.dataset.originSlug = originSlug;
+              tr.dataset.originKey = originKey;
+              tr.dataset.rowKey = originSlug + '__' + originKey;
+              const nestedAdd = tr.querySelector('.pb-custom-add');
+              if (nestedAdd) nestedAdd.setAttribute('data-parent-key', tr.dataset.rowKey);
+            }
+            tr.dataset.parentKey = originSlug ? (originSlug + '__' + (row.parent_key || postParent)) : (row.parent_key || parentKey);
+            const domParentKey = parentTr && parentTr.dataset.rowKey ? parentTr.dataset.rowKey : parentKey;
+            const anchor = findSectionEnd(domParentKey);
+            if (anchor && anchor.parentNode) {
+              anchor.parentNode.insertBefore(tr, anchor.nextSibling);
+            } else {
+              table.querySelector('tbody').appendChild(tr);
+            }
+            if (parentTr) {
+              if (parentTr.classList.contains('pb-custom-flow-row')) {
+                convertToComputedRow(parentTr);
+              }
+              addFormulaTerm(parentTr, tr.dataset.rowKey);
+            }
+            recalcTable();
+            const nameInput = tr.querySelector('input.pb-custom-label');
+            if (nameInput) nameInput.focus();
+          })
+          .catch(function (err) {
+            window.alert(err.message || 'Не удалось добавить строку');
+          })
+          .finally(function () {
+            addBtn.disabled = false;
+          });
+        return;
+      }
+
+      const delBtn = event.target.closest('.pb-custom-delete');
+      if (delBtn) {
+        const tr = delBtn.closest('tr');
+        const rowId = tr && tr.dataset.customId;
+        const parentKey = (tr && (tr.dataset.parentKey || tr.dataset.direction)) || '';
+        const rowKey = tr && tr.dataset.rowKey;
+        const originSlug = (tr && tr.dataset.originSlug) || '';
+        if (!rowId) return;
+        delBtn.disabled = true;
+        api(itemUrl(rowId, originSlug), 'DELETE')
+          .then(function () {
+            const parentTr = parentKey
+              ? table.querySelector('tbody tr[data-row-key="' + parentKey + '"]')
+              : null;
+            if (parentTr && rowKey) removeFormulaTerm(parentTr, rowKey);
+            removeDescendantRows(tr);
+            tr.remove();
+            if (
+              parentTr &&
+              parentTr.classList.contains('pb-custom-flow-row') &&
+              !parseFormula(parentTr)
+            ) {
+              convertToEditableRow(parentTr);
+            }
+            recalcTable();
+          })
+          .catch(function (err) {
+            delBtn.disabled = false;
+            window.alert(err.message || 'Не удалось удалить строку');
+          });
+      }
+    });
+
+    table.addEventListener('input', function (event) {
+      const labelInput = event.target.closest('input.pb-custom-label');
+      if (labelInput) {
+        const tr = labelInput.closest('tr');
+        const rowId = tr && tr.dataset.customId;
+        if (!rowId) return;
+        clearTimeout(labelTimers[rowId]);
+        labelTimers[rowId] = setTimeout(function () {
+          api(itemUrl(rowId, tr.dataset.originSlug), 'PATCH', { label: labelInput.value }).catch(function () {});
+        }, 400);
+        return;
+      }
+      const valueInput = event.target.closest('input.pb-custom-value');
+      if (valueInput) {
+        const tr = valueInput.closest('tr');
+        const td = valueInput.closest('td');
+        if (td) td.dataset.raw = String(parseRaw(valueInput.value));
+        recalcTable();
+        const rowId = tr && tr.dataset.customId;
+        const year = valueInput.getAttribute('data-year');
+        const rowKey = tr && tr.dataset.rowKey;
+        if (!year) return;
+        const timerKey = (rowId || rowKey || 'value') + ':' + year;
+        clearTimeout(valueTimers[timerKey]);
+        valueTimers[timerKey] = setTimeout(function () {
+          const payload = {
+            year: Number(year),
+            value: valueInput.value,
+            rounding_digits: DIGITS
+          };
+          const url = rowId
+            ? itemUrl(rowId, tr && tr.dataset.originSlug)
+            : (rowKey === 'export' ? EXPORT_VALUE_URL : null);
+          if (!url) return;
+          api(url, 'PATCH', payload).catch(function (err) {
+            console.error(err);
+            window.alert(err.message || 'Ошибка сохранения');
+          });
+        }, 400);
+      }
+    });
+
+    table.addEventListener('change', function (event) {
+      const valueInput = event.target.closest('input.pb-custom-value');
+      if (!valueInput) return;
+      recalcTable();
+    });
+
+    function isNavRowVisible(tr) {
+      if (!tr || !tr.matches('tr[data-row-key]')) return false;
+      if (tr.classList.contains('pb-flow-group-child-hidden')) return false;
+      const style = window.getComputedStyle(tr);
+      return style.display !== 'none' && style.visibility !== 'hidden';
+    }
+
+    function editableInputsInRow(tr) {
+      return Array.prototype.slice.call(
+        tr.querySelectorAll('input.pb-custom-label, input.pb-custom-value')
+      );
+    }
+
+    function nextNavRow(tr, dir) {
+      let el = dir > 0 ? tr.nextElementSibling : tr.previousElementSibling;
+      while (el) {
+        if (isNavRowVisible(el) && editableInputsInRow(el).length) return el;
+        el = dir > 0 ? el.nextElementSibling : el.previousElementSibling;
+      }
+      return null;
+    }
+
+    function focusNavInput(input) {
+      if (!input) return;
+      input.focus();
+      try {
+        input.select();
+      } catch (err) {}
+    }
+
+    function caretAllowsHorizontalLeave(input, dir) {
+      if (input.classList.contains('pb-custom-value')) return true;
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      if (start == null || end == null) return true;
+      if (dir < 0) return start === 0;
+      return end === String(input.value || '').length;
+    }
+
+    function moveNavFromInput(input, dRow, dCol) {
+      const tr = input.closest('tr');
+      if (!tr) return;
+      if (dRow) {
+        let row = tr;
+        const step = dRow > 0 ? 1 : -1;
+        for (let i = 0; i < Math.abs(dRow); i++) {
+          const next = nextNavRow(row, step);
+          if (!next) return;
+          row = next;
+        }
+        const year = input.getAttribute('data-year');
+        let target = null;
+        if (input.classList.contains('pb-custom-label')) {
+          target = row.querySelector('input.pb-custom-label') || editableInputsInRow(row)[0];
+        } else if (year) {
+          target = row.querySelector('input.pb-custom-value[data-year="' + year + '"]');
+          if (!target) target = editableInputsInRow(row)[0];
+        } else {
+          target = editableInputsInRow(row)[0];
+        }
+        focusNavInput(target);
+        return;
+      }
+      const rowInputs = editableInputsInRow(tr);
+      const idx = rowInputs.indexOf(input);
+      const nextIdx = idx + dCol;
+      if (nextIdx >= 0 && nextIdx < rowInputs.length) {
+        focusNavInput(rowInputs[nextIdx]);
+        return;
+      }
+      const row = nextNavRow(tr, dCol);
+      if (!row) return;
+      const nextInputs = editableInputsInRow(row);
+      if (!nextInputs.length) return;
+      focusNavInput(dCol > 0 ? nextInputs[0] : nextInputs[nextInputs.length - 1]);
+    }
+
+    table.addEventListener('keydown', function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      const input = event.target.closest('input.pb-custom-value, input.pb-custom-label');
+      if (!input || !table.contains(input)) return;
+      let dRow = 0;
+      let dCol = 0;
+      if (event.key === 'ArrowDown') dRow = 1;
+      else if (event.key === 'ArrowUp') dRow = -1;
+      else if (event.key === 'Enter') dRow = event.shiftKey ? -1 : 1;
+      else if (event.key === 'ArrowRight') dCol = 1;
+      else if (event.key === 'ArrowLeft') dCol = -1;
+      else return;
+      if (dCol && !caretAllowsHorizontalLeave(input, dCol)) return;
+      event.preventDefault();
+      moveNavFromInput(input, dRow, dCol);
+    });
+
+    window.__pbShowEmptyRows = true;
+    window.__pbShowFlowRows = true;
+    window.__pbFlowGroupExpanded = true;
+    syncEmptyRowsToggleUi();
+    syncFlowRowsToggleUi();
+    applyEmptyRowsVisibility();
+    applyFlowRowsVisibility();
+    applyFlowGroupVisibility();
+    document.getElementById('pbShowEmptyRowsToggle')?.addEventListener('click', function () {
+      window.__pbShowEmptyRows = !window.__pbShowEmptyRows;
+      syncEmptyRowsToggleUi();
+      applyEmptyRowsVisibility();
+    });
+    document.getElementById('pbShowFlowRowsToggle')?.addEventListener('click', function () {
+      window.__pbShowFlowRows = !window.__pbShowFlowRows;
+      syncFlowRowsToggleUi();
+      applyFlowRowsVisibility();
+    });
+    document.getElementById('pbFlowGroupToggle')?.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      window.__pbFlowGroupExpanded = !window.__pbFlowGroupExpanded;
+      applyFlowGroupVisibility();
+    });
+
+    (function () {
+      const form = document.getElementById('eeBalanceExcelExportForm');
+      const exportBtn = document.getElementById('eeBalanceExcelExportBtn');
+      if (!form || !exportBtn) return;
+
+      function parseFilenameFromContentDisposition(cd) {
+        if (!cd) return 'export.xlsx';
+        const mUtf = /filename\*=UTF-8''([^;\n]+)/i.exec(cd);
+        if (mUtf && mUtf[1]) {
+          try {
+            return decodeURIComponent(mUtf[1].trim());
+          } catch (e) {
+            return mUtf[1].trim();
+          }
+        }
+        const mQuot = /filename="([^"]+)"/i.exec(cd);
+        if (mQuot && mQuot[1]) return mQuot[1].trim();
+        const mBare = /filename=([^;\n]+)/i.exec(cd);
+        if (mBare && mBare[1]) return mBare[1].trim().replace(/^["']|["']$/g, '');
+        return 'export.xlsx';
+      }
+
+      exportBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const button = this;
+        if (button.disabled) return;
+
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML =
+          '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Экспорт…';
+
+        const params = new URLSearchParams();
+        new FormData(form).forEach(function (value, key) {
+          params.set(key, value);
+        });
+        const roundingSelect = document.getElementById('rounding_digits');
+        if (roundingSelect && roundingSelect.value !== '') {
+          params.set('rounding_digits', roundingSelect.value);
+        }
+        params.set('show_empty_rows', window.__pbShowEmptyRows === true ? '1' : '0');
+        params.set('show_flow_rows', window.__pbShowFlowRows === true ? '1' : '0');
+        const exportUrl = form.action + (params.toString() ? '?' + params.toString() : '');
+
+        fetch(exportUrl, { method: 'GET', credentials: 'same-origin' })
+          .then(function (response) {
+            if (!response.ok) {
+              return response.text().then(function (text) {
+                throw new Error(
+                  'Ошибка сервера (' + response.status + '): ' + text.substring(0, 200)
+                );
+              });
+            }
+            const contentType = response.headers.get('content-type') || '';
+            if (
+              contentType.includes('application/vnd.openxmlformats') ||
+              contentType.includes('application/vnd.ms-excel')
+            ) {
+              return response.blob().then(function (blob) {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = parseFilenameFromContentDisposition(
+                  response.headers.get('content-disposition')
+                );
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+              });
+            }
+            return response.text().then(function () {
+              throw new Error('Получен неожиданный тип ответа от сервера');
+            });
+          })
+          .catch(function (error) {
+            alert('Ошибка при экспорте данных: ' + error.message);
+          })
+          .finally(function () {
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+          });
+      });
+    })();
+  });
+</script>
+{% endif %}
+{% endblock %}

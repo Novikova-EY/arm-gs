@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
 {% block title %}Цена сожженного топлива{% endblock %}
 
@@ -79,9 +81,13 @@
                 <th rowspan="{{ 2 if has_two_row_header else 1 }}" style="min-width: 140px;">Группа оборудования</th>
                 {% for attr, label, is_numeric in specific_price_columns %}
                 {% if attr in fuel_header_metric_cols %}
+                {% if attr == 'numb1120' %}
+                {{ fuel_param_numb1120_header_th(2 if has_two_row_header else 1, label, (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
+                {% else %}
                 <th rowspan="{{ 2 if has_two_row_header else 1 }}" style="min-width: 60px;" class="specific-price-col-{{ attr }}" data-column="{{ attr }}">
                     {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
+                {% endif %}
                 {% endif %}
                 {% endfor %}
                 {% if fuel_type_col_count.n %}
@@ -130,21 +136,18 @@
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
                                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% if group_block.get('is_composite_total_row') %}
+                                {% set group_name = group_name ~ ', всего' %}
+                                {% endif %}
                                 {% for row in group_block.rows %}
                                     {% set param = row[1] %}
-                                    {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
-                                    <tr class="text-center align-middle">
-                                        <td>
-                                            {% if group_entity and group_entity.id %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                                                {{ group_name }}
-                                            </a>
-                                            {% else %}
-                                                {{ group_name }}
-                                            {% endif %}
+                                    {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined and not group_block.get('is_composite_total_row') else [] %}
+                                    <tr class="text-center align-middle{% if group_block.get('is_composite_total_row') %} fuel-param-summary-row fuel-param-composite-parent-row fw-bold{% endif %}">
+                                        <td class="{{ eg_name_cell_class(group_block) }}">
+                                            {{ eg_name_label(group_entity, group_name, group_block) }}
                                         </td>
                                         {% for attr, label, is_numeric in specific_price_columns %}
-                                        <td class="specific-price-col-{{ attr }}{% if attr in mismatch_attrs %} table-danger{% endif %}" data-column="{{ attr }}" {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}>{% if param is none %}—{% elif attr.endswith('_calc') and is_numeric %}{{ render_numeric_or_dash((param._price_calc or {}).get(attr[:-5])) }}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                        <td class="specific-price-col-{{ attr }}{% if attr in mismatch_attrs %} table-danger{% endif %}" data-column="{{ attr }}" {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}>{% if group_block.get('use_station_summary') or group_block.get('is_composite_total_row') %}{% if attr == 'numb1120' %}{{ group_entity.numb if group_entity and group_entity.numb is not none else '—' }}{% elif is_numeric and station_block.station_summary and attr in station_block.station_summary %}{{ render_numeric_or_dash(station_block.station_summary[attr]) }}{% else %}—{% endif %}{% elif param is none %}—{% elif attr.endswith('_calc') and is_numeric %}{{ render_numeric_or_dash((param._price_calc or {}).get(attr[:-5])) }}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}
@@ -160,14 +163,8 @@
                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
                 {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
                 <tr class="text-center align-middle">
-                    <td>
-                        {% if group_entity and group_entity.id %}
-                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                            {{ group_name }}
-                        </a>
-                        {% else %}
-                            {{ group_name }}
-                        {% endif %}
+                    <td class="{{ eg_name_cell_class() }}">
+                        {{ eg_name_label(group_entity, group_name) }}
                     </td>
                     {% for attr, label, is_numeric in specific_price_columns %}
                     <td class="specific-price-col-{{ attr }}{% if attr in mismatch_attrs %} table-danger{% endif %}" data-column="{{ attr }}" {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}>{% if param is none %}—{% elif attr.endswith('_calc') and is_numeric %}{{ render_numeric_or_dash((param._price_calc or {}).get(attr[:-5])) }}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
@@ -227,6 +224,7 @@
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") {
@@ -251,6 +249,13 @@ document.addEventListener("DOMContentLoaded", function() {
     #specificFuelPriceTable th[data-fuel-hier-under].fuel-hier-col-visible,
     #specificFuelPriceTable td[data-fuel-hier-under].fuel-hier-col-visible {
         display: table-cell;
+    }
+    #specificFuelPriceTable tr.fuel-param-composite-parent-row > td {
+        background-color: #fff3cd !important;
+    }
+    #specificFuelPriceTable.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+        --bs-table-accent-bg: transparent;
+        background-color: #fff3cd !important;
     }
 </style>
 

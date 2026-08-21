@@ -6,6 +6,8 @@ from flask import redirect, request, url_for
 
 # После успешного POST этапа «Распред» — сырой JSON-сериализуемый словарь для таблицы на GET /fuel/calculation.
 FUEL_DISTRIBUTION_LAST_RUN_SESSION_KEY = "fuel_distribution_last_run"
+# Пауза Распред: станции NUST>0, NR=0, HFIX≠1 (аналог Access MsgBox).
+FUEL_NR_HFIX_PENDING_SESSION_KEY = "fuel_nr_hfix_pending"
 # После успешного POST этапа «Топливо» — сводка для таблицы на GET /fuel/calculation.
 FUEL_STAGE_LAST_RUN_SESSION_KEY = "fuel_stage_last_run"
 # После успешного POST этапа «Коэфф» — метаданные запуска (таблицы Коэфф — из сводки БД).
@@ -49,9 +51,9 @@ def fuel_calculation_tep_edit_query_string(
     args=None,
 ) -> str:
     """
-    Query для кнопки «ТЭП… (редактирование)» с формы расчёта.
+    Query для кнопок «Сведения о работе ТЭС», «ТЭП…», «Структура топливного баланса».
 
-    На странице ТЭП: Год начала = базовый, Год конца = расчётный.
+    На целевых страницах: Год начала = базовый, Год конца = расчётный.
     base_year сохраняется в query для «Назад к расчёту».
     «Пустые строки» по умолчанию включены (кнопка нажата; show_empty_rows не обязателен).
     """

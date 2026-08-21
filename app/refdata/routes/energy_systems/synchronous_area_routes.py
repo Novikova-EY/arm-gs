@@ -65,8 +65,13 @@ def synchronous_area_list():
         synchronous_area_ids        = request.form.getlist("synchronous_area_ids[]")
         synchronous_area_numbers    = request.form.getlist("synchronous_area_numbers[]")
         synchronous_area_names      = request.form.getlist("synchronous_area_names[]")
+        synchronous_area_full_names = request.form.getlist("synchronous_area_full_names[]")
         synchronous_area_orders     = request.form.getlist("display_orders[]")
         synchronous_area_delete     = request.form.getlist("synchronous_area_delete[]")
+        if len(synchronous_area_full_names) < len(synchronous_area_ids):
+            synchronous_area_full_names = list(synchronous_area_full_names) + [""] * (
+                len(synchronous_area_ids) - len(synchronous_area_full_names)
+            )
   
         deleted_ids = set()
         # Удаление записей
@@ -92,8 +97,18 @@ def synchronous_area_list():
 
            # Формирование данных для обновления
             synchronous_area_data = []
-            for synchronous_area_id, synchronous_area_number, synchronous_area_name, display_order in zip(
-                synchronous_area_ids, synchronous_area_numbers, synchronous_area_names, synchronous_area_orders
+            for (
+                synchronous_area_id,
+                synchronous_area_number,
+                synchronous_area_name,
+                synchronous_area_name_full,
+                display_order,
+            ) in zip(
+                synchronous_area_ids,
+                synchronous_area_numbers,
+                synchronous_area_names,
+                synchronous_area_full_names,
+                synchronous_area_orders,
             ):
                 if synchronous_area_id and int(synchronous_area_id) in deleted_ids:
                     continue
@@ -112,6 +127,7 @@ def synchronous_area_list():
                         "synchronous_area_id": int(synchronous_area_id) if synchronous_area_id else None,
                         "number": synchronous_area_number.strip(),
                         "name": synchronous_area_name.strip(),
+                        "name_full": (synchronous_area_name_full or "").strip(),
                         "display_order": parsed_display_order,
                     })
                 except ValueError as e:
@@ -120,6 +136,7 @@ def synchronous_area_list():
                             f"Ошибка обработки данных: id={synchronous_area_id},"
                             f"Номер: {synchronous_area_number}, "
                             f"Наименование: {synchronous_area_name}, "
+                            f"Полное наименование: {synchronous_area_name_full}, "
                             f"Ошибка: {str(e)}"
                         )
                     )
@@ -223,6 +240,7 @@ def add_synchronous_area():
             payload = [{
                 "number": (form.number.data or "").strip(),
                 "name": (form.name.data or "").strip(),
+                "name_full": (form.name_full.data or "").strip(),
             }]
                         
             # Добавление новой записи

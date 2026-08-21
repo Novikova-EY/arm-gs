@@ -2,9 +2,12 @@
 """
 Автозаполнение расчётного года на /fuel/calculation.
 
-Если для выбранного расчётного года ещё нет строк на страницах
-«ТЭП» / «формулы» / «удельные показатели», копирует данные с базового года
-той же логикой, что кнопки «Добавить год» на этих страницах.
+Если для выбранного расчётного года ещё нет строк «ТЭП», копирует ТЭП
+с базового года той же логикой, что кнопка «Добавить год».
+
+Удельные и формулы не копируем: Access Seek берёт последнюю запись
+year ≤ расчётный. Лишняя строка расчётного года (копия 2024) перекрывает
+живой 2025/2026 и ломает Топливо.
 """
 
 from __future__ import annotations
@@ -13,24 +16,27 @@ from typing import Any
 
 from sqlalchemy import distinct
 
-from app.common.services.database_version_filter import get_current_db_version_id
 from app.extensions import db
-from app.fuel.models.fue_equipment_group_fuel_formula_model import EquipmentGroupFuelFormula
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
 from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
+    apply_heat_and_tariffs_q_for_existing_rows,
     copy_heat_fuel_param_columns_for_filters,
-)
-from app.fuel.services.calculation.fuel_calculation_specific_consumption_edit_data_services import (
-    copy_specific_fuel_consumption_between_years_for_filters,
-)
-from app.fuel.services.equipment_groups.equipment_group_fuel_formula_write_services import (
-    copy_fuel_formulas_between_years_for_filters,
+    fill_snk_snt_from_source_year_for_existing_rows,
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     get_equipment_group_ids_for_fuel_params_filters,
+)
+
+
+# UniqueConstraint без database_version_id — одна строка на (группу, год).
+_MODELS_UNIQUE_BY_GROUP_YEAR = frozenset(
+    {
+        EquipmentGroupFuelParam,
+        EquipmentGroupSpecificFuelConsumption,
+    }
 )
 
 
@@ -39,14 +45,18 @@ def _eg_ids_with_year(
     eg_ids: list[int],
     year_number: int,
     version_id: int | None,
+    *,
+    match_version: bool | None = None,
 ) -> set[int]:
     if not eg_ids:
         return set()
+    if match_version is None:
+        match_version = model not in _MODELS_UNIQUE_BY_GROUP_YEAR
     q = db.session.query(distinct(model.equipment_group_id)).filter(
         model.equipment_group_id.in_(eg_ids),
         model.year_number == int(year_number),
     )
-    if hasattr(model, "database_version_id"):
+    if match_version and hasattr(model, "database_version_id"):
         if version_id is not None:
             q = q.filter(model.database_version_id == version_id)
         else:
@@ -69,6 +79,14 @@ def _needs_year_copy(
     return bool(with_source - with_target)
 
 
+def heat_seed_target_years(base_year: int, calc_year: int) -> list[int]:
+    """Промежуточные и расчётный годы для посева ТЭП (без базового)."""
+    lo, hi = int(base_year), int(calc_year)
+    if hi <= lo:
+        return []
+    return list(range(lo + 1, hi + 1))
+
+
 def ensure_calculation_year_data_from_base(
     filters: dict[str, Any] | None,
     *,
@@ -76,7 +94,15 @@ def ensure_calculation_year_data_from_base(
     calc_year: int,
 ) -> dict[str, Any]:
     """
-    При необходимости копирует ТЭП / формулы / удельные показатели с base_year на calc_year.
+    При необходимости копирует ТЭП с base_year на calc_year.
+    ТЭП: создаёт только недостающие годы base+1…calc (не затирает уже существующие,
+    чтобы сохранить QOTR из импорта Access «Станции(Схема)»).
+    На существующие прогнозные годы накладывает Q из «Тепло и тарифы» (схемы теплоснабжения),
+    как Access «Тепло из СТ» — без этого на расчётном году остаётся Q базового года.
+    Формулы и удельные не копируем (Access Seek year ≤ расчётный; копия 2024 на
+    2026/2027 перекрывает живой 2025). Явное копирование — кнопки «Добавить год»
+    на страницах формул / удельных.
+    Если строки ТЭП за расчётный год уже есть — дозаполняет пустые SNK/SNT с базового года.
 
     Возвращает словарь со счётчиками и флагом ``did_anything``.
     Коммит не выполняет — вызывающая сторона делает ``db.session.commit()``.
@@ -88,6 +114,7 @@ def ensure_calculation_year_data_from_base(
         "base_year": source,
         "calc_year": target,
         "heat": None,
+        "hat_q": 0,
         "formulas": None,
         "specific": None,
     }
@@ -105,46 +132,45 @@ def ensure_calculation_year_data_from_base(
     if not eg_ids:
         return empty
 
-    version_id = get_current_db_version_id()
-    result = {**empty, "heat": (0, 0, 0), "formulas": (0, 0, 0), "specific": (0, 0, 0)}
+    result = {**empty, "heat": (0, 0, 0), "hat_q": 0, "formulas": (0, 0, 0), "specific": (0, 0, 0)}
 
-    if _needs_year_copy(
-        EquipmentGroupFuelParam, eg_ids, source, target, version_id
-    ):
+    heat_years = heat_seed_target_years(source, target)
+    if heat_years:
         result["heat"] = copy_heat_fuel_param_columns_for_filters(
             f,
             filter_start_year=filter_start,
             filter_end_year=filter_end,
             source_year_number=source,
-            target_year_numbers=[target],
+            target_year_numbers=heat_years,
+            only_new_rows=True,
         )
         if result["heat"][0]:
             result["did_anything"] = True
 
-    if _needs_year_copy(
-        EquipmentGroupFuelFormula, eg_ids, source, target, version_id
-    ):
-        result["formulas"] = copy_fuel_formulas_between_years_for_filters(
+    if heat_years:
+        n_hat = apply_heat_and_tariffs_q_for_existing_rows(
             f,
             filter_start_year=filter_start,
             filter_end_year=filter_end,
-            source_year_number=source,
-            target_year_numbers=[target],
+            target_year_numbers=heat_years,
         )
-        if result["formulas"][0]:
+        result["hat_q"] = n_hat
+        if n_hat:
             result["did_anything"] = True
 
-    if _needs_year_copy(
-        EquipmentGroupSpecificFuelConsumption, eg_ids, source, target, version_id
-    ):
-        result["specific"] = copy_specific_fuel_consumption_between_years_for_filters(
-            f,
-            filter_start_year=filter_start,
-            filter_end_year=filter_end,
-            source_year=source,
-            target_year=target,
-        )
-        if result["specific"][0]:
-            result["did_anything"] = True
+    sn_filled = fill_snk_snt_from_source_year_for_existing_rows(
+        f,
+        filter_start_year=filter_start,
+        filter_end_year=filter_end,
+        source_year_number=source,
+        target_year_numbers=[target],
+    )
+    if sn_filled:
+        copied, skipped, total = result["heat"] or (0, 0, 0)
+        if not copied:
+            result["heat"] = (sn_filled, 0, len(eg_ids))
+        else:
+            result["heat"] = (copied, skipped, total)
+        result["did_anything"] = True
 
     return result

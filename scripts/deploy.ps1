@@ -102,17 +102,29 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (-not $NoInstall) {
     Write-Host "[4/4] Установка и миграции на сервере..." -ForegroundColor Cyan
     $RemoteDeb = "${RemotePath}/${DebName}"
-    # Миграции выполняем от пользователя generation-app — он может читать /etc/generation-app/app.env
-    # merge heads — объединяет несколько веток миграций (иначе "Multiple head revisions"); при одном head — безопасно игнорируем
-    # upgrade до head. Fallback: если в БД старая/несуществующая ревизия — stamp к базовой (5f943277b415) и upgrade
+    # Миграции — от generation-app (читает /etc/generation-app/app.env).
+    # Не вызываем `flask db merge heads` на сервере: он пишет файлы, которых нет в .deb,
+    # и следующий upgrade падает с Multiple head revisions.
+    # Не делаем stamp на 5f943277b415: указатель alembic откатывается, схема БД — нет.
+    # Лишние .py в versions/ (старые merge с сервера) удаляем, если их нет в установленном пакете.
     $Commands = @"
 set -e
 cd /tmp
 sudo dpkg -i $RemoteDeb || sudo apt -f install -y
-sudo -u generation-app bash -c 'set -a; [ -f /etc/generation-app/app.env ] && . /etc/generation-app/app.env; set +a; cd /opt/generation-app/app && source /opt/generation-app/venv/bin/activate && export FLASK_APP=run.py FLASK_ENV=production && (flask db merge heads -m "merge heads" 2>/dev/null || true) && (flask db upgrade || (flask db stamp 5f943277b415 && flask db upgrade))'
+VER_DIR=/opt/generation-app/app/migrations/versions
+INSTALLED=`$(dpkg -L generation-app | grep /migrations/versions/ || true)
+if [ -n "`$INSTALLED" ] && [ -d "`$VER_DIR" ]; then
+  for f in "`$VER_DIR"/*.py; do
+    [ -e "`$f" ] || continue
+    echo "`$INSTALLED" | grep -Fqx "`$f" && continue
+    sudo rm -f "`$f"
+  done
+  sudo rm -rf "`$VER_DIR"/__pycache__
+fi
+sudo -u generation-app bash -c "set -a; [ -f /etc/generation-app/app.env ] && . /etc/generation-app/app.env; set +a; cd /opt/generation-app/app && source /opt/generation-app/venv/bin/activate && export FLASK_APP=run.py FLASK_ENV=production && flask db upgrade"
 sudo systemctl restart generation-app
 sudo nginx -t 2>/dev/null && sudo systemctl reload nginx 2>/dev/null || true
-echo 'Deploy complete. Checking service...'
+echo Deploy complete. Checking service...
 sudo systemctl status generation-app --no-pager
 "@
 

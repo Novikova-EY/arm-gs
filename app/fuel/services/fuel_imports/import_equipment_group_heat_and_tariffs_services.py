@@ -322,6 +322,14 @@ def _unpivot_wide_access_df(df: pd.DataFrame) -> pd.DataFrame:
     return merged
 
 
+def _orm_session():
+    """Реальная Session: Flask-SQLAlchemy отдаёт scoped_session без expire_on_commit."""
+    sess = db.session
+    if not hasattr(sess, "expire_on_commit") and callable(sess):
+        return sess()
+    return sess
+
+
 def _filter_eq_or_null(query, column, value):
     if value is None:
         return query.filter(column.is_(None))
@@ -358,6 +366,125 @@ def _find_existing_record(
         return q.order_by(EquipmentGroupHeatAndTariffs.id).first()
 
 
+def _uq_key(kod_goroda, name_eto, numb1120, var_razv, year_number, database_version_id):
+    return (kod_goroda, name_eto, numb1120, var_razv, year_number, database_version_id)
+
+
+def _preload_eg_by_numb() -> dict[str, list[tuple]]:
+    """numb (str) → [(equipment_group_id, database_version_id), ...] включая копии по external_code."""
+    from collections import defaultdict
+
+    from app.fuel.services.fuel_imports.fuel_import_all_versions import (
+        normalize_import_numb,
+    )
+
+    rows = (
+        EquipmentGroup.query.with_entities(
+            EquipmentGroup.id,
+            EquipmentGroup.numb,
+            EquipmentGroup.database_version_id,
+            EquipmentGroup.external_code,
+        ).all()
+    )
+    id_to_target: dict[int, tuple] = {}
+    id_to_code: dict[int, str] = {}
+    code_to_ids: dict[str, list[int]] = defaultdict(list)
+    numb_to_ids: dict[str, list[int]] = defaultdict(list)
+    for eg_id, numb, version_id, external_code in rows:
+        if eg_id is None:
+            continue
+        id_to_target[eg_id] = (eg_id, version_id)
+        code = (external_code or "").strip()
+        if code:
+            id_to_code[eg_id] = code
+            code_to_ids[code].append(eg_id)
+        numb_str = normalize_import_numb(numb)
+        if numb_str:
+            numb_to_ids[numb_str].append(eg_id)
+
+    expanded: dict[str, list[tuple]] = {}
+    for numb_str, eg_ids in numb_to_ids.items():
+        merged: dict[int, tuple] = {}
+        for eg_id in eg_ids:
+            merged[eg_id] = id_to_target[eg_id]
+            code = id_to_code.get(eg_id)
+            if not code:
+                continue
+            for sibling_id in code_to_ids.get(code, []):
+                merged[sibling_id] = id_to_target[sibling_id]
+        expanded[numb_str] = list(merged.values())
+    return expanded
+
+
+def _preload_years_set() -> set[tuple]:
+    from app.refdata.models.years.year_model import Year
+
+    return {
+        (number, version_id)
+        for number, version_id in Year.query.with_entities(
+            Year.number, Year.database_version_id
+        ).all()
+    }
+
+
+def _targets_from_cache(numb1120_val, eg_by_numb: dict, version_ids: list) -> list[tuple]:
+    numb1120_str = _numb1120_for_match(numb1120_val)
+    eg_targets = list(eg_by_numb.get(numb1120_str, [])) if numb1120_str else []
+    covered_version_ids = {
+        version_id for _, version_id in eg_targets if version_id is not None
+    }
+    targets = list(eg_targets)
+    for version_id in version_ids:
+        if version_id not in covered_version_ids:
+            targets.append((None, version_id))
+    return targets
+
+
+def _lookup_existing(
+    existing_by_key: dict,
+    existing_by_key_ndv: dict,
+    *,
+    kod_goroda,
+    name_eto,
+    numb1120,
+    var_razv,
+    year_number,
+    database_version_id,
+    ndv_st=None,
+):
+    key = _uq_key(
+        kod_goroda, name_eto, numb1120, var_razv, year_number, database_version_id
+    )
+    if ndv_st is not None:
+        matched = existing_by_key_ndv.get((key, ndv_st))
+        if matched is not None:
+            return matched
+    return existing_by_key.get(key)
+
+
+def _cache_existing_record(
+    existing_by_key: dict,
+    existing_by_key_ndv: dict,
+    param: EquipmentGroupHeatAndTariffs,
+    *,
+    overwrite: bool = True,
+):
+    key = _uq_key(
+        param.kod_goroda,
+        param.name_eto,
+        param.numb1120,
+        param.var_razv,
+        param.year_number,
+        param.database_version_id,
+    )
+    if overwrite or key not in existing_by_key:
+        existing_by_key[key] = param
+    if param.ndv_st is not None:
+        ndv_key = (key, param.ndv_st)
+        if overwrite or ndv_key not in existing_by_key_ndv:
+            existing_by_key_ndv[ndv_key] = param
+
+
 def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
     """
     Загружает тепло/тарифы из Excel в EquipmentGroupHeatAndTariffs.
@@ -366,6 +493,10 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
     Для каждой строки создаётся/обновляется запись во всех версиях БД
     (по группам с тем же numb1120 или по всем database_version_id без EG).
     """
+    from app.refdata.services.refdata_all_versions_common import (
+        all_database_version_ids_for_refdata,
+    )
+
     logger = _get_logger()
     t0 = time.perf_counter()
     filename = getattr(file, "filename", None)
@@ -392,96 +523,165 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
             "или широкий формат Access со столбцами-годами и dannie (Q/TARIF)."
         )
 
+    # Предзагрузка справочников: иначе ~40k строк × N версий = сотни тысяч SQL.
+    t_preload = time.perf_counter()
+    eg_by_numb = _preload_eg_by_numb()
+    version_ids = all_database_version_ids_for_refdata()
+    years_ok = _preload_years_set()
+
+    years_in_file = {
+        y
+        for y in (
+            _safe_int(v) for v in df["year_number"].tolist() if v is not None
+        )
+        if y is not None
+    }
+    existing_by_key: dict = {}
+    existing_by_key_ndv: dict = {}
+    existing_q = EquipmentGroupHeatAndTariffs.query
+    if years_in_file:
+        existing_q = existing_q.filter(
+            EquipmentGroupHeatAndTariffs.year_number.in_(years_in_file)
+        )
+    for rec in existing_q.order_by(EquipmentGroupHeatAndTariffs.id).all():
+        _cache_existing_record(
+            existing_by_key, existing_by_key_ndv, rec, overwrite=False
+        )
+
+    logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_HEAT_AND_TARIFFS] preload rows=%s eg_numbs=%s "
+        "versions=%s years_ok=%s existing=%s elapsed=%.2fs",
+        len(df),
+        len(eg_by_numb),
+        len(version_ids),
+        len(years_ok),
+        len(existing_by_key),
+        time.perf_counter() - t_preload,
+    )
+
     created = 0
     updated = 0
     skipped_no_year = 0
     skipped_no_year_version = 0
     skipped_empty = 0
     years_loaded: set[int] = set()
+    writes_since_commit = 0
+    COMMIT_EVERY = 10000
+    # Не expire'ить объекты после batch commit — иначе лишние SELECT при следующих правках.
+    # expire_on_commit — атрибут Session, не scoped_session (db.session).
+    sa_session = _orm_session()
+    prev_expire = getattr(sa_session, "expire_on_commit", True)
+    if hasattr(sa_session, "expire_on_commit"):
+        sa_session.expire_on_commit = False
 
-    for _index, row in df.iterrows():
-        if row.isnull().all():
-            continue
-
-        row_values = {}
-        for field in IMPORT_FIELDS:
-            if field not in df.columns:
-                continue
-            raw = _extract_cell_value(row, field)
-            if raw is None or (isinstance(raw, float) and pd.isna(raw)):
-                continue
-            if field in INTEGER_FIELDS:
-                val = _safe_int(raw)
-            elif field in NUMERIC_FIELDS:
-                val = _safe_decimal(raw)
-            elif field == "name_goroda":
-                val = _safe_str(raw, 255)
-            elif field == "name_eto":
-                val = _safe_str(raw)
-            else:
-                val = _safe_str(raw)
-            if val is not None:
-                row_values[field] = val
-
-        row_year = row_values.get("year_number")
-        if row_year is None:
-            skipped_no_year += 1
-            continue
-        row_values["year_number"] = row_year
-
-        if row_values.get("q") is None and row_values.get("tarif") is None:
-            skipped_empty += 1
-            continue
-
-        targets = _targets_for_row(row_values.get("numb1120"))
-        row_written = False
-
-        for equipment_group_id, db_version_id in targets:
-            # FK: (year_number, database_version_id) должен быть в gs_sys_years
-            if not _year_exists_for_version(row_year, db_version_id):
-                skipped_no_year_version += 1
-                continue
-
-            param = _find_existing_record(
-                kod_goroda=row_values.get("kod_goroda"),
-                name_eto=row_values.get("name_eto"),
-                numb1120=row_values.get("numb1120"),
-                var_razv=row_values.get("var_razv"),
-                year_number=row_year,
-                database_version_id=db_version_id,
-                ndv_st=row_values.get("ndv_st"),
-            )
-            is_new = param is None
-            if is_new:
-                param = EquipmentGroupHeatAndTariffs(
-                    equipment_group_id=equipment_group_id,
-                    year_number=row_year,
-                    database_version_id=db_version_id,
-                )
-                db.session.add(param)
-                created += 1
-
-            changed = False
-            for field, val in row_values.items():
-                if hasattr(param, field) and field != "year_number":
-                    cur = getattr(param, field)
-                    if cur != val:
-                        setattr(param, field, val)
-                        changed = True
-            if param.equipment_group_id != equipment_group_id:
-                param.equipment_group_id = equipment_group_id
-                changed = True
-            if param.database_version_id != db_version_id:
-                param.database_version_id = db_version_id
-                changed = True
-            if changed and not is_new:
-                updated += 1
-            row_written = True
-
-        if row_written:
-            years_loaded.add(row_year)
+    def _maybe_commit_batch():
+        nonlocal writes_since_commit
+        if writes_since_commit < COMMIT_EVERY:
+            return
+        db.session.commit()
+        writes_since_commit = 0
+        logger.info(
+            "[IMPORT_EQUIPMENT_GROUP_HEAT_AND_TARIFFS] batch commit "
+            "created=%s updated=%s elapsed=%.2fs",
+            created,
+            updated,
+            time.perf_counter() - t0,
+        )
 
     try:
+        for row in df.to_dict(orient="records"):
+            if all(
+                v is None or (isinstance(v, float) and pd.isna(v))
+                for v in row.values()
+            ):
+                continue
+
+            row_values = {}
+            for field in IMPORT_FIELDS:
+                if field not in df.columns:
+                    continue
+                raw = _extract_cell_value(row, field)
+                if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+                    continue
+                if field in INTEGER_FIELDS:
+                    val = _safe_int(raw)
+                elif field in NUMERIC_FIELDS:
+                    val = _safe_decimal(raw)
+                elif field == "name_goroda":
+                    val = _safe_str(raw, 255)
+                elif field == "name_eto":
+                    val = _safe_str(raw)
+                else:
+                    val = _safe_str(raw)
+                if val is not None:
+                    row_values[field] = val
+
+            row_year = row_values.get("year_number")
+            if row_year is None:
+                skipped_no_year += 1
+                continue
+            row_values["year_number"] = row_year
+
+            if row_values.get("q") is None and row_values.get("tarif") is None:
+                skipped_empty += 1
+                continue
+
+            targets = _targets_from_cache(
+                row_values.get("numb1120"), eg_by_numb, version_ids
+            )
+            row_written = False
+
+            for equipment_group_id, db_version_id in targets:
+                if (row_year, db_version_id) not in years_ok:
+                    skipped_no_year_version += 1
+                    continue
+
+                param = _lookup_existing(
+                    existing_by_key,
+                    existing_by_key_ndv,
+                    kod_goroda=row_values.get("kod_goroda"),
+                    name_eto=row_values.get("name_eto"),
+                    numb1120=row_values.get("numb1120"),
+                    var_razv=row_values.get("var_razv"),
+                    year_number=row_year,
+                    database_version_id=db_version_id,
+                    ndv_st=row_values.get("ndv_st"),
+                )
+                is_new = param is None
+                if is_new:
+                    param = EquipmentGroupHeatAndTariffs(
+                        equipment_group_id=equipment_group_id,
+                        year_number=row_year,
+                        database_version_id=db_version_id,
+                    )
+                    db.session.add(param)
+                    created += 1
+                    writes_since_commit += 1
+
+                changed = False
+                for field, val in row_values.items():
+                    if hasattr(param, field) and field != "year_number":
+                        cur = getattr(param, field)
+                        if cur != val:
+                            setattr(param, field, val)
+                            changed = True
+                if param.equipment_group_id != equipment_group_id:
+                    param.equipment_group_id = equipment_group_id
+                    changed = True
+                if param.database_version_id != db_version_id:
+                    param.database_version_id = db_version_id
+                    changed = True
+                if changed and not is_new:
+                    updated += 1
+                    writes_since_commit += 1
+                if is_new or changed:
+                    _cache_existing_record(existing_by_key, existing_by_key_ndv, param)
+                row_written = True
+
+            if row_written:
+                years_loaded.add(row_year)
+            _maybe_commit_batch()
+
         if created or updated:
             db.session.commit()
     except IntegrityError as exc:
@@ -492,6 +692,9 @@ def import_equipment_group_heat_and_tariffs_from_excel(file, user: str) -> dict:
         raise ValueError(
             "Ошибка сохранения данных: проверьте корректность файла."
         ) from exc
+    finally:
+        if hasattr(sa_session, "expire_on_commit"):
+            sa_session.expire_on_commit = prev_expire
 
     elapsed = time.perf_counter() - t0
     years_txt = (

@@ -27,6 +27,7 @@ from decimal import Decimal, InvalidOperation
 from app.common.services.database_version_filter import get_current_db_version_id, set_db_version_on_create
 from app.common.services.help_services import (
     format_number_trim_trailing,
+    parse_decimal_from_display,
     values_equal_by_display_precision,
 )
 from app.extensions import db
@@ -41,6 +42,9 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
     EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS,
     EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS,
     EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS,
+    FUEL_PARAM_DERIVED_ATTRS,
+    compute_fuel_param_derived_value,
+    fill_missing_hours_on_fuel_param,
 )
 
 # Типы полей для парсинга формы / импорта (только write-слой)
@@ -138,14 +142,15 @@ def _parse_fuel_param_value(attr, value):
         return None
     if attr in INTEGER_ATTRS:
         try:
-            return int(Decimal(s))
+            parsed = parse_decimal_from_display(s)
+            return None if parsed is None else int(parsed)
         except (InvalidOperation, ValueError, TypeError):
             return None
     if attr in STRING_ATTRS:
         return normalize_fuel_param_external_mapping_value(attr, s)
     if attr in NUMERIC_ATTRS:
         try:
-            return Decimal(s.replace(",", "."))
+            return parse_decimal_from_display(s)
         except (InvalidOperation, ValueError, TypeError):
             return None
     return None
@@ -297,41 +302,99 @@ def update_equipment_group_fuel_params_from_form(
                 change_details.append(
                     (_fuel_param_table_name(attr), year, attr, _format_val(old_val), _format_val(new_val))
                 )
+        def _ensure_param_for_value(val):
+            nonlocal param
+            if param is None and val is not None:
+                param = EquipmentGroupFuelParam(
+                    equipment_group_id=equipment_group_id,
+                    year_number=year,
+                    database_version_id=version_id,
+                )
+                set_db_version_on_create(param)
+                db.session.add(param)
+                existing_params[year] = param
+            if (
+                param is not None
+                and hasattr(param, "database_version_id")
+                and version_id is not None
+                and param.database_version_id != version_id
+            ):
+                # Unique (equipment_group_id, year_number) без версии: строка
+                # с чужим database_version_id не джойнится на витрине.
+                param.database_version_id = version_id
+            return param
+
+        def _assign_attr(attr, val):
+            if param is None:
+                return
+            old_val = getattr(param, attr, None)
+            digits = (
+                rounding_digits_table2
+                if attr in EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS
+                else rounding_digits_table1
+            )
+            is_unchanged = (
+                attr in NUMERIC_ATTRS
+                and values_equal_by_display_precision(old_val, val, digits)
+            ) or (attr not in NUMERIC_ATTRS and old_val == val)
+            if not is_unchanged:
+                setattr(param, attr, val)
+                change_details.append(
+                    (
+                        _fuel_param_table_name(attr),
+                        year,
+                        attr,
+                        _format_val(old_val),
+                        _format_val(val),
+                    )
+                )
+
         for attr in all_attrs:
             if skip_attrs and attr in skip_attrs:
+                continue
+            if attr in FUEL_PARAM_DERIVED_ATTRS:
                 continue
             key = f"fuel_param_{year}_{attr}"
             if partial and key not in form_data:
                 continue
             raw = form_data.get(key)
             val = _parse_fuel_param_value(attr, raw)
-            if param is None:
-                if val is not None:
-                    param = EquipmentGroupFuelParam(
-                        equipment_group_id=equipment_group_id,
-                        year_number=year,
-                        database_version_id=version_id,
-                    )
-                    set_db_version_on_create(param)
-                    db.session.add(param)
-                    existing_params[year] = param
+            _ensure_param_for_value(val)
             if param is not None:
-                if (
-                    hasattr(param, "database_version_id")
-                    and param.database_version_id is None
-                    and version_id is not None
-                ):
-                    param.database_version_id = version_id
-                old_val = getattr(param, attr, None)
-                digits = rounding_digits_table2 if attr in EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS else rounding_digits_table1
-                is_unchanged = (
-                    attr in NUMERIC_ATTRS
-                    and values_equal_by_display_precision(old_val, val, digits)
-                ) or (attr not in NUMERIC_ATTRS and old_val == val)
-                if not is_unchanged:
-                    setattr(param, attr, val)
-                    change_details.append(
-                        (_fuel_param_table_name(attr), year, attr, _format_val(old_val), _format_val(val))
-                    )
+                _assign_attr(attr, val)
+
+        # EURT/TURT/snk/SNT/h: при наличии входов — пересчёт по формуле;
+        # ручной ввод из формы только если входов нет (иначе расчётное поле
+        # не передаётся в POST и не должно затираться в NULL).
+        for attr in sorted(FUEL_PARAM_DERIVED_ATTRS):
+            if skip_attrs and attr in skip_attrs:
+                continue
+            calc_val = (
+                compute_fuel_param_derived_value(param, attr)
+                if param is not None
+                else None
+            )
+            if calc_val is not None:
+                _assign_attr(attr, calc_val)
+                continue
+            key = f"fuel_param_{year}_{attr}"
+            if partial and key not in form_data:
+                continue
+            raw = form_data.get(key)
+            val = _parse_fuel_param_value(attr, raw)
+            _ensure_param_for_value(val)
+            if param is not None:
+                _assign_attr(attr, val)
+
+        if param is not None and fill_missing_hours_on_fuel_param(param):
+            change_details.append(
+                (
+                    _fuel_param_table_name("h"),
+                    year,
+                    "h",
+                    _format_val(None),
+                    _format_val(getattr(param, "h", None)),
+                )
+            )
 
     return True, "Параметры успешно сохранены." if change_details else "Изменений нет.", change_details

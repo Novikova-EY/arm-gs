@@ -1,6 +1,7 @@
 """Сервисный модуль: Список электростанций."""
 
 import logging
+import re
 
 from app.extensions import db
 
@@ -13,7 +14,7 @@ from config import (
     STATION_UNIQUE_EXCLUDED_DISTRICT_IDS,
     STATION_UNIQUE_EXCLUDED_DISTRICT_UUIDS,
 )
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, or_, func
 from sqlalchemy.orm import selectinload, joinedload
 from decimal import Decimal
 from collections import defaultdict
@@ -292,6 +293,27 @@ def _station_energy_system_type_sql_filter(energy_system_type_ids):
     return or_(*conditions)
 
 
+_DISPLAY_NAME_BEFORE_AFTER_RE = re.compile(r"^(.*?)\s+\(([^()]+)\)\s*$")
+
+
+def _split_display_name_before_after(display_name: str | None) -> tuple[str | None, str | None]:
+    """
+    Разбирает формат «до (после)» из уже собранного display_name / machine_name.
+    Нужен, когда в MachineName по годам лежит готовая строка «X (Y)», а не разные имена.
+    """
+    text = (display_name or "").strip()
+    if not text:
+        return None, None
+    match = _DISPLAY_NAME_BEFORE_AFTER_RE.match(text)
+    if not match:
+        return None, None
+    before = (match.group(1) or "").strip()
+    after = (match.group(2) or "").strip()
+    if not before or not after or before.lower() == after.lower():
+        return None, None
+    return before, after
+
+
 def _apply_machine_display_names(machines, year_features=None, use_machine_name_only=False):
     """
     Вычисляет отображаемое название агрегата (Machine.display_name).
@@ -301,13 +323,18 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
       - если в плановом периоде есть отличающееся имя, добавляем в скобках: "<текущ.> (<план>)".
 
     При use_machine_name_only=True: display_name = Machine.machine_name.
+    Также выставляет display_name_before / display_name_after при смене названия.
     """
     if not machines:
         return
 
     if use_machine_name_only:
         for m in machines:
-            setattr(m, "display_name", (getattr(m, "machine_name", None) or "").strip())
+            display_name = (getattr(m, "machine_name", None) or "").strip()
+            before, after = _split_display_name_before_after(display_name)
+            setattr(m, "display_name", display_name)
+            setattr(m, "display_name_before", before)
+            setattr(m, "display_name_after", after)
         return
 
     # Собираем ID агрегатов
@@ -351,9 +378,12 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
             base_name = (m.machine_name or "").strip()
 
         display_name = base_name
+        display_name_before = None
+        display_name_after = None
 
         # Ищем отличающееся имя в плановом периоде (полностью копируем логику handle_machine_get):
         # перебираем ВСЕ годы с признаком "план" и берем первое отличающееся название.
+        # Формат для плановой модернизации / смены типа ГО: «до (после)».
         if base_name and machine_names:
             for y in sorted(machine_names.keys()):
                 label = year_features.get(y)
@@ -365,20 +395,51 @@ def _apply_machine_display_names(machines, year_features=None, use_machine_name_
                 plan_name = plan_name.strip()
                 if plan_name and plan_name.lower() != base_name.lower():
                     display_name = f"{base_name} ({plan_name})"
+                    display_name_before = base_name
+                    display_name_after = plan_name
                     break
+
+        # Фактическая перемаркировка: в списке показываем «до (после)», как на карточке по годам
+        if machine_names and getattr(m, "date_relabing_fact", None):
+            try:
+                rel_years = Machine._fact_display_years(m, getattr(m, "date_relabing_fact", None))
+            except Exception:
+                rel_years = []
+            if rel_years:
+                after_year = min(rel_years)
+                before_year = after_year - 1
+                before_name = (machine_names.get(before_year) or "").strip()
+                after_name = (machine_names.get(after_year) or "").strip()
+                if before_name and after_name and before_name.lower() != after_name.lower():
+                    display_name = f"{before_name} ({after_name})"
+                    display_name_before = before_name
+                    display_name_after = after_name
+
+        # Если по годам имя уже записано как «до (после)» — разбираем строку
+        if not display_name_before or not display_name_after:
+            parsed_before, parsed_after = _split_display_name_before_after(display_name)
+            if parsed_before and parsed_after:
+                display_name_before = parsed_before
+                display_name_after = parsed_after
 
         # Сохраняем вычисленное имя на объекте агрегата (runtime-атрибут)
         setattr(m, "display_name", display_name)
+        setattr(m, "display_name_before", display_name_before)
+        setattr(m, "display_name_after", display_name_after)
 
 
 def _apply_machine_gen_companies_for_version(machines, version_id):
     """
     Подставляет GenCompany в версии станции (по ref_uuid), как при сохранении machine_details.
     id_gen_company в Machine может ссылаться на id справочника другой версии БД.
+
+    Важно: не помечаем Machine dirty (иначе autoflush инкрементирует optimistic version,
+    а в HTML уйдёт «будущая» версия при откате транзакции GET-запроса).
     """
     if not machines:
         return
 
+    from sqlalchemy.orm.attributes import set_committed_value
     from app.common.services.version_entity_resolve_services import (
         resolve_gen_company_id_for_version,
     )
@@ -404,7 +465,7 @@ def _apply_machine_gen_companies_for_version(machines, version_id):
     for m in machines:
         resolved_id = resolved_by_machine.get(m.id)
         if resolved_id and resolved_id in gen_companies:
-            m.gen_company = gen_companies[resolved_id]
+            set_committed_value(m, "gen_company", gen_companies[resolved_id])
 
 
 def get_gen_company_choices_for_version(version_id):
@@ -454,8 +515,12 @@ def _build_station_note_search_condition(note_filter_value):
 
 def _station_union_energy_system_sql_filter(union_energy_system_filter):
     """
-    ОЭС: как в get_filtered_station_ids — прямая привязка электростанции к РЭС
-    и связь через субъект РФ (fallback логики Station.union_energy_system).
+    ОЭС: как Station.union_energy_system — сначала прямая РЭС станции,
+    и только если РЭС не задана — fallback через субъект РФ.
+
+    Без ограничения на «РЭС is NULL» субъект вроде Красноярского края
+    (связан и с ОЭС Сибири, и с ТИТЭС Сибири / Норильск) тянет в фильтр
+    «ТИТЭС Сибири» все станции края.
     """
     ues_ids = union_energy_system_filter
     if not isinstance(ues_ids, list):
@@ -464,10 +529,13 @@ def _station_union_energy_system_sql_filter(union_energy_system_filter):
         Station.regional_energy_system_obj.has(
             RegionalEnergySystem.id_union_energy_system.in_(ues_ids)
         ),
-        Station.regional_district.has(
-            RegionalDistrict.regional_energy_systems.any(
-                RegionalEnergySystem.id_union_energy_system.in_(ues_ids)
-            )
+        and_(
+            Station.id_regional_energy_system.is_(None),
+            Station.regional_district.has(
+                RegionalDistrict.regional_energy_systems.any(
+                    RegionalEnergySystem.id_union_energy_system.in_(ues_ids)
+                )
+            ),
         ),
     )
 
@@ -488,6 +556,16 @@ def get_stations_list(
     current_year = get_current_year()
     external_code_check = bool(filters.get("external_code_check"))
 
+    # Страница проверки взаимосвязей смотрит все версии БД: id субъекта из
+    # текущей версии нужно расширить на одноимённые/те же ref_uuid записи
+    # других версий. Копию фильтров не отдаём в шаблон (там id текущей версии).
+    if external_code_check or filters.get("all_db_versions"):
+        from app.generation.services.station_services.filters_services import (
+            expand_versioned_ref_list_filters_across_versions,
+        )
+        filters = dict(filters)
+        expand_versioned_ref_list_filters_across_versions(filters)
+
     if external_code_check:
         station_ids_query = db.session.query(Station.id)
     else:
@@ -498,10 +576,13 @@ def get_stations_list(
         machine_query = filter_by_db_version(machine_query, Machine)
 
         if filters.get("tes_type_filter"):
+            # Тип ТЭС — по любому году в выбранном диапазоне (иначе теряются вводы/выводы в периоде)
+            _sy = int(start_year if start_year is not None else get_filter_start_year())
+            _ey = int(end_year if end_year is not None else get_filter_end_year())
             machine_query = machine_query.filter(
                 Machine.machine_tes_types.any(
                     and_(
-                        MachineTesType.year_number == current_year,
+                        MachineTesType.year_number.between(_sy, _ey),
                         MachineTesType.id_tes_type.in_(filters["tes_type_filter"])
                     )
                 )
@@ -510,6 +591,15 @@ def get_stations_list(
         if filters.get("tes_machine_type_filter"):
             machine_query = machine_query.filter(
                 Machine.id_tes_machine_type.in_(filters["tes_machine_type_filter"])
+            )
+
+        if filters.get("pgu_tes_machine_type_filter"):
+            machine_query = machine_query.filter(
+                Machine.pgu_submachines.any(
+                    PGUMachine.id_pgu_tes_machine_type.in_(
+                        filters["pgu_tes_machine_type_filter"]
+                    )
+                )
             )
 
         if filters.get("fuel_type_filter"):
@@ -587,6 +677,7 @@ def get_stations_list(
             build_date_modernization_no_power_filter,
             build_relabing_outcome_filter,
             build_machine_note_search_condition,
+            build_machines_without_equipment_group_filter,
         )
         for build_fn in (
             build_date_commission_filter,
@@ -601,7 +692,9 @@ def get_stations_list(
                 machine_query = machine_query.filter(cond)
 
         if filters.get("machines_without_equipment_group"):
-            machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
+            machine_query = machine_query.filter(
+                build_machines_without_equipment_group_filter(Machine)
+            )
 
         note_machine_cond = build_machine_note_search_condition(
             Machine, PGUMachine, filters.get("note_filter")
@@ -679,6 +772,30 @@ def get_stations_list(
         condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
         station_ids_query = station_ids_query.filter(condition)
 
+    # Станции с УМ > 100 МВт (сумма p_ust агрегатов на as-of год = current / начало диапазона)
+    if filters.get("um_gt_100") and not external_code_check:
+        asof_year = current_year if current_year is not None else (
+            int(start_year) if start_year is not None else get_filter_start_year()
+        )
+        capacity_subq = (
+            db.session.query(Machine.id_station.label("station_id"))
+            .join(MachinePower, MachinePower.id_machine == Machine.id)
+            .filter(
+                Machine.is_archived.isnot(True),
+                MachinePower.year_number == asof_year,
+            )
+        )
+        capacity_subq = filter_by_db_version(capacity_subq, Machine)
+        capacity_subq = filter_by_db_version(capacity_subq, MachinePower)
+        capacity_subq = (
+            capacity_subq.group_by(Machine.id_station)
+            .having(func.coalesce(func.sum(MachinePower.p_ust), 0) > 100)
+            .subquery()
+        )
+        station_ids_query = station_ids_query.filter(
+            Station.id.in_(db.session.query(capacity_subq.c.station_id))
+        )
+
     # 4. Подсчет и пагинация (сортировка не нужна, т.к. будет в Python)
     if external_code_check:
         from app.generation.services.station_services.external_code_check_services import (
@@ -735,9 +852,46 @@ def get_stations_list(
         pgu_station_query = filter_by_db_version(pgu_station_query, Station)
         for cond in build_date_filters_for_pgu(PGUMachine, filters):
             pgu_station_query = pgu_station_query.filter(cond)
-        # Для фильтра "агрегаты без группы" — только PGUMachine, у которых родительская Machine без id_equipment_group
+        # Для фильтра «агрегаты без группы» — родительский Machine без топливной группы
         if filters.get("machines_without_equipment_group"):
-            pgu_station_query = pgu_station_query.filter(Machine.id_equipment_group.is_(None))
+            from app.generation.services.station_services.filters_services import (
+                build_machines_without_equipment_group_filter,
+            )
+
+            pgu_station_query = pgu_station_query.filter(
+                build_machines_without_equipment_group_filter(Machine)
+            )
+        # Те же машинные фильтры, что и в machine_query — иначе «Ввод»+«Тип ТЭС» ломается
+        # (станции с ПГУ по дате добавлялись без проверки типа ТЭС).
+        if filters.get("tes_type_filter"):
+            _sy = int(start_year if start_year is not None else get_filter_start_year())
+            _ey = int(end_year if end_year is not None else get_filter_end_year())
+            pgu_station_query = pgu_station_query.filter(
+                Machine.machine_tes_types.any(
+                    and_(
+                        MachineTesType.year_number.between(_sy, _ey),
+                        MachineTesType.id_tes_type.in_(filters["tes_type_filter"]),
+                    )
+                )
+            )
+        if filters.get("tes_machine_type_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Machine.id_tes_machine_type.in_(filters["tes_machine_type_filter"])
+            )
+        if filters.get("pgu_tes_machine_type_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                PGUMachine.id_pgu_tes_machine_type.in_(
+                    filters["pgu_tes_machine_type_filter"]
+                )
+            )
+        if filters.get("fuel_type_filter"):
+            pgu_station_query = pgu_station_query.filter(
+                Machine.machine_fuels.any(
+                    MachineFuel.fuel.has(
+                        Fuel.id_fuel_type.in_(filters["fuel_type_filter"])
+                    )
+                )
+            )
         # Применяем те же фильтры по электростанции
         if filters.get("station_type_filter"):
             pgu_station_query = pgu_station_query.filter(
@@ -798,6 +952,7 @@ def get_stations_list(
         [
             filters.get("tes_type_filter"),
             filters.get("tes_machine_type_filter"),
+            filters.get("pgu_tes_machine_type_filter"),
             filters.get("fuel_type_filter"),
             filters.get("fuel_check"),
             filters.get("machines_without_equipment_group"),
@@ -1394,10 +1549,12 @@ def get_stations_list_with_pgu_machines(
     machine_query = db.session.query(Machine.id, Machine.id_station)
 
     if filters.get("tes_type_filter"):
+        _sy = int(filters.get("start_year") or get_filter_start_year())
+        _ey = int(filters.get("end_year") or get_filter_end_year())
         machine_query = machine_query.filter(
             Machine.machine_tes_types.any(
                 and_(
-                    MachineTesType.year_number == current_year,
+                    MachineTesType.year_number.between(_sy, _ey),
                     MachineTesType.id_tes_type.in_(filters["tes_type_filter"])
                 )
             )
@@ -1514,10 +1671,7 @@ def get_stations_list_with_pgu_machines(
 
     if filters.get("union_energy_system_filter"):
         station_query = station_query.filter(
-            Station.regional_district.has(
-                RegionalDistrict.regional_energy_systems.any(
-                    RegionalEnergySystem.id_union_energy_system.in_(filters["union_energy_system_filter"]))
-            )
+            _station_union_energy_system_sql_filter(filters["union_energy_system_filter"])
         )
 
     if filters.get("energy_system_type_filter"):
@@ -2439,17 +2593,18 @@ def get_filtered_station_ids(filters):
     Используется для пересчета агрегатов на последней странице, чтобы учесть всю выборку.
     """
     filters = filters or {}
-    current_year = get_current_year()
 
     # 1. Фильтрация агрегатов (машин)
     machine_query = db.session.query(Machine.id, Machine.id_station)
     machine_query = filter_by_db_version(machine_query, Machine)
 
     if filters.get("tes_type_filter"):
+        _sy = int(filters.get("start_year") or get_filter_start_year())
+        _ey = int(filters.get("end_year") or get_filter_end_year())
         machine_query = machine_query.filter(
             Machine.machine_tes_types.any(
                 and_(
-                    MachineTesType.year_number == current_year,
+                    MachineTesType.year_number.between(_sy, _ey),
                     MachineTesType.id_tes_type.in_(filters["tes_type_filter"])
                 )
             )
@@ -2556,6 +2711,29 @@ def get_filtered_station_ids(filters):
     if filters.get("energy_system_type_filter"):
         condition = _station_energy_system_type_sql_filter(filters["energy_system_type_filter"])
         station_ids_query = station_ids_query.filter(condition)
+
+    if filters.get("um_gt_100"):
+        asof_year = get_current_year()
+        if asof_year is None:
+            asof_year = int(filters.get("start_year") or get_filter_start_year())
+        capacity_subq = (
+            db.session.query(Machine.id_station.label("station_id"))
+            .join(MachinePower, MachinePower.id_machine == Machine.id)
+            .filter(
+                Machine.is_archived.isnot(True),
+                MachinePower.year_number == asof_year,
+            )
+        )
+        capacity_subq = filter_by_db_version(capacity_subq, Machine)
+        capacity_subq = filter_by_db_version(capacity_subq, MachinePower)
+        capacity_subq = (
+            capacity_subq.group_by(Machine.id_station)
+            .having(func.coalesce(func.sum(MachinePower.p_ust), 0) > 100)
+            .subquery()
+        )
+        station_ids_query = station_ids_query.filter(
+            Station.id.in_(db.session.query(capacity_subq.c.station_id))
+        )
 
     raw_ids = [row[0] for row in station_ids_query.all()]
 
@@ -2735,6 +2913,9 @@ def get_station_list_data(
     filters.pop("page", None)
     filters.pop("start_year", None)
     filters.pop("end_year", None)
+    # Для machine-фильтров (тип ТЭС и т.п.) дальше нужен выбранный диапазон лет
+    filters["start_year"] = start_year
+    filters["end_year"] = end_year
 
     # Настройка параметров пагинации
     if isinstance(per_page, str) and per_page.lower() == "all":
@@ -2754,7 +2935,7 @@ def get_station_list_data(
         rounding_digits=rounding_digits,
         start_year=start_year,
         end_year=end_year,
-        **filters
+        **{k: v for k, v in filters.items() if k not in ("start_year", "end_year")}
     )
     stations = station_data["stations"]
     total_count = station_data["total_count"]
@@ -3096,7 +3277,9 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     _ = hierarchy_data
 
     year_features = get_year_feature_dict()
-    _years_from_db = [y.number for y in get_year_list_full()]
+    _years_from_db = sorted(
+        {int(y.number) for y in get_year_list_full() if getattr(y, "number", None) is not None}
+    )
     filter_year_list = (
         _years_from_db
         if _years_from_db
@@ -3422,6 +3605,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "station_name_filter": filters.get("station_name_filter"),
             "note_filter": filters.get("note_filter"),
             "equipment_group_name_filter": filters.get("equipment_group_name_filter"),
+            "numb1120_filter": filters.get("numb1120_filter") or [],
             "station_type_filter": filters.get("station_type_filter"),
             "station_sign_filter": filters.get("station_sign_filter") or [],
             "station_sign_filter_choices": station_sign_filter_choices,
@@ -3434,6 +3618,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "federal_district_filter": filters.get("federal_district_filter"),
             "regional_district_filter": filters.get("regional_district_filter"),
             "fuel_type_filter": filters.get("fuel_type_filter"),
+            "um_gt_100": bool(filters.get("um_gt_100")),
             "relabing_outcome_filter_choices": relabing_outcome_filter_choices,
             "year_features": year_features,
             "machine_tes_types_map": machine_tes_types_map,
@@ -4315,11 +4500,15 @@ def update_station_from_form_service(
             return s in {"", "не указано", "не указан", "не указана", "—", "-"}
 
         def _normalize_angle_quotes(value: str | None) -> str | None:
-            """Normalize «» pairs to opening/closing order."""
+            """Normalize «» pairs; keep already-correct nested ёлочки intact."""
             if value is None:
                 return None
             text = str(value)
             if "«" not in text and "»" not in text:
+                return text
+            from app.common.services.help_services import _has_balanced_angle_quotes
+            # АО «Группа «Илим»» — already valid nested quotes; do not flatten.
+            if _has_balanced_angle_quotes(text) and '"' not in text:
                 return text
             normalized = []
             inside = False
@@ -4909,6 +5098,10 @@ def update_machines_from_form_service(user, station: Station, form_machines, for
     
     try:
         if not form_machines.validate():
+            print(
+                "[update_machines_from_form_service] form_machines.validate() failed:",
+                form_machines.errors,
+            )
             return changes
 
         def _norm_text(v) -> str:
@@ -4942,6 +5135,39 @@ def update_machines_from_form_service(user, station: Station, form_machines, for
             print(f"[OPTIMIZATION] Предзагружено {len(gen_companies_map)} GenCompany одним запросом")
 
         # ОПТИМИЗАЦИЯ 3: Отключаем autoflush для ускорения массовых изменений
+        archived_ids = set()
+        form_keys = set(form_data.keys()) if hasattr(form_data, "keys") else set()
+        has_machine_field_prefixes = any(
+            isinstance(k, str)
+            and (
+                k.startswith("fuel_so_")
+                or k.startswith("note_")
+                or k.startswith("id_gen_company_")
+            )
+            for k in form_keys
+        )
+        # Маркер machines_archive_form может теряться при AJAX-вставке tbody;
+        # при полной форме агрегатов синхронизируем архив по чекбоксам.
+        archive_form_present = bool(
+            (hasattr(form_data, "get") and form_data.get("machines_archive_form"))
+            or ("machines_archive_form" in form_keys)
+            or ("machines_archive[]" in form_keys)
+            or has_machine_field_prefixes
+        )
+        try:
+            if hasattr(form_data, "getlist"):
+                archived_ids = {
+                    int(x) for x in form_data.getlist("machines_archive[]") if str(x).isdigit()
+                }
+            elif "machines_archive[]" in form_data:
+                raw = form_data.get("machines_archive[]")
+                if isinstance(raw, (list, tuple, set)):
+                    archived_ids = {int(x) for x in raw if str(x).isdigit()}
+                elif raw is not None and str(raw).isdigit():
+                    archived_ids = {int(raw)}
+        except (TypeError, ValueError):
+            archived_ids = set()
+
         with db.session.no_autoflush:
             for machine in station.machines:
                 fuel_so_key = f"fuel_so_{machine.id}"
@@ -4960,15 +5186,26 @@ def update_machines_from_form_service(user, station: Station, form_machines, for
                         form_version = None
                 
                 if form_version and hasattr(machine, 'version') and machine.version != form_version:
-                    conflicts.append(f"Агрегат №{machine.machine_number} (ожидаемая версия: {form_version}, текущая: {machine.version})")
-                    log_to_db(
-                        user, 
-                        f"Конфликт версий при обновлении агрегата №{machine.machine_number} на электростанции {station.name}",
-                        details=f"Ожидаемая: {form_version}, текущая: {machine.version}",
-                        entity_type="machine",
-                        entity_id=machine.id
+                    # Конфликт только если в БД версия новее (реальный concurrent update).
+                    # form_version > machine.version бывает из-за dirty+autoflush на GET без commit.
+                    if machine.version > form_version:
+                        conflicts.append(
+                            f"Агрегат №{machine.machine_number} "
+                            f"(ожидаемая версия: {form_version}, текущая: {machine.version})"
+                        )
+                        log_to_db(
+                            user,
+                            f"Конфликт версий при обновлении агрегата №{machine.machine_number} "
+                            f"на электростанции {station.name}",
+                            details=f"Ожидаемая: {form_version}, текущая: {machine.version}",
+                            entity_type="machine",
+                            entity_id=machine.id,
+                        )
+                        continue  # Пропускаем этот агрегат
+                    print(
+                        f"[VERSION] Игнорируем устаревший токен формы для агрегата "
+                        f"{machine.machine_number}: form={form_version}, db={machine.version}"
                     )
-                    continue  # Пропускаем этот агрегат
                 
                 new_fuel_so = (form_data.get(fuel_so_key, "") or "").strip()
                 new_gen_company_id = form_data.get(gen_company_key, type=int) if hasattr(form_data, 'get') else None
@@ -5000,6 +5237,17 @@ def update_machines_from_form_service(user, station: Station, form_machines, for
                     )
                     machine.note = new_note
                     machine_changed = True
+
+                if archive_form_present:
+                    new_is_archived = machine.id in archived_ids
+                    old_archived = bool(getattr(machine, "is_archived", False))
+                    if old_archived != new_is_archived:
+                        changes.append(
+                            f"Агрегат {machine.machine_number}: "
+                            f"{'снят с архива' if old_archived else 'переведён в архив'}"
+                        )
+                        machine.is_archived = new_is_archived
+                        machine_changed = True
 
                 # ОПТИМИЗАЦИЯ 2: Используем предзагруженный словарь GenCompany
                 if new_gen_company_id:

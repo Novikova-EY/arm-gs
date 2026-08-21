@@ -5,30 +5,33 @@
         <!-- Левая часть: выбор годов -->
         {% if not external_code_check_mode %}
         <div class="d-flex align-items-center gap-2">
-            <form method="GET" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" class="d-flex align-items-center gap-2" id="yearForm">
-                {% for key, value in request.args.items() %}
-                    {% if key != "per_page" and key != "start_year" and key != "end_year" %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+            <form method="GET" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" class="d-flex align-items-center gap-2 flex-nowrap" id="yearForm">
+                {% for key, values in request.args.lists() %}
+                    {% if key not in ["per_page", "start_year", "end_year"] %}
+                        {% for value in values %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}"
+                            {% if key in ["date_commission_filter", "date_exploitation_filter", "date_decompressing_expected_filter", "date_modernization_expected_filter", "date_modernization_no_power_expected_filter"] %}data-year-filter="1"{% endif %}>
+                        {% endfor %}
                     {% endif %}
                 {% endfor %}
 
-                <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
-                <select name="start_year" id="start_year" class="form-select" onchange="updateHiddenFields()">
+                <label for="start_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год начала:</label>
+                <select name="start_year" id="start_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
                     {% for year in (filter_year_list|default([])) %}
                     <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
 
-                <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
-                <select name="end_year" id="end_year" class="form-select" onchange="updateHiddenFields()">
+                <label for="end_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год конца:</label>
+                <select name="end_year" id="end_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;" onchange="updateHiddenFields()">
                     {% for year in (filter_year_list|default([])) %}
                     <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
                     {% endfor %}
                 </select>
 
-                <button type="submit" class="btn btn-outline-success">Применить</button>
+                <button type="submit" class="btn btn-outline-success flex-shrink-0">Применить</button>
 
-                <a href="{{ url_for(station_list_endpoint | default('station_bp.station_list'), reset_filters=1) }}" class="btn btn-outline-danger">Сбросить</a>
+                <a href="{{ url_for(station_list_endpoint | default('station_bp.station_list'), reset_filters=1) }}" class="btn btn-outline-danger flex-shrink-0">Сбросить</a>
             </form>
         </div>
         {% endif %}
@@ -41,51 +44,50 @@
         </div>
 
         <!-- Правая часть: чекбоксы, округление, пер-пейдж -->
-        <div class="d-flex align-items-center flex-wrap justify-content-end gap-5">
+        <div class="d-flex align-items-center flex-wrap justify-content-end gap-2">
 
             <!-- Итоги + выбор количества строк -->
             <form id="perPageForm" method="GET" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}">
                 <!-- Горизонтальное размещение блоков -->
-                <div class="d-flex align-items-center flex-wrap gap-4">
+                <div class="d-flex align-items-center flex-wrap gap-2 justify-content-end">
                     {% if not external_code_check_mode %}
+                    <!-- Станции с УМ > 100 МВт -->
+                    <input type="checkbox" class="btn-check" id="um_gt_100_switch" autocomplete="off"
+                        {% if request.args.get('um_gt_100') == '1' or (um_gt_100 is defined and um_gt_100) %}checked{% endif %}>
+                    <label for="um_gt_100_switch"
+                        class="btn {% if request.args.get('um_gt_100') == '1' or (um_gt_100 is defined and um_gt_100) %}btn-primary{% else %}btn-outline-secondary{% endif %} text-wrap flex-shrink-0">
+                        Станции с УМ &gt; 100 МВт
+                    </label>
+
                     <!-- Проверка топлива -->
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="btn-check" id="fuel_check_switch" autocomplete="off"
-                            {% if request.args.get('fuel_check') == '1' %}checked{% endif %}>
-                        <label for="fuel_check_switch"
-                            class="btn {% if request.args.get('fuel_check') == '1' %}btn-warning{% else %}btn-outline-secondary text-dark{% endif %} px-3 text-center"
-                            style="min-width: 260px;">
-                            Проверка топлива
-                        </label>
-                    </div>
+                    <input type="checkbox" class="btn-check" id="fuel_check_switch" autocomplete="off"
+                        {% if request.args.get('fuel_check') == '1' %}checked{% endif %}>
+                    <label for="fuel_check_switch"
+                        class="btn {% if request.args.get('fuel_check') == '1' %}btn-info{% else %}btn-outline-info{% endif %} text-nowrap flex-shrink-0">
+                        Проверка топлива
+                    </label>
 
                     <!-- Переключатель отображения сумм -->
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="btn-check" id="show_totals_switch" autocomplete="off"
-                            {% if request.args.get('show_totals') == '1' %}checked{% endif %}>
-                        <label for="show_totals_switch"
-                            class="btn {% if request.args.get('show_totals') == '1' %}btn-primary{% else %}btn-outline-secondary text-dark{% endif %} px-3 text-center"
-                            style="min-width: 260px;">
-                            Показать суммы по регионам
-                        </label>
-                    </div>
+                    <input type="checkbox" class="btn-check" id="show_totals_switch" autocomplete="off"
+                        {% if request.args.get('show_totals') == '1' %}checked{% endif %}>
+                    <label for="show_totals_switch"
+                        class="btn {% if request.args.get('show_totals') == '1' %}btn-success{% else %}btn-outline-success{% endif %} text-wrap flex-shrink-0">
+                        Показать суммы по регионам
+                    </label>
 
                     <!-- Переключатель отображения агрегатов -->
-                    <div class="d-flex align-items-center gap-2">
-                        <input type="checkbox" class="btn-check" id="hide_aggregates_switch" autocomplete="off">
-                        <label for="hide_aggregates_switch"
-                            class="btn btn-outline-secondary text-dark px-3 text-center"
-                            style="min-width: 260px;">
-                            Скрыть агрегаты
-                        </label>
-                    </div>
+                    <input type="checkbox" class="btn-check" id="hide_aggregates_switch" autocomplete="off">
+                    <label for="hide_aggregates_switch"
+                        class="btn btn-outline-warning text-nowrap flex-shrink-0">
+                        Скрыть агрегаты
+                    </label>
                     {% endif %}
 
                     <!-- Выпадающий список -->
-                    <div id="per_page_select_block" class="ms-2">
+                    <div id="per_page_select_block" class="d-flex align-items-center gap-2 flex-shrink-0">
                         <div class="d-flex align-items-center gap-2" id="per_page_select_wrapper">
-                            <label for="per_page_select" class="mb-0" style="white-space: nowrap; min-width: 100px;">Показать:</label>
-                            <select id="per_page_select" class="form-select" style="min-width: 150px;">
+                            <label for="per_page_select" class="mb-0" style="white-space: nowrap;">Показать:</label>
+                            <select id="per_page_select" class="form-select" style="width: auto; min-width: 9rem;">
                                 <option value="10" {% if per_page|default('10') == '10' %}selected{% endif %}>10 станций</option>
                                 <option value="25" {% if per_page|default('10') == '25' %}selected{% endif %}>25 станций</option>
                                 <option value="50" {% if per_page|default('10') == '50' %}selected{% endif %}>50 станций</option>

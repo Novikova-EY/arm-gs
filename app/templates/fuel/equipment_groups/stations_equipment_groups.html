@@ -1,12 +1,84 @@
 {% extends 'base.html' %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
 {% block title %}Словарь станций и групп оборудования{% endblock %}
+
+{% block extra_head %}
+<style>
+/* Flash на этой странице скрыты, пока не открыта панель «Импорт / Экспорт».
+   Ошибки загрузки данных (alert-danger) всегда видимы. */
+#flaskFlashMessages .alert:not(.alert-danger) { display: none !important; }
+#flaskFlashMessages:not(:has(.alert-danger)) { display: none !important; }
+body.seg-import-export-open #flaskFlashMessages,
+body.seg-import-export-open #flaskFlashMessages .alert { display: block !important; }
+</style>
+{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
 
-<!-- Индикатор загрузки для per_page=all -->
-<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+<style>
+/* Фильтры / поиск / пагинация — всегда видимы при скролле таблицы */
+.seg-sticky-controls {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background-color: var(--bs-body-bg, #fff);
+    padding-top: 0.25rem;
+    display: flow-root;
+}
+.seg-sticky-controls .power-demand-filters-collapse,
+.seg-sticky-controls .power-demand-import-export-collapse {
+    overflow: visible !important;
+}
+.seg-sticky-controls .select2-container {
+    z-index: 1021;
+}
+/* Шапка таблицы липнет под панелью фильтров */
+#stationsTableContainer table thead tr:nth-child(1) th {
+    top: var(--seg-controls-sticky-height, 0px);
+}
+#stationsTableContainer table thead tr:nth-child(2) th {
+    top: calc(var(--seg-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
+}
+/* Группы без numb (кнопка «Проверка») и строки с дублирующимся numb — слабый красный фон */
+#stationsEquipmentGroupsTable.seg-highlight-missing-numb tbody tr.seg-missing-numb,
+#stationsEquipmentGroupsTable tbody tr.seg-duplicate-numb {
+    --bs-table-bg: #fdecee;
+    --bs-table-striped-bg: #fdecee;
+    --bs-table-hover-bg: #f8d7da;
+    --bs-table-accent-bg: #fdecee;
+}
+#stationsEquipmentGroupsTable.seg-highlight-missing-numb tbody tr.seg-missing-numb > td,
+#stationsEquipmentGroupsTable tbody tr.seg-duplicate-numb > td {
+    background-color: #fdecee !important;
+    box-shadow: inset 0 0 0 9999px #fdecee !important;
+}
+</style>
+<script>
+(function () {
+    function syncImportExportFlashVisibility() {
+        var collapse = document.getElementById('importExportCollapse');
+        var open = !!(collapse && collapse.classList.contains('show'));
+        document.body.classList.toggle('seg-import-export-open', open);
+        var btn = document.getElementById('importExportToggleBtn');
+        if (btn) {
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        var collapse = document.getElementById('importExportCollapse');
+        if (!collapse) return;
+        syncImportExportFlashVisibility();
+        collapse.addEventListener('shown.bs.collapse', syncImportExportFlashVisibility);
+        collapse.addEventListener('hidden.bs.collapse', syncImportExportFlashVisibility);
+    });
+})();
+</script>
+
+<!-- Индикатор загрузки только для per_page=all (иначе белый оверлей перекрывает всю страницу) -->
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; align-items: center; justify-content: center; {% if show_all|default(false) %}display: flex;{% else %}display: none;{% endif %}">
     <div class="text-center">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
             <span class="visually-hidden">Загрузка...</span>
@@ -34,16 +106,18 @@
         </div>
     </div>
 
-    <!-- Фильтры -->
+    <!-- Фильтры (липкая панель при скролле) -->
+    <div id="segStickyControls" class="seg-sticky-controls">
     {% include 'fuel/equipment_groups/stations_equipment_groups_filters.html' %}
+    </div><!-- /.seg-sticky-controls -->
 
 {% set column_count = 24 %}
 
 {# Макрос для вычисления значений столбцов (для data-атрибутов фильтрации/сортировки) #}
-{% macro get_row_values(eg, station, group_type, machine) %}
+{% macro get_row_values(eg, station, group_type, machine, type_display=None) %}
 {% set _v0 = (eg.name if eg and eg.name else (eg.name_ext if eg and eg.name_ext else '')) or '—' %}
 {% set _v1 = ((station.name if station else '') ~ (' ' ~ station.regional_district.name if station and station.regional_district and station.regional_district.name else '')) | trim or '—' %}
-{% set _v2 = (group_type.name if group_type and group_type.name else '') or '—' %}
+{% set _v2 = type_display if type_display is not none else ((group_type.name if group_type and group_type.name else '') or '—') %}
 {% set _v3 = (machine.machine_number if machine and machine.machine_number else '') or '—' %}
 {% set _v4 = ((machine.display_name or machine.machine_name) if machine and (machine.display_name or machine.machine_name) else '') or '—' %}
 {% set _v5 = (station.regional_district.name if station and station.regional_district else (eg.regional_district.name if eg and eg.regional_district else '')) or '—' %}
@@ -78,10 +152,10 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 {% endmacro %}
 
 {# То же для блока «одна группа — несколько станций»: субъект и РЭС по электростанции, не по полям группы оборудования #}
-{% macro get_row_values_multi(eg, station, group_type, machine) %}
+{% macro get_row_values_multi(eg, station, group_type, machine, type_display=None) %}
 {% set _v0 = (eg.name if eg and eg.name else (eg.name_ext if eg and eg.name_ext else '')) or '—' %}
 {% set _v1 = ((station.name if station else '') ~ (' ' ~ station.regional_district.name if station and station.regional_district and station.regional_district.name else '')) | trim or '—' %}
-{% set _v2 = (group_type.name if group_type and group_type.name else '') or '—' %}
+{% set _v2 = type_display if type_display is not none else ((group_type.name if group_type and group_type.name else '') or '—') %}
 {% set _v3 = (machine.machine_number if machine and machine.machine_number else '') or '—' %}
 {% set _v4 = ((machine.display_name or machine.machine_name) if machine and (machine.display_name or machine.machine_name) else '') or '—' %}
 {% set _v5 = (station.regional_district.name if station and station.regional_district else '') or '—' %}
@@ -115,12 +189,17 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3="{{ _v3 }}" data-col-4="{{ _v4 }}" data-col-5="{{ _v7 }}" data-col-6="{{ _v5 }}" data-col-7="{{ _v6 }}" data-col-8="{{ _v20 }}" data-col-9="{{ _v11 }}" data-col-10="{{ _v12 }}" data-col-11="{{ _v14 }}" data-col-12="{{ _v30 }}" data-col-13="{{ _v31 }}" data-col-14="{{ _v32 }}" data-col-15="{{ _v18 }}" data-col-16="{{ _v22 }}" data-col-17="{{ _v23 }}" data-col-18="{{ _v24 }}" data-col-19="{{ _v25 }}" data-col-20="{{ _v27 }}" data-col-21="{{ _v29 }}" data-col-22="{{ _v28 }}"
 {% endmacro %}
 
-{% macro render_equipment_group_rows(group_blocks) %}
+{% macro render_equipment_group_rows(group_blocks, duplicate_numb_ids=None) %}
 {% for group_block in (group_blocks or []) %}
     {% set group_entity = group_block.equipment_group %}
+    {% set is_composite_parent = group_block.is_composite_parent if group_block.is_composite_parent is defined else false %}
+    {% set is_composite_child = group_block.is_composite_child if group_block.is_composite_child is defined else false %}
+    {% set show_composite_cluster = group_block.show_composite_cluster if group_block.show_composite_cluster is defined else false %}
     {% set group_rowspan = group_block.merged_group_rowspan if group_block.merged_group_rowspan else group_block.rowspan %}
     {% set show_merged_group_cells = group_block.show_merged_group_cells if group_block.show_merged_group_cells is defined else true %}
     {% set group_cell = namespace(printed=false, fields=false) %}
+    {% set missing_numb = not (group_entity and group_entity.numb) %}
+    {% set duplicate_numb = group_entity and group_entity.id in (duplicate_numb_ids or []) %}
     {% for station_entry in group_block.station_entries %}
         {% set station = station_entry.station %}
         {% set station_rowspan = station_entry.station_rowspan %}
@@ -130,36 +209,31 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
         {% set station_gen_cell = namespace(printed=false) %}
         {% for link in station_entry.links %}
             {% set group_type = link.equipment_group_type %}
+            {% set type_display = 'станция' if is_composite_parent else ((group_type.name if group_type and group_type.name else '') or '—') %}
             {% set link_rowspan = link.rowspan %}
             {% set link_cell = namespace(printed=false) %}
             {% for machine in (link.machines if link.machines else [None]) %}
-                <tr class="text-center align-middle data-row" {{ get_row_values(group_entity, station, group_type, machine) }}>
+                <tr class="text-center align-middle data-row{% if missing_numb %} seg-missing-numb{% endif %}{% if duplicate_numb %} seg-duplicate-numb{% endif %}"{% if missing_numb %} title="Нет кода группы оборудования (numb)"{% elif duplicate_numb %} title="Код группы оборудования (numb) дублируется"{% endif %} {{ get_row_values(group_entity, station, group_type, machine, type_display) }}>
                     {% if show_merged_station_cells and not station_cell.printed %}
                         <td rowspan="{{ merged_station_rowspan }}">
                             {% if station and station.id %}
-                                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none">
+                                <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">
                                     {{ station.name }}
                                 </a>
                             {% else %}
-                                {{ station.name if station else '—' }}
+                                {{ station.name if station and station.name else 'Без станции' }}
                             {% endif %}
                         </td>
                         {% set station_cell.printed = true %}
                     {% endif %}
                     {% if show_merged_group_cells and not group_cell.printed %}
-                        <td rowspan="{{ group_rowspan }}">
-                            {% if group_entity and group_entity.id %}
-                                <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                                    {{ group_entity.name if group_entity.name else (group_entity.name_ext if group_entity.name_ext else '—') }}
-                                </a>
-                            {% else %}
-                                {{ group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—') }}
-                            {% endif %}
+                        <td rowspan="{{ group_rowspan }}" class="{{ eg_name_cell_class(group_block) }}">
+                            {{ eg_name_label(group_entity, (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')), group_block, link_endpoint='fuel_bp.equipment_group_edit', link_target='_blank') }}
                         </td>
                         {% set group_cell.printed = true %}
                     {% endif %}
                     {% if not link_cell.printed %}
-                        <td rowspan="{{ link_rowspan }}">{{ group_type.name if group_type and group_type.name else '—' }}</td>
+                        <td rowspan="{{ link_rowspan }}"{% if is_composite_parent %} class="fw-bold"{% endif %}>{{ type_display }}</td>
                         {% set link_cell.printed = true %}
                     {% endif %}
                     <td>{{ (machine.machine_number if machine else '') or '—' }}</td>
@@ -208,7 +282,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 {% endmacro %}
 
     <!-- Таблица с данными -->
-        <table class="table table-hover table-striped table-bordered table-responsive" id="stationsEquipmentGroupsTable">
+        <table class="table table-hover table-striped table-bordered table-responsive{% if show_missing_numb|default(false) %} seg-highlight-missing-numb{% endif %}" id="stationsEquipmentGroupsTable">
 
             <!-- Шапка таблицы с данными (без фильтров в шапке) -->
             <thead class="table-success">
@@ -225,7 +299,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                     <th style="width: 150px;">Генерирующая компания</th>
                     <th style="width: 120px;">Субъект РФ</th>
                     <th style="width: 150px;">Региональная энергосистема</th>
-                    <th style="width: 80px;">Код группы оборудования<br><span class="text-muted small">(numb)</span></th>
+                    {{ fuel_param_numb1120_header_th(1, 'Код группы оборудования', (numb1120_filter|default([])), (numb1120_filter_choices|default([])), 'numb') }}
                     <th style="width: 80px;">Признак действующей электростанции<br><span class="text-muted small">(d)</span></th>
                     <th style="width: 80px;">Признак расширяемой электростанции<br><span class="text-muted small">(r)</span></th>
                     <th style="width: 120px;">Название<br><span class="text-muted small">(name_ext)</span></th>
@@ -248,23 +322,37 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
             <tbody>
                 {% if equipment_group_blocks_hierarchy %}
                     {% for est_block in equipment_group_blocks_hierarchy %}
-                        <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
-                            <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
-                        </tr>
-                        {% for ues_block in est_block.ues_list %}
-                            <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
-                                <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+                        {% set collapse_unspecified = (
+                            est_block.est_id == -1
+                            and est_block.ues_list|length == 1
+                            and est_block.ues_list[0].ues_id == -1
+                            and est_block.ues_list[0].res_list|length == 1
+                            and est_block.ues_list[0].res_list[0].res_id == -1
+                        ) %}
+                        {% if collapse_unspecified %}
+                            <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">Не указано</td>
                             </tr>
-                            {% for res_block in ues_block.res_list %}
-                                <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
-                                    <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                            {{ render_equipment_group_rows(est_block.ues_list[0].res_list[0].equipment_group_blocks, duplicate_numb_ids|default([])) }}
+                        {% else %}
+                            <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
+                            </tr>
+                            {% for ues_block in est_block.ues_list %}
+                                <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                                    <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
                                 </tr>
-                                {{ render_equipment_group_rows(res_block.equipment_group_blocks) }}
+                                {% for res_block in ues_block.res_list %}
+                                    <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
+                                        <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                                    </tr>
+                                    {{ render_equipment_group_rows(res_block.equipment_group_blocks, duplicate_numb_ids|default([])) }}
+                                {% endfor %}
                             {% endfor %}
-                        {% endfor %}
+                        {% endif %}
                     {% endfor %}
                 {% elif equipment_group_flat_station_blocks %}
-                    {{ render_equipment_group_rows(equipment_group_flat_station_blocks) }}
+                    {{ render_equipment_group_rows(equipment_group_flat_station_blocks, duplicate_numb_ids|default([])) }}
                 {% else %}
                     <tr>
                         <td colspan="{{ column_count }}" class="text-center align-middle">Нет данных для отображения</td>
@@ -333,6 +421,7 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
 
 <!-- Каскадные фильтры ОЭС/ФО/РЭС/субъекты (как на station_list) -->
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") {
@@ -341,6 +430,44 @@ document.addEventListener("DOMContentLoaded", function() {
         initializeStationFilters();
     }
 });
+</script>
+
+<script>
+(function () {
+    function updateSegStickyHeights() {
+        var controls = document.getElementById("segStickyControls");
+        var container = document.getElementById("stationsTableContainer");
+        var h = controls
+            ? Math.ceil(controls.getBoundingClientRect().height || controls.offsetHeight || 0)
+            : 0;
+        var target = container || document.documentElement;
+        target.style.setProperty("--seg-controls-sticky-height", h + "px");
+        if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+            window.armGsApplyStickyTheadOffsets();
+        }
+    }
+
+    function bind() {
+        updateSegStickyHeights();
+        var controls = document.getElementById("segStickyControls");
+        if (controls && typeof ResizeObserver !== "undefined") {
+            var ro = new ResizeObserver(function () {
+                updateSegStickyHeights();
+            });
+            ro.observe(controls);
+        }
+        document.addEventListener("shown.bs.collapse", updateSegStickyHeights);
+        document.addEventListener("hidden.bs.collapse", updateSegStickyHeights);
+        window.addEventListener("resize", updateSegStickyHeights);
+        window.addEventListener("load", updateSegStickyHeights);
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bind);
+    } else {
+        bind();
+    }
+})();
 </script>
 
 <!-- Функции управления кэшем -->
@@ -531,16 +658,23 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
-<!-- Скрываем индикатор загрузки после полной загрузки -->
+<!-- Скрываем индикатор загрузки как можно раньше (load может не успеть / bfcache) -->
 <script>
-    window.addEventListener('load', function() {
-        setTimeout(function() {
-            const overlay = document.getElementById('loading-overlay');
+    (function () {
+        function hideLoadingOverlay() {
+            var overlay = document.getElementById('loading-overlay');
             if (overlay) {
                 overlay.style.display = 'none';
             }
-        }, 500);
-    });
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', hideLoadingOverlay);
+        } else {
+            hideLoadingOverlay();
+        }
+        window.addEventListener('load', hideLoadingOverlay);
+        window.addEventListener('pageshow', hideLoadingOverlay);
+    })();
 </script>
 
 <!-- Скрипт для сброса отдельных фильтров в шапке таблицы -->

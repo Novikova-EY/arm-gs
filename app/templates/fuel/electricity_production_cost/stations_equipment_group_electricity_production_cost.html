@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
 {% block title %}Сведения о затратах ТЭС на производство ЭЭ и ТЭ{% endblock %}
 
@@ -46,9 +48,13 @@
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                 <th style="min-width: 140px;">Группа оборудования</th>
                 {% for attr, label, is_numeric in cost_columns %}
+                {% if attr == 'numb1120' %}
+                {{ fuel_param_numb1120_header_th(1, label, (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
+                {% else %}
                 <th style="min-width: 80px;" class="epc-col-{{ attr }}" data-column="{{ attr }}">
                     {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
+                {% endif %}
                 {% endfor %}
             </tr>
         </thead>
@@ -71,21 +77,23 @@
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
                                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% if group_block.get('is_composite_total_row') %}
+                                {% set group_name = group_name ~ ', всего' %}
+                                {% endif %}
                                 {% for row in group_block.rows %}
                                     {% set param = row[1] %}
-                                    <tr class="text-center align-middle">
-                                        <td>
-                                            {% if group_entity and group_entity.id %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                                                {{ group_name }}
-                                            </a>
-                                            {% else %}
-                                                {{ group_name }}
-                                            {% endif %}
+                                    <tr class="text-center align-middle{% if group_block.get('is_composite_total_row') %} fuel-param-summary-row fuel-param-composite-parent-row fw-bold{% endif %}">
+                                        <td class="{{ eg_name_cell_class(group_block) }}">
+                                            {{ eg_name_label(group_entity, group_name, group_block) }}
                                         </td>
                                         {% for attr, label, is_numeric in cost_columns %}
                                         <td class="epc-col-{{ attr }}" data-column="{{ attr }}">
-                                            {% if param is none %}—
+                                            {% if group_block.get('use_station_summary') or group_block.get('is_composite_total_row') %}
+                                                {% if attr == 'numb1120' %}{{ group_entity.numb if group_entity and group_entity.numb is not none else '—' }}
+                                                {% elif attr == 'cost_name' %}—
+                                                {% elif is_numeric and station_block.station_summary and attr in station_block.station_summary %}{{ render_numeric_or_dash(station_block.station_summary[attr]) }}
+                                                {% else %}—{% endif %}
+                                            {% elif param is none %}—
                                             {% elif attr == 'cost_name' %}
                                                 {% if param.cost_code is not none %}{{ cost_code_name_map.get(param.cost_code, '—') }}{% else %}—{% endif %}
                                             {% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}
@@ -109,7 +117,7 @@
                         </tr>
                         {% endif %}
                         {% endfor %}
-                        {% if res_block.group_blocks %}
+                        {% if res_block.group_blocks and not res_block.get('hide_res_summary') %}
                         <tr class="text-center align-middle table-info" style="font-weight: bold;">
                             <td>{{ res_block.res_name }}, всего</td>
                             {% for attr, label, is_numeric in cost_columns %}
@@ -130,14 +138,8 @@
                 {% set param = row[1] %}
                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
                 <tr class="text-center align-middle">
-                    <td>
-                        {% if group_entity and group_entity.id %}
-                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                            {{ group_name }}
-                        </a>
-                        {% else %}
-                            {{ group_name }}
-                        {% endif %}
+                    <td class="{{ eg_name_cell_class() }}">
+                        {{ eg_name_label(group_entity, group_name) }}
                     </td>
                     {% for attr, label, is_numeric in cost_columns %}
                     <td class="epc-col-{{ attr }}" data-column="{{ attr }}">
@@ -164,6 +166,16 @@
 
     </div>
 </div>
+
+<style>
+#electricityProductionCostTable tr.fuel-param-composite-parent-row > td {
+    background-color: #fff3cd !important;
+}
+#electricityProductionCostTable.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+    --bs-table-accent-bg: transparent;
+    background-color: #fff3cd !important;
+}
+</style>
 
 <script id="filters-data" type="application/json">
     {{ {
@@ -203,6 +215,7 @@
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") {

@@ -120,6 +120,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .filter(
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.isnot(None),
+            Machine.is_archived.isnot(True),
             MachinePower.year_number.between(start_year, end_year),
             _version_cond_power(MachinePower),
         )
@@ -180,6 +181,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .filter(
             Station.id.in_(station_ids),
             Station.id_regional_energy_system.is_(None),
+            Machine.is_archived.isnot(True),
             MachinePower.year_number.between(start_year, end_year),
             _version_cond_power(MachinePower),
         )
@@ -206,8 +208,13 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         query_via_district = query_via_district.filter(Machine.id_condition_type == filters["condition_type_filter"])
 
     if filters.get("machines_without_equipment_group"):
-        query_direct = query_direct.filter(Machine.id_equipment_group.is_(None))
-        query_via_district = query_via_district.filter(Machine.id_equipment_group.is_(None))
+        from app.generation.services.station_services.filters_services import (
+            build_machines_without_equipment_group_filter,
+        )
+
+        without_group = build_machines_without_equipment_group_filter(Machine)
+        query_direct = query_direct.filter(without_group)
+        query_via_district = query_via_district.filter(without_group)
 
     from app.generation.services.station_services.filters_services import (
         build_date_commission_filter,

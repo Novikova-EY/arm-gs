@@ -1,9 +1,16 @@
 {% extends 'base.html' %}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
+
+{# Подпись FuelParam.ved (Тип ТЭС) по справочнику FUEL_PARAM_VED_LABELS. #}
+{% macro fuel_param_ved_display(ved) -%}
+{%- if ved is none -%}—{%- else -%}{{- (fuel_param_ved_labels|default({})).get(ved|int, ved) -}}{%- endif -%}
+{%- endmacro %}
 
 {# Содержимое ячейки показателя (без обёртки <td>) — переиспользование при rowspan #}
 {% macro fuel_param_data_cell_content(attr, label, is_numeric, param) -%}
-{% if param is none %}{% if is_numeric and attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t') %}{% else %}—{% endif %}{% elif attr == 'hfix' %}{% set _hf = param|get_attr('hfix') %}{% if _hf is none %}—{% elif _hf|string == '1' %}да{% elif _hf|string == '0' %}нет{% else %}{{ _hf }}{% endif %}{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif attr == 'numb1120' %}{% set _sc = param|get_attr('numb1120') %}{% if _sc is none or (_sc|string|trim == '') or (_sc|string|trim|lower == 'none') %}—{% else %}{{ _sc }}{% endif %}{% elif is_numeric and attr in ('nt', 'nt_sum') %}{% set _v = param|get_attr(attr) %}{% if _v is none %}—{% else %}{{ _v|format_decimal(0) }}{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr), attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t')) }}{% else %}{{ param|get_attr(attr)|default('—', true) }}{% endif %}
+{% if param is none %}{% if is_numeric and attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'sn_ee', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_te', 'sn_t') %}{% else %}—{% endif %}{% elif attr == 'hfix' %}{% set _hf = param|get_attr('hfix') %}{% if _hf is none %}—{% elif _hf|string == '1' %}да{% elif _hf|string == '0' %}нет{% else %}{{ _hf }}{% endif %}{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{{ fuel_param_ved_display(param.ved) }}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif attr == 'numb1120' %}{% set _sc = param|get_attr('numb1120') %}{% if _sc is none or (_sc|string|trim == '') or (_sc|string|trim|lower == 'none') %}—{% else %}{{ _sc }}{% endif %}{% elif is_numeric and attr in ('nt', 'nt_sum') %}{% set _v = param|get_attr(attr) %}{% if _v is none %}—{% else %}{{ _v|format_decimal(0) }}{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr), attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'sn_ee', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_te', 'sn_t')) }}{% else %}{{ param|get_attr(attr)|default('—', true) }}{% endif %}
 {%- endmacro %}
 
 {# Подсказка с полным значением из БД (все знаки), как title на machine_details (Мощность) #}
@@ -19,7 +26,7 @@
 {%- elif attr == 'er' and param.er is not none -%}{{ param.er }}
 {%- elif attr == 'gk' and param.gk is not none -%}{{ param.gk }}
 {%- elif attr == 'be' and param.be is not none -%}{{ param.be }}
-{%- elif attr == 'ved' and param.ved is not none -%}{{ param.ved }}
+{%- elif attr == 'ved' and param.ved is not none -%}{{ fuel_param_ved_display(param.ved) }}
 {%- elif attr == 'ved_cyrillic' and param.ved_cyrillic is not none -%}{{ param.ved_cyrillic }}
 {%- elif attr == 'hfix' and param.hfix is not none -%}{{ param.hfix }}
 {%- elif attr == 'numb1120' -%}{% set _sc = param|get_attr('numb1120') %}{% if _sc is not none and (_sc|string|trim != '') and (_sc|string|trim|lower != 'none') %}{{ _sc }}{% endif %}
@@ -28,6 +35,9 @@
 {%- endmacro %}
 
 {% macro fuel_param_numb1120_merged_title(group_entity, group_rows, p_first) -%}
+{%- if group_entity and group_entity.numb is not none -%}
+{{ group_entity.numb }}
+{%- else -%}
 {%- set ns = namespace(p_resolved=none) -%}
 {%- for row in group_rows -%}
 {%- if ns.p_resolved is none -%}
@@ -39,15 +49,18 @@
 {%- endfor -%}
 {%- if ns.p_resolved is not none -%}
 {{ fuel_param_tooltip_title('numb1120', false, ns.p_resolved) | trim }}
-{%- elif group_entity and group_entity.numb is not none -%}
-{{ group_entity.numb }}
 {%- else -%}
 {{ fuel_param_tooltip_title('numb1120', false, p_first) | trim }}
 {%- endif -%}
+{%- endif -%}
 {%- endmacro %}
 
-{# Код группы оборудования (rowspan): не только из первого года — при «пустом» первом годе взять numb1120 из любой строки БД; иначе EquipmentGroup.numb #}
+{# Код группы оборудования (rowspan): EquipmentGroup.numb, иначе numb1120 из любой строки ТЭП.
+   Не берём numb1120 ребёнка, скопированный с родителя (Липецк: EG.numb=269, numb1120=268). #}
 {% macro fuel_param_numb1120_merged_cell(group_entity, group_rows, p_first) -%}
+{%- if group_entity and group_entity.numb is not none -%}
+{{ group_entity.numb }}
+{%- else -%}
 {%- set ns = namespace(p_resolved=none) -%}
 {%- for row in group_rows -%}
 {%- if ns.p_resolved is none -%}
@@ -59,10 +72,9 @@
 {%- endfor -%}
 {%- if ns.p_resolved is not none -%}
 {{ fuel_param_data_cell_content('numb1120', 'Код группы оборудования', false, ns.p_resolved) }}
-{%- elif group_entity and group_entity.numb is not none -%}
-{{ group_entity.numb }}
 {%- else -%}
 {{ fuel_param_data_cell_content('numb1120', 'Код группы оборудования', false, p_first) }}
+{%- endif -%}
 {%- endif -%}
 {%- endmacro %}
 
@@ -78,8 +90,15 @@
     <option value="0" {% if raw is not none and raw|string == '0' %}selected{% endif %}>нет</option>
     <option value="1" {% if raw is not none and raw|string == '1' %}selected{% endif %}>да</option>
 </select>
+{% elif attr == 'ved' %}
+<select name="{{ fname }}" class="form-select form-select-lg text-center fuel-param-input" data-initial="{% if raw is none %}{% else %}{{ raw }}{% endif %}"{% if ttip %} title="{{ ttip|e }}"{% endif %}>
+    <option value="" {% if raw is none %}selected{% endif %}>—</option>
+    {% for _code, _label in (fuel_param_ved_labels|default({})).items() %}
+    <option value="{{ _code }}" {% if raw is not none and raw|string == (_code|string) %}selected{% endif %}>{{ _label }}</option>
+    {% endfor %}
+</select>
 {% else %}
-{% if raw is none or (is_numeric and raw == 0 and attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t')) %}
+{% if raw is none or (is_numeric and raw == 0 and attr not in ('nust', 'nr', 'h', 'e', 'ewtp', 'eotp', 'eurt', 'eust', 'sn_ee', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_te', 'sn_t')) %}
 {% set display_val = '' %}
 {% elif is_numeric %}
 {% if attr in ('nt', 'nt_sum') %}
@@ -98,6 +117,19 @@
 {%- endmacro %}
 
 {# Родительские столбцы иерархии и «Всего (b)» — только суммы (как на stations_equipment_group_fuel_params). #}
+{% macro fuel_param_derived_edit_or_view(attr, label, is_numeric, param, gid, ynum, can_edit, rounding_digits, title_override='') -%}
+{% set calc = param|fuel_param_derived(attr) if param is not none else none %}
+{% if calc is not none %}
+{% set display_val = calc|format_decimal_trim(rounding_digits) %}
+{% set ttip = title_override if title_override else display_val %}
+<span class="fuel-param-derived-value" data-fuel-derived-attr="{{ attr }}"{% if ttip %} title="{{ ttip|e }}"{% endif %}>{{ display_val }}</span>
+{% elif can_edit %}
+{{ fuel_param_edit_or_view(attr, label, is_numeric, param, gid, ynum, true, rounding_digits, title_override) }}
+{% else %}
+{{ fuel_param_data_cell_content(attr, label, is_numeric, param) }}
+{% endif %}
+{%- endmacro %}
+
 {% macro fuel_param_hier_sum_or_edit(attr, label, is_numeric, param, gid, ynum, do_edit, rounding_digits, title_override='', is_hier_sum=false) -%}
 {% if is_hier_sum %}
 {% if do_edit %}
@@ -106,6 +138,8 @@
 <input type="hidden" name="g{{ gid }}_fuel_param_{{ ynum }}_{{ attr }}" class="fuel-hier-sum-input" value="{{ _sum_display }}" data-initial="{{ _sum_display|e }}">
 {% endif %}
 <span class="fuel-hier-sum-value">{{ fuel_param_data_cell_content(attr, label, is_numeric, param) }}</span>
+{% elif fuel_param_derived_formulas is defined and attr in fuel_param_derived_formulas %}
+{{ fuel_param_derived_edit_or_view(attr, label, is_numeric, param, gid, ynum, do_edit, rounding_digits, title_override) }}
 {% else %}
 {{ fuel_param_edit_or_view(attr, label, is_numeric, param, gid, ynum, do_edit, rounding_digits, title_override) }}
 {% endif %}
@@ -241,19 +275,23 @@
     {% endif %}
 
 {% set can_edit_bulk = current_user.is_authenticated and current_user.has_admin %}
+{% set fuel_param_derived_formulas = fuel_param_derived_formulas|default({}) %}
+{% set fuel_param_derived_attrs = fuel_param_derived_formulas.keys()|list %}
+{% set fuel_param_derived_sources = fuel_param_derived_sources|default({}) %}
 
 {# Метрики вне группы «Расход топлива». b — под «Расход топлива», но с фиксированной подписью. #}
-{% set fuel_header_metric_cols = ('numb1120', 'nust', 'nr', 'h', 'hfix', 'e', 'ewtp', 'eotp', 'eust', 'eurt', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_t') %}
+{% set fuel_header_metric_cols = ('numb1120', 'nust', 'nr', 'h', 'hfix', 'ved', 'e', 'ewtp', 'eotp', 'eust', 'eurt', 'sn_ee', 'snk', 'nt', 'nt_sum', 'q', 'qotr', 'turt', 'tust', 'sn_te', 'sn_t') %}
 {# nust+nr: первая строка шапки — «Электрическая мощность» (colspan=2), вторая — подписи столбцов. #}
 {% set fuel_power_metric_cols = ('nust', 'nr') %}
 {# h+hfix: Access «Фиксированные_часы» — ЧЧИУМ и признак фиксации ЧЧИУМ. #}
 {% set fuel_hours_metric_cols = ('h', 'hfix') %}
-{# e…snk: первая строка шапки — «Электрические показатели» (colspan=6), вторая — подписи столбцов. #}
-{% set fuel_electric_metric_cols = ('e', 'ewtp', 'eotp', 'eust', 'eurt', 'snk') %}
+{# ved: отдельный столбец «Тип ТЭС» сразу после группы ЧЧИУМ (rowspan=2, код VED). #}
+{# e…snk: первая строка шапки — «Электрические показатели», вторая — подписи столбцов. #}
+{% set fuel_electric_metric_cols = ('e', 'ewtp', 'eotp', 'eust', 'eurt', 'sn_ee', 'snk') %}
 {# nt+nt_sum: первая строка шапки — «Тепловая мощность» (colspan=2), вторая — подписи столбцов. #}
 {% set fuel_heat_power_metric_cols = ('nt', 'nt_sum') %}
-{# q…sn_t: первая строка шапки — «Тепловые показатели» (colspan=5), вторая — подписи столбцов. #}
-{% set fuel_thermal_metric_cols = ('q', 'qotr', 'turt', 'tust', 'sn_t') %}
+{# q…sn_t: первая строка шапки — «Тепловые показатели», вторая — подписи столбцов. #}
+{% set fuel_thermal_metric_cols = ('q', 'qotr', 'turt', 'tust', 'sn_te', 'sn_t') %}
 {# Подписи показателей (не марок топлива) — не подменять справочником Fuel.nazvl (коллизия с nt, b и др.) #}
 {% set fuel_param_header_use_fixed_label = fuel_header_metric_cols + ('b',) %}
 {# Две строки шапки всегда: группы мощности/эл./тепл. показателей + при наличии «Расход топлива». #}
@@ -264,9 +302,9 @@
 {% set fuel_param_columns_all = _fuel_hier.get('fuel_param_columns') if _fuel_hier.get('fuel_param_columns') else [
     ('numb1120', 'Код группы оборудования', false),
     ('nust', 'Суммарная установленная мощность, МВт', true), ('nr', 'Суммарная располагаемая мощность, МВт', true),
-    ('h', 'ЧЧИУМ, ч', true), ('hfix', 'Признак фиксации ЧЧИУМ', false),
-    ('e', 'Выработка ЭЭ, тыс.кВтч', true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true), ('eotp', 'Отпуск ЭЭ, тыс.кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true), ('snk', 'СН на выработку ЭЭ, %', true),
-    ('nt', 'Тепловая мощность отборов, Гкал/ч', true), ('nt_sum', 'Сумма тепловых мощностей, Гкал/ч', true), ('q', 'Отпуск ТЭ, тыс.Гкал', true), ('qotr', 'Тепловое потребление (отборов турбин), тыс.Гкал', true), ('turt', 'УРУТ на отпуск ТЭ, кг у.т./⁠Гкал', true), ('tust', 'Расход усл. топлива на ТЭ, тыс. т у.т.', true), ('sn_t', 'СН, кВтч/⁠Гкал', true),
+    ('h', 'ЧЧИУМ, ч', true), ('hfix', 'Признак фиксации ЧЧИУМ', false), ('ved', 'Тип ТЭС', false),
+    ('e', 'Выработка ЭЭ, тыс.кВтч', true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true), ('eotp', 'Отпуск ЭЭ, тыс.кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true), ('sn_ee', 'СН на производство электроэнергии, тыс. кВт·ч', true), ('snk', 'СН на выработку ЭЭ, %', true),
+    ('nt', 'Тепловая мощность отборов, Гкал/ч', true), ('nt_sum', 'Сумма тепловых мощностей, Гкал/ч', true), ('q', 'Отпуск ТЭ, тыс.Гкал', true), ('qotr', 'Тепловое потребление (отборов турбин), тыс.Гкал', true), ('turt', 'УРУТ на отпуск ТЭ, кг у.т./⁠Гкал', true), ('tust', 'Расход усл. топлива на ТЭ, тыс. т у.т.', true), ('sn_te', 'СН на отпуск тепловой энергии, тыс. кВт·ч', true), ('sn_t', 'СН на отпуск тепла, кВт·ч/Гкал', true),
     ('b', 'Всего', true),
     ('gaz', 'Газ', true), ('isk_gaz', 'Иск. газ', true), ('mazut', 'Мазут', true), ('torf', 'Торф', true), ('slan', 'Сланцы', true),
     ('proch', 'Прочее', true), ('ugol', 'Уголь', true), ('don', 'Дон', true), ('podm', 'Подм', true), ('pech', 'Печ', true),
@@ -286,7 +324,7 @@
 {% set fuel_extra_attrs = fuel_extra_column_attrs|default([]) %}
 {% set extra_by_gy = extra_fuel_param_by_group_year|default({}) %}
 {# группа + год + показатели #}
-{% set column_count = fuel_param_columns|length + 2 %}
+{% set column_count = fuel_param_columns|length + 3 %}
 {% set fuel_type_col_count = namespace(n=0) %}
 {% for attr, label, is_numeric in fuel_param_columns %}
     {% if attr not in fuel_header_metric_cols %}
@@ -308,6 +346,7 @@
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                 <th rowspan="{{ fuel_header_rowspan }}" style="width: 120px;">Группа оборудования</th>
                 <th rowspan="{{ fuel_header_rowspan }}" style="width: 72px;">Год</th>
+                <th rowspan="{{ fuel_header_rowspan }}" class="fuel-composite-recalc-col">Пересчет<br>по составным ГО</th>
                 {% for attr, label, is_numeric in fuel_param_columns %}
                 {% if attr in fuel_header_metric_cols %}
                 {% if attr == 'nust' %}
@@ -331,9 +370,13 @@
                 {% elif attr in fuel_thermal_metric_cols %}
                 {# qotr…sn_t — покрыты colspan группы тепловых показателей #}
                 {% else %}
-                <th rowspan="{{ fuel_header_rowspan }}" style="width: 80px;" class="fuel-param-col-{{ attr }}" data-column="{{ attr }}">
+                {% if attr == 'numb1120' %}
+                {{ fuel_param_numb1120_header_th(fuel_header_rowspan, label, (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
+                {% else %}
+                <th rowspan="{{ fuel_header_rowspan }}" {% if attr == 'ved' %}style="width: 1%;"{% else %}style="width: 80px;"{% endif %} class="fuel-param-col-{{ attr }}" data-column="{{ attr }}">
                     {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
+                {% endif %}
                 {% endif %}
                 {% endif %}
                 {% endfor %}
@@ -345,23 +388,23 @@
                 {% for attr, label, is_numeric in fuel_param_columns %}
                 {% if attr in fuel_power_metric_cols %}
                 <th style="width: 80px;" class="fuel-param-col-{{ attr }} fuel-power-col-header" data-column="{{ attr }}">
-                    {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                    {{ label }}{% if fuel_param_derived_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ fuel_param_derived_formulas.get(attr)|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула {{ attr|fuel_header_code }}"></i>{% endif %}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% elif attr in fuel_hours_metric_cols %}
                 <th {% if attr == 'hfix' %}style="width: 1%;"{% else %}style="width: 80px;"{% endif %} class="fuel-param-col-{{ attr }} fuel-hours-col-header" data-column="{{ attr }}">
-                    {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                    {{ label }}{% if fuel_param_derived_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ fuel_param_derived_formulas.get(attr)|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула {{ attr|fuel_header_code }}"></i>{% endif %}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% elif attr in fuel_electric_metric_cols %}
                 <th style="width: 80px;" class="fuel-param-col-{{ attr }} fuel-electric-col-header" data-column="{{ attr }}">
-                    {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                    {{ label }}{% if fuel_param_derived_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ fuel_param_derived_formulas.get(attr)|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула {{ attr|fuel_header_code }}"></i>{% endif %}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% elif attr in fuel_heat_power_metric_cols %}
                 <th style="width: 80px;" class="fuel-param-col-{{ attr }} fuel-thermal-col-header" data-column="{{ attr }}">
-                    {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                    {{ label }}{% if fuel_param_derived_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ fuel_param_derived_formulas.get(attr)|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула {{ attr|fuel_header_code }}"></i>{% endif %}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% elif attr in fuel_thermal_metric_cols %}
                 <th style="width: 80px;" class="fuel-param-col-{{ attr }} fuel-thermal-col-header" data-column="{{ attr }}">
-                    {{ label }}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                    {{ label }}{% if fuel_param_derived_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ fuel_param_derived_formulas.get(attr)|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула {{ attr|fuel_header_code }}"></i>{% endif %}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
                 {% elif attr not in fuel_header_metric_cols %}
                 <th style="width: 80px;" class="fuel-param-col-{{ attr }}{% if attr in fuel_group_parents %} fuel-hier-parent-header{% else %} fuel-hier-leaf-header{% endif %}" data-column="{{ attr }}"
@@ -381,17 +424,11 @@
         <tbody>
             {% if equipment_group_fuel_params_hierarchy and equipment_group_fuel_params_hierarchy|length > 0 %}
             {% for est_block in equipment_group_fuel_params_hierarchy %}
-                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
-                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
-                </tr>
+                {{ fuel_hierarchy_level_header(est_block.est_id, est_block.est_name, column_count, 'table-light text-center', 'vertical-align: middle; font-weight: bold;') }}
                 {% for ues_block in est_block.ues_list %}
-                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
-                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
-                    </tr>
+                    {{ fuel_hierarchy_level_header(ues_block.ues_id, ues_block.ues_name, column_count, 'table-primary text-center', 'vertical-align: middle; font-weight: bold;') }}
                     {% for res_block in ues_block.res_list %}
-                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
-                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
-                        </tr>
+                        {{ fuel_hierarchy_level_header(res_block.res_id, res_block.res_name, column_count, 'table-secondary text-center', 'vertical-align: middle; font-weight: bold;') }}
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
@@ -407,33 +444,30 @@
                                     {% set is_last_row = loop.last %}
                                     {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
                                     {% set can_row_edit = can_edit_bulk and gid %}
+                                    {% set can_ved_edit = can_edit_bulk and gid and ynum != '' %}
                                     {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
                                     {% set prev_cmp = (fuel_param_prev_compare or {}).get(gid ~ ':' ~ ynum) if fuel_param_prev_compare is defined else none %}
                                     {% set row_is_empty = not param %}
-                                    <tr class="text-center align-middle{% if gid %} fuel-param-detail-row{% endif %}{% if is_last_row %} fuel-param-group-last{% endif %}"
+                                    <tr class="text-center align-middle{% if gid %} fuel-param-detail-row{% endif %}{% if group_block.get('is_composite_parent') %} fuel-param-composite-parent-row fw-bold{% endif %}{% if is_last_row %} fuel-param-group-last{% endif %}"
                                         data-fuel-edit-data-row="1"
-                                        {% if gid %} data-fuel-detail-group-id="{{ gid }}" data-fuel-group-id="{{ gid }}"{% endif %}
+                                        {% if gid %} data-fuel-detail-group-id="{{ gid }}" data-fuel-group-id="{{ gid }}" data-fuel-detail-group-name="{{ group_name|e }}"{% endif %}
                                         {% if ynum != '' %} data-fuel-detail-year="{{ ynum }}"{% endif %}
+                                        {% if group_block.get('is_composite_parent') %}data-composite-role="parent"{% elif group_block.get('is_composite_child') %}data-composite-role="child"{% endif %}
                                         {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
                                         {% if row_is_empty %}data-row-empty="1"{% endif %}
                                         {% if prev_cmp is not none %} data-prev-nust="{{ prev_cmp.nust if prev_cmp.nust is not none else '' }}" data-prev-qotr="{{ prev_cmp.qotr if prev_cmp.qotr is not none else '' }}"{% endif %}>
                                         {% if is_first_row %}
-                                        <td class="fuel-param-group-span" rowspan="{{ row_span }}" data-fuel-group-label="1">
-                                            {% if group_entity and group_entity.id %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                                                {{ group_name }}
-                                            </a>
-                                            {% else %}
-                                                {{ group_name }}
-                                            {% endif %}
+                                        <td class="{{ eg_name_cell_class(group_block, 'fuel-param-group-span') }}" rowspan="{{ row_span }}" data-fuel-group-label="1">
+                                            {{ eg_name_label(group_entity, group_name, group_block) }}
                                         </td>
                                         {% endif %}
                                         <td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                                        <td class="fuel-composite-recalc-cell">{% if can_edit_bulk and group_block.get('is_composite_parent') and gid and ynum != '' %}<button type="button" class="btn btn-outline-primary js-recalc-composite-parts" data-equipment-group-id="{{ gid }}" data-year-number="{{ ynum }}" title="Суммировать значения дочерних групп оборудования на строку станции (как в Access «Сумма частей») и пересчитать удельные показатели по станции и всем дочерним ГО">Пересчет</button>{% endif %}</td>
                                         {% for attr, label, is_numeric in fuel_param_columns %}
                                         {% if attr == 'numb1120' %}
                                             {% if is_first_row %}
                                         {% set _ntt = fuel_param_numb1120_merged_title(group_entity, group_block.rows, p_first)|trim %}
-                                        <td class="fuel-param-col-{{ attr }} fuel-param-group-span" data-column="{{ attr }}" rowspan="{{ row_span }}"{% if _ntt %} title="{{ _ntt|e }}" data-default-title="{{ _ntt|e }}"{% endif %}>{{ fuel_param_numb1120_merged_cell(group_entity, group_block.rows, p_first) }}</td>
+                                        <td class="fuel-param-col-{{ attr }} fuel-param-group-span" data-column="{{ attr }}" data-fuel-group-span="1" rowspan="{{ row_span }}"{% if _ntt %} title="{{ _ntt|e }}" data-default-title="{{ _ntt|e }}"{% endif %}>{{ fuel_param_numb1120_merged_cell(group_entity, group_block.rows, p_first) }}</td>
                                             {% endif %}
                                         {% else %}
                                         {% set cell_param = extra_by_gy.get(gid ~ ':' ~ ynum) if attr in fuel_extra_attrs else param %}
@@ -441,15 +475,20 @@
                                         {% set qotr_nt_warn = attr == 'qotr' and qotr_nt_ratio_warn_rows is defined and row_warn_key in qotr_nt_ratio_warn_rows %}
                                         {% set q_sum_nt_warn = attr == 'q' and q_nt_sum_ratio_warn_rows is defined and row_warn_key in q_nt_sum_ratio_warn_rows %}
                                         {% set qotr_nust_warn = attr == 'qotr' and qotr_composition_warn_rows is defined and row_warn_key in qotr_composition_warn_rows %}
-                                        {% set cell_danger_warn = qotr_nt_warn or q_sum_nt_warn or qotr_nust_warn %}
+                                        {% set h_hours_warn = attr == 'h' and h_hours_warn_rows is defined and row_warn_key in h_hours_warn_rows %}
+                                        {% set _parts_mm_row = (composite_parts_sum_mismatch_by_row or {}).get(row_warn_key) if composite_parts_sum_mismatch_by_row is defined else none %}
+                                        {% set parts_sum_mm = _parts_mm_row.get(attr) if _parts_mm_row else none %}
+                                        {% set cell_danger_warn = qotr_nt_warn or q_sum_nt_warn or qotr_nust_warn or h_hours_warn or (parts_sum_mm is not none) %}
                                         {% set warn_ns = namespace(msgs=[]) %}
-                                        {% if qotr_nt_warn %}{% set _ = warn_ns.msgs.append('Число часов использования установленной тепловой мощности больше 8000 часов! Проверьте значение!') %}{% endif %}
-                                        {% if q_sum_nt_warn %}{% set _ = warn_ns.msgs.append('Число часов использования установленной тепловой мощности больше 8000 часов! Проверьте значение!') %}{% endif %}
+                                        {% if qotr_nt_warn %}{% set _ = warn_ns.msgs.append((qotr_nt_ratio_warn_msgs or {}).get(row_warn_key) or 'Число часов использования установленной тепловой мощности больше допустимого 8000! Проверьте значение!') %}{% endif %}
+                                        {% if q_sum_nt_warn %}{% set _ = warn_ns.msgs.append((q_nt_sum_ratio_warn_msgs or {}).get(row_warn_key) or 'Число часов использования установленной тепловой мощности больше допустимого 8000! Проверьте значение!') %}{% endif %}
+                                        {% if h_hours_warn %}{% set _ = warn_ns.msgs.append((h_hours_warn_msgs or {}).get(row_warn_key) or 'ЧЧИУМ больше допустимого 8000 ч! Проверьте значение!') %}{% endif %}
                                         {% if qotr_nust_warn %}{% set _ = warn_ns.msgs.append('Произошло изменение состава агрегатов! Проверьте значение!') %}{% endif %}
+                                        {% if parts_sum_mm and parts_sum_mm.message %}{% set _ = warn_ns.msgs.append(parts_sum_mm.message) %}{% endif %}
                                         {% set _default_ttd = fuel_param_tooltip_title(attr, is_numeric, cell_param)|trim %}
                                         {% set _ttd = (warn_ns.msgs|join(' ') if warn_ns.msgs else _default_ttd) %}
                                         {% set is_hier_sum = attr in fuel_hier_sum_attrs %}
-                                        <td class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}{% if cell_danger_warn %} table-danger fuel-param-cell-warn{% elif nust_highlight_row %} table-warning{% endif %}" data-column="{{ attr }}" {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}{% if _default_ttd %} data-default-title="{{ _default_ttd|e }}"{% endif %}{% if _ttd %} title="{{ _ttd|e }}"{% endif %}>{{ fuel_param_hier_sum_or_edit(attr, label, is_numeric, cell_param, gid, ynum, can_row_edit, rounding_digits, _ttd if cell_danger_warn else '', is_hier_sum) }}</td>
+                                        <td class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}{% if cell_danger_warn %} table-danger fuel-param-cell-warn{% elif nust_highlight_row %} table-warning{% endif %}" data-column="{{ attr }}" {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}{% if parts_sum_mm and parts_sum_mm.message %} data-parts-sum-mismatch-msg="{{ parts_sum_mm.message|e }}"{% endif %}{% if _default_ttd %} data-default-title="{{ _default_ttd|e }}"{% endif %}{% if _ttd %} title="{{ _ttd|e }}"{% endif %}>{% if attr == 'ved' %}{{ fuel_param_edit_or_view(attr, label, is_numeric, cell_param, gid, ynum, can_ved_edit, rounding_digits, _ttd if cell_danger_warn else '') }}{% else %}{{ fuel_param_hier_sum_or_edit(attr, label, is_numeric, cell_param, gid, ynum, can_row_edit, rounding_digits, _ttd if cell_danger_warn else '', is_hier_sum) }}{% endif %}</td>
                                         {% endif %}
                                         {% endfor %}
                                     </tr>
@@ -485,22 +524,17 @@
                     {% if row_is_empty %}data-row-empty="1"{% endif %}
                     {% if prev_cmp is not none %} data-prev-nust="{{ prev_cmp.nust if prev_cmp.nust is not none else '' }}" data-prev-qotr="{{ prev_cmp.qotr if prev_cmp.qotr is not none else '' }}"{% endif %}>
                     {% if is_first_row %}
-                    <td class="fuel-param-group-span" rowspan="{{ row_span }}" data-fuel-group-label="1">
-                        {% if group_entity and group_entity.id %}
-                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                            {{ group_name }}
-                        </a>
-                        {% else %}
-                            {{ group_name }}
-                        {% endif %}
+                    <td class="{{ eg_name_cell_class(none, 'fuel-param-group-span') }}" rowspan="{{ row_span }}" data-fuel-group-label="1">
+                        {{ eg_name_label(group_entity, group_name) }}
                     </td>
                     {% endif %}
                     <td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
+                    <td class="fuel-composite-recalc-cell">{% if can_edit_bulk and gid and ynum != '' and group_entity and group_entity.comp == 1 and (group_entity.main is none or group_entity.main == 0) %}<button type="button" class="btn btn-outline-primary js-recalc-composite-parts" data-equipment-group-id="{{ gid }}" data-year-number="{{ ynum }}" title="Суммировать значения дочерних групп оборудования на строку станции (как в Access «Сумма частей») и пересчитать удельные показатели по станции и всем дочерним ГО">Пересчет</button>{% endif %}</td>
                     {% for attr, label, is_numeric in fuel_param_columns %}
                     {% if attr == 'numb1120' %}
                         {% if is_first_row %}
                     {% set _ntt = fuel_param_numb1120_merged_title(group_entity, group_rows, p_first)|trim %}
-                    <td class="fuel-param-col-{{ attr }} fuel-param-group-span" data-column="{{ attr }}" rowspan="{{ row_span }}"{% if _ntt %} title="{{ _ntt|e }}" data-default-title="{{ _ntt|e }}"{% endif %}>{{ fuel_param_numb1120_merged_cell(group_entity, group_rows, p_first) }}</td>
+                    <td class="fuel-param-col-{{ attr }} fuel-param-group-span" data-column="{{ attr }}" data-fuel-group-span="1" rowspan="{{ row_span }}"{% if _ntt %} title="{{ _ntt|e }}" data-default-title="{{ _ntt|e }}"{% endif %}>{{ fuel_param_numb1120_merged_cell(group_entity, group_rows, p_first) }}</td>
                         {% endif %}
                     {% else %}
                     {% set cell_param = extra_by_gy.get(gid ~ ':' ~ ynum) if attr in fuel_extra_attrs else param %}
@@ -508,10 +542,12 @@
                     {% set qotr_nt_warn = attr == 'qotr' and qotr_nt_ratio_warn_rows is defined and row_warn_key in qotr_nt_ratio_warn_rows %}
                     {% set q_sum_nt_warn = attr == 'q' and q_nt_sum_ratio_warn_rows is defined and row_warn_key in q_nt_sum_ratio_warn_rows %}
                     {% set qotr_nust_warn = attr == 'qotr' and qotr_composition_warn_rows is defined and row_warn_key in qotr_composition_warn_rows %}
-                    {% set cell_danger_warn = qotr_nt_warn or q_sum_nt_warn or qotr_nust_warn %}
+                    {% set h_hours_warn = attr == 'h' and h_hours_warn_rows is defined and row_warn_key in h_hours_warn_rows %}
+                    {% set cell_danger_warn = qotr_nt_warn or q_sum_nt_warn or qotr_nust_warn or h_hours_warn %}
                     {% set warn_ns = namespace(msgs=[]) %}
-                    {% if qotr_nt_warn %}{% set _ = warn_ns.msgs.append('Число часов использования установленной тепловой мощности больше 8000 часов! Проверьте значение!') %}{% endif %}
-                    {% if q_sum_nt_warn %}{% set _ = warn_ns.msgs.append('Число часов использования установленной тепловой мощности больше 8000 часов! Проверьте значение!') %}{% endif %}
+                    {% if qotr_nt_warn %}{% set _ = warn_ns.msgs.append((qotr_nt_ratio_warn_msgs or {}).get(row_warn_key) or 'Число часов использования установленной тепловой мощности больше допустимого 8000! Проверьте значение!') %}{% endif %}
+                    {% if q_sum_nt_warn %}{% set _ = warn_ns.msgs.append((q_nt_sum_ratio_warn_msgs or {}).get(row_warn_key) or 'Число часов использования установленной тепловой мощности больше допустимого 8000! Проверьте значение!') %}{% endif %}
+                    {% if h_hours_warn %}{% set _ = warn_ns.msgs.append((h_hours_warn_msgs or {}).get(row_warn_key) or 'ЧЧИУМ больше допустимого 8000 ч! Проверьте значение!') %}{% endif %}
                     {% if qotr_nust_warn %}{% set _ = warn_ns.msgs.append('Произошло изменение состава агрегатов! Проверьте значение!') %}{% endif %}
                     {% set _default_ttd = fuel_param_tooltip_title(attr, is_numeric, cell_param)|trim %}
                     {% set _ttd = (warn_ns.msgs|join(' ') if warn_ns.msgs else _default_ttd) %}
@@ -530,6 +566,12 @@
         </tbody>
     </table>
     {% if can_edit_bulk %}
+    </form>
+    <form method="POST" action="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data_recalc_composite_parts') }}" id="compositePartsRecalcForm" class="d-none">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="save_return_qs" value="{{ request.query_string.decode('utf-8')|e }}">
+        <input type="hidden" name="equipment_group_id" value="">
+        <input type="hidden" name="year_number" value="">
     </form>
     {% endif %}
 
@@ -617,6 +659,7 @@
 <div id="fuel-edit-detail-config" hidden
      data-detail-url-base="{{ _fuel_detail_panels_url0[:-1] }}"
      data-detail-save-url="{{ _fuel_detail_panels_save }}"
+     data-csrf-token="{{ csrf_token }}"
      data-can-edit-detail="{% if can_edit_bulk %}1{% else %}0{% endif %}">
 </div>
 <script>
@@ -644,6 +687,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var spinner = document.getElementById('fuelDetailPanelsSpinner');
     var bottomPanel = document.getElementById('fuelCalcEditBottomPanel');
     var bulkForm = document.getElementById('fuelParamsBulkEditForm');
+    var MAIN_BULK_FIELD_SEL = 'input.fuel-param-input[name], select.fuel-param-input[name], input.fuel-hier-sum-input[name]';
     if (!table || !specBody || !formBody || !extraHead || !extraBody || !detailUrlBase) {
         return;
     }
@@ -1136,7 +1180,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!bulkForm) {
             return false;
         }
-        var inputs = bulkForm.querySelectorAll('input.fuel-param-input[name], input.fuel-hier-sum-input[name]');
+        var inputs = bulkForm.querySelectorAll(MAIN_BULK_FIELD_SEL);
         for (var i = 0; i < inputs.length; i++) {
             var inp = inputs[i];
             if (normForCompare(inp.getAttribute('data-initial') || '') !== normForCompare(inp.value)) {
@@ -1147,12 +1191,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function getCsrfToken() {
+        var cfgTok = cfg && (cfg.getAttribute('data-csrf-token') || '').trim();
+        if (cfgTok) {
+            return cfgTok;
+        }
+        if (bulkForm) {
+            var bulkHi = bulkForm.querySelector('input[name="csrf_token"]');
+            if (bulkHi && (bulkHi.value || '').trim()) {
+                return bulkHi.value.trim();
+            }
+        }
         var m = document.querySelector('meta[name="csrf-token"]');
         if (m && m.getAttribute('content')) {
             return m.getAttribute('content');
         }
-        var hi = document.querySelector('input[name="csrf_token"]');
-        return hi ? hi.value : '';
+        var inputs = document.querySelectorAll('input[name="csrf_token"]');
+        for (var i = 0; i < inputs.length; i++) {
+            var v = (inputs[i].value || '').trim();
+            if (v) {
+                return v;
+            }
+        }
+        return '';
     }
 
     function postDetailSave() {
@@ -1195,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (detCh) {
             postDetailSave().then(function () {
                 if (mainCh) {
-                    var inputs = bulkForm.querySelectorAll('input.fuel-param-input[name], input.fuel-hier-sum-input[name]');
+                    var inputs = bulkForm.querySelectorAll(MAIN_BULK_FIELD_SEL);
                     var anyE = false;
                     inputs.forEach(function (inp) {
                         if (normForCompare(inp.getAttribute('data-initial') || '') !== normForCompare(inp.value)) {
@@ -1219,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         if (mainCh) {
-            var inputs2 = bulkForm.querySelectorAll('input.fuel-param-input[name], input.fuel-hier-sum-input[name]');
+            var inputs2 = bulkForm.querySelectorAll(MAIN_BULK_FIELD_SEL);
             var anyE2 = false;
             inputs2.forEach(function (inp) {
                 if (normForCompare(inp.getAttribute('data-initial') || '') !== normForCompare(inp.value)) {
@@ -1336,6 +1396,40 @@ document.addEventListener('DOMContentLoaded', function () {
     syncBottomTheadHeights();
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('compositePartsRecalcForm');
+    var table = document.getElementById('fuelParamsTable');
+    if (!form || !table) {
+        return;
+    }
+    table.addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.js-recalc-composite-parts');
+        if (!btn) {
+            return;
+        }
+        ev.preventDefault();
+        ev.stopPropagation();
+        var gid = btn.getAttribute('data-equipment-group-id') || '';
+        var year = btn.getAttribute('data-year-number') || '';
+        if (!gid || !year) {
+            return;
+        }
+        if (!window.confirm('Пересчитать параметры составной станции за ' + year + ' год как сумму дочерних групп оборудования и пересчитать удельные показатели по станции и всем дочерним ГО? Страница будет перезагружена.')) {
+            return;
+        }
+        var gidInput = form.querySelector('input[name="equipment_group_id"]');
+        var yearInput = form.querySelector('input[name="year_number"]');
+        if (gidInput) {
+            gidInput.value = gid;
+        }
+        if (yearInput) {
+            yearInput.value = year;
+        }
+        form.submit();
+    });
+});
+</script>
 
 <script id="filters-data" type="application/json">
     {{ {
@@ -1375,6 +1469,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
@@ -1697,10 +1792,27 @@ document.addEventListener("DOMContentLoaded", function() {
         border-radius: 0;
         box-shadow: none;
         padding: 0.2rem 0.35rem;
-        font-size: 1.1rem;
+        font-size: 1rem;
         line-height: 1.3;
         background-color: transparent;
         background-clip: padding-box;
+    }
+    /* Одинаковый размер шрифта: ввод, расчётные значения и обычный текст ячеек
+       (как на stations_equipment_group_fuel_params) */
+    #fuelParamsTable tbody td {
+        font-size: 1rem;
+        line-height: 1.3;
+    }
+    #fuelParamsTable .fuel-param-derived-value,
+    #fuelParamsTable .fuel-hier-sum-value {
+        font-size: inherit;
+        line-height: inherit;
+    }
+    /* Расчётные значения (формулы и суммы видов топлива) — не жирные; B (всего) остаётся жирным */
+    #fuelParamsTable .fuel-param-derived-value,
+    #fuelParamsTable td.fuel-hier-sum-cell:not(.fuel-param-col-b),
+    #fuelParamsTable td.fuel-hier-sum-cell:not(.fuel-param-col-b) .fuel-hier-sum-value {
+        font-weight: 400;
     }
     /* hfix: столбец и select по содержимому («да»/«нет»/«—»), без обрезки */
     #fuelParamsTable th.fuel-param-col-hfix {
@@ -1719,6 +1831,59 @@ document.addEventListener("DOMContentLoaded", function() {
         padding-left: 0.5rem;
         padding-right: 2rem;
     }
+    /* numb1120: ширина по самому длинному слову шапки («оборудования»); перенос по словам */
+    #fuelParamsTable th.fuel-param-col-numb1120 {
+        width: 1%;
+        min-width: min-content;
+        max-width: min-content;
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: normal;
+        hyphens: none;
+        box-sizing: border-box;
+        overflow: visible;
+        vertical-align: middle;
+    }
+    #fuelParamsTable th.fuel-param-col-numb1120 .numb1120-filter-wrap {
+        width: 0;
+        min-width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    #fuelParamsTable th.fuel-param-col-numb1120 .numb1120-filter-btn {
+        min-width: 0;
+        max-width: 100%;
+    }
+    #fuelParamsTable td.fuel-param-col-numb1120 {
+        width: 1%;
+        max-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+        box-sizing: border-box;
+    }
+    /* ved: ширина по заголовку «Тип ТЭС» / (VED); длинные option не растягивают столбец */
+    #fuelParamsTable th.fuel-param-col-ved {
+        width: 1%;
+        white-space: nowrap;
+        box-sizing: border-box;
+    }
+    #fuelParamsTable td.fuel-param-col-ved {
+        width: 1%;
+        max-width: 0;
+        white-space: nowrap;
+        vertical-align: middle;
+        overflow: hidden;
+        box-sizing: border-box;
+    }
+    #fuelParamsTable.fuel-params-edit-table td.fuel-param-col-ved select.fuel-param-input {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding-left: 0.2rem;
+        padding-right: 1.1rem;
+    }
     #fuelParamsTable.fuel-params-edit-table tbody td.table-warning .fuel-param-input,
     #fuelParamsTable.fuel-params-edit-table tbody td.table-danger .fuel-param-input,
     #fuelParamsTable.fuel-params-edit-table tbody td.fuel-param-cell-warn .fuel-param-input {
@@ -1731,6 +1896,35 @@ document.addEventListener("DOMContentLoaded", function() {
         position: relative;
     }
     #fuelParamsTable tbody tr.fuel-param-detail-row { cursor: pointer; }
+    #fuelParamsTable thead th.fuel-composite-recalc-col,
+    #fuelParamsTable td.fuel-composite-recalc-cell {
+        width: 9.5rem;
+        min-width: 9.5rem;
+        max-width: 9.5rem;
+        box-sizing: border-box;
+    }
+    #fuelParamsTable thead th.fuel-composite-recalc-col {
+        font-size: inherit;
+        line-height: 1.2;
+        white-space: normal;
+        overflow: visible;
+        word-break: normal;
+        hyphens: none;
+    }
+    #fuelParamsTable td.fuel-composite-recalc-cell {
+        padding: 0.3rem 0.4rem !important;
+        vertical-align: middle;
+        white-space: normal;
+    }
+    #fuelParamsTable td.fuel-composite-recalc-cell .js-recalc-composite-parts {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        white-space: nowrap;
+        padding: 0.28rem 0.4rem;
+        font-size: 0.95rem;
+        line-height: 1.2;
+    }
     /* Граница между группами оборудования (после последнего года группы) */
     #fuelParamsTable tbody tr.fuel-param-group-last > td,
     #fuelParamsTable tbody td.fuel-param-group-span {
@@ -1746,10 +1940,15 @@ document.addEventListener("DOMContentLoaded", function() {
     .fuel-hier-icon:hover { opacity: 0.8; }
     #fuelParamsTable td.fuel-hier-sum-cell {
         background-color: rgba(13, 110, 253, 0.04);
-        font-size: 1.1rem;
-        line-height: 1.3;
-        font-weight: inherit;
         color: inherit;
+    }
+    #fuelParamsTable tr.fuel-param-composite-parent-row > td,
+    #fuelParamsTable tr.fuel-param-composite-parent-row > td.fuel-hier-sum-cell {
+        background-color: #fff3cd !important;
+    }
+    #fuelParamsTable.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+        --bs-table-accent-bg: transparent;
+        background-color: #fff3cd !important;
     }
     /* Виды топлива: с «+» группировки — жирный, входящие в группу без своих детей — обычный */
     #fuelParamsTable thead th.fuel-hier-leaf-header {
@@ -1766,10 +1965,10 @@ document.addEventListener("DOMContentLoaded", function() {
     #fuelParamsTable td[data-fuel-hier-under].fuel-hier-col-visible {
         display: table-cell;
     }
-    /* Руст изменился к предыдущему году: жёлтые ячейки (не группа и не код электростанции) поверх table-striped */
-    #fuelParamsTable tbody td.table-warning {
-        --bs-table-bg: var(--bs-warning-bg-subtle, #fff3cd);
-        background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;
+    /* Руст изменился к предыдущему году: желто-красный фон (отдельно от жёлтых составных групп) */
+    #fuelParamsTable tbody tr:not(.fuel-param-composite-parent-row) td.table-warning {
+        --bs-table-bg: #fdd0b0;
+        background-color: #fdd0b0 !important;
     }
     #fuelParamsTable tbody tr.fuel-edit-empty-row-hidden {
         display: none !important;
@@ -1800,6 +1999,9 @@ document.addEventListener("DOMContentLoaded", function() {
         const fuelHierSumAttrList = {{ fuel_hier_sum_attrs|list|tojson }};
         const fuelHierSumAttrSet = {};
         fuelHierSumAttrList.forEach(function (a) { fuelHierSumAttrSet[a] = true; });
+        /* Столбцы Доп_угли (ExtraFuelParam) — нельзя суммировать в gaz/ugol/B из Станции. */
+        const fuelExtraAttrSet = {};
+        {{ fuel_extra_attrs|list|tojson }}.forEach(function (a) { fuelExtraAttrSet[a] = true; });
         const FUEL_HEADER_ACCESS_CODES = {{ FUEL_HEADER_ACCESS_CODES|tojson }};
         function fuelHeaderCode(attr) {
             var key = attr == null ? '' : String(attr);
@@ -1821,10 +2023,14 @@ document.addEventListener("DOMContentLoaded", function() {
             {% endif %}{% endfor %}
         ];
         const fuelTopLevelForB = fuelTypeAttrs.filter(function (a) {
-            return a !== 'b' && !fuelCollapseUnder[a];
+            return a !== 'b' && !fuelCollapseUnder[a] && !fuelExtraAttrSet[a]
+                && a !== 'h' && a !== 'hfix' && a !== 'ved';
         });
         const roundingDigits = {{ rounding_digits|default(1)|int }};
         const canEditMainBulk = !!document.getElementById('fuelParamsBulkEditForm');
+        const fuelDerivedFormulas = {{ fuel_param_derived_formulas|default({})|tojson }};
+        const fuelDerivedSources = {{ fuel_param_derived_sources|default({})|tojson }};
+        const fuelDerivedAttrs = Object.keys(fuelDerivedSources || {});
 
         function parseFuelNum(raw) {
             if (raw == null) return null;
@@ -1832,6 +2038,156 @@ document.addEventListener("DOMContentLoaded", function() {
             if (!s || s === '—' || s === '-' || s.toLowerCase() === 'none') return null;
             var n = Number(s);
             return isFinite(n) ? n : null;
+        }
+
+        function formatDerivedNum(n) {
+            if (n == null || !isFinite(n)) return '';
+            var rd = roundingDigits;
+            var sign = n < 0 ? '-' : '';
+            var abs = Math.abs(n);
+            var s;
+            if (rd < 0) {
+                s = String(Math.round(abs));
+            } else if (rd === 0) {
+                s = String(abs);
+                if (/e/i.test(s)) s = abs.toFixed(12);
+            } else {
+                s = abs.toFixed(rd);
+            }
+            var intPart;
+            var fracPart = null;
+            var dot = s.indexOf('.');
+            if (dot >= 0) {
+                intPart = s.slice(0, dot);
+                fracPart = s.slice(dot + 1).replace(/0+$/, '');
+                if (!fracPart) fracPart = null;
+            } else {
+                intPart = s;
+            }
+            intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+            var out = sign + intPart + (fracPart != null ? ',' + fracPart : '');
+            return out === '-' || out === '-0' ? '0' : out;
+        }
+
+        function computeFuelDerivedValue(attr, values) {
+            if (attr === 'h') {
+                if (values.hfix === 1) return null;
+                var eH = values.e, nust = values.nust;
+                if (eH == null || nust == null || nust <= 0) return null;
+                return eH / nust * 1000;
+            }
+            if (attr === 'eurt') {
+                var eust = values.eust, eotp = values.eotp;
+                if (eust == null || eotp == null || eotp === 0) return null;
+                return eust / eotp * 1000;
+            }
+            if (attr === 'turt') {
+                var tust = values.tust, q = values.q;
+                if (tust == null || q == null || q === 0) return null;
+                return tust / q * 1000;
+            }
+            if (attr === 'snk') {
+                var snEe = values.sn_ee, e = values.e;
+                if (snEe == null || e == null || e === 0) return null;
+                return snEe / e * 100;
+            }
+            if (attr === 'sn_t') {
+                var snTe = values.sn_te, q2 = values.q;
+                if (snTe == null || q2 == null || q2 === 0) return null;
+                return snTe / q2 * 1000;
+            }
+            return null;
+        }
+
+        function readFuelCellRaw(row, attr) {
+            var td = row.querySelector('td[data-column="' + attr + '"]');
+            if (!td) return null;
+            if (attr === 'hfix') {
+                var sel = td.querySelector('select.fuel-param-input[name]:not([disabled])');
+                if (!sel) return null;
+                var sv = (sel.value || '').trim();
+                if (sv === '') return null;
+                var n = Number(sv);
+                return isFinite(n) ? n : null;
+            }
+            var inp = td.querySelector('input.fuel-param-input[name]:not([disabled])');
+            if (inp) return parseFuelNum(inp.value);
+            var derived = td.querySelector('.fuel-param-derived-value');
+            if (derived) return parseFuelNum(derived.textContent);
+            return parseFuelNum(td.textContent);
+        }
+
+        function derivedInputName(row, attr) {
+            var gid = row.getAttribute('data-fuel-detail-group-id') || row.getAttribute('data-fuel-group-id');
+            var ynum = row.getAttribute('data-fuel-detail-year');
+            if (!gid || ynum === null || ynum === undefined || ynum === '') return null;
+            return 'g' + gid + '_fuel_param_' + ynum + '_' + attr;
+        }
+
+        function writeFuelDerivedCell(row, attr, calcVal) {
+            var td = row.querySelector('td[data-column="' + attr + '"]');
+            if (!td) return;
+            var display = calcVal == null ? null : formatDerivedNum(calcVal);
+            var existingInp = td.querySelector('input.fuel-param-input[name]');
+            var existingSpan = td.querySelector('.fuel-param-derived-value');
+            if (calcVal != null) {
+                if (existingInp) existingInp.remove();
+                if (!existingSpan) {
+                    existingSpan = document.createElement('span');
+                    existingSpan.className = 'fuel-param-derived-value';
+                    existingSpan.setAttribute('data-fuel-derived-attr', attr);
+                    td.appendChild(existingSpan);
+                }
+                existingSpan.textContent = display;
+                existingSpan.title = display;
+                td.setAttribute('data-fuel-derived-mode', 'calc');
+                if (display) td.title = display;
+                return;
+            }
+            var prevText = '';
+            if (existingSpan) {
+                prevText = (existingSpan.textContent || '').trim();
+                existingSpan.remove();
+            }
+            td.setAttribute('data-fuel-derived-mode', 'manual');
+            if (!canEditMainBulk) {
+                if (prevText && !td.querySelector('input, .fuel-param-derived-value')) {
+                    td.textContent = prevText;
+                }
+                return;
+            }
+            if (!existingInp) {
+                var fname = derivedInputName(row, attr);
+                if (!fname) return;
+                existingInp = document.createElement('input');
+                existingInp.type = 'text';
+                existingInp.inputMode = 'decimal';
+                existingInp.autocomplete = 'off';
+                existingInp.name = fname;
+                existingInp.className = 'form-control form-control-lg text-center fuel-param-input';
+                existingInp.value = prevText;
+                existingInp.setAttribute('data-initial', prevText);
+                td.appendChild(existingInp);
+            }
+        }
+
+        function recalcFuelDerivedForRow(row) {
+            if (!row || row.classList.contains('fuel-param-summary-row')) return;
+            if (!row.getAttribute('data-fuel-detail-group-id') && !row.getAttribute('data-fuel-group-id')) return;
+            var values = {
+                e: readFuelCellRaw(row, 'e'),
+                nust: readFuelCellRaw(row, 'nust'),
+                hfix: readFuelCellRaw(row, 'hfix'),
+                eotp: readFuelCellRaw(row, 'eotp'),
+                eust: readFuelCellRaw(row, 'eust'),
+                sn_ee: readFuelCellRaw(row, 'sn_ee'),
+                q: readFuelCellRaw(row, 'q'),
+                tust: readFuelCellRaw(row, 'tust'),
+                sn_te: readFuelCellRaw(row, 'sn_te')
+            };
+            fuelDerivedAttrs.forEach(function (attr) {
+                writeFuelDerivedCell(row, attr, computeFuelDerivedValue(attr, values));
+            });
         }
 
         function formatFuelHierSum(n) {
@@ -1894,7 +2250,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (memo) memo[attr] = null;
                 return null;
             }
-            var inp = td.querySelector('input.fuel-param-input[name]');
+            var inp = td.querySelector('input.fuel-param-input[name]:not([disabled])');
             var n;
             if (inp) {
                 n = parseFuelNum(inp.value);
@@ -1938,17 +2294,27 @@ document.addEventListener("DOMContentLoaded", function() {
             var memo = {};
             fuelParentsDeepestFirst.forEach(function (parent) {
                 var kids = fuelChildrenByParent[parent] || [];
+                var parentIsExtra = !!fuelExtraAttrSet[parent];
+                /* FuelParam-родитель (gaz, ugol, …) — только дети FuelParam;
+                   Extra-дети (gaz_prir и т.п.) иначе затирают итог Станции и B. */
+                var kidsForSum = kids.filter(function (child) {
+                    return parentIsExtra ? !!fuelExtraAttrSet[child] : !fuelExtraAttrSet[child];
+                });
                 var total = null;
                 var anyChildInDom = false;
-                kids.forEach(function (child) {
+                kidsForSum.forEach(function (child) {
                     if (!row.querySelector('td[data-column="' + child + '"]')) return;
                     anyChildInDom = true;
                     var v = readFuelAttrNumber(row, child, memo);
                     if (v == null) return;
                     total = total == null ? v : total + v;
                 });
-                /* Пока дочерние столбцы не вставлены — оставляем суммы с сервера. */
-                if (!anyChildInDom) return;
+                /* Пока дочерние столбцы не вставлены / нет детей того же слоя —
+                   оставляем суммы с сервера (FuelParam). */
+                if (!anyChildInDom) {
+                    memo[parent] = readFuelAttrNumber(row, parent, null);
+                    return;
+                }
                 memo[parent] = total;
                 writeFuelHierSumCell(row.querySelector('td[data-column="' + parent + '"]'), total);
             });
@@ -2000,14 +2366,23 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         }
 
+        function countFuelParamsTableColumns() {
+            if (!table) return 0;
+            var first = table.querySelector('thead tr:first-child');
+            if (!first) return 0;
+            var count = 0;
+            first.querySelectorAll(':scope > th').forEach(function (th) {
+                if (th.style.display === 'none') return;
+                var cs = parseInt(th.getAttribute('colspan'), 10);
+                count += (cs > 0 ? cs : 1);
+            });
+            return count;
+        }
+
         function updateHierarchySectionColspans() {
             if (!table) return;
-            var seen = {};
-            table.querySelectorAll('thead th[data-column]').forEach(function (th) {
-                var a = th.getAttribute('data-column');
-                if (a) seen[a] = true;
-            });
-            var count = Object.keys(seen).length + 2;
+            var count = countFuelParamsTableColumns();
+            if (count < 1) return;
             table.querySelectorAll(
                 'tbody tr.table-light > td[colspan], tbody tr.table-primary > td[colspan], tbody tr.table-secondary > td[colspan]'
             ).forEach(function (td) {
@@ -2152,11 +2527,19 @@ document.addEventListener("DOMContentLoaded", function() {
         if (table) {
             table.addEventListener('input', function (ev) {
                 var mainInp = ev.target && ev.target.closest ? ev.target.closest('input.fuel-param-input[name]') : null;
-                if (mainInp) onFuelLeafValueChanged(mainInp);
+                if (mainInp) {
+                    onFuelLeafValueChanged(mainInp);
+                    var row = mainInp.closest('tr.fuel-param-detail-row');
+                    if (row) recalcFuelDerivedForRow(row);
+                }
             });
             table.addEventListener('change', function (ev) {
-                var mainInp = ev.target && ev.target.closest ? ev.target.closest('input.fuel-param-input[name]') : null;
-                if (mainInp) onFuelLeafValueChanged(mainInp);
+                var mainInp = ev.target && ev.target.closest ? ev.target.closest('input.fuel-param-input[name], select.fuel-param-input[name]') : null;
+                if (mainInp) {
+                    onFuelLeafValueChanged(mainInp);
+                    var row = mainInp.closest('tr.fuel-param-detail-row');
+                    if (row) recalcFuelDerivedForRow(row);
+                }
             });
             recalcAllFuelHierSums();
             if (typeof bindFuelParamCellWarnings === 'function') {

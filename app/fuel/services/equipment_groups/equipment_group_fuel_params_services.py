@@ -38,6 +38,24 @@ from app.fuel.models.external_mapping.fue_em_territories_energy_model import (
 from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
     UnionEnergySystemExternalMapping,
 )
+from app.fuel.services.equipment_groups.composite_display_cluster_services import (
+    build_station_blocks_from_group_items,
+)
+from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services import (
+    enrich_station_blocks_composite_display,
+    resolve_composite_parents_by_numb,
+    territorial_ids_for_equipment_group,
+)
+from app.fuel.services.equipment_groups.composite_station_semantics import (
+    FUEL_PARAM_VED_LABELS,
+    fuel_param_row_participates,
+)
+
+# Обратная совместимость имени для UI / title на карточке EG.
+FUEL_PARAM_VED_DISPLAY = FUEL_PARAM_VED_LABELS
+
+# Составность UI/сумм — только comp/main (суррогат «несколько EG на Station» отключён).
+ALLOW_STATION_COMPOSITE_FALLBACK = False
 
 # Названия параметров для страницы equipment_group_details (как на stations_equipment_group_fuel_params)
 FUEL_PARAM_LABELS = {
@@ -48,8 +66,11 @@ FUEL_PARAM_LABELS = {
     "e": "Выработка ЭЭ, тыс.кВтч", "ewtp": "Теплофикационная выработка ЭЭ, тыс.кВтч",
     "eotp": EquipmentGroupFuelParam.EOTP_COLUMN_LABEL,
     "eurt": EquipmentGroupFuelParam.EURT_COLUMN_LABEL, "eust": "Расх топ ээ",
+    "sn_ee": EquipmentGroupFuelParam.SN_EE_COLUMN_LABEL,
     "snk": EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL,
-    "q": EquipmentGroupFuelParam.Q_COLUMN_LABEL, "qotr": "Тепловое потребление (отборов турбин), тыс.Гкал", "turt": EquipmentGroupFuelParam.TURT_COLUMN_LABEL, "tust": EquipmentGroupFuelParam.TUST_COLUMN_LABEL, "sn_t": "СН, кВтч/⁠Гкал",
+    "q": EquipmentGroupFuelParam.Q_COLUMN_LABEL, "qotr": "Тепловое потребление (отборов турбин), тыс.Гкал", "turt": EquipmentGroupFuelParam.TURT_COLUMN_LABEL, "tust": EquipmentGroupFuelParam.TUST_COLUMN_LABEL,
+    "sn_te": EquipmentGroupFuelParam.SN_TE_COLUMN_LABEL,
+    "sn_t": EquipmentGroupFuelParam.SN_T_COLUMN_LABEL,
     "b": "Расход топлива, всего",
     "gaz": "Газ", "isk_gaz": "Иск. газ", "mazut": "Мазут", "torf": "Торф", "slan": "Сланцы",
     "proch": "Прочее", "ugol": "Уголь", "don": "Дон", "podm": "Подм", "pech": "Печ",
@@ -68,7 +89,7 @@ FUEL_PARAM_LABELS = {
 # на странице equipment_group_edit / stations_equipment_groups
 MAIN_PARAM_LABELS = {
     "obor": "Группа оборудования (OBOR)",
-    "ved": "Ведомство (VED)",
+    "ved": "Тип ТЭС (VED)",
     "ved_cyrillic": "Ведомство (вед)",
     "obl": "Субъект РФ",
     "dep": "Департамент",
@@ -82,15 +103,207 @@ MAIN_PARAM_LABELS = {
 }
 
 # Суммы по РЭС/станции на страницах топливных параметров и пагинация иерархии
+# Объёмные показатели (удельные вроде eurt/snk суммируются наивно — см. TODO взвешивания).
 FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS = [
-    "nust", "nr", "e", "ewtp", "eotp", "eurt", "eust", "snk",
-    "q", "qotr", "turt", "tust", "sn_t", "b",
+    "nust", "nr", "e", "ewtp", "eotp", "eurt", "eust", "sn_ee", "snk",
+    "q", "qotr", "turt", "tust", "sn_te", "sn_t", "b",
     "gaz", "isk_gaz", "mazut", "torf", "slan", "proch", "ugol",
     "don", "podm", "pech", "arkt", "kuzn", "ural", "bashk", "kazah",
     "kan", "tung", "irkut", "hak", "tuv", "bur", "chit", "yakut",
     "amur", "urg", "ushum", "prim", "mag", "chukot", "kamch", "sah",
     "nt", "nt_sum",
 ]
+
+# Удельные / доли — не складывать как объёмы в «станция, всего».
+FUEL_PARAMS_HIERARCHY_SUMMARY_SKIP_ATTRS = frozenset({
+    "eurt", "snk", "turt", "sn_t", "h",
+})
+
+# На страницах ТЭП: считать по формуле, если есть входы; иначе — ручной ввод.
+# h: при hfix=1 формула не применяется (фиксация ЧЧИУМ).
+_FUEL_PARAM_DERIVED_FILL_RULE = (
+    "Правило заполнения: если есть данные для расчёта — значение по формуле "
+    "(ячейка не редактируется); если нет — ручной ввод."
+)
+FUEL_PARAM_DERIVED_FORMULAS = {
+    "h": (
+        "h = e / nust · 1000 (при hfix=1 — вручную). "
+        + _FUEL_PARAM_DERIVED_FILL_RULE
+    ),
+    "eurt": "eurt = eust / eotp · 1000. " + _FUEL_PARAM_DERIVED_FILL_RULE,
+    "turt": "turt = tust / q · 1000. " + _FUEL_PARAM_DERIVED_FILL_RULE,
+    "snk": "snk = sn_ee / e · 100. " + _FUEL_PARAM_DERIVED_FILL_RULE,
+    "sn_t": "sn_t = sn_te / q · 1000. " + _FUEL_PARAM_DERIVED_FILL_RULE,
+}
+FUEL_PARAM_DERIVED_ATTRS = frozenset(FUEL_PARAM_DERIVED_FORMULAS)
+FUEL_PARAM_DERIVED_SOURCES = {
+    "h": ("e", "nust"),
+    "eurt": ("eust", "eotp"),
+    "turt": ("tust", "q"),
+    "snk": ("sn_ee", "e"),
+    "sn_t": ("sn_te", "q"),
+}
+
+
+def _fuel_param_src_get(src, attr):
+    if src is None:
+        return None
+    if isinstance(src, dict):
+        return src.get(attr)
+    return getattr(src, attr, None)
+
+
+def _fuel_param_as_decimal(value):
+    from decimal import Decimal, InvalidOperation
+
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def hours_from_energy_and_capacity(e, nust):
+    """
+    Access calce: ``If NUST>0 Then H = E/NUST*1000``.
+
+    Для незафиксированных станций H в «Станции(Схема)» — не отдельный ввод,
+    а часы, согласованные с выработкой. None, если посчитать нельзя.
+    """
+    from decimal import Decimal
+
+    nust_d = _fuel_param_as_decimal(nust)
+    e_d = _fuel_param_as_decimal(e)
+    if nust_d is None or nust_d <= 0 or e_d is None:
+        return None
+    return e_d / nust_d * Decimal("1000")
+
+
+def fill_missing_hours_on_fuel_param(param) -> bool:
+    """
+    Если ``h`` пуст/0, а есть e и nust>0 — записать H = E/NUST·1000.
+    Уже заданные часы (в т.ч. HFIX) не перезаписывает. True, если изменил строку.
+    """
+    if param is None:
+        return False
+    h = _fuel_param_as_decimal(getattr(param, "h", None))
+    if h is not None and h > 0:
+        return False
+    computed = hours_from_energy_and_capacity(
+        getattr(param, "e", None), getattr(param, "nust", None)
+    )
+    if computed is None or computed <= 0:
+        return False
+    param.h = computed
+    return True
+
+
+def fill_missing_equipment_group_fuel_param_hours(*, year_number: int | None = None) -> int:
+    """Дозаполняет пустой h по E/NUST для существующих строк (все годы или один)."""
+    q = EquipmentGroupFuelParam.query
+    if year_number is not None:
+        q = q.filter(EquipmentGroupFuelParam.year_number == int(year_number))
+    updated = 0
+    for param in q.yield_per(200):
+        if fill_missing_hours_on_fuel_param(param):
+            updated += 1
+    return updated
+
+
+def recalculate_hours_on_fuel_param(param) -> bool:
+    """Всегда пишет H = E/NUST·1000, если формула считается. True, если значение изменилось."""
+    if param is None:
+        return False
+    computed = hours_from_energy_and_capacity(
+        getattr(param, "e", None), getattr(param, "nust", None)
+    )
+    if computed is None:
+        return False
+    old = _fuel_param_as_decimal(getattr(param, "h", None))
+    if old is not None and old == computed:
+        return False
+    param.h = computed
+    return True
+
+
+def compute_fuel_param_derived_value(src, attr):
+    """
+    Считает h / eurt / turt / snk / sn_t по формуле, если все входы заданы
+    и знаменатель ≠ 0. Для h при hfix=1 — None (ручной ввод / фиксация).
+    Иначе None (ячейка остаётся для ручного ввода).
+    """
+    from decimal import Decimal
+
+    if attr not in FUEL_PARAM_DERIVED_ATTRS:
+        return None
+    if attr == "h":
+        hfix_raw = _fuel_param_src_get(src, "hfix")
+        try:
+            if hfix_raw is not None and int(hfix_raw) == 1:
+                return None
+        except (TypeError, ValueError):
+            pass
+        return hours_from_energy_and_capacity(
+            _fuel_param_src_get(src, "e"),
+            _fuel_param_src_get(src, "nust"),
+        )
+    if attr == "eurt":
+        eust = _fuel_param_as_decimal(_fuel_param_src_get(src, "eust"))
+        eotp = _fuel_param_as_decimal(_fuel_param_src_get(src, "eotp"))
+        if eust is None or eotp is None or eotp == 0:
+            return None
+        return eust / eotp * Decimal("1000")
+    if attr == "turt":
+        tust = _fuel_param_as_decimal(_fuel_param_src_get(src, "tust"))
+        q = _fuel_param_as_decimal(_fuel_param_src_get(src, "q"))
+        if tust is None or q is None or q == 0:
+            return None
+        return tust / q * Decimal("1000")
+    if attr == "snk":
+        sn_ee = _fuel_param_as_decimal(_fuel_param_src_get(src, "sn_ee"))
+        e = _fuel_param_as_decimal(_fuel_param_src_get(src, "e"))
+        if sn_ee is None or e is None or e == 0:
+            return None
+        return sn_ee / e * Decimal("100")
+    if attr == "sn_t":
+        sn_te = _fuel_param_as_decimal(_fuel_param_src_get(src, "sn_te"))
+        q = _fuel_param_as_decimal(_fuel_param_src_get(src, "q"))
+        if sn_te is None or q is None or q == 0:
+            return None
+        return sn_te / q * Decimal("1000")
+    return None
+
+
+def displayed_fuel_param_snk(src):
+    """
+    SNK как на stations_equipment_group_fuel_params:
+    sn_ee / e · 100, если есть входы; иначе сохранённый FuelParam.snk.
+    """
+    derived = compute_fuel_param_derived_value(src, "snk")
+    if derived is not None:
+        return derived
+    return _fuel_param_as_decimal(_fuel_param_src_get(src, "snk"))
+
+
+def displayed_fuel_param_snt(src):
+    """
+    SNT как на stations_equipment_group_fuel_params:
+    sn_te / q · 1000, если есть входы; иначе сохранённый FuelParam.sn_t.
+    """
+    derived = compute_fuel_param_derived_value(src, "sn_t")
+    if derived is not None:
+        return derived
+    return _fuel_param_as_decimal(_fuel_param_src_get(src, "sn_t"))
+
+
+def apply_fuel_param_derived_ratios_to_mapping(summary: dict) -> dict:
+    """Дописывает h/eurt/turt/snk/sn_t в словарь сумм (станция/РЭС) по формулам."""
+    if not summary:
+        return summary
+    for attr in FUEL_PARAM_DERIVED_ATTRS:
+        summary[attr] = compute_fuel_param_derived_value(summary, attr)
+    return summary
 
 
 def suppress_station_fuel_summary_for_boiler_station(station_name: str | None) -> bool:
@@ -168,8 +381,17 @@ def _resolve_main_param_display_value(attr, param, name_maps=None):
     raw = getattr(param, attr, None)
     if raw is None and attr not in ("obor", "ved", "ved_cyrillic", "ees"):
         return None
-    # Ведомство: 1 — станция отрасли, 2 — пром. предприятие
-    if attr in ("ved", "ved_cyrillic"):
+    # FuelParam.ved — рабочий код строки за год (0/1..4/99), не vedomstvo справочника.
+    if attr == "ved":
+        try:
+            code = int(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            code = None
+        if code in FUEL_PARAM_VED_DISPLAY:
+            return FUEL_PARAM_VED_DISPLAY[code]
+        return str(raw) if raw is not None else None
+    # ved (кириллица) в выгрузках Access: 1 — станция отрасли, 2 — пром. предприятие
+    if attr == "ved_cyrillic":
         if raw == 1:
             return "станция отрасли"
         if raw == 2:
@@ -216,7 +438,7 @@ EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS = [
     "b", "gaz", "isk_gaz", "mazut", "torf", "slan", "proch", "ugol", "don", "podm",
     "pech", "arkt", "kuzn", "ural", "bashk", "kazah", "kan", "tung", "irkut", "hak",
     "tuv", "bur", "chit", "yakut", "amur", "urg", "ushum", "prim", "mag", "chukot",
-    "kamch", "sah", "qotr", "snk", "sn_t", "ewtp", "nt", "nt_sum",
+    "kamch", "sah", "qotr", "sn_ee", "snk", "sn_te", "sn_t", "ewtp", "nt", "nt_sum",
 ]
 
 
@@ -327,6 +549,129 @@ def normalize_equipment_group_ids_filter(raw) -> list[int] | None:
     return out or None
 
 
+def displayed_numb1120(equipment_group, param) -> int | None:
+    """Код, который видит пользователь: numb1120 строки ТЭП, иначе EquipmentGroup.numb."""
+    if param is not None:
+        raw = getattr(param, "numb1120", None)
+        parsed = _coerce_numb1120_int(raw)
+        if parsed is not None:
+            return parsed
+    if equipment_group is not None:
+        return _coerce_numb1120_int(getattr(equipment_group, "numb", None))
+    return None
+
+
+def _coerce_numb1120_int(raw) -> int | None:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s or s.lower() == "none":
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        try:
+            return int(s)
+        except (TypeError, ValueError):
+            return None
+
+
+def normalize_numb1120_filter(raw) -> list[int] | None:
+    """Список кодов numb1120 из фильтра; None, если фильтр не задан."""
+    if not raw:
+        return None
+    if isinstance(raw, (list, tuple, set)):
+        out: list[int] = []
+        seen: set[int] = set()
+        for x in raw:
+            n = _coerce_numb1120_int(x)
+            if n is None or n in seen:
+                continue
+            seen.add(n)
+            out.append(n)
+        return out or None
+    n = _coerce_numb1120_int(raw)
+    return [n] if n is not None else None
+
+
+def collect_numb1120_filter_choices(rows) -> list[int]:
+    """Уникальные отображаемые numb1120 по загруженным строкам (до фильтра по коду)."""
+    values: set[int] = set()
+    for eg, param in rows or []:
+        v = displayed_numb1120(eg, param)
+        if v is not None:
+            values.add(v)
+        if eg is not None:
+            n = _coerce_numb1120_int(getattr(eg, "numb", None))
+            if n is not None:
+                values.add(n)
+    return sorted(values)
+
+
+def apply_numb1120_filter_to_eg_param_rows(rows, filters):
+    """
+    Собирает варианты фильтра по загруженным строкам, затем при заданном
+    numb1120_filter оставляет только подходящие группы (все годы группы).
+    """
+    choices = collect_numb1120_filter_choices(rows)
+    wanted = normalize_numb1120_filter((filters or {}).get("numb1120_filter"))
+    if wanted:
+        rows = filter_fuel_param_rows_by_numb1120(rows, wanted)
+    return rows, choices
+
+
+def filter_fuel_param_rows_by_numb1120(rows, numb1120_values):
+    """Оставляет все годы групп, у которых отображаемый numb1120 или EquipmentGroup.numb в списке."""
+    wanted = set(numb1120_values or [])
+    if not wanted:
+        return list(rows or [])
+    matching_ids: set[int] = set()
+    for eg, param in rows or []:
+        if eg is None or getattr(eg, "id", None) is None:
+            continue
+        if displayed_numb1120(eg, param) in wanted:
+            matching_ids.add(int(eg.id))
+            continue
+        group_numb = _coerce_numb1120_int(getattr(eg, "numb", None))
+        if group_numb is not None and group_numb in wanted:
+            matching_ids.add(int(eg.id))
+    return [
+        (eg, param)
+        for eg, param in (rows or [])
+        if eg is not None
+        and getattr(eg, "id", None) is not None
+        and int(eg.id) in matching_ids
+    ]
+
+
+def should_suppress_aggregate_rows_for_filters(filters) -> bool:
+    """Точный фильтр numb1120: не показывать «…, всего» и итоги РЭС."""
+    return bool(normalize_numb1120_filter((filters or {}).get("numb1120_filter")))
+
+
+def apply_suppress_aggregate_rows_to_hierarchy(hierarchy):
+    """
+    Убирает агрегированные суммы: строки родителя «…, всего», station_summary
+    и итог «РЭС, всего». Сами группы из фильтра остаются обычными строками.
+    """
+    for est in hierarchy or []:
+        for ues in est.get("ues_list") or []:
+            for res in ues.get("res_list") or []:
+                res["hide_res_summary"] = True
+                res["res_summary"] = {}
+                for sb in res.get("station_blocks") or []:
+                    sb["suppress_station_summary"] = True
+                    for gb in sb.get("group_blocks") or []:
+                        gb["is_composite_total_row"] = False
+                        gb["use_station_summary"] = False
+                res["group_blocks"] = [
+                    gb
+                    for sb in (res.get("station_blocks") or [])
+                    for gb in (sb.get("group_blocks") or [])
+                ]
+    return hierarchy
+
+
 def get_equipment_group_ids_for_fuel_params_filters(
     filters=None,
     *,
@@ -336,16 +681,13 @@ def get_equipment_group_ids_for_fuel_params_filters(
     """
     Список id групп оборудования в текущей версии БД по тем же фильтрам,
     что и get_equipment_groups_with_fuel_params_data (без соединения с параметрами по годам).
+
+    Параметры start_year/end_year сохранены для совместимости вызовов;
+    территориальный фильтр eg-first от диапазона лет не зависит.
     """
-    from app.common.services.get_services.years.years_get_services import (
-        get_filter_end_year,
-        get_filter_start_year,
-    )
     from app.extensions import db
     from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 
-    _start = start_year if start_year is not None else get_filter_start_year()
-    _end = end_year if end_year is not None else get_filter_end_year()
     current_version_id = get_current_db_version_id()
 
     base_query = db.session.query(EquipmentGroup.id)
@@ -373,28 +715,28 @@ def get_equipment_group_ids_for_fuel_params_filters(
     }
     equipment_group_name_filter = (_filters.get("equipment_group_name_filter") or "").strip() or None
     id_list = normalize_equipment_group_ids_filter(_filters.get("equipment_group_ids"))
+    numb1120_filter = normalize_numb1120_filter(_filters.get("numb1120_filter"))
     if id_list:
         base_query = base_query.filter(EquipmentGroup.id.in_(id_list))
     elif any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:
         from app.fuel.services.stations.stations_equipment_groups_services import (
-            get_filtered_equipment_group_ids,
-            get_filtered_standalone_equipment_group_ids,
+            get_filtered_equipment_group_ids_all,
         )
 
-        filtered_ids = (
-            get_filtered_equipment_group_ids(
-                _filters, start_year=_start, end_year=_end
-            )
-            | get_filtered_standalone_equipment_group_ids(
-                _filters,
-                version_id=current_version_id,
-                strict_version=True,
-            )
+        # Как stations_equipment_groups: фильтр по атрибутам EquipmentGroup (РЭС→ОЭС / oes),
+        # а не через get_stations_list (иначе субъект «Красноярский край» тянет ОЭС Сибири
+        # в фильтр «ТИТЭС Сибири»).
+        filtered_ids = get_filtered_equipment_group_ids_all(
+            _filters,
+            version_id=current_version_id,
+            strict_version=True,
         )
         if filtered_ids:
             base_query = base_query.filter(EquipmentGroup.id.in_(filtered_ids))
         else:
             base_query = base_query.filter(EquipmentGroup.id != EquipmentGroup.id)
+    if numb1120_filter:
+        base_query = base_query.filter(EquipmentGroup.numb.in_(numb1120_filter))
 
     rows = base_query.distinct().order_by(EquipmentGroup.id).all()
     return [r[0] for r in rows]
@@ -481,18 +823,15 @@ def get_equipment_groups_with_fuel_params_data(
         base_query = base_query.filter(EquipmentGroup.id.in_(id_list))
     elif any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:
         from app.fuel.services.stations.stations_equipment_groups_services import (
-            get_filtered_equipment_group_ids,
-            get_filtered_standalone_equipment_group_ids,
+            get_filtered_equipment_group_ids_all,
         )
-        filtered_ids = (
-            get_filtered_equipment_group_ids(
-                _filters, start_year=_start, end_year=_end
-            )
-            | get_filtered_standalone_equipment_group_ids(
-                _filters,
-                version_id=current_version_id,
-                strict_version=True,
-            )
+        # Как stations_equipment_groups: фильтр по атрибутам EquipmentGroup (РЭС→ОЭС / oes),
+        # а не через get_stations_list (иначе субъект «Красноярский край» тянет ОЭС Сибири
+        # в фильтр «ТИТЭС Сибири»).
+        filtered_ids = get_filtered_equipment_group_ids_all(
+            _filters,
+            version_id=current_version_id,
+            strict_version=True,
         )
         if filtered_ids:
             base_query = base_query.filter(EquipmentGroup.id.in_(filtered_ids))
@@ -519,6 +858,11 @@ def get_equipment_groups_with_fuel_params_data(
         .all()
     )
 
+    rows, numb1120_filter_choices = apply_numb1120_filter_to_eg_param_rows(
+        rows, _filters
+    )
+    total_count = len(rows)
+
     per_page_int = total_count or 1
     total_pages = 1
 
@@ -528,6 +872,7 @@ def get_equipment_groups_with_fuel_params_data(
         "total_pages": total_pages,
         "page": 1,
         "per_page": per_page_int,
+        "numb1120_filter_choices": numb1120_filter_choices,
     }
 
 
@@ -769,16 +1114,23 @@ def _equipment_group_station_sort_key(item, display_orders_by_group_id=None):
     )
 
 
-def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierarchy_only=False):
+def build_equipment_group_fuel_params_hierarchy(
+    rows,
+    use_equipment_group_hierarchy_only=False,
+    suppress_aggregate_rows=False,
+):
     """
     Строит иерархию по группам оборудования: energy_system_type → UES → РЭС → станция → группа оборудования.
 
-    Суммарные строки «станция, всего» показываются для групп, относящихся к одной электростанции.
+    Составные станции группируются по comp/main (родитель numb); жёлтая «всего» —
+    сумма детей с ved>0. Generation Station — только привязка/машины.
 
     :param use_equipment_group_hierarchy_only: если True — без подуровня «станция» (одна виртуальная
-        станция на группу); если False — дополнительная группировка по первой привязанной электростанции.
+        станция на группу); если False — кластеры по comp/main (+ Station для простых EG).
         Уровни ЕЭС/ОЭС/РЭС всегда берутся из актуальных связей EquipmentGroup (как в карточке группы),
         а не из полей obl/oes в строке параметров по годам.
+    :param suppress_aggregate_rows: если True (точный фильтр numb1120) — не подтягивать
+        родителей «…, всего» и не считать итоги РЭС.
     """
     from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
         get_energy_system_type_map,
@@ -806,6 +1158,11 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
     )
 
     _vid = get_current_db_version_id()
+    parent_by_numb = (
+        {}
+        if suppress_aggregate_rows
+        else resolve_composite_parents_by_numb(rows, database_version_id=_vid)
+    )
     _standalone_eg_ids = get_standalone_equipment_group_ids(
         version_id=_vid,
         strict_version=_vid is not None,
@@ -835,16 +1192,9 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
             continue
         # ЕЭС/ОЭС/РЭС — только по EquipmentGroup (РЭС/ОЭС/тип ЕЭС из справочника), иначе после смены
         # субъекта/РЭС в карточке строка параметров (obl/oes) могла оставаться старой, а группа — в новой ветке.
-        res = getattr(eg, "regional_energy_system", None)
-        ues = getattr(res, "union_energy_system", None) if res else None
-        est_id = getattr(ues, "id_energy_system_type", None) if ues else None
-        ues_id = ues.id if ues else None
-        res_id = res.id if res else None
-
-        _est = est_id if est_id is not None else -1
-        _ues = ues_id if ues_id is not None else -1
-        _res = res_id if res_id is not None else -1
-
+        _est, _ues, _res = territorial_ids_for_equipment_group(
+            eg, parent_by_numb=parent_by_numb
+        )
         hierarchy[_est][_ues][_res][eg.id].append((eg, param))
 
     def _sort_key_est(eid):
@@ -860,28 +1210,59 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
         from decimal import Decimal
         summary = {}
         for attr in FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS:
+            if attr in FUEL_PARAMS_HIERARCHY_SUMMARY_SKIP_ATTRS:
+                summary[attr] = None
+                continue
             total = Decimal(0)
+            any_val = False
             for _eg, param in rows_to_sum:
-                val = getattr(param, attr, None)
+                # В сумму станции/РЭС — только строки с ved>0 (антидубль родителя).
+                if not fuel_param_row_participates(param):
+                    # Legacy: если ved ни у кого не заполнен — суммируем как раньше.
+                    # Решаем ниже по флагу; здесь пропускаем явный ved=0.
+                    ved = getattr(param, "ved", None) if param is not None else None
+                    if ved is not None:
+                        continue
+                val = getattr(param, attr, None) if param is not None else None
                 if val is not None:
                     try:
                         total += Decimal(str(val))
+                        any_val = True
                     except (TypeError, ValueError):
                         pass
-            summary[attr] = total
-        return summary
+            summary[attr] = total if any_val else None
+        return apply_fuel_param_derived_ratios_to_mapping(summary)
 
-    def _get_primary_station(eg_id):
-        """Возвращает (station_id, station_name) для первой электростанции группы или None."""
-        stations = eg_to_stations.get(eg_id, [])
-        if not stations:
-            return None
-        st_id, st_name = stations[0]
-        return (st_id, st_name or "—")
+    def _rows_for_station_summary(group_blocks):
+        """
+        Строки для «станция, всего» / итога РЭС:
+        - при заполненном ved — только ved>0;
+        - если у всех ved пуст (legacy до перезагрузки Access) — все строки.
+        """
+        all_rows = []
+        for gb in group_blocks:
+            all_rows.extend(gb["rows"])
+        has_any_ved = any(
+            param is not None and getattr(param, "ved", None) is not None
+            for _eg, param in all_rows
+        )
+        if not has_any_ved:
+            return all_rows
+        return [
+            (eg, param)
+            for eg, param in all_rows
+            if fuel_param_row_participates(param)
+        ]
 
-    def _station_sort_key(station_tuple):
-        st_id, st_name = station_tuple or (None, "—")
-        return (1 if st_id is None else 0, (st_name or "").lower(), st_id or 0)
+    def _enrich_station_block_composite(station_blocks_list):
+        enrich_station_blocks_composite_display(
+            station_blocks_list,
+            _compute_summary,
+            parent_by_numb=parent_by_numb,
+            allow_station_composite_fallback=ALLOW_STATION_COMPOSITE_FALLBACK,
+            rows_for_summary=_rows_for_station_summary,
+            fuel_params_detail_mode=True,
+        )
 
     hierarchy_flat = []
     for est_id in sorted(hierarchy.keys(), key=_sort_key_est):
@@ -897,46 +1278,29 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
                         eg_primary_display_orders,
                     ),
                 )
-
-                # Группируем по электростанции (если не use_equipment_group_hierarchy_only): station_key -> [(eg, rows), ...]
-                # Для stations_equipment_group_fuel_params: одна «виртуальная» станция, без подуровня «станция, всего»
-                by_station = defaultdict(list)
-                for eg_id, eg_rows in eg_items:
+                for _eg_id, eg_rows in eg_items:
                     all_res_rows.extend(eg_rows)
-                    eg = eg_rows[0][0] if eg_rows else None
-                    if use_equipment_group_hierarchy_only:
-                        station_key = (None, "—")
-                    else:
-                        station_key = _get_primary_station(eg_id)
-                    by_station[station_key].append({
-                        "equipment_group": eg,
-                        "rows": eg_rows,
-                    })
 
-                res_summary = _compute_summary(all_res_rows) if all_res_rows else {}
+                station_blocks = build_station_blocks_from_group_items(
+                    eg_items,
+                    eg_to_stations,
+                    allow_station_composite_fallback=ALLOW_STATION_COMPOSITE_FALLBACK,
+                    use_equipment_group_hierarchy_only=use_equipment_group_hierarchy_only,
+                    standalone_eg_ids=_standalone_eg_ids,
+                    should_suppress_summary=should_suppress_fuel_params_station_summary_row,
+                    parent_by_numb=parent_by_numb,
+                )
 
-                station_blocks = []
-                for station_key in sorted(by_station.keys(), key=_station_sort_key):
-                    group_blocks = by_station[station_key]
-                    station_rows = []
-                    for gb in group_blocks:
-                        station_rows.extend(gb["rows"])
-                    station_summary = _compute_summary(station_rows) if station_rows else {}
-                    st_id, st_name = station_key if station_key else (None, "—")
-                    is_virtual = use_equipment_group_hierarchy_only
-                    station_blocks.append({
-                        "station_id": st_id,
-                        "station_name": st_name,
-                        "group_blocks": group_blocks,
-                        "station_summary": station_summary,
-                        "is_virtual": is_virtual,
-                        "suppress_station_summary": should_suppress_fuel_params_station_summary_row(
-                            st_id,
-                            st_name,
-                            group_blocks,
-                            _standalone_eg_ids,
-                        ),
-                    })
+                _enrich_station_block_composite(station_blocks)
+
+                res_summary_rows = []
+                for sb in station_blocks:
+                    res_summary_rows.extend(_rows_for_station_summary(sb["group_blocks"]))
+                res_summary = (
+                    {}
+                    if suppress_aggregate_rows
+                    else (_compute_summary(res_summary_rows) if res_summary_rows else {})
+                )
 
                 res_list.append({
                     "res_id": res_id,
@@ -944,6 +1308,7 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
                     "group_blocks": [gb for sb in station_blocks for gb in sb["group_blocks"]],
                     "station_blocks": station_blocks,
                     "res_summary": res_summary,
+                    "hide_res_summary": bool(suppress_aggregate_rows),
                 })
             ues_list.append({
                 "ues_id": ues_id,
@@ -955,6 +1320,9 @@ def build_equipment_group_fuel_params_hierarchy(rows, use_equipment_group_hierar
             "est_name": est_names.get(est_id, "—"),
             "ues_list": ues_list,
         })
+
+    if suppress_aggregate_rows:
+        apply_suppress_aggregate_rows_to_hierarchy(hierarchy_flat)
 
     return hierarchy_flat
 

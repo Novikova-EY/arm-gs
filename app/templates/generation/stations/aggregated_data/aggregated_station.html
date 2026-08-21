@@ -1,5 +1,5 @@
 <!-- Итоговые значения по-станционно -->
-{% set station_total_colspan = 15 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 %}
+{% set station_total_colspan = 12 if request.endpoint == 'fuel_bp.stations_without_equipment_group' else 14 %}
 {% set fuel_columns = end_year - start_year + 1 %}
 {% set trailing_columns = fuel_columns + 1 %}
 

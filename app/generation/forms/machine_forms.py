@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import Form, StringField, TextAreaField, IntegerField, FloatField, FieldList, FormField, SelectField, HiddenField, SubmitField, DecimalField
+from wtforms import Form, StringField, TextAreaField, IntegerField, FloatField, FieldList, FormField, SelectField, HiddenField, SubmitField, DecimalField, BooleanField
 from wtforms.validators import DataRequired, Optional, NumberRange, Length
 from app.validators.validate_year_or_date import (
     validate_year_or_date,
@@ -134,6 +134,11 @@ class MachineFilterForm(FlaskForm):
     date_exploitation_expected = StringField(
         'Ожидаемый год ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
+    is_commissioning_q4 = BooleanField(
+        'Ввод 4 квартала',
+        default=False,
+        false_values=(False, "false", "False", "0", ""),
     )
     date_commission_fact = StringField(
         'Фактическая дата ввода в работу',

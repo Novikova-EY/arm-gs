@@ -13,6 +13,9 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/loaders.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/table_headers.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/change_log_table.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fuel_equipment_group_tree.css') }}">
+
     {% block extra_head %}{% endblock %}
 </head>
 
@@ -93,7 +96,7 @@
     {% with messages = get_flashed_messages(with_categories=True) %}
     {% if messages %}
         {# z-index выше липких панелей страниц (например fuel-calc-edit sticky z=40..42), иначе текст flash перекрывается #}
-        <div class="position-fixed top-0 start-50 translate-middle-x mt-5" style="max-width: 1500px; width: 90%; z-index: 1080;">
+        <div id="flaskFlashMessages" class="position-fixed top-0 start-50 translate-middle-x mt-5" style="max-width: 1500px; width: 90%; z-index: 1080;">
         {% for category, message in messages %}
             <div class="alert {% if category == 'danger-duplicate' %}alert-danger fs-2 text-uppercase{% else %}alert-{{ category }} fs-5{% endif %} fw-bold text-center shadow-lg p-4 alert-dismissible fade show" role="alert">
             {{ message }}
@@ -111,6 +114,7 @@
 
     <!-- Подключаем Bootstrap JS -->
     <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/logs/change_log_table.js') }}"></script>
     <script src="{{ url_for('static', filename='js/common/arm_gs_page_scroll_restore.js') }}?v=3"></script>
 
     <script>
@@ -382,9 +386,9 @@
     </script>
 
     <script>
-        // Автоматическое закрытие сообщений через 5 секунд
+        // Автоматическое закрытие только flash-сообщений (не рабочих панелей .alert на странице)
         document.addEventListener('DOMContentLoaded', function () {
-            const alerts = document.querySelectorAll('.alert');
+            const alerts = document.querySelectorAll('#flaskFlashMessages .alert');
             alerts.forEach(alert => {
                 setTimeout(() => {
                     alert.classList.remove('show');

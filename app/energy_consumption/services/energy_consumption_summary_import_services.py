@@ -1882,6 +1882,44 @@ def persist_all_energy_consumption_summary_computed_rows(
     return touched
 
 
+def persist_all_energy_consumption_summary_computed_rows_for_all_versions(
+    *,
+    rounding_digits: int = 1,
+    years: list[int] | None = None,
+    user: str | None = None,
+) -> dict[str, Any]:
+    """Временно: пересчёт и запись формул сводки во все версии БД (как импорт Excel).
+
+    Позже перейдём на пересчёт только в пределах выбранной версии.
+    """
+    version_ids = _database_version_ids_for_energy_consumption_import()
+    if not years:
+        years = None
+    total = 0
+    processed: list[int] = []
+    for vid in version_ids:
+        years_ok = (
+            sorted({int(y) for y in years})
+            if years is not None
+            else sorted(_year_numbers_for_version(int(vid)))
+        )
+        if not years_ok:
+            continue
+        total += persist_all_energy_consumption_summary_computed_rows(
+            database_version_id=int(vid),
+            years=years_ok,
+            rounding_digits=rounding_digits,
+            user=user,
+        )
+        processed.append(int(vid))
+        db.session.flush()
+    return {
+        "cells_written_formula": total,
+        "database_versions_processed": len(processed),
+        "database_version_ids": processed,
+    }
+
+
 def persist_summary_table_formula_rows_after_import(
     *,
     database_version_id: int,

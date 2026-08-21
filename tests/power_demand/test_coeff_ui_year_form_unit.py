@@ -36,3 +36,19 @@ def test_apply_coeff_ui_year_form_context_sets_flags(monkeypatch):
     assert ctx["start_year"] == 2017
     assert ctx["end_year"] == 2019
     assert ctx["pd_coeff_years_applied"] is True
+
+
+def test_apply_coeff_ui_year_form_context_keeps_table_years(monkeypatch):
+    """Форма 2021–2031 не режет колонки таблицы: скрытие — на клиенте."""
+    app = Flask(__name__)
+    monkeypatch.setattr(routes, "_filter_year_list_for_summary", lambda: list(range(2010, 2041)))
+    table_years = list(range(2016, 2032))
+    ctx = {"start_year": 2016, "end_year": 2043, "years": list(table_years)}
+    with app.test_request_context(
+        "/power_demand/summary/coeff/oes/?start_year=2021&end_year=2031"
+    ):
+        routes._apply_coeff_ui_year_form_context(ctx, 2025)
+    assert ctx["years"] == table_years
+    assert ctx["start_year"] == 2021
+    assert ctx["end_year"] == 2031
+    assert ctx["pd_coeff_years_applied"] is True

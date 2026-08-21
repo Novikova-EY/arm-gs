@@ -77,6 +77,14 @@ def test_ec_persist_computed_invalidates():
     assert "invalidate_energy_consumption_display_caches" in src
 
 
+def test_ec_persist_computed_for_all_versions_loops_versions():
+    src = inspect.getsource(
+        import_svc.persist_all_energy_consumption_summary_computed_rows_for_all_versions
+    )
+    assert "_database_version_ids_for_energy_consumption_import" in src
+    assert "persist_all_energy_consumption_summary_computed_rows(" in src
+
+
 def test_clear_all_caches_energy_consumption_uses_unified_invalidate():
     from app.common.services import clear_all_caches as cac
 

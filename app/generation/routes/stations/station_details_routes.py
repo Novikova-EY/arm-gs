@@ -460,9 +460,12 @@ def _format_logs_for_display(logs):
             ts_msk = ts.astimezone(MOSCOW)
         else:
             ts_msk = None
+        date_str = ts_msk.strftime('%Y-%m-%d') if ts_msk else ''
+        time_str = ts_msk.strftime('%H:%M:%S') if ts_msk else ''
         formatted_log = {
-            'date': ts_msk.strftime('%Y-%m-%d') if ts_msk else '',
-            'time': ts_msk.strftime('%H:%M:%S') if ts_msk else '',
+            'date': date_str,
+            'time': time_str,
+            'datetime': f'{date_str} {time_str}'.strip(),
             'username': log.username or '',
             'username_lower': (log.username or '').lower(),
             'action': log.action or '',
@@ -664,7 +667,7 @@ def station_details(station_id):
     for machine in (station.machines or []):
         powers_count += len(machine.machine_powers) if hasattr(machine, 'machine_powers') else 0
     
-    # Сортировка агрегатов по станционному номеру (естественная сортировка)
+    # Сортировка агрегатов: активные по станционному номеру, архивные — в конце
     if station and station.machines:
         def _machine_sort_key(m):
             num_key = float('inf')
@@ -675,7 +678,8 @@ def station_details(station_id):
                         num_key = int(s)
             except Exception:
                 num_key = float('inf')
-            return num_key
+            archived_key = 1 if bool(getattr(m, "is_archived", False)) else 0
+            return (archived_key, num_key)
         try:
             station.machines.sort(key=_machine_sort_key)
         except Exception:
@@ -733,11 +737,16 @@ def station_details(station_id):
             "kto",
         }
     )
-    # Признаки формы агрегатов: удаление/поля агрегатов/примечание агрегата/собственник агрегата
-    is_machines_form = ("machines_delete[]" in submitted_keys) or any(
-        k.startswith(prefix)
-        for k in submitted_keys
-        for prefix in ("fuel_so_", "id_gen_company_", "note_")
+    # Признаки формы агрегатов: удаление/архив/поля агрегатов/примечание агрегата/собственник агрегата
+    is_machines_form = (
+        ("machines_delete[]" in submitted_keys)
+        or ("machines_archive[]" in submitted_keys)
+        or ("machines_archive_form" in submitted_keys)
+        or any(
+            k.startswith(prefix)
+            for k in submitted_keys
+            for prefix in ("fuel_so_", "id_gen_company_", "note_")
+        )
     )
     is_station_energy_form = request.form.get("station_energy_generation_submit") == "1"
     is_station_gaes_charge_form = request.form.get("station_gaes_charge_submit") == "1"
@@ -899,20 +908,23 @@ def station_details(station_id):
                 )
                 return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
 
-            if machine_ids_to_delete and can_edit:
-                try:
-                    changes = delete_machines_service(user, station, machine_ids_to_delete)
-                    if changes:
-                        flash("Выбранные агрегаты и связанные данные были удалены!", "success")
-                        for machine_id in machine_ids_to_delete:
-                            invalidate_cache("machine", machine_id=machine_id)
-                            invalidate_cache("station_full", station_id=station.id)
-                            invalidate_cache_pattern("station_list:*")
-                except Exception as e:
-                    import traceback
+            if machine_ids_to_delete:
+                if not getattr(current_user, "is_admin", False):
+                    flash("Удаление агрегатов доступно только администратору.", "danger")
+                else:
+                    try:
+                        changes = delete_machines_service(user, station, machine_ids_to_delete)
+                        if changes:
+                            flash("Выбранные агрегаты и связанные данные были удалены!", "success")
+                            for machine_id in machine_ids_to_delete:
+                                invalidate_cache("machine", machine_id=machine_id)
+                                invalidate_cache("station_full", station_id=station.id)
+                                invalidate_cache_pattern("station_list:*")
+                    except Exception as e:
+                        import traceback
 
-                    traceback.print_exc()
-                    flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
+                        traceback.print_exc()
+                        flash(f"Ошибка при удалении агрегата(ов): {e}", "danger")
 
             machines_all_versions_handled = False
             if can_edit and (is_machines_form or request.values.get("all_versions") == "1"):
@@ -926,6 +938,11 @@ def station_details(station_id):
                 if not machines_all_versions_handled:
                     if not form_machines.validate():
                         print("Ошибки в form_machines:", form_machines.errors)
+                        flash(
+                            "Не удалось сохранить агрегаты: ошибка проверки формы. "
+                            "Обновите страницу и попробуйте снова.",
+                            "danger",
+                        )
                     elif form_machines.validate_on_submit():
                         try:
                             changes = update_machines_from_form_service(
@@ -1052,6 +1069,9 @@ def station_details(station_id):
                 print("Ошибки в form_machines:", form_machines.errors)
 
             if machine_ids_to_delete:
+                if not getattr(current_user, "is_admin", False):
+                    flash("Удаление агрегатов доступно только администратору.", "danger")
+                    return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
                 try:
                     changes = delete_machines_service(user, station, machine_ids_to_delete)
                     if changes:
@@ -1987,8 +2007,12 @@ def _render_machines_tbody(
         for mp in mp_list:
             y = mp.year_number
             powers_by_machine_year.setdefault(mp.id_machine, {})[y] = mp
+        # В суммы станции не включаем архивные агрегаты
+        active_machine_ids = {
+            m.id for m in (station.machines or []) if not bool(getattr(m, "is_archived", False))
+        }
         powers_by_year = aggregate_powers_from_machine_power_rows(
-            mp_list,
+            [mp for mp in mp_list if mp.id_machine in active_machine_ids],
             start_year=start_year,
             end_year=end_year,
         )
@@ -2041,7 +2065,7 @@ def _render_machines_tbody(
             p.powers_by_year = pgu_powers_by_year.get(p.id, {})
             pgu_by_parent[p.id_parent_machine].append(p)
 
-    # Сортируем агрегаты по станционному номеру
+    # Сортируем агрегаты: активные по станционному номеру, архивные — в конце
     if station and station.machines:
         def _machine_sort_key(m):
             num_key = float('inf')
@@ -2052,7 +2076,8 @@ def _render_machines_tbody(
                         num_key = int(s)
             except Exception:
                 num_key = float('inf')
-            return num_key
+            archived_key = 1 if bool(getattr(m, "is_archived", False)) else 0
+            return (archived_key, num_key)
         try:
             station.machines.sort(key=_machine_sort_key)
         except Exception:

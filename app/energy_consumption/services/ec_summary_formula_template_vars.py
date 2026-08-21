@@ -47,8 +47,17 @@ EC_FORMULA_TEMPLATE_VAR_KEYS: dict[str, str] = {
         "gaes_adj_first_sa_without_nt_without_kaliningrad_without_gaes"
     ),
     "_pd_ec_first_sa_with_nt_with_gaes_formula": "first_sa_with_nt_with_gaes_with_kaliningrad_py",
+    "_pd_ec_first_sa_with_nt_without_gaes_formula": (
+        "first_sa_with_nt_without_gaes_without_kaliningrad"
+    ),
     "_pd_ec_first_sa_without_nt_without_kaliningrad_with_gaes_formula": (
         "first_sa_without_nt_with_gaes_without_kaliningrad"
+    ),
+    "_pd_ec_first_sa_without_nt_without_gaes_formula": (
+        "first_sa_without_nt_without_gaes_without_kaliningrad"
+    ),
+    "_pd_ec_first_sa_without_nt_without_gaes_with_kaliningrad_formula": (
+        "first_sa_without_nt_without_gaes_with_kaliningrad"
     ),
     "_pd_ec_ees_russia_ez_row_tooltip": "oes_ees_russia_without_nt_mln",
     "_pd_ec_ees_russia_ez_with_nt_tooltip": "ees_russia_ez_with_nt",

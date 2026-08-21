@@ -21,6 +21,7 @@ from app.common.services.database_version_filter import filter_by_db_version, ge
 from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
 from app.generation.services.station_services.filters_services import (
     build_machine_note_search_condition,
+    build_machines_without_equipment_group_filter,
 )
 from app.generation.services.station_services.station_access_services import (
     DECENTRALIZED_ZONE_SYNTHETIC_RES_ID,
@@ -65,6 +66,7 @@ def get_station_hierarchy_aggregates(start_year, end_year):
         .join(UnionEnergySystem.energy_system_type)
         .join(Machine, Machine.id_station == Station.id)
         .join(MachinePower, MachinePower.id_machine == Machine.id)
+        .filter(Machine.is_archived.isnot(True))
         .filter(MachinePower.year_number >= start_year, MachinePower.year_number <= end_year)
         .group_by(
             Station.id_energy_unit,
@@ -342,7 +344,7 @@ def fetch_machines_with_rowspans(
             selectinload(Machine.machine_fuels)
                 .selectinload(MachineFuel.fuel)
                 .selectinload(Fuel.fuel_type),
-            joinedload(Machine.machine_fuel_param),
+            joinedload(Machine.machine_fuel_param).joinedload(MachineFuelParam.equipment_group),
             joinedload(Machine.equipment_group),
         ).filter(Machine.id_station.in_(station_ids_for_query or station_ids))
     else:
@@ -355,7 +357,7 @@ def fetch_machines_with_rowspans(
             selectinload(Machine.machine_fuels)
                 .selectinload(MachineFuel.fuel)
                 .selectinload(Fuel.fuel_type),
-            joinedload(Machine.machine_fuel_param),
+            joinedload(Machine.machine_fuel_param).joinedload(MachineFuelParam.equipment_group),
             joinedload(Machine.equipment_group),
         ).filter(Machine.id_station.in_(station_ids))
 
@@ -404,9 +406,11 @@ def fetch_machines_with_rowspans(
     if rel_cond is not None:
         machine_query = machine_query.filter(rel_cond)
 
-    # Фильтр: только агрегаты без группы оборудования
+    # Фильтр: только агрегаты без итоговой группы оборудования (текущая версия БД)
     if (filters or {}).get("machines_without_equipment_group"):
-        machine_query = machine_query.filter(Machine.id_equipment_group.is_(None))
+        machine_query = machine_query.filter(
+            build_machines_without_equipment_group_filter(Machine)
+        )
 
     note_machine_cond = build_machine_note_search_condition(
         Machine, PGUMachine, (filters or {}).get("note_filter")
@@ -605,11 +609,12 @@ def fetch_machines_with_rowspans(
 
         equipment_group_blocks_dict = defaultdict(list)
         for m in machine_list:
+            is_arch = 1 if bool(getattr(m, "is_archived", False)) else 0
             group_value = (getattr(m, 'machine_group', None) or '').strip()
             if not group_value or group_value.lower() == 'не указано':
-                block_key = ("__machine__", m.id)
+                block_key = (is_arch, "__machine__", m.id)
             else:
-                block_key = ("group", group_value)
+                block_key = (is_arch, "group", group_value)
             equipment_group_blocks_dict[block_key].append(m)
 
         ordered_group_blocks = []
@@ -617,6 +622,7 @@ def fetch_machines_with_rowspans(
         for _, equipment_group_block in sorted(
             equipment_group_blocks_dict.items(),
             key=lambda item: (
+                item[0][0],  # архивные блоки — в конце списка агрегатов
                 group_min_number_key(item[1]),
                 machine_group_key(item[1][0].machine_group),
             ),
@@ -628,12 +634,33 @@ def fetch_machines_with_rowspans(
                     fkey = (1, m.id)  # уникальный ключ для пустого/не указано
                 fuel_groups_dict[fkey].append(m)
 
+            def _commission_year_key(m):
+                """Сортировка вводов по возрастанию года (ГС до 2042), затем номер агрегата."""
+                val = getattr(m, "commission_display", None)
+                if val is None:
+                    val = getattr(m, "date_commission_year", None)
+                if val is None:
+                    val = getattr(m, "date_exploitation_expected", None)
+                try:
+                    return (0, int(val))
+                except (TypeError, ValueError):
+                    return (1, 10**9)
+
+            sort_by_commission = bool((filters or {}).get("date_commission_filter"))
             for group in fuel_groups_dict.values():
-                group.sort(key=lambda m: (
-                    machine_number_key(getattr(m, 'machine_number', None)),
-                    (getattr(m, 'machine_name', None) or '').strip().lower(),
-                    getattr(m, 'id', 0) or 0,
-                ))
+                if sort_by_commission:
+                    group.sort(key=lambda m: (
+                        _commission_year_key(m),
+                        machine_number_key(getattr(m, 'machine_number', None)),
+                        (getattr(m, 'machine_name', None) or '').strip().lower(),
+                        getattr(m, 'id', 0) or 0,
+                    ))
+                else:
+                    group.sort(key=lambda m: (
+                        machine_number_key(getattr(m, 'machine_number', None)),
+                        (getattr(m, 'machine_name', None) or '').strip().lower(),
+                        getattr(m, 'id', 0) or 0,
+                    ))
 
             sorted_fuel_groups = sorted(fuel_groups_dict.values(), key=group_min_number_key)
             ordered_group_blocks.append([m for group in sorted_fuel_groups for m in group])

@@ -216,6 +216,12 @@ def equipment_group_fuel_formulas_page():
 
     # Как на ТЭП / удельных: иерархия EST→UES→RES, пагинация по группам ОБ.
     hierarchy_full = build_equipment_group_specific_fuel_consumption_hierarchy(rows)
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        apply_suppress_aggregate_rows_to_hierarchy,
+        should_suppress_aggregate_rows_for_filters,
+    )
+    if should_suppress_aggregate_rows_for_filters(filters):
+        apply_suppress_aggregate_rows_to_hierarchy(hierarchy_full)
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
         equipment_group_fuel_formula_hierarchy = hierarchy_full
@@ -337,6 +343,7 @@ def equipment_group_fuel_formulas_page():
         bulk_edit_equipment_group_ids=bulk_edit_equipment_group_ids,
         calculation_back_url=calculation_back_url,
         year_list_for_edit=year_list_for_edit,
+        numb1120_filter_choices=formula_data.get("numb1120_filter_choices") or [],
         **context,
     )
 

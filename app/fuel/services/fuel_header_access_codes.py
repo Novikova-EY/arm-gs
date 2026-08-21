@@ -68,6 +68,8 @@ FUEL_HEADER_ACCESS_CODES: dict[str, str] = {
     "er": "ER",
     "be": "BE",
     "gk": "GK",
+    "sn_ee": "SN_EE",
+    "sn_te": "SN_TE",
     "sn_t": "SNT",
     # Удельные(Схема) — смешанный регистр
     "bk": "Bk",

@@ -54,6 +54,17 @@
             {% endif %}
         </div>
 
+        <!-- Наименование (в дательном падеже) -->
+        <div class="mb-3">
+            <strong for="name_dat" class="form-label">Наименование (в дательном падеже)</strong>
+            {{ form.name_dat(class="form-control", id="name_dat") }}
+            {% if form.name_dat.errors %}
+                <div class="text-danger">
+                    {{ form.name_dat.errors|join(', ') }}
+                </div>
+            {% endif %}
+        </div>
+
         <!-- Выбор Субъекта РФ -->
         <div class="mb-3">
             <strong for="regional_district" class="form-label">Субъект РФ</strong>

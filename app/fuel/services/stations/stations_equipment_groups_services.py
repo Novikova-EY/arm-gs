@@ -22,6 +22,11 @@ from app.fuel.models.fue_equipment_group_set_station_model import (
 )
 from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.services.equipment_groups.composite_station_semantics import (
+    _as_int,
+    is_composite_child_group,
+    is_composite_parent_group,
+)
 
 
 def _normalized_sql_text(expr):
@@ -1043,6 +1048,7 @@ def _paginate_equipment_group_hierarchy(hierarchy, page=1, per_page=None):
                 blocks = grouped[est_id][ues_id].get(res_id)
                 if not blocks:
                     continue
+                _reapply_display_merges_for_page_blocks(blocks)
                 res_list.append(
                     {
                         "res_id": res_id,
@@ -1263,6 +1269,20 @@ def _min_display_order_from_links(links) -> int | None:
     return min_order
 
 
+def _composite_display_cluster_key(equipment_group) -> tuple:
+    """
+    Ключ кластера составной станции для сортировки/полоски:
+      родитель — numb; ребёнок — main; простая EG — отдельный бакет по id.
+    """
+    if equipment_group is None:
+        return (1, 0)
+    if is_composite_parent_group(equipment_group):
+        return (0, _as_int(getattr(equipment_group, "numb", None)) or 0)
+    if is_composite_child_group(equipment_group):
+        return (0, _as_int(getattr(equipment_group, "main", None)) or 0)
+    return (1, getattr(equipment_group, "id", None) or 0)
+
+
 def _group_block_display_sort_key(block) -> tuple:
     """
     Ключ отображения блока на странице stations_equipment_groups.
@@ -1271,13 +1291,16 @@ def _group_block_display_sort_key(block) -> tuple:
     объединение station-level ячеек работает только в узкой выборке и ломается
     в полном списке.
 
-    Под одной и той же станцией порядок — по display_order (тип группы,
-    справочник), без номера — в конец, затем по названию/ id группы.
+    Под одной станцией: кластер составной (родитель + его дети по numb/main)
+    держится вместе, внутри кластера родитель первым; далее — по display_order
+    типа группы, затем по названию/id.
     """
     entries = block.get("station_entries") or []
     first_station = entries[0].get("station") if entries else None
     first_links = (entries[0].get("links") or []) if entries else []
     type_order = _min_display_order_from_links(first_links)
+    eg = block.get("equipment_group")
+    parent_first = 0 if is_composite_parent_group(eg) else 1
     # (0, n) < (1, 0) — сначала строки с заданным порядком, затем без номера/типа
     order_key: tuple
     if type_order is not None:
@@ -1286,8 +1309,10 @@ def _group_block_display_sort_key(block) -> tuple:
         order_key = (1, 0)
     return (
         _station_sort_key(first_station),
+        _composite_display_cluster_key(eg),
+        parent_first,
         order_key,
-        _equipment_group_sort_key(block.get("equipment_group")),
+        _equipment_group_sort_key(eg),
     )
 
 
@@ -1422,8 +1447,9 @@ def build_station_equipment_groups_v2(
             if not group_links:
                 continue
             for gl in group_links:
+                group = gl.equipment_group
                 links_by_station[station_id].append(
-                    {"equipment_group": gl.equipment_group, "link": link}
+                    {"equipment_group": group, "link": link}
                 )
 
     from app.generation.services.station_services.station_services import _apply_machine_display_names
@@ -1805,10 +1831,19 @@ def _normalize_display_merge_text(value) -> str:
     return normalized or "—"
 
 
-def _station_display_merge_key(station) -> str:
+def _station_display_merge_key(station) -> tuple:
+    """
+    Ключ визуального объединения колонки «Станция».
+
+    Только имя недостаточно: в одной версии БД бывают одноимённые электростанции
+    с разными владельцами (две ТЭС-2 в Карелии — Сегежский ЦБК и Кондопожский ЦБК).
+    """
     if not station:
-        return "—"
-    return _normalize_display_merge_text(getattr(station, "name", None) or "—")
+        return ("—", None)
+    return (
+        _normalize_display_merge_text(getattr(station, "name", None) or "—"),
+        getattr(station, "id", None),
+    )
 
 
 def _equipment_group_display_merge_key(group) -> str:
@@ -1825,6 +1860,9 @@ def _eg_station_regional_district_consistent(station, equipment_group) -> bool:
     в разных субъектах РФ. Для строки таблицы «группа + станция» показываем связь
     только если субъект электростанции совпадает с субъектом группы (модуль «Топливо»),
     когда оба заданы. Иначе строка дублируется под «чужой» ОЭС с тем же названием электростанции.
+
+    id субъекта версионируется: у клона группы может остаться id из другой версии БД,
+    чем у электростанции. Сравниваем после приведения к версии станции.
     """
     if not station or not equipment_group:
         return True
@@ -1836,7 +1874,15 @@ def _eg_station_regional_district_consistent(station, equipment_group) -> bool:
             eg_rd = getattr(eg_rd_obj, "id", None)
     if st_rd is None or eg_rd is None:
         return True
-    return st_rd == eg_rd
+    if st_rd == eg_rd:
+        return True
+    from app.common.services.refdata_fk_resolve import (
+        coerce_regional_district_id_for_db_version,
+    )
+
+    station_vid = getattr(station, "database_version_id", None)
+    coerced_eg_rd = coerce_regional_district_id_for_db_version(eg_rd, station_vid)
+    return coerced_eg_rd is not None and coerced_eg_rd == st_rd
 
 
 def _normalize_station_name_for_match(value) -> str:
@@ -1998,10 +2044,229 @@ def _normalize_group_block(block):
     }
 
 
+def _hierarchy_key_is_unspecified(key) -> bool:
+    """Ключ без РЭС: строка уходит в раздел «Не указано», а не в территорию родителя."""
+    return not key or key[2] == -1
+
+
+def _first_station_from_equipment_group(equipment_group):
+    """Первая электростанция из связей группы (EquipmentGroupSetStation)."""
+    if equipment_group is None:
+        return None
+    for eg_set in getattr(equipment_group, "equipment_group_links_v2", None) or []:
+        link = getattr(eg_set, "equipment_group_set_station", None)
+        station = getattr(link, "station", None) if link else None
+        if station is not None and getattr(station, "id", None) is not None:
+            return station
+    return None
+
+
+def _collect_composite_child_mains_from_blocks(blocks) -> set[int]:
+    mains: set[int] = set()
+    for block in blocks or []:
+        eg = (block or {}).get("equipment_group")
+        if not is_composite_child_group(eg):
+            continue
+        main = _as_int(getattr(eg, "main", None))
+        if main:
+            mains.add(main)
+    return mains
+
+
+def _parent_groups_from_blocks(blocks) -> dict[int, object]:
+    """numb родителя → EquipmentGroup, если родительский блок уже в выборке."""
+    result: dict[int, object] = {}
+    for block in blocks or []:
+        eg = (block or {}).get("equipment_group")
+        if not is_composite_parent_group(eg):
+            continue
+        numb = _as_int(getattr(eg, "numb", None))
+        if numb is None:
+            continue
+        result[numb] = eg
+    return result
+
+
+def _load_composite_parent_groups_by_numb(numbs, version_id=None) -> dict[int, object]:
+    """
+    numb родителя → EquipmentGroup с территорией и станцией.
+
+    Нужен, когда дочерняя группа без своей станции/РЭС должна встать
+    в ту же ветку иерархии, что и родитель (main = numb родителя).
+    """
+    if not numbs:
+        return {}
+    from app.generation.models.station.station_model import Station
+    from app.refdata.models.energy_systems.regional_energy_system_model import (
+        RegionalEnergySystem,
+    )
+    from app.refdata.models.energy_systems.union_energy_system_model import (
+        UnionEnergySystem,
+    )
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
+    if version_id is None:
+        version_id = get_current_db_version_id()
+
+    q = EquipmentGroup.query.filter(EquipmentGroup.numb.in_(list(numbs)))
+    if version_id is None:
+        q = q.filter(EquipmentGroup.database_version_id.is_(None))
+    else:
+        q = q.filter(
+            or_(
+                EquipmentGroup.database_version_id == version_id,
+                EquipmentGroup.database_version_id.is_(None),
+            )
+        )
+    parents = q.options(
+        selectinload(EquipmentGroup.regional_district).selectinload(
+            RegionalDistrict.regional_energy_systems
+        ),
+        selectinload(EquipmentGroup.regional_energy_system)
+        .selectinload(RegionalEnergySystem.union_energy_system)
+        .selectinload(UnionEnergySystem.energy_system_type),
+        selectinload(EquipmentGroup.equipment_group_links_v2)
+        .selectinload(EquipmentGroupSet.equipment_group_set_station)
+        .selectinload(EquipmentGroupSetStation.station)
+        .options(
+            selectinload(Station.regional_district).selectinload(
+                RegionalDistrict.regional_energy_systems
+            ),
+            selectinload(Station.regional_energy_system_obj).selectinload(
+                RegionalEnergySystem.union_energy_system
+            ).selectinload(UnionEnergySystem.energy_system_type),
+        ),
+    ).all()
+
+    result: dict[int, object] = {}
+    version_hit: set[int] = set()
+    for parent in parents:
+        if not is_composite_parent_group(parent):
+            continue
+        numb = _as_int(getattr(parent, "numb", None))
+        if numb is None:
+            continue
+        parent_vid = getattr(parent, "database_version_id", None)
+        exact = version_id is not None and parent_vid == version_id
+        if numb not in result or (exact and numb not in version_hit):
+            result[numb] = parent
+            if exact:
+                version_hit.add(numb)
+    return result
+
+
+def _resolve_parent_groups_for_hierarchy(blocks) -> dict[int, object]:
+    """Родители из текущих блоков, недостающих подгружаем по main."""
+    parent_by_numb = _parent_groups_from_blocks(blocks)
+    missing = _collect_composite_child_mains_from_blocks(blocks) - set(parent_by_numb)
+    if missing:
+        parent_by_numb.update(_load_composite_parent_groups_by_numb(missing))
+    return parent_by_numb
+
+
+def _hierarchy_key_with_parent_fallback(equipment_group, parent_by_numb=None) -> tuple:
+    """
+    Иерархия группы; если у дочерней нет РЭС — ключ родителя по main
+    (поля группы, иначе станция родителя).
+    """
+    key = _hierarchy_key_from_equipment_group(equipment_group)
+    if not _hierarchy_key_is_unspecified(key):
+        return key
+    if not is_composite_child_group(equipment_group):
+        return key
+    main = _as_int(getattr(equipment_group, "main", None))
+    parent = (parent_by_numb or {}).get(main) if main else None
+    if parent is None:
+        return key
+    # Станция родителя даёт ту же ветку, что и связанные дети (1503).
+    station = _first_station_from_equipment_group(parent)
+    if station is not None:
+        station_key = _hierarchy_key_from_station(station, parent)
+        if station_key is not None and not _hierarchy_key_is_unspecified(station_key):
+            return station_key
+    parent_key = _hierarchy_key_from_equipment_group(parent)
+    return parent_key if not _hierarchy_key_is_unspecified(parent_key) else key
+
+
+def _refdata_by_mapping_uuid(model, ref_uuid, version_id, *load_options):
+    """Строка справочника по ref_uuid: сначала выбранная версия БД, иначе legacy NULL."""
+    if not ref_uuid:
+        return None
+    q = model.query.filter(model.ref_uuid == ref_uuid)
+    if load_options:
+        q = q.options(*load_options)
+    if version_id is not None:
+        row = q.filter(model.database_version_id == version_id).first()
+        if row:
+            return row
+    return q.filter(model.database_version_id.is_(None)).first()
+
+
+def _rd_res_from_obl_mapping(equipment_group):
+    """
+    Субъект и РЭС по obl → TerritoriesEnergyExternalMapping.
+
+    У части standalone-групп (Калининградская ГРЭС-2, ТЭЦ-1 и др.) obl заполнен,
+    а regional_*_id пусты — без этого они уходят в «Не указано» отдельно от
+    остальных станций той же области.
+    """
+    mapping = (
+        getattr(equipment_group, "territories_energy_external_mapping", None)
+        if equipment_group
+        else None
+    )
+    if mapping is None:
+        return None, None
+
+    mapped_rd = getattr(mapping, "regional_district", None)
+    mapped_res = getattr(mapping, "regional_energy_system", None)
+    if mapped_rd is not None or mapped_res is not None:
+        return mapped_rd, mapped_res
+
+    rd_uuid = getattr(mapping, "regional_district_ref_uuid", None)
+    res_uuid = getattr(mapping, "regional_energy_system_ref_uuid", None)
+    if not rd_uuid and not res_uuid:
+        return None, None
+
+    from app.refdata.models.energy_systems.union_energy_system_model import (
+        UnionEnergySystem,
+    )
+    from app.refdata.models.energy_systems.regional_energy_system_model import (
+        RegionalEnergySystem,
+    )
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
+    version_id = getattr(equipment_group, "database_version_id", None)
+    if version_id is None:
+        version_id = get_current_db_version_id()
+
+    mapped_rd = _refdata_by_mapping_uuid(
+        RegionalDistrict,
+        rd_uuid,
+        version_id,
+        selectinload(RegionalDistrict.regional_energy_systems),
+    )
+    mapped_res = _refdata_by_mapping_uuid(
+        RegionalEnergySystem,
+        res_uuid,
+        version_id,
+        selectinload(RegionalEnergySystem.union_energy_system).selectinload(
+            UnionEnergySystem.energy_system_type
+        ),
+    )
+    return mapped_rd, mapped_res
+
+
 def _hierarchy_key_from_equipment_group(equipment_group) -> tuple:
     """Иерархический ключ EST -> UES -> RES -> RD для группы оборудования."""
     rd = getattr(equipment_group, "regional_district", None) if equipment_group else None
     res = getattr(equipment_group, "regional_energy_system", None) if equipment_group else None
+    if rd is None or res is None or getattr(res, "id", None) is None:
+        mapped_rd, mapped_res = _rd_res_from_obl_mapping(equipment_group)
+        if rd is None:
+            rd = mapped_rd
+        if res is None or getattr(res, "id", None) is None:
+            res = mapped_res
     if rd and getattr(rd, "regional_energy_systems", None):
         rd_res_list = list(rd.regional_energy_systems)
         rd_res_ids = {r.id for r in rd_res_list}
@@ -2179,19 +2444,29 @@ def _station_matches_selected_territory_filters(station, filters=None, equipment
     return True
 
 
-def _split_group_block_by_station_hierarchy(block):
+def _split_group_block_by_station_hierarchy(block, parent_by_numb=None):
     """
     Делит block EquipmentGroup -> station_entries на подблоки по иерархии электростанции.
 
     Это устраняет ситуацию, когда одна и та же EquipmentGroup уже связана в БД
     с несколькими станциями из разных РЭС/субъектов: без разбиения весь блок
     попадал в раздел региона самой EquipmentGroup.
+
+    Дочерняя составная группа без своей станции и без РЭС наследует ветку
+    родителя по main (иначе 1502 уходит в «Не указано», а 81/1503 — в РЭС станции).
     """
     normalized = _normalize_group_block(block)
     equipment_group = normalized.get("equipment_group")
     station_entries = normalized.get("station_entries") or []
     if not station_entries:
-        return [(_hierarchy_key_from_equipment_group(equipment_group), normalized)]
+        return [
+            (
+                _hierarchy_key_with_parent_fallback(
+                    equipment_group, parent_by_numb
+                ),
+                normalized,
+            )
+        ]
 
     entries_by_key = defaultdict(list)
     for station_entry in station_entries:
@@ -2200,7 +2475,7 @@ def _split_group_block_by_station_hierarchy(block):
         # EquipmentGroup (модуль «Топливо»). Иначе при нескольких РЭС у субъекта
         # или при ошибочном id_regional_energy_system у электростанции строка попадала
         # не в ту ветку, хотя столбец «Субъект» был верным.
-        st_rd = getattr(station, "id_regional_district", None)
+        st_rd = getattr(station, "id_regional_district", None) if station else None
         eg_rd = (
             getattr(equipment_group, "regional_district_id", None)
             if equipment_group
@@ -2221,6 +2496,16 @@ def _split_group_block_by_station_hierarchy(block):
             key = _hierarchy_key_from_station(station, equipment_group)
             if key is None:
                 key = _hierarchy_key_from_equipment_group(equipment_group)
+        if _hierarchy_key_is_unspecified(key) and station is not None:
+            station_key = _hierarchy_key_from_station(station, equipment_group)
+            if station_key is not None and not _hierarchy_key_is_unspecified(
+                station_key
+            ):
+                key = station_key
+        if _hierarchy_key_is_unspecified(key):
+            key = _hierarchy_key_with_parent_fallback(
+                equipment_group, parent_by_numb
+            )
         entries_by_key[key].append(station_entry)
 
     result = []
@@ -2237,6 +2522,130 @@ def _split_group_block_by_station_hierarchy(block):
             )
         )
     return result
+
+
+def _first_station_from_block(block):
+    """Первая электростанция из station_entries блока (или None)."""
+    for entry in block.get("station_entries") or []:
+        station = entry.get("station")
+        if station is not None and getattr(station, "id", None) is not None:
+            return station
+    return None
+
+
+def _load_composite_parent_stations_by_numb(numbs, version_id=None) -> dict[int, object]:
+    """
+    numb родителя → Station из связи родителя (модуль «Генерация»).
+    Нужен, когда ребёнок-котельная в выборке есть, а родительский блок — в другой ветке РЭС
+    или не попал в текущий кусок prepare.
+    """
+    if not numbs:
+        return {}
+    from app.generation.models.station.station_model import Station
+
+    if version_id is None:
+        version_id = get_current_db_version_id()
+
+    q = EquipmentGroup.query.filter(EquipmentGroup.numb.in_(list(numbs)))
+    if version_id is None:
+        q = q.filter(EquipmentGroup.database_version_id.is_(None))
+    else:
+        q = q.filter(
+            or_(
+                EquipmentGroup.database_version_id == version_id,
+                EquipmentGroup.database_version_id.is_(None),
+            )
+        )
+    parents = q.options(
+        selectinload(EquipmentGroup.equipment_group_links_v2)
+        .selectinload(EquipmentGroupSet.equipment_group_set_station)
+        .selectinload(EquipmentGroupSetStation.station)
+        .options(
+            selectinload(Station.regional_district),
+            selectinload(Station.regional_energy_system_obj),
+        )
+    ).all()
+
+    result: dict[int, object] = {}
+    version_hit: set[int] = set()
+    for parent in parents:
+        if not is_composite_parent_group(parent):
+            continue
+        numb = _as_int(getattr(parent, "numb", None))
+        if numb is None:
+            continue
+        station = None
+        for eg_set in parent.equipment_group_links_v2 or []:
+            link = getattr(eg_set, "equipment_group_set_station", None)
+            cand = getattr(link, "station", None) if link else None
+            if cand is not None and getattr(cand, "id", None) is not None:
+                station = cand
+                break
+        if station is None:
+            continue
+        parent_vid = getattr(parent, "database_version_id", None)
+        exact = version_id is not None and parent_vid == version_id
+        if numb not in result or (exact and numb not in version_hit):
+            result[numb] = station
+            if exact:
+                version_hit.add(numb)
+    return result
+
+
+def _inherit_composite_parent_station_for_display(blocks) -> None:
+    """
+    Для дочерних групп составной станции без своей привязки к Station
+    (типично котельные: EquipmentGroupSetStation.station_id IS NULL)
+    подставляет электростанцию родителя из того же кластера numb/main.
+
+    Иначе колонка «Станция» показывает «—», хотя └ указывает на родителя,
+    а сам родитель уже связан со станцией модуля «Генерация».
+    """
+    station_by_cluster: dict[tuple, object] = {}
+    for block in blocks or []:
+        eg = block.get("equipment_group")
+        key = _composite_display_cluster_key(eg)
+        if key[0] != 0:
+            continue
+        station = _first_station_from_block(block)
+        if station is None:
+            continue
+        if block.get("is_composite_parent"):
+            station_by_cluster[key] = station
+        elif key not in station_by_cluster:
+            station_by_cluster[key] = station
+
+    missing_mains: set[int] = set()
+    for block in blocks or []:
+        if not block.get("is_composite_child"):
+            continue
+        if _first_station_from_block(block) is not None:
+            continue
+        eg = block.get("equipment_group")
+        key = _composite_display_cluster_key(eg)
+        if key in station_by_cluster:
+            continue
+        main = _as_int(getattr(eg, "main", None)) if eg is not None else None
+        if main:
+            missing_mains.add(main)
+
+    if missing_mains:
+        loaded = _load_composite_parent_stations_by_numb(missing_mains)
+        for main, station in loaded.items():
+            station_by_cluster[(0, main)] = station
+
+    if not station_by_cluster:
+        return
+
+    for block in blocks or []:
+        eg = block.get("equipment_group")
+        key = _composite_display_cluster_key(eg)
+        inherited = station_by_cluster.get(key)
+        if inherited is None:
+            continue
+        for entry in block.get("station_entries") or []:
+            if entry.get("station") is None:
+                entry["station"] = inherited
 
 
 def prepare_equipment_group_blocks_for_display(blocks):
@@ -2257,9 +2666,34 @@ def prepare_equipment_group_blocks_for_display(blocks):
         block = _normalize_group_block(raw_block)
         if not (block.get("station_entries") or []):
             continue
+        eg = block.get("equipment_group")
+        block["is_composite_parent"] = is_composite_parent_group(eg)
+        block["is_composite_child"] = is_composite_child_group(eg)
         prepared_blocks.append(block)
 
+    # До сортировки: иначе дети с station=None уезжают в бакет «—»
+    # отдельно от родителя с реальной электростанцией.
+    _inherit_composite_parent_station_for_display(prepared_blocks)
+
     prepared_blocks.sort(key=_group_block_display_sort_key)
+
+    # Полоска кластера — только если в выборке есть и родитель, и хотя бы один ребёнок.
+    cluster_roles: dict[tuple, set[str]] = defaultdict(set)
+    for block in prepared_blocks:
+        eg = block.get("equipment_group")
+        key = _composite_display_cluster_key(eg)
+        if key[0] != 0:
+            continue
+        if block.get("is_composite_parent"):
+            cluster_roles[key].add("parent")
+        if block.get("is_composite_child"):
+            cluster_roles[key].add("child")
+    for block in prepared_blocks:
+        eg = block.get("equipment_group")
+        key = _composite_display_cluster_key(eg)
+        roles = cluster_roles.get(key) or set()
+        block["show_composite_cluster"] = "parent" in roles and "child" in roles
+
     _merge_adjacent_group_blocks_for_display(prepared_blocks)
     _merge_adjacent_station_entries_for_display(prepared_blocks)
     return prepared_blocks
@@ -2303,12 +2737,18 @@ def _merge_adjacent_group_blocks_for_display(group_blocks):
 def _merge_adjacent_station_entries_for_display(group_blocks):
     """
     Объединяет station-level ячейки для подряд идущих station_entry одной и той же
-    электростанции по отображаемому названию, если эта станция встречается более чем в
+    электростанции (id + название), если эта станция встречается более чем в
     одной группе оборудования.
 
     Используется только для отображения на странице: сами блоки остаются
     EquipmentGroup-first, но колонки модуля «Генерация» визуально объединяются
     по электростанции на высоту нескольких групп оборудования.
+
+    Одноимённые станции с разными id не склеиваются (две ТЭС-2 в Карелии).
+
+    Записи без станции (station=None) не объединяются: у каждой группы своя ячейка
+    «Без станции», иначе на границах страниц все строки получали
+    show_merged_station_cells=False и колонка «Станция» пропадала.
     """
     ordered_entries = []
     for block in group_blocks or []:
@@ -2331,6 +2771,12 @@ def _merge_adjacent_station_entries_for_display(group_blocks):
     current_key = None
     for station_entry in ordered_entries:
         station = station_entry.get("station")
+        # Нельзя склеивать все standalone в один ключ «—»: это разные группы.
+        if station is None or getattr(station, "id", None) is None:
+            _flush_run(current_run)
+            current_run = []
+            current_key = None
+            continue
         station_key = _station_display_merge_key(station)
         if current_key is None or station_key == current_key:
             current_run.append(station_entry)
@@ -2341,6 +2787,17 @@ def _merge_adjacent_station_entries_for_display(group_blocks):
         current_key = station_key
 
     _flush_run(current_run)
+
+
+def _reapply_display_merges_for_page_blocks(group_blocks):
+    """
+    Пересчитывает rowspan-merge после пагинации.
+
+    prepare_* считает merge по полной ветке РЭС; на границе страницы в срез
+    могут попасть только «хвосты» с show_merged_*=False — колонки пропадают.
+    """
+    _merge_adjacent_group_blocks_for_display(group_blocks)
+    _merge_adjacent_station_entries_for_display(group_blocks)
 
 
 def build_equipment_group_blocks_hierarchy(
@@ -2426,6 +2883,69 @@ def build_equipment_group_blocks_hierarchy(
     return hierarchy_flat
 
 
+def equipment_group_missing_numb(numb) -> bool:
+    """True, если у группы нет кода numb (NULL / пусто / 0)."""
+    if numb is None:
+        return True
+    if isinstance(numb, str) and not numb.strip():
+        return True
+    try:
+        return int(numb) == 0
+    except (TypeError, ValueError):
+        return not numb
+
+
+def filter_equipment_group_ids_missing_numb(filtered_eg_ids, numb_rows):
+    """Оставляет только группы без кода numb."""
+    missing_ids = {
+        eid for eid, numb in (numb_rows or []) if equipment_group_missing_numb(numb)
+    }
+    return set(filtered_eg_ids or ()) & missing_ids
+
+
+def equipment_group_numb_dedupe_key(numb):
+    """Ключ для поиска дублей numb; None, если кода нет."""
+    if equipment_group_missing_numb(numb):
+        return None
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        _coerce_numb1120_int,
+    )
+
+    key = _coerce_numb1120_int(numb)
+    if key is not None:
+        return key
+    return str(numb).strip()
+
+
+def duplicate_numb_equipment_group_ids(numb_rows, filtered_eg_ids=None):
+    """ID групп, у которых numb встречается более чем у одной группы."""
+    allowed = None if filtered_eg_ids is None else set(filtered_eg_ids or ())
+    by_numb = defaultdict(list)
+    for eid, numb in numb_rows or []:
+        if allowed is not None and eid not in allowed:
+            continue
+        key = equipment_group_numb_dedupe_key(numb)
+        if key is None:
+            continue
+        by_numb[key].append(eid)
+    dup_ids = set()
+    for ids in by_numb.values():
+        unique_ids = set(ids)
+        if len(unique_ids) > 1:
+            dup_ids.update(unique_ids)
+    return dup_ids
+
+
+def filter_equipment_group_ids_missing_or_duplicate_numb(filtered_eg_ids, numb_rows):
+    """Оставляет группы без numb и группы с дублирующимся numb."""
+    allowed = set(filtered_eg_ids or ())
+    missing_ids = {
+        eid for eid, numb in (numb_rows or []) if equipment_group_missing_numb(numb)
+    }
+    dup_ids = duplicate_numb_equipment_group_ids(numb_rows, allowed)
+    return allowed & (missing_ids | dup_ids)
+
+
 def build_equipment_group_hierarchy_eg_first(
     filters=None,
     start_year=None,
@@ -2435,6 +2955,8 @@ def build_equipment_group_hierarchy_eg_first(
     regional_energy_system_names=None,
     page=1,
     per_page=None,
+    numb1120_filter_choices_out=None,
+    duplicate_numb_ids_out=None,
 ):
     """
     EquipmentGroup-first: строит иерархию EST -> UES -> РЭС из групп оборудования.
@@ -2454,6 +2976,50 @@ def build_equipment_group_hierarchy_eg_first(
         strict_version=False,
         standalone_ids_precalc=standalone_ids,
     )
+
+    from app.extensions import db
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        _coerce_numb1120_int,
+        normalize_numb1120_filter,
+    )
+
+    numb_rows = []
+    if filtered_eg_ids:
+        numb_rows = (
+            db.session.query(EquipmentGroup.id, EquipmentGroup.numb)
+            .filter(EquipmentGroup.id.in_(filtered_eg_ids))
+            .all()
+        )
+    choices = sorted(
+        {
+            n
+            for n in (_coerce_numb1120_int(numb) for _eid, numb in numb_rows)
+            if n is not None
+        }
+    )
+    if numb1120_filter_choices_out is not None:
+        numb1120_filter_choices_out.clear()
+        numb1120_filter_choices_out.extend(choices)
+    wanted = normalize_numb1120_filter((filters or {}).get("numb1120_filter"))
+    if wanted:
+        wanted_set = set(wanted)
+        matching_ids = {
+            eid
+            for eid, numb in numb_rows
+            if _coerce_numb1120_int(numb) in wanted_set
+        }
+        filtered_eg_ids = filtered_eg_ids & matching_ids
+
+    duplicate_ids = duplicate_numb_equipment_group_ids(numb_rows, filtered_eg_ids)
+    if duplicate_numb_ids_out is not None:
+        duplicate_numb_ids_out.clear()
+        duplicate_numb_ids_out.update(duplicate_ids)
+
+    if (filters or {}).get("missing_numb"):
+        filtered_eg_ids = filter_equipment_group_ids_missing_or_duplicate_numb(
+            filtered_eg_ids, numb_rows
+        )
+
     if not filtered_eg_ids:
         return [], 0, 1, 1
 
@@ -2479,9 +3045,13 @@ def build_equipment_group_hierarchy_eg_first(
 
     # Раскладываем блоки по иерархии электростанции, а не только по полям EquipmentGroup.
     # Это важно для ошибочно "склеенных" групп, связанных со станциями из разных регионов.
+    # Дочерние без своей станции/РЭС берут ветку родителя по main.
+    parent_by_numb = _resolve_parent_groups_for_hierarchy(blocks)
     blocks_by_key = defaultdict(list)
     for block in blocks:
-        for key, split_block in _split_group_block_by_station_hierarchy(block):
+        for key, split_block in _split_group_block_by_station_hierarchy(
+            block, parent_by_numb
+        ):
             blocks_by_key[key].append(split_block)
 
     hierarchy = build_equipment_group_blocks_hierarchy(

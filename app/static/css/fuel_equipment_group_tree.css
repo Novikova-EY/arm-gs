@@ -1,0 +1,12 @@
+/* Колонка «Группа оборудования»: выравнивание влево; родитель/ребёнок — полоска и └ */
+td.equipment-group-composite-cluster,
+th.equipment-group-composite-cluster {
+    border-left: 3px solid #6c757d;
+}
+.equipment-group-tree-prefix {
+    display: inline-block;
+    width: 1.15em;
+    margin-right: 0.2em;
+    font-weight: 400;
+    color: #6c757d;
+}

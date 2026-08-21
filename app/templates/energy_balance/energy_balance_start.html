@@ -10,7 +10,7 @@
     <div class="container-fluid">
         <h2 class="text-center align-middle mb-4">Модуль «Балансы ЭЭ и ЭМ»</h2>
 
-        <div class="row g-4 justify-content-center pb-4">
+        <div class="row g-4 justify-content-center">
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
@@ -25,6 +25,29 @@
                     <div class="card-body text-center">
                         <a href="{{ url_for('energy_balance_bp.ee_transfers') }}" class="btn btn-primary fs-4 w-100 py-4">
                             Перетоки ЭЭ
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <hr class="my-4 border-secondary border-2 opacity-50">
+
+        <div class="row g-4 justify-content-center pb-4">
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('energy_balance_bp.power_balance_hub') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Расчет балансов мощности
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="card shadow-sm w-100">
+                    <div class="card-body text-center">
+                        <a href="{{ url_for('energy_balance_bp.ee_balance_hub') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Расчет балансов электрической энергии
                         </a>
                     </div>
                 </div>

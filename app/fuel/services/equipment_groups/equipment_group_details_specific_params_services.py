@@ -20,21 +20,12 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_cost_servi
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_services import (
     SPECIFIC_FUEL_PRICE_COLUMNS,
 )
+from app.fuel.services.formula_text.fuel_formula_text_registry import iter_formula_defs
 
-# Формулы расчета для отображения во всплывающей подсказке (attr -> формула)
+# Дефолтные тексты (без учёта переопределений в БД). Эффективные — get_consumption_formulas().
 CONSUMPTION_FORMULAS = {
-    "snk_calc": "snk_calc = SNK из строки параметров топлива (EquipmentGroupFuelParam)",
-    "y_calc": "y_calc = EWTP / QOTR * 1000",
-    "btp_calc": (
-        "btp_calc = EURT - K * (1 - EWTP / E) * 100"
-    ),
-    "sntp_calc": (
-        "sntp_calc = [EOTP - (E - EWTP) * (1 - SNK / 100)] / EWTP"
-    ),
-    "bk_calc": (
-        "bk_calc = [EUST - EWTP * sntp_calc * btp_calc / 1000] / "
-        "[(E - EWTP) * (1 - SNK / 100)] * 1000"
-    ),
+    item.map_key: item.default_text
+    for item in iter_formula_defs(map_name="consumption")
 }
 
 # Consumption: сначала вводимые k, y, btp, sntp, bk, snk; затем расчётные *_calc (только просмотр в UI)

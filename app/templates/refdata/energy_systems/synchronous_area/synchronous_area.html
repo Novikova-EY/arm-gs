@@ -151,6 +151,26 @@
                                 </a>
                             </th>
 
+                            <!-- Шапка таблицы. Столбец "Полное наименование синхронной зоны" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.synchronous_area_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            synchronous_area_filter=synchronous_area_filter, 
+                                            sort_by='name_full', 
+                                            sort_dir='asc' if sort_by != 'name_full' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Полное наименование синхронной зоны
+                                    {% if sort_by == 'name_full' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+
                             <!-- Шапка таблицы. Столбец "Удалить" -->
                             <th class="align-middle text-center">Удалить</th>
                         </tr>
@@ -184,6 +204,11 @@
                                     <input type="text" name="synchronous_area_names[]" class="form-control" value="{{ synchronous_area.name }}">
                                 </td>
 
+                                <!-- Строки таблицы. Столбец "Полное наименование синхронной зоны" -->
+                                <td>
+                                    <input type="text" name="synchronous_area_full_names[]" class="form-control" value="{{ synchronous_area.name_full or '' }}">
+                                </td>
+
 
                                 <!-- Строки таблицы. Столбец "Чекмарк для удаления" -->
                                 <td class="text-center align-middle">
@@ -192,7 +217,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="4" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="5" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -267,6 +292,26 @@
                                     {% endif %}
                                 </a>
                             </th>
+
+                            <!-- Шапка таблицы. Столбец "Полное наименование синхронной зоны" -->
+                            <th class="align-middle text-center">
+                                <a href="{{ url_for('refdata_bp.synchronous_area_list', 
+                                            page=pagination.page, 
+                                            per_page=per_page, 
+                                            synchronous_area_filter=synchronous_area_filter, 
+                                            sort_by='name_full', 
+                                            sort_dir='asc' if sort_by != 'name_full' or sort_dir == 'desc' else 'desc') }}" 
+                                            class="text-black">
+                                    Полное наименование синхронной зоны
+                                    {% if sort_by == 'name_full' %}
+                                        {% if sort_dir == 'asc' %}
+                                            ▲
+                                        {% else %}
+                                            ▼
+                                        {% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
                         </tr>
                     </thead>
 
@@ -286,6 +331,9 @@
 
                                 <!-- Строки таблицы. Столбец "Наименование синхронной зоны" -->
                                 <td> {{ synchronous_area.name }} </td>
+
+                                <!-- Строки таблицы. Столбец "Полное наименование синхронной зоны" -->
+                                <td> {{ synchronous_area.name_full or '' }} </td>
                             </tr>
                         {% else %}
                             <tr>

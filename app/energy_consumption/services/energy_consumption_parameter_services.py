@@ -1324,6 +1324,12 @@ _EES_RUSSIA_FORMULA_PERIMETER_VARIANT_CODES = frozenset(
         "without_nt_with_gaes",
     }
 )
+_UES_WITHOUT_GAES_FORMULA_PERIMETER_VARIANT_CODES = frozenset(
+    {
+        "with_nt_without_gaes",
+        "without_nt_without_gaes",
+    }
+)
 
 
 def _is_calculated_sync_area_base_row(parent_id: int | None) -> bool:
@@ -1337,6 +1343,39 @@ def _is_calculated_sync_area_base_row(parent_id: int | None) -> bool:
         return False
     name_cf = str(getattr(row, "name", "") or "").strip().casefold()
     return name_cf.startswith("вторая синхронная зона") or "калининград" in name_cf
+
+
+def _is_south_ues_parent_id(parent_id: int | None) -> bool:
+    if parent_id is None:
+        return False
+    from app.energy_consumption.services.energy_consumption_summary_services import (
+        SOUTH_UES_NAME_CF,
+    )
+    from app.refdata.models.energy_systems.union_energy_system_model import (
+        UnionEnergySystem,
+    )
+
+    row = UnionEnergySystem.query.get(parent_id)
+    if row is None:
+        return False
+    return str(getattr(row, "name", "") or "").strip().casefold() == SOUTH_UES_NAME_CF
+
+
+def _is_ees_unified_energy_system_type_parent_id(parent_id: int | None) -> bool:
+    if parent_id is None:
+        return False
+    from app.common.perimeter_variant.constants import EES_UNIFIED_REF_NAME
+    from app.refdata.models.energy_systems.energy_system_type_model import (
+        EnergySystemType,
+    )
+
+    row = EnergySystemType.query.get(parent_id)
+    if row is None:
+        return False
+    return (
+        str(getattr(row, "name", "") or "").strip().casefold()
+        == EES_UNIFIED_REF_NAME.casefold()
+    )
 
 
 def _is_summary_formula_protected_context(
@@ -1360,6 +1399,18 @@ def _is_summary_formula_protected_context(
             return True
         if not pvc and _is_calculated_sync_area_base_row(parent_id):
             return True
+    if (
+        demand_model_name == "UnionEnergySystemEnergyConsumptionParameter"
+        and pvc in _UES_WITHOUT_GAES_FORMULA_PERIMETER_VARIANT_CODES
+        and _is_south_ues_parent_id(parent_id)
+    ):
+        return True
+    if (
+        demand_model_name == "EnergySystemTypeEnergyConsumptionParameter"
+        and "without_gaes" in pvc
+        and _is_ees_unified_energy_system_type_parent_id(parent_id)
+    ):
+        return True
     return False
 
 
@@ -1867,25 +1918,29 @@ def persist_computed_energy_consumption_summary_rows_after_change(
     *,
     rounding_digits: int = 1,
 ) -> int:
-    """Пересчитать формулы сводки потребления и записать расчётные строки в БД."""
-    from app.common.services.get_services.years.years_get_services import (
-        get_year_numbers_sorted_for_current_db_version,
-    )
+    """Пересчитать формулы сводки потребления и записать расчётные строки во все версии БД.
+
+    Временно — как импорт Excel; позже вернёмся к пересчёту только текущей версии.
+    """
+    from flask_login import current_user
+
     from app.energy_consumption.services.energy_consumption_summary_import_services import (
-        persist_all_energy_consumption_summary_computed_rows,
+        persist_all_energy_consumption_summary_computed_rows_for_all_versions,
     )
 
-    vid = get_current_version()
-    years_ok = sorted(get_year_numbers_sorted_for_current_db_version() or [])
-    if vid is None or not years_ok:
-        return 0
-    updated = persist_all_energy_consumption_summary_computed_rows(
-        database_version_id=int(vid),
-        years=years_ok,
+    user = None
+    try:
+        if current_user and getattr(current_user, "is_authenticated", False):
+            user = str(getattr(current_user, "username", None) or current_user.get_id() or "")
+    except Exception:
+        user = None
+
+    result = persist_all_energy_consumption_summary_computed_rows_for_all_versions(
         rounding_digits=rounding_digits,
+        user=user or None,
     )
     db.session.commit()
-    return updated
+    return int(result.get("cells_written_formula") or 0)
 
 
 def save_demand_summary_cell(

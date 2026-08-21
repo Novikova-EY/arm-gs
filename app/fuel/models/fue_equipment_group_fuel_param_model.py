@@ -83,6 +83,8 @@ class EquipmentGroupFuelParam(db.Model):
     eurt = db.Column(db.Numeric(36, 16), nullable=True)
     # Расх топ ээ
     eust = db.Column(db.Numeric(36, 16), nullable=True)
+    # СН на производство электроэнергии, тыс.кВтч (числитель для snk)
+    sn_ee = db.Column(db.Numeric(36, 16), nullable=True)
     # СН на выработку ЭЭ, %
     snk = db.Column(db.Numeric(36, 16), nullable=True)
 
@@ -95,7 +97,9 @@ class EquipmentGroupFuelParam(db.Model):
     turt = db.Column(db.Numeric(36, 16), nullable=True)
     # Расход усл. топлива на ТЭ, тыс. т у.т.
     tust = db.Column(db.Numeric(36, 16), nullable=True)
-    # СН, кВтч/⁠Гкал
+    # СН на отпуск тепловой энергии, тыс.кВтч (числитель для sn_t / SNT)
+    sn_te = db.Column(db.Numeric(36, 16), nullable=True)
+    # СН на отпуск тепла, кВтч/Гкал (SNT); считается как sn_te / q · 1000
     sn_t = db.Column(db.Numeric(36, 16), nullable=True)  # SNt
     
     # Расход топлива, всего
@@ -158,6 +162,10 @@ class EquipmentGroupFuelParam(db.Model):
         uselist=False,
         lazy="select",
     )
+    # Access Станции(Схема).VED — операционный код строки за год (антидубль составных):
+    # 0 — оболочка родителя (не входит в Σ при ved>0); 1 — КЭС, отрасль; 2 — ТЭЦ, отрасль;
+    # 3 — ТЭЦ, промпредприятия; 4 — КЭС, промпредприятия; 99 — к разбиению.
+    # Не путать с EquipmentGroup.vedomstvo (1 отрасль / 2 пром).
     ved = db.Column(db.Integer, nullable=True)
     ved_cyrillic = db.Column(db.Integer, nullable=True, name="вед")  # вед
     # FK -> TerritoriesEnergyExternalMapping.external_id
@@ -326,6 +334,12 @@ class EquipmentGroupFuelParam(db.Model):
     NT_COLUMN_LABEL = "Тепловая мощность отборов, Гкал/ч"
     # Подпись nt_sum для шапок (код поля — отдельно в скобках).
     NT_SUM_COLUMN_LABEL = "Сумма тепловых мощностей, Гкал/ч"
+    # Подпись sn_ee для шапок (неразрывный пробел в «тыс. кВт·ч»).
+    SN_EE_COLUMN_LABEL = "СН на производство электроэнергии, тыс. кВт·ч"
+    # Подпись sn_te для шапок (неразрывный пробел в «тыс. кВт·ч»).
+    SN_TE_COLUMN_LABEL = "СН на отпуск тепловой энергии, тыс. кВт·ч"
+    # Подпись sn_t / SNT для шапок.
+    SN_T_COLUMN_LABEL = "СН на отпуск тепла, кВт·ч/Гкал"
 
     def __repr__(self) -> str:
         return (

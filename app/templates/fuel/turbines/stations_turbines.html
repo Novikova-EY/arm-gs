@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
 {% block title %}Турбины электростанций{% endblock %}
 
@@ -53,7 +54,7 @@
                     <th style="width: 80px;">cт. №</th>
                     <th style="width: 200px;">Тип агрегата</th>
                     <th style="width: 80px;">Год ввода в эксплуатацию</th>
-                    <th style="width: 80px;">Код группы оборудования<br><span class="text-muted small">(numb1120)</span></th>
+                    {{ fuel_param_numb1120_header_th(1, 'Код группы оборудования', (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
                     <th style="width: 100px;">Название электростанции<br><span class="text-muted small">(stname)</span></th>
                     <th style="width: 80px;">Группа оборудования<br><span class="text-muted small">(name)</span></th>
                     <th style="width: 80px;">Порядковый номер<br><span class="text-muted small">(numb)</span></th>
@@ -428,6 +429,7 @@
 
 <!-- Каскадные фильтры ОЭС/ФО/РЭС/субъекты (как на station_list) -->
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") {

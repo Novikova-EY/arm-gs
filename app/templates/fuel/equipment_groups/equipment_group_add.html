@@ -41,10 +41,6 @@
                             <label class="form-label fw-semibold">Код группы оборудования (numb)</label>
                             <input type="text" name="numb" class="form-control" value="{{ request.form.numb or '' }}" placeholder="—">
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
-                            <input type="text" name="ordnumb" class="form-control" value="{{ request.form.ordnumb or '' }}" placeholder="—">
-                        </div>
                         <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Действующая (d)</label>
                             <select name="d" class="form-select">{% for val, label in d_choices %}<option value="{{ val }}" {% if (request.form.d or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
@@ -58,11 +54,11 @@
                             <select name="forem" class="form-select">{% for val, label in forem_choices %}<option value="{{ val }}" {% if (request.form.forem or '') == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
                         </div>
                         <div class="col-md-2 col-6">
-                            <label class="form-label fw-semibold">Признак группы (niv)</label>
+                            <label class="form-label fw-semibold">Группа оборудования/составная станция (niv)</label>
                             <input type="text" name="niv" class="form-control" value="{{ request.form.niv or '' }}" placeholder="—">
                         </div>
                         <div class="col-md-2 col-6">
-                            <label class="form-label fw-semibold">Признак разбитой (comp)</label>
+                            <label class="form-label fw-semibold">Признак составной станции (comp)</label>
                             <input type="text" name="comp" class="form-control" value="{{ request.form.comp or '' }}" placeholder="—">
                         </div>
                         <div class="col-md-2 col-6">
@@ -73,21 +69,25 @@
                             <label class="form-label fw-semibold">K (по годам)</label>
                             <span class="form-control-plaintext text-muted small">Задается в таблице «Удельные показатели»</span>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
                             <input type="text" name="n1" class="form-control" value="{{ request.form.n1 or '' }}" placeholder="—">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Мощность вар.2 (n2)</label>
                             <input type="text" name="n2" class="form-control" value="{{ request.form.n2 or '' }}" placeholder="—">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Давление вар.1 (p1)</label>
                             <input type="text" name="p1" class="form-control" value="{{ request.form.p1 or '' }}" placeholder="—">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2 col-6">
                             <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
                             <input type="text" name="p2" class="form-control" value="{{ request.form.p2 or '' }}" placeholder="—">
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
+                            <input type="text" name="ordnumb" class="form-control" value="{{ request.form.ordnumb or '' }}" placeholder="—">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Адрес (addr)</label>

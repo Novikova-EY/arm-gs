@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, session, current_app, send_file, flash, abort
+from flask import render_template, request, redirect, url_for, session, current_app, send_file, flash, abort, jsonify
 from sqlalchemy import or_, and_, func, cast
 from sqlalchemy.types import String
 import os
@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from io import BytesIO
 
 from app.extensions import db
-from app.auth.routes.decorators import roles_required
+from app.auth.routes.decorators import roles_required, has_admin_required
 
 from . import fuel_bp
 
@@ -61,6 +61,9 @@ from app.fuel.services.fuel_exports.export_stations_equipment_group_fuel_params_
 from app.fuel.services.fuel_imports.import_fuel_db_equipment_groups_services import (
     import_fuel_db_equipment_groups_from_excel,
 )
+from app.fuel.services.fuel_imports.soft_import_composite_flags_services import (
+    soft_import_composite_flags_from_imena_excel,
+)
 from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
     apply_extra_fuel_params_from_edit_data_form,
     assemble_fuel_edit_data_param_columns,
@@ -70,6 +73,9 @@ from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
     enrich_fuel_hierarchy_summaries_with_extra,
     split_fuel_param_columns_coal_vs_other,
     _load_extra_fuel_param_by_group_year,
+)
+from app.fuel.services.equipment_groups.composite_parts_sum_check_services import (
+    build_composite_parts_sum_mismatch_by_row,
 )
 from app.fuel.routes.equipment_group_fuel_batch_ui_routes import _csrf_ok
 from urllib.parse import parse_qsl, urlencode
@@ -88,7 +94,12 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
     get_equipment_group_ids_for_fuel_params_filters,
     build_name_maps_from_rows,
     build_equipment_group_fuel_params_hierarchy,
+    should_suppress_aggregate_rows_for_filters,
+    apply_suppress_aggregate_rows_to_hierarchy,
     FUEL_PARAM_LABELS,
+    FUEL_PARAM_DERIVED_FORMULAS,
+    FUEL_PARAM_DERIVED_SOURCES,
+    FUEL_PARAM_DERIVED_ATTRS,
     FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS,
     MAIN_PARAM_LABELS,
     _resolve_main_param_display_value,
@@ -120,7 +131,6 @@ from app.fuel.services.equipment_groups.equipment_group_details_params_update_se
     update_equipment_group_all_details_params,
 )
 from app.fuel.services.equipment_groups.equipment_group_details_specific_params_services import (
-    CONSUMPTION_FORMULAS,
     build_table4_consumption_grid,
     build_table4_cost_grid,
     build_table4_price_grid,
@@ -128,12 +138,18 @@ from app.fuel.services.equipment_groups.equipment_group_details_specific_params_
     COST_ATTRS,
     PRICE_ATTRS,
 )
+from app.fuel.services.formula_text.fuel_formula_text_services import (
+    get_consumption_formulas,
+)
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_write_services import (
     CONSUMPTION_FORM_INPUT_ATTRS,
 )
 from app.fuel.services.fuel_imports.import_equipment_group_fuel_params_services import (
-    detect_fuel_params_excel_import_kind,
+    require_fuel_params_excel_import_kind,
+    extract_year_from_fuel_params_import_filename,
+    resolve_fuel_params_import_year,
     import_equipment_group_fuel_params_from_excel,
+    import_otet_svodnaya_sn_from_excel,
 )
 from app.fuel.services.fuel_imports.import_equipment_group_extra_fuel_params_services import (
     import_equipment_group_extra_fuel_params_from_excel,
@@ -174,6 +190,7 @@ from app.fuel.services.fuel_exports.export_stations_equipment_group_specific_fue
 )
 from app.fuel.services.fuel_imports.import_equipment_group_specific_fuel_cost_services import (
     import_equipment_group_specific_fuel_cost_from_excel,
+    require_specific_fuel_cost_excel_filename,
 )
 from app.fuel.services.equipment_groups.equipment_group_electricity_production_cost_services import (
     get_equipment_groups_with_electricity_production_cost_data,
@@ -247,6 +264,7 @@ from app.fuel.services.equipment_groups.equipment_group_add_services import (
 )
 from app.fuel.services.equipment_groups.equipment_group_machines_services import (
     get_equipment_group_machines_data,
+    resolve_equipment_group_ids_for_machines,
 )
 from app.fuel.services.equipment_groups.equipment_group_merge_services import (
     update_equipment_group_all_versions,
@@ -661,9 +679,51 @@ def _export_year_range_for_station_fuel_lists():
     selected_year, _ = _get_single_year_filter_options()
     return selected_year, selected_year
 
+
+_SPECIFIC_FUEL_CONSUMPTION_PAGE_ENDPOINTS = (
+    "fuel_bp.stations_equipment_group_specific_fuel_consumption",
+    "fuel_bp.equipment_group_specific_fuel_consumption_edit_data",
+)
+
+
+def _specific_fuel_consumption_page_redirect(values):
+    """Куда вернуться после импорта/экспорта ТЭП: справочник или страница редактирования из расчёта."""
+    default = "fuel_bp.stations_equipment_group_specific_fuel_consumption"
+    redirect_to = values.get("redirect_to", default)
+    if redirect_to not in _SPECIFIC_FUEL_CONSUMPTION_PAGE_ENDPOINTS:
+        redirect_to = default
+    skip = {"file", "csrf_token", "redirect_to"}
+    redirect_args = {k: v for k, v in values.items() if k not in skip}
+    if redirect_to == "fuel_bp.equipment_group_specific_fuel_consumption_edit_data":
+        # Страница расчёта живёт на start_year/end_year; служебный year импорта не тащим в URL.
+        redirect_args.pop("year", None)
+    return redirect_to, redirect_args
+
 @fuel_bp.route("/")
 def fuel_start():
     return render_template("fuel/fuel_start.html")
+
+
+@fuel_bp.route("/equipment_group_params_description/")
+@login_required
+@roles_required(["admin"])
+def equipment_group_params_description():
+    """Текстовое описание параметров групп оборудования (справочник из каталога)."""
+    from app.fuel.services.equipment_groups.equipment_group_params_catalog import (
+        ENERGY_BLOCK_CHAIN,
+        PARAM_GROUPS,
+        list_equipment_group_params_for_page,
+        params_catalog_stats,
+    )
+
+    return render_template(
+        "fuel/equipment_group_params_description.html",
+        page_title="Текстовое описание параметров групп оборудования",
+        param_rows=list_equipment_group_params_for_page(),
+        param_groups=PARAM_GROUPS,
+        energy_chain=ENERGY_BLOCK_CHAIN,
+        stats=params_catalog_stats(),
+    )
 
 
 @fuel_bp.route("/refdata")
@@ -2477,7 +2537,7 @@ def _merge_fuel_grouped_hierarchy(base_grouped, extra_grouped):
 @fuel_bp.route("/stations_without_equipment_group", methods=["GET", "POST"])
 @login_required
 def stations_without_equipment_group():
-    """Страница списка станций с агрегатами без группы оборудования (аналог station_list)."""
+    """Станции с агрегатами без итоговой группы оборудования в текущей версии БД."""
     import time
     start_data = time.time()
 
@@ -2585,7 +2645,7 @@ def stations_without_equipment_group():
     )
     context["station_list_endpoint"] = "fuel_bp.stations_without_equipment_group"
     context["pagination_endpoint"] = "fuel_bp.stations_without_equipment_group"
-    context["page_title"] = "Агрегаты без группы оборудования (проверка)"
+    context["page_title"] = "Агрегаты без группы оборудования"
 
     has_active_filters = has_any_filters(request.args)
 
@@ -2593,6 +2653,105 @@ def stations_without_equipment_group():
         "fuel/without_equipment_group/stations_without_equipment_group.html",
         has_active_filters=has_active_filters,
         **context,
+    )
+
+
+_FUEL_EQUIPMENT_GROUP_AUTO_ASSIGN_ROLES = [
+    "admin",
+    "fuel-admin",
+    "fuel-editor",
+    "generation-admin",
+    "generation-editor",
+]
+
+
+@fuel_bp.route("/stations_without_equipment_group/auto_assign", methods=["POST"])
+@login_required
+@roles_required(_FUEL_EQUIPMENT_GROUP_AUTO_ASSIGN_ROLES)
+def stations_without_equipment_group_auto_assign():
+    """Назначает топливные группы так же, как «Сохранить» на карточке агрегата (авто)."""
+    if not _csrf_ok():
+        flash("Сессия устарела. Обновите страницу и повторите действие.", "danger")
+        return redirect(url_for("fuel_bp.stations_without_equipment_group", **request.args))
+
+    redirect_filters = {}
+    for key, values in request.form.lists():
+        if key == "csrf_token" or not values:
+            continue
+        redirect_filters[key] = values[0] if len(values) == 1 else values
+    redirect_filters["machines_without_equipment_group"] = "1"
+    redirect_filters.pop("page", None)
+
+    filters = extract_filters_from_args(request.form)
+    filters["machines_without_equipment_group"] = True
+    filters = _force_tes_station_type_filter(filters)
+    filters.pop("page", None)
+    start_year = filters.pop("start_year", get_filter_start_year())
+    end_year = filters.pop("end_year", get_filter_end_year())
+
+    from app.common.services.tranzaction_services import _commit_with_retry
+    from app.fuel.services.equipment_groups.auto_assign_missing_equipment_groups_services import (
+        auto_assign_missing_fuel_equipment_groups,
+    )
+    from app.logs.services.logging_service import log_to_db
+
+    try:
+        summary = auto_assign_missing_fuel_equipment_groups(
+            filters,
+            start_year=start_year,
+            end_year=end_year,
+        )
+        _commit_with_retry()
+        clear_station_aggregation_cache("after auto-assign fuel equipment groups")
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception(
+            "[stations_without_equipment_group] auto_assign failed: %s", exc
+        )
+        flash("Не удалось автоопределить группы оборудования.", "danger")
+        return redirect(
+            url_for("fuel_bp.stations_without_equipment_group", **redirect_filters)
+        )
+
+    assigned = summary.get("assigned") or 0
+    skipped = summary.get("skipped_no_type") or 0
+    failed = summary.get("failed") or 0
+    details = summary.get("details") or []
+    user = session.get("username") or (
+        getattr(current_user, "username", None) if current_user.is_authenticated else None
+    ) or "anonymous"
+    log_details = "; ".join(details[:50])
+    if len(details) > 50:
+        log_details += f"; … ещё {len(details) - 50}"
+    log_to_db(
+        user,
+        (
+            "Автоопределение групп оборудования (проверка): "
+            f"назначено {assigned}, без типа {skipped}, ошибок {failed}"
+        ),
+        details=log_details or None,
+    )
+
+    if assigned:
+        flash(
+            f"Назначено групп оборудования: {assigned}"
+            + (f". Без типа группы (пропущено): {skipped}" if skipped else "")
+            + (f". Не удалось: {failed}" if failed else ""),
+            "success",
+        )
+    elif skipped and not failed:
+        flash(
+            "Нет агрегатов с типом группы для автоопределения "
+            f"(без типа: {skipped}). Укажите тип группы на карточке агрегата.",
+            "warning",
+        )
+    elif failed:
+        flash(f"Группы не назначены. Ошибок: {failed}.", "danger")
+    else:
+        flash("Нет агрегатов без группы оборудования в текущей выборке.", "info")
+
+    return redirect(
+        url_for("fuel_bp.stations_without_equipment_group", **redirect_filters)
     )
 
 
@@ -2644,6 +2803,8 @@ def stations_equipment_groups():
     total_count = 0
     total_pages = 1
     current_page = 1
+    numb1120_filter_choices = []
+    duplicate_numb_ids = set()
     try:
         (
             equipment_group_blocks_hierarchy,
@@ -2659,12 +2820,19 @@ def stations_equipment_groups():
             regional_energy_system_names=res_names,
             page=page,
             per_page=per_page,
+            numb1120_filter_choices_out=numb1120_filter_choices,
+            duplicate_numb_ids_out=duplicate_numb_ids,
         )
     except Exception as exc:
-        current_app.logger.warning(
-            f"[stations_equipment_groups] EquipmentGroup-first build failed: {exc}"
+        current_app.logger.exception(
+            "[stations_equipment_groups] EquipmentGroup-first build failed: %s", exc
         )
         db.session.rollback()
+        flash(
+            "Не удалось загрузить группы оборудования. Обновите страницу или сбросьте фильтры. "
+            f"Детали: {exc}",
+            "danger",
+        )
 
     data = {
         "stations": [],
@@ -2721,10 +2889,36 @@ def stations_equipment_groups():
     context["stations"] = []
 
     has_active_filters = has_any_filters(request.args)
+    if request.args.get("clear_soft_composite_report") in ("1", "true", "yes"):
+        session.pop("soft_composite_import_report", None)
+        args = request.args.to_dict(flat=True)
+        args.pop("clear_soft_composite_report", None)
+        return redirect(url_for("fuel_bp.stations_equipment_groups", **args))
+    soft_composite_import_report = session.get("soft_composite_import_report")
+
+    show_missing_numb = bool(filters.get("missing_numb"))
+    missing_numb_toggle_args = request.args.to_dict(flat=False)
+    missing_numb_toggle_args.pop("page", None)
+    if show_missing_numb:
+        missing_numb_toggle_args.pop("missing_numb", None)
+    else:
+        missing_numb_toggle_args["missing_numb"] = ["1"]
+    missing_numb_toggle_url = url_for(
+        "fuel_bp.stations_equipment_groups",
+        **{
+            key: (values[0] if len(values) == 1 else values)
+            for key, values in missing_numb_toggle_args.items()
+        },
+    )
 
     return render_template(
         "fuel/equipment_groups/stations_equipment_groups.html",
         has_active_filters=has_active_filters,
+        soft_composite_import_report=soft_composite_import_report,
+        numb1120_filter_choices=numb1120_filter_choices,
+        show_missing_numb=show_missing_numb,
+        missing_numb_toggle_url=missing_numb_toggle_url,
+        duplicate_numb_ids=duplicate_numb_ids,
         **context,
     )
 
@@ -2735,6 +2929,78 @@ def _parse_fuel_params_rounding_digits(default=1):
     except (ValueError, TypeError):
         return default
     return rounding_digits if rounding_digits in {-1, 0, 1, 2, 3} else default
+
+
+def _maybe_suppress_aggregates_for_numb1120(hierarchy, filters):
+    if should_suppress_aggregate_rows_for_filters(filters):
+        apply_suppress_aggregate_rows_to_hierarchy(hierarchy)
+    return hierarchy
+
+
+def _filter_nested_station_groups(node):
+    if isinstance(node, list):
+        return [st for st in node if getattr(st, "machines", None)]
+    if isinstance(node, dict):
+        out = {}
+        for key, value in node.items():
+            filtered = _filter_nested_station_groups(value)
+            if filtered:
+                out[key] = filtered
+        return out
+    return node
+
+
+def _apply_numb1120_filter_to_station_list_data(data, filters):
+    """Фильтр турбин по numb1120 (MachineFuelParam / EquipmentGroup.numb)."""
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.extensions import db
+    from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        _coerce_numb1120_int,
+        displayed_numb1120,
+        normalize_numb1120_filter,
+    )
+
+    stations = data.get("stations") or []
+    choices = set()
+    q = db.session.query(MachineFuelParam.numb1120).filter(
+        MachineFuelParam.numb1120.isnot(None)
+    )
+    version_id = get_current_db_version_id()
+    if version_id is not None and hasattr(MachineFuelParam, "database_version_id"):
+        q = q.filter(MachineFuelParam.database_version_id == version_id)
+    for (raw,) in q.distinct().all():
+        parsed = _coerce_numb1120_int(raw)
+        if parsed is not None:
+            choices.add(parsed)
+    for station in stations:
+        for machine in getattr(station, "machines", None) or []:
+            value = displayed_numb1120(
+                getattr(machine, "equipment_group", None),
+                getattr(machine, "machine_fuel_param", None),
+            )
+            if value is not None:
+                choices.add(value)
+    wanted = normalize_numb1120_filter((filters or {}).get("numb1120_filter"))
+    if wanted:
+        wanted_set = set(wanted)
+        for station in stations:
+            kept = []
+            for machine in getattr(station, "machines", None) or []:
+                value = displayed_numb1120(
+                    getattr(machine, "equipment_group", None),
+                    getattr(machine, "machine_fuel_param", None),
+                )
+                if value in wanted_set:
+                    kept.append(machine)
+            station.machines = kept
+        data["stations"] = [st for st in stations if getattr(st, "machines", None)]
+        if "stations_grouped" in data:
+            data["stations_grouped"] = _filter_nested_station_groups(
+                data.get("stations_grouped") or {}
+            )
+        data["total_count"] = len(data["stations"])
+    return sorted(choices)
 
 
 @fuel_bp.route("/stations_equipment_group_fuel_params", methods=["GET", "POST"])
@@ -2775,7 +3041,9 @@ def stations_equipment_group_fuel_params():
     rows = fuel_data.get("rows") or []
     name_maps = build_name_maps_from_rows(rows)
     hierarchy_full = build_equipment_group_fuel_params_hierarchy(
-        rows, use_equipment_group_hierarchy_only=False
+        rows,
+        use_equipment_group_hierarchy_only=False,
+        suppress_aggregate_rows=should_suppress_aggregate_rows_for_filters(filters),
     )
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
@@ -2845,8 +3113,8 @@ def stations_equipment_group_fuel_params():
     # (базовые TOPLS/UGLI + детальные виды из ExtraFuelParam по Fuel.parent_id)
     fuel_nazvl_to_name = build_fuel_nazvl_to_name_map()
     full_columns, fuel_extra_column_attrs = assemble_fuel_edit_data_param_columns()
-    # На этой странице столбцы «Часы» (h, hfix) не показываем
-    full_columns = [c for c in full_columns if c[0] not in ("h", "hfix")]
+    # На этой странице столбцы «Часы» (h, hfix) и «Тип ТЭС (VED)» не показываем
+    full_columns = [c for c in full_columns if c[0] not in ("h", "hfix", "ved")]
     fuel_param_column_hierarchy = build_fuel_param_columns_hierarchy(full_columns)
     # Нижние панели «Детализация топлива»: кроме «Уголь, в т.ч.» / только «Уголь, в т.ч.»
     _fuel_detail_metric_attrs = {
@@ -2910,6 +3178,11 @@ def stations_equipment_group_fuel_params():
     )
 
     fuel_param_warn_sets = build_fuel_param_row_warn_sets(rows)
+    composite_parts_sum_mismatch_by_row = build_composite_parts_sum_mismatch_by_row(
+        equipment_group_fuel_params_hierarchy,
+        labels=FUEL_PARAM_LABELS,
+        rounding_digits=rounding_digits,
+    )
 
     return render_template(
         "fuel/fuel_params/stations_equipment_group_fuel_params.html",
@@ -2931,6 +3204,10 @@ def stations_equipment_group_fuel_params():
         er_name_map=name_maps.get("er_name_map", {}),
         gk_name_map=name_maps.get("gk_name_map", {}),
         be_name_map=name_maps.get("be_name_map", {}),
+        composite_parts_sum_mismatch_by_row=composite_parts_sum_mismatch_by_row,
+        fuel_param_derived_formulas=FUEL_PARAM_DERIVED_FORMULAS,
+        fuel_param_derived_sources=FUEL_PARAM_DERIVED_SOURCES,
+        numb1120_filter_choices=fuel_data.get("numb1120_filter_choices") or [],
         **fuel_param_warn_sets,
         **context,
     )
@@ -3129,6 +3406,7 @@ def stations_equipment_group_natural_fuel():
 
     rows = natural_fuel_data.get("rows") or []
     hierarchy_full = build_equipment_group_natural_fuel_hierarchy(rows)
+    _maybe_suppress_aggregates_for_numb1120(hierarchy_full, filters)
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
         equipment_group_natural_fuel_hierarchy = hierarchy_full
@@ -3208,6 +3486,7 @@ def stations_equipment_group_natural_fuel():
         natural_fuel_columns_display=NATURAL_FUEL_COLUMNS,
         fuel_nazvl_to_name=fuel_nazvl_to_name,
         fuel_param_column_hierarchy=fuel_param_column_hierarchy,
+        numb1120_filter_choices=natural_fuel_data.get("numb1120_filter_choices") or [],
         **context,
     )
 
@@ -3261,6 +3540,7 @@ def stations_equipment_group_specific_fuel_consumption():
             if consumption_has_calc_mismatch(param)
         ]
     hierarchy_full = build_equipment_group_specific_fuel_consumption_hierarchy(rows)
+    _maybe_suppress_aggregates_for_numb1120(hierarchy_full, filters)
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
         equipment_group_specific_fuel_consumption_hierarchy = hierarchy_full
@@ -3361,7 +3641,7 @@ def stations_equipment_group_specific_fuel_consumption():
         equipment_group_specific_fuel_consumption_rows=rows,
         equipment_group_specific_fuel_consumption_hierarchy=equipment_group_specific_fuel_consumption_hierarchy,
         fuel_nazvl_to_name=fuel_nazvl_to_name,
-        consumption_formulas=CONSUMPTION_FORMULAS,
+        consumption_formulas=get_consumption_formulas(),
         consumption_column_labels={
             **EquipmentGroupSpecificFuelConsumption.COLUMN_LABELS,
             "k": "Коэффициент экономии от теплофикации",
@@ -3371,6 +3651,7 @@ def stations_equipment_group_specific_fuel_consumption():
         calc_mismatch_count=len(rows) if show_calc_mismatch else None,
         calc_mismatch_toggle_url=calc_mismatch_toggle_url,
         get_calc_mismatch_attrs=get_calc_mismatch_attrs,
+        numb1120_filter_choices=specific_data.get("numb1120_filter_choices") or [],
         **context,
     )
 
@@ -3468,6 +3749,7 @@ def stations_equipment_group_specific_fuel_cost():
 
     rows = cost_data.get("rows") or []
     hierarchy_full = build_equipment_group_specific_fuel_cost_hierarchy(rows)
+    _maybe_suppress_aggregates_for_numb1120(hierarchy_full, filters)
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
         equipment_group_specific_fuel_cost_hierarchy = hierarchy_full
@@ -3553,6 +3835,7 @@ def stations_equipment_group_specific_fuel_cost():
         specific_fuel_cost_columns=specific_fuel_cost_columns_display,
         fuel_nazvl_to_name=fuel_nazvl_to_name,
         fuel_param_column_hierarchy=fuel_param_column_hierarchy,
+        numb1120_filter_choices=cost_data.get("numb1120_filter_choices") or [],
         **context,
     )
 
@@ -3599,6 +3882,7 @@ def stations_equipment_group_electricity_production_cost():
 
     rows = cost_data.get("rows") or []
     hierarchy_full = build_equipment_group_electricity_production_cost_hierarchy(rows)
+    _maybe_suppress_aggregates_for_numb1120(hierarchy_full, filters)
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
         equipment_group_electricity_production_cost_hierarchy = hierarchy_full
@@ -3680,6 +3964,7 @@ def stations_equipment_group_electricity_production_cost():
         equipment_group_electricity_production_cost_hierarchy=equipment_group_electricity_production_cost_hierarchy,
         electricity_production_cost_columns=display_columns,
         cost_code_name_map=cost_code_name_map,
+        numb1120_filter_choices=cost_data.get("numb1120_filter_choices") or [],
         **context,
     )
 
@@ -3728,6 +4013,7 @@ def stations_equipment_group_heat_and_tariffs():
     years = list(range(start_year, end_year + 1))
     rows = heat_data.get("rows") or []
     hierarchy_full = build_equipment_group_heat_and_tariffs_hierarchy(rows, years=years)
+    _maybe_suppress_aggregates_for_numb1120(hierarchy_full, filters)
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
         equipment_group_heat_and_tariffs_hierarchy = hierarchy_full
@@ -3807,6 +4093,7 @@ def stations_equipment_group_heat_and_tariffs():
         heat_and_tariffs_identity_columns=HEAT_AND_TARIFFS_IDENTITY_COLUMNS,
         heat_and_tariffs_metric_columns=HEAT_AND_TARIFFS_METRIC_COLUMNS,
         years=years,
+        numb1120_filter_choices=heat_data.get("numb1120_filter_choices") or [],
         **context,
     )
 
@@ -3866,6 +4153,7 @@ def stations_equipment_group_specific_fuel_price():
             if price_has_calc_mismatch(param)
         ]
     hierarchy_full = build_equipment_group_specific_fuel_price_hierarchy(rows)
+    _maybe_suppress_aggregates_for_numb1120(hierarchy_full, filters)
     total_eg_count = count_fuel_eg_groups_in_hierarchy(hierarchy_full)
     if show_all:
         equipment_group_specific_fuel_price_hierarchy = hierarchy_full
@@ -3987,6 +4275,7 @@ def stations_equipment_group_specific_fuel_price():
         calc_mismatch_count=len(rows) if show_calc_mismatch else None,
         calc_mismatch_toggle_url=calc_mismatch_toggle_url,
         get_calc_mismatch_attrs=get_price_calc_mismatch_attrs,
+        numb1120_filter_choices=price_data.get("numb1120_filter_choices") or [],
         **context,
     )
 
@@ -4274,6 +4563,95 @@ def equipment_group_edit(equipment_group_id):
             return redirect(
                 url_for("fuel_bp.equipment_group_edit", equipment_group_id=equipment_group_id, **request.args)
             )
+        if request.form.get("rebind_machines") == "1":
+            from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
+                rebind_source_group_machines,
+            )
+
+            target_group_id = request.form.get("target_equipment_group_id", type=int)
+            if not target_group_id:
+                flash("Выберите группу оборудования, на которую перенести привязку.", "warning")
+                return redirect(
+                    url_for(
+                        "fuel_bp.equipment_group_edit",
+                        equipment_group_id=equipment_group_id,
+                        **request.args,
+                    )
+                )
+            try:
+                result = rebind_source_group_machines(
+                    source_group_id=equipment_group_id,
+                    target_group_id=target_group_id,
+                    version_id=get_current_db_version_id(),
+                )
+                err = result.get("error")
+                if err:
+                    flash(err, "danger")
+                    return redirect(
+                        url_for(
+                            "fuel_bp.equipment_group_edit",
+                            equipment_group_id=equipment_group_id,
+                            **request.args,
+                        )
+                    )
+                db.session.commit()
+                rebound = int(result.get("rebound_machines") or 0)
+                target_label = result.get("target_label") or str(target_group_id)
+                if rebound:
+                    flash(
+                        f"Привязка агрегатов перенесена на группу {target_label}: {rebound} шт.",
+                        "success",
+                    )
+                else:
+                    flash(
+                        f"Группа {target_label} связана со станцией. Агрегатов для переноса не было.",
+                        "info",
+                    )
+                log_lines = [
+                    f"Перенос привязки с группы id={equipment_group_id} "
+                    f"({result.get('source_label') or '—'}) "
+                    f"на {target_label} (id={result.get('target_id')}).",
+                    f"Перенесено агрегатов: {rebound}",
+                ]
+                machine_ids = result.get("machine_ids") or []
+                if machine_ids:
+                    log_lines.append(
+                        "id агрегатов: " + ", ".join(str(mid) for mid in machine_ids)
+                    )
+                if result.get("linked_stations"):
+                    log_lines.append(
+                        f"Создано связей со станциями: {result.get('linked_stations')}"
+                    )
+                log_to_db(
+                    current_user,
+                    "Перенос привязки агрегатов на другую группу оборудования",
+                    details="\n".join(log_lines),
+                    entity_type="equipment_group",
+                    entity_id=equipment_group_id,
+                )
+                redirect_group_id = result.get("target_id") or equipment_group_id
+                return redirect(
+                    url_for(
+                        "fuel_bp.equipment_group_edit",
+                        equipment_group_id=redirect_group_id,
+                        **request.args,
+                    )
+                )
+            except Exception as exc:
+                db.session.rollback()
+                current_app.logger.exception(
+                    "[equipment_group_edit] rebind machines failed group_id=%s target=%s",
+                    equipment_group_id,
+                    target_group_id,
+                )
+                flash(str(exc), "danger")
+                return redirect(
+                    url_for(
+                        "fuel_bp.equipment_group_edit",
+                        equipment_group_id=equipment_group_id,
+                        **request.args,
+                    )
+                )
         delete_current = request.values.get("delete_current") == "1"
         delete_all_versions = request.values.get("delete_all_versions") == "1"
         if delete_current or delete_all_versions:
@@ -4589,8 +4967,12 @@ def equipment_group_edit(equipment_group_id):
     # Агрегаты группы оборудования (таблица как на station_details)
     rounding_digits = request.args.get("rounding_digits", 1, type=int)
 
+    machine_eg_ids = resolve_equipment_group_ids_for_machines(
+        ctx.get("equipment_group"),
+        ctx.get("member_equipment_groups"),
+    )
     stations_with_machines = get_equipment_group_machines_data(
-        equipment_group_id, start_year, end_year
+        machine_eg_ids, start_year, end_year
     )
 
     from app.common.services.help_services import format_decimal_for_display
@@ -4600,8 +4982,8 @@ def equipment_group_edit(equipment_group_id):
 
     # Количество EquipmentGroupSet для группы (по ним определяем, показывать ли итог).
     # Считаем все связи — те же, из которых берутся агрегаты в equipment_group_machines.
-    equipment_group_sets_count = EquipmentGroupSet.query.filter_by(
-        equipment_group_id=equipment_group_id
+    equipment_group_sets_count = EquipmentGroupSet.query.filter(
+        EquipmentGroupSet.equipment_group_id.in_(machine_eg_ids)
     ).count()
 
     equipment_group_machines_tbody_html = ""
@@ -4615,8 +4997,11 @@ def equipment_group_edit(equipment_group_id):
         for station, _ in stations_with_machines:
             for year, data in getattr(station, "powers_by_year", {}).items():
                 if start_year <= year <= end_year:
-                    total_powers_by_year.setdefault(year, Decimal(0))
-                    total_powers_by_year[year] += data.get("p_ust") or Decimal(0)
+                    year_totals = total_powers_by_year.setdefault(
+                        year, {"p_ust": Decimal(0), "p_rasp": Decimal(0)}
+                    )
+                    year_totals["p_ust"] += data.get("p_ust") or Decimal(0)
+                    year_totals["p_rasp"] += data.get("p_rasp") or Decimal(0)
             total_nt_sum += getattr(station, "machines_nt_sum", Decimal(0))
     if stations_with_machines:
         equipment_group_machines_tbody_html = render_template(
@@ -4744,14 +5129,17 @@ def equipment_group_edit(equipment_group_id):
             return True
         return False
 
-    def _filter_empty_zero_rows(grid, attrs):
+    def _filter_empty_zero_rows(grid, attrs, always_show=()):
+        always = frozenset(always_show or ())
         result_grid = []
         result_attrs = []
+        empty_flags = []
         for i, (label, values_by_year) in enumerate(grid):
-            if _row_has_content(values_by_year):
-                result_grid.append((label, values_by_year))
-                result_attrs.append(attrs[i])
-        return result_grid, result_attrs
+            is_empty = attrs[i] not in always and not _row_has_content(values_by_year)
+            result_grid.append((label, values_by_year))
+            result_attrs.append(attrs[i])
+            empty_flags.append(is_empty)
+        return result_grid, result_attrs, empty_flags
 
     def _filter_main_params_empty_rows(grid, attrs):
         result_grid = []
@@ -4767,32 +5155,53 @@ def equipment_group_edit(equipment_group_id):
         _build_main_params_grid(),
         EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS,
     )
-    table1_params_grid, table1_attrs = _filter_empty_zero_rows(
+    # FuelParam.ved всегда на карточке (в т.ч. 0) — не скрывать фильтром «пустых» строк.
+    ved_param_raw_by_year = {
+        y: _val(params_by_year.get(y), "ved") for y in years_range
+    }
+    ved_param_display_by_year = {
+        y: _resolve_main_param_display_value(
+            "ved", params_by_year.get(y), main_param_name_maps
+        )
+        for y in years_range
+    }
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        FUEL_PARAM_VED_LABELS,
+    )
+    fuel_param_ved_labels = sorted(FUEL_PARAM_VED_LABELS.items())
+    # nust/nr/e — мощность и выработка ЭЭ, даже если в выбранных годах NULL
+    # (иначе строку нельзя ни увидеть, ни заполнить; как hfix и расчётные строки).
+    # Пустые строки не отбрасываем: на карточке их прячет кнопка «Пустые строки».
+    table1_params_grid, table1_attrs, table1_empty_flags = _filter_empty_zero_rows(
         _build_grid(EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS),
         EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS,
+        always_show=FUEL_PARAM_DERIVED_ATTRS | {"hfix", "nust", "nr", "e"},
     )
-    table2_params_grid, table2_attrs = _filter_empty_zero_rows(
+    table2_params_grid, table2_attrs, table2_empty_flags = _filter_empty_zero_rows(
         _build_grid(EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS),
         EQUIPMENT_GROUP_DETAILS_TABLE2_ATTRS,
+        always_show=FUEL_PARAM_DERIVED_ATTRS,
     )
-    table3_params_grid, table3_attrs = _filter_empty_zero_rows(
+    table3_params_grid, table3_attrs, table3_empty_flags = _filter_empty_zero_rows(
         _build_extra_grid(),
         EQUIPMENT_GROUP_DETAILS_EXTRA_ATTRS,
     )
-    table4_consumption_grid, table4_consumption_attrs = _filter_empty_zero_rows(
-        build_table4_consumption_grid(
-            consumption_by_year,
-            years_range,
-            fuel_params_by_year=fuel_params_by_year,
-            group=group,
-        ),
-        CONSUMPTION_ATTRS,
+    table4_consumption_grid, table4_consumption_attrs, table4_consumption_empty_flags = (
+        _filter_empty_zero_rows(
+            build_table4_consumption_grid(
+                consumption_by_year,
+                years_range,
+                fuel_params_by_year=fuel_params_by_year,
+                group=group,
+            ),
+            CONSUMPTION_ATTRS,
+        )
     )
-    table4_cost_grid, table4_cost_attrs = _filter_empty_zero_rows(
+    table4_cost_grid, table4_cost_attrs, table4_cost_empty_flags = _filter_empty_zero_rows(
         build_table4_cost_grid(cost_by_year, years_range),
         COST_ATTRS,
     )
-    table4_price_grid, table4_price_attrs = _filter_empty_zero_rows(
+    table4_price_grid, table4_price_attrs, table4_price_empty_flags = _filter_empty_zero_rows(
         build_table4_price_grid(price_by_year, years_range),
         PRICE_ATTRS,
     )
@@ -4846,14 +5255,26 @@ def equipment_group_edit(equipment_group_id):
         rounding_digits_table3=rounding_digits_table3,
         rounding_digits_table4=rounding_digits_table4,
         main_params_grid=main_params_grid,
+        ved_param_raw_by_year=ved_param_raw_by_year,
+        ved_param_display_by_year=ved_param_display_by_year,
+        fuel_param_ved_labels=fuel_param_ved_labels,
         table1_params_grid=table1_params_grid,
+        table1_empty_flags=table1_empty_flags,
         table2_params_grid=table2_params_grid,
+        table2_empty_flags=table2_empty_flags,
         table3_params_grid=table3_params_grid,
+        table3_empty_flags=table3_empty_flags,
         table4_consumption_grid=table4_consumption_grid,
-        consumption_formulas=CONSUMPTION_FORMULAS,
+        table4_consumption_empty_flags=table4_consumption_empty_flags,
+        consumption_formulas=get_consumption_formulas(),
         price_formulas=price_formulas,
+        fuel_param_derived_formulas=FUEL_PARAM_DERIVED_FORMULAS,
+        fuel_param_derived_sources=FUEL_PARAM_DERIVED_SOURCES,
+        fuel_params_by_year=fuel_params_by_year,
         table4_cost_grid=table4_cost_grid,
+        table4_cost_empty_flags=table4_cost_empty_flags,
         table4_price_grid=table4_price_grid,
+        table4_price_empty_flags=table4_price_empty_flags,
         main_attrs=main_attrs,
         table1_attrs=table1_attrs,
         table2_attrs=table2_attrs,
@@ -4891,8 +5312,12 @@ def equipment_group_machines_tbody(equipment_group_id):
         abort(404, description="Группа оборудования не найдена")
     equipment_group_id = ctx["equipment_group"].id
 
+    machine_eg_ids = resolve_equipment_group_ids_for_machines(
+        ctx.get("equipment_group"),
+        ctx.get("member_equipment_groups"),
+    )
     stations_with_machines = get_equipment_group_machines_data(
-        equipment_group_id, start_year, end_year
+        machine_eg_ids, start_year, end_year
     )
 
     from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
@@ -4901,8 +5326,8 @@ def equipment_group_machines_tbody(equipment_group_id):
     def format_decimal_with_rounding(value):
         return format_decimal_for_display(value, digits=rounding_digits)
 
-    equipment_group_sets_count = EquipmentGroupSet.query.filter_by(
-        equipment_group_id=equipment_group_id
+    equipment_group_sets_count = EquipmentGroupSet.query.filter(
+        EquipmentGroupSet.equipment_group_id.in_(machine_eg_ids)
     ).count()
     show_equipment_group_total = equipment_group_sets_count > 2
     total_powers_by_year = {}
@@ -4914,8 +5339,11 @@ def equipment_group_machines_tbody(equipment_group_id):
         for station, _ in stations_with_machines:
             for year, data in getattr(station, "powers_by_year", {}).items():
                 if start_year <= year <= end_year:
-                    total_powers_by_year.setdefault(year, Decimal(0))
-                    total_powers_by_year[year] += data.get("p_ust") or Decimal(0)
+                    year_totals = total_powers_by_year.setdefault(
+                        year, {"p_ust": Decimal(0), "p_rasp": Decimal(0)}
+                    )
+                    year_totals["p_ust"] += data.get("p_ust") or Decimal(0)
+                    year_totals["p_rasp"] += data.get("p_rasp") or Decimal(0)
             total_nt_sum += getattr(station, "machines_nt_sum", Decimal(0))
 
     html = ""
@@ -5029,6 +5457,9 @@ def equipment_group_details(equipment_group_id):
                 equipment_group_id, request.form, start_year, end_year,
                 rounding_digits_table1=rounding_digits_table1,
                 rounding_digits_table2=rounding_digits_table2,
+                skip_attrs=frozenset(
+                    a for a in EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS if a != "ved"
+                ),
             )
             if success and msg != "Изменений нет.":
                 messages.append(msg)
@@ -5094,119 +5525,264 @@ def equipment_group_details(equipment_group_id):
     )
 
 
+_FUEL_PARAMS_IMPORT_MIMETYPES = frozenset(
+    {
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/octet-stream",
+    }
+)
+
+
+def _wants_fuel_params_import_json():
+    if str(request.form.get("ajax") or "") == "1":
+        return True
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return True
+    return False
+
+
+def _collect_fuel_params_import_files():
+    files = [
+        f
+        for f in request.files.getlist("file")
+        if f and str(getattr(f, "filename", "") or "").strip()
+    ]
+    files.sort(
+        key=lambda f: (
+            extract_year_from_fuel_params_import_filename(f.filename) or 10**9,
+            str(f.filename or ""),
+        )
+    )
+    return files
+
+
+def _import_one_equipment_group_fuel_params_file(file, user, fallback_year: int) -> dict:
+    """Импорт одного Excel: год из имени файла, иначе fallback_year (фильтр страницы)."""
+    filename = getattr(file, "filename", "") or ""
+    if file.mimetype not in _FUEL_PARAMS_IMPORT_MIMETYPES:
+        raise ValueError("Неверный формат файла.")
+    if not filename.endswith((".xlsx", ".xls")):
+        raise ValueError("Неверный формат файла.")
+
+    year = resolve_fuel_params_import_year(filename, fallback_year)
+    import_kind = require_fuel_params_excel_import_kind(filename, file=file)
+    current_app.logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] detected kind=%s filename=%s year=%s fallback_year=%s",
+        import_kind,
+        filename,
+        year,
+        fallback_year,
+    )
+
+    if import_kind == "extra":
+        result = import_equipment_group_extra_fuel_params_from_excel(file, user, year=year)
+        msg = f"Детализация топлива (Доп_угли), год {year}: " + result["message"]
+        current_app.logger.info(
+            "[IMPORT_EQUIPMENT_GROUP_EXTRA_FUEL_PARAMS] done (via fuel_params page) "
+            "user=%s filename=%s created=%s updated=%s skipped=%s year=%s",
+            user,
+            filename,
+            result.get("created"),
+            result.get("updated"),
+            result.get("skipped"),
+            year,
+        )
+        return {
+            "filename": filename,
+            "year": year,
+            "kind": import_kind,
+            "message": msg,
+            "result": result,
+        }
+
+    if import_kind == "otet_svodnaya":
+        result = import_otet_svodnaya_sn_from_excel(file, user, year=year)
+        msg = (
+            f"Сводная таблица для ОТЭТ (СН на производство ЭЭ / на отпуск тепла), год {year}: "
+            + result["message"]
+        )
+        current_app.logger.info(
+            "[IMPORT_OTET_SVODNAYA_SN] done (via fuel_params page) "
+            "user=%s filename=%s created=%s updated=%s skipped=%s year=%s sheet=%s",
+            user,
+            filename,
+            result.get("created"),
+            result.get("updated"),
+            result.get("skipped"),
+            year,
+            result.get("sheet_name"),
+        )
+        return {
+            "filename": filename,
+            "year": year,
+            "kind": import_kind,
+            "message": msg,
+            "result": result,
+        }
+
+    result = import_equipment_group_fuel_params_from_excel(file, user, year=year)
+    msg = f"Станции(Схема), год фильтра {year}: " + result["message"]
+    current_app.logger.info(
+        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] done user=%s filename=%s created=%s updated=%s skipped=%s year=%s",
+        user,
+        filename,
+        result.get("created"),
+        result.get("updated"),
+        result.get("skipped"),
+        year,
+    )
+    return {
+        "filename": filename,
+        "year": year,
+        "kind": "stations",
+        "message": msg,
+        "result": result,
+    }
+
+
 @fuel_bp.route("/stations_equipment_group_fuel_params/import_fuel_params", methods=["POST"])
 @login_required
 def import_equipment_group_fuel_params():
     """Загрузка из Excel на странице основных топливных параметров.
 
-    Одна кнопка — два типа файлов (по имени, иначе по столбцам):
+    Можно несколько файлов за раз. Год — из имени (Станции2024.xlsx → 2024),
+    иначе год фильтра страницы.
+
+    Типы файлов (по имени, иначе по столбцам):
     - Станции*.xlsx → EquipmentGroupFuelParam
     - Доп_угли*.xlsx → EquipmentGroupExtraFuelParam (раньше на «Детализация топлива»)
+    - Сводная таблица для ОТЭТ*.xls(x) → только sn_ee / sn_te (лист = год файла/фильтра)
     """
     user = session.get("username", "Неизвестный пользователь")
+    files = _collect_fuel_params_import_files()
+    filenames = [getattr(f, "filename", None) for f in files]
     log_to_db(user, "Начата загрузка данных FuelParams")
     current_app.logger.info(
-        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] start user=%s filename=%s mimetype=%s remote_addr=%s",
+        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] start user=%s files=%s count=%s remote_addr=%s",
         user,
-        getattr(request.files.get("file"), "filename", None),
-        getattr(request.files.get("file"), "mimetype", None),
+        filenames,
+        len(files),
         request.remote_addr,
     )
 
     redirect_args = {
-        k: v for k, v in request.form.items() if k not in ("file", "csrf_token")
+        k: v for k, v in request.form.items() if k not in ("file", "csrf_token", "ajax")
     }
 
-    if "file" not in request.files:
+    wants_json = _wants_fuel_params_import_json()
+
+    if not files:
         flash("Файл не найден.", "danger")
+        if wants_json:
+            return jsonify({"ok": False, "error": "Файл не найден."}), 400
         return redirect(url_for("fuel_bp.stations_equipment_group_fuel_params", **redirect_args))
 
-    file = request.files["file"]
-    if file.mimetype not in [
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ]:
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_fuel_params", **redirect_args))
-
-    if not file.filename.endswith((".xlsx", ".xls")):
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_fuel_params", **redirect_args))
-
-    year = request.form.get("year", None)
+    fallback_year = request.form.get("year", None)
     try:
-        year = int(year) if year is not None else get_filter_start_year()
+        fallback_year = int(fallback_year) if fallback_year is not None else get_filter_start_year()
     except (TypeError, ValueError):
-        year = get_filter_start_year()
+        fallback_year = get_filter_start_year()
 
-    import_kind = detect_fuel_params_excel_import_kind(file.filename, file=file)
-    current_app.logger.info(
-        "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] detected kind=%s filename=%s year=%s",
-        import_kind,
-        getattr(file, "filename", None),
-        year,
-    )
+    ok_results = []
+    error_results = []
+    any_imported = False
+    stations_years = set()
 
-    try:
-        if import_kind == "extra":
-            result = import_equipment_group_extra_fuel_params_from_excel(file, user, year=year)
-            msg = "Детализация топлива (Доп_угли): " + result["message"]
-            flash(msg, "success")
-            clear_station_aggregation_cache("после импорта extra fuel params (с страницы fuel params)")
-            current_app.logger.info(
-                "[IMPORT_EQUIPMENT_GROUP_EXTRA_FUEL_PARAMS] done (via fuel_params page) "
-                "user=%s filename=%s created=%s updated=%s skipped=%s year=%s",
+    for file in files:
+        filename = getattr(file, "filename", None)
+        import_kind = None
+        try:
+            imported = _import_one_equipment_group_fuel_params_file(file, user, fallback_year)
+            import_kind = imported.get("kind")
+            ok_results.append(imported)
+            any_imported = True
+            if import_kind == "stations":
+                stations_years.add(imported["year"])
+        except ValueError as e:
+            current_app.logger.warning(
+                "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] validation error user=%s filename=%s kind=%s: %s",
                 user,
-                getattr(file, "filename", None),
-                result.get("created"),
-                result.get("updated"),
-                result.get("skipped"),
-                year,
+                filename,
+                import_kind,
+                str(e),
+                exc_info=True,
             )
-        else:
-            result = import_equipment_group_fuel_params_from_excel(file, user, year=year)
-            updated_specific_consumption_calc = 0
-            try:
-                updated_specific_consumption_calc = recalculate_all_specific_fuel_consumption_calc(year=year)
-            except Exception as recalc_err:
-                current_app.logger.exception(
-                    "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] recalc specific_fuel_consumption failed: %s",
-                    recalc_err,
-                )
-            msg = "Основные параметры (Станции): " + result["message"]
-            if updated_specific_consumption_calc:
+            label = filename or "файл"
+            err_msg = f"{label}: {e}"
+            error_results.append({"filename": filename, "error": str(e)})
+            flash(err_msg, "danger")
+        except Exception as e:
+            current_app.logger.exception(
+                "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] import failed filename=%s kind=%s",
+                filename,
+                import_kind,
+            )
+            label = filename or "файл"
+            err_msg = f"{label}: ошибка загрузки данных: {e}"
+            error_results.append({"filename": filename, "error": str(e)})
+            flash(err_msg, "danger")
+
+    recalc_by_year = {}
+    for year in sorted(stations_years):
+        try:
+            recalc_by_year[year] = recalculate_all_specific_fuel_consumption_calc(year=year)
+        except Exception as recalc_err:
+            current_app.logger.exception(
+                "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] recalc specific_fuel_consumption failed year=%s: %s",
+                year,
+                recalc_err,
+            )
+
+    if any_imported:
+        clear_station_aggregation_cache("после импорта fuel params (v2, возможно несколько файлов)")
+
+    if ok_results:
+        parts = []
+        for imported in ok_results:
+            msg = imported["message"]
+            year = imported["year"]
+            recalc_n = recalc_by_year.get(year) if imported.get("kind") == "stations" else None
+            if recalc_n:
                 msg += (
                     f" Пересчитано удельных показателей (y_calc, btp_calc, sntp_calc, bk_calc, snk_calc) "
-                    f"для года {year}: {updated_specific_consumption_calc}."
+                    f"для года {year}: {recalc_n}."
                 )
-            flash(msg, "success")
-            clear_station_aggregation_cache("после импорта fuel params (v2)")
-            current_app.logger.info(
-                "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] done user=%s filename=%s created=%s updated=%s skipped=%s "
-                "recalc=%s year=%s",
-                user,
-                getattr(file, "filename", None),
-                result.get("created"),
-                result.get("updated"),
-                result.get("skipped"),
-                updated_specific_consumption_calc,
-                year,
-            )
-    except ValueError as e:
-        current_app.logger.warning(
-            "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] validation error user=%s filename=%s kind=%s: %s",
-            user,
-            getattr(file, "filename", None),
-            import_kind,
-            str(e),
-            exc_info=True,
-        )
-        flash(str(e), "danger")
-    except Exception as e:
-        current_app.logger.exception(
-            "[IMPORT_EQUIPMENT_GROUP_FUEL_PARAMS_V2] import failed kind=%s", import_kind
-        )
-        flash(f"Ошибка загрузки данных: {str(e)}", "danger")
+            if len(ok_results) == 1:
+                parts.append(msg)
+            else:
+                parts.append(f"{imported['filename']}: {msg}")
+        if len(ok_results) == 1:
+            flash(parts[0], "success")
+        else:
+            flash(f"Загружено файлов: {len(ok_results)}. " + " | ".join(parts), "success")
+
+    if wants_json:
+        imported_payload = [
+            {
+                "filename": item.get("filename"),
+                "year": item.get("year"),
+                "kind": item.get("kind"),
+                "message": item.get("message"),
+            }
+            for item in ok_results
+        ]
+        first = ok_results[0] if ok_results else {}
+        first_err = error_results[0] if error_results else {}
+        status = 200 if ok_results else 400
+        return jsonify(
+            {
+                "ok": bool(ok_results),
+                "partial": bool(ok_results) and bool(error_results),
+                "filename": first.get("filename") or first_err.get("filename"),
+                "year": first.get("year"),
+                "kind": first.get("kind"),
+                "message": first.get("message") or first_err.get("error"),
+                "error": None if ok_results else (first_err.get("error") or "Ошибка загрузки."),
+                "imported": imported_payload,
+                "errors": error_results,
+            }
+        ), status
 
     return redirect(url_for("fuel_bp.stations_equipment_group_fuel_params", **redirect_args))
 
@@ -5382,13 +5958,11 @@ def import_equipment_group_specific_fuel_consumption_calculated():
         request.remote_addr,
     )
 
-    redirect_args = {
-        k: v for k, v in request.form.items() if k not in ("file", "csrf_token")
-    }
+    redirect_to, redirect_args = _specific_fuel_consumption_page_redirect(request.form)
 
     if "file" not in request.files:
         flash("Файл не найден.", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_consumption", **redirect_args))
+        return redirect(url_for(redirect_to, **redirect_args))
 
     file = request.files["file"]
     if file.mimetype not in [
@@ -5396,13 +5970,13 @@ def import_equipment_group_specific_fuel_consumption_calculated():
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     ]:
         flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_consumption", **redirect_args))
+        return redirect(url_for(redirect_to, **redirect_args))
 
     if not file.filename.endswith((".xlsx", ".xls")):
         flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_consumption", **redirect_args))
+        return redirect(url_for(redirect_to, **redirect_args))
 
-    year = request.form.get("year", None)
+    year = request.form.get("year") or request.form.get("start_year")
     try:
         year = int(year) if year is not None else get_filter_start_year()
     except (TypeError, ValueError):
@@ -5438,73 +6012,124 @@ def import_equipment_group_specific_fuel_consumption_calculated():
         )
         flash(f"Ошибка загрузки данных: {str(e)}", "danger")
 
-    return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_consumption", **redirect_args))
+    return redirect(url_for(redirect_to, **redirect_args))
 
 
 @fuel_bp.route("/stations_equipment_group_specific_fuel_cost/import", methods=["POST"])
 @login_required
 def import_equipment_group_specific_fuel_cost():
-    """Загрузка данных EquipmentGroupSpecificFuelCost."""
+    """Загрузка данных EquipmentGroupSpecificFuelCost.
+
+    Можно несколько файлов за раз. Имя должно содержать «Стоимость».
+    Год — из имени (Стоимость2024.xlsx → 2024), иначе год фильтра страницы.
+    """
     user = session.get("username", "Неизвестный пользователь")
+    files = _collect_fuel_params_import_files()
+    filenames = [getattr(f, "filename", None) for f in files]
     log_to_db(user, "Начата загрузка стоимости для групп оборудования")
     current_app.logger.info(
-        "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] start user=%s filename=%s mimetype=%s remote_addr=%s",
+        "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] start user=%s files=%s count=%s remote_addr=%s",
         user,
-        getattr(request.files.get("file"), "filename", None),
-        getattr(request.files.get("file"), "mimetype", None),
+        filenames,
+        len(files),
         request.remote_addr,
     )
 
     redirect_args = {
-        k: v for k, v in request.form.items() if k not in ("file", "csrf_token")
+        k: v for k, v in request.form.items() if k not in ("file", "csrf_token", "ajax")
     }
+    wants_json = _wants_fuel_params_import_json()
 
-    if "file" not in request.files:
+    if not files:
         flash("Файл не найден.", "danger")
+        if wants_json:
+            return jsonify({"ok": False, "error": "Файл не найден."}), 400
         return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_cost", **redirect_args))
 
-    file = request.files["file"]
-    if file.mimetype not in [
-        "application/vnd.ms-excel",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ]:
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_cost", **redirect_args))
-
-    if not file.filename.endswith((".xlsx", ".xls")):
-        flash("Неверный формат файла.", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_cost", **redirect_args))
-
-    year = request.form.get("year", None)
+    fallback_year = request.form.get("year", None)
     try:
-        year = int(year) if year is not None else get_filter_start_year()
+        fallback_year = int(fallback_year) if fallback_year is not None else get_filter_start_year()
     except (TypeError, ValueError):
-        year = get_filter_start_year()
+        fallback_year = get_filter_start_year()
 
-    try:
-        result = import_equipment_group_specific_fuel_cost_from_excel(file, user, year=year)
-        flash(result["message"], "success")
+    ok_results = []
+    error_results = []
+
+    for file in files:
+        filename = getattr(file, "filename", "") or ""
+        try:
+            if file.mimetype not in _FUEL_PARAMS_IMPORT_MIMETYPES:
+                raise ValueError("Неверный формат файла.")
+            if not filename.endswith((".xlsx", ".xls")):
+                raise ValueError("Неверный формат файла.")
+            require_specific_fuel_cost_excel_filename(filename)
+            year = resolve_fuel_params_import_year(filename, fallback_year)
+            result = import_equipment_group_specific_fuel_cost_from_excel(
+                file, user, year=year
+            )
+            msg = f"Год {year}: " + result["message"]
+            ok_results.append({"filename": filename, "year": year, "message": msg})
+            current_app.logger.info(
+                "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] done user=%s filename=%s "
+                "created=%s updated=%s skipped=%s year=%s",
+                user,
+                filename,
+                result.get("created"),
+                result.get("updated"),
+                result.get("skipped"),
+                year,
+            )
+        except ValueError as e:
+            current_app.logger.warning(
+                "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] validation error user=%s filename=%s: %s",
+                user,
+                filename,
+                str(e),
+                exc_info=True,
+            )
+            label = filename or "файл"
+            err_msg = f"{label}: {e}"
+            error_results.append({"filename": filename, "error": str(e)})
+            flash(err_msg, "danger")
+        except Exception as e:
+            current_app.logger.exception(
+                "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] import failed filename=%s",
+                filename,
+            )
+            label = filename or "файл"
+            err_msg = f"{label}: ошибка загрузки данных: {e}"
+            error_results.append({"filename": filename, "error": str(e)})
+            flash(err_msg, "danger")
+
+    if ok_results:
         clear_station_aggregation_cache("после импорта стоимости для групп оборудования")
-        current_app.logger.info(
-            "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] done user=%s filename=%s created=%s updated=%s skipped=%s",
-            user,
-            getattr(file, "filename", None),
-            result.get("created"),
-            result.get("updated"),
-            result.get("skipped"),
-        )
-    except ValueError as e:
-        current_app.logger.warning(
-            "[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] validation error user=%s filename=%s: %s",
-            user,
-            getattr(file, "filename", None),
-            str(e),
-            exc_info=True,
-        )
-        flash(str(e), "danger")
-    except Exception as e:
-        current_app.logger.exception("[IMPORT_EQUIPMENT_GROUP_SPECIFIC_FUEL_COST] import failed")
-        flash(f"Ошибка загрузки данных: {str(e)}", "danger")
+        parts = []
+        for item in ok_results:
+            if len(ok_results) == 1:
+                parts.append(item["message"])
+            else:
+                parts.append(f"{item['filename']}: {item['message']}")
+        if len(ok_results) == 1:
+            flash(parts[0], "success")
+        else:
+            flash(f"Загружено файлов: {len(ok_results)}. " + " | ".join(parts), "success")
+
+    if wants_json:
+        first = ok_results[0] if ok_results else {}
+        first_err = error_results[0] if error_results else {}
+        status = 200 if ok_results else 400
+        return jsonify(
+            {
+                "ok": bool(ok_results),
+                "partial": bool(ok_results) and bool(error_results),
+                "filename": first.get("filename") or first_err.get("filename"),
+                "year": first.get("year"),
+                "message": first.get("message") or first_err.get("error"),
+                "error": None if ok_results else (first_err.get("error") or "Ошибка загрузки."),
+                "imported": ok_results,
+                "errors": error_results,
+            }
+        ), status
 
     return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_cost", **redirect_args))
 
@@ -5885,9 +6510,11 @@ def export_stations_equipment_group_natural_fuel():
 @login_required
 def export_stations_equipment_group_specific_fuel_consumption():
     """Экспорт удельных показателей групп оборудования в Excel с учетом фильтров."""
+    redirect_to, redirect_args = _specific_fuel_consumption_page_redirect(request.args)
     try:
         filters = extract_filters_from_args(request.args)
         filters.pop("page", None)
+        filters.pop("redirect_to", None)
 
         start_year, end_year = _export_year_range_for_station_fuel_lists()
 
@@ -5907,7 +6534,7 @@ def export_stations_equipment_group_specific_fuel_consumption():
         )
         if excel_file is None:
             flash("Нет данных для экспорта.", "warning")
-            return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_consumption", **request.args.to_dict()))
+            return redirect(url_for(redirect_to, **redirect_args))
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"Удельные_показатели_групп_оборудования_{timestamp}.xlsx"
@@ -5924,7 +6551,7 @@ def export_stations_equipment_group_specific_fuel_consumption():
         import traceback
         current_app.logger.error(traceback.format_exc())
         flash(f"Ошибка экспорта данных: {str(e)}", "danger")
-        return redirect(url_for("fuel_bp.stations_equipment_group_specific_fuel_consumption", **request.args.to_dict()))
+        return redirect(url_for(redirect_to, **redirect_args))
 
 
 @fuel_bp.route("/stations_equipment_group_specific_fuel_cost/export", methods=["GET"])
@@ -6034,7 +6661,7 @@ def export_stations_equipment_group_electricity_production_cost():
 @fuel_bp.route("/stations_equipment_group_heat_and_tariffs/export", methods=["GET"])
 @login_required
 def export_stations_equipment_group_heat_and_tariffs():
-    """Экспорт тепла и тарифов из СТ в Excel с учетом фильтров."""
+    """Экспорт тепла и тарифов (схемы теплоснабжения) в Excel с учетом фильтров."""
     try:
         filters = extract_filters_from_args(request.args)
         filters.pop("page", None)
@@ -6067,7 +6694,7 @@ def export_stations_equipment_group_heat_and_tariffs():
             )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"Тепло_и_тарифы_из_СТ_{timestamp}.xlsx"
+        filename = f"Тепло_и_тарифы_схемы_теплоснабжения_{timestamp}.xlsx"
 
         excel_file.seek(0)
         return send_file(
@@ -6077,7 +6704,9 @@ def export_stations_equipment_group_heat_and_tariffs():
             download_name=filename,
         )
     except Exception as e:
-        current_app.logger.error(f"Ошибка экспорта тепла и тарифов из СТ: {e}")
+        current_app.logger.error(
+            f"Ошибка экспорта тепла и тарифов (схемы теплоснабжения): {e}"
+        )
         import traceback
 
         current_app.logger.error(traceback.format_exc())
@@ -6309,6 +6938,134 @@ def import_fuel_db_equipment_groups():
     return redirect(url_for(redirect_endpoint, **redirect_args))
 
 
+@fuel_bp.route("/stations_equipment_groups/soft_import_composite_flags", methods=["POST"])
+@login_required
+@has_admin_required
+def soft_import_composite_flags():
+    """
+    Admin-only: мягкая дозагрузка из Access «Имена_станций.xlsx» по numb:
+    флаги COMP/MAIN/NIV и словарные поля существующих групп.
+    Phase A всегда (при apply); Phase B — только с галкой include_phase_b.
+    Отсутствующие NUMB — с галкой create_missing_numbs (текущая версия, без станции).
+    По умолчанию dry_run; запись — apply_changes.
+    """
+    user = session.get("username", "Неизвестный пользователь")
+    redirect_args = {k: v for k, v in request.args.items()}
+
+    if "file" not in request.files:
+        flash("Файл не выбран.", "danger")
+        return redirect(url_for("fuel_bp.stations_equipment_groups", **redirect_args))
+
+    file = request.files["file"]
+    if not file or not file.filename:
+        flash("Файл не выбран.", "danger")
+        return redirect(url_for("fuel_bp.stations_equipment_groups", **redirect_args))
+
+    if not str(file.filename).lower().endswith((".xlsx", ".xls")):
+        flash("Нужен Excel (.xlsx / .xls) — выгрузка Access «Имена_станций».", "danger")
+        return redirect(url_for("fuel_bp.stations_equipment_groups", **redirect_args))
+
+    # Явный флаг записи; без него — только отчёт (безопасно по умолчанию).
+    apply_changes = request.form.get("apply_changes") in ("1", "on", "true", "yes")
+    include_phase_b = request.form.get("include_phase_b") in ("1", "on", "true", "yes")
+    create_missing_numbs = request.form.get("create_missing_numbs") in (
+        "1",
+        "on",
+        "true",
+        "yes",
+    )
+    dry_run = not apply_changes
+
+    try:
+        result = soft_import_composite_flags_from_imena_excel(
+            file,
+            user,
+            dry_run=dry_run,
+            create_phase_b_parents=include_phase_b,
+            create_missing_numbs=create_missing_numbs,
+            database_version_id=get_current_db_version_id(),
+        )
+        session["soft_composite_import_report"] = {
+            "dry_run": result.dry_run,
+            "lines": result.to_flash_lines(),
+            "sample_updates": result.sample_updates[:25],
+            "sample_parent_shells": result.sample_parent_shells[:25],
+            "sample_phase_b": result.sample_phase_b[:25],
+            "sample_missing_numbs": result.sample_missing_numbs[:25],
+            "missing_numbs_enabled": result.missing_numbs_enabled,
+            "missing_numbs_would_create": result.missing_numbs_would_create,
+            "missing_numbs_created": result.missing_numbs_created,
+            "missing_numbs_unique": result.missing_numbs_unique,
+            "eg_rows_would_update": result.eg_rows_would_update,
+            "eg_rows_updated": result.eg_rows_updated,
+            "parent_shells_would_create": result.parent_shells_would_create,
+            "parent_shells_created": result.parent_shells_created,
+            "parent_shells_unique_numbs": result.parent_shells_unique_numbs,
+            "phase_b_enabled": result.phase_b_enabled,
+            "phase_b_would_create": result.phase_b_would_create,
+            "phase_b_created": result.phase_b_created,
+            "phase_b_unique_numbs": result.phase_b_unique_numbs,
+            "matched_numb": result.matched_numb,
+            "skipped_not_in_db": result.skipped_not_in_db,
+        }
+        # Полный отчёт — в жёлтом блоке на странице (не в куче flash).
+        if dry_run:
+            flash(
+                "Проверка флагов и словарных полей завершена — полный отчёт на странице. "
+                "Запись не выполнялась."
+                + (" Phase B в режиме отчёта (галка выкл)." if not include_phase_b else "")
+                + (
+                    " Отсутствующие NUMB в режиме отчёта (галка выкл)."
+                    if not create_missing_numbs
+                    else ""
+                ),
+                "info",
+            )
+        else:
+            flash(
+                f"Дозагрузка применена: записей EG {result.eg_rows_updated}, "
+                f"phase A {result.parent_shells_created}"
+                + (
+                    f", phase B {result.phase_b_created}"
+                    if include_phase_b
+                    else " (phase B пропущена)"
+                )
+                + (
+                    f", отсутствующих NUMB {result.missing_numbs_created}"
+                    if create_missing_numbs
+                    else " (отсутствующие NUMB пропущены)"
+                )
+                + ". Полный отчёт — на странице.",
+                "success",
+            )
+        current_app.logger.info(
+            "[SOFT_IMPORT_COMPOSITE_FLAGS_ROUTE] user=%s dry_run=%s would_update=%s updated=%s",
+            user,
+            dry_run,
+            result.eg_rows_would_update,
+            result.eg_rows_updated,
+        )
+    except ValueError as e:
+        flash(str(e), "danger")
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+    except Exception:
+        current_app.logger.exception(
+            "[SOFT_IMPORT_COMPOSITE_FLAGS_ROUTE] failed user=%s filename=%s",
+            user,
+            getattr(file, "filename", None),
+        )
+        flash("Ошибка мягкой дозагрузки comp/main/niv.", "danger")
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+    return redirect(url_for("fuel_bp.stations_equipment_groups", **redirect_args))
+
+
 @fuel_bp.route("/stations_turbines", methods=["GET", "POST"])
 @login_required
 def stations_turbines():
@@ -6358,6 +7115,7 @@ def stations_turbines():
         show_all=show_all,
         show_totals=show_totals,
     )
+    numb1120_filter_choices = _apply_numb1120_filter_to_station_list_data(data, filters)
 
     if (not data.get("stations")) and data.get("total_count", 0) > 0 and page > 1:
         target_page = data.get("total_pages") or 1
@@ -6420,6 +7178,7 @@ def stations_turbines():
         "fuel/turbines/stations_turbines.html",
         has_active_filters=has_active_filters,
         selected_year=selected_year,
+        numb1120_filter_choices=numb1120_filter_choices,
         **context,
     )
 

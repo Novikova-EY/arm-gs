@@ -26,7 +26,7 @@
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for(_list_endpoint) }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
-        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i></i> Изменения установленной мощности</a>
+        <a href="{{ url_for('station_changes_bp.station_changes_list') }}" class="btn btn-secondary fs-5"><i class="bi bi-arrow-left-right"></i> Изменения установленной мощности</a>
     </div>
 
     <div class="col-12 mb-2">
@@ -65,6 +65,17 @@
     .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-filters-collapse,
     .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
         overflow: visible !important;
+    }
+    /* Архивные агрегаты — светлее, в конце списка станции */
+    #stationsTableContainer tr.machine-archived,
+    #stationsTableContainer tr.machine-archived td {
+        color: #8a9096 !important;
+    }
+    #stationsTableContainer tr.machine-archived a {
+        color: #8a9096 !important;
+    }
+    #stationsTableContainer tr.machine-archived td {
+        background-color: rgba(108, 117, 125, 0.06);
     }
     </style>
 
@@ -543,16 +554,16 @@
                                         </li>
                                     {% endfor %}
                                         
-                                    {% if 1 == 0 %}
+                                    {% if pgu_tes_machine_type_names %}
                                         <li><hr class="dropdown-divider"></li>
 
-                                        <!-- Типы агрегатов ПГУ -->
+                                        <!-- Типы агрегатов ПГУ (ГТ ПГУ / ПТ ПГУ) -->
                                         {% for pgu_tes_machine_type in pgu_tes_machine_type_names %}
                                             <li>
                                                 <label class="dropdown-item">
                                                     <input type="checkbox" name="pgu_tes_machine_type_filter"
                                                         value="{{ pgu_tes_machine_type.id }}"
-                                                        {% if pgu_tes_machine_type.id|string in pgu_tes_machine_type_filter|map('string') %}checked{% endif %}>
+                                                        {% if pgu_tes_machine_type.id|string in (pgu_tes_machine_type_filter or [])|map('string') %}checked{% endif %}>
                                                     {{ pgu_tes_machine_type.name }}
                                                 </label>
                                             </li>
@@ -560,7 +571,7 @@
                                     {% endif %}
                                 </ul>
                             </div>
-                            {% if request.args.getlist('tes_machine_type_filter') %}
+                            {% if request.args.getlist('tes_machine_type_filter') or request.args.getlist('pgu_tes_machine_type_filter') %}
                             <button class="btn btn-sm btn-outline-danger filter-clear-btn" 
                                     type="button" 
                                     data-filter-name="tes_machine_type_filter"
@@ -573,9 +584,8 @@
                     </th>
 
                     {% if request.endpoint == 'fuel_bp.stations_without_equipment_group' %}
-                    <!-- Тип группы оборудования (только на странице агрегатов без группы) -->
                     <th style="width: 120px; text-align: center;">
-                        Тип<br>группы<br>оборуд.
+                        Группа<br>оборуд.
                     </th>
                     {% endif %}
                     
@@ -651,7 +661,6 @@
                         </div>
                     </th>
                     {% endfor %}
-                </tr>
                 </tr>
             </thead>
 
@@ -984,6 +993,10 @@ function showNotification(message, type) {
                 
                 // Удаляем все значения этого фильтра
                 urlParams.delete(filterName);
+                // «Тип агрегата ТЭС» включает и типы ПГУ (ГТ ПГУ / ПТ ПГУ)
+                if (filterName === 'tes_machine_type_filter') {
+                    urlParams.delete('pgu_tes_machine_type_filter');
+                }
                 
                 // Сбрасываем страницу на первую при изменении фильтров
                 urlParams.set('page', '1');

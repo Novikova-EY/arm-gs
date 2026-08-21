@@ -22,6 +22,11 @@ class SynchronousAreaFilterForm(FlaskForm):
         validators=[Optional(), Length(max=100)],
         render_kw={"placeholder": "Введите наименование синхронной зоны"},
     )
+    name_full = StringField(
+        "Полное наименование синхронной зоны",
+        validators=[Optional(), Length(max=256)],
+        render_kw={"placeholder": "Введите полное наименование синхронной зоны"},
+    )
     regional_district = SelectField(
         "Субъект РФ",
         choices=[],
@@ -67,6 +72,11 @@ class AddSynchronousAreaForm(FlaskForm):
         "Наименование синхронной зоны",
         validators=[Optional(), Length(max=100)],
         render_kw={"placeholder": "Введите наименование синхронной зоны"},
+    )
+    name_full = StringField(
+        "Полное наименование синхронной зоны",
+        validators=[Optional(), Length(max=256)],
+        render_kw={"placeholder": "Введите полное наименование синхронной зоны"},
     )
 
 

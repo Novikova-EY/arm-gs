@@ -151,7 +151,9 @@ FUEL_PARAM_CARRY_FIELDS = (
     "q",
     "qotr",
     "turt",
+    "sn_ee",
     "snk",
+    "sn_te",
     "sn_t",
     "nt",
     "nt_sum",
@@ -173,8 +175,7 @@ GROUPS = {
     "chit": ["har", "urt", "tataur", "tarbag", "zab_kam"],
     "yakut": ["neru", "pyak", "zyryan"],
     "amur": ["rai", "erk", "svo", "ogodj"],
-    # Как в СиПР MDB / ARM: gaz := gaz_prir + gazpp (не Access gaz += gazpp)
-    "gaz": ["gaz_prir", "gazpp"],
+    # gaz не в GROUPS: свод Станции.GAZ = gaz + dop.gaz_prir + dop.gazpp
     "tung": ["jer", "karab"],
     "prim": ["bikin", "razdol", "hankai"],
     "chukot": ["bering", "anad"],
@@ -183,9 +184,30 @@ GROUPS = {
     "isk_gaz": ["koks_g", "prochgaz", "domen_g"],
 }
 
-# Access: w("proch") = dop("koksdom")+dop("prochgaz")+dop("tvproch")
-ACCESS_PROCH_CHILDREN = ("koks_g", "prochgaz", "tvproch")
-ACCESS_PROCH_TRIGGERS = frozenset({"koks_g", "koksdom", "prochgaz", "tvproch"})
+# Access форма «Станции» AfterUpdate при YEAR >= 2018:
+#   PROCH = tvproch + szh_gaz + inoe
+#   ISK_GAZ = domen_g + koks_g + prochgaz  (см. GROUPS["isk_gaz"])
+# Старая VBA кнопки «Топливо» (2010–2017) писала
+#   w("proch") = koksdom + prochgaz + tvproch
+# и для СиПР 2026 не совпадает с эталоном Access.
+ACCESS_PROCH_CHILDREN_2018 = ("tvproch", "szh_gaz", "inoe")
+ACCESS_PROCH_TRIGGERS_2018 = frozenset(ACCESS_PROCH_CHILDREN_2018)
+ACCESS_PROCH_CHILDREN_LEGACY = ("koks_g", "prochgaz", "tvproch")
+ACCESS_PROCH_TRIGGERS_LEGACY = frozenset({"koks_g", "koksdom", "prochgaz", "tvproch"})
+# Совместимость импорта: по умолчанию правило СиПР (год ≥ 2018).
+ACCESS_PROCH_CHILDREN = ACCESS_PROCH_CHILDREN_2018
+ACCESS_PROCH_TRIGGERS = ACCESS_PROCH_TRIGGERS_2018
+
+
+def _proch_rollup_spec(year_number) -> tuple[tuple[str, ...], frozenset[str]]:
+    """Корзина Станции.PROCH: с 2018 — tvproch+szh_gaz+inoe, иначе старая VBA."""
+    try:
+        year = int(year_number) if year_number is not None else 2018
+    except (TypeError, ValueError):
+        year = 2018
+    if year >= 2018:
+        return ACCESS_PROCH_CHILDREN_2018, ACCESS_PROCH_TRIGGERS_2018
+    return ACCESS_PROCH_CHILDREN_LEGACY, ACCESS_PROCH_TRIGGERS_LEGACY
 
 # Access formtxt-имя → поле ExtraFuelParam
 FORMTXT_EXTRA_ALIASES = {
@@ -373,7 +395,7 @@ class EquipmentGroupFuelCalculationService:
             database_version_id=effective_db_version,
         )
 
-        # Access Кнопка49: If U.NoMatch Then GoTo skip2 — до Update, строка не меняется.
+        # Access: If U.NoMatch Then GoTo skip2. Пустая строка U — это Match (y=0).
         if consumption is None:
             return fuel_param
 
@@ -599,27 +621,19 @@ class EquipmentGroupFuelCalculationService:
         target_year: int,
         database_version_id: int | None = None,
     ) -> EquipmentGroupSpecificFuelConsumption | None:
-        q = self.session.query(EquipmentGroupSpecificFuelConsumption).filter(
-            EquipmentGroupSpecificFuelConsumption.equipment_group_id == equipment_group_id,
-            EquipmentGroupSpecificFuelConsumption.year_number <= target_year,
+        from app.fuel.services.calculation.specific_consumption_lookup import (
+            query_specific_consumption_for_fuel,
         )
 
-        if database_version_id is not None:
-            q = q.filter(
-                (EquipmentGroupSpecificFuelConsumption.database_version_id == database_version_id)
-                | (EquipmentGroupSpecificFuelConsumption.database_version_id.is_(None))
-            )
-        else:
-            current_vid = get_current_db_version_id()
-            if current_vid is not None:
-                q = q.filter(
-                    (EquipmentGroupSpecificFuelConsumption.database_version_id == current_vid)
-                    | (EquipmentGroupSpecificFuelConsumption.database_version_id.is_(None))
-                )
-
-        return q.order_by(
-            EquipmentGroupSpecificFuelConsumption.year_number.desc()
-        ).first()
+        vid = database_version_id
+        if vid is None:
+            vid = get_current_db_version_id()
+        return query_specific_consumption_for_fuel(
+            self.session,
+            equipment_group_id=equipment_group_id,
+            target_year=target_year,
+            database_version_id=vid,
+        )
 
     def _select_actual_formula_row(
         self,
@@ -658,8 +672,10 @@ class EquipmentGroupFuelCalculationService:
     ) -> None:
         """
         Энергетический блок расчета.
-        Порт логики Access-модуля: расчет EWTP, EOTP, EUST, EURT, TUST и B
+        Порт логики Access-модуля: расчет EOTP, EUST, EURT, TUST и B
         по текущей строке параметров группы и актуальной строке удельных показателей.
+        EWTP со строки станции не затираем (импорт / ручная правка); формула
+        QOTR·y/1000 только если ewtp пустой.
         Ветвь VED∈{1,4}: snbas/Ksn для ekotp и bbas/Kh для EUST.
         """
         if consumption is None:
@@ -691,7 +707,9 @@ class EquipmentGroupFuelCalculationService:
         except (TypeError, ValueError):
             ved_i = None
 
-        ewtp = qotr * y / Decimal("1000")
+        from app.fuel.services.calculation.station_ewtp import resolve_station_ewtp
+
+        ewtp = resolve_station_ewtp(fuel_param, y)
         hours_util = (e / nust) / Decimal("8.76") if nust > 0 else Decimal("0")
 
         if ved_i in (1, 4) and ksn > 0 and nust > 0:
@@ -836,8 +854,8 @@ class EquipmentGroupFuelCalculationService:
     ) -> None:
         """
         Укрупнение бассейнов из extra_param, если лист встретился в formtxt (used_names).
-        gaz: GROUPS gaz_prir+gazpp (как в СиПР MDB / ARM), не Access gaz+=gazpp.
-        proch: Access-корзина koks_g+prochgaz+tvproch при триггере в formtxt.
+        gaz: Access Станции.GAZ = gaz + gaz_prir + gazpp.
+        proch: с 2018 Access-корзина tvproch+szh_gaz+inoe при триггере в formtxt.
         """
         used = {str(n).lower() for n in (used_names or set())}
 
@@ -851,10 +869,27 @@ class EquipmentGroupFuelCalculationService:
             if hasattr(fuel_param, group_name):
                 setattr(fuel_param, group_name, total)
 
-        # Access: If bproch Then w("proch") = dop(koksdom)+dop(prochgaz)+dop(tvproch)
-        if used & ACCESS_PROCH_TRIGGERS and hasattr(fuel_param, "proch"):
+        # Access Станции.GAZ = gaz (из formtxt) + dop.gaz_prir + dop.gazpp.
+        # VBA явно пишет только gaz += gazpp; gaz_prir лежит в Доп_угли и тоже
+        # входит в сводный GAZ (иначе крупные ТЭС с formtxt «gaz_prir» получают GAZ=0).
+        if hasattr(fuel_param, "gaz"):
+            if "gazpp" in used:
+                fuel_param.gaz = d0(fuel_param.gaz) + d0(
+                    getattr(extra_param, "gazpp", None)
+                )
+            if "gaz_prir" in used:
+                fuel_param.gaz = d0(fuel_param.gaz) + d0(
+                    getattr(extra_param, "gaz_prir", None)
+                )
+
+        # Access YEAR>=2018: PROCH = tvproch + szh_gaz + inoe
+        # (старая VBA «Расчет» koksdom+prochgaz+tvproch — только year < 2018)
+        proch_children, proch_triggers = _proch_rollup_spec(
+            getattr(fuel_param, "year_number", None)
+        )
+        if used & proch_triggers and hasattr(fuel_param, "proch"):
             fuel_param.proch = sum(
-                (d0(getattr(extra_param, child, None)) for child in ACCESS_PROCH_CHILDREN),
+                (d0(getattr(extra_param, child, None)) for child in proch_children),
                 Decimal("0"),
             )
 

@@ -71,10 +71,13 @@ def format_logs_for_display(logs):
             ts_msk = ts.astimezone(MOSCOW)
         else:
             ts_msk = None
+        date_str = ts_msk.strftime("%Y-%m-%d") if ts_msk else ""
+        time_str = ts_msk.strftime("%H:%M:%S") if ts_msk else ""
         formatted_logs.append(
             {
-                "date": ts_msk.strftime("%Y-%m-%d") if ts_msk else "",
-                "time": ts_msk.strftime("%H:%M:%S") if ts_msk else "",
+                "date": date_str,
+                "time": time_str,
+                "datetime": f"{date_str} {time_str}".strip(),
                 "username": log.username or "",
                 "username_lower": (log.username or "").lower(),
                 "action": log.action or "",

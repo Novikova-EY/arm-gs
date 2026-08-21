@@ -85,6 +85,7 @@ function initializeStationFilters() {
                 Array.from(selectEl.options).forEach(opt => { opt.selected = false; });
                 setButtonText();
                 selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                scheduleFiltersFormSubmit();
                 renderMenu();
             });
 
@@ -131,6 +132,7 @@ function initializeStationFilters() {
                     if (found) found.selected = cb.checked;
                     setButtonText();
                     selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+                    scheduleFiltersFormSubmit();
                 });
 
                 const text = document.createElement('span');
@@ -171,6 +173,22 @@ function initializeStationFilters() {
         if (typeof el._multiDropdownRender === 'function') {
             el._multiDropdownRender();
         }
+    }
+
+    function scheduleFiltersFormSubmit() {
+        const filtersForm = document.querySelector('#filtersCollapse form');
+        if (!filtersForm) return;
+        if (filtersForm._submitTimer) {
+            clearTimeout(filtersForm._submitTimer);
+        }
+        filtersForm._submitTimer = setTimeout(() => {
+            filtersForm._submitTimer = null;
+            if (typeof filtersForm.requestSubmit === 'function') {
+                filtersForm.requestSubmit();
+            } else {
+                filtersForm.submit();
+            }
+        }, 150);
     }
 
     function initializeSelect2IfAvailable(selector, placeholder) {
@@ -519,6 +537,24 @@ function initializeStationFilters() {
 
     document.getElementById('federal_district')?.addEventListener('change', () => updateAllFilters());
     document.getElementById('regional_district')?.addEventListener('change', () => updateAllFilters());
+
+    // Автоотправка формы при изменении фильтров — таблица обновляется с учетом выбранных фильтров.
+    const filtersForm = document.querySelector('#filtersCollapse form');
+    if (filtersForm) {
+        const filterSelectors = [
+            '#energy_system_type',
+            '#union_energy_system',
+            '#regional_energy_system',
+            '#federal_district',
+            '#regional_district',
+        ];
+        filterSelectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                if (el.form !== filtersForm) return;
+                el.addEventListener('change', scheduleFiltersFormSubmit);
+            });
+        });
+    }
 
     // Инициализация при загрузке страницы
     if (selectedEst.length > 0) setSelectValues('#energy_system_type', selectedEst.map(String));

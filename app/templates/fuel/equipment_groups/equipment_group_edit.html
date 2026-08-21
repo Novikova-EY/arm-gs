@@ -1,10 +1,58 @@
 {% extends 'base.html' %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label %}
 
 {% block title %}{{ equipment_group.name or equipment_group.name_ext or 'Группа оборудования' }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
 {% set can_edit = can_edit if can_edit is defined else false %}
+{% set grouping_station_bindings = grouping_station_bindings|default([]) %}
+{% set grouping_station_choices = grouping_station_choices|default([]) %}
+{% set fuel_param_derived_formulas = fuel_param_derived_formulas|default({}) %}
+{% set fuel_params_by_year = fuel_params_by_year|default({}) %}
+{% set _calc_fill_rule = ' Правило заполнения: если есть данные для расчёта — значение по формуле; если нет — «—»/ручной ввод.' %}
+
+{% macro eg_formula_icon(title, code='') -%}
+{% if title %}
+<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ title|e }}" style="cursor: help; font-size: 0.9em;"{% if code %} aria-label="Формула {{ code|fuel_header_code }}"{% endif %}></i>
+{% endif %}
+{%- endmacro %}
+
+{% macro eg_fuel_param_cell(attr, y, v, can_edit, rounding_digits, param=none, is_derived=false) -%}
+{% if attr == 'hfix' %}
+    {% if can_edit %}
+    <select name="fuel_param_{{ y }}_{{ attr }}" class="form-select form-select-sm text-center fuel-param-input" data-initial="{% if v is none %}{% else %}{{ v }}{% endif %}">
+        <option value="" {% if v is none %}selected{% endif %}>—</option>
+        <option value="0" {% if v is not none and v|string == '0' %}selected{% endif %}>нет</option>
+        <option value="1" {% if v is not none and v|string == '1' %}selected{% endif %}>да</option>
+    </select>
+    {% else %}
+        {% if v is none %}—{% elif v|string == '1' %}да{% elif v|string == '0' %}нет{% else %}{{ v }}{% endif %}
+    {% endif %}
+{% elif is_derived %}
+    {% set calc = param|fuel_param_derived(attr) if param is not none else none %}
+    {% if calc is not none %}
+        {% set calc_full = calc|format_decimal(0) %}
+        <span class="fuel-param-derived-value text-muted" data-fuel-derived-attr="{{ attr }}"{% if calc_full %} title="{{ calc_full|e }}"{% endif %}>{{ calc|format_decimal_trim(rounding_digits) }}</span>
+    {% elif can_edit %}
+        {% set v_full = v|format_decimal(0) if v is not none else '' %}
+        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v|format_decimal_trim(rounding_digits) if v is not none else '' }}" class="form-control form-control-sm text-center fuel-param-input" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+    {% else %}
+        {{ v|format_decimal_trim(rounding_digits) if v is not none else '—' }}
+    {% endif %}
+{% else %}
+    {% set v_full = v|format_decimal(0) if v is not none else '' %}
+    {% if can_edit %}
+    <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v|format_decimal_trim(rounding_digits) if v is not none else '' }}" class="form-control form-control-sm text-center fuel-param-input" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
+    {% else %}
+    {{ v|format_decimal_trim(rounding_digits) if v is not none else '—' }}
+    {% endif %}
+{% endif %}
+{%- endmacro %}
+
+{% macro eg_param_tr_open(is_empty, always_show=false, extra_class='', fuel_attr='') -%}
+<tr class="text-center align-middle{{ extra_class }}" data-eg-param-row="1"{% if fuel_attr %} data-fuel-attr="{{ fuel_attr }}"{% endif %}{% if always_show %} data-always-show="1"{% endif %}{% if is_empty %} data-empty-row="1"{% endif %}>
+{%- endmacro %}
 
 <style>
 .readonly-indicator {
@@ -40,10 +88,15 @@
 .equipment-group-edit-page tr.calc-row td.first-column {
     background-color: rgba(var(--bs-secondary-rgb), 0.06);
 }
-/* Выпадающий список «Станция для группировки» — как фильтр РЭС на stations_equipment_groups */
+.equipment-group-edit-page:not(.eg-show-empty-param-rows) tr[data-empty-row="1"]:not([data-always-show="1"]) {
+    display: none !important;
+}
+/* Выпадающий список «Привязка к станции» — как фильтр РЭС на stations_equipment_groups */
 .equipment-group-edit-page .grouping-station-dropdown .dropdown-menu {
-    width: 100%;
-    min-width: 100%;
+    width: max(100%, 320px);
+    min-width: 320px;
+    max-height: 360px;
+    overflow-y: auto;
 }
 .equipment-group-edit-page .grouping-station-dropdown .grouping-station-row {
     cursor: pointer;
@@ -54,9 +107,15 @@
 .equipment-group-edit-page .grouping-station-dropdown .grouping-station-row:hover {
     background-color: rgba(var(--bs-primary-rgb), 0.08);
 }
-.equipment-group-edit-page .grouping-station-dropdown .grouping-station-row.is-selected {
-    background-color: var(--bs-primary-bg-subtle, #cfe2ff);
-    font-weight: 600;
+.equipment-group-edit-page .grouping-station-chip .btn-close {
+    width: 0.45em;
+    height: 0.45em;
+    padding: 0.45em;
+    flex-shrink: 0;
+    opacity: 0.55;
+}
+.equipment-group-edit-page .grouping-station-chip .btn-close:hover {
+    opacity: 1;
 }
 </style>
 
@@ -66,7 +125,7 @@
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
 
-    <body>
+    <div>
         <div class="d-flex align-items-center mb-4">
             <h2 class="mb-0 ms-3 d-flex align-items-center gap-3">Информация о группе оборудования
                 {% if can_edit %}
@@ -89,51 +148,136 @@
                     <div class="col-12 mb-2">
                         <h3 class="mb-0 ms-3">Общая информация</h3>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Название</label>
-                        {% if can_edit %}<input type="text" name="name" class="form-control station-name" value="{{ equipment_group.name or '' }}" placeholder="—">{% else %}<span class="station-name">{{ equipment_group.name or '—' }}</span>{% endif %}
+                    {# Первая строка: 3 поля на 5/6 ширины; «Привязка к станции» — 1/6, как колонка названия родителя ниже #}
+                    <div class="col-12">
+                        <div class="row g-3">
+                            <div class="col-md-10">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">Название</label>
+                                        {% if can_edit %}<input type="text" name="name" class="form-control station-name" value="{{ equipment_group.name or '' }}" placeholder="—">{% else %}<span class="station-name">{{ equipment_group.name or '—' }}</span>{% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">Субъект РФ</label>
+                                        {% if can_edit %}<select name="regional_district_id" class="form-select">{% for val, label in regional_district_choices %}<option value="{{ val }}" {% if (equipment_group.regional_district_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_district_id }}</span>{% endif %}
+                                        {% if composite_role|default('') == 'child' %}
+                                        <div class="form-text">Для дочерней группы берётся с родителя по коду main.</div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label fw-semibold">Региональная энергосистема</label>
+                                        {% if can_edit %}<select name="regional_energy_system_id" class="form-select">{% for val, label in regional_energy_system_choices %}<option value="{{ val }}" {% if (equipment_group.regional_energy_system_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_energy_system_id }}</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2 min-w-0">
+                                <label class="form-label fw-semibold">Привязка к станции (Модуль "Генерация")</label>
+                                <input type="hidden" name="grouping_station_ids_present" value="1">
+                                <input type="hidden" name="grouping_station_ids_loaded_present" value="1">
+                                {% for st in grouping_station_bindings %}
+                                <input type="hidden" name="grouping_station_ids_loaded" value="{{ st.id }}">
+                                {% endfor %}
+                                {% set _station_details_tpl = url_for('station_bp.station_details', station_id=0, **request.args) %}
+                                <div
+                                    id="groupingStationBindings"
+                                    class="grouping-station-bindings d-flex flex-column gap-1"
+                                    data-station-details-template="{{ _station_details_tpl }}"
+                                >
+                                    {% for st in grouping_station_bindings %}
+                                    <div class="grouping-station-chip d-flex align-items-start gap-1 text-break" data-station-id="{{ st.id }}">
+                                        <input type="hidden" name="grouping_station_ids" value="{{ st.id }}">
+                                        <a href="{{ url_for('station_bp.station_details', station_id=st.id, **request.args) }}">{{ st.name }}</a>
+                                        {% if can_edit %}
+                                        <button type="button" class="btn-close grouping-station-remove mt-1" aria-label="Убрать станцию"></button>
+                                        {% endif %}
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if can_edit %}
+                                <select
+                                    id="add_grouping_station_id"
+                                    class="form-select mt-2"
+                                    data-bound-ids="{{ grouping_station_bindings | map(attribute='id') | join(',') }}"
+                                >
+                                    {% for val, label in grouping_station_choices %}
+                                    <option value="{{ val }}">{% if not val %}Добавить станцию{% else %}{{ label }}{% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text mb-0">Можно привязать несколько станций к одной группе.</div>
+                                {% elif not grouping_station_bindings %}
+                                <div class="form-control-plaintext fs-5 fw-semibold mb-0 text-break">
+                                    {{ choice_displays.grouping_station_id }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Субъект РФ</label>
-                        {% if can_edit %}<select name="regional_district_id" class="form-select">{% for val, label in regional_district_choices %}<option value="{{ val }}" {% if (equipment_group.regional_district_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_district_id }}</span>{% endif %}
+                    <div class="w-100"></div>
+                    {# Вторая строка: numb + тип / niv / comp / main (+ ссылка на родителя справа), равные колонки #}
+                    <div class="col-12">
+                        <div class="row g-3 row-cols-2 row-cols-md-6">
+                            <div class="col min-w-0">
+                                <label class="form-label fw-semibold">Код группы оборудования (numb)</label>
+                                {% if can_edit %}<input type="text" inputmode="numeric" name="numb" class="form-control" value="{{ equipment_group.numb if equipment_group.numb is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb if equipment_group.numb is not none else '—' }}</span>{% endif %}
+                            </div>
+                            <div class="col min-w-0">
+                                <label class="form-label fw-semibold">Тип группы оборудования</label>
+                                {% if can_edit %}
+                                <select name="equipment_group_type_id" class="form-select">
+                                    {% for val, label in equipment_group_type_choices %}
+                                    <option value="{{ val }}" {% if (equipment_group_type_selected or '')|string == (val or '')|string %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Прочерк — без типа группы (оболочка составной станции).</div>
+                                {% if not equipment_group_type_selected and equipment_group_types_display and equipment_group_types_display != '—' %}
+                                <div class="form-text text-muted">Сейчас в связях несколько разных типов: {{ equipment_group_types_display }} — выберите единый тип и сохраните.</div>
+                                {% endif %}
+                                {% else %}
+                                <span class="form-control-plaintext">{{ equipment_group_types_display }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="col min-w-0">
+                                <label class="form-label fw-semibold">Группа оборудования/составная станция (niv)</label>
+                                {% if can_edit %}
+                                <select name="niv" class="form-select">
+                                    <option value="" {% if equipment_group.niv is none %}selected{% endif %}>—</option>
+                                    <option value="1" {% if equipment_group.niv == 1 %}selected{% endif %}>1 — группа оборудования</option>
+                                    <option value="0" {% if equipment_group.niv == 0 %}selected{% endif %}>0 — не группа (станция)</option>
+                                </select>
+                                {% else %}
+                                <span class="form-control-plaintext">{% if equipment_group.niv == 1 %}1 — группа оборудования{% elif equipment_group.niv == 0 %}0 — не группа (станция){% elif equipment_group.niv is none %}—{% else %}{{ equipment_group.niv }}{% endif %}</span>
+                                {% endif %}
+                            </div>
+                            <div class="col min-w-0">
+                                <label class="form-label fw-semibold">Признак составной станции (comp)</label>
+                                {% if can_edit %}
+                                <select name="comp" class="form-select">
+                                    <option value="" {% if equipment_group.comp is none %}selected{% endif %}>—</option>
+                                    <option value="1" {% if equipment_group.comp == 1 %}selected{% endif %}>1 — составная (разбита на группы)</option>
+                                    <option value="0" {% if equipment_group.comp == 0 %}selected{% endif %}>0 — не составная</option>
+                                </select>
+                                {% else %}
+                                <span class="form-control-plaintext">{% if equipment_group.comp == 1 %}1 — составная (разбита на группы){% elif equipment_group.comp == 0 %}0 — не составная{% elif equipment_group.comp is none %}—{% else %}{{ equipment_group.comp }}{% endif %}</span>
+                                {% endif %}
+                            </div>
+                            <div class="col min-w-0">
+                                <label class="form-label fw-semibold">Код родителя (main)</label>
+                                {% if can_edit %}
+                                <input type="text" inputmode="numeric" name="main" class="form-control" value="{{ equipment_group.main if equipment_group.main is not none else '' }}" placeholder="—" title="numb родительской группы (не id из URL)">
+                                {% else %}
+                                <span class="form-control-plaintext">{{ equipment_group.main if equipment_group.main is not none else '—' }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="col min-w-0">
+                                {% if parent_eg_for_main %}
+                                <label class="form-label fw-semibold">&nbsp;</label>
+                                <div class="form-control-plaintext fs-5 fw-semibold mb-0 text-break">
+                                    <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=parent_eg_for_main.id, **request.args) }}">{{ parent_eg_for_main.name or parent_eg_for_main.name_ext or ('numb=' ~ parent_eg_for_main.numb) }}</a>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Региональная энергосистема</label>
-                        {% if can_edit %}<select name="regional_energy_system_id" class="form-select">{% for val, label in regional_energy_system_choices %}<option value="{{ val }}" {% if (equipment_group.regional_energy_system_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.regional_energy_system_id }}</span>{% endif %}
-                    </div>
-                    {# Вторая строка: колонки как в первой — Тип под Название, Станция под Субъект РФ #}
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Тип группы оборудования</label>
-                        {% if can_edit %}
-                        <select name="equipment_group_type_id" class="form-select">
-                            {% for val, label in equipment_group_type_choices %}
-                            <option value="{{ val }}" {% if (equipment_group_type_selected or '')|string == (val or '')|string %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% if not equipment_group_type_selected and equipment_group_types_display and equipment_group_types_display != '—' %}
-                        <div class="form-text text-muted">Сейчас в связях несколько разных типов: {{ equipment_group_types_display }} — выберите единый тип и сохраните.</div>
-                        {% endif %}
-                        {% else %}
-                        <span class="form-control-plaintext">{{ equipment_group_types_display }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-semibold">Станция для группировки</label>
-                        {% if can_edit %}
-                        <select
-                            name="grouping_station_id"
-                            id="grouping_station_id"
-                            class="form-select"
-                        >
-                            {% for val, label in grouping_station_choices %}
-                            <option value="{{ val }}" {% if (grouping_station_effective_id or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                        {% else %}
-                        <span class="form-control-plaintext">{{ choice_displays.grouping_station_id }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="col-md-4 d-none d-md-block" aria-hidden="true"></div>
                 </div>
                 <div class="row g-4 mt-4">
                     <div class="col-12 mb-2">
@@ -142,14 +286,6 @@
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Название (name_ext)</label>
                         {% if can_edit %}<input type="text" name="name_ext" class="form-control" value="{{ equipment_group.name_ext or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.name_ext or '—' }}</span>{% endif %}
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Код группы оборудования (numb)</label>
-                        {% if can_edit %}<input type="number" name="numb" class="form-control" value="{{ equipment_group.numb if equipment_group.numb is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.numb or '—' }}</span>{% endif %}
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
-                        {% if can_edit %}<input type="text" name="ordnumb" class="form-control" value="{{ equipment_group.ordnumb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Действующая (d)</label>
@@ -167,18 +303,6 @@
                         <label class="form-label fw-semibold">ФОРЭМ (forem)</label>
                         {% if can_edit %}<select name="forem" class="form-select">{% for val, label in forem_choices %}<option value="{{ val }}" {% if (equipment_group.forem or '')|string == (val or '') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% else %}<span class="form-control-plaintext">{{ choice_displays.forem }}</span>{% endif %}
                     </div>
-                    <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Признак группы (niv)</label>
-                        {% if can_edit %}<input type="number" name="niv" class="form-control" value="{{ equipment_group.niv if equipment_group.niv is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.niv or '—' }}</span>{% endif %}
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Признак разбитой (comp)</label>
-                        {% if can_edit %}<input type="number" name="comp" class="form-control" value="{{ equipment_group.comp if equipment_group.comp is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.comp or '—' }}</span>{% endif %}
-                    </div>
-                    <div class="col-md-2 col-6">
-                        <label class="form-label fw-semibold">Код группы оборудования (main)</label>
-                        {% if can_edit %}<input type="number" name="main" class="form-control" value="{{ equipment_group.main if equipment_group.main is not none else '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.main or '—' }}</span>{% endif %}
-                    </div>
                     <div class="w-100"></div>
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Мощность вар.1 (n1)</label>
@@ -195,6 +319,10 @@
                     <div class="col-md-2 col-6">
                         <label class="form-label fw-semibold">Давление вар.2 (p2)</label>
                         {% if can_edit %}<input type="text" name="p2" class="form-control" value="{{ equipment_group.p2 or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.p2 or '—' }}</span>{% endif %}
+                    </div>
+                    <div class="col-md-2 col-6">
+                        <label class="form-label fw-semibold">Порядковый номер (ordnumb)</label>
+                        {% if can_edit %}<input type="text" name="ordnumb" class="form-control" value="{{ equipment_group.ordnumb or '' }}" placeholder="—">{% else %}<span class="form-control-plaintext">{{ equipment_group.ordnumb or '—' }}</span>{% endif %}
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-semibold">Адрес (addr)</label>
@@ -271,15 +399,95 @@
         </div>
             </div>
         </form>
-    </body>
+    </div>
 
     <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
+
+    {% if equipment_group.comp == 1 %}
+    <!-- Дочерние группы составной станции (comp=1) -->
+    <div class="container-fluid">
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center w-100 mb-3">
+                    <h3 class="mb-0 ms-3">Группы оборудования, входящие в эту группу</h3>
+                </div>
+                {% if member_equipment_groups %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered align-middle mb-3 w-100" data-auto-export-excel="off">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th>Группа оборудования</th>
+                                <th class="text-center" style="width: 100px;">Код<br><span class="text-muted small">(numb)</span></th>
+                                <th class="text-center" style="width: 180px;">Тип группы оборудования</th>
+                                <th class="text-center" style="width: 140px;">Количество агрегатов</th>
+                                <th class="text-center" style="width: 1%; white-space: nowrap;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in member_equipment_groups %}
+                            {% set child = item.equipment_group %}
+                            {% set child_block = {'is_composite_child': true, 'show_composite_cluster': true} %}
+                            <tr>
+                                <td class="{{ eg_name_cell_class(child_block, 'equipment-group-name') }}">
+                                    {{ eg_name_label(child, (child.name or child.name_ext or ('numb=' ~ child.numb)), child_block, link_endpoint='fuel_bp.equipment_group_edit', link_extra_class='fw-bold fs-5') }}
+                                </td>
+                                <td class="text-center">{{ child.numb if child.numb is not none else '—' }}</td>
+                                <td class="text-center">{{ item.types_display }}</td>
+                                <td class="text-center">{{ item.machines_count }}</td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-1 flex-nowrap">
+                                        <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=child.id, **request.args) }}" class="btn btn-outline-success btn-sm text-nowrap" target="_blank" rel="noopener noreferrer">Открыть</a>
+                                        {% if can_edit %}
+                                        <form method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" class="d-inline" onsubmit="return confirm('Перенести привязку агрегатов этой группы на «{{ child.name or child.name_ext or child.numb }}»?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <input type="hidden" name="rebind_machines" value="1">
+                                            <input type="hidden" name="target_equipment_group_id" value="{{ child.id }}">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">Перенести агрегаты сюда</button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted ms-3 mb-3">Нет групп оборудования с main={{ equipment_group.numb if equipment_group.numb is not none else '—' }} в текущей версии БД.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="border-top my-3 w-100"></div>
+    {% endif %}
 
     <!-- Агрегаты группы оборудования (формат как на station_details) -->
     <div class="container-fluid">
         <div class="row g-3">
             <div class="col-12">
                 <h3 class="mb-0 ms-3">Агрегаты группы оборудования</h3>
+                {% set _rebind_choices = rebind_target_choices|default([]) %}
+                {% set _rebind_count = rebind_bound_machines_count|default(0) %}
+                {% if can_edit and _rebind_choices %}
+                <form method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" class="d-flex flex-wrap align-items-end gap-2 ms-3 mt-3 mb-2" onsubmit="return confirm('Перенести привязку агрегатов на выбранную группу оборудования?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="rebind_machines" value="1">
+                    <div>
+                        <label for="target_equipment_group_id" class="form-label fw-semibold mb-1">Переопределить группу оборудования</label>
+                        <select name="target_equipment_group_id" id="target_equipment_group_id" class="form-select" style="min-width: 320px;" required>
+                            <option value="">— выберите группу (код и название) —</option>
+                            {% for gid, glabel in _rebind_choices %}
+                            <option value="{{ gid }}">{{ glabel }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">
+                            Сейчас к этой группе привязано агрегатов: {{ _rebind_count }}.
+                            Выбранная группа будет связана со станцией, если связи ещё нет.
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary">Перенести привязку</button>
+                </form>
+                {% endif %}
 
                 <!-- Фильтры по годам (как на station_details) -->
                 <div class="d-flex justify-content-between align-items-center mb-3 mt-3">
@@ -335,7 +543,8 @@
                                     <th rowspan="2" class="col-equipment-group-type" style="width: 120px;">Тип<br>группы<br>оборуд.</th>
                                     <th rowspan="2" class="col-fuel-type">Топливо <br> (по СО ЕЭС)</th>
                                     <th rowspan="2" style="width: 90px; white-space: normal;">Тепловая мощность отборов, Гкал/ч<br><span class="text-muted small">({{ 'nt'|fuel_header_code }})</span></th>
-                                    <th colspan="{{ end_year - start_year + 1 }}">Установленная электрическая мощность, МВт</th>
+                                    <th rowspan="2" class="fw-bold" style="width: 50px;">Тип <br> мощ-ти</th>
+                                    <th colspan="{{ end_year - start_year + 1 }}">Электрическая мощность, МВт</th>
                                     <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                                     <th rowspan="2" class="col-note">Примечание</th>
                                 </tr>
@@ -373,7 +582,16 @@
         <form method="POST" action="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=equipment_group.id, **request.args) }}" id="fuelParamsForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="equipment_group_type_id" id="fuelFormEquipmentGroupTypeId" value="{{ (equipment_group_type_selected if equipment_group_type_selected is not none else '')|string }}">
-            <input type="hidden" name="grouping_station_id" id="fuelFormGroupingStationId" value="{{ (grouping_station_effective_id or '')|string }}">
+            <input type="hidden" name="grouping_station_ids_present" value="1">
+            <input type="hidden" name="grouping_station_ids_loaded_present" value="1">
+            {% for st in grouping_station_bindings %}
+            <input type="hidden" name="grouping_station_ids_loaded" value="{{ st.id }}">
+            {% endfor %}
+            <span id="fuelFormGroupingStationIds">
+                {% for st in grouping_station_bindings %}
+                <input type="hidden" name="grouping_station_ids" value="{{ st.id }}">
+                {% endfor %}
+            </span>
             <input type="hidden" name="start_year" value="{{ start_year }}">
             <input type="hidden" name="end_year" value="{{ end_year }}">
             <input type="hidden" name="rounding_digits_table1" value="{{ rounding_digits_table1 }}">
@@ -388,9 +606,63 @@
         {% endif %}
 
         <div class="card mb-3 border-0 shadow-none mt-3">
+            <div class="card-header fw-bold bg-transparent border-0">
+                <h3 class="mb-0 ms-3">Тип ТЭС</h3>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped table-bordered equipment-group-tables equipment-group-tables-numeric" data-auto-export-excel="off">
+                        <thead class="table-success">
+                            <tr class="text-center align-middle">
+                                <th class="first-column" style="width: 160px;">Параметр</th>
+                                {% for y in range(start_year, end_year + 1) %}
+                                <th class="year-header" style="width: 50px; text-align: center;">
+                                    {{ y }}
+                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="text-center align-middle">
+                                <td class="first-column text-start">
+                                    <span class="fw-bold">Тип ТЭС</span>
+                                    <span class="text-muted small">(VED)</span>
+                                </td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% set v_raw = ved_param_raw_by_year.get(y) if ved_param_raw_by_year is defined else none %}
+                                    {% set v_display = ved_param_display_by_year.get(y) if ved_param_display_by_year is defined else none %}
+                                    <td class="power-column" {% if v_display %}title="{{ v_display }}"{% endif %}>
+                                        {% if can_edit %}
+                                        <select name="fuel_param_{{ y }}_ved" class="form-select form-select-sm text-center" title="{{ v_display or 'Тип ТЭС (VED)' }}">
+                                            <option value="" {% if v_raw is none %}selected{% endif %}>—</option>
+                                            {% for _code, _label in fuel_param_ved_labels|default([]) %}
+                                            <option value="{{ _code }}" {% if v_raw is not none and (v_raw|string) == (_code|string) %}selected{% endif %}>{{ _label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        {% else %}
+                                        {{ v_display if v_display is not none else '—' }}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3 border-0 shadow-none mt-3">
             <div class="card-header fw-bold bg-transparent border-0 d-flex justify-content-between align-items-center flex-nowrap gap-2">
                 <h3 class="mb-0 ms-3 text-nowrap flex-grow-1 min-w-0">Параметры группы оборудования</h3>
-                <div class="d-flex align-items-center gap-1 flex-shrink-0 ms-auto" id="roundingFormTable1">
+                <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto" id="roundingFormTable1">
+                    <button type="button"
+                            id="egEmptyRowsToggle"
+                            class="btn btn-outline-secondary btn-sm text-nowrap"
+                            aria-pressed="false"
+                            title="Показать незаполненные параметры (нулевые и пустые)">
+                        Пустые строки
+                    </button>
                     <label for="rounding_digits_table1" class="mb-0" style="white-space: nowrap;">Округл:</label>
                     <select name="rounding_digits_table1" id="rounding_digits_table1" class="form-select form-select-sm py-1" style="width: auto; min-width: 95px;">
                         <option value="0" {% if rounding_digits_table1 == 0 %}selected{% endif %}>Не округлять</option>
@@ -418,17 +690,21 @@
                         <tbody>
                             {% for label, values_by_year in table1_params_grid %}
                             {% set attr = table1_attrs[loop.index0] %}
-                            <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
+                            {% set is_derived = attr in fuel_param_derived_formulas %}
+                            {% set always_show = is_derived or attr in ('hfix', 'nust', 'nr', 'e') %}
+                            {% set is_empty = (table1_empty_flags|default([]))[loop.index0] if (table1_empty_flags|default([]))|length > loop.index0 else false %}
+                            {{ eg_param_tr_open(is_empty, always_show=always_show, extra_class=(' table-light calc-row' if is_derived else ''), fuel_attr=attr) }}
+                                <td class="first-column text-start">
+                                    <span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                                    {{ eg_formula_icon(fuel_param_derived_formulas.get(attr), attr) }}
+                                </td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
-                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
-                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
-                                        {% if can_edit %}
-                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table1(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
-                                        {% else %}
-                                        {{ format_decimal_table1(v) if v is not none else '—' }}
-                                        {% endif %}
+                                    {% set param = fuel_params_by_year.get(y) %}
+                                    {% set calc = param|fuel_param_derived(attr) if is_derived and param is not none else none %}
+                                    {% set v_full = (calc|format_decimal(0) if calc is not none else (v|format_decimal(0) if v is not none else '')) %}
+                                    <td class="power-column{% if is_derived and calc is not none %} bg-light{% endif %}" data-fuel-year="{{ y }}"{% if is_derived %} data-fuel-derived-mode="{% if calc is not none %}calc{% else %}manual{% endif %}"{% endif %}{% if v_full %} title="{{ v_full }}"{% endif %}>
+                                        {{ eg_fuel_param_cell(attr, y, v, can_edit, rounding_digits_table1, param, is_derived) }}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -460,17 +736,20 @@
                         <tbody>
                             {% for label, values_by_year in table2_params_grid %}
                             {% set attr = table2_attrs[loop.index0] %}
-                            <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
+                            {% set is_derived = attr in fuel_param_derived_formulas %}
+                            {% set is_empty = (table2_empty_flags|default([]))[loop.index0] if (table2_empty_flags|default([]))|length > loop.index0 else false %}
+                            {{ eg_param_tr_open(is_empty, always_show=is_derived, extra_class=(' table-light calc-row' if is_derived else ''), fuel_attr=attr) }}
+                                <td class="first-column text-start">
+                                    <span class="fw-bold">{{ label }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span>
+                                    {{ eg_formula_icon(fuel_param_derived_formulas.get(attr), attr) }}
+                                </td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
-                                    {% set v_full = v|format_decimal(0) if v is not none else '' %}
-                                    <td class="power-column" {% if v_full %}title="{{ v_full }}"{% endif %}>
-                                        {% if can_edit %}
-                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ format_decimal_table2(v) if v is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—" {% if v_full %}title="{{ v_full }}"{% endif %}>
-                                        {% else %}
-                                        {{ format_decimal_table2(v) if v is not none else '—' }}
-                                        {% endif %}
+                                    {% set param = fuel_params_by_year.get(y) %}
+                                    {% set calc = param|fuel_param_derived(attr) if is_derived and param is not none else none %}
+                                    {% set v_full = (calc|format_decimal(0) if calc is not none else (v|format_decimal(0) if v is not none else '')) %}
+                                    <td class="power-column{% if is_derived and calc is not none %} bg-light{% endif %}" data-fuel-year="{{ y }}"{% if is_derived %} data-fuel-derived-mode="{% if calc is not none %}calc{% else %}manual{% endif %}"{% endif %}{% if v_full %} title="{{ v_full }}"{% endif %}>
+                                        {{ eg_fuel_param_cell(attr, y, v, can_edit, rounding_digits_table2, param, is_derived) }}
                                     </td>
                                 {% endfor %}
                             </tr>
@@ -507,14 +786,13 @@
                             {% for label, values_by_year in table4_consumption_grid %}
                             {% set attr = table4_consumption_attrs[loop.index0] %}
                             {% set is_calc_row = attr.endswith('_calc') %}
-                            <tr class="text-center align-middle{% if is_calc_row %} table-light calc-row{% endif %}">
+                            {% set is_empty = (table4_consumption_empty_flags|default([]))[loop.index0] if (table4_consumption_empty_flags|default([]))|length > loop.index0 else false %}
+                            {{ eg_param_tr_open(is_empty, extra_class=(' table-light calc-row' if is_calc_row else '')) }}
                                 <td class="first-column text-start">
-                                    {% if is_calc_row %}<span class="text-muted me-1" title="Расчётная строка">∑</span>{% endif %}
                                     <span class="fw-bold">{{ label }}</span>
                                     <span class="text-muted small">({{ attr|fuel_header_code }})</span>
-                                    {% if is_calc_row %}<span class="badge bg-light text-dark border ms-1">auto</span>{% endif %}
                                     {% if consumption_formulas is defined and consumption_formulas.get(attr) %}
-                                    <span class="ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr)|e }}" style="cursor: help;">ⓘ</span>
+                                    {{ eg_formula_icon(consumption_formulas.get(attr), attr) }}
                                     {% endif %}
                                 </td>
                                 {% for y in range(start_year, end_year + 1) %}
@@ -559,7 +837,8 @@
                         <tbody>
                             {% for label, values_by_year in table3_params_grid %}
                             {% set attr = table3_attrs[loop.index0] %}
-                            <tr class="text-center align-middle">
+                            {% set is_empty = (table3_empty_flags|default([]))[loop.index0] if (table3_empty_flags|default([]))|length > loop.index0 else false %}
+                            {{ eg_param_tr_open(is_empty) }}
                                 <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
@@ -601,7 +880,8 @@
                         <tbody>
                             {% for label, values_by_year in table4_cost_grid %}
                             {% set attr = table4_cost_attrs[loop.index0] %}
-                            <tr class="text-center align-middle">
+                            {% set is_empty = (table4_cost_empty_flags|default([]))[loop.index0] if (table4_cost_empty_flags|default([]))|length > loop.index0 else false %}
+                            {{ eg_param_tr_open(is_empty) }}
                                 <td class="first-column text-start"><span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr, label) }}</span> <span class="text-muted small">({{ attr|fuel_header_code }})</span></td>
                                 {% for y in range(start_year, end_year + 1) %}
                                     {% set v = values_by_year.get(y) %}
@@ -647,14 +927,13 @@
                         <tbody>
                             {% for label, values_by_year in table4_price_grid %}
                             {% set attr = table4_price_attrs[loop.index0] %}
-                            <tr class="text-center align-middle table-light calc-row">
+                            {% set is_empty = (table4_price_empty_flags|default([]))[loop.index0] if (table4_price_empty_flags|default([]))|length > loop.index0 else false %}
+                            {{ eg_param_tr_open(is_empty, extra_class=' table-light calc-row') }}
                                 <td class="first-column text-start">
-                                    <span class="text-muted me-1" title="Расчётная строка">∑</span>
                                     <span class="fw-bold">{{ (fuel_nazvl_to_name or {}).get(attr[:-7] if attr|length >= 7 and attr[-5:] == '_calc' else (attr[:-2] if attr|length >= 2 and attr[-2:] == '_c' else attr), label) }}</span>
                                     <span class="text-muted small">({{ attr|fuel_header_code }})</span>
-                                    <span class="badge bg-light text-dark border ms-1">auto</span>
                                     {% if price_formulas is defined and price_formulas.get(attr) %}
-                                    <span class="ms-1 text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ price_formulas.get(attr)|e }}" style="cursor: help;">ⓘ</span>
+                                    {{ eg_formula_icon(price_formulas.get(attr) ~ _calc_fill_rule, attr) }}
                                     {% endif %}
                                 </td>
                                 {% for y in range(start_year, end_year + 1) %}
@@ -672,52 +951,13 @@
             </div>
         </div>
 
-        <div class="card mb-3 border-0 shadow-none d-none">
-            <div class="card-header fw-bold bg-transparent border-0 pt-0">
-                <h3 class="mb-0 ms-3">Основные параметры</h3>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered equipment-group-tables" data-auto-export-excel="off">
-                        <thead class="table-success">
-                            <tr class="text-center align-middle">
-                                <th class="first-column" style="width: 120px;">Параметр</th>
-                                {% for y in range(start_year, end_year + 1) %}
-                                <th class="year-header" style="width: 50px; text-align: center;">
-                                    {{ y }}
-                                    <div class="text-wrap" style="word-wrap: break-word; white-space: normal; font-size: 0.9em;">{{ year_features.get(y)|default('—', true) }}</div>
-                                </th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for label, display_values_by_year, raw_values_by_year in main_params_grid %}
-                            {% set attr = main_attrs[loop.index0] %}
-                            <tr class="text-center align-middle">
-                                <td class="first-column text-start"><span class="fw-bold">{{ label }}</span></td>
-                                {% for y in range(start_year, end_year + 1) %}
-                                    {% set v_display = display_values_by_year.get(y) %}
-                                    {% set v_raw = raw_values_by_year.get(y) %}
-                                    <td class="power-column">
-                                        {% if can_edit %}
-                                        <input type="text" name="fuel_param_{{ y }}_{{ attr }}" value="{{ v_raw if v_raw is not none else '' }}" class="form-control form-control-sm text-center" placeholder="—">
-                                        {% else %}
-                                        {{ v_display if v_display is not none else '—' }}
-                                        {% endif %}
-                                    </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+        {# Остальные MAIN (obor/obl/…) на карточке не показываем — дублируют справочник EG;
+           сохранение формы пропускает их (кроме ved), чтобы не затирать значения. #}
 
         {% if can_edit %}
         <div class="d-flex justify-content-end gap-2 mt-3 mb-3 flex-wrap">
             <input type="hidden" name="save_fuel_params" value="1">
-            <button type="submit" class="btn btn-outline-primary" title="Сохранить: основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
+            <button type="submit" class="btn btn-outline-primary" title="Сохранить: VED, основные и доп. параметры топлива, вводимые удельные (k, y, …), стоимость; затем пересчёт расчётных удельных и цены по формулам">Сохранить параметры топлива</button>
             <button type="submit"
                     name="all_versions"
                     value="1"
@@ -735,12 +975,11 @@
     <div class="container-fluid mt-3">
         <div class="card">
             <div class="card-body p-0">
-                <table class="table table-hover table-striped table-bordered table-responsive" id="equipment-group-logs-table" data-auto-export-excel="off">
+                <table class="table table-hover table-striped table-bordered table-responsive change-log-table" id="equipment-group-logs-table" data-auto-export-excel="off">
                     <thead class="table-light">
                         <tr>
-                            <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
-                            <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
-                            <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
+                            <th data-key="datetime" class="log-col-datetime" style="cursor: pointer;">Дата и время</th>
+                        <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
                             <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
                             <th data-key="database_version" class="log-col-database-version" style="cursor: pointer;">Версия базы данных</th>
                             <th data-key="details" class="log-col-details" style="cursor: pointer;">Информация</th>
@@ -750,8 +989,7 @@
                         {% if equipment_group_logs and equipment_group_logs|length > 0 %}
                             {% for log in equipment_group_logs %}
                             <tr>
-                                <td data-date="{{ log.date }}">{{ log.date }}</td>
-                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-datetime="{{ log.datetime }}" data-date="{{ log.date }}">{{ log.datetime }}</td>
                                 <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
                                 <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
                                 <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
@@ -760,7 +998,7 @@
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
+                                <td colspan="5" class="text-center text-muted p-3">Нет записей</td>
                             </tr>
                         {% endif %}
                     </tbody>
@@ -789,13 +1027,267 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Инициализация Bootstrap tooltip для формул в таблице «Удельные показатели»
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
         if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
             new bootstrap.Tooltip(el);
         }
     });
+});
+</script>
 
+<script>
+(function () {
+    var STORAGE_KEY = 'egCardShowEmptyParamRows';
+    var page = document.querySelector('.equipment-group-edit-page');
+    var btn = document.getElementById('egEmptyRowsToggle');
+    if (!page || !btn) return;
+
+    function isEmptyValue(raw) {
+        if (raw == null) return true;
+        var s = String(raw).replace(/\s+/g, '').replace(',', '.').trim();
+        if (!s || s === '—' || s === '-' || s.toLowerCase() === 'none') return true;
+        var n = Number(s);
+        return isFinite(n) && n === 0;
+    }
+
+    function rowIsEmpty(tr) {
+        if (tr.getAttribute('data-always-show') === '1') return false;
+        var cells = tr.querySelectorAll('td.power-column');
+        for (var i = 0; i < cells.length; i++) {
+            var el = cells[i].querySelector('input, select, textarea');
+            var raw = el ? el.value : cells[i].textContent;
+            if (!isEmptyValue(raw)) return false;
+        }
+        return true;
+    }
+
+    function refreshEmptyFlags() {
+        page.querySelectorAll('tr[data-eg-param-row]').forEach(function (tr) {
+            if (tr.getAttribute('data-always-show') === '1') {
+                tr.removeAttribute('data-empty-row');
+                return;
+            }
+            if (rowIsEmpty(tr)) tr.setAttribute('data-empty-row', '1');
+            else tr.removeAttribute('data-empty-row');
+        });
+    }
+
+    function setShowEmpty(on) {
+        page.classList.toggle('eg-show-empty-param-rows', on);
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.classList.toggle('btn-secondary', on);
+        btn.classList.toggle('btn-outline-secondary', !on);
+        btn.title = on
+            ? 'Скрыть незаполненные параметры (нулевые и пустые)'
+            : 'Показать незаполненные параметры (нулевые и пустые)';
+        try { sessionStorage.setItem(STORAGE_KEY, on ? '1' : '0'); } catch (e) {}
+    }
+
+    var show = false;
+    try {
+        var params = new URLSearchParams(window.location.search || '');
+        if (params.get('show_empty_rows') === '1') show = true;
+        else show = sessionStorage.getItem(STORAGE_KEY) === '1';
+    } catch (e) {}
+    setShowEmpty(show);
+
+    btn.addEventListener('click', function () {
+        setShowEmpty(!page.classList.contains('eg-show-empty-param-rows'));
+    });
+
+    function onCellEdit(ev) {
+        var tr = ev.target && ev.target.closest && ev.target.closest('tr[data-eg-param-row]');
+        if (!tr) return;
+        refreshEmptyFlags();
+    }
+    page.addEventListener('input', onCellEdit);
+    page.addEventListener('change', onCellEdit);
+})();
+</script>
+
+<script>
+(function () {
+    var page = document.querySelector('.equipment-group-edit-page');
+    if (!page) return;
+    var canEdit = {{ 'true' if can_edit else 'false' }};
+    var roundingTable1 = {{ rounding_digits_table1|default(1)|int }};
+    var roundingTable2 = {{ rounding_digits_table2|default(1)|int }};
+    var roundingByAttr = { h: roundingTable1, eurt: roundingTable1, turt: roundingTable1, snk: roundingTable2, sn_t: roundingTable2 };
+    var derivedAttrs = ['h', 'eurt', 'turt', 'snk', 'sn_t'];
+
+    function parseFuelNum(raw) {
+        if (raw == null) return null;
+        var s = String(raw).replace(/\s+/g, '').replace(',', '.').trim();
+        if (!s || s === '—' || s === '-' || s.toLowerCase() === 'none') return null;
+        var n = Number(s);
+        return isFinite(n) ? n : null;
+    }
+
+    function formatDerivedNum(n, rd) {
+        if (n == null || !isFinite(n)) return '';
+        var sign = n < 0 ? '-' : '';
+        var abs = Math.abs(n);
+        var s;
+        if (rd < 0) {
+            s = String(Math.round(abs));
+        } else if (rd === 0) {
+            s = String(abs);
+            if (/e/i.test(s)) s = abs.toFixed(12);
+        } else {
+            s = abs.toFixed(rd);
+        }
+        var intPart;
+        var fracPart = null;
+        var dot = s.indexOf('.');
+        if (dot >= 0) {
+            intPart = s.slice(0, dot);
+            fracPart = s.slice(dot + 1).replace(/0+$/, '');
+            if (!fracPart) fracPart = null;
+        } else {
+            intPart = s;
+        }
+        intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        var out = sign + intPart + (fracPart != null ? ',' + fracPart : '');
+        return out === '-' || out === '-0' ? '0' : out;
+    }
+
+    function computeFuelDerivedValue(attr, values) {
+        if (attr === 'h') {
+            if (values.hfix === 1) return null;
+            var eH = values.e, nust = values.nust;
+            if (eH == null || nust == null || nust <= 0) return null;
+            return eH / nust * 1000;
+        }
+        if (attr === 'eurt') {
+            var eust = values.eust, eotp = values.eotp;
+            if (eust == null || eotp == null || eotp === 0) return null;
+            return eust / eotp * 1000;
+        }
+        if (attr === 'turt') {
+            var tust = values.tust, q = values.q;
+            if (tust == null || q == null || q === 0) return null;
+            return tust / q * 1000;
+        }
+        if (attr === 'snk') {
+            var snEe = values.sn_ee, e = values.e;
+            if (snEe == null || e == null || e === 0) return null;
+            return snEe / e * 100;
+        }
+        if (attr === 'sn_t') {
+            var snTe = values.sn_te, q2 = values.q;
+            if (snTe == null || q2 == null || q2 === 0) return null;
+            return snTe / q2 * 1000;
+        }
+        return null;
+    }
+
+    function findCell(attr, year) {
+        return page.querySelector('tr[data-fuel-attr="' + attr + '"] td[data-fuel-year="' + year + '"]');
+    }
+
+    function readFuelCellRaw(attr, year) {
+        var td = findCell(attr, year);
+        if (!td) return null;
+        if (attr === 'hfix') {
+            var sel = td.querySelector('select.fuel-param-input');
+            if (!sel) return parseFuelNum(td.textContent);
+            var sv = (sel.value || '').trim();
+            if (sv === '') return null;
+            var n = Number(sv);
+            return isFinite(n) ? n : null;
+        }
+        var inp = td.querySelector('input.fuel-param-input[name]');
+        if (inp) return parseFuelNum(inp.value);
+        var derived = td.querySelector('.fuel-param-derived-value');
+        if (derived) return parseFuelNum(derived.textContent);
+        return parseFuelNum(td.textContent);
+    }
+
+    function writeFuelDerivedCell(attr, year, calcVal) {
+        var td = findCell(attr, year);
+        if (!td) return;
+        var rd = roundingByAttr[attr] != null ? roundingByAttr[attr] : roundingTable1;
+        var display = calcVal == null ? null : formatDerivedNum(calcVal, rd);
+        var existingInp = td.querySelector('input.fuel-param-input[name]');
+        var existingSpan = td.querySelector('.fuel-param-derived-value');
+        if (calcVal != null) {
+            if (existingInp) existingInp.remove();
+            if (!existingSpan) {
+                existingSpan = document.createElement('span');
+                existingSpan.className = 'fuel-param-derived-value text-muted';
+                existingSpan.setAttribute('data-fuel-derived-attr', attr);
+                td.appendChild(existingSpan);
+            }
+            existingSpan.textContent = display;
+            existingSpan.title = display;
+            td.setAttribute('data-fuel-derived-mode', 'calc');
+            td.classList.add('bg-light');
+            if (display) td.title = display;
+            return;
+        }
+        var prevText = '';
+        if (existingSpan) {
+            prevText = (existingSpan.textContent || '').trim();
+            existingSpan.remove();
+        }
+        td.setAttribute('data-fuel-derived-mode', 'manual');
+        td.classList.remove('bg-light');
+        if (!canEdit) {
+            if (prevText && !td.querySelector('input, .fuel-param-derived-value')) {
+                td.textContent = prevText || '—';
+            }
+            return;
+        }
+        if (!existingInp) {
+            existingInp = document.createElement('input');
+            existingInp.type = 'text';
+            existingInp.inputMode = 'decimal';
+            existingInp.autocomplete = 'off';
+            existingInp.name = 'fuel_param_' + year + '_' + attr;
+            existingInp.className = 'form-control form-control-sm text-center fuel-param-input';
+            existingInp.placeholder = '—';
+            existingInp.value = prevText === '—' ? '' : prevText;
+            td.appendChild(existingInp);
+        }
+    }
+
+    function recalcFuelDerivedForYear(year) {
+        if (year == null || year === '') return;
+        var values = {
+            e: readFuelCellRaw('e', year),
+            nust: readFuelCellRaw('nust', year),
+            hfix: readFuelCellRaw('hfix', year),
+            eotp: readFuelCellRaw('eotp', year),
+            eust: readFuelCellRaw('eust', year),
+            sn_ee: readFuelCellRaw('sn_ee', year),
+            q: readFuelCellRaw('q', year),
+            tust: readFuelCellRaw('tust', year),
+            sn_te: readFuelCellRaw('sn_te', year)
+        };
+        derivedAttrs.forEach(function (attr) {
+            writeFuelDerivedCell(attr, year, computeFuelDerivedValue(attr, values));
+        });
+    }
+
+    page.addEventListener('input', function (ev) {
+        var field = ev.target.closest('.fuel-param-input');
+        if (!field) return;
+        var td = field.closest('td[data-fuel-year]');
+        if (!td) return;
+        recalcFuelDerivedForYear(td.getAttribute('data-fuel-year'));
+    });
+    page.addEventListener('change', function (ev) {
+        var field = ev.target.closest('.fuel-param-input');
+        if (!field) return;
+        var td = field.closest('td[data-fuel-year]');
+        if (!td) return;
+        recalcFuelDerivedForYear(td.getAttribute('data-fuel-year'));
+    });
+})();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
     const loadMoreBtn = document.getElementById('load-more-equipment-group-logs');
     const logsTable = document.querySelector('#equipment-group-logs-table tbody');
     const logsShown = document.getElementById('equipment-group-logs-shown');
@@ -825,17 +1317,26 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(r => r.json())
             .then(data => {
                 data.logs.forEach(log => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td data-date="${log.date}">${log.date}</td>
-                        <td data-time="${log.time}">${log.time}</td>
-                        <td data-user="${log.username_lower}">${log.username}</td>
-                        <td><div data-action="${log.action_lower}">${log.action}</div></td>
-                        <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
-                        <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
-                    `;
+                    const row = (window.ChangeLogTable && ChangeLogTable.rowFromLog)
+                        ? ChangeLogTable.rowFromLog(log)
+                        : (() => {
+                            const r = document.createElement('tr');
+                            const dt = log.datetime || ((log.date || '') + (log.time ? ' ' + log.time : '')).trim();
+                            r.innerHTML = `
+                                <td data-datetime="${dt}" data-date="${log.date || ''}">${dt}</td>
+                                <td data-user="${log.username_lower}">${log.username}</td>
+                                <td><div data-action="${log.action_lower}">${log.action}</div></td>
+                                <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
+                                <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
+                            `;
+                            return r;
+                        })();
                     logsTable.appendChild(row);
                 });
+
+                const tbl = document.getElementById('equipment-group-logs-table');
+                if (tbl && typeof tbl._applyLogFilters === 'function') tbl._applyLogFilters();
+                else if (window.ChangeLogTable) ChangeLogTable.applyFilters(tbl);
 
                 currentOffset += data.count;
                 if (logsShown) logsShown.textContent = currentOffset;
@@ -858,20 +1359,91 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+{% if can_edit %}
 <script>
 (function() {
-    /** Одиночный выбор: тот же UI, что у фильтра РЭС на stations_equipment_groups (Bootstrap dropdown + «Поиск...»). */
-    function ensureGroupingStationDropdown() {
-        const selectEl = document.getElementById('grouping_station_id');
-        if (!selectEl || selectEl.dataset.groupingDropdownInit === '1') return;
+    const bindingsEl = document.getElementById('groupingStationBindings');
+    const selectEl = document.getElementById('add_grouping_station_id');
+    if (!bindingsEl || !selectEl) return;
 
+    function boundIds() {
+        return Array.from(bindingsEl.querySelectorAll('[data-station-id]')).map(function(el) {
+            return String(el.getAttribute('data-station-id') || '');
+        }).filter(Boolean);
+    }
+
+    function stationDetailsUrl(stationId) {
+        const tpl = bindingsEl.getAttribute('data-station-details-template') || '';
+        return tpl.replace('/station_details/0', '/station_details/' + encodeURIComponent(stationId));
+    }
+
+    function addChip(stationId, stationName) {
+        const id = String(stationId || '');
+        if (!id || boundIds().indexOf(id) !== -1) return;
+        const chip = document.createElement('div');
+        chip.className = 'grouping-station-chip d-flex align-items-start gap-1 text-break';
+        chip.setAttribute('data-station-id', id);
+
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'grouping_station_ids';
+        hidden.value = id;
+
+        const link = document.createElement('a');
+        link.href = stationDetailsUrl(id);
+        link.textContent = stationName || ('Станция #' + id);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn-close grouping-station-remove mt-1';
+        removeBtn.setAttribute('aria-label', 'Убрать станцию');
+
+        chip.appendChild(hidden);
+        chip.appendChild(link);
+        chip.appendChild(removeBtn);
+        bindingsEl.appendChild(chip);
+        syncFuelFormGroupingStations();
+        if (typeof renderAddMenu === 'function') renderAddMenu();
+    }
+
+    function removeChip(chip) {
+        if (!chip) return;
+        chip.remove();
+        syncFuelFormGroupingStations();
+        if (typeof renderAddMenu === 'function') renderAddMenu();
+    }
+
+    bindingsEl.addEventListener('click', function(e) {
+        const btn = e.target.closest('.grouping-station-remove');
+        if (!btn) return;
+        e.preventDefault();
+        removeChip(btn.closest('.grouping-station-chip'));
+    });
+
+    function syncFuelFormGroupingStations() {
+        const holder = document.getElementById('fuelFormGroupingStationIds');
+        if (!holder) return;
+        holder.innerHTML = '';
+        boundIds().forEach(function(id) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'grouping_station_ids';
+            hidden.value = id;
+            holder.appendChild(hidden);
+        });
+    }
+
+    let renderAddMenu = null;
+
+    function ensureGroupingStationDropdown() {
+        if (selectEl.dataset.groupingDropdownInit === '1') return;
         selectEl.dataset.groupingDropdownInit = '1';
 
-        const titleText = 'Станция для группировки';
-        const placeholderBtn = 'не указано';
+        const titleText = 'Добавить станцию';
+        const placeholderBtn = 'Добавить станцию';
 
         const wrapper = document.createElement('div');
-        wrapper.className = 'dropdown w-100 grouping-station-dropdown';
+        wrapper.className = 'dropdown w-100 grouping-station-dropdown mt-2';
 
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -879,11 +1451,13 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.setAttribute('data-bs-toggle', 'dropdown');
         btn.setAttribute('data-bs-auto-close', 'outside');
         btn.setAttribute('aria-expanded', 'false');
+        btn.textContent = placeholderBtn;
 
         const menu = document.createElement('div');
         menu.className = 'dropdown-menu p-2 filter-dropdown-menu';
 
         selectEl.classList.add('d-none');
+        selectEl.classList.remove('mt-2');
 
         const parent = selectEl.parentNode;
         if (!parent) return;
@@ -892,31 +1466,7 @@ document.addEventListener('DOMContentLoaded', function() {
         wrapper.appendChild(menu);
         wrapper.appendChild(selectEl);
 
-        function currentValue() {
-            const o = selectEl.selectedOptions[0];
-            return o ? String(o.value) : '';
-        }
-
-        function setButtonText() {
-            const o = selectEl.selectedOptions[0];
-            if (!o || String(o.value) === '') {
-                const emptyOpt = Array.from(selectEl.options).find(function(opt) {
-                    return String(opt.value) === '';
-                });
-                btn.textContent = (emptyOpt && (emptyOpt.textContent || '').trim()) || placeholderBtn;
-                return;
-            }
-            btn.textContent = (o.textContent || '').trim() || placeholderBtn;
-        }
-
-        function selectValue(value) {
-            const v = String(value);
-            Array.from(selectEl.options).forEach(function(opt) {
-                opt.selected = String(opt.value) === v;
-            });
-            setButtonText();
-            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        let searchInputRef = null;
 
         function hideDropdown() {
             if (typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
@@ -926,31 +1476,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        let searchInputRef = null;
-
-        function renderMenu() {
+        renderAddMenu = function() {
             menu.innerHTML = '';
 
             const actions = document.createElement('div');
             actions.className = 'd-flex justify-content-between align-items-center mb-2 gap-2';
-
             const title = document.createElement('div');
             title.className = 'fw-bold';
             title.textContent = titleText;
-
-            const clearBtn = document.createElement('button');
-            clearBtn.type = 'button';
-            clearBtn.className = 'btn btn-sm btn-outline-danger';
-            clearBtn.textContent = 'Сбросить';
-            clearBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                selectValue('');
-                renderMenu();
-            });
-
             actions.appendChild(title);
-            actions.appendChild(clearBtn);
             menu.appendChild(actions);
 
             const searchWrap = document.createElement('div');
@@ -966,11 +1500,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const list = document.createElement('div');
             list.className = 'd-flex flex-column';
-
-            const selVal = currentValue();
+            const already = boundIds();
 
             Array.from(selectEl.options).forEach(function(opt) {
                 const value = (opt.value ?? '').toString();
+                if (!value || already.indexOf(value) !== -1) return;
 
                 const row = document.createElement('div');
                 row.className = 'grouping-station-row';
@@ -981,15 +1515,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.setAttribute('data-search-text', optText.toLowerCase());
                 row.setAttribute('data-opt-value', value);
 
-                if (String(value) === selVal) {
-                    row.classList.add('is-selected');
-                }
-
                 row.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    selectValue(value);
-                    renderMenu();
+                    addChip(value, optText);
                     hideDropdown();
                 });
                 row.addEventListener('keydown', function(e) {
@@ -998,9 +1527,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         row.click();
                     }
                 });
-
                 list.appendChild(row);
             });
+
+            if (!list.childElementCount) {
+                const empty = document.createElement('div');
+                empty.className = 'text-muted small px-1';
+                empty.textContent = 'Все станции уже привязаны или список пуст.';
+                list.appendChild(empty);
+            }
 
             function applyFilter() {
                 const q = (searchInput.value || '').trim().toLowerCase();
@@ -1018,10 +1553,10 @@ document.addEventListener('DOMContentLoaded', function() {
             searchInput.addEventListener('keydown', function(e) { e.stopPropagation(); });
 
             menu.appendChild(list);
-            setButtonText();
-        }
+        };
 
         btn.addEventListener('shown.bs.dropdown', function() {
+            renderAddMenu();
             if (searchInputRef) {
                 searchInputRef.value = '';
                 searchInputRef.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1029,7 +1564,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        renderMenu();
+        renderAddMenu();
     }
 
     if (document.readyState === 'loading') {
@@ -1037,159 +1572,22 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         ensureGroupingStationDropdown();
     }
-})();
-</script>
 
-<script>
-(function() {
-    document.getElementById('rounding_digits_table1')?.addEventListener('change', function() {
-        var url = new URL(window.location.href);
-        url.searchParams.set('rounding_digits_table1', this.value);
-        window.location.href = url.toString();
-    });
-})();
-</script>
-
-{% if can_edit %}
-<script>
-(function() {
     const fuelForm = document.getElementById('fuelParamsForm');
     const headerForm = document.getElementById('equipmentGroupHeaderForm');
-    if (!fuelForm || !headerForm) return;
-    const sel = headerForm.querySelector('select[name="equipment_group_type_id"]');
-    const hid = document.getElementById('fuelFormEquipmentGroupTypeId');
-    const gSel = headerForm.querySelector('select[name="grouping_station_id"]');
-    const gHid = document.getElementById('fuelFormGroupingStationId');
-    const sync = function() {
-        if (sel && hid) {
-            hid.value = sel.value;
-        }
-        if (gSel && gHid) {
-            gHid.value = gSel.value;
-        }
-    };
-    if (sel && hid) {
-        sel.addEventListener('change', sync);
+    if (fuelForm && headerForm) {
+        const sel = headerForm.querySelector('select[name="equipment_group_type_id"]');
+        const hid = document.getElementById('fuelFormEquipmentGroupTypeId');
+        const sync = function() {
+            if (sel && hid) hid.value = sel.value;
+            syncFuelFormGroupingStations();
+        };
+        if (sel && hid) sel.addEventListener('change', sync);
+        fuelForm.addEventListener('submit', sync);
     }
-    if (gSel && gHid) {
-        gSel.addEventListener('change', sync);
-    }
-    fuelForm.addEventListener('submit', sync);
 })();
 </script>
 {% endif %}
-
-{% if stations_with_machines %}
-<script>
-// Обновление таблицы агрегатов при смене округления (как на station_details)
-document.addEventListener('DOMContentLoaded', function() {
-    const roundingSelect = document.getElementById('rounding_digits');
-    const tbody = document.getElementById('equipment-group-machines-tbody');
-    const formRoundingInput = document.getElementById('form_rounding_digits');
-    if (!roundingSelect || !tbody) return;
-
-    // Синхронизация выпадающего списка с URL при загрузке (как на station_details)
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlRounding = urlParams.get('rounding_digits');
-    if (urlRounding !== null && urlRounding !== '') {
-        roundingSelect.value = urlRounding;
-        if (formRoundingInput) formRoundingInput.value = urlRounding;
-    }
-
-    roundingSelect.addEventListener('change', function() {
-        const selectedRounding = this.value;
-        if (formRoundingInput) formRoundingInput.value = selectedRounding;
-
-        tbody.innerHTML = '<tr><td colspan="{{ 14 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>';
-
-        const url = `{{ url_for('fuel_bp.equipment_group_machines_tbody', equipment_group_id=equipment_group.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${selectedRounding}`;
-        fetch(url, { cache: 'no-store' })
-            .then(r => r.text())
-            .then(html => {
-                tbody.innerHTML = html;
-            })
-            .catch(err => console.error('Ошибка загрузки агрегатов:', err));
-
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.set('rounding_digits', selectedRounding);
-        window.history.replaceState({}, '', newUrl.toString());
-    });
-});
-</script>
-{% endif %}
-
-<script>
-// Сортировка и фильтрация таблицы логов (как на station_details)
-(function(){
-    const table = document.getElementById('equipment-group-logs-table');
-    if (!table) return;
-    const thead = table.tHead;
-    const tbody = table.tBodies[0];
-    let sortState = { key: 'date', asc: false };
-
-    function val(node, dataKey){
-        if (!node) return '';
-        const camelKey = dataKey.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-        return (node.dataset && node.dataset[camelKey]) ? node.dataset[camelKey] : (node.textContent || '').trim().toLowerCase();
-    }
-
-    function sortBy(key){
-        const rows = Array.from(tbody.rows);
-        rows.sort((r1, r2)=>{
-            let a='', b='';
-            if (key === 'date'){ a=val(r1.cells[0], 'date'); b=val(r2.cells[0], 'date'); }
-            else if (key === 'time'){ a=val(r1.cells[1], 'time'); b=val(r2.cells[1], 'time'); }
-            else if (key === 'user'){ a=val(r1.cells[2], 'user'); b=val(r2.cells[2], 'user'); }
-            else if (key === 'action'){
-                a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
-                b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
-            } else if (key === 'database_version'){
-                a = val(r1.cells[4], 'database-version');
-                b = val(r2.cells[4], 'database-version');
-            } else if (key === 'details'){
-                a = val(r1.cells[5].querySelector('[data-details]')||r1.cells[5], 'details');
-                b = val(r2.cells[5].querySelector('[data-details]')||r2.cells[5], 'details');
-            }
-            if (a<b) return sortState.asc ? -1 : 1;
-            if (a>b) return sortState.asc ? 1 : -1;
-            return 0;
-        });
-        tbody.append(...rows);
-        sortState = { key, asc: !sortState.asc };
-    }
-
-    thead.addEventListener('click', (e)=>{
-        const th = e.target.closest('th[data-key]');
-        if (!th) return;
-        sortBy(th.dataset.key);
-    });
-
-    const filterRow = document.createElement('tr');
-    ['date','time','user','action','database_version','details'].forEach((key, idx)=>{
-        const td = document.createElement('td');
-        const input = document.createElement('input');
-        input.className = 'form-control form-control-sm';
-        input.placeholder = 'Фильтр';
-        input.addEventListener('input', ()=>{
-            const terms = Array.from(filterRow.querySelectorAll('input')).map(i=>i.value.trim().toLowerCase());
-            for (const tr of tbody.rows){
-                const dDate = val(tr.cells[0], 'date');
-                const dTime = val(tr.cells[1], 'time');
-                const dUser = val(tr.cells[2], 'user');
-                const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
-                const dDatabaseVersion = val(tr.cells[4], 'database-version');
-                const dDetails = val(tr.cells[5].querySelector('[data-details]')||tr.cells[5], 'details');
-                const data = [dDate, dTime, dUser, dAction, dDatabaseVersion, dDetails];
-                const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
-                tr.style.display = ok ? '' : 'none';
-            }
-        });
-        td.appendChild(input);
-        filterRow.appendChild(td);
-    });
-    thead.appendChild(filterRow);
-})();
-</script>
 
 <style>
 /* Стили блока информации (как на station_details) */
@@ -1205,19 +1603,19 @@ document.addEventListener('DOMContentLoaded', function() {
 .equipment-group-edit-page .station-info .form-select { padding: 0.35rem 0.75rem; }
 /* Крупнее и жирнее название группы (как на station_details) */
 .equipment-group-edit-page .station-name { font-size: 1.35rem; font-weight: 700; }
-/* Стили таблицы журнала (как на station_details) */
-#equipment-group-logs-table { table-layout: fixed; width: 100%; }
-#equipment-group-logs-table th.log-col-date, #equipment-group-logs-table td:nth-child(1) { width: 140px !important; }
-#equipment-group-logs-table th.log-col-time, #equipment-group-logs-table td:nth-child(2) { width: 120px !important; }
-#equipment-group-logs-table th.log-col-user, #equipment-group-logs-table td:nth-child(3) { width: 300px !important; }
-#equipment-group-logs-table td:nth-child(1), #equipment-group-logs-table td:nth-child(2), #equipment-group-logs-table td:nth-child(3) { white-space: nowrap; }
-#equipment-group-logs-table td:nth-child(4) div, #equipment-group-logs-table td:nth-child(6) div { white-space: pre-wrap; }
 /* Столбец «Тип агрегата»: расширяется по содержимому */
 .equipment-group-edit-page .machines-table th.col-machine-name,
 .equipment-group-edit-page .machines-table td.col-machine-name {
     width: 1%;
     white-space: nowrap;
     min-width: 150px;
+}
+/* Итоговые строки: числа с пробелами тысяч не переносить */
+.equipment-group-edit-page .machines-table .total-power-row td:not(.total-row-cell) {
+    white-space: nowrap;
+}
+.equipment-group-edit-page .machines-table td.power-column {
+    white-space: nowrap;
 }
 /* Таблицы топливных параметров (из equipment_group_details) */
 .equipment-group-edit-page .equipment-group-tables {
@@ -1239,7 +1637,12 @@ document.addEventListener('DOMContentLoaded', function() {
 .equipment-group-edit-page .equipment-group-tables-numeric { font-size: 1.15rem; }
 .equipment-group-edit-page .equipment-group-tables-numeric thead th { font-size: 1.2rem; }
 .equipment-group-edit-page .equipment-group-tables-numeric tbody td { font-size: 1.25rem; }
-.equipment-group-edit-page .equipment-group-tables-numeric .form-control { font-size: 1.25rem; }
+.equipment-group-edit-page .equipment-group-tables-numeric .form-control,
+.equipment-group-edit-page .equipment-group-tables-numeric .form-select { font-size: 1.25rem; }
+.equipment-group-edit-page .fuel-param-derived-value {
+    font-size: inherit;
+    line-height: inherit;
+}
 </style>
 
 <script>

@@ -303,7 +303,7 @@ def mirror_res_to_single_regional_district(*, apply_changes: bool) -> dict[str, 
                     db.session.add(rd_row)
 
                 rd_row.max_power_consumption_mw = res_row.max_power_consumption_mw
-                rd_row.peak_datetime_msk = res_row.peak_datetime_msk
+                rd_row.peak_datetime = res_row.peak_datetime
                 rd_row.avg_daily_air_temp_c = res_row.avg_daily_air_temp_c
                 rd_row.combined_on_oes = res_row.combined_on_oes
                 rd_row.combined_on_ees = res_row.combined_on_ees

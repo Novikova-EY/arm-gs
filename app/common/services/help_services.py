@@ -44,7 +44,26 @@ def _to_int_or_none(v, keep_zero=True):
     return iv
 
 
+def _has_balanced_angle_quotes(text: str) -> bool:
+    """True if text uses only «» quotes and nesting depth never goes negative / ends at 0."""
+    if "«" not in text and "»" not in text:
+        return False
+    depth = 0
+    for ch in text:
+        if ch == "«":
+            depth += 1
+        elif ch == "»":
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0
+
+
 def _replace_quotes_sequentially(text: str) -> str:
+    # Already-correct ёлочки (incl. nested «…«…»…») must not be re-normalized.
+    if _has_balanced_angle_quotes(text) and '"' not in text:
+        return text
+
     result = list(text)
     quote_indices = []
     for i, ch in enumerate(text):
@@ -78,6 +97,11 @@ def _clean_name(value: Any) -> Optional[str]:
 
     # Заменяем пробел-тире-пробел на пробел-длинное тире-пробел
     name = re.sub(r'\s-\s', ' – ', name)
+
+    # Уже корректные «ёлочки» (в т.ч. вложенные) не трогаем — иначе ломается
+    # «Группа «Илим»».
+    if _has_balanced_angle_quotes(name) and '"' not in name:
+        return name
     
     # Расстановка кавычек в зависимости от их положения
     name = re.sub(r'^"', r'«', name)  # Первая кавычка не может быть закрывающей
@@ -120,23 +144,53 @@ def _clean_multiline_text(value: Any) -> Optional[str]:
 # Неразрывный пробел для экспорта в Excel (предотвращает перенос строки внутри ячейки)
 NBSP = "\u00A0"
 
+# Точечные шаблоны для СиПР/Excel: «г. Москва», «2025 г.», «№ 1», «110 кВ», «4,9 МВт»
+_EXCEL_NBSP_PATTERNS = (
+    # сокращения населённых пунктов: г./с./п./д./пос. + пробел + буква
+    (re.compile(r"\b([гспд]|пос)\.\s+(?=\S)", re.IGNORECASE), rf"\1.{NBSP}"),
+    # год: 2025 г. / 2025г.
+    (re.compile(r"(?<=\d)\s+г\."), f"{NBSP}г."),
+    # номер: № 12
+    (re.compile(r"№\s+(?=\S)"), f"№{NBSP}"),
+    # единицы: 110 кВ / 4,9 МВт
+    (re.compile(r"(?<=[\d.,])\s+(кВ|МВт)\b"), rf"{NBSP}\1"),
+)
 
-def to_excel_nbsp(value: Any) -> Any:
+
+def apply_excel_nbsp_patterns(text: str) -> str:
+    """Ставит NBSP в типовых местах СиПР-выгрузок (г./с./п., год, №, кВ, МВт)."""
+    if not text:
+        return text
+    result = text
+    for pattern, repl in _EXCEL_NBSP_PATTERNS:
+        result = pattern.sub(repl, result)
+    return result
+
+
+def to_excel_nbsp(value: Any, *, patterns_only: bool = False) -> Any:
     """
     Преобразует значение для экспорта в Excel: в строках пробелы заменяются на неразрывные.
     None и числа возвращаются без изменений.
+
+    patterns_only=True — только типовые шаблоны (г./с./п., «2025 г.», «№ N», «N кВ», «N МВт»).
     """
     if value is None:
         return value
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         return value
     s = str(value)
-    return s.replace(" ", NBSP) if s else value
+    if not s:
+        return value
+    if patterns_only:
+        return apply_excel_nbsp_patterns(s)
+    # Сначала точечные шаблоны, затем оставшиеся обычные пробелы
+    s = apply_excel_nbsp_patterns(s)
+    return s.replace(" ", NBSP)
 
 
-def apply_nbsp_to_row(row) -> list:
+def apply_nbsp_to_row(row, *, patterns_only: bool = False) -> list:
     """Применяет неразрывные пробелы ко всем значениям строки для Excel."""
-    return [to_excel_nbsp(v) for v in row]
+    return [to_excel_nbsp(v, patterns_only=patterns_only) for v in row]
 
 
 def format_decimal_for_display(value, digits=None):

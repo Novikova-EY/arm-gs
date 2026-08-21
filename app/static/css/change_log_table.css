@@ -1,0 +1,85 @@
+/* Единые ширины столбцов «Журнал изменений» (как на station_details) */
+table.change-log-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+table.change-log-table th.log-col-datetime,
+table.change-log-table th.ec-log-col-datetime,
+table.change-log-table th.pd-log-col-datetime,
+table.change-log-table td:nth-child(1) {
+  width: 260px !important;
+}
+
+table.change-log-table th.log-col-user,
+table.change-log-table th.ec-log-col-user,
+table.change-log-table th.pd-log-col-user,
+table.change-log-table td:nth-child(2) {
+  width: 300px !important;
+}
+
+table.change-log-table td:nth-child(1),
+table.change-log-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+table.change-log-table th.log-col-action,
+table.change-log-table th.ec-log-col-action,
+table.change-log-table th.pd-log-col-action,
+table.change-log-table td:nth-child(3) {
+  width: 33.33% !important;
+}
+
+table.change-log-table th.log-col-database-version,
+table.change-log-table th.ec-log-col-ver,
+table.change-log-table th.pd-log-col-ver,
+table.change-log-table td:nth-child(4) {
+  width: 150px !important;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+table.change-log-table th.log-col-details,
+table.change-log-table th.ec-log-col-details,
+table.change-log-table th.pd-log-col-details,
+table.change-log-table td:nth-child(5) {
+  width: 33.33% !important;
+}
+
+table.change-log-table td:nth-child(3) div,
+table.change-log-table td:nth-child(5) div {
+  white-space: pre-wrap;
+}
+
+table.change-log-table .log-datetime-filter {
+  display: flex;
+  gap: 0.35rem;
+  align-items: flex-end;
+}
+
+table.change-log-table .log-datetime-filter > div {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+table.change-log-table .log-datetime-filter .form-label {
+  font-size: 0.7em;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+table.change-log-table .log-datetime-filter input[type="date"] {
+  min-width: 0;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+table.change-log-table .log-filter-row td {
+  white-space: normal !important;
+}
+
+table.change-log-table th,
+table.change-log-table td {
+  max-width: none;
+}

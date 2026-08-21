@@ -1,6 +1,7 @@
 {# Фрагмент как на stations_equipment_group_fuel_params: только таблица.
    fuel_param_columns и collapsible_ugol_attrs передаются из view (см. fuel_param_batch_preview_columns). #}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label %}
 {% set specific_y_by_group_id = specific_y_by_group_id|default({}) %}
 {% set column_count = fuel_param_columns|length + 1 %}
 
@@ -42,20 +43,17 @@
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
                                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% if group_block.get('is_composite_total_row') %}
+                                {% set group_name = group_name ~ ', всего' %}
+                                {% endif %}
                                 {% for row in group_block.rows %}
                                     {% set param = row[1] %}
-                                    <tr class="text-center align-middle">
-                                        <td>
-                                            {% if group_entity and group_entity.id %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, year=selected_year) }}" class="text-decoration-none">
-                                                {{ group_name }}
-                                            </a>
-                                            {% else %}
-                                                {{ group_name }}
-                                            {% endif %}
+                                    <tr class="text-center align-middle{% if group_block.get('is_composite_total_row') %} fuel-param-summary-row fuel-param-composite-parent-row fw-bold{% endif %}">
+                                        <td class="{{ eg_name_cell_class(group_block) }}">
+                                            {{ eg_name_label(group_entity, group_name, group_block, href=(url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, year=selected_year) if group_entity and group_entity.id else none)) }}
                                         </td>
                                         {% for attr, label, is_numeric in fuel_param_columns %}
-                                        <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr == 'numb1120' %}{% if param.numb1120 is not none %}{{ param.numb1120 }}{% elif group_entity and group_entity.numb is not none %}{{ group_entity.numb }}{% else %}—{% endif %}{% elif attr == 'y' %}{{ render_numeric_or_dash(specific_y_by_group_id.get(group_entity.id) if group_entity else None) }}{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
+                                        <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if group_block.get('use_station_summary') or group_block.get('is_composite_total_row') %}{% if attr == 'numb1120' %}{{ group_entity.numb if group_entity and group_entity.numb is not none else '—' }}{% elif is_numeric and station_block.station_summary and attr in station_block.station_summary %}{{ render_numeric_or_dash(station_block.station_summary[attr]) }}{% else %}—{% endif %}{% elif param is none %}—{% elif attr == 'numb1120' %}{% if param.numb1120 is not none %}{{ param.numb1120 }}{% elif group_entity and group_entity.numb is not none %}{{ group_entity.numb }}{% else %}—{% endif %}{% elif attr == 'y' %}{{ render_numeric_or_dash(specific_y_by_group_id.get(group_entity.id) if group_entity else None) }}{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}
@@ -86,14 +84,8 @@
                 {% set param = row[1] %}
                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
                 <tr class="text-center align-middle">
-                    <td>
-                        {% if group_entity and group_entity.id %}
-                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, year=selected_year) }}" class="text-decoration-none">
-                            {{ group_name }}
-                        </a>
-                        {% else %}
-                            {{ group_name }}
-                        {% endif %}
+                    <td class="{{ eg_name_cell_class() }}">
+                        {{ eg_name_label(group_entity, group_name, href=(url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, year=selected_year) if group_entity and group_entity.id else none)) }}
                     </td>
                     {% for attr, label, is_numeric in fuel_param_columns %}
                     <td class="fuel-param-col-{{ attr }}" data-column="{{ attr }}" {% if attr in collapsible_ugol_attrs %}data-collapsible-ugol="1"{% endif %}>{% if param is none %}—{% elif attr == 'numb1120' %}{% if param.numb1120 is not none %}{{ param.numb1120 }}{% elif group_entity and group_entity.numb is not none %}{{ group_entity.numb }}{% else %}—{% endif %}{% elif attr == 'y' %}{{ render_numeric_or_dash(specific_y_by_group_id.get(group_entity.id) if group_entity else None) }}{% elif attr == 'obor' and obor_name_map and param.obor is not none %}{{ obor_name_map.get(param.obor, param.obor)|default('—') }}{% elif attr == 'obl' and obl_name_map and param.obl is not none %}{{ obl_name_map.get(param.obl, param.obl)|default('—') }}{% elif attr == 'dep' and dep_name_map and param.dep is not none %}{{ dep_name_map.get(param.dep, param.dep)|default('—') }}{% elif attr == 'oes' and oes_name_map and param.oes is not none %}{{ oes_name_map.get(param.oes, param.oes)|default('—') }}{% elif attr == 'er' and er_name_map and param.er is not none %}{{ er_name_map.get(param.er, param.er)|default('—') }}{% elif attr == 'gk' and gk_name_map and param.gk is not none %}{{ gk_name_map.get(param.gk, param.gk)|default('—') }}{% elif attr == 'be' and be_name_map and param.be is not none %}{{ be_name_map.get(param.be, param.be)|default('—') }}{% elif attr == 'ved' %}{% if param.ved is not none %}{% if param.ved|string == '1' %}КЭС{% elif param.ved|string == '2' %}ТЭЦ{% else %}{{ param.ved }}{% endif %}{% else %}—{% endif %}{% elif attr == 'ved_cyrillic' %}{% if param.ved_cyrillic is not none %}{% if param.ved_cyrillic|string == '1' %}станция отрасли{% elif param.ved_cyrillic|string == '2' %}пром.предприятие{% else %}{{ param.ved_cyrillic }}{% endif %}{% else %}—{% endif %}{% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}{% else %}{{ param|get_attr(attr)|default('—') }}{% endif %}</td>
@@ -109,5 +101,12 @@
 .batch-fuel-preview-table th[data-collapsible-ugol="1"],
 .batch-fuel-preview-table td[data-collapsible-ugol="1"] {
     display: table-cell;
+}
+.batch-fuel-preview-table tr.fuel-param-composite-parent-row > td {
+    background-color: #fff3cd !important;
+}
+.batch-fuel-preview-table.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+    --bs-table-accent-bg: transparent;
+    background-color: #fff3cd !important;
 }
 </style>

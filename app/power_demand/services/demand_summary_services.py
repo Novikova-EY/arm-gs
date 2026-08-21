@@ -529,25 +529,34 @@ def _is_first_synchronous_area_summary_row(row: dict[str, Any]) -> bool:
     return _is_first_synchronous_area_name(str(row.get("entity_label") or ""))
 
 
+def _kaliningrad_sync_area_clean_label(label: str | None) -> str:
+    """Имя СЗ Калининграда без «с/без НТ» / ГАЭС / каталожных приписок."""
+    base, _kal = _pd_strip_variant_suffixes_from_label(str(label or ""))
+    base = _pd_strip_gaes_text_from_label_fragment(base)
+    base = _pd_strip_catalog_annotation_parentheticals(base)
+    base = _pd_strip_o1_marker_from_entity_label(base)
+    return base or str(label or "").strip()
+
+
 def _kaliningrad_sync_area_entity_with_stored_variant(
     entity: SummaryEntity,
 ) -> SummaryEntity:
     """Одна строка СЗ Калининграда с кодом варианта, сохранённым в БД (если есть)."""
+    clean_label = _kaliningrad_sync_area_clean_label(entity.label)
+    label_changed = clean_label != str(entity.label or "").strip()
     try:
         model_cls = dps._summary_demand_model_class(str(entity.demand_model_name or ""))
     except ValueError:
-        return entity
+        return replace(entity, label=clean_label) if label_changed else entity
     if entity.parent_fk_column is None or entity.parent_id is None:
-        return entity
+        return replace(entity, label=clean_label) if label_changed else entity
     stored = dps.peek_stored_perimeter_variant_code_for_parent(
         model_cls,
         entity.parent_fk_column,
         entity.parent_id,
     )
-    if not stored:
-        return entity
-    if str(entity.perimeter_variant_code or "") == str(stored):
-        return entity
+    if not stored or str(entity.perimeter_variant_code or "") == str(stored):
+        return replace(entity, label=clean_label) if label_changed else entity
     demand_rows = dps.get_demand_rows(
         model_cls,
         entity.parent_fk_column,
@@ -556,6 +565,7 @@ def _kaliningrad_sync_area_entity_with_stored_variant(
     )
     return replace(
         entity,
+        label=clean_label,
         perimeter_variant_code=stored,
         demand_rows=demand_rows,
     )
@@ -1013,6 +1023,8 @@ def _summary_variant_entity_label(
     base = _pd_strip_gaes_text_from_label_fragment(base)
     base = _pd_strip_catalog_annotation_parentheticals(base)
     base = _pd_strip_o1_marker_from_entity_label(base)
+    if is_kaliningrad_sync_area_entity_name(base):
+        return base
     nt_suffix = _pd_nt_label_suffix_for_variant_code(str(code))
     return f"{base}{nt_suffix}".strip()
 
@@ -1244,7 +1256,7 @@ def _build_national_and_sync_zone_prefix_entities(
     """Общий префикс режима «Сводная таблица» для сводок ОЭС / ФО / энергозон.
 
     Порядок: ЦЗ России с/без НТ → ЭЭС России с/без НТ → ЕЭС России с/без НТ →
-    Первая синхронная зона с/без НТ → Вторая синхронная зона →
+    Первая синхронная зона с НТ → без НТ → Вторая синхронная зона →
     Синхронная зона Калининградской области.
     """
     return (
@@ -1335,6 +1347,37 @@ def _enrich_national_prefix_calculated_max_like_oes(
     enrich_cz_russia_calculated_max_power_mw(working_rows, years, rounding_digits)
 
 
+def _national_prefix_scope_for_oes_formulas(
+    summary_rows: list[dict[str, Any]],
+) -> str | None:
+    """Scope пагинации для отсечения дерева ФО/ЭЗ от общего префикса «Сводной таблицы»."""
+    fd_dm = FederalDistrictDemandParameter.__name__
+    ez_dm = EnergyZoneDemandParameter.__name__
+    for r in summary_rows:
+        dm = str(r.get("demand_model_name") or "")
+        kind = str(r.get("entity_kind") or "")
+        if dm == fd_dm or kind == "federal_district":
+            return "fo"
+        if dm == ez_dm or kind == "energy_zone":
+            return "ez"
+    return None
+
+
+def _national_prefix_rows_excluding_territory_tree(
+    summary_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Только ЦЗ→ЭЭС→ЕЭС→СЗ: без блоков ОЭС/ФО/энергозон, чтобы суммы совпадали с /summary/oes/."""
+    scope = _national_prefix_scope_for_oes_formulas(summary_rows)
+    if scope is None:
+        return summary_rows
+    from app.power_demand.services.pd_summary_entity_pagination import (
+        split_summary_rows_for_pagination,
+    )
+
+    prefix, _sections, _suffix = split_summary_rows_for_pagination(summary_rows, scope)
+    return list(prefix)
+
+
 def _apply_national_prefix_oes_formulas(
     summary_rows: list[dict[str, Any]],
     years: list[int],
@@ -1348,6 +1391,8 @@ def _apply_national_prefix_oes_formulas(
     """Заполняет префикс ЕЭС/СЗ на ФО/ЭЗ формулами ОЭС; возвращает кэш скрытых строк-источников.
 
     Строки префикса в ``summary_rows`` мутируются на месте (те же объекты dict).
+    На ФО/ЭЗ в расчёт не попадает территориальное дерево страницы — только префикс
+    и скрытые источники ОЭС, иначе суммы ЦЗ/ЭЭС расходятся с /summary/oes/.
     """
     if not summary_rows or not years:
         return list(oes_source_rows or [])
@@ -1365,7 +1410,8 @@ def _apply_national_prefix_oes_formulas(
                 avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
             )
         )
-        working = summary_rows + sources
+        prefix_rows = _national_prefix_rows_excluding_territory_tree(summary_rows)
+        working = prefix_rows + sources
 
     if enrich_calculated:
         _enrich_national_prefix_calculated_max_like_oes(
@@ -1504,6 +1550,8 @@ def _finalize_oes_summary_context(
 
     rows = ctx["summary_rows"]
     years = list(ctx["years"])
+    # Порядок: Первая СЗ с НТ → без НТ (независимо от sort_order привязок).
+    reorder_first_synchronous_area_variant_blocks_in_summary_rows(rows)
     _inject_south_ues_nt_rows_after_res(
         rows,
         years=years,
@@ -1582,6 +1630,8 @@ def _finalize_fo_summary_context(
     filter_years = list(ctx.get("filter_year_list") or years)
     # Порядок ЦЗ с НТ → без НТ (в т.ч. o1_with_nt / o1_without_nt).
     reorder_centralized_zone_russia_variant_blocks_in_summary_rows(rows)
+    # Порядок: Первая СЗ с НТ → без НТ.
+    reorder_first_synchronous_area_variant_blocks_in_summary_rows(rows)
     ctx["summary_rows"] = exclude_o1_perimeter_variant_summary_rows(rows)
     rows = ctx["summary_rows"]
     need_calc_max = _summary_data_segments_requested(
@@ -1669,6 +1719,7 @@ def _finalize_ez_summary_context(
     avg_temp_global = bool(ctx.get("avg_temp_uses_global_rounding"))
     filter_years = list(ctx.get("filter_year_list") or years)
     reorder_centralized_zone_russia_variant_blocks_in_summary_rows(rows)
+    reorder_first_synchronous_area_variant_blocks_in_summary_rows(rows)
     need_calc_max = _summary_data_segments_requested(
         data_segments, PD_SUMMARY_SEGMENT_CALC_MAX
     )
@@ -1725,6 +1776,9 @@ def _finalize_ez_summary_context(
     )
     _clear_summary_hist_non_base_parameters(rows)
     rows = exclude_o1_perimeter_variant_summary_rows(rows)
+    # На /summary/energy_zones/ блок «Новые территории» не показываем даже при «+ НТ»
+    # (кнопка меняет только подписи/строки «… с НТ» в префиксе ЦЗ→ЭЭС→ЕЭС→СЗ).
+    rows = _strip_new_territories_block_for_ez_summary(rows)
     ctx["summary_rows"] = rows
     from app.power_demand.services.pd_summary_entity_pagination import (
         tag_summary_rows_before_section_blocks,
@@ -2410,9 +2464,10 @@ def _inject_fo_max_cz_russia_calculated_max_row(
 def _build_ez_raw_entities(*, ez_max_extended_parameters: bool = False) -> list[SummaryEntity]:
     """Префикс «Сводной таблицы» (ЦЗ→ЭЭС→ЕЭС→СЗ) + дерево энергозон (без ТИТЭС)."""
     entities: list[SummaryEntity] = list(
+        # Тот же набор параметров ЕЭС России, что на ОЭС/ФО (без «через ЭЗ» только на ЭЗ).
         _build_national_and_sync_zone_prefix_entities(
             cz_parameters=PARAMETERS_CZ_OES_SUMMARY,
-            ees_russia_parameters=PARAMETERS_EES_RUSSIA_EZ_SUMMARY,
+            ees_russia_parameters=PARAMETERS_EES_RUSSIA_OES_SUMMARY,
         )
     )
     entities.extend(
@@ -2550,10 +2605,7 @@ def build_oes_summary_context_coeff(
         data_segments=data_segments,
     )
     ctx["page_title"] = "Коэффициенты и совмещенные максимумы по энергосистемам"
-    if not for_client_render_shell:
-        tag_power_demand_coeff_summary_rows_without_gaes_entity_labels(
-            ctx["summary_rows"]
-        )
+    # Подписи — как на /summary/oes/ и coeff ФО/ЭЗ (кнопка «+ НТ»), без полного «без ГАЭС».
     return ctx
 
 
@@ -2722,6 +2774,10 @@ def _inject_fo_coeff_cz_total_rows(
                 "pd_fo_coeff_cz_total": True,
                 "pd_fo_coeff_cz_total_tooltip": tt_expl,
                 "pd_formula_text_key": formula_key,
+                # Как строки «Проверка»: скрыты до кнопки «Проверка», без строки k.
+                "pd_pd_verify_for_row": True,
+                "year_k_values": ["—"] * n_y,
+                "year_k_full_tooltips": [""] * n_y,
             }
         )
     for ii, nr in enumerate(to_insert):
@@ -2762,9 +2818,65 @@ def build_federal_district_summary_context_coeff(
             list(ctx["years"]),
             int(ctx["rounding_digits"]),
         )
+        # Строки вставлены после tag_summary_rows_before_section_blocks — пометить снова.
+        from app.power_demand.services.pd_summary_entity_pagination import (
+            tag_summary_rows_before_section_blocks,
+        )
+
+        tag_summary_rows_before_section_blocks(ctx["summary_rows"], "fo")
     # Подписи энергосистем — как на /summary/federal_districts/ (кнопка «+ НТ»),
     # без принудительного «без НТ / без заряда ГАЭС» в compact-режиме.
     return ctx
+
+
+def _strip_new_territories_block_for_ez_summary(
+    summary_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Сводка ЭЗ (max/coeff): блок «Новые территории» (заголовок, субъекты и ЭР) не показываем, даже при «+ НТ».
+
+    Строки префикса «… с НТ» (ЦЗ/ЭЭС/ЕЭС/СЗ) не затрагиваем — их видимость задаёт кнопка «+ НТ».
+    """
+    if not summary_rows:
+        return summary_rows
+    out: list[dict[str, Any]] = []
+    in_nt_block = False
+    nt_root_depth: int | None = None
+    for row in summary_rows:
+        d = int(row.get("entity_depth", 0) or 0)
+        label = str(row.get("entity_label") or "").strip()
+        is_nt_block_root = bool(
+            row.get("show_entity_cell")
+            and row.get("pd_pd_nt_subtree_root")
+            and (
+                row.get("pd_pd_aggregation_level_row")
+                or label == _NEW_TERRITORIES_NAME
+                or _NEW_TERRITORIES_NAME in label
+            )
+        )
+        if is_nt_block_root:
+            in_nt_block = True
+            nt_root_depth = d
+            continue
+        if in_nt_block:
+            if (
+                row.get("show_entity_cell")
+                and nt_root_depth is not None
+                and d <= nt_root_depth
+            ):
+                in_nt_block = False
+                nt_root_depth = None
+            else:
+                continue
+        if in_nt_block:
+            continue
+        out.append(row)
+    return _rebuild_summary_entity_row_blocks(out)
+
+
+# Обратная совместимость для тестов/импортов.
+_strip_new_territories_subject_rows_for_coeff_ez = (
+    _strip_new_territories_block_for_ez_summary
+)
 
 
 def build_energy_zones_summary_context_coeff(
@@ -2781,6 +2893,7 @@ def build_energy_zones_summary_context_coeff(
 
     Набор расчётных/проверочных строк и формулы — как на /summary/energy_zones/
     (``ez_max_extended_parameters=True``).
+    Блок «Новые территории» уже убран в ``build_energy_zones_summary_context``.
     """
     ctx = build_energy_zones_summary_context(
         rounding_digits,
@@ -3091,6 +3204,12 @@ def _pd_gaes_label_suffix_for_variant_code(code: str) -> str:
 def _pd_format_full_variant_entity_label_for_coeff(base_label: str, code: str) -> str:
     """Полная подпись варианта на coeff (с/без НТ и заряда ГАЭС), без усечения имени сущности."""
     base, _kal_suffix = _pd_strip_variant_suffixes_from_label(base_label)
+    base = _pd_strip_gaes_text_from_label_fragment(base)
+    base = _pd_strip_catalog_annotation_parentheticals(base)
+    base = _pd_strip_o1_marker_from_entity_label(base)
+    # СЗ Калининграда — без пары с/без НТ; суффикс НТ не добавляем.
+    if is_kaliningrad_sync_area_entity_name(base):
+        return f"{base}{_pd_gaes_label_suffix_for_variant_code(code)}".strip()
     return (
         f"{base}{_pd_nt_label_suffix_for_variant_code(code)}"
         f"{_pd_gaes_label_suffix_for_variant_code(code)}"
@@ -3304,6 +3423,57 @@ def reorder_centralized_zone_russia_variant_blocks_in_summary_rows(
         i = segment_end
 
 
+def _first_synchronous_area_variant_block_sort_key(
+    block: list[dict[str, Any]],
+) -> tuple[int, str]:
+    code = str((block[0] if block else {}).get("perimeter_variant_code") or "")
+    nt_group = _pd_nt_group_for_variant_code(code)
+    nt_order = {"with_nt": 0, "without_nt": 1}.get(nt_group, 2)
+    return (nt_order, code)
+
+
+def reorder_first_synchronous_area_variant_blocks_in_summary_rows(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """«Первая синхронная зона с НТ» над «без НТ» для подряд идущих блоков (depth=0)."""
+    i = 0
+    n = len(summary_rows)
+    while i < n:
+        row = summary_rows[i]
+        if not _is_first_synchronous_area_summary_row(row):
+            i += 1
+            continue
+        if int(row.get("entity_depth") or 0) != 0:
+            i += 1
+            continue
+        start = i
+        segment_end = start
+        while segment_end < n:
+            segment_row = summary_rows[segment_end]
+            if not _is_first_synchronous_area_summary_row(segment_row):
+                break
+            if int(segment_row.get("entity_depth") or 0) != 0:
+                break
+            segment_end += 1
+        blocks: list[list[dict[str, Any]]] = []
+        j = start
+        while j < segment_end:
+            block_row = summary_rows[j]
+            if block_row.get("show_entity_cell"):
+                block_size = max(int(block_row.get("entity_rowspan") or 1), 1)
+                blocks.append(summary_rows[j : j + block_size])
+                j += block_size
+            else:
+                j += 1
+        if len(blocks) >= 2:
+            blocks.sort(key=_first_synchronous_area_variant_block_sort_key)
+            reordered: list[dict[str, Any]] = []
+            for block in blocks:
+                reordered.extend(block)
+            summary_rows[start:segment_end] = reordered
+        i = segment_end
+
+
 def _pd_strip_gaes_text_from_label_fragment(text: str) -> str:
     """Убрать «с/без заряда ГАЭС» из подписи (на сводке нагрузок ГАЭС не используется)."""
     s = str(text or "").strip()
@@ -3324,6 +3494,9 @@ def _pd_format_oes_entity_label_for_toggle_state(
     base = _pd_strip_gaes_text_from_label_fragment(base)
     base = _pd_strip_catalog_annotation_parentheticals(base)
     base = _pd_strip_o1_marker_from_entity_label(base)
+    # СЗ Калининграда — одна сущность без пары с/без НТ; «без НТ» в названии лишнее.
+    if is_kaliningrad_sync_area_entity_name(base):
+        return base
     nt_suffix = _pd_nt_label_suffix_for_variant_code(code) if nt_detail_on else ""
     return f"{base}{nt_suffix}".strip()
 
@@ -8329,19 +8502,24 @@ def enrich_summary_rows_coeff_k_columns(
                 r["year_values"] = yv_mw
                 r["year_numeric_tooltips"] = ynt
         i += block_size
-    if coeff_base_year is not None:
-        _coeff_years = lambda y: _coeff_union_res_sum_year(y, coeff_base_year)
+    if coeff_base_year is not None and _summary_rows_include_ues_blocks(summary_rows):
+        # После подстановки МВт среднесрочных лет по РЭС — пересчёт «через ОЭС/РЭС»
+        # только для N+1…N+6. Отчётные годы (и ФО/ЭЗ без строк ОЭС) не трогаем:
+        # значения префикса уже совпадают с max-сводками.
+        def _coeff_medium_years(y: int) -> bool:
+            return (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
+
         enrich_oes_ees_russia_calculated_max_via_oes(
             summary_rows,
             years,
             rounding_digits,
-            year_included=_coeff_years,
+            year_included=_coeff_medium_years,
         )
         enrich_oes_ees_russia_calculated_max_via_es(
             summary_rows,
             years,
             rounding_digits,
-            year_included=_coeff_years,
+            year_included=_coeff_medium_years,
         )
 
 
@@ -8659,7 +8837,7 @@ def _build_parameter_maps(
         if "peak_datetime" in result:
             result["peak_datetime"][slice_key] = _dash(
                 dps.format_peak_datetime_for_slice(
-                    getattr(row, "peak_datetime_msk", None),
+                    getattr(row, "peak_datetime", None),
                     slice_key == "hist",
                 )
             )
@@ -10014,7 +10192,8 @@ def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
 
     «Первая синхронная зона» — варианты периметра with_nt / without_nt (как у «Россия»).
 
-    Порядок — по ``SynchronousArea.display_order`` (как в справочнике), затем имя и id.
+    Порядок зон — по ``SynchronousArea.display_order`` (как в справочнике), затем имя и id.
+    У первой СЗ внутри: с НТ → без НТ (независимо от sort_order привязок).
     """
     query = SynchronousArea.query
     query = dps.filter_parents_by_version(query, SynchronousArea)
@@ -10038,6 +10217,16 @@ def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
                 binding=binding,
             )
             if variants:
+                variants = sorted(
+                    variants,
+                    key=lambda item: (
+                        {"with_nt": 0, "without_nt": 1}.get(
+                            _pd_nt_group_for_variant_code(str(item[0] or "")),
+                            2,
+                        ),
+                        str(item[0] or ""),
+                    ),
+                )
                 for vcode, demand_rows in variants:
                     lbl = _summary_variant_entity_label(
                         binding,

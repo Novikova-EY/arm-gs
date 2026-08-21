@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
 {% block title %}Технико-экономические показатели групп оборудования{% endblock %}
 
@@ -25,6 +27,13 @@
 /* Шапка таблицы липнет под панелью фильтров */
 #stationsTableContainer table thead th {
     top: var(--sfc-controls-sticky-height, 0px);
+}
+#stationsTableContainer table tr.fuel-param-composite-parent-row > td {
+    background-color: #fff3cd !important;
+}
+#stationsTableContainer table.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+    --bs-table-accent-bg: transparent;
+    background-color: #fff3cd !important;
 }
 </style>
 
@@ -107,10 +116,14 @@
             <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                 <th style="width: 120px;">Группа оборудования</th>
                 {% for attr, label, is_numeric in specific_columns %}
+                {% if attr == 'numb1120' %}
+                {{ fuel_param_numb1120_header_th(1, header_labels.get(attr, label), (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
+                {% else %}
                 <th style="width: 70px;">
                     {{ header_labels.get(attr, label) }}{% if consumption_formulas is defined and consumption_formulas.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}
                     <br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
+                {% endif %}
                 {% endfor %}
             </tr>
         </thead>
@@ -118,17 +131,11 @@
         <tbody>
             {% if equipment_group_specific_fuel_consumption_hierarchy and equipment_group_specific_fuel_consumption_hierarchy|length > 0 %}
             {% for est_block in equipment_group_specific_fuel_consumption_hierarchy %}
-                <tr class="table-light text-center" style="vertical-align: middle; font-weight: bold;">
-                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
-                </tr>
+                {{ fuel_hierarchy_level_header(est_block.est_id, est_block.est_name, column_count, 'table-light text-center', 'vertical-align: middle; font-weight: bold;') }}
                 {% for ues_block in est_block.ues_list %}
-                    <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
-                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
-                    </tr>
+                    {{ fuel_hierarchy_level_header(ues_block.ues_id, ues_block.ues_name, column_count, 'table-primary text-center', 'vertical-align: middle; font-weight: bold;') }}
                     {% for res_block in ues_block.res_list %}
-                        <tr class="table-secondary text-center" style="vertical-align: middle; font-weight: bold;">
-                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
-                        </tr>
+                        {{ fuel_hierarchy_level_header(res_block.res_id, res_block.res_name, column_count, 'table-secondary text-center', 'vertical-align: middle; font-weight: bold;') }}
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
@@ -136,45 +143,19 @@
                                 {% for row in group_block.rows %}
                                     {% set param = row[1] %}
                                     {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
-                                    <tr class="text-center align-middle">
-                                        <td>
-                                            {% if group_entity and group_entity.id %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                                                {{ group_name }}
-                                            </a>
-                                            {% else %}
-                                                {{ group_name }}
-                                            {% endif %}
+                                    <tr class="text-center align-middle{% if group_block.get('is_composite_parent') or group_block.get('is_composite_total_row') %} fuel-param-composite-parent-row fw-bold{% endif %}">
+                                        <td class="{{ eg_name_cell_class(group_block) }}">
+                                            {{ eg_name_label(group_entity, group_name, group_block) }}
                                         </td>
                                         {% for attr, label, is_numeric in specific_columns %}
                                         {% set cell_src = param %}
                                         {% set cell_ttip = sfc_db_tooltip(attr, is_numeric, cell_src, group_entity)|trim %}
-                                        <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                                        <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or (v == 0 and attr != 'snk_calc') %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
                                         {% endfor %}
                                     </tr>
                                 {% endfor %}
                         {% endfor %}
-                        {% if station_block.group_blocks|length > 1 and not station_block.get('is_virtual') and not station_block.get('suppress_station_summary') %}
-                        <tr class="text-center align-middle table-warning" style="font-weight: bold;">
-                            <td>{{ station_block.station_name }}, всего</td>
-                            {% for attr, label, is_numeric in specific_columns %}
-                            {% set v = station_block.station_summary[attr] if is_numeric and station_block.station_summary and attr in station_block.station_summary else none %}
-                            {% set cell_ttip = (v|format_decimal(0) if v is not none else '')|trim %}
-                            <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if is_numeric and v is not none %}{% if v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endif %}
                         {% endfor %}
-                        {% if res_block.group_blocks %}
-                        <tr class="text-center align-middle table-info" style="font-weight: bold;">
-                            <td>{{ res_block.res_name }}, всего</td>
-                            {% for attr, label, is_numeric in specific_columns %}
-                            {% set v = res_block.res_summary[attr] if is_numeric and res_block.res_summary and attr in res_block.res_summary else none %}
-                            {% set cell_ttip = (v|format_decimal(0) if v is not none else '')|trim %}
-                            <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if is_numeric and v is not none %}{% if v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% else %}—{% endif %}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endif %}
                     {% endfor %}
                 {% endfor %}
             {% endfor %}
@@ -185,19 +166,13 @@
                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
                 {% set mismatch_attrs = get_calc_mismatch_attrs(param) if show_calc_mismatch|default(false) and get_calc_mismatch_attrs is defined else [] %}
                 <tr class="text-center align-middle">
-                    <td>
-                        {% if group_entity and group_entity.id %}
-                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">
-                            {{ group_name }}
-                        </a>
-                        {% else %}
-                            {{ group_name }}
-                        {% endif %}
+                    <td class="{{ eg_name_cell_class() }}">
+                        {{ eg_name_label(group_entity, group_name) }}
                     </td>
                     {% for attr, label, is_numeric in specific_columns %}
                     {% set cell_src = param %}
                     {% set cell_ttip = sfc_db_tooltip(attr, is_numeric, cell_src, group_entity)|trim %}
-                    <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or v == 0 %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
+                    <td{% if attr in mismatch_attrs %} class="table-danger"{% endif %}{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>{% if cell_src is none and attr != 'numb1120' %}—{% elif is_numeric %}{% set v = cell_src|get_attr(attr) if cell_src is not none else none %}{% if v is none or (v == 0 and attr != 'snk_calc') %}—{% else %}{{ v|format_decimal }}{% endif %}{% elif attr == 'numb1120' %}{% set v = cell_src|get_attr('numb1120') if cell_src is not none else none %}{% if v is none and group_entity is not none %}{% set v = group_entity.numb %}{% endif %}{{ v if v is not none else '—' }}{% else %}{% set v = cell_src|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}</td>
                     {% endfor %}
                 </tr>
             {% endfor %}
@@ -254,6 +229,7 @@
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") {

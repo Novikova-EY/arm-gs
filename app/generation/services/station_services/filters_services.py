@@ -3,11 +3,14 @@ import uuid
 from config import Config
 from app.extensions import db
 from collections import defaultdict
-from sqlalchemy import or_, extract, and_, func
+from sqlalchemy import or_, extract, and_, func, select
 from sqlalchemy.sql import exists
 from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
-from app.common.services.database_version_filter import filter_by_db_version
+from app.common.services.database_version_filter import (
+    filter_by_db_version,
+    get_current_db_version_id,
+)
 
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_constants import STATION_SIGN_FILTER_UNSPECIFIED
@@ -72,6 +75,31 @@ def _parse_year_filter(raw_list):
     return result if result else None
 
 
+def _parse_int_list_filter(raw_list):
+    """
+    Список целых из query/form: несколько параметров и ввод «1, 2; 3» в одном значении.
+    Пустой список, если ничего разобрать нельзя.
+    """
+    if not raw_list:
+        return []
+    result = []
+    seen = set()
+    for item in raw_list:
+        if item is None:
+            continue
+        text = str(item).replace(",", " ").replace(";", " ")
+        for part in text.split():
+            try:
+                n = int(part)
+            except (TypeError, ValueError):
+                continue
+            if n in seen:
+                continue
+            seen.add(n)
+            result.append(n)
+    return result
+
+
 def _args_getlist_raw(args, key):
     """Список значений query/form; пустые строки отбрасываем."""
     if hasattr(args, "getlist"):
@@ -96,6 +124,177 @@ def _normalize_uuid_strings(raw_values):
     return out
 
 
+def _parse_int_ids(id_list):
+    ids = []
+    for x in id_list or []:
+        try:
+            if x is None:
+                continue
+            ids.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+def _norm_ref_key(value):
+    if value is None:
+        return ""
+    return str(value).strip().lower().strip("{}")
+
+
+def _norm_name_key(value):
+    return " ".join(str(value or "").split()).strip().lower()
+
+
+def _identity_row_from_raw(raw, has_name, has_version):
+    rid = raw[0]
+    ru = raw[1]
+    idx = 2
+    name = None
+    if has_name:
+        name = raw[idx]
+        idx += 1
+    ver = raw[idx] if has_version else None
+    return {
+        "id": rid,
+        "ref_uuid": _norm_ref_key(ru),
+        "ref_uuid_raw": ru,
+        "name": _norm_name_key(name),
+        "name_raw": name,
+        "database_version_id": ver,
+    }
+
+
+def _load_territorial_identity_rows(
+    model_cls,
+    *,
+    ids=None,
+    ref_uuids=None,
+    names=None,
+    current_version_only=False,
+):
+    """Строки справочника с id/ref_uuid/name/версией для сопоставления фильтров."""
+    has_name = hasattr(model_cls, "name")
+    has_version = hasattr(model_cls, "database_version_id")
+    cols = [model_cls.id, model_cls.ref_uuid]
+    if has_name:
+        cols.append(model_cls.name)
+    if has_version:
+        cols.append(model_cls.database_version_id)
+    q = db.session.query(*cols)
+    if ids is not None:
+        q = q.filter(model_cls.id.in_(ids))
+    if ref_uuids is not None:
+        q = q.filter(model_cls.ref_uuid.in_(ref_uuids))
+    if names is not None and has_name:
+        lowered = [str(n).strip().lower() for n in names if n]
+        if lowered:
+            q = q.filter(func.lower(func.trim(model_cls.name)).in_(lowered))
+        else:
+            return []
+    if current_version_only:
+        q = filter_by_db_version(q, model_cls)
+    return [
+        _identity_row_from_raw(raw, has_name, has_version) for raw in q.all()
+    ]
+
+
+def _choose_current_version_id(src, current_rows, current_version_id):
+    """
+    id той же сущности в текущей версии БД.
+
+    Если исходный id уже из текущей версии — его и оставляем: при битых
+    дубликатах ref_uuid (Забайкальский край / Калининградская область)
+    словарь last-wins подменял субъект.
+    """
+    src_ver = src.get("database_version_id")
+    if current_version_id is not None and src_ver == current_version_id:
+        return src["id"]
+    if current_version_id is None and src_ver is None:
+        return src["id"]
+
+    uuid_hits = [
+        row for row in current_rows
+        if src["ref_uuid"] and row["ref_uuid"] == src["ref_uuid"]
+    ]
+    if len(uuid_hits) == 1:
+        return uuid_hits[0]["id"]
+    if len(uuid_hits) > 1:
+        named = [row for row in uuid_hits if src["name"] and row["name"] == src["name"]]
+        if named:
+            return min(named, key=lambda row: row["id"])["id"]
+        return src["id"]
+
+    name_hits = [
+        row for row in current_rows
+        if src["name"] and row["name"] == src["name"]
+    ]
+    if len(name_hits) == 1:
+        return name_hits[0]["id"]
+    return src["id"]
+
+
+def _expand_identity_ids(src, all_rows):
+    """Все id той же сущности во всех версиях БД (ref_uuid, при коллизии — имя)."""
+    matched = []
+    if src["ref_uuid"]:
+        uuid_hits = [row for row in all_rows if row["ref_uuid"] == src["ref_uuid"]]
+        by_version = defaultdict(list)
+        for row in uuid_hits:
+            by_version[row["database_version_id"]].append(row)
+        for mates in by_version.values():
+            if len(mates) == 1:
+                matched.extend(mates)
+                continue
+            for row in mates:
+                if row["id"] == src["id"] or (src["name"] and row["name"] == src["name"]):
+                    matched.append(row)
+    if not matched and src["name"]:
+        matched = [row for row in all_rows if row["name"] == src["name"]]
+    if not matched:
+        return [src["id"]]
+    out = []
+    seen = set()
+    for row in matched:
+        rid = row["id"]
+        if rid in seen:
+            continue
+        seen.add(rid)
+        out.append(rid)
+    return out
+
+
+def _remap_ids_for_current_version_from_rows(ids, src_rows, current_rows, current_version_id):
+    src_by_id = {row["id"]: row for row in src_rows}
+    out = []
+    seen = set()
+    for orig in ids:
+        src = src_by_id.get(orig)
+        cid = orig if src is None else _choose_current_version_id(
+            src, current_rows, current_version_id
+        )
+        if cid in seen:
+            continue
+        seen.add(cid)
+        out.append(cid)
+    return out
+
+
+def _expand_ids_across_versions_from_rows(ids, src_rows, all_rows):
+    src_by_id = {row["id"]: row for row in src_rows}
+    out = []
+    seen = set()
+    for orig in ids:
+        src = src_by_id.get(orig)
+        expanded = [orig] if src is None else _expand_identity_ids(src, all_rows)
+        for cid in expanded:
+            if cid in seen:
+                continue
+            seen.add(cid)
+            out.append(cid)
+    return out
+
+
 def _resolve_territorial_ids_by_ref_uuid(model_cls, uuid_strings):
     """Сопоставляет ref_uuid справочника с id строки в текущей версии БД."""
     uuids = _normalize_uuid_strings(uuid_strings)
@@ -104,12 +303,30 @@ def _resolve_territorial_ids_by_ref_uuid(model_cls, uuid_strings):
     q = db.session.query(model_cls).filter(model_cls.ref_uuid.in_(uuids))
     q = filter_by_db_version(q, model_cls)
     rows = q.all()
-    by_ref = {r.ref_uuid: r.id for r in rows}
+    by_ref = defaultdict(list)
+    for row in rows:
+        key = _norm_ref_key(getattr(row, "ref_uuid", None))
+        if key:
+            by_ref[key].append(row)
     out = []
     seen = set()
-    for u in uuids:
-        cid = by_ref.get(u)
-        if cid is None or cid in seen:
+    for raw in uuids:
+        key = _norm_ref_key(raw)
+        hits = by_ref.get(key) or []
+        if len(hits) == 1:
+            chosen = hits[0]
+        elif len(hits) > 1:
+            # Несколько субъектов с одним uuid — не схлопываем в один id.
+            for hit in hits:
+                cid = hit.id
+                if cid not in seen:
+                    seen.add(cid)
+                    out.append(cid)
+            continue
+        else:
+            continue
+        cid = chosen.id
+        if cid in seen:
             continue
         seen.add(cid)
         out.append(cid)
@@ -120,49 +337,83 @@ def _remap_territorial_ids_for_current_version(model_cls, id_list):
     """
     Подменяет id из URL (другой версии БД) на id той же сущности в текущей версии
     через стабильный ref_uuid.
+
+    Если исходный id уже принадлежит текущей версии — оставляем его. Иначе при
+    нескольких строках с одним ref_uuid выбираем совпадение по name, чтобы
+    Забайкальский край не превращался в Калининградскую область.
     """
-    if not id_list:
-        return []
-    ids = []
-    for x in id_list:
-        try:
-            if x is None:
-                continue
-            ids.append(int(x))
-        except (TypeError, ValueError):
-            continue
+    ids = _parse_int_ids(id_list)
     if not ids:
         return []
-    rows = (
-        db.session.query(model_cls.id, model_cls.ref_uuid)
-        .filter(model_cls.id.in_(ids))
-        .all()
-    )
-    id_to_ref = {rid: ru for rid, ru in rows if ru}
-    ref_set = set(id_to_ref.values())
-    if not ref_set:
-        return []
-    cur_rows = (
-        filter_by_db_version(
-            db.session.query(model_cls.id, model_cls.ref_uuid).filter(
-                model_cls.ref_uuid.in_(ref_set)
-            ),
+    src_rows = _load_territorial_identity_rows(model_cls, ids=ids)
+    if not src_rows:
+        return ids
+    ref_uuids = [row["ref_uuid_raw"] for row in src_rows if row.get("ref_uuid_raw")]
+    names = [row["name"] for row in src_rows if row["name"]]
+    current_rows = []
+    if ref_uuids:
+        current_rows.extend(
+            _load_territorial_identity_rows(
+                model_cls,
+                ref_uuids=ref_uuids,
+                current_version_only=True,
+            )
+        )
+    if names:
+        known = {row["id"] for row in current_rows}
+        for row in _load_territorial_identity_rows(
             model_cls,
-        ).all()
+            names=names,
+            current_version_only=True,
+        ):
+            if row["id"] not in known:
+                current_rows.append(row)
+                known.add(row["id"])
+    from app.common.services.database_version_filter import get_current_db_version_id
+
+    return _remap_ids_for_current_version_from_rows(
+        ids,
+        src_rows,
+        current_rows,
+        get_current_db_version_id(),
     )
-    ref_to_cur_id = {ru: cid for cid, ru in cur_rows}
-    out = []
-    seen = set()
-    for orig in ids:
-        ru = id_to_ref.get(orig)
-        if not ru:
+
+
+def _expand_territorial_ids_across_versions(model_cls, id_list):
+    """Все id той же сущности во всех версиях БД (для страницы проверки взаимосвязей)."""
+    ids = _parse_int_ids(id_list)
+    if not ids:
+        return []
+    src_rows = _load_territorial_identity_rows(model_cls, ids=ids)
+    if not src_rows:
+        return ids
+    ref_uuids = [row["ref_uuid_raw"] for row in src_rows if row.get("ref_uuid_raw")]
+    names = [row["name"] for row in src_rows if row["name"]]
+    all_rows = list(src_rows)
+    known = {row["id"] for row in all_rows}
+    if ref_uuids:
+        for row in _load_territorial_identity_rows(model_cls, ref_uuids=ref_uuids):
+            if row["id"] not in known:
+                all_rows.append(row)
+                known.add(row["id"])
+    if names:
+        for row in _load_territorial_identity_rows(model_cls, names=names):
+            if row["id"] not in known:
+                all_rows.append(row)
+                known.add(row["id"])
+    return _expand_ids_across_versions_from_rows(ids, src_rows, all_rows)
+
+
+def expand_versioned_ref_list_filters_across_versions(filters):
+    """Расширяет id фильтров справочников на все версии БД с той же сущностью."""
+    if not filters:
+        return filters
+    for fk, _refk, model_cls in _VERSIONED_REF_LIST_FILTER_SPEC:
+        ids = filters.get(fk) or []
+        if not ids:
             continue
-        cid = ref_to_cur_id.get(ru)
-        if cid is None or cid in seen:
-            continue
-        seen.add(cid)
-        out.append(cid)
-    return out
+        filters[fk] = _expand_territorial_ids_across_versions(model_cls, ids)
+    return filters
 
 
 _VERSIONED_REF_LIST_FILTER_SPEC = (
@@ -239,6 +490,7 @@ def extract_filters_from_args(args):
         "station_name_filter": args.get("station_name_filter", "").strip(),
         "note_filter": args.get("note_filter", "").strip(),
         "equipment_group_name_filter": args.get("equipment_group_name_filter", "").strip(),
+        "numb1120_filter": _parse_int_list_filter(_args_getlist_raw(args, "numb1120_filter")),
         "station_type_filter": args.getlist("station_type_filter", type=int),
         "station_sign_filter": args.getlist("station_sign_filter"),
         "fuel_type_filter": _fuel_type_filter,
@@ -254,6 +506,14 @@ def extract_filters_from_args(args):
         ),
         "relabing_outcome_filter": args.getlist("relabing_outcome_filter"),
         "machines_without_equipment_group": args.get("machines_without_equipment_group", "0") == "1",
+        "missing_numb": str(args.get("missing_numb") or "0").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ),
+        # Станции с суммарной установленной мощностью (на as-of год) > 100 МВт
+        "um_gt_100": args.get("um_gt_100", "0") == "1",
         "sort_by": args.get("sort_by", "id"),
         "sort_dir": args.get("sort_dir", "asc"),
         # Для страницы изменений мощности (station_changes): фильтр по мероприятиям
@@ -341,7 +601,11 @@ def build_date_exploitation_filter(machine_cls, filters):
 
 
 def build_date_decompressing_filter(machine_cls, filters):
-    """Фильтр «Вывод из экспл.»: date_decompressing_fact (год) или date_decompressing_expected."""
+    """Фильтр «Вывод из экспл.»: date_decompressing_fact (год) или date_decompressing_expected.
+
+    Для фактической даты применяется то же правило, что в карточке/списке:
+    01.01.XX относится к году XX-1.
+    """
     vals = filters.get("date_decompressing_expected_filter")
     if not vals:
         return None
@@ -349,7 +613,12 @@ def build_date_decompressing_filter(machine_cls, filters):
     include_null = None in vals
     conds = []
     if years_only:
-        fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
+        # Как у модернизации: 01.01.(Y+1) → Y, иначе календарный год Y (не 01.01).
+        pats = []
+        for y in years_only:
+            pats.append(rf"01\.01\.{y + 1}\b")
+            pats.append(rf"(?<!01\.01\.){y}(?!\d)")
+        fact_regex = "(" + "|".join(pats) + ")"
         conds.append(
             or_(
                 machine_cls.date_decompressing_expected.in_(years_only),
@@ -427,6 +696,72 @@ def build_relabing_outcome_filter(machine_cls, filters):
             )
         )
     return or_(*parts) if parts else None
+
+
+def build_machines_without_equipment_group_filter(machine_cls):
+    """Агрегаты без явной топливной группы на карточке в текущей версии БД.
+
+    «Группа оборудования» — MachineFuelParam.equipment_group_id, не тип
+    Machine.id_equipment_group. Явная привязка: группа текущей версии,
+    связанная с электростанцией агрегата (в том числе общая на две станции).
+    """
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+    from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
+    from app.fuel.models.fue_equipment_group_set_station_model import (
+        EquipmentGroupSetStation,
+    )
+    from app.fuel.models.fue_machine_fuel_param_model import MachineFuelParam
+
+    version_id = get_current_db_version_id()
+    if version_id is None:
+        group_version = EquipmentGroup.database_version_id.is_(None)
+    else:
+        group_version = EquipmentGroup.database_version_id == version_id
+
+    set_own = EquipmentGroupSet.__table__.alias("fue_eg_set_own")
+    link_own = EquipmentGroupSetStation.__table__.alias("fue_eg_link_own")
+
+    machine_t = machine_cls.__table__
+    machine_station_id = (
+        select(machine_t.c.id_station)
+        .where(machine_t.c.id == MachineFuelParam.machine_id)
+        .correlate(MachineFuelParam)
+        .scalar_subquery()
+    )
+
+    linked_to_machine_station_stmt = (
+        select(1)
+        .select_from(
+            set_own.join(
+                link_own,
+                link_own.c.id == set_own.c.equipment_group_set_station_id,
+            )
+        )
+        .where(
+            set_own.c.equipment_group_id == MachineFuelParam.equipment_group_id,
+            link_own.c.station_id == machine_station_id,
+        )
+    )
+    if version_id is None:
+        linked_to_machine_station_stmt = linked_to_machine_station_stmt.where(
+            link_own.c.database_version_id.is_(None)
+        )
+    else:
+        linked_to_machine_station_stmt = linked_to_machine_station_stmt.where(
+            link_own.c.database_version_id == version_id
+        )
+    linked_to_machine_station = exists(linked_to_machine_station_stmt)
+    has_clear_fuel_group = exists().where(
+        and_(
+            MachineFuelParam.machine_id == machine_cls.id,
+            MachineFuelParam.equipment_group_id.isnot(None),
+            MachineFuelParam.equipment_group_id != 0,
+            EquipmentGroup.id == MachineFuelParam.equipment_group_id,
+            group_version,
+            linked_to_machine_station,
+        )
+    )
+    return ~has_clear_fuel_group
 
 
 def build_station_sign_sql_filter(filters):
@@ -538,7 +873,11 @@ def build_date_filters_for_pgu(pgu_cls, filters):
         include_null = None in vals
         parts = []
         if years_only:
-            fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
+            pats = []
+            for y in years_only:
+                pats.append(rf"01\.01\.{y + 1}\b")
+                pats.append(rf"(?<!01\.01\.){y}(?!\d)")
+            fact_regex = "(" + "|".join(pats) + ")"
             parts.append(
                 or_(
                     pgu_cls.date_decompressing_expected.in_(years_only),
@@ -632,8 +971,17 @@ def get_pgu_date_cond_for_filter(pgu_cls, filters, filter_key):
         include_null = None in vals
         parts = []
         if years_only:
-            fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
-            parts.append(or_(pgu_cls.date_decompressing_expected.in_(years_only), pgu_cls.date_decompressing_fact.op("~")(fact_regex)))
+            pats = []
+            for y in years_only:
+                pats.append(rf"01\.01\.{y + 1}\b")
+                pats.append(rf"(?<!01\.01\.){y}(?!\d)")
+            fact_regex = "(" + "|".join(pats) + ")"
+            parts.append(
+                or_(
+                    pgu_cls.date_decompressing_expected.in_(years_only),
+                    pgu_cls.date_decompressing_fact.op("~")(fact_regex),
+                )
+            )
         if include_null:
             parts.append(and_(pgu_cls.date_decompressing_fact.is_(None), pgu_cls.date_decompressing_expected.is_(None)))
         return or_(*parts) if parts else None
@@ -684,7 +1032,10 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
     """
     Загружает агрегаты с применением SQL-фильтров и рассчитывает group_rowspan и fuel_rowspan.
     """
-    current_year = get_current_year()
+    from app.common.services.get_services.years.years_get_services import (
+        get_filter_start_year,
+        get_filter_end_year,
+    )
 
     query = Machine.query.options(
         joinedload(Machine.tes_machine_type),
@@ -692,12 +1043,14 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
         joinedload(Machine.machine_tes_types).joinedload(MachineTesType.tes_type),
     ).filter(Machine.id_station.in_(station_ids))
 
-    # Фильтрация по типу ТЭС
+    # Фильтрация по типу ТЭС — по диапазону годов фильтров (ввод/вывод в периоде)
     if filters.get("tes_type_filter"):
+        _sy = int(filters.get("start_year") or get_filter_start_year())
+        _ey = int(filters.get("end_year") or get_filter_end_year())
         query = query.filter(
             Machine.machine_tes_types.any(
                 and_(
-                    MachineTesType.year_number == current_year,
+                    MachineTesType.year_number.between(_sy, _ey),
                     MachineTesType.id_tes_type.in_(filters["tes_type_filter"])
                 )
             )
@@ -766,29 +1119,9 @@ def fetch_filtered_machines_with_rowspans(station_ids: list[int], filters: dict)
         if conds:
             query = query.filter(or_(*conds))
 
-    if filters.get("date_decompressing_expected_filter"):
-        vals = filters["date_decompressing_expected_filter"]
-        years_only = [y for y in vals if y is not None]
-        include_null = None in vals
-        conds = []
-        if years_only:
-            # date_decompressing_fact — строка (DD.MM.YYYY), date_decompressing_expected — int
-            fact_regex = "|".join(rf"(^|\D){y}(\D|$)" for y in years_only)
-            conds.append(
-                or_(
-                    Machine.date_decompressing_expected.in_(years_only),
-                    Machine.date_decompressing_fact.op("~")(fact_regex),
-                )
-            )
-        if include_null:
-            conds.append(
-                and_(
-                    Machine.date_decompressing_fact.is_(None),
-                    Machine.date_decompressing_expected.is_(None),
-                )
-            )
-        if conds:
-            query = query.filter(or_(*conds))
+    dm_decomp = build_date_decompressing_filter(Machine, filters)
+    if dm_decomp is not None:
+        query = query.filter(dm_decomp)
 
     dm_cond = build_date_modernization_filter(Machine, filters)
     if dm_cond is not None:
@@ -869,7 +1202,12 @@ def get_filtered_station_ids(
     if needs_machine_join:
         query = query.join(Station.machines)
 
-    current_year = get_current_year()
+    from app.common.services.get_services.years.years_get_services import (
+        get_filter_start_year,
+        get_filter_end_year,
+    )
+    _sy = get_filter_start_year()
+    _ey = get_filter_end_year()
 
     # 2) Применяем фильтры.
     if station_type_filter:
@@ -878,7 +1216,7 @@ def get_filtered_station_ids(
         query = query.filter(
             exists().where(
                 MachineTesType.id_machine == Machine.id,
-                MachineTesType.year_number == current_year,
+                MachineTesType.year_number.between(_sy, _ey),
                 MachineTesType.id_tes_type.in_(tes_type_filter)
             )
         )
@@ -911,17 +1249,22 @@ def get_filtered_station_ids(
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
 
-        # Учитываем как прямую привязку электростанции к РЭС с нужной ОЭС,
-        # так и косвенную связь через субъект РФ (fallback-логика Station.union_energy_system)
+        # Как Station.union_energy_system: прямая РЭС, иначе fallback через субъект
+        # (только если РЭС не задана — иначе Красноярский край тянет и ОЭС Сибири, и ТИТЭС).
         query = query.filter(
             or_(
                 Station.regional_energy_system_obj.has(
                     RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
                 ),
-                Station.regional_district.has(
-                    RegionalDistrict.regional_energy_systems.any(
-                        RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
-                    )
+                and_(
+                    Station.id_regional_energy_system.is_(None),
+                    Station.regional_district.has(
+                        RegionalDistrict.regional_energy_systems.any(
+                            RegionalEnergySystem.id_union_energy_system.in_(
+                                union_energy_system_filter
+                            )
+                        )
+                    ),
                 ),
             )
         )
@@ -1017,17 +1360,22 @@ def get_stations_all(
         if not isinstance(union_energy_system_filter, list):
             union_energy_system_filter = [union_energy_system_filter]
 
-        # Учитываем как прямую привязку электростанции к РЭС с нужной ОЭС,
-        # так и косвенную связь через субъект РФ (fallback-логика Station.union_energy_system)
+        # Как Station.union_energy_system: прямая РЭС, иначе fallback через субъект
+        # (только если РЭС не задана — иначе Красноярский край тянет и ОЭС Сибири, и ТИТЭС).
         query = query.filter(
             or_(
                 Station.regional_energy_system_obj.has(
                     RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
                 ),
-                Station.regional_district.has(
-                    RegionalDistrict.regional_energy_systems.any(
-                        RegionalEnergySystem.id_union_energy_system.in_(union_energy_system_filter)
-                    )
+                and_(
+                    Station.id_regional_energy_system.is_(None),
+                    Station.regional_district.has(
+                        RegionalDistrict.regional_energy_systems.any(
+                            RegionalEnergySystem.id_union_energy_system.in_(
+                                union_energy_system_filter
+                            )
+                        )
+                    ),
                 ),
             )
         )
@@ -1093,6 +1441,7 @@ def has_any_filters(args):
         args.get('gen_company_filter'),
         args.get('note_filter'),
         args.get('equipment_group_name_filter'),
+        args.getlist('numb1120_filter'),
         # Фильтры по типам
         args.getlist('station_type_filter'),
         args.getlist('station_sign_filter'),

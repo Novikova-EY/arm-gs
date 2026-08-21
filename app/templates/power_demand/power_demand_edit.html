@@ -86,7 +86,7 @@
                         </td>
                         <td class="text-center align-middle">
                             <textarea name="dt[]" rows="2"
-                                      class="form-control form-control-sm text-center power-demand-edit-datetime-field">{{ format_dt(row.peak_datetime_msk) }}</textarea>
+                                      class="form-control form-control-sm text-center power-demand-edit-datetime-field">{{ format_dt(row.peak_datetime) }}</textarea>
                         </td>
                         <td class="text-center align-middle">
                             <input type="text" name="tnv[]" class="form-control form-control-sm text-center"
@@ -208,7 +208,7 @@
                 <tr>
                     <td class="text-center align-middle">{% if row.is_historical_maximum %}Исторический максимум{% elif row.year_number is not none %}{{ row.year_number }}{% else %}—{% endif %}</td>
                     <td class="text-center align-middle" {% if row.max_power_consumption_mw is not none %}title="{{ (row.max_power_consumption_mw|format_decimal_trim(0))|e }}"{% endif %}>{{ row.max_power_consumption_mw|format_decimal_trim(rd) }}</td>
-                    <td class="text-center align-middle text-break power-demand-view-datetime-cell">{{ format_dt(row.peak_datetime_msk) }}</td>
+                    <td class="text-center align-middle text-break power-demand-view-datetime-cell">{{ format_dt(row.peak_datetime) }}</td>
                     <td class="text-center align-middle">{% if row.avg_daily_air_temp_c is not none %}{{ row.avg_daily_air_temp_c|format_decimal_trim(0) }}{% else %}—{% endif %}</td>
                     {% if show_oe %}
                     <td class="text-center align-middle">{{ row.combined_on_oes if row.combined_on_oes is not none else '—' }}</td>

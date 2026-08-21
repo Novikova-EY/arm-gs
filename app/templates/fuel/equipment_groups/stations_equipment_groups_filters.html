@@ -3,10 +3,13 @@
 {% set use_equipment_group_filter = true %}
 {% set import_redirect_endpoint = 'fuel_bp.stations_equipment_groups' %}
 {% set import_fuel_db_action = url_for('fuel_bp.import_fuel_db_equipment_groups') %}
+{% set show_soft_import_composite_flags = true %}
 {% set hide_year_range = true %}
 {% set hide_filters_third_row_reset = true %}
 {% set center_top_pagination = true %}
-{% set total_count_label = 'групп оборудования' %}
+{% set hide_total_count = true %}
 {% set per_page_count_label = 'групп оборудования' %}
 {% set per_page_all_label = 'группы оборудования' %}
+{% set show_stations_without_equipment_group_button = true %}
+{% set show_missing_numb_toggle = true %}
 {% include 'fuel/_shared/station_filters.html' %}

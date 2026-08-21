@@ -32,7 +32,7 @@ from app.common.services.get_services.years.years_get_services import (
 
 # Версия структуры/смысла данных, которые кладем в export_cache для station_changes.
 # При изменениях логики группировок/агрегаций — увеличивать, чтобы не использовать устаревший кэш.
-STATION_CHANGES_EXPORT_PAYLOAD_VERSION = 8
+STATION_CHANGES_EXPORT_PAYLOAD_VERSION = 9
 
 @station_changes_bp.route('/station_changes_list', methods=['GET', 'POST'])
 @login_required
@@ -49,7 +49,7 @@ def station_changes_list():
     if request.method == "POST":
         return redirect(url_for("station_changes_bp.station_changes_list", **extract_filters_from_form(request.form)))
 
-    per_page_param = request.args.get("per_page", "10")
+    per_page_param = request.args.get("per_page", "25")
     show_all = per_page_param.lower() == "all"
 
     if show_all:
@@ -58,7 +58,7 @@ def station_changes_list():
         try:
             per_page = int(per_page_param)
         except ValueError:
-            per_page = 10
+            per_page = 25
 
     filters = extract_filters_from_args(request.args)
     page = filters.pop("page", 1)
@@ -68,6 +68,11 @@ def station_changes_list():
         start_year = get_filter_start_year()
     if end_year is None:
         end_year = get_filter_end_year()
+    # D: колонки изменений мощности — с 2022 г. (2021 не показываем)
+    try:
+        start_year = max(int(start_year), 2022)
+    except (TypeError, ValueError):
+        start_year = max(int(get_filter_start_year() or 2022), 2022)
 
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
@@ -79,6 +84,11 @@ def station_changes_list():
 
     # Управление отображением агрегированных сумм (по умолчанию скрыты)
     show_totals = request.args.get("show_totals", "0") == "1"
+    # Режим: фактические / планируемые изменения (по умолчанию plan)
+    changes_mode = (request.args.get("changes_mode") or "plan").strip().lower()
+    if changes_mode not in ("fact", "plan"):
+        changes_mode = "plan"
+    filters["changes_mode"] = changes_mode
 
     data = get_station_changes_list_data(
         filters=filters,
@@ -122,9 +132,15 @@ def station_changes_list():
         # Добавляем database_version_id в данные для проверки при экспорте
         if isinstance(data, dict):
             data["database_version_id"] = current_db_version_id
+
+        # В кэш экспорта кладём полную иерархию (без пагинации страницы)
+        export_data = data
+        if isinstance(data, dict) and data.get("stations_grouped_all") is not None:
+            export_data = dict(data)
+            export_data["stations_grouped"] = data["stations_grouped_all"]
         
         export_payload = {
-            "data": data,
+            "data": export_data,
             "params": {
                 "rounding_digits": rounding_digits,
                 "start_year": start_year,
@@ -153,6 +169,7 @@ def station_changes_list():
 
     # Прокидываем флаг отображения итогов в шаблон
     context["show_totals"] = show_totals
+    context["changes_mode"] = changes_mode
     # Прокидываем версию БД в шаблон для фиксации выгрузок на версии, отображенной на странице
     context["database_version_id"] = current_db_version_id
 

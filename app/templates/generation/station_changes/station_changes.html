@@ -5,70 +5,95 @@
 {% block content %}
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
+    <div class="page-table-scroll">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
         <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Генерация"</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
 
-    <div class="col-12 mb-2">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <!-- Левая группа кнопок -->
-            <div class="d-flex gap-2">
-                <h2 class="text-center mb-4">Изменения мощности генерирующего оборудования электростанций</h1>
-            </div>
+    <h2 class="text-center mb-4">Изменения мощности генерирующего оборудования электростанций</h2>
 
-            <!-- Правая группа: чекбоксы и подсветка -->
-            <div class="d-flex align-items-center gap-2 ms-auto">
-            </div>
-        </div>
+    {# Липкая панель: фильтры / импорт / годы / режим — как на station_list #}
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+        {% include 'generation/station_changes/station_changes_filters.html' %}
     </div>
-
-    <!-- Фильтры -->
-    {% include 'generation/station_changes/station_changes_filters.html' %}
 
     <!-- Таблица с данными -->
     <style>
-        /* Фиксированная шапка таблицы */
-        #stationChangesTableContainer {
-            /* JS выставит точную высоту под экран; это fallback */
-            max-height: calc(100vh - 300px);
-            overflow-y: auto;
-            overflow-x: auto;
-            position: relative;
-            width: 100%;
+        .page-table-scroll #stationChangesTableContainer table thead tr:nth-child(1) th {
+            top: var(--pd-summary-controls-sticky-height, 0px);
         }
-        
+        .page-table-scroll #stationChangesTableContainer table thead tr:nth-child(2) th {
+            top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
+        }
+        .page-table-scroll .pd-ec-summary-sticky-stack #filtersCollapse,
+        .page-table-scroll .pd-ec-summary-sticky-stack #importExportCollapse {
+            overflow: visible !important;
+        }
+
         #stationChangesTableContainer table {
             margin-bottom: 0;
             width: 100%;
             min-width: 100%;
         }
-        
-        #stationChangesTableContainer thead {
-            position: sticky;
-            top: 0;
-            z-index: 10;
+
+        /* Архивные агрегаты — светлее, в конце списка станции */
+        #stationChangesTableContainer tr.machine-archived,
+        #stationChangesTableContainer tr.machine-archived td {
+            color: #8a9096 !important;
         }
-        
-        #stationChangesTableContainer thead tr:first-child th {
-            position: sticky;
-            top: 0;
-            background-color: #d1e7dd; /* Цвет table-success */
-            z-index: 11;
+        #stationChangesTableContainer tr.machine-archived a {
+            color: #8a9096 !important;
         }
-        
-        #stationChangesTableContainer thead tr:nth-child(2) th {
-            position: sticky;
-            background-color: #d1e7dd; /* Цвет table-success */
-            z-index: 11;
+        #stationChangesTableContainer tr.machine-archived td {
+            background-color: rgba(108, 117, 125, 0.06);
         }
-        
-        /* Для правильного отображения границ при прокрутке */
-        #stationChangesTableContainer thead th {
-            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+
+        /* Текстовые колонки: уже исходных, но без ломки по буквам */
+        #stationChangesTableContainer th.col-sc-region,
+        #stationChangesTableContainer td.col-sc-region,
+        #stationChangesTableContainer th.col-sc-gen-company,
+        #stationChangesTableContainer td.col-sc-gen-company,
+        #stationChangesTableContainer th.col-sc-station-name,
+        #stationChangesTableContainer td.col-sc-station-name {
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: normal;
+            padding-left: 0.4rem;
+            padding-right: 0.4rem;
+            line-height: 1.25;
+            vertical-align: middle;
+        }
+        #stationChangesTableContainer th.col-sc-region,
+        #stationChangesTableContainer td.col-sc-region {
+            width: 9.5rem;
+            max-width: 9.5rem;
+            min-width: 8.5rem;
+        }
+        #stationChangesTableContainer th.col-sc-gen-company,
+        #stationChangesTableContainer td.col-sc-gen-company {
+            width: 11rem;
+            max-width: 11rem;
+            min-width: 9.5rem;
+        }
+        #stationChangesTableContainer th.col-sc-station-name,
+        #stationChangesTableContainer td.col-sc-station-name {
+            width: 10rem;
+            max-width: 10rem;
+            min-width: 8.5rem;
+        }
+        /* «Тип агрегата» не должен забирать всю освободившуюся ширину */
+        #stationChangesTableContainer th.col-sc-machine-type,
+        #stationChangesTableContainer td.col-sc-machine-type {
+            width: 12rem;
+            max-width: 14rem;
+            min-width: 10rem;
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: normal;
         }
     </style>
-    <div class="table-responsive mt-2" id="stationChangesTableContainer">
+    <div class="table-responsive" id="stationChangesTableContainer">
         <table class="table table-hover table-striped table-bordered">
 
             <!-- Шапка таблицы с данными -->
@@ -81,26 +106,26 @@
                     <th rowspan="2" style="width: 200px;">Основание</th>
                 </tr>
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
-                    <th>
+                    <th class="col-sc-region">
                         Субъект РФ
                         {% if request.args.getlist('regional_district_filter') %}
                             <i class="bi bi-funnel-fill text-warning ms-1"></i>
                         {% endif %}
                     </th>
-                    <th>
+                    <th class="col-sc-gen-company">
                         Генерирующая компания
                         {% if request.args.get('gen_company_filter') %}
                             <i class="bi bi-funnel-fill text-warning ms-1"></i>
                         {% endif %}
                     </th>
-                    <th>
+                    <th class="col-sc-station-name">
                         Наименование
                         {% if request.args.get('station_name_filter') %}
                             <i class="bi bi-funnel-fill text-warning ms-1"></i>
                         {% endif %}
                     </th>
                     <th style="width: 80px;">cт. №</th>
-                    <th style="width: 200px;">Тип агрегата</th>
+                    <th class="col-sc-machine-type">Тип агрегата</th>
 
                     <!-- Год ввода в эксплуатацию -->
                     <th style="width: 80px; text-align: center;">
@@ -587,7 +612,9 @@
                             {% endfor %}
 
                             {# Итог по ОЭС (для ТИТЭС суммы показываем только по субъектам) #}
-                            {% if show_totals and (not is_kaliningrad_sa) and (not is_tites_es) %}
+                            {% set _ues_flags = (should_show_parent_totals|default({})).get('union_energy_systems') %}
+                            {% set _show_ues_total = (_ues_flags is none) or (_ues_flags.get(ues_id)) %}
+                            {% if show_totals and _show_ues_total and (not is_kaliningrad_sa) and (not is_tites_es) %}
                                 {% set current_ues_id = ues_id %}
                                 {% include 'generation/station_changes/aggregated_data/union_energy_systems/aggregated_union_energy_systems_total.html' %}
                             {% endif %}
@@ -595,7 +622,9 @@
                         {% endfor %}
 
                         {# Итог по "второму уровню": синхронная зона (ЕЭС) или энергозона (ТИТЭС) #}
-                        {% if show_totals and (not is_tites_es) %}
+                        {% set _sa_flags = (should_show_parent_totals|default({})).get('synchronous_areas') %}
+                        {% set _show_sa_total = (_sa_flags is none) or (_sa_flags.get(sa_id)) %}
+                        {% if show_totals and _show_sa_total and (not is_tites_es) %}
                             {# Для Калининградской синхронной зоны: сначала итог по Калининградской области, затем по синхронной зоне #}
                             {% if is_kaliningrad_sa %}
                                 {% set ns_kal = namespace(kal_rd_id=none) %}
@@ -624,13 +653,15 @@
                     {% endfor %}
 
                     {# Итог по типу энергосистемы (после всех синхронных зон внутри типа) #}
-                    {% if show_totals and (not is_tites_es) %}
+                    {% set _est_flags = (should_show_parent_totals|default({})).get('energy_system_types') %}
+                    {% set _show_est_total = (_est_flags is none) or (_est_flags.get(es_type_id)) %}
+                    {% if show_totals and _show_est_total and (not is_tites_es) %}
                         {% set current_es_type_id = es_type_id %}
                         {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_energy_system_types_total.html' %}
                     {% endif %}
 
                     {# "ТИТЭС, всего" выводим один раз — после последнего ТИТЭС-типа #}
-                    {% if show_totals and is_tites_es and tites_es_type_ids and (es_type_id == (tites_es_type_ids|last)) %}
+                    {% if show_totals and (should_show_parent_totals|default({})).get('tites_total', true) and is_tites_es and tites_es_type_ids and (es_type_id == (tites_es_type_ids|last)) %}
                         {% include 'generation/station_changes/aggregated_data/energy_system_types/aggregated_tites_total.html' %}
                     {% endif %}
 
@@ -638,14 +669,23 @@
                 {% endif %}
             
                 {# Итог по России #}
-                {% if show_totals %}
+                {% if show_totals and (should_show_parent_totals|default({})).get('total', true) %}
                     {% include 'generation/station_changes/aggregated_data/total_energy_system_types/aggregated_total_energy_system_types_total.html' %}
                 {% endif %}
             </tbody>
             
         </table>
 
+        <!-- Пагинация под таблицей -->
+        <div class="mt-2">
+            {% if per_page is not none and per_page != 'all' %}
+                {% set pagination_endpoint = 'station_changes_bp.station_changes_list' %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
+
     </div>
+    </div><!-- /.page-table-scroll -->
 </div>
 {% endif %}
 
@@ -696,82 +736,5 @@
 <!-- jQuery и Select2 уже подключены в base.html -->
 
 <script src="{{ url_for('static', filename='js/generation/station_changes/station_page_logic.js') }}"></script>
-<script src="{{ url_for('static', filename='js/generation/station_changes/highlight_changes.js') }}"></script>
-
-<!-- Настройка фиксированной шапки таблицы -->
-<script>
-    window.addEventListener('load', function() {
-        // Настройка фиксированной шапки таблицы
-        const tableResponsive = document.getElementById('stationChangesTableContainer');
-        if (tableResponsive) {
-            const firstHeaderRow = tableResponsive.querySelector('thead tr:first-child');
-            const secondHeaderRow = tableResponsive.querySelector('thead tr:nth-child(2)');
-            
-            if (firstHeaderRow && secondHeaderRow) {
-                // Вычисляем высоту первой строки и устанавливаем top для второй строки
-                const updateStickyPosition = function() {
-                    const firstRowHeight = firstHeaderRow.offsetHeight;
-                    secondHeaderRow.querySelectorAll('th').forEach(function(th) {
-                        th.style.top = firstRowHeight + 'px';
-                    });
-                };
-                
-                // Вызываем при загрузке и при изменении размера окна
-                updateStickyPosition();
-                window.addEventListener('resize', updateStickyPosition);
-                
-                // Также обновляем после полной загрузки всех ресурсов
-                setTimeout(updateStickyPosition, 1000);
-            }
-        }
-    });
-</script>
-
-<!-- Подгон таблицы под высоту экрана (всегда) -->
-<script>
-    (function () {
-        function getViewportHeight() {
-            return (window.visualViewport && window.visualViewport.height) ? window.visualViewport.height : window.innerHeight;
-        }
-
-        function fitStationChangesTableToViewport() {
-            const el = document.getElementById('stationChangesTableContainer');
-            if (!el) return;
-
-            const rect = el.getBoundingClientRect();
-            const viewportH = getViewportHeight();
-            const bottomGap = 12; // небольшой отступ от низа окна
-            let target = Math.floor(viewportH - rect.top - bottomGap);
-
-            // защита от отрицательных/слишком маленьких значений
-            if (!Number.isFinite(target) || target < 200) target = 200;
-
-            el.style.height = target + 'px';
-            el.style.maxHeight = target + 'px';
-        }
-
-        window.addEventListener('load', fitStationChangesTableToViewport);
-        window.addEventListener('resize', fitStationChangesTableToViewport);
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', fitStationChangesTableToViewport);
-        }
-
-        // Если пользователь сворачивает/разворачивает фильтры/панели — пересчитываем высоту
-        document.addEventListener('DOMContentLoaded', function () {
-            const collapses = ['filtersCollapse', 'importExportCollapse']
-                .map(id => document.getElementById(id))
-                .filter(Boolean);
-
-            collapses.forEach(el => {
-                el.addEventListener('shown.bs.collapse', fitStationChangesTableToViewport);
-                el.addEventListener('hidden.bs.collapse', fitStationChangesTableToViewport);
-            });
-
-            // первый расчет после того, как DOM встал на место
-            fitStationChangesTableToViewport();
-            setTimeout(fitStationChangesTableToViewport, 250);
-        });
-    })();
-</script>
 
 {% endblock %}

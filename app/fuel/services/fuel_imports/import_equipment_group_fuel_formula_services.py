@@ -13,11 +13,12 @@ import time
 from decimal import Decimal, InvalidOperation
 
 import pandas as pd
-from sqlalchemy import cast
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.types import String
 
-from app.common.services.database_version_filter import set_db_version_on_create
+from app.common.services.database_version_filter import (
+    get_current_db_version_id,
+    set_db_version_on_create,
+)
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_fuel_formula_model import EquipmentGroupFuelFormula
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
@@ -155,10 +156,116 @@ def _numb_for_match(value) -> str | None:
     return None
 
 
+def _effective_formula_db_version_id(eg_version_id):
+    """Версия для uq (group, year, variant, version): как при INSERT через set_db_version_on_create."""
+    if eg_version_id is not None:
+        return eg_version_id
+    return get_current_db_version_id()
+
+
+def _resolve_equipment_groups_by_numb(numb_str: str):
+    """Все EquipmentGroup с таким numb + копии по external_code (все версии БД)."""
+    from app.fuel.services.fuel_imports.fuel_import_all_versions import (
+        resolve_equipment_group_import_targets,
+    )
+
+    targets = resolve_equipment_group_import_targets(
+        numb_str,
+        fill_missing_versions=False,
+        require_group_match=True,
+    )
+    groups = []
+    for eg_id, _version_id in targets:
+        if eg_id is None:
+            continue
+        eg = db.session.get(EquipmentGroup, eg_id)
+        if eg is not None:
+            groups.append(eg)
+    return groups
+
+
+def _lookup_equipment_group_fuel_formula(
+    equipment_group_id: int,
+    year_number: int,
+    variant_number: int,
+    database_version_id,
+):
+    return (
+        EquipmentGroupFuelFormula.query.filter_by(
+            equipment_group_id=equipment_group_id,
+            year_number=year_number,
+            variant_number=variant_number,
+            database_version_id=database_version_id,
+        ).first()
+    )
+
+
+def _get_or_create_equipment_group_fuel_formula_row(
+    *,
+    equipment_group_id: int,
+    year_number: int,
+    variant_number: int,
+    database_version_id,
+    name,
+    numb1120,
+    numb1,
+    formtxt,
+) -> tuple[EquipmentGroupFuelFormula, bool]:
+    """
+    Одна строка на uq_eq_group_fuel_formula_group_year_variant_version.
+
+    Ищем по той же database_version_id, которая уйдёт в INSERT (текущая версия,
+    если у группы NULL). Иначе строка с version=20 не находится, а INSERT
+    падает с UniqueViolation. Savepoint — на случай дублей в Excel / гонки.
+    """
+    existing = _lookup_equipment_group_fuel_formula(
+        equipment_group_id,
+        year_number,
+        variant_number,
+        database_version_id,
+    )
+    if existing is not None:
+        return existing, False
+
+    new_row = EquipmentGroupFuelFormula(
+        equipment_group_id=equipment_group_id,
+        name=name,
+        year_number=year_number,
+        variant_number=variant_number,
+        numb1120=numb1120,
+        numb1=numb1,
+        formtxt=formtxt,
+        database_version_id=database_version_id,
+    )
+    set_db_version_on_create(new_row)
+    try:
+        with db.session.begin_nested():
+            db.session.add(new_row)
+            db.session.flush()
+        return new_row, True
+    except IntegrityError:
+        existing = _lookup_equipment_group_fuel_formula(
+            equipment_group_id,
+            year_number,
+            variant_number,
+            database_version_id,
+        )
+        if existing is None:
+            existing = _lookup_equipment_group_fuel_formula(
+                equipment_group_id,
+                year_number,
+                variant_number,
+                getattr(new_row, "database_version_id", database_version_id),
+            )
+        if existing is None:
+            raise
+        return existing, False
+
+
 def import_equipment_group_fuel_formula_from_excel(file, user: str) -> dict:
     """
-    Загружает строки в EquipmentGroupFuelFormula.
-    По numb1120 ищутся все EquipmentGroup с таким EquipmentGroup.numb.
+    Загружает строки в EquipmentGroupFuelFormula во все версии БД.
+    По numb1120 ищутся все EquipmentGroup с таким numb и копии с тем же external_code.
     """
     logger = _get_logger()
     t0 = time.perf_counter()
@@ -222,15 +329,15 @@ def import_equipment_group_fuel_formula_from_excel(file, user: str) -> dict:
         if "numb1" in df.columns:
             numb1_val = _safe_decimal_numb1(_extract_cell_value(row, "numb1"))
 
-        groups = (
-            EquipmentGroup.query.filter(cast(EquipmentGroup.numb, String) == numb_str).all()
-        )
+        groups = _resolve_equipment_groups_by_numb(numb_str)
         if not groups:
             skipped_no_match += 1
             continue
 
         for eg in groups:
-            version_id = getattr(eg, "database_version_id", None)
+            version_id = _effective_formula_db_version_id(
+                getattr(eg, "database_version_id", None)
+            )
             year_query = Year.query.filter_by(number=year_val)
             if version_id is not None:
                 year_query = year_query.filter_by(database_version_id=version_id)
@@ -240,46 +347,35 @@ def import_equipment_group_fuel_formula_from_excel(file, user: str) -> dict:
                 skipped_no_year += 1
                 continue
 
-            existing = (
-                EquipmentGroupFuelFormula.query.filter_by(
-                    equipment_group_id=eg.id,
-                    year_number=year_val,
-                    variant_number=variant_val,
-                    database_version_id=version_id,
-                ).first()
+            existing, created_row = _get_or_create_equipment_group_fuel_formula_row(
+                equipment_group_id=eg.id,
+                year_number=year_val,
+                variant_number=variant_val,
+                database_version_id=version_id,
+                name=name_str,
+                numb1120=numb1120_val,
+                numb1=numb1_val,
+                formtxt=formtxt_str,
             )
-
-            if existing is None:
-                new_row = EquipmentGroupFuelFormula(
-                    equipment_group_id=eg.id,
-                    name=name_str,
-                    year_number=year_val,
-                    variant_number=variant_val,
-                    numb1120=numb1120_val,
-                    numb1=numb1_val,
-                    formtxt=formtxt_str,
-                    database_version_id=version_id,
-                )
-                set_db_version_on_create(new_row)
-                db.session.add(new_row)
-                db.session.flush()
+            if created_row:
                 created += 1
-            else:
-                changed = False
-                if existing.name != name_str:
-                    existing.name = name_str
-                    changed = True
-                if existing.formtxt != formtxt_str:
-                    existing.formtxt = formtxt_str
-                    changed = True
-                if existing.numb1120 != numb1120_val:
-                    existing.numb1120 = numb1120_val
-                    changed = True
-                if not _numb1_equal(existing.numb1, numb1_val):
-                    existing.numb1 = numb1_val
-                    changed = True
-                if changed:
-                    updated += 1
+                continue
+
+            changed = False
+            if existing.name != name_str:
+                existing.name = name_str
+                changed = True
+            if existing.formtxt != formtxt_str:
+                existing.formtxt = formtxt_str
+                changed = True
+            if existing.numb1120 != numb1120_val:
+                existing.numb1120 = numb1120_val
+                changed = True
+            if not _numb1_equal(existing.numb1, numb1_val):
+                existing.numb1 = numb1_val
+                changed = True
+            if changed:
+                updated += 1
 
     try:
         if updated or created:
@@ -291,7 +387,7 @@ def import_equipment_group_fuel_formula_from_excel(file, user: str) -> dict:
 
     elapsed = time.perf_counter() - t0
     message = (
-        "Загрузка формул топлива завершена. "
+        "Загрузка формул топлива завершена (во все версии БД). "
         "Создано записей: {created}, обновлено: {updated}, "
         "пропущено (нет группы по numb1120): {skipped_no_match}, "
         "пропущено (нет года в версии): {skipped_no_year}, "

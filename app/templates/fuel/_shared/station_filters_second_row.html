@@ -1,8 +1,9 @@
 <!-- Вторая строка фильтров -->
+{% set show_energy_balance_excel_io = show_ee_generation_import|default(false) or show_ee_transfers_import|default(false) %}
 <div class="col-12 mb-2">
-    <div class="collapse power-demand-import-export-collapse{% if show_ee_generation_import|default(false) or show_ee_transfers_import|default(false) %} mt-2{% endif %}" id="importExportCollapse">
+    <div class="collapse power-demand-import-export-collapse{% if show_energy_balance_excel_io %} mt-2{% endif %}" id="importExportCollapse">
 
-        <div class="d-flex {% if show_ee_generation_import|default(false) or show_ee_transfers_import|default(false) %}justify-content-between{% else %}align-items-center{% endif %} w-100 flex-wrap gap-2">
+        <div class="d-flex {% if show_energy_balance_excel_io %}justify-content-between{% else %}align-items-center{% endif %} w-100 flex-wrap gap-2">
 
             <!-- Левая часть (экспорт) -->
             <div class="d-flex gap-2 flex-shrink-0">
@@ -33,7 +34,7 @@
                     </button>
                 </form>
                 {% elif show_heat_and_tariffs_export|default(false) %}
-                <!-- Экспорт тепла и тарифов из СТ -->
+                <!-- Экспорт тепла и тарифов (схемы теплоснабжения) -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_heat_and_tariffs') }}" id="exportHeatAndTariffsForm">
                     {% for key, value in request.args.items(multi=True) %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
@@ -61,9 +62,15 @@
                 {% elif show_specific_fuel_consumption_export|default(false) %}
                 <!-- Экспорт удельных показателей -->
                 <form method="GET" action="{{ url_for('fuel_bp.export_stations_equipment_group_specific_fuel_consumption') }}" id="exportSpecificFuelConsumptionForm">
+                    <input type="hidden" name="redirect_to" value="{{ import_redirect_endpoint|default('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}">
                     {% for key, value in request.args.items(multi=True) %}
+                        {% if key != 'redirect_to' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
                     {% endfor %}
+                    {% if 'year' not in request.args %}
+                    <input type="hidden" name="year" value="{{ selected_year|default(start_year)|default(end_year) }}">
+                    {% endif %}
                     <button type="button"
                             id="exportSpecificFuelConsumptionButton"
                             class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
@@ -382,9 +389,13 @@
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
                     {% endfor %}
-                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelCostFile" required>
-                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importSpecificFuelCostBtn">
-                        <i class="bi bi-upload"></i> Импорт из Excel
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importSpecificFuelCostFile" multiple required>
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2 position-relative overflow-hidden" style="white-space: nowrap; min-width: 12.5rem; padding-bottom: 0.55rem;" id="importSpecificFuelCostBtn" title="Можно выбрать несколько файлов сразу. Имя должно содержать «Стоимость». Год берётся из имени файла (Стоимость2024.xlsx → 2024). Если года в имени нет — используется год фильтра.">
+                        <span class="position-absolute bottom-0 start-0 w-100" style="height: 6px; background: rgba(13, 110, 253, 0.18);"></span>
+                        <span id="importSpecificFuelCostProgressBar" class="position-absolute bottom-0 start-0" style="height: 6px; width: 0; background-color: var(--bs-primary); pointer-events: none; transition: width 0.25s ease;"></span>
+                        <span class="position-relative d-inline-flex align-items-center justify-content-center gap-2" id="importSpecificFuelCostBtnLabel">
+                            <i class="bi bi-upload"></i> Импорт из Excel
+                        </span>
                     </button>
                 </form>
                 <script>
@@ -392,30 +403,116 @@
                     var form = document.getElementById('importSpecificFuelCostForm');
                     var btn = document.getElementById('importSpecificFuelCostBtn');
                     var fileInput = document.getElementById('importSpecificFuelCostFile');
-                    if (form && btn && fileInput) {
-                        btn.addEventListener('click', function() {
-                            fileInput.click();
-                        });
-                        fileInput.addEventListener('change', function() {
-                            if (fileInput.files && fileInput.files.length > 0) {
-                                var yearSelect = document.getElementById('year');
-                                var yearInput = document.getElementById('importSpecificFuelCostYear');
-                                if (yearSelect && yearInput) {
-                                    yearInput.value = yearSelect.value;
-                                }
-                                form.submit();
+                    var bar = document.getElementById('importSpecificFuelCostProgressBar');
+                    var labelEl = document.getElementById('importSpecificFuelCostBtnLabel');
+                    if (!form || !btn || !fileInput || !bar || !labelEl) {
+                        return;
+                    }
+
+                    function syncYear() {
+                        var yearSelect = document.getElementById('year');
+                        var yearInput = document.getElementById('importSpecificFuelCostYear');
+                        if (yearSelect && yearInput) {
+                            yearInput.value = yearSelect.value;
+                        }
+                    }
+
+                    function looksLikeCost(name) {
+                        return String(name || '').toLowerCase().indexOf('стоимость') !== -1;
+                    }
+
+                    function setProgress(done, total, working) {
+                        var pct = 0;
+                        if (total > 0) {
+                            pct = working
+                                ? Math.round(100 * (done + 0.4) / total)
+                                : Math.round(100 * done / total);
+                        }
+                        bar.style.width = pct + '%';
+                        btn.setAttribute('aria-valuenow', String(done));
+                        btn.setAttribute('aria-valuemax', String(total));
+                        var text = working && done < total
+                            ? ('Импорт ' + (done + 1) + ' / ' + total)
+                            : ('Обработано ' + done + ' / ' + total);
+                        labelEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + text;
+                    }
+
+                    function buildFormData(file) {
+                        var fd = new FormData(form);
+                        if (typeof fd.delete === 'function') {
+                            fd.delete('file');
+                        }
+                        fd.append('file', file, file.name);
+                        fd.append('ajax', '1');
+                        return fd;
+                    }
+
+                    function importNext(files, index) {
+                        var total = files.length;
+                        if (index >= total) {
+                            window.location.reload();
+                            return;
+                        }
+                        var file = files[index];
+                        if (file && file.name) {
+                            btn.title = file.name;
+                        }
+                        setProgress(index, total, true);
+                        fetch(form.action, {
+                            method: 'POST',
+                            body: buildFormData(file),
+                            credentials: 'same-origin',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
                             }
-                        });
-                        form.addEventListener('submit', function() {
-                            var yearSelect = document.getElementById('year');
-                            var yearInput = document.getElementById('importSpecificFuelCostYear');
-                            if (yearSelect && yearInput) {
-                                yearInput.value = yearSelect.value;
-                            }
-                            btn.disabled = true;
-                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        }).then(function(resp) {
+                            return resp.json().catch(function() { return null; });
+                        }).catch(function() {
+                            return null;
+                        }).then(function() {
+                            setProgress(index + 1, total, false);
+                            importNext(files, index + 1);
                         });
                     }
+
+                    btn.addEventListener('click', function() {
+                        if (btn.disabled) {
+                            return;
+                        }
+                        fileInput.click();
+                    });
+                    fileInput.addEventListener('change', function() {
+                        if (!fileInput.files || fileInput.files.length === 0) {
+                            return;
+                        }
+                        syncYear();
+                        var files = Array.prototype.slice.call(fileInput.files);
+                        var invalid = files.filter(function(f) { return !looksLikeCost(f.name); });
+                        var valid = files.filter(function(f) { return looksLikeCost(f.name); });
+                        if (invalid.length) {
+                            alert(
+                                'Имя файла должно содержать «Стоимость» (например Стоимость2024.xlsx).\n' +
+                                'Пропущены: ' + invalid.map(function(f) { return f.name; }).join(', ')
+                            );
+                        }
+                        if (!valid.length) {
+                            fileInput.value = '';
+                            return;
+                        }
+                        btn.disabled = true;
+                        btn.setAttribute('role', 'progressbar');
+                        btn.setAttribute('aria-valuemin', '0');
+                        importNext(valid, 0);
+                    });
+                    form.addEventListener('submit', function() {
+                        syncYear();
+                        if (!btn.disabled) {
+                            btn.disabled = true;
+                            var n = fileInput.files ? fileInput.files.length : 0;
+                            setProgress(0, n || 1, true);
+                        }
+                    });
                 })();
                 </script>
                 {% elif show_specific_fuel_consumption_calc_import|default(false) %}
@@ -423,9 +520,10 @@
                     method="POST" enctype="multipart/form-data"
                     class="d-flex align-items-center flex-wrap gap-2" id="importSpecificFuelConsumptionCalcForm">
                     {{ form.csrf_token }}
+                    <input type="hidden" name="redirect_to" value="{{ import_specific_fuel_consumption_calc_redirect_to|default(import_redirect_endpoint)|default('fuel_bp.stations_equipment_group_specific_fuel_consumption') }}">
                     <input type="hidden" name="year" id="importSpecificFuelConsumptionCalcYear" value="{{ selected_year|default(start_year)|default(end_year) }}">
                     {% for key, value in request.args.items(multi=True) %}
-                        {% if key != 'year' %}
+                        {% if key != 'year' and key != 'redirect_to' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
                     {% endfor %}
@@ -439,26 +537,33 @@
                     var formCalc = document.getElementById('importSpecificFuelConsumptionCalcForm');
                     var btnCalc = document.getElementById('importSpecificFuelConsumptionCalcBtn');
                     var fileInputCalc = document.getElementById('importSpecificFuelConsumptionCalcFile');
+                    function syncCalcImportYear() {
+                        var yearInput = document.getElementById('importSpecificFuelConsumptionCalcYear');
+                        if (!yearInput) {
+                            return;
+                        }
+                        var yearSelect = document.getElementById('year');
+                        if (yearSelect && yearSelect.value) {
+                            yearInput.value = yearSelect.value;
+                            return;
+                        }
+                        var startYearSelect = document.getElementById('start_year');
+                        if (startYearSelect && startYearSelect.value) {
+                            yearInput.value = startYearSelect.value;
+                        }
+                    }
                     if (formCalc && btnCalc && fileInputCalc) {
                         btnCalc.addEventListener('click', function() {
                             fileInputCalc.click();
                         });
                         fileInputCalc.addEventListener('change', function() {
                             if (fileInputCalc.files && fileInputCalc.files.length > 0) {
-                                var yearSelect = document.getElementById('year');
-                                var yearInput = document.getElementById('importSpecificFuelConsumptionCalcYear');
-                                if (yearSelect && yearInput) {
-                                    yearInput.value = yearSelect.value;
-                                }
+                                syncCalcImportYear();
                                 formCalc.submit();
                             }
                         });
                         formCalc.addEventListener('submit', function() {
-                            var yearSelect = document.getElementById('year');
-                            var yearInput = document.getElementById('importSpecificFuelConsumptionCalcYear');
-                            if (yearSelect && yearInput) {
-                                yearInput.value = yearSelect.value;
-                            }
+                            syncCalcImportYear();
                             btnCalc.disabled = true;
                             btnCalc.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
                         });
@@ -524,9 +629,13 @@
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
                     {% endfor %}
-                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelParamsFile" required>
-                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelParamsBtn" title="Станции*.xlsx — основные параметры; Доп_угли*.xlsx — детализация топлива">
-                        <i class="bi bi-upload"></i> Импорт из Excel
+                    <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelParamsFile" multiple required>
+                    <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2 position-relative overflow-hidden" style="white-space: nowrap; min-width: 12.5rem; padding-bottom: 0.55rem;" id="importFuelParamsBtn" title="Можно выбрать несколько файлов сразу. Access «Станции(Схема)*.xlsx» — входы расчёта по NUMB1120 и году (ved, NUST, NR, H, HFIX, Q, QOTR, TURT, NT, E, EWTP, SNK, obor; пустая ячейка очищает поле). DEP и виды топлива не грузятся. Доп_угли*.xlsx — детализация топлива; Сводная таблица для ОТЭТ*.xls(x) — СН. Год из столбца Year или из имени файла. Другие файлы будут отклонены.">
+                        <span class="position-absolute bottom-0 start-0 w-100" style="height: 6px; background: rgba(13, 110, 253, 0.18);"></span>
+                        <span id="importFuelParamsProgressBar" class="position-absolute bottom-0 start-0" style="height: 6px; width: 0; background-color: var(--bs-primary); pointer-events: none; transition: width 0.25s ease;"></span>
+                        <span class="position-relative d-inline-flex align-items-center justify-content-center gap-2" id="importFuelParamsBtnLabel">
+                            <i class="bi bi-upload"></i> Импорт из Excel
+                        </span>
                     </button>
                 </form>
                 <script>
@@ -534,30 +643,99 @@
                     var form = document.getElementById('importFuelParamsForm');
                     var btn = document.getElementById('importFuelParamsBtn');
                     var fileInput = document.getElementById('importFuelParamsFile');
-                    if (form && btn && fileInput) {
-                        btn.addEventListener('click', function() {
-                            fileInput.click();
-                        });
-                        fileInput.addEventListener('change', function() {
-                            if (fileInput.files && fileInput.files.length > 0) {
-                                var yearSelect = document.getElementById('year');
-                                var yearInput = document.getElementById('importFuelParamsYear');
-                                if (yearSelect && yearInput) {
-                                    yearInput.value = yearSelect.value;
-                                }
-                                form.submit();
+                    var bar = document.getElementById('importFuelParamsProgressBar');
+                    var labelEl = document.getElementById('importFuelParamsBtnLabel');
+                    if (!form || !btn || !fileInput || !bar || !labelEl) {
+                        return;
+                    }
+
+                    function syncYear() {
+                        var yearSelect = document.getElementById('year');
+                        var yearInput = document.getElementById('importFuelParamsYear');
+                        if (yearSelect && yearInput) {
+                            yearInput.value = yearSelect.value;
+                        }
+                    }
+
+                    function setProgress(done, total, working) {
+                        var pct = 0;
+                        if (total > 0) {
+                            pct = working
+                                ? Math.round(100 * (done + 0.4) / total)
+                                : Math.round(100 * done / total);
+                        }
+                        bar.style.width = pct + '%';
+                        btn.setAttribute('aria-valuenow', String(done));
+                        btn.setAttribute('aria-valuemax', String(total));
+                        var text = working && done < total
+                            ? ('Импорт ' + (done + 1) + ' / ' + total)
+                            : ('Обработано ' + done + ' / ' + total);
+                        labelEl.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + text;
+                    }
+
+                    function buildFormData(file) {
+                        var fd = new FormData(form);
+                        if (typeof fd.delete === 'function') {
+                            fd.delete('file');
+                        }
+                        fd.append('file', file, file.name);
+                        fd.append('ajax', '1');
+                        return fd;
+                    }
+
+                    function importNext(files, index) {
+                        var total = files.length;
+                        if (index >= total) {
+                            window.location.reload();
+                            return;
+                        }
+                        var file = files[index];
+                        if (file && file.name) {
+                            btn.title = file.name;
+                        }
+                        setProgress(index, total, true);
+                        fetch(form.action, {
+                            method: 'POST',
+                            body: buildFormData(file),
+                            credentials: 'same-origin',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
                             }
-                        });
-                        form.addEventListener('submit', function() {
-                            var yearSelect = document.getElementById('year');
-                            var yearInput = document.getElementById('importFuelParamsYear');
-                            if (yearSelect && yearInput) {
-                                yearInput.value = yearSelect.value;
-                            }
-                            btn.disabled = true;
-                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Импорт... (подождите)';
+                        }).then(function(resp) {
+                            return resp.json().catch(function() { return null; });
+                        }).catch(function() {
+                            return null;
+                        }).then(function() {
+                            setProgress(index + 1, total, false);
+                            importNext(files, index + 1);
                         });
                     }
+
+                    btn.addEventListener('click', function() {
+                        if (btn.disabled) {
+                            return;
+                        }
+                        fileInput.click();
+                    });
+                    fileInput.addEventListener('change', function() {
+                        if (!fileInput.files || fileInput.files.length === 0) {
+                            return;
+                        }
+                        syncYear();
+                        btn.disabled = true;
+                        btn.setAttribute('role', 'progressbar');
+                        btn.setAttribute('aria-valuemin', '0');
+                        importNext(Array.prototype.slice.call(fileInput.files), 0);
+                    });
+                    form.addEventListener('submit', function() {
+                        syncYear();
+                        if (!btn.disabled) {
+                            btn.disabled = true;
+                            var n = fileInput.files ? fileInput.files.length : 0;
+                            setProgress(0, n || 1, true);
+                        }
+                    });
                 })();
                 </script>
                 {% elif show_ee_generation_import|default(false) %}
@@ -686,16 +864,177 @@
                     {% endfor %}
                     {% if import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') == 'fuel_bp.stations_equipment_groups' %}
                         <input type="file" name="file" class="d-none" accept=".xlsx,.xls" id="importFuelDbFile" required>
-                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn">
+                        <button type="button" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn" title="Нужен шаблон с id_station и equipment_group (экспорт с этой страницы). Не загружайте Access «Имена_станций.xlsx» — он для жёлтой кнопки «Проверить / загрузить флаги». Не загружайте Access «Станции*.xlsx» — он для «Сведения о работе ТЭС».">
                             <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     {% else %}
                         <input type="file" name="file" class="form-control" accept=".xlsx,.xls" style="max-width: 220px;" required>
-                        <button type="submit" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn">
+                        <button type="submit" class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;" id="importFuelDbBtn" title="Нужен шаблон с id_station и equipment_group. Не загружайте Access «Станции*.xlsx».">
                             <i class="bi bi-upload"></i> Импорт из Excel
                         </button>
                     {% endif %}
                 </form>
+                {% if show_soft_import_composite_flags|default(false) and current_user.is_authenticated and current_user.has_admin %}
+                {# В одной строке с «Импорт из Excel»: файл, галочки, жёлтая кнопка #}
+                <form
+                    method="post"
+                    action="{{ url_for('fuel_bp.soft_import_composite_flags', **request.args) }}"
+                    enctype="multipart/form-data"
+                    class="d-flex align-items-center flex-wrap gap-2 flex-shrink-0"
+                    id="softImportCompositeFlagsForm"
+                    title="Мягкая дозагрузка COMP/MAIN/NIV и словарных полей по NUMB (только Имена_станций.xlsx)"
+                >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input
+                        type="file"
+                        name="file"
+                        class="form-control"
+                        accept=".xlsx,.xls"
+                        style="max-width: 260px;"
+                        required
+                        id="softCompositeFlagsFile"
+                        title="Только Access Имена_станций.xlsx"
+                    >
+                    <div class="form-check m-0">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            value="1"
+                            id="softCompositeApplyChanges"
+                            name="apply_changes"
+                        >
+                        <label class="form-check-label small" for="softCompositeApplyChanges">
+                            Применить изменения
+                        </label>
+                    </div>
+                    <div class="form-check m-0">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            value="1"
+                            id="softCompositeIncludePhaseB"
+                            name="include_phase_b"
+                        >
+                        <label class="form-check-label small" for="softCompositeIncludePhaseB">
+                            Включая phase B
+                        </label>
+                    </div>
+                    <div class="form-check m-0">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            value="1"
+                            id="softCompositeCreateMissingNumbs"
+                            name="create_missing_numbs"
+                            title="Создать NUMB из файла, которых нет в текущей версии БД. Без привязки к станции — связь проставляется вручную."
+                        >
+                        <label
+                            class="form-check-label small"
+                            for="softCompositeCreateMissingNumbs"
+                            title="Создать NUMB из файла, которых нет в текущей версии БД. Без привязки к станции — связь проставляется вручную."
+                        >
+                            Создать отсутствующие NUMB
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-warning d-inline-flex align-items-center gap-2" style="white-space: nowrap;">
+                        <i class="bi bi-shield-check"></i> Проверить / загрузить флаги
+                    </button>
+                </form>
+                {% endif %}
+                {% if import_redirect_endpoint|default('fuel_bp.stations_equipment_groups') == 'fuel_bp.stations_equipment_groups' %}
+                <div class="w-100">
+                    <p class="text-muted small mb-0 mt-1">
+                        Синяя «Импорт из Excel» — шаблон АРМ с <strong>id_station</strong> и <strong>equipment_group</strong>.
+                        Access <strong>Имена_станций.xlsx</strong> — только в жёлтую форму справа (файл + «Проверить / загрузить флаги»).
+                        Access <strong>Станции*.xlsx</strong> / <strong>Доп_угли*.xlsx</strong> —
+                        на странице «Сведения о работе ТЭС».
+                    </p>
+                    {% if show_soft_import_composite_flags|default(false) and current_user.is_authenticated and current_user.has_admin %}
+                    <p class="text-muted small mb-0 mt-1">
+                        Без «Применить» — только отчёт. С галочкой: флаги + словарные поля по <strong>NUMB</strong>
+                        (d, r, name_ext, vedomstvo, be, gk, gkf, er, n1/n2, p1/p2, addr, codegor, note)
+                        у уже существующих групп; название АРМ (<strong>name</strong>) не перезаписывается.
+                        Пустые ячейки не затирают БД. Группы из id агрегатов/станций не создаются — это синяя кнопка.
+                        Phase A (семьи с детьми) тоже при «Применить».
+                        <strong>Phase B</strong> (COMP=1 без детей — архив/отменённые планы) — только если отмечено «Включая phase B» (по умолчанию выкл).
+                        <strong>Создать отсутствующие NUMB</strong> — группы из файла, которых нет в текущей версии БД, без привязки к станции (связь потом вручную). Сначала проверка, затем «Применить».
+                        Access <strong>Станции*.xlsx</strong> отклоняется.
+                    </p>
+                    {% endif %}
+                    {% if soft_composite_import_report %}
+                    <div class="alert {% if soft_composite_import_report.dry_run %}alert-warning{% else %}alert-success{% endif %} small mt-2 mb-0" id="softCompositeImportReportAlert" role="alert">
+                        <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                            <div>
+                                <strong class="d-block mb-1">
+                                    {% if soft_composite_import_report.dry_run %}
+                                    Отчёт проверки флагов и словарных полей (запись не выполнялась)
+                                    {% else %}
+                                    Отчёт дозагрузки флагов и словарных полей (изменения записаны)
+                                    {% endif %}
+                                </strong>
+                                <ul class="mb-1">
+                                    {% for line in soft_composite_import_report.lines %}
+                                    <li>{{ line }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% if soft_composite_import_report.sample_updates %}
+                                <details>
+                                    <summary>Примеры изменений ({{ soft_composite_import_report.sample_updates|length }})</summary>
+                                    <ul class="mt-1 mb-0">
+                                        {% for u in soft_composite_import_report.sample_updates %}
+                                        <li>
+                                            numb={{ u.numb }} id={{ u.eg_id }}
+                                            {% if u.name %} «{{ u.name }}»{% endif %}:
+                                            {% if u.old_comp != u.new_comp or u.old_main != u.new_main or u.old_niv != u.new_niv %}
+                                            comp {{ u.old_comp }}->{{ u.new_comp }},
+                                            main {{ u.old_main }}->{{ u.new_main }},
+                                            niv {{ u.old_niv }}->{{ u.new_niv }}
+                                            {% endif %}
+                                            {% if u.dict_changes %}
+                                            {% for field, ch in u.dict_changes.items() %}
+                                            {{ field }} {{ ch.old }}->{{ ch.new }}{% if not loop.last %}; {% endif %}
+                                            {% endfor %}
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </details>
+                                {% endif %}
+                                {% if soft_composite_import_report.sample_missing_numbs %}
+                                <details>
+                                    <summary>
+                                        {% if soft_composite_import_report.missing_numbs_enabled %}
+                                        Примеры создаваемых NUMB
+                                        {% else %}
+                                        Примеры отложенных NUMB
+                                        {% endif %}
+                                        ({{ soft_composite_import_report.sample_missing_numbs|length }})
+                                    </summary>
+                                    <ul class="mt-1 mb-0">
+                                        {% for s in soft_composite_import_report.sample_missing_numbs %}
+                                        <li>
+                                            numb={{ s.numb }}
+                                            {% if s.name %} «{{ s.name }}»{% endif %}
+                                            main={{ s.main }}
+                                            ver={{ s.database_version_id }}
+                                            (без станции)
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </details>
+                                {% endif %}
+                            </div>
+                            <a
+                                class="btn btn-sm btn-outline-dark"
+                                href="{{ url_for('fuel_bp.stations_equipment_groups', clear_soft_composite_report=1, **request.args) }}"
+                            >
+                                Скрыть отчёт
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 <script>
                 (function() {
                     var form = document.getElementById('importFuelDbForm');

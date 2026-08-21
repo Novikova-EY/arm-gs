@@ -14,11 +14,7 @@
 {% set import_redirect_endpoint = 'fuel_bp.equipment_group_fuel_params_edit_data' %}
 {% set use_single_year = false %}
 {% set show_fuel_params_import = true %}
-{% set show_specific_fuel_consumption_import = true %}
+{% set show_specific_fuel_consumption_import = false %}
 {% set show_fuel_params_export = true %}
-{% set hide_fuel_params_export_button = true %}
-{% set hide_specific_fuel_consumption_import_button = true %}
-{% set hide_fuel_params_import_button = true %}
 {% set import_fuel_params_action = url_for('fuel_bp.import_equipment_group_fuel_params') %}
-{% set import_specific_fuel_consumption_action = url_for('fuel_bp.import_equipment_group_specific_fuel_consumption') %}
 {% include 'fuel/_shared/station_filters.html' %}

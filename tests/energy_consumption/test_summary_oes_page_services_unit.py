@@ -209,7 +209,7 @@ def test_apply_max_fo_and_ez_inject_shared_top_verification(monkeypatch):
         "collapse_gaes_variant_split_for_entities_without_stations",
         "tag_energy_consumption_summary_rows_for_territory_compact",
         "keep_centralized_zone_rows_in_territory_compact",
-        "apply_federal_district_centralized_zone_values_from_summary_table_hub",
+        "apply_summary_page_shared_top_aggregate_values_from_summary_table_hub",
         "_mark_summary_table_collapsed_nt_gaes_variant_row_rules",
         "_mark_summary_table_nt_on_gaes_off_variant_row_rules",
     ):
@@ -221,14 +221,33 @@ def test_apply_max_fo_and_ez_inject_shared_top_verification(monkeypatch):
         lambda *_a, **_k: inject_calls.append("verify"),
     )
 
-    for active in ("fo", "ez"):
+    for active in ("fo", "ez", "oes"):
         inject_calls.clear()
-        transforms.apply_max_summary_page_variant_behaviour(
-            {
-                "active_summary": active,
-                "summary_rows": [{"entity_label": "ЕЭС России"}],
-                "years": [2026],
-                "rounding_digits": 1,
-            }
-        )
+        ctx = {
+            "active_summary": active,
+            "summary_rows": [{"entity_label": "ЕЭС России"}],
+            "years": [2026],
+            "rounding_digits": 1,
+            "start_year": 2026,
+            "end_year": 2026,
+            "filter_year_list": [2026],
+        }
+        if active == "oes":
+            for name in (
+                "mask_sakha_yakutia_tites_oes_east_year_membership",
+                "apply_oes_tites_root_formula_to_summary_rows",
+                "inject_south_ues_new_territories_summary_rows",
+                "inject_union_energy_system_without_gaes_summary_rows",
+                "inject_oes_summary_verification_rows",
+                "filter_oes_summary_hidden_tites_union_energy_system_rows",
+                "inject_oes_tites_aggregate_verification_row",
+                "apply_union_energy_system_gaes_entity_labels",
+            ):
+                monkeypatch.setattr(transforms, name, _noop)
+            monkeypatch.setattr(
+                transforms,
+                "filter_oes_summary_hidden_tites_union_energy_system_rows",
+                lambda rows: rows,
+            )
+        transforms.apply_max_summary_page_variant_behaviour(ctx)
         assert inject_calls == ["verify"], active

@@ -1212,7 +1212,37 @@ def test_apply_gaes_without_charge_formula_does_not_sum_south_nt_charge_twice():
     assert service._raw_year_values_from_summary_row(without_nt_target, years) == {
         2024: Decimal("88.0")
     }
+    assert with_nt_target.get("pd_ec_formula_derived_row") is True
     assert without_nt_target.get("pd_ec_formula_derived_row") is True
+    assert (
+        with_nt_target.get("gaes_without_charge_formula_kind")
+        == "south_ues_with_nt_without_gaes"
+    )
+
+
+def test_apply_gaes_without_charge_formula_south_with_nt_without_gaes_is_formula_derived():
+    """ОЭС Юга с НТ без заряда ГАЭС = с зарядом − заряд; расчётная → пишется в БД."""
+    years = [2024]
+    source_row = _south_variant_row(service.CODE_WITH_NT_WITH_GAES, "150.0")
+    charge_row = _south_gaes_charge_row_for_nt_group("20.0", nt_group="with_nt")
+    target_row = _south_variant_row(service.CODE_WITH_NT_WITHOUT_GAES, "999.0")
+    rows = [source_row, charge_row, target_row]
+
+    service.apply_energy_consumption_summary_table_variant_toggle_rows(rows)
+    service.apply_gaes_without_charge_formula_to_summary_rows(
+        rows,
+        years,
+        rounding_digits=1,
+    )
+
+    assert service._raw_year_values_from_summary_row(target_row, years) == {
+        2024: Decimal("130.0")
+    }
+    assert target_row.get("pd_ec_formula_derived_row") is True
+    assert (
+        target_row.get("gaes_without_charge_formula_kind")
+        == "south_ues_with_nt_without_gaes"
+    )
 
 
 def test_first_sa_without_kaliningrad_verification_prefers_summary_row_over_db(
@@ -1788,6 +1818,25 @@ def test_formula_write_respects_perimeter_variant_year_bounds_even_when_input_un
     assert row["year_numeric_tooltips"][3] == "44.0"
 
 
+def test_yoy_write_uses_two_decimals_in_cell_and_hover_tooltip():
+    """Годовой темп прироста: title при наведении — те же 2 знака, что и в ячейке."""
+    row = {
+        "parameter_key": service.ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+        "year_values": ["—", "—"],
+        "year_numeric_tooltips": ["", ""],
+    }
+    service._write_numeric_year_values_to_summary_row(
+        row,
+        [2023, 2024],
+        {2023: None, 2024: Decimal("1.23456789")},
+        parameter_key=service.ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
+        rounding_digits=0,
+        respect_perimeter_variant_year_bounds=False,
+    )
+    assert row["year_values"][1] == "1,23"
+    assert row["year_numeric_tooltips"][1] == "1,23"
+
+
 def test_formula_year_applies_ignores_skip_flag(monkeypatch):
     monkeypatch.setattr(
         service,
@@ -1801,6 +1850,22 @@ def test_formula_year_applies_ignores_skip_flag(monkeypatch):
     assert service._year_applies_to_summary_row_perimeter_variant(row, 2022) is True
     assert service._formula_year_applies_to_row_perimeter_variant(row, 2022) is False
     assert service._formula_year_applies_to_row_perimeter_variant(row, 2023) is True
+
+
+def test_first_sa_formula_year_ignores_perimeter_year_from(monkeypatch):
+    """У первой СЗ «Год с» не глушит формулы (данные по всем годам)."""
+    monkeypatch.setattr(
+        service,
+        "perimeter_variant_year_bounds_for_code",
+        lambda _code: (2025, None),
+    )
+    row = {
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "entity_label": "Первая синхронная зона без НТ без заряда ГАЭС",
+        "perimeter_variant_code": "without_nt_without_gaes_kaliningrad",
+    }
+    assert service._formula_year_applies_to_row_perimeter_variant(row, 2017) is True
+    assert service._formula_year_applies_to_row_perimeter_variant(row, 2025) is True
 
 
 def test_energy_unit_ec_perimeter_entity_context_resolves(monkeypatch):
@@ -3201,6 +3266,120 @@ def test_apply_federal_district_centralized_zone_values_from_summary_table_hub(m
     assert target_rows[0]["year_values"] == ["100.0", "110.0"]
     assert target_rows[0].get("pd_ec_formula_derived_row") is True
     assert target_rows[1]["year_values"] == ["50.0", "55.0"]
+
+
+def test_apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
+    monkeypatch,
+):
+    years = [2024, 2025]
+
+    def _hub_rows(*_args, **_kwargs):
+        return [
+            {
+                "entity_kind": service.ENTITY_KIND_CENTRALIZED_ZONE,
+                "entity_label": "ЦЗ России с НТ",
+                "perimeter_variant_code": "with_nt",
+                "parameter_key": "energy_consumption_mln_kvt_ch",
+                "demand_model_name": "CentralizedZoneEnergyConsumptionParameter",
+                "year_values": ["100.0", "110.0"],
+                "pd_ec_formula_derived_row": True,
+            },
+            {
+                "entity_kind": service.ENTITY_KIND_EES_RUSSIA,
+                "entity_label": "ЭЭС России без НТ",
+                "parent_id": None,
+                "perimeter_variant_code": "without_nt",
+                "parameter_key": "energy_consumption_mln_kvt_ch",
+                "demand_model_name": "EesRussiaEnergyConsumptionParameter",
+                "year_values": ["200.0", "210.0"],
+            },
+            {
+                "entity_kind": "energy_system_type",
+                "entity_label": "ЕЭС России без НТ",
+                "parent_id": 7,
+                "perimeter_variant_code": "without_nt_with_gaes",
+                "parameter_key": "energy_consumption_mln_kvt_ch",
+                "demand_model_name": "EnergySystemTypeEnergyConsumptionParameter",
+                "year_values": ["300.0", "310.0"],
+            },
+            {
+                "entity_kind": "synchronous_area",
+                "entity_label": "1-я синхронная зона без НТ",
+                "parent_id": 3,
+                "perimeter_variant_code": "without_nt",
+                "parameter_key": "energy_consumption_mln_kvt_ch",
+                "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+                "year_values": ["40.0", "41.0"],
+            },
+        ]
+
+    monkeypatch.setattr(
+        service,
+        "build_summary_table_hub_oes_formula_pipeline_summary_rows",
+        _hub_rows,
+    )
+
+    target_rows = [
+        {
+            "entity_kind": service.ENTITY_KIND_CENTRALIZED_ZONE,
+            "entity_label": "ЦЗ России с НТ",
+            "perimeter_variant_code": "with_nt",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "demand_model_name": "CentralizedZoneEnergyConsumptionParameter",
+            "year_values": ["1.0", "2.0"],
+        },
+        {
+            "entity_kind": service.ENTITY_KIND_EES_RUSSIA,
+            "entity_label": "ЭЭС России без НТ",
+            "parent_id": None,
+            "perimeter_variant_code": "without_nt",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "demand_model_name": "EesRussiaEnergyConsumptionParameter",
+            "year_values": ["9.0", "9.0"],
+        },
+        {
+            "entity_kind": "energy_system_type",
+            "entity_label": "ЕЭС России без НТ",
+            "parent_id": 7,
+            "perimeter_variant_code": "without_nt_with_gaes",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "demand_model_name": "EnergySystemTypeEnergyConsumptionParameter",
+            "year_values": ["8.0", "8.0"],
+        },
+        {
+            "entity_kind": "synchronous_area",
+            "entity_label": "1-я синхронная зона без НТ",
+            "parent_id": 3,
+            "perimeter_variant_code": "without_nt",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+            "year_values": ["7.0", "7.0"],
+        },
+        {
+            "entity_kind": "federal_district",
+            "entity_label": "ЦФО",
+            "parent_id": 1,
+            "perimeter_variant_code": "without_nt",
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "demand_model_name": "FederalDistrictEnergyConsumptionParameter",
+            "year_values": ["5.0", "5.0"],
+        },
+    ]
+    service.apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
+        target_rows,
+        years=years,
+        rounding_digits=1,
+        start_year=2024,
+        end_year=2025,
+        filter_year_list=years,
+    )
+
+    assert target_rows[0]["year_values"] == ["100.0", "110.0"]
+    assert target_rows[0].get("pd_ec_formula_derived_row") is True
+    assert target_rows[1]["year_values"] == ["200.0", "210.0"]
+    assert target_rows[2]["year_values"] == ["300.0", "310.0"]
+    assert target_rows[3]["year_values"] == ["40.0", "41.0"]
+    assert target_rows[4]["year_values"] == ["5.0", "5.0"]
 
 
 def _cz_russia_nt_pair_rows_for_reference_test(*, years: list[int]) -> list[dict]:
@@ -6055,6 +6234,130 @@ def test_ees_unified_with_gaes_rows_remain_manual_not_formula_derived(monkeypatc
     assert ezs.get("pd_ec_formula_derived_row") is True
 
 
+def test_ezs_russia_with_nt_does_not_double_count_kaliningrad_sa(monkeypatch):
+    """ЭЭС с НТ = 1-я СЗ + 2-я СЗ + ТИТЭС (без отдельной СЗ Калининграда)."""
+    years = [2025]
+
+    def _row(**kwargs: object) -> dict:
+        base = {
+            "year_values": ["0.0"],
+            "year_numeric_tooltips": ["0.0"],
+            "entity_rowspan": 1,
+            "show_entity_cell": True,
+            "entity_depth": 0,
+        }
+        base.update(kwargs)
+        return base
+
+    ezs_with = _row(
+        entity_label="ЭЭС России с НТ с зарядом ГАЭС",
+        entity_kind=service.ENTITY_KIND_EES_RUSSIA,
+        demand_model_name="EesRussiaEnergyConsumptionParameter",
+        perimeter_variant_code=service.CODE_WITH_NT_WITH_GAES,
+        parameter_key="energy_consumption_mln_kvt_ch",
+    )
+    first_sa = _row(
+        entity_label="Первая синхронная зона с НТ с зарядом ГАЭС",
+        demand_model_name="SynchronousAreaEnergyConsumptionParameter",
+        perimeter_variant_code="with_nt_with_gaes_kaliningrad",
+        parameter_key="energy_consumption_mln_kvt_ch",
+        year_values=["1110746.4"],
+        year_numeric_tooltips=["1110746.4"],
+    )
+    second_sa = _row(
+        entity_label="Вторая синхронная зона",
+        demand_model_name="SynchronousAreaEnergyConsumptionParameter",
+        parameter_key="energy_consumption_mln_kvt_ch",
+        year_values=["50551.3"],
+        year_numeric_tooltips=["50551.3"],
+    )
+    kal_sa = _row(
+        entity_label="Синхронная зона Калининградской области",
+        demand_model_name="SynchronousAreaEnergyConsumptionParameter",
+        parameter_key="energy_consumption_mln_kvt_ch",
+        year_values=["5141.5"],
+        year_numeric_tooltips=["5141.5"],
+    )
+    rows = [ezs_with, first_sa, second_sa, kal_sa]
+    monkeypatch.setattr(
+        service,
+        "_year_values_for_tites_source",
+        lambda *_a, **_k: {2025: Decimal("15962.7")},
+    )
+    monkeypatch.setattr(service, "_resolve_first_synchronous_area_id", lambda: 1)
+
+    service.apply_ees_russia_gaes_aggregate_formulas(rows, years, rounding_digits=1)
+
+    # 1110746.4 + 50551.3 + 15962.7 = 1177260.4 (без 5141.5)
+    assert service._raw_year_values_from_summary_row(ezs_with, years) == {
+        2025: Decimal("1177260.4")
+    }
+    assert "Калининград" not in (ezs_with.get("pd_ec_summary_row_formula_tooltip") or "")
+
+
+def test_ezs_russia_without_nt_adds_kaliningrad_sa_from_split_year(monkeypatch):
+    """ЭЭС без НТ: экранная 1-я СЗ (без Калининграда) + СЗ Калининграда с года выделения."""
+    years = [2024, 2025]
+
+    def _row(**kwargs: object) -> dict:
+        base = {
+            "year_values": ["0.0", "0.0"],
+            "year_numeric_tooltips": ["0.0", "0.0"],
+            "entity_rowspan": 1,
+            "show_entity_cell": True,
+            "entity_depth": 0,
+        }
+        base.update(kwargs)
+        return base
+
+    ezs = _row(
+        entity_label="ЭЭС России без НТ с зарядом ГАЭС",
+        entity_kind=service.ENTITY_KIND_EES_RUSSIA,
+        demand_model_name="EesRussiaEnergyConsumptionParameter",
+        perimeter_variant_code=service.CODE_WITHOUT_NT_WITH_GAES,
+        parameter_key="energy_consumption_mln_kvt_ch",
+    )
+    first_sa = _row(
+        entity_label="Первая синхронная зона без НТ с зарядом ГАЭС",
+        demand_model_name="SynchronousAreaEnergyConsumptionParameter",
+        perimeter_variant_code="without_nt_with_gaes_kaliningrad",
+        parameter_key="energy_consumption_mln_kvt_ch",
+        year_values=["1108050.9", "1087532.4"],
+        year_numeric_tooltips=["1108050.9", "1087532.4"],
+    )
+    second_sa = _row(
+        entity_label="Вторая синхронная зона",
+        demand_model_name="SynchronousAreaEnergyConsumptionParameter",
+        parameter_key="energy_consumption_mln_kvt_ch",
+        year_values=["48304", "50551.3"],
+        year_numeric_tooltips=["48304", "50551.3"],
+    )
+    kal_sa = _row(
+        entity_label="Синхронная зона Калининградской области",
+        demand_model_name="SynchronousAreaEnergyConsumptionParameter",
+        parameter_key="energy_consumption_mln_kvt_ch",
+        year_values=["4912", "5141.5"],
+        year_numeric_tooltips=["4912", "5141.5"],
+    )
+    rows = [ezs, first_sa, second_sa, kal_sa]
+    monkeypatch.setattr(
+        service,
+        "_year_values_for_tites_source",
+        lambda *_a, **_k: {2024: Decimal("16158.7"), 2025: Decimal("15962.7")},
+    )
+    monkeypatch.setattr(service, "_resolve_first_synchronous_area_id", lambda: 1)
+    monkeypatch.setattr(service, "kaliningrad_sync_area_year_bounds", lambda: (2025, None))
+    monkeypatch.setattr(service, "_resolve_kaliningrad_synchronous_area_id", lambda: None)
+
+    service.apply_ees_russia_gaes_aggregate_formulas(rows, years, rounding_digits=1)
+
+    values = service._raw_year_values_from_summary_row(ezs, years)
+    # 2024: Калининград ещё в 1-й СЗ — не прибавляем 4912
+    assert values[2024] == Decimal("1172513.6")
+    # 2025: 1087532.4 + 5141.5 + 50551.3 + 15962.7 = 1159187.9
+    assert values[2025] == Decimal("1159187.9")
+
+
 def _kaliningrad_sync_area_variant_row(
     *,
     parameter_key: str = "energy_consumption_mln_kvt_ch",
@@ -6343,13 +6646,18 @@ def test_apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(mo
     years = [2024]
     first_sa_id = 39
     monkeypatch.setattr(service, "_resolve_first_synchronous_area_id", lambda: first_sa_id)
+    monkeypatch.setattr(
+        service,
+        "_gaes_charge_year_values_for_first_sa_without_nt",
+        lambda *_a, **_k: {2024: Decimal("12")},
+    )
     source_row = {
         "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
         "parent_fk_column": "id_synchronous_area",
         "parent_id": first_sa_id,
         "entity_kind": "perimeter_variant",
         "entity_label": "Первая синхронная зона",
-        "perimeter_variant_code": service.CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES,
+        "perimeter_variant_code": "without_nt_with_gaes_kaliningrad",
         "perimeter_variant_to_year": 2024,
         "parameter_key": "energy_consumption_mln_kvt_ch",
         "year_values": ["100.0"],
@@ -6361,24 +6669,13 @@ def test_apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(mo
         "parent_id": first_sa_id,
         "entity_kind": "perimeter_variant",
         "entity_label": "Первая синхронная зона",
-        "perimeter_variant_code": service._FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_VARIANT,
-        "perimeter_variant_to_year": 2024,
+        "perimeter_variant_code": "without_nt_without_gaes_kaliningrad",
+        "perimeter_variant_from_year": 2025,
         "parameter_key": "energy_consumption_mln_kvt_ch",
         "year_values": ["0.0"],
         "year_numeric_tooltips": ["0.0"],
     }
-    gaes_row = {
-        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
-        "parent_fk_column": "id_synchronous_area",
-        "parent_id": first_sa_id,
-        "entity_kind": "synchronous_area",
-        "entity_label": "Первая синхронная зона без НТ (заряд ГАЭС)",
-        "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
-        "gaes_charge_row_station_name": "всего",
-        "year_values": ["12.0"],
-        "year_numeric_tooltips": ["12.0"],
-    }
-    rows = [source_row, gaes_row, target_row]
+    rows = [source_row, target_row]
 
     service.apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
         rows,
@@ -6386,13 +6683,202 @@ def test_apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(mo
         rounding_digits=1,
     )
 
-    assert service._raw_year_values_from_summary_row(target_row, years) == {
-        2024: Decimal("88.0")
+    assert service._raw_year_values_from_summary_row(
+        target_row, years, ignore_perimeter_variant_year_bounds=True
+    ) == {2024: Decimal("88.0")}
+    assert target_row.get("pd_ec_formula_derived_row") is True
+
+
+def test_apply_first_sa_without_nt_without_gaes_alias_fills_years_before_year_from(
+    monkeypatch,
+):
+    """Алиас without_nt_without_gaes_kaliningrad: формула пишет и до «Год с»."""
+    years = [2023, 2024, 2025]
+    first_sa_id = 39
+    monkeypatch.setattr(service, "_resolve_first_synchronous_area_id", lambda: first_sa_id)
+    monkeypatch.setattr(
+        service,
+        "_gaes_charge_year_values_for_first_sa_without_nt",
+        lambda *_a, **_k: {
+            2023: Decimal("10"),
+            2024: Decimal("10"),
+            2025: Decimal("10"),
+        },
+    )
+    monkeypatch.setattr(
+        service,
+        "perimeter_variant_year_bounds_for_code",
+        lambda code: (2025, None)
+        if code == "without_nt_without_gaes_kaliningrad"
+        else (None, None),
+    )
+    source_row = {
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "parent_fk_column": "id_synchronous_area",
+        "parent_id": first_sa_id,
+        "entity_label": "Первая синхронная зона без НТ с зарядом ГАЭС",
+        "perimeter_variant_code": "without_nt_with_gaes_kaliningrad",
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "year_values": ["100.0", "110.0", "120.0"],
+        "year_numeric_tooltips": ["100.0", "110.0", "120.0"],
+    }
+    target_row = {
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "parent_fk_column": "id_synchronous_area",
+        "parent_id": first_sa_id,
+        "entity_label": "Первая синхронная зона без НТ без заряда ГАЭС",
+        "perimeter_variant_code": "without_nt_without_gaes_kaliningrad",
+        "perimeter_variant_from_year": 2025,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "year_values": ["—", "—", "—"],
+        "year_numeric_tooltips": ["", "", ""],
+    }
+
+    service.apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
+        [source_row, target_row],
+        years,
+        rounding_digits=1,
+    )
+
+    assert service._raw_year_values_from_summary_row(
+        target_row, years, ignore_perimeter_variant_year_bounds=True
+    ) == {
+        2023: Decimal("90.0"),
+        2024: Decimal("100.0"),
+        2025: Decimal("110.0"),
     }
     assert target_row["gaes_without_charge_formula_kind"] == (
         "first_sa_without_nt_with_kaliningrad_gaes_diff"
     )
     assert target_row["pd_ec_formula_derived_row"] is True
+
+
+def test_reapply_first_sa_formulas_overwrites_stale_db_and_generic_gaes(monkeypatch):
+    """Устаревшие значения БД и generic apply_gaes не должны оставаться на экране."""
+    years = [2025]
+    first_sa_id = 39
+    monkeypatch.setattr(service, "_resolve_first_synchronous_area_id", lambda: first_sa_id)
+    sum_with_nt = {2025: Decimal("1110746.40145389999")}
+    sum_without_nt = {2025: Decimal("1087532.4056194")}
+    gaes_charge = {2025: Decimal("2036.409687")}
+
+    monkeypatch.setattr(
+        service,
+        "_year_values_sum_ues_in_first_sa_with_nt_with_gaes_with_kaliningrad_es",
+        lambda *_a, **_k: sum_with_nt,
+    )
+    monkeypatch.setattr(
+        service,
+        "_year_values_sum_ues_in_first_sa_without_kaliningrad_es",
+        lambda *_a, **_k: sum_without_nt,
+    )
+    monkeypatch.setattr(
+        service,
+        "_gaes_charge_year_values_for_first_sa_with_nt",
+        lambda *_a, **_k: gaes_charge,
+    )
+    monkeypatch.setattr(
+        service,
+        "_gaes_charge_year_values_for_first_sa_without_nt",
+        lambda *_a, **_k: gaes_charge,
+    )
+    monkeypatch.setattr(
+        service,
+        "_subtract_kaliningrad_es_from_first_sa_without_kaliningrad_year_values",
+        lambda _years, values, _pk: values,
+    )
+
+    def _row(code: str, val: str) -> dict:
+        return {
+            "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+            "parent_fk_column": "id_synchronous_area",
+            "parent_id": first_sa_id,
+            "entity_kind": "perimeter_variant",
+            "entity_label": "Первая синхронная зона",
+            "perimeter_variant_code": code,
+            "parameter_key": "energy_consumption_mln_kvt_ch",
+            "year_values": [val],
+            "year_numeric_tooltips": [val],
+        }
+
+    gaes_total = {
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "parent_id": first_sa_id,
+        "entity_label": "Первая синхронная зона с НТ (заряд ГAЭС)",
+        "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+        "gaes_charge_row_station_name": "всего",
+        "year_values": [str(gaes_charge[2025])],
+        "year_numeric_tooltips": [str(gaes_charge[2025])],
+    }
+    rows = [
+        _row("with_nt_with_gaes_kaliningrad", "1108723.9"),
+        _row("with_nt_without_gaes_kaliningrad", "1085509.9"),
+        _row("without_nt_with_gaes_kaliningrad", "1087532.4"),
+        _row("without_nt_without_gaes_kaliningrad", "1085509.9"),
+        gaes_total,
+    ]
+    service.apply_gaes_without_charge_formula_to_summary_rows(rows, years, rounding_digits=1)
+    service._reapply_first_synchronous_area_gaes_variant_formulas(
+        rows, years, rounding_digits=1
+    )
+
+    by_code = {
+        str(r.get("perimeter_variant_code")): r
+        for r in rows
+        if r.get("parameter_key") == "energy_consumption_mln_kvt_ch"
+    }
+    assert service._raw_year_values_from_summary_row(
+        by_code["with_nt_with_gaes_kaliningrad"], years
+    )[2025].quantize(Decimal("0.1")) == Decimal("1110746.4")
+    wnt_wog = service._raw_year_values_from_summary_row(
+        by_code["with_nt_without_gaes_kaliningrad"], years
+    )[2025]
+    wntnt_wog = service._raw_year_values_from_summary_row(
+        by_code["without_nt_without_gaes_kaliningrad"], years
+    )[2025]
+    assert wnt_wog.quantize(Decimal("0.1")) == Decimal("1108710.0")
+    assert wntnt_wog.quantize(Decimal("0.1")) == Decimal("1085496.0")
+
+
+def test_first_sa_without_gaes_subtracts_total_first_sa_gaes_charge(monkeypatch):
+    """«Без заряда» 1-й СЗ = с зарядом − «всего» (включая Загорскую), как в Excel."""
+    years = [2024]
+    first_sa_id = 39
+    monkeypatch.setattr(service, "_resolve_first_synchronous_area_id", lambda: first_sa_id)
+    source_row = {
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "parent_id": first_sa_id,
+        "perimeter_variant_code": service._FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_VARIANT,
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "year_values": ["1108050.9"],
+        "year_numeric_tooltips": ["1108050.9"],
+    }
+    target_row = {
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "parent_id": first_sa_id,
+        "perimeter_variant_code": (
+            service._FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT
+        ),
+        "parameter_key": "energy_consumption_mln_kvt_ch",
+        "year_values": ["0.0"],
+        "year_numeric_tooltips": ["0.0"],
+    }
+    total = {
+        "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+        "parent_id": first_sa_id,
+        "entity_label": "Первая синхронная зона без НТ (заряд ГАЭС)",
+        "parameter_key": service.GAES_CHARGE_PARAMETER_KEY,
+        "gaes_charge_row_station_name": "всего",
+        "year_values": ["2433.64"],
+        "year_numeric_tooltips": ["2433.64"],
+    }
+    rows = [source_row, total, target_row]
+    service.apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
+        rows, years, rounding_digits=2
+    )
+    assert service._raw_year_values_from_summary_row(target_row, years) == {
+        2024: Decimal("1105617.26")
+    }
 
 
 def test_apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(monkeypatch):
@@ -6405,7 +6891,8 @@ def test_apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(monkeypat
         "parent_id": first_sa_id,
         "entity_kind": "perimeter_variant",
         "entity_label": "Первая синхронная зона",
-        "perimeter_variant_code": service._FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_VARIANT,
+        # Актуальный код binding на сводке (не legacy ``*_with_kaliningrad_es``).
+        "perimeter_variant_code": "with_nt_with_gaes_kaliningrad",
         "parameter_key": "energy_consumption_mln_kvt_ch",
         "year_values": ["0.0"],
         "year_numeric_tooltips": ["0.0"],
@@ -6442,6 +6929,45 @@ def test_apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(monkeypat
         2024: Decimal("100.0")
     }
     assert target_row["pd_ec_formula_derived_row"] is True
+    assert "сумма потреблений ЭЭ всех ОЭС" in target_row["pd_ec_summary_row_formula_tooltip"]
+
+
+def test_ensure_first_sa_variant_formula_tooltips_covers_all_four_catalog_codes(
+    monkeypatch,
+):
+    first_sa_id = 39
+    monkeypatch.setattr(service, "_resolve_first_synchronous_area_id", lambda: first_sa_id)
+    codes = (
+        "with_nt_with_gaes_kaliningrad",
+        "with_nt_without_gaes_kaliningrad",
+        "without_nt_with_gaes_kaliningrad",
+        "without_nt_without_gaes_kaliningrad",
+    )
+    rows = []
+    for code in codes:
+        for parameter_key in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
+            rows.append(
+                {
+                    "demand_model_name": "SynchronousAreaEnergyConsumptionParameter",
+                    "parent_id": first_sa_id,
+                    "entity_label": "Первая синхронная зона",
+                    "perimeter_variant_code": code,
+                    "parameter_key": parameter_key,
+                }
+            )
+
+    service.ensure_first_sa_variant_formula_tooltips(rows)
+
+    for row in rows:
+        tip = row.get("pd_ec_summary_row_formula_tooltip") or ""
+        assert tip, row["perimeter_variant_code"]
+        assert "Первая синхронная зона" in tip
+        assert row.get("pd_ec_formula_text_key")
+        if "without_gaes" in row["perimeter_variant_code"]:
+            assert row.get("gaes_without_charge_formula_kind")
 
 
 def test_first_sa_without_kaliningrad_ues_sum_uses_south_with_gaes_others_without_nt(
@@ -6498,6 +7024,11 @@ def test_first_sa_without_kaliningrad_ues_sum_uses_south_with_gaes_others_withou
         return []
 
     monkeypatch.setattr(service.dps, "get_demand_rows", fake_get_demand_rows)
+    monkeypatch.setattr(
+        service,
+        "_subtract_kaliningrad_es_from_first_sa_without_kaliningrad_year_values",
+        lambda _years, year_sums, _parameter_key: year_sums,
+    )
 
     result = service._year_values_sum_ues_in_first_sa_without_kaliningrad_es(
         first_sa_id,
@@ -6511,6 +7042,79 @@ def test_first_sa_without_kaliningrad_ues_sum_uses_south_with_gaes_others_withou
     assert service.CODE_WITHOUT_NT_WITH_GAES not in variants_tried[other_id]
     assert nt_id not in variants_tried
     assert result == {2024: Decimal("32")}
+
+
+def test_first_sa_with_nt_ues_sums_special_case_south_gaes_variants(monkeypatch):
+    """С НТ: Юг — with/without_gaes; остальные ОЭС — как с НТ; + НТ, − Восток."""
+    south_id = 7
+    other_id = 8
+    east_id = 10
+    nt_id = 9
+    first_sa_id = 39
+    years = [2024]
+
+    monkeypatch.setattr(
+        service,
+        "_first_sa_with_nt_with_gaes_ues_exclude_ids",
+        lambda: frozenset({east_id}),
+    )
+    monkeypatch.setattr(
+        service,
+        "_resolve_new_territories_union_energy_system_id",
+        lambda: nt_id,
+    )
+    monkeypatch.setattr(
+        service,
+        "_resolve_union_energy_system_id_by_name_cf",
+        lambda name_cf: south_id if name_cf == service.SOUTH_UES_NAME_CF else None,
+    )
+    monkeypatch.setattr(
+        service,
+        "_union_energy_system_ids_for_synchronous_area",
+        lambda _sa_id: [south_id, other_id, east_id],
+    )
+
+    class _DemandRow:
+        def __init__(self, value: Decimal):
+            self.year_number = 2024
+            self.energy_consumption_mln_kvt_ch = value
+
+    def fake_get_demand_rows(_model, _fk_col, ues_id, perimeter_variant_code=None):
+        if int(ues_id) == south_id:
+            if perimeter_variant_code == service.CODE_WITH_NT_WITH_GAES:
+                return [_DemandRow(Decimal("12"))]
+            if perimeter_variant_code == service.CODE_WITH_NT_WITHOUT_GAES:
+                return [_DemandRow(Decimal("10"))]
+            return []
+        if int(ues_id) == other_id:
+            if perimeter_variant_code == service.CODE_WITH_NT:
+                return [_DemandRow(Decimal("20"))]
+            return []
+        if int(ues_id) == nt_id:
+            if perimeter_variant_code == service.CODE_WITH_NT_WITH_GAES:
+                return [_DemandRow(Decimal("3"))]
+            if perimeter_variant_code == service.CODE_WITH_NT_WITHOUT_GAES:
+                return [_DemandRow(Decimal("3"))]
+            if perimeter_variant_code == service.CODE_WITH_NT:
+                return [_DemandRow(Decimal("3"))]
+            return []
+        return []
+
+    monkeypatch.setattr(service.dps, "get_demand_rows", fake_get_demand_rows)
+
+    with_gaes = service._year_values_sum_ues_in_first_sa_with_nt_with_gaes_with_kaliningrad_es(
+        first_sa_id,
+        years,
+        "energy_consumption_mln_kvt_ch",
+    )
+    without_gaes = service._year_values_sum_ues_in_first_sa_with_nt_without_gaes(
+        first_sa_id,
+        years,
+        "energy_consumption_mln_kvt_ch",
+    )
+
+    assert with_gaes == {2024: Decimal("32")}  # 12 + 20 (НТ уже в ОЭС Юга с НТ)
+    assert without_gaes == {2024: Decimal("30")}  # 10 + 20
 
 
 def test_apply_first_sa_without_nt_with_gaes_without_kaliningrad_sum_formula_uses_ues_sum_only(

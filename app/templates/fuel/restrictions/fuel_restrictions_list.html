@@ -262,7 +262,8 @@ content %} {% if current_user.is_authenticated %}
   {% endif %}
 </div>
 {% else %}
-{{ label }}<br /><span class="text-muted small">({{ field_code|fuel_header_code }})</span>
+{% set _fr_formula = (restriction_column_formulas|default({})).get(attr) %}
+{{ label }}{% if _fr_formula %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ _fr_formula|e }}" style="cursor: help; font-size: 0.9em;" aria-label="Формула {{ field_code|fuel_header_code }}"></i>{% endif %}<br /><span class="text-muted small">({{ field_code|fuel_header_code }})</span>
 {% endif %}
 {% endmacro %}
 {% macro fr_cell_value(row, attr) %}
@@ -971,6 +972,13 @@ content %} {% if current_user.is_authenticated %}
       document.addEventListener("hidden.bs.collapse", updateRestrictionsStickyHeights);
       window.addEventListener("resize", updateRestrictionsStickyHeights);
       window.addEventListener("load", updateRestrictionsStickyHeights);
+      if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
+        document
+          .querySelectorAll('[data-bs-toggle="tooltip"]')
+          .forEach(function (el) {
+            new bootstrap.Tooltip(el);
+          });
+      }
     }
 
     if (document.readyState === "loading") {

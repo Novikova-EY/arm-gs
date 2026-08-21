@@ -21,13 +21,24 @@ from app.fuel.services.equipment_groups.equipment_group_details_params_update_se
 from app.fuel.services.equipment_groups.equipment_group_edit_services import (
     _apply_equipment_group_type_change_from_form,
     _effective_group_database_version_id,
+    form_has_grouping_station_sync,
+    grouping_station_ids_from_form,
     persist_equipment_group_grouping_station_if_in_form,
+)
+from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+    EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS,
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_write_services import (
     update_equipment_group_fuel_params_from_form,
 )
 from app.logs.services.logging_service import log_to_db
 from config import SCHEMA_FUEL
+
+# На карточке EG из MAIN редактируется только ved; остальные MAIN скрыты и не должны
+# сбрасываться в NULL при сохранении формы топливных параметров.
+_SKIP_HIDDEN_MAIN_ATTRS = frozenset(
+    a for a in EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS if a != "ved"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -124,9 +135,21 @@ def _apply_fuel_form_side_fields(
                 raise ValueError(egt_err)
     eg_for_grouping = EquipmentGroup.query.get(equipment_group_id)
     if eg_for_grouping:
+        persist_form = dict(form_data or {})
+        if form_has_grouping_station_sync(form_data):
+            persist_form["grouping_station_ids"] = grouping_station_ids_from_form(form_data)
+            persist_form["grouping_station_ids_present"] = "1"
+            if (
+                "grouping_station_ids_loaded" in (form_data or {})
+                or "grouping_station_ids_loaded_present" in (form_data or {})
+            ):
+                persist_form["grouping_station_ids_loaded"] = grouping_station_ids_from_form(
+                    form_data, key="grouping_station_ids_loaded"
+                )
+                persist_form["grouping_station_ids_loaded_present"] = "1"
         gerr = persist_equipment_group_grouping_station_if_in_form(
             eg_for_grouping,
-            dict(form_data),
+            persist_form,
             version_id=version_id,
         )
         if gerr:
@@ -154,6 +177,7 @@ def _save_fuel_params_for_group(
         end_year,
         rounding_digits_table1=rounding_digits_table1,
         rounding_digits_table2=rounding_digits_table2,
+        skip_attrs=_SKIP_HIDDEN_MAIN_ATTRS,
     )
     if _ok and msg != "Изменений нет.":
         messages.append(msg)

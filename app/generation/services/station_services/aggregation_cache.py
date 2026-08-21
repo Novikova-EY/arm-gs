@@ -17,12 +17,26 @@ _cache_timeout = timedelta(minutes=30)  # Кэш на 30 минут
 # v3: инвалидация после исправлений filter_by_db_version в get_regional_districts_*
 # v4: MachinePower/PGUMachinePower — fallback на NULL (legacy данные без version_id)
 # v5: территориальные справочники (РЭС, ОЭС) не фильтруются по версии — общие
-AGGREGATION_CACHE_KEY_VERSION = 5
+# v6: machines_without_equipment_group — топливная группа, не только тип
+# v7: без группы = нет MachineFuelParam.equipment_group_id, а не только связка станция+тип
+# v8: явная группа = fuel group, связанная со станцией агрегата
+# v9: общая группа на несколько станций не считается явной привязкой
+# v10: корреляция station_id через MFP.machine_id (без cartesian Machine)
+# v11: общая группа явна только для станции-владельца (первая по имени)
+# v12: общая группа на несколько станций — явная привязка для всех связанных станций
+AGGREGATION_CACHE_KEY_VERSION = 12
 
 # Версия ключей кэша сортировки станций.
 # Инкрементируйте при изменении логики сортировки station_list, чтобы не использовать
 # устаревший порядок из Redis/in-memory кэша.
-STATIONS_SORT_CACHE_KEY_VERSION = 1
+# v2: machines_without_equipment_group — топливная группа, не только тип
+# v3: без группы = нет MachineFuelParam.equipment_group_id
+# v4: явная группа должна быть связана со станцией агрегата
+# v5: общая группа на несколько станций не считается явной
+# v6: корреляция station_id через MFP.machine_id
+# v7: общая группа явна только для станции-владельца
+# v8: общая группа — явная привязка для всех связанных станций
+STATIONS_SORT_CACHE_KEY_VERSION = 8
 
 # Отдельный Redis‑клиент для кэша (не тот, что используется Flask‑Session)
 _redis_client = None

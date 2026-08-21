@@ -19,8 +19,10 @@ class EnergyUnit(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixin):
 
     # Полное наименование в родительном падеже
     name_rp = db.Column(db.String(255), nullable=False)
-    # Полное наименование в дательном падеже
+    # Полное наименование в предложном падеже
     name_dp = db.Column(db.String(255), nullable=False)
+    # Наименование в дательном падеже (для «Итого по …»)
+    name_dat = db.Column(db.String(255), nullable=False, server_default="")
 
     # FK -> RegionalDistrict
     id_regional_district = db.Column(

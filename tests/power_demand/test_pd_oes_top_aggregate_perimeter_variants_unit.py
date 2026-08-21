@@ -156,7 +156,10 @@ def test_build_ez_raw_entities_uses_shared_national_prefix() -> None:
     ):
         entities = dss._build_ez_raw_entities(ez_max_extended_parameters=True)
     assert entities == prefix + [ez]
-    build_prefix.assert_called_once_with(cz_parameters=dss.PARAMETERS_CZ_OES_SUMMARY)
+    build_prefix.assert_called_once_with(
+        cz_parameters=dss.PARAMETERS_CZ_OES_SUMMARY,
+        ees_russia_parameters=dss.PARAMETERS_EES_RUSSIA_OES_SUMMARY,
+    )
     build_tites.assert_not_called()
 
 

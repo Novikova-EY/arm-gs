@@ -541,7 +541,7 @@ def _summary_demand_row_slice_key(row: Any) -> tuple[bool, int | None]:
 def _summary_demand_row_has_values(row: Any) -> bool:
     for attr in (
         "max_power_consumption_mw",
-        "peak_datetime_msk",
+        "peak_datetime",
         "avg_daily_air_temp_c",
         "combined_on_oes",
         "combined_on_ees",
@@ -948,7 +948,7 @@ def save_demand_rows_from_post(
         row.is_historical_maximum = is_hist
         row.year_number = year_n
         row.max_power_consumption_mw = p_max
-        row.peak_datetime_msk = dt_val
+        row.peak_datetime = dt_val
         row.avg_daily_air_temp_c = tnv
         row.combined_on_oes = oes
         row.combined_on_ees = ees
@@ -1071,7 +1071,7 @@ def summary_cell_display_value(row: Any, parameter_key: str, rounding_digits: in
         return _summary_numeric_display(v, digits=rounding_digits)
     if parameter_key == "peak_datetime":
         s = format_peak_datetime_for_slice(
-            getattr(row, "peak_datetime_msk", None),
+            getattr(row, "peak_datetime", None),
             bool(getattr(row, "is_historical_maximum", False)),
         )
         return _dash_summary_display(s)
@@ -1362,7 +1362,7 @@ def _apply_summary_field_to_row(
     elif parameter_key == "peak_datetime":
         s = str(raw_value or "").strip()
         if not s:
-            row.peak_datetime_msk = None
+            row.peak_datetime = None
         else:
             dt_val = parse_peak_datetime(raw_value)
             if dt_val is None:
@@ -1378,7 +1378,7 @@ def _apply_summary_field_to_row(
                 raise ValueError(
                     f"Год в дате ({dt_val.year}) должен совпадать с годом среза ({row.year_number})."
                 )
-            row.peak_datetime_msk = dt_val
+            row.peak_datetime = dt_val
     elif parameter_key == "avg_temp":
         s = str(raw_value or "").strip()
         if s and parse_decimal(s) is None:
@@ -1558,7 +1558,7 @@ def _summary_row_pd_snapshot(row: Any) -> dict[str, Any]:
         return {}
     snap: dict[str, Any] = {
         "max_power": getattr(row, "max_power_consumption_mw", None),
-        "peak_datetime": getattr(row, "peak_datetime_msk", None),
+        "peak_datetime": getattr(row, "peak_datetime", None),
         "avg_temp": getattr(row, "avg_daily_air_temp_c", None),
         "note": getattr(row, "note", None) if hasattr(row, "note") else None,
     }

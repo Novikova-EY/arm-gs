@@ -21,6 +21,12 @@ from app.energy_consumption.services.energy_consumption_summary_logging import (
 def finalize_ec_summary_page_context(context: dict[str, Any]) -> dict[str, Any]:
     """Подставить редактируемые тексты формул в контекст и строки сводки."""
     context = dict(context)
+    from app.energy_consumption.services.energy_consumption_summary_services import (
+        ensure_first_sa_variant_formula_tooltips,
+    )
+
+    # Иконки «i» у Первой СЗ — до подстановки переопределений текстов формул.
+    ensure_first_sa_variant_formula_tooltips(context.get("summary_rows"))
     formula_texts = build_ec_formula_texts_map()
     context["ec_formula_texts"] = formula_texts
     inject_ec_formula_template_variables(context, formula_texts)

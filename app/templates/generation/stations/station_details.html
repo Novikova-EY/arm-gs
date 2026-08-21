@@ -26,8 +26,6 @@
     overflow-y: clip;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
-    border: 1px solid #dee2e6;
-    border-radius: 0.375rem;
 }
 
 /* Фиксированные ширины столбцов - только нужные */
@@ -67,6 +65,13 @@
     width: 180px !important;
     min-width: 180px;
     max-width: 180px;
+}
+
+.machines-table .col-archive {
+    width: 80px;
+    min-width: 70px;
+    text-align: center;
+    vertical-align: middle;
 }
 
 /* Название агрегата: даем больше ширины и перенос */
@@ -348,12 +353,31 @@
 /* Крупнее шрифт в выпадающих списках блока информации о электростанции */
 .station-info .form-select { font-size: 1.15rem; line-height: 1.4; }
 </style>
-{% if not can_edit %}
+{% if not current_user.is_admin %}
 <style>
-/* В режиме просмотра скрываем колонку удаления в таблице агрегатов */
+/* Столбец «Удалить» в таблице агрегатов — только для суперадмина (admin) */
 .machines-table .col-delete { display: none; }
 </style>
 {% endif %}
+
+<style>
+/* Архивные агрегаты: светлее основной текст, в конце списка */
+.machines-table tr.machine-archived,
+.machines-table tr.machine-archived td {
+    color: #8a9096 !important;
+}
+.machines-table tr.machine-archived a {
+    color: #8a9096 !important;
+}
+.machines-table tr.machine-archived .form-control,
+.machines-table tr.machine-archived .form-select,
+.machines-table tr.machine-archived .machine-note-textarea {
+    color: #8a9096 !important;
+}
+.machines-table tr.machine-archived td {
+    background-color: rgba(108, 117, 125, 0.06);
+}
+</style>
 
 <style>
 /* Увеличенный шрифт для разделов информации о электростанции */
@@ -825,6 +849,10 @@
                     </div>
 
         <div id="machinesForm">
+            {% if can_edit %}
+            {# Вне таблицы: AJAX-подгрузка tbody сохраняет только <tr>, скрытые поля вне строк теряются #}
+            <input type="hidden" name="machines_archive_form" value="1">
+            {% endif %}
             <div class="table-responsive station-machines-table-viewport">
                 <table class="table table-hover table-striped table-bordered table-responsive machines-table" data-auto-export-excel="off">
                     <thead class="table-success">
@@ -845,6 +873,7 @@
                             <th colspan="{{ end_year - start_year + 1 }}">Электрическая мощность, МВт</th>
                             <th colspan="{{ end_year - start_year + 1 }}">Топливо</th>
                             <th rowspan="2" class="col-note">Примечание</th>
+                            <th rowspan="2" class="col-archive" style="width: 80px;" title="Архивные агрегаты показываются в конце списка и не входят в суммы мощностей">Архив</th>
                             <th rowspan="2" class="col-delete" style="width: 80px;">Удалить</th>
                         </tr>
                         <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
@@ -873,7 +902,7 @@
                             {{ initial_machines_tbody_html | safe }}
                         {% else %}
                             <tr>
-                                <td colspan="{{ 15 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4">
+                                <td colspan="{{ 16 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4">
                                     <div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>
                                     Загрузка агрегатов...
                                 </td>
@@ -1006,11 +1035,10 @@
 <div class="container-fluid mt-3">
     <div class="card">
         <div class="card-body p-0">
-            <table class="table table-hover table-striped table-bordered table-responsive" id="station-logs-table" data-auto-export-excel="off">
+            <table class="table table-hover table-striped table-bordered table-responsive change-log-table" id="station-logs-table" data-auto-export-excel="off">
                 <thead class="table-light">
                     <tr>
-                        <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
-                        <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
+                        <th data-key="datetime" class="log-col-datetime" style="cursor: pointer;">Дата и время</th>
                         <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
                         <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
                         <th data-key="database_version" class="log-col-database-version" style="cursor: pointer;">Версия базы данных</th>
@@ -1021,8 +1049,7 @@
                     {% if station_logs and station_logs|length > 0 %}
                         {% for log in station_logs %}
                             <tr>
-                                <td data-date="{{ log.date }}">{{ log.date }}</td>
-                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-datetime="{{ log.datetime }}" data-date="{{ log.date }}">{{ log.datetime }}</td>
                                 <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
                                 <td>
                                     <div data-action="{{ log.action_lower }}">{{ log.action }}</div>
@@ -1037,7 +1064,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
+                            <td colspan="5" class="text-center text-muted p-3">Нет записей</td>
                         </tr>
                     {% endif %}
                 </tbody>
@@ -1063,199 +1090,7 @@
     <div class="my-3"></div>
 </div>
 
-<style>
-/* Общие правила раскладки столбцов для таблиц журналов */
-#station-logs-table,
-#machine-logs-table { table-layout: fixed; width: 100%; }
-
-/* Фиксированные ширины первых трех колонок */
-#station-logs-table th.log-col-date, #station-logs-table td:nth-child(1),
-#machine-logs-table th.log-col-date, #machine-logs-table td:nth-child(1) {
-  width: 140px !important;
-}
-#station-logs-table th.log-col-time, #station-logs-table td:nth-child(2),
-#machine-logs-table th.log-col-time, #machine-logs-table td:nth-child(2) {
-  width: 120px !important;
-}
-#station-logs-table th.log-col-user, #station-logs-table td:nth-child(3),
-#machine-logs-table th.log-col-user, #machine-logs-table td:nth-child(3) {
-  width: 300px !important;
-}
-/* Без переноса в первых трех колонках для данных */
-#station-logs-table td:nth-child(1),
-#station-logs-table td:nth-child(2),
-#station-logs-table td:nth-child(3),
-#machine-logs-table td:nth-child(1),
-#machine-logs-table td:nth-child(2),
-#machine-logs-table td:nth-child(3) { white-space: nowrap; }
-
-/* Последние три — поровну от оставшегося пространства */
-#station-logs-table th.log-col-action, #station-logs-table td:nth-child(4),
-#machine-logs-table th.log-col-action, #machine-logs-table td:nth-child(4) {
-  width: 33.33% !important;
-}
-#station-logs-table th.log-col-database-version, #station-logs-table td:nth-child(5),
-#machine-logs-table th.log-col-database-version, #machine-logs-table td:nth-child(5) {
-  width: 150px !important;
-}
-#station-logs-table th.log-col-details, #station-logs-table td:nth-child(6),
-#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(6) {
-  width: 33.33% !important;
-}
-
-/* Детали можно переносить */
-#station-logs-table td:nth-child(4) div,
-#station-logs-table td:nth-child(6) div,
-#machine-logs-table td:nth-child(4) div,
-#machine-logs-table td:nth-child(6) div {
-  white-space: pre-wrap;
-}
-#station-logs-table td:nth-child(5),
-#machine-logs-table td:nth-child(5) {
-  white-space: normal;        /* разрешаем перенос */
-  overflow-wrap: anywhere;    /* переносим длинные слова/идентификаторы */
-  word-break: break-word;     /* на случай длинных токенов без пробелов */
-}
-</style>
-
 <!-- jQuery/Select2: инициализируем только если библиотека реально загружена -->
-<script>
-    (function () {
-        const $ = window.jQuery;
-        if (typeof $ !== 'function' || !$.fn || !$.fn.select2) return;
-
-        function initSelect2($el) {
-            if (!$el || !$el.length || $el.data('select2')) return;
-            performance.mark && performance.mark('select2-init-start');
-
-            const placeholder = $el.data('placeholder') || "Выберите компанию (начните вводить для поиска)";
-            const dropdownParent = $el.hasClass('equipment-group-set-select')
-                ? $el.closest('.card-body')
-                : $el.closest('.table-responsive');
-
-            $el.select2({
-                placeholder,
-                allowClear: true,
-                width: 'resolve',
-                dropdownAutoWidth: false,
-                dropdownParent,
-                minimumResultsForSearch: 0,
-                matcher: function (params, data) {
-                    if (!params.term || params.term.trim() === '') return data;
-                    const term = params.term.toLowerCase().trim();
-                    const text = (data.text || '').toLowerCase();
-                    return text.indexOf(term) !== -1 ? data : null;
-                },
-                language: {
-                    noResults: function () { return "Ничего не найдено"; },
-                    searching: function () { return "Поиск..."; }
-                }
-            });
-
-            // "Как в Excel": Enter выбирает первый результат
-            $el.on('select2:open', function () {
-                const $search = $('.select2-container--open .select2-search__field');
-                if (!$search.length) return;
-                $search.off('keyup.select2-excel').on('keyup.select2-excel', function (e) {
-                    if (e.key === 'Enter' || e.keyCode === 13) {
-                        const $results = $('.select2-results__option--highlighted, .select2-results__option:first');
-                        if ($results.length) {
-                            const value = $results.first().data('id');
-                            if (value !== undefined) {
-                                $el.val(value).trigger('change');
-                                $el.trigger('select2:close');
-                            }
-                        }
-                    }
-                });
-            });
-
-            performance.mark && performance.mark('select2-init-end');
-            performance.measure && performance.measure('select2-init', 'select2-init-start', 'select2-init-end');
-            const m = performance.getEntriesByName && performance.getEntriesByName('select2-init').pop();
-            if (m) console.log('select2 init:', Math.round(m.duration), 'ms');
-        }
-
-        // Ленивая инициализация select2 только при фокусе (уменьшает время загрузки)
-        $(document).on('focus', '.gen-company-select', function () {
-            initSelect2($(this));
-        });
-    })();
-</script>
-
-<script>
-    // Сортировка и фильтрация таблицы логов
-    (function(){
-        const table = document.getElementById('station-logs-table');
-        if (!table) return;
-        const thead = table.tHead;
-        const tbody = table.tBodies[0];
-        let sortState = { key: 'date', asc: false };
-
-        function val(node, dataKey){
-            if (!node) return '';
-            return (node.dataset && node.dataset[dataKey]) ? node.dataset[dataKey] : node.textContent.trim().toLowerCase();
-        }
-
-        function sortBy(key){
-            const rows = Array.from(tbody.rows);
-            rows.sort((r1, r2)=>{
-                let a='', b='';
-                if (key === 'date'){ a=val(r1.cells[0], 'date'); b=val(r2.cells[0], 'date'); }
-                else if (key === 'time'){ a=val(r1.cells[1], 'time'); b=val(r2.cells[1], 'time'); }
-                else if (key === 'user'){ a=val(r1.cells[2], 'user'); b=val(r2.cells[2], 'user'); }
-                else if (key === 'action'){
-                    a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
-                    b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
-                } else if (key === 'database_version'){
-                    a = val(r1.cells[4], 'database-version');
-                    b = val(r2.cells[4], 'database-version');
-                } else if (key === 'details'){
-                    a = val(r1.cells[5].querySelector('[data-details]')||r1.cells[5], 'details');
-                    b = val(r2.cells[5].querySelector('[data-details]')||r2.cells[5], 'details');
-                }
-                if (a<b) return sortState.asc ? -1 : 1;
-                if (a>b) return sortState.asc ? 1 : -1;
-                return 0;
-            });
-            tbody.append(...rows);
-            sortState = { key, asc: !sortState.asc };
-        }
-
-        thead.addEventListener('click', (e)=>{
-            const th = e.target.closest('th[data-key]');
-            if (!th) return;
-            sortBy(th.dataset.key);
-        });
-
-        // Добавляем строку фильтров
-        const filterRow = document.createElement('tr');
-        ['date','time','user','action','database_version','details'].forEach((key, idx)=>{
-            const td = document.createElement('td');
-            const input = document.createElement('input');
-            input.className = 'form-control form-control-sm';
-            input.placeholder = 'Фильтр';
-            input.addEventListener('input', ()=>{
-                const terms = Array.from(filterRow.querySelectorAll('input')).map(i=>i.value.trim().toLowerCase());
-                for (const tr of tbody.rows){
-                    const dDate = val(tr.cells[0], 'date');
-                    const dTime = val(tr.cells[1], 'time');
-                    const dUser = val(tr.cells[2], 'user');
-                    const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
-                    const dDatabaseVersion = val(tr.cells[4], 'database-version');
-                    const dDetails = val(tr.cells[5].querySelector('[data-details]')||tr.cells[5], 'details');
-                    const data = [dDate, dTime, dUser, dAction, dDatabaseVersion, dDetails];
-                    const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
-                    tr.style.display = ok ? '' : 'none';
-                }
-            });
-            td.appendChild(input);
-            filterRow.appendChild(td);
-        });
-        thead.appendChild(filterRow);
-    })();
-</script>
-
 <script>
     // Авто-расширение textarea в колонке "Примечание" (чтобы был виден весь текст)
     (function () {
@@ -1466,6 +1301,12 @@
                         // Парсим во временный контейнер и инкрементально вставляем по чанкам
                         const tmp = document.createElement('tbody');
                         tmp.innerHTML = html;
+                        // Скрытые input вне <tr> браузер может оставить соседями строк — перенесём в #machinesForm
+                        const machinesRoot = document.getElementById('machinesForm');
+                        Array.from(tmp.querySelectorAll(':scope > input[type="hidden"]')).forEach(function (inp) {
+                            if (machinesRoot) machinesRoot.insertBefore(inp, machinesRoot.firstChild);
+                            else inp.remove();
+                        });
                         const rows = Array.from(tmp.children).filter(n => n.tagName === 'TR');
 
                         // Очистим текущий tbody (убираем спиннер)
@@ -1753,7 +1594,7 @@
         function reloadMachinesTbody(selectedRounding) {
             const tbody = document.getElementById('machines-tbody');
             if (!tbody) return;
-            tbody.innerHTML = `<tr><td colspan="{{ 15 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="{{ 16 + (end_year - start_year + 1) * 2 }}" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></div>Загрузка агрегатов...</td></tr>`;
             tbody.dataset.loaded = '0';
             const url = `{{ url_for('station_bp.station_details_tbody', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits=${encodeURIComponent(selectedRounding)}`;
             fetch(url, { cache: 'no-store' })
@@ -1851,9 +1692,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Добавляем новые строки в таблицу
                 data.logs.forEach(log => {
                     const row = document.createElement('tr');
+                    const dt = log.datetime || ((log.date || '') + (log.time ? ' ' + log.time : '')).trim();
                     row.innerHTML = `
-                        <td data-date="${log.date}">${log.date}</td>
-                        <td data-time="${log.time}">${log.time}</td>
+                        <td data-datetime="${dt}" data-date="${log.date || ''}">${dt}</td>
                         <td data-user="${log.username_lower}">${log.username}</td>
                         <td><div data-action="${log.action_lower}">${log.action}</div></td>
                         <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
@@ -1861,6 +1702,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     `;
                     logsTable.appendChild(row);
                 });
+
+                const tbl = document.getElementById('station-logs-table');
+                if (tbl && typeof tbl._applyLogFilters === 'function') tbl._applyLogFilters();
                 
                 // Обновляем счетчик
                 currentOffset += data.count;

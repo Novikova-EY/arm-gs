@@ -551,6 +551,37 @@ def test_south_federal_district_without_nt_compact_label_for_fo_summary():
     assert row["pd_pd_nt_extra_row"] is False
 
 
+def test_kaliningrad_sync_area_label_omits_without_nt_suffix():
+    """СЗ Калининграда не пара с/без НТ — суффикс «без НТ» в названии не нужен."""
+    from app.power_demand.models.energy_systems.synchronous_area_demand_parameter_model import (
+        SynchronousAreaDemandParameter,
+    )
+
+    row = {
+        "show_entity_cell": True,
+        "entity_label": "Синхронная зона Калининградской области без НТ",
+        "demand_model_name": SynchronousAreaDemandParameter.__name__,
+        "parameter_key": "max_power",
+        "perimeter_variant_code": "without_nt",
+        "entity_kind": "synchronous_area",
+        "entity_depth": 0,
+    }
+    service.tag_power_demand_summary_rows_for_nt_toggle([row])
+
+    assert row["entity_label"] == "Синхронная зона Калининградской области"
+    assert row["pd_pd_entity_label_nt_detail"] == "Синхронная зона Калининградской области"
+    assert row["pd_pd_entity_label_compact_nt"] == "Синхронная зона Калининградской области"
+    assert "без НТ" not in row["entity_label"]
+
+
+def test_kaliningrad_coeff_full_label_omits_without_nt_suffix():
+    label = service._pd_format_full_variant_entity_label_for_coeff(
+        "Синхронная зона Калининградской области",
+        "without_nt_without_gaes",
+    )
+    assert label == "Синхронная зона Калининградской области без заряда ГАЭС"
+    assert "без НТ" not in label
+
 def test_coeff_summary_restores_without_gaes_suffix_in_full_entity_label():
     row = {
         "show_entity_cell": True,
@@ -594,6 +625,59 @@ def test_drop_null_perimeter_variant_group_when_nt_pairs_exist():
     ]
     filtered = service._drop_null_perimeter_variant_group_when_nt_pairs_exist(groups)
     assert [code for code, _rows in filtered] == [CODE_WITH_NT, CODE_WITHOUT_NT]
+
+
+def test_reorder_first_synchronous_area_variant_blocks_puts_with_nt_first():
+    def _block(code: str, label: str) -> list[dict]:
+        return [
+            {
+                "show_entity_cell": True,
+                "entity_rowspan": 2,
+                "entity_label": label,
+                "demand_model_name": SynchronousAreaDemandParameter.__name__,
+                "perimeter_variant_code": code,
+                "parameter_key": "max_power",
+                "entity_kind": "synchronous_area",
+                "entity_depth": 0,
+            },
+            {
+                "show_entity_cell": False,
+                "entity_rowspan": 2,
+                "entity_label": label,
+                "demand_model_name": SynchronousAreaDemandParameter.__name__,
+                "perimeter_variant_code": code,
+                "parameter_key": "peak_datetime",
+                "entity_kind": "synchronous_area",
+                "entity_depth": 0,
+            },
+        ]
+
+    rows = (
+        _block(CODE_WITHOUT_NT, "Первая синхронная зона без НТ")
+        + _block(CODE_WITH_NT, "Первая синхронная зона с НТ")
+        + [
+            {
+                "show_entity_cell": True,
+                "entity_rowspan": 1,
+                "entity_label": "Вторая синхронная зона",
+                "demand_model_name": SynchronousAreaDemandParameter.__name__,
+                "perimeter_variant_code": None,
+                "parameter_key": "max_power",
+                "entity_kind": "synchronous_area",
+                "entity_depth": 0,
+            }
+        ]
+    )
+    service.reorder_first_synchronous_area_variant_blocks_in_summary_rows(rows)
+    codes = [
+        r["perimeter_variant_code"]
+        for r in rows
+        if r.get("show_entity_cell") and r.get("perimeter_variant_code")
+    ]
+    assert codes == [CODE_WITH_NT, CODE_WITHOUT_NT]
+    assert rows[0]["entity_label"] == "Первая синхронная зона с НТ"
+    assert rows[2]["entity_label"] == "Первая синхронная зона без НТ"
+    assert rows[4]["entity_label"] == "Вторая синхронная зона"
 
 
 def test_exclude_o1_perimeter_variant_summary_rows():

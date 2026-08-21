@@ -1575,6 +1575,17 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
     print(f"[IMPORT_FUEL_DB] Шаг 0: Старт. user={user} filename={filename}")
     logger.info("[IMPORT_FUEL_DB_EQUIPMENT_GROUPS] start user=%s filename=%s", user, filename)
+
+    from app.fuel.services.fuel_imports.fuel_excel_file_guard_services import (
+        reject_access_stations_or_extra_fuel_excel,
+        reject_imena_stanciy_on_fuel_db_import,
+    )
+
+    # Защита: Access «Станции*.xlsx» / «Доп_угли» — только на «Сведения о работе ТЭС».
+    reject_access_stations_or_extra_fuel_excel(filename, file=file, context="fuel_db")
+    # Access «Имена_станций» — только жёлтая кнопка soft-import, не этот шаблон.
+    reject_imena_stanciy_on_fuel_db_import(filename, file=file)
+
     print("[IMPORT_FUEL_DB] Шаг 1: Чтение Excel — определение заголовков и колонок...")
     xls = pd.ExcelFile(file)
     sheet_name = xls.sheet_names[0]
@@ -1594,7 +1605,11 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
 
     if "equipment_group" not in df.columns:
         raise ValueError(
-            "Неверный шаблон файла: отсутствует колонка equipment_group."
+            "Неверный шаблон файла: отсутствует колонка equipment_group. "
+            "Синяя «Импорт из Excel» принимает экспорт с этой страницы "
+            "(колонки id_station и equipment_group). "
+            "Access «Имена_станций.xlsx» загружайте жёлтой кнопкой "
+            "«Проверить / загрузить флаги»."
         )
     has_machine = "id_machine" in df.columns
     has_station = "id_station" in df.columns
@@ -2656,6 +2671,18 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
             print(f"[IMPORT_FUEL_DB]   Обновлено записей EquipmentGroup: {updated_groups_fields}")
         else:
             print("[IMPORT_FUEL_DB]   Нет изменений в EquipmentGroup")
+
+        from app.fuel.services.equipment_groups.equipment_group_edit_services import (
+            sync_composite_children_subject_rf_from_parents,
+        )
+
+        child_subject_synced = sync_composite_children_subject_rf_from_parents()
+        if child_subject_synced:
+            db.session.commit()
+            print(
+                "[IMPORT_FUEL_DB]   Субъект РФ дочерних групп взят с родителя (main): "
+                f"{child_subject_synced}"
+            )
     except Exception as e:
         print(f"[IMPORT_FUEL_DB]   ОШИБКА при заполнении полей EquipmentGroup: {e}")
         try:

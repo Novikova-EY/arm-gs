@@ -1560,13 +1560,12 @@
     <div class="card">
         <div class="card-body p-0">
             <div class="table-responsive">
-            <table class="table table-hover table-striped table-bordered" id="ec-summary-logs-table"
+            <table class="table table-hover table-striped table-bordered change-log-table" id="ec-summary-logs-table"
                    data-ec-logs-base-url="{{ url_for('energy_consumption_bp.demand_summary_scope_logs', scope=active_summary) }}">
                 <thead class="table-light">
                     <tr>
-                        <th class="ec-log-col-date" style="width:140px;">����</th>
-                        <th class="ec-log-col-time" style="width:120px;">�����</th>
-                        <th class="ec-log-col-user" style="width:260px;">������������</th>
+                        <th data-key="datetime" class="ec-log-col-datetime log-col-datetime" style="width:260px; cursor: pointer;">Дата и время</th>
+                        <th data-key="user" class="ec-log-col-user log-col-user" style="width:300px; cursor: pointer;">Пользователь</th>
                         <th class="ec-log-col-action">��������</th>
                         <th class="ec-log-col-ver" style="width:150px;">������ ���� ������</th>
                         <th class="ec-log-col-details">����������</th>
@@ -1576,8 +1575,7 @@
                     {% if ec_summary_logs_formatted and ec_summary_logs_formatted|length > 0 %}
                         {% for log in ec_summary_logs_formatted %}
                             <tr>
-                                <td data-date="{{ log.date }}">{{ log.date }}</td>
-                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-datetime="{{ log.datetime }}" data-date="{{ log.date }}">{{ log.datetime }}</td>
                                 <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
                                 <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
                                 <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
@@ -1611,10 +1609,6 @@
     </div>
     <div class="my-3"></div>
 </div>
-<style>
-#ec-summary-logs-table td:nth-child(4) div, #ec-summary-logs-table td:nth-child(6) div { white-space: pre-wrap; }
-#ec-summary-logs-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
-</style>
 <script>
 (function () {
     var tbl = document.getElementById("ec-summary-logs-table");
@@ -1626,17 +1620,20 @@
     var totalEl = document.getElementById("ec-summary-logs-total");
     function rowFromLog(log) {
         var tr = document.createElement("tr");
+        if (window.ChangeLogTable && ChangeLogTable.rowFromLog) {
+            return ChangeLogTable.rowFromLog(log);
+        }
+        var dt = (log.datetime || ((log.date || '') + (log.time ? ' ' + log.time : '')).trim());
         tr.innerHTML =
-            '<td data-date="' + (log.date || "") + '">' + (log.date || "") + "</td>" +
-            '<td data-time="' + (log.time || "") + '">' + (log.time || "") + "</td>" +
-            '<td data-user="' + (log.username_lower || "") + '">' + (log.username || "") + "</td>" +
-            '<td><div data-action="' + (log.action_lower || "") + '">' + (log.action || "") + "</div></td>" +
-            '<td data-database-version="' + String(log.database_version || "").toLowerCase() + '">' + (log.database_version || "") + "</td>" +
+            '<td data-datetime="' + dt + '" data-date="' + (log.date || '') + '">' + dt + '</td>' +
+            '<td data-user="' + (log.username_lower || '') + '">' + (log.username || '') + '</td>' +
+            '<td><div data-action="' + (log.action_lower || '') + '">' + (log.action || '') + '</div></td>' +
+            '<td data-database-version="' + String(log.database_version || '').toLowerCase() + '">' + (log.database_version || '') + '</td>' +
             '<td>' + (log.details
-                ? '<div data-details="' + (log.details_lower || "") + '" style="white-space: pre-wrap;"></div>'
-                : "") + "</td>";
+                ? '<div data-details="' + (log.details_lower || '') + '" style="white-space: pre-wrap;"></div>'
+                : '') + '</td>';
         if (log.details) {
-            tr.cells[5].querySelector("div").textContent = log.details;
+            tr.cells[4].querySelector('div').textContent = log.details;
         }
         return tr;
     }
@@ -1664,6 +1661,8 @@
                     if (!data || !data.ok || !data.logs) return;
                     var tb = tbl.tBodies[0];
                     data.logs.forEach(function (log) { tb.appendChild(rowFromLog(log)); });
+                    if (tbl._applyLogFilters) tbl._applyLogFilters();
+                    else if (window.ChangeLogTable) ChangeLogTable.applyFilters(tbl);
                     off += data.logs.length;
                     moreBtn.setAttribute("data-offset", String(off));
                     if (shownEl) shownEl.textContent = String(off);

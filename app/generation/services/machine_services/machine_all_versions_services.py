@@ -58,7 +58,7 @@ from config import SCHEMA_ENERGY_BALANCE, SCHEMA_GENERATION
 
 logger = logging.getLogger(__name__)
 
-_MACHINE_STATION_DETAILS_FIELDS = ("fuel_so", "note", "id_gen_company")
+_MACHINE_STATION_DETAILS_FIELDS = ("fuel_so", "note", "id_gen_company", "is_archived")
 
 
 def _norm_text(v) -> str:
@@ -109,7 +109,29 @@ def _machine_ids_from_form(form_data) -> list[int]:
                 suffix = key[len(prefix) :]
                 if suffix.isdigit():
                     ids.add(int(suffix))
+    if hasattr(form_data, "getlist"):
+        for raw in form_data.getlist("machines_archive[]"):
+            if str(raw).isdigit():
+                ids.add(int(raw))
     return sorted(ids)
+
+
+def _archived_machine_ids_from_form(form_data) -> set[int]:
+    ids: set[int] = set()
+    try:
+        if hasattr(form_data, "getlist"):
+            for raw in form_data.getlist("machines_archive[]"):
+                if str(raw).isdigit():
+                    ids.add(int(raw))
+        elif "machines_archive[]" in (form_data.keys() if hasattr(form_data, "keys") else ()):
+            raw = form_data.get("machines_archive[]")
+            if isinstance(raw, (list, tuple, set)):
+                ids = {int(x) for x in raw if str(x).isdigit()}
+            elif raw is not None and str(raw).isdigit():
+                ids = {int(raw)}
+    except (TypeError, ValueError):
+        return set()
+    return ids
 
 
 def _read_machine_form_values(form_data, machine_id: int) -> dict[str, Any]:
@@ -121,11 +143,22 @@ def _read_machine_form_values(form_data, machine_id: int) -> dict[str, Any]:
         gen_company_id = form_data.get(gen_company_key, type=int)
     if gen_company_id is None:
         gen_company_id = _parse_int_form_val(form_data.get(gen_company_key))
-    return {
+    values = {
         "fuel_so": fuel_so,
         "note": note,
         "id_gen_company": gen_company_id,
     }
+    archive_form_present = False
+    if hasattr(form_data, "get") and form_data.get("machines_archive_form"):
+        archive_form_present = True
+    elif "machines_archive_form" in (form_data.keys() if hasattr(form_data, "keys") else ()):
+        archive_form_present = True
+    elif "machines_archive[]" in (form_data.keys() if hasattr(form_data, "keys") else ()):
+        archive_form_present = True
+    if archive_form_present:
+        archived_ids = _archived_machine_ids_from_form(form_data)
+        values["is_archived"] = machine_id in archived_ids
+    return values
 
 
 def _all_database_version_ids() -> list[Optional[int]]:
@@ -520,6 +553,7 @@ def _apply_values_to_machine(
         "fuel_so": "Топливо",
         "note": "Примечание",
         "id_gen_company": "Собственник",
+        "is_archived": "Архив",
     }
     for field in _MACHINE_STATION_DETAILS_FIELDS:
         if field not in values:
@@ -530,6 +564,8 @@ def _apply_values_to_machine(
             old_cmp, new_cmp = _norm_text(old_val), _norm_text(new_val)
         elif field == "note":
             old_cmp, new_cmp = _norm_text(old_val), _norm_text(new_val)
+        elif field == "is_archived":
+            old_cmp, new_cmp = bool(old_val), bool(new_val)
         else:
             old_cmp, new_cmp = old_val, new_val
         if old_cmp != new_cmp:
@@ -537,6 +573,9 @@ def _apply_values_to_machine(
             if field == "id_gen_company":
                 old_str = _format_gen_company_for_log(old_val)
                 new_str = _format_gen_company_for_log(new_val)
+            elif field == "is_archived":
+                old_str = "да" if old_cmp else "нет"
+                new_str = "да" if new_cmp else "нет"
             else:
                 old_str = _format_val_for_log(old_cmp)
                 new_str = _format_val_for_log(new_cmp)
@@ -781,6 +820,8 @@ def update_station_machines_all_versions_from_form(
                     "fuel_so": form_values["fuel_so"],
                     "note": form_values["note"],
                 }
+                if "is_archived" in form_values:
+                    values_to_apply["is_archived"] = bool(form_values.get("is_archived", False))
                 if resolved_gen_company_id is not None or anchor_gen_company_id is None:
                     values_to_apply["id_gen_company"] = resolved_gen_company_id
 

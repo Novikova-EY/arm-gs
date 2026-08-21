@@ -154,6 +154,8 @@
             or (show_fuel_calc_edit_save_in_filters|default(false) and not hide_fuel_calc_edit_save_in_filters|default(false))
             or show_fuel_calc_edit_hide_empty_toggle|default(false)
             or show_fuel_detail_panels_toggle|default(false)
+            or show_stations_without_equipment_group_button|default(false)
+            or show_missing_numb_toggle|default(false)
         ) %}
         {% if not hide_pagination_and_per_page|default(false) or _show_fuel_edit_filter_actions %}
         <!-- Справа: кнопки редактирования; пагинация/«Показать» — если не скрыты. -->
@@ -179,19 +181,47 @@
             {% if show_fuel_calc_edit_save_in_filters|default(false) and not hide_fuel_calc_edit_save_in_filters|default(false) and current_user.is_authenticated and current_user.has_admin %}
             <button type="submit" form="{{ fuel_calc_edit_save_form_id|default('fuelParamsBulkEditForm') }}" class="btn btn-outline-primary flex-shrink-0">Сохранить</button>
             {% endif %}
+            {% if show_stations_without_equipment_group_button|default(false) and current_user.is_authenticated %}
+            <a href="{{ url_for('fuel_bp.stations_without_equipment_group') }}"
+               class="btn btn-outline-success flex-shrink-0"
+               target="_blank"
+               rel="noopener noreferrer"
+               title="Перейти к проверке агрегатов без группы оборудования">
+                Агрегаты без группы оборудования
+            </a>
+            {% endif %}
+            {% if show_missing_numb_toggle|default(false) and current_user.is_authenticated %}
+            <a href="{{ missing_numb_toggle_url|default(url_for('fuel_bp.stations_equipment_groups', missing_numb='1')) }}"
+               id="segMissingNumbToggle"
+               class="btn flex-shrink-0 {% if show_missing_numb|default(false) %}btn-danger text-white{% else %}btn-outline-danger{% endif %}"
+               aria-pressed="{{ 'true' if show_missing_numb|default(false) else 'false' }}"
+               title="Показать группы без кода numb и с дублирующимся numb">
+                Проверка
+            </a>
+            {% endif %}
             {% if show_fuel_calc_edit_hide_empty_toggle|default(false) %}
+            {% set _empty_default_on = fuel_empty_rows_toggle_default_on|default(true) %}
+            {% set _empty_style = fuel_empty_rows_toggle_style|default('secondary') %}
+            {% set _empty_title_off = fuel_empty_rows_toggle_title_off|default('Показать строки, у которых показатели не заполнены (жёлтые строки изменения Nуст всегда видны)') %}
+            {% set _empty_title_on = fuel_empty_rows_toggle_title_on|default('Скрыть строки, у которых показатели не заполнены (жёлтые строки изменения Nуст всегда видны)') %}
             <button type="button"
                     id="fuelEditHideEmptyToggle"
-                    class="btn btn-secondary text-wrap flex-shrink-0"
-                    aria-pressed="true"
-                    title="Скрыть строки, у которых показатели не заполнены (жёлтые строки изменения Nуст всегда видны)">
+                    class="btn text-wrap flex-shrink-0 {% if _empty_style == 'primary' %}{% if _empty_default_on %}btn-primary{% else %}btn-outline-primary{% endif %}{% else %}{% if _empty_default_on %}btn-secondary{% else %}btn-outline-secondary{% endif %}{% endif %}"
+                    aria-pressed="{{ 'true' if _empty_default_on else 'false' }}"
+                    data-default-show-empty="{{ '1' if _empty_default_on else '0' }}"
+                    data-toggle-style="{{ _empty_style }}"
+                    {% if fuel_empty_rows_toggle_storage_key|default('') %}data-storage-key="{{ fuel_empty_rows_toggle_storage_key }}"{% endif %}
+                    {% if fuel_empty_rows_toggle_empty_mode|default('') %}data-empty-mode="{{ fuel_empty_rows_toggle_empty_mode }}"{% endif %}
+                    data-title-on="{{ _empty_title_on|e }}"
+                    data-title-off="{{ _empty_title_off|e }}"
+                    title="{{ (_empty_title_on if _empty_default_on else _empty_title_off)|e }}">
                 Пустые строки
             </button>
             {% endif %}
             {% if show_fuel_detail_panels_toggle|default(false) %}
             <button type="button"
                     id="fuelDetailPanelsToggle"
-                    class="btn btn-primary flex-shrink-0 text-nowrap"
+                    class="btn btn-success flex-shrink-0 text-nowrap"
                     aria-pressed="true"
                     title="Показать/скрыть таблицы детализации топлива">
                 Детализация топлива

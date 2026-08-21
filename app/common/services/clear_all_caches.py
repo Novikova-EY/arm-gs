@@ -74,6 +74,10 @@ def clear_all_application_caches() -> dict[str, Any]:
             get_ues_to_res_ids_map,
             get_res_to_ues_id_map,
         )
+        from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+            get_synchronous_area_list_full,
+            get_synchronous_area_list,
+        )
         from app.common.services.get_services.energy_systems.regional_energy_system_get_services import (
             get_res_to_rd_ids_map,
             get_res_to_fd_ids_map,
@@ -110,6 +114,8 @@ def clear_all_application_caches() -> dict[str, Any]:
             get_res_to_fd_ids_map,
             get_res_to_synchronous_area_ids_map,
             get_regional_energy_systems_map,
+            get_synchronous_area_list_full,
+            get_synchronous_area_list,
         ):
             _safe_cache_clear(fn)
         clear_planning_period_year_caches()
@@ -164,12 +170,20 @@ def clear_all_application_caches() -> dict[str, Any]:
         po_ft.clear_formula_text_override_cache()
         ved_ft.clear_formula_text_override_cache()
 
+    def _fuel() -> None:
+        from app.fuel.services.formula_text.fuel_formula_text_services import (
+            clear_formula_text_override_cache as clear_fue_formula_text_cache,
+        )
+
+        clear_fue_formula_text_cache()
+
     _run_clear("станции / агрегации", _stations, cleared, errors)
     _run_clear("справочники / территории / энергосистемы", _refdata, cleared, errors)
     _run_clear("сводки нагрузок (power demand)", _power_demand, cleared, errors)
     _run_clear("сводки потребления (energy consumption)", _energy_consumption, cleared, errors)
     _run_clear("энергобаланс", _energy_balance, cleared, errors)
     _run_clear("экономика", _economics, cleared, errors)
+    _run_clear("топливо", _fuel, cleared, errors)
 
     return {
         "cleared": cleared,

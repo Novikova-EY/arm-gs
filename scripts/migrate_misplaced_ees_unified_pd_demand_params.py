@@ -54,7 +54,7 @@ _COPY_FIELDS = (
     "is_historical_maximum",
     "year_number",
     "max_power_consumption_mw",
-    "peak_datetime_msk",
+    "peak_datetime",
     "avg_daily_air_temp_c",
     "note",
     "database_version_id",

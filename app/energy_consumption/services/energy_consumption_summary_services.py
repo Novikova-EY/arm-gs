@@ -168,9 +168,7 @@ _EES_RUSSIA_WITH_NT_WITH_GAES_FORMULA_TOOLTIP = (
     "Потребление ЭЭС России с НТ с зарядом ГАЭС, млн кВтч = "
     "Первая синхронная зона с НТ с зарядом ГАЭС + "
     "Вторая синхронная зона + "
-    "Синхронная зона Калининградской области + "
-    "ТИТЭС + "
-    "потребление ЭЭ Новыми территориями"
+    "ТИТЭС"
 )
 _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_VARIANT = "with_nt_with_gaes_with_kaliningrad_es"
 # Актуальные коды справочника (короткие) + legacy с суффиксом ``_es``.
@@ -191,17 +189,13 @@ _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES = frozenset(
     }
 )
 _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP = (
-    "Потребление Первая синхронная зона с НТ с зарядом ГАЭС (с ЭС Калининградской области), "
-    "млн кВтч = сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону "
-    "(в т.ч. ОЭС Северо-Запада с ЭС Калининградской области) + "
-    "заряд ГАЭС + "
-    "потребление ЭЭ Новыми территориями"
+    "Потребление Первая синхронная зона с НТ с зарядом ГАЭС, млн кВтч = "
+    "сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону "
+    "(для ОЭС Юга — с НТ с зарядом ГАЭС); без ОЭС Востока"
 )
 _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP = (
-    "Потребление Первая синхронная зона с НТ без заряда ГАЭС (без ЭС Калининградской области), "
-    "млн кВтч = "
-    "Первая синхронная зона с НТ с зарядом ГАЭС (с ЭС Калининградской области) − "
-    "заряд ГАЭС"
+    "Потребление Первая синхронная зона с НТ без заряда ГАЭС, млн кВтч = "
+    "Первая синхронная зона с НТ с зарядом ГАЭС − заряд ГАЭС"
 )
 _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_VARIANT = (
     "without_nt_with_gaes_without_kaliningrad_es"
@@ -219,24 +213,35 @@ _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_CODES = frozenset(
     }
 )
 _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP = (
-    "Потребление Первая синхронная зона без НТ с зарядом ГАЭС (без ЭС Калининградской области), "
-    "млн кВтч = "
+    "Потребление Первая синхронная зона без НТ с зарядом ГАЭС, млн кВтч = "
     "сумма потреблений ЭЭ всех ОЭС, входящих в первую синхронную зону "
-    "(как на странице «Первая синхронная зона без НТ», без заряда ГАЭС; "
-    "для ОЭС Юга — без НТ с зарядом ГАЭС), "
-    "без ОЭС Востока и ОЭС «Новые территории»"
+    "(для ОЭС Юга — без НТ с зарядом ГАЭС), "
+    "без ОЭС Востока и ОЭС «Новые территории»; "
+    "с года выделения синхронной зоны Калининградской области − ЭС Калининградской области"
 )
 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_VARIANT = (
     "without_nt_without_gaes_with_kaliningrad_es"
 )
+_FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_CODES = frozenset(
+    {
+        _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_VARIANT,
+        "without_nt_without_gaes_kaliningrad",
+    }
+)
 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP = (
-    "Потребление Первая синхронная зона без НТ без заряда ГАЭС (с ЭС Калининградской области), "
-    "млн кВтч = "
+    "Потребление Первая синхронная зона без НТ без заряда ГАЭС "
+    "(с ЭС Калининградской области), млн кВтч = "
     "Первая синхронная зона без НТ с зарядом ГАЭС (с ЭС Калининградской области) − "
     "заряд ГАЭС"
 )
 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT = (
     "without_nt_without_gaes_without_kaliningrad_es"
+)
+_FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES = frozenset(
+    {
+        _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT,
+        "without_nt_without_gaes_without_kaliningrad",
+    }
 )
 # Порядок строк «Первая синхронная зона» на сводной таблице при «+НТ» и «+заряд ГАЭС».
 _FIRST_SA_VARIANT_DISPLAY_ORDER: dict[str, int] = {
@@ -254,10 +259,8 @@ _FIRST_SA_VARIANT_DISPLAY_ORDER: dict[str, int] = {
     "without_nt_without_gaes_without_kaliningrad": 5,
 }
 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP = (
-    "Потребление Первая синхронная зона без НТ без заряда ГАЭС (без ЭС Калининградской области), "
-    "млн кВтч = "
-    "Первая синхронная зона без НТ с зарядом ГАЭС (без ЭС Калининградской области) − "
-    "заряд ГАЭС"
+    "Потребление Первая синхронная зона без НТ без заряда ГАЭС, млн кВтч = "
+    "Первая синхронная зона без НТ с зарядом ГАЭС − заряд ГАЭС"
 )
 _UES_EAST_NAME_CF = "оэс востока"
 _KALININGRAD_ES_NAME_CF = "эс калининградской области"
@@ -349,7 +352,7 @@ ENERGY_CONSUMPTION_YOY_PARAMETER_KEY = "energy_consumption_yoy_growth_pct"
 ENERGY_CONSUMPTION_SIPR_ABS_PARAMETER_KEY = "energy_consumption_sipr_abs_growth_mln"
 ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY = "energy_consumption_sipr_yoy_growth_pct"
 
-# Годовой темп прироста, % — всегда с точностью до 5 знаков после запятой (независимо от rounding_digits в URL).
+# Годовой темп прироста, % — всегда ровно 2 знака после запятой (ячейка и title при наведении).
 _ENERGY_CONSUMPTION_YOY_DISPLAY_DECIMALS = 2
 
 GAES_CHARGE_PARAMETER_KEY = "gaes_charge_consumption_mln_kvt_ch"
@@ -4239,10 +4242,15 @@ def _year_applies_to_summary_row_perimeter_variant(row: dict[str, Any], year: in
 def _formula_year_applies_to_row_perimeter_variant(row: dict[str, Any], year: int) -> bool:
     """Формулы считаются только в интервале «Год с»/«Год по» варианта периметра.
 
+    Исключение: «Первая синхронная зона» — формулы пишутся по всем годам; «Год с»
+    ограничивает только вычитание Калининграда (как на /power_demand/).
+
     В отличие от ``_year_applies_to_summary_row_perimeter_variant``, не учитывает
     ``pd_ec_skip_perimeter_variant_year_bounds`` (на /summary/oes|fo|ez ввод по годам
     не ограничен, но формулы по-прежнему только в периоде варианта).
     """
+    if _is_first_sync_area_summary_table_row(row):
+        return True
     code = row.get("perimeter_variant_code")
     if code:
         fy, ty = perimeter_variant_year_bounds_for_code(str(code))
@@ -7546,6 +7554,47 @@ def _is_first_sync_area_summary_table_row(row: dict[str, Any]) -> bool:
     return _summary_row_base_label_cf(row).startswith(_FIRST_SYNC_AREA_BASE_LABEL_CF)
 
 
+def _is_first_sa_without_gaes_formula_row(row: dict[str, Any]) -> bool:
+    """«Первая СЗ … без заряда ГAЭС» — только dedicated apply_first_sa_* формулы."""
+    if not _is_first_sync_area_summary_table_row(row):
+        return False
+    return "without_gaes" in str(row.get("perimeter_variant_code") or "")
+
+
+def _reapply_first_synchronous_area_gaes_variant_formulas(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+) -> None:
+    """Первая СЗ: принудительно Σ ОЭС и with − заряд (не устаревшие значения БД / hub)."""
+    apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(
+        summary_rows,
+        years,
+        rounding_digits,
+    )
+    apply_first_sa_without_nt_with_gaes_without_kaliningrad_sum_formula(
+        summary_rows,
+        years,
+        rounding_digits,
+    )
+    apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
+        summary_rows,
+        years,
+        rounding_digits,
+    )
+    apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
+        summary_rows,
+        years,
+        rounding_digits,
+    )
+    apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
+        summary_rows,
+        years,
+        rounding_digits,
+    )
+    ensure_first_sa_variant_formula_tooltips(summary_rows)
+
+
 def _last_first_sync_area_summary_table_row_index(
     summary_rows: list[dict[str, Any]],
 ) -> int | None:
@@ -7969,14 +8018,24 @@ def _first_sa_without_nt_with_gaes_parameter_year_values(
     summary_rows: list[dict[str, Any]],
     years: list[int],
     parameter_key: str,
+    *,
+    allow_db_fallback: bool = True,
 ) -> dict[int, Decimal | None]:
-    first_sa_row = _find_sync_area_source_row(
-        summary_rows,
-        parameter_key=parameter_key,
-        base_label_prefix_cf=_FIRST_SYNC_AREA_BASE_LABEL_CF,
-        variant_predicate=_is_without_nt_with_gaes_without_kaliningrad_variant_row,
-    )
-    if first_sa_row is not None:
+    # 1) legacy/без Калининграда; 2) каталожный ``without_nt_with_gaes_kaliningrad``
+    # (на сводке в нём тоже лежат значения *без* ЭС Калининграда).
+    for variant_predicate in (
+        _is_without_nt_with_gaes_without_kaliningrad_variant_row,
+        lambda row: str(row.get("perimeter_variant_code") or "")
+        == "without_nt_with_gaes_kaliningrad",
+    ):
+        first_sa_row = _find_sync_area_source_row(
+            summary_rows,
+            parameter_key=parameter_key,
+            base_label_prefix_cf=_FIRST_SYNC_AREA_BASE_LABEL_CF,
+            variant_predicate=variant_predicate,
+        )
+        if first_sa_row is None:
+            continue
         raw = _raw_year_values_from_summary_row(
             first_sa_row,
             years,
@@ -7984,6 +8043,9 @@ def _first_sa_without_nt_with_gaes_parameter_year_values(
         )
         if _year_values_have_any_numeric(raw):
             return raw
+
+    if not allow_db_fallback:
+        return {}
 
     first_sa_id = _resolve_first_synchronous_area_id()
     if first_sa_id is None:
@@ -7999,7 +8061,8 @@ def _first_sa_without_nt_with_gaes_parameter_year_values(
 
     for variant_code in (
         _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_VARIANT,
-        CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES,
+        "without_nt_with_gaes_without_kaliningrad",
+        CODE_WITHOUT_NT_WITH_GAES,
     ):
         raw = _year_values_from_parent_demand_rows(
             SynchronousAreaEnergyConsumptionParameter,
@@ -8011,25 +8074,7 @@ def _first_sa_without_nt_with_gaes_parameter_year_values(
         )
         if _year_values_have_any_numeric(raw):
             return raw
-
-    source_maps = [
-        _year_values_sum_ues_in_synchronous_area(
-            first_sa_id,
-            years,
-            parameter_key,
-            ues_variant_code=CODE_WITHOUT_NT,
-            ues_variant_code_for_ues_id=_first_sa_without_nt_with_gaes_ues_variant_code_for_ues_id,
-        ),
-        _gaes_charge_year_values_for_first_sa_without_nt(
-            summary_rows,
-            years,
-            first_sa_id=first_sa_id,
-        ),
-    ]
-    source_maps = [item for item in source_maps if _year_values_have_any_numeric(item)]
-    if not source_maps:
-        return {}
-    return _sum_year_value_dicts(years, *source_maps)
+    return {}
 
 
 def _first_sa_with_nt_with_gaes_parameter_year_values(
@@ -8074,21 +8119,78 @@ def _first_sa_without_nt_with_gaes_with_kaliningrad_parameter_year_values(
     summary_rows: list[dict[str, Any]],
     years: list[int],
     parameter_key: str,
+    *,
+    allow_db_fallback: bool = True,
 ) -> dict[int, Decimal | None]:
-    first_sa_row = _find_sync_area_source_row(
+    """Первая СЗ без НТ с зарядом ГАЭС *с* ЭС Калининграда.
+
+    На сводке код ``without_nt_with_gaes_kaliningrad`` хранит значения *без* ЭС
+    Калининграда. Legacy ``*_with_kaliningrad_es`` — настоящие «с Калининградом».
+    Если legacy-строки нет: «с Калининградом» = «без» + СЗ Калининграда
+    (СЗ только с года её выделения).
+    """
+    legacy_with_kal_row = _find_sync_area_source_row(
         summary_rows,
         parameter_key=parameter_key,
         base_label_prefix_cf=_FIRST_SYNC_AREA_BASE_LABEL_CF,
-        variant_predicate=_is_without_nt_with_gaes_with_kaliningrad_variant_row,
+        variant_predicate=lambda row: str(row.get("perimeter_variant_code") or "")
+        in {
+            CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES,
+            "without_nt_with_gaes_with_kaliningrad_es",
+        },
     )
-    if first_sa_row is not None:
+    if legacy_with_kal_row is not None:
         raw = _raw_year_values_from_summary_row(
-            first_sa_row,
+            legacy_with_kal_row,
             years,
             ignore_perimeter_variant_year_bounds=True,
         )
         if _year_values_have_any_numeric(raw):
             return raw
+
+    without_kal = _first_sa_without_nt_with_gaes_parameter_year_values(
+        summary_rows,
+        years,
+        parameter_key,
+        allow_db_fallback=allow_db_fallback,
+    )
+    if allow_db_fallback:
+        kal = _kaliningrad_sync_area_parameter_year_values(
+            summary_rows,
+            years,
+            parameter_key,
+        )
+    else:
+        kal = {}
+        for row in summary_rows:
+            if row.get("demand_model_name") != SynchronousAreaEnergyConsumptionParameter.__name__:
+                continue
+            if row.get("parameter_key") != parameter_key:
+                continue
+            if _KALININGRAD_SYNC_AREA_LABEL_TOKEN_CF not in _summary_row_base_label_cf(row):
+                continue
+            kal = _raw_year_values_from_summary_row(
+                row,
+                years,
+                ignore_perimeter_variant_year_bounds=True,
+            )
+            break
+    fy, ty = kaliningrad_sync_area_year_bounds()
+    if fy is not None or ty is not None:
+        kal = {
+            int(y): (
+                kal.get(int(y))
+                if (fy is None or int(y) >= int(fy))
+                and (ty is None or int(y) <= int(ty))
+                else None
+            )
+            for y in years
+        }
+    if _year_values_have_any_numeric(without_kal) or _year_values_have_any_numeric(kal):
+        return _sum_year_value_dicts(years, without_kal, kal)
+
+    if not allow_db_fallback:
+        return {}
 
     first_sa_id = _resolve_first_synchronous_area_id()
     if first_sa_id is None:
@@ -8105,19 +8207,6 @@ def _first_sa_without_nt_with_gaes_with_kaliningrad_parameter_year_values(
         )
         if _year_values_have_any_numeric(raw):
             return raw
-
-    without_kal = _first_sa_without_nt_with_gaes_parameter_year_values(
-        summary_rows,
-        years,
-        parameter_key,
-    )
-    kal = _kaliningrad_sync_area_parameter_year_values(
-        summary_rows,
-        years,
-        parameter_key,
-    )
-    if _year_values_have_any_numeric(without_kal) or _year_values_have_any_numeric(kal):
-        return _sum_year_value_dicts(years, without_kal, kal)
     return {}
 
 
@@ -9160,38 +9249,54 @@ def _year_values_sum_ues_in_first_sa_with_nt_with_gaes_with_kaliningrad_es(
     years: list[int],
     parameter_key: str,
 ) -> dict[int, Decimal | None]:
-    """Сумма ОЭС первой СЗ для варианта with_nt_with_gaes (с ЭС Калининграда).
+    """Сумма ОЭС первой СЗ для варианта «с НТ с зарядом ГАЭС».
 
-    ОЭС Северо-Запада — обычная строка ``with_nt_with_gaes`` (без отдельного варианта
-    with_kaliningrad_es). В сумму входят ОЭС первой СЗ и ОЭС «Новые территории»;
-    исключается только ОЭС Востока.
+    Для ОЭС Юга — ``with_nt_with_gaes`` (НТ уже входят в эту строку ОЭС Юга);
+    для остальных ОЭС — как «с НТ». Исключается ОЭС Востока.
+    Отдельно ОЭС «Новые территории» не добавляется.
     """
-    exclude_ues_ids = _first_sa_with_nt_with_gaes_ues_exclude_ids()
-    summed = _year_values_sum_ues_in_synchronous_area(
+    return _year_values_sum_ues_in_first_sa_by_ues_variant_codes(
         first_sa_id,
         years,
         parameter_key,
-        ues_variant_code=CODE_WITH_NT_WITH_GAES,
-        exclude_ues_ids=exclude_ues_ids,
+        variant_codes_for_ues_id=_first_sa_with_nt_with_gaes_ues_variant_codes_for_ues_id,
+        exclude_ues_ids=_first_sa_with_nt_with_gaes_ues_exclude_ids(),
     )
 
-    nt_ues_id = _resolve_new_territories_union_energy_system_id()
-    if nt_ues_id is None:
-        return summed
-    if int(nt_ues_id) in _union_energy_system_ids_for_synchronous_area(first_sa_id):
-        return summed
 
-    nt_values = _year_values_from_parent_demand_rows(
-        UnionEnergySystemEnergyConsumptionParameter,
-        "id_union_energy_system",
-        int(nt_ues_id),
-        years,
-        parameter_key,
-        perimeter_variant_code=CODE_WITH_NT_WITH_GAES,
+def _first_sa_south_special_ues_variant_codes_for_ues_id(
+    ues_id: int,
+    *,
+    south_codes: tuple[str | None, ...],
+    other_codes: tuple[str | None, ...],
+) -> tuple[str | None, ...]:
+    """Варианты ОЭС: для ОЭС Юга — ``south_codes``, для остальных — ``other_codes``."""
+    south_ues_id = _resolve_union_energy_system_id_by_name_cf(SOUTH_UES_NAME_CF)
+    if south_ues_id is not None and int(ues_id) == int(south_ues_id):
+        return south_codes
+    return other_codes
+
+
+def _first_sa_with_nt_with_gaes_ues_variant_codes_for_ues_id(
+    ues_id: int,
+) -> tuple[str | None, ...]:
+    """Варианты ОЭС для первой СЗ «с НТ с зарядом ГАЭС»."""
+    return _first_sa_south_special_ues_variant_codes_for_ues_id(
+        ues_id,
+        south_codes=(CODE_WITH_NT_WITH_GAES, CODE_WITH_NT, None),
+        other_codes=(CODE_WITH_NT, CODE_WITH_NT_WITHOUT_GAES, None),
     )
-    if not _year_values_have_any_numeric(nt_values):
-        return summed
-    return _sum_year_value_dicts(years, summed, nt_values)
+
+
+def _first_sa_with_nt_without_gaes_ues_variant_codes_for_ues_id(
+    ues_id: int,
+) -> tuple[str | None, ...]:
+    """Варианты ОЭС для первой СЗ «с НТ без заряда ГАЭС»."""
+    return _first_sa_south_special_ues_variant_codes_for_ues_id(
+        ues_id,
+        south_codes=(CODE_WITH_NT_WITHOUT_GAES, CODE_WITH_NT, None),
+        other_codes=(CODE_WITH_NT, CODE_WITH_NT_WITHOUT_GAES, None),
+    )
 
 
 def _first_sa_without_nt_with_gaes_ues_variant_codes_for_ues_id(
@@ -9202,17 +9307,33 @@ def _first_sa_without_nt_with_gaes_ues_variant_codes_for_ues_id(
     Как на странице «Первая синхронная зона без НТ» (по умолчанию без заряда ГАЭС);
     для ОЭС Юга берём «без НТ с зарядом ГАЭС».
     """
-    south_ues_id = _resolve_union_energy_system_id_by_name_cf(SOUTH_UES_NAME_CF)
-    if south_ues_id is not None and int(ues_id) == int(south_ues_id):
-        return (
+    return _first_sa_south_special_ues_variant_codes_for_ues_id(
+        ues_id,
+        south_codes=(
             CODE_WITHOUT_NT_WITH_GAES,
             CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES,
             None,
-        )
-    return (
-        CODE_WITHOUT_NT,
-        CODE_WITHOUT_NT_WITHOUT_GAES,
-        None,
+        ),
+        other_codes=(
+            CODE_WITHOUT_NT,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            None,
+        ),
+    )
+
+
+def _first_sa_without_nt_without_gaes_ues_variant_codes_for_ues_id(
+    ues_id: int,
+) -> tuple[str | None, ...]:
+    """Варианты ОЭС для первой СЗ «без НТ без заряда ГАЭС»."""
+    return _first_sa_south_special_ues_variant_codes_for_ues_id(
+        ues_id,
+        south_codes=(CODE_WITHOUT_NT_WITHOUT_GAES, CODE_WITHOUT_NT, None),
+        other_codes=(
+            CODE_WITHOUT_NT,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            None,
+        ),
     )
 
 
@@ -9264,6 +9385,70 @@ def _year_values_from_ues_demand_first_variant_with_data(
     return {int(year): None for year in years}
 
 
+def _year_values_sum_ues_in_first_sa_by_ues_variant_codes(
+    first_sa_id: int,
+    years: list[int],
+    parameter_key: str,
+    *,
+    variant_codes_for_ues_id: Callable[[int], tuple[str | None, ...]],
+    exclude_ues_ids: frozenset[int] | None = None,
+) -> dict[int, Decimal | None]:
+    """Сумма ОЭС первой СЗ с выбором варианта периметра по id ОЭС."""
+    source_maps: list[dict[int, Decimal | None]] = []
+    for ues_id in _union_energy_system_ids_for_synchronous_area(first_sa_id):
+        if exclude_ues_ids and int(ues_id) in exclude_ues_ids:
+            continue
+        ues_values = _year_values_from_ues_demand_first_variant_with_data(
+            int(ues_id),
+            years,
+            parameter_key,
+            variant_codes_for_ues_id(int(ues_id)),
+        )
+        if _year_values_have_any_numeric(ues_values):
+            source_maps.append(ues_values)
+    if not source_maps:
+        return {int(year): None for year in years}
+    return _sum_year_value_dicts(years, *source_maps)
+
+
+def _year_values_sum_ues_in_first_sa_with_nt_without_gaes(
+    first_sa_id: int,
+    years: list[int],
+    parameter_key: str,
+) -> dict[int, Decimal | None]:
+    """Сумма ОЭС первой СЗ «с НТ без заряда ГАЭС» (− ОЭС Востока; НТ в ОЭС Юга)."""
+    return _year_values_sum_ues_in_first_sa_by_ues_variant_codes(
+        first_sa_id,
+        years,
+        parameter_key,
+        variant_codes_for_ues_id=_first_sa_with_nt_without_gaes_ues_variant_codes_for_ues_id,
+        exclude_ues_ids=_first_sa_with_nt_with_gaes_ues_exclude_ids(),
+    )
+
+
+def _subtract_kaliningrad_es_from_first_sa_without_kaliningrad_year_values(
+    years: list[int],
+    year_sums: dict[int, Decimal | None],
+    parameter_key: str,
+) -> dict[int, Decimal | None]:
+    """С года выделения СЗ Калининграда вычесть ЭС Калининграда из суммы первой СЗ."""
+    fy, ty = kaliningrad_sync_area_year_bounds()
+    kaliningrad_values = _kaliningrad_es_parameter_year_values(years, parameter_key)
+    out: dict[int, Decimal | None] = {}
+    for year in years:
+        y = int(year)
+        base = year_sums.get(y)
+        if base is None:
+            out[y] = None
+            continue
+        subtract_here = (fy is None or y >= int(fy)) and (ty is None or y <= int(ty))
+        if not subtract_here:
+            out[y] = base
+            continue
+        out[y] = base - (kaliningrad_values.get(y) or Decimal(0))
+    return out
+
+
 def _year_values_sum_ues_in_first_sa_without_kaliningrad_es(
     first_sa_id: int,
     years: list[int],
@@ -9271,34 +9456,50 @@ def _year_values_sum_ues_in_first_sa_without_kaliningrad_es(
     *,
     exclude_ues_ids: frozenset[int] | None = None,
 ) -> dict[int, Decimal | None]:
-    """Сумма ОЭС первой СЗ для варианта «без НТ с зарядом ГAЭС (без ЭС Калининграда)».
+    """Сумма ОЭС первой СЗ для варианта «без НТ с зарядом ГАЭС».
 
     Логика как на странице «Первая синхронная зона без НТ» (ОЭС без заряда ГАЭС),
     кроме ОЭС Юга — берётся «без НТ с зарядом ГАЭС».
     ОЭС «Новые территории» и ОЭС Востока не входят.
-    Отдельный заряд ГAЭС на уровне синхронной зоны не добавляется;
-    ЭС Калининграда из суммы не вычитается.
+    С года выделения СЗ Калининграда из суммы вычитается ЭС Калининградской области.
     """
     merged_exclude_ues_ids = _first_sa_without_nt_ues_exclude_ids()
     if exclude_ues_ids:
         merged_exclude_ues_ids = merged_exclude_ues_ids | exclude_ues_ids
 
-    source_maps: list[dict[int, Decimal | None]] = []
-    for ues_id in _union_energy_system_ids_for_synchronous_area(first_sa_id):
-        if int(ues_id) in merged_exclude_ues_ids:
-            continue
-        ues_values = _year_values_from_ues_demand_first_variant_with_data(
-            int(ues_id),
-            years,
-            parameter_key,
-            _first_sa_without_nt_with_gaes_ues_variant_codes_for_ues_id(int(ues_id)),
-        )
-        if _year_values_have_any_numeric(ues_values):
-            source_maps.append(ues_values)
-    if not source_maps:
-        return {int(year): None for year in years}
+    summed = _year_values_sum_ues_in_first_sa_by_ues_variant_codes(
+        first_sa_id,
+        years,
+        parameter_key,
+        variant_codes_for_ues_id=_first_sa_without_nt_with_gaes_ues_variant_codes_for_ues_id,
+        exclude_ues_ids=merged_exclude_ues_ids,
+    )
+    return _subtract_kaliningrad_es_from_first_sa_without_kaliningrad_year_values(
+        years,
+        summed,
+        parameter_key,
+    )
 
-    return _sum_year_value_dicts(years, *source_maps)
+
+def _year_values_sum_ues_in_first_sa_without_nt_without_gaes(
+    first_sa_id: int,
+    years: list[int],
+    parameter_key: str,
+    *,
+    exclude_ues_ids: frozenset[int] | None = None,
+) -> dict[int, Decimal | None]:
+    """Сумма ОЭС первой СЗ «без НТ без заряда ГАЭС» (ОЭС Юга — без НТ без заряда ГАЭС)."""
+    merged_exclude_ues_ids = _first_sa_without_nt_ues_exclude_ids()
+    if exclude_ues_ids:
+        merged_exclude_ues_ids = merged_exclude_ues_ids | exclude_ues_ids
+
+    return _year_values_sum_ues_in_first_sa_by_ues_variant_codes(
+        first_sa_id,
+        years,
+        parameter_key,
+        variant_codes_for_ues_id=_first_sa_without_nt_without_gaes_ues_variant_codes_for_ues_id,
+        exclude_ues_ids=merged_exclude_ues_ids,
+    )
 
 
 def _perimeter_variant_code_has_kaliningrad(code: str | None) -> bool:
@@ -9438,6 +9639,7 @@ def _gaes_charge_year_values_for_first_sa_without_nt(
     *,
     first_sa_id: int,
 ) -> dict[int, Decimal | None]:
+    """Полный заряд ГАЭС 1-й СЗ (строка «всего» / сумма станций), как в Excel."""
     gaes_totals = _collect_gaes_charge_totals_by_entity(summary_rows, years)
     for row in summary_rows:
         if row.get("demand_model_name") != SynchronousAreaEnergyConsumptionParameter.__name__:
@@ -9449,7 +9651,7 @@ def _gaes_charge_year_values_for_first_sa_without_nt(
         label_cf = str(row.get("entity_label") or "").casefold()
         if "без нт" not in label_cf:
             continue
-        if row.get("gaes_charge_row_station_name") == "всего":
+        if str(row.get("gaes_charge_row_station_name") or "").strip().casefold() == "всего":
             return _raw_year_values_from_summary_row(row, years)
         entity_key = _gaes_charge_entity_key(row)
         totals = gaes_totals.get(entity_key)
@@ -9464,6 +9666,7 @@ def _gaes_charge_year_values_for_first_sa_with_nt(
     *,
     first_sa_id: int,
 ) -> dict[int, Decimal | None]:
+    """Полный заряд ГАЭС 1-й СЗ (строка «всего» / сумма станций), как в Excel."""
     gaes_totals = _collect_gaes_charge_totals_by_entity(summary_rows, years)
     for row in summary_rows:
         if row.get("demand_model_name") != SynchronousAreaEnergyConsumptionParameter.__name__:
@@ -9473,9 +9676,10 @@ def _gaes_charge_year_values_for_first_sa_with_nt(
         if row.get("parameter_key") != GAES_CHARGE_PARAMETER_KEY:
             continue
         label_cf = str(row.get("entity_label") or "").casefold()
-        if "с нт" not in label_cf:
+        # «без нт» содержит подстроку «с нт» — исключаем явно.
+        if "без нт" in label_cf or "с нт" not in label_cf:
             continue
-        if row.get("gaes_charge_row_station_name") == "всего":
+        if str(row.get("gaes_charge_row_station_name") or "").strip().casefold() == "всего":
             return _raw_year_values_from_summary_row(row, years)
         entity_key = _gaes_charge_entity_key(row)
         totals = gaes_totals.get(entity_key)
@@ -9488,16 +9692,105 @@ def _mark_first_sa_variant_block_formula_derived(
     summary_rows: list[dict[str, Any]],
     *,
     first_sa_id: int,
-    perimeter_variant_code: str,
+    perimeter_variant_code: str | frozenset[str],
 ) -> None:
+    codes = (
+        frozenset({str(perimeter_variant_code)})
+        if isinstance(perimeter_variant_code, str)
+        else frozenset(str(c) for c in perimeter_variant_code)
+    )
     for row in summary_rows:
         if row.get("demand_model_name") != SynchronousAreaEnergyConsumptionParameter.__name__:
             continue
         if row.get("parent_id") != first_sa_id:
             continue
-        if str(row.get("perimeter_variant_code") or "") != perimeter_variant_code:
+        if str(row.get("perimeter_variant_code") or "") not in codes:
             continue
         row["pd_ec_formula_derived_row"] = True
+
+
+_FIRST_SA_FORMULA_TOOLTIP_PARAM_KEYS = frozenset(
+    {
+        "energy_consumption_mln_kvt_ch",
+        "energy_consumption_sipr_mln_kvt_ch",
+    }
+)
+
+
+def _first_sa_formula_tooltip_for_variant_code(code: str) -> str | None:
+    """Текст формулы (иконка «i») для вариантов Первой синхронной зоны."""
+    code = str(code or "")
+    if code in _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_CODES:
+        return _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP
+    if code in _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES:
+        return _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP
+    if code in (
+        _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_CODES
+        | _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_CODES
+    ):
+        return _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP
+    if code in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_CODES:
+        return _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP
+    if code in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES:
+        return _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP
+    return None
+
+
+def _first_sa_formula_text_key_for_variant_code(code: str) -> str | None:
+    code = str(code or "")
+    if code in _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_CODES:
+        return "first_sa_with_nt_with_gaes_with_kaliningrad_py"
+    if code in _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES:
+        return "first_sa_with_nt_without_gaes_without_kaliningrad"
+    if code in (
+        _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_CODES
+        | _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_CODES
+    ):
+        return "first_sa_without_nt_with_gaes_without_kaliningrad"
+    if code in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_CODES:
+        return "first_sa_without_nt_without_gaes_with_kaliningrad"
+    if code in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES:
+        return "first_sa_without_nt_without_gaes_without_kaliningrad"
+    return None
+
+
+def ensure_first_sa_variant_formula_tooltips(
+    summary_rows: list[dict[str, Any]],
+) -> None:
+    """Гарантирует tooltip/иконку «i» на всех вариантах Первой СЗ (млн и СиПР).
+
+    Даже если конкретная формула не сработала (несовпадение кода и т.п.),
+    строки с каталожными ``*_kaliningrad`` всё равно получают текст формулы.
+    """
+    if not summary_rows:
+        return
+    first_sa_id = _resolve_first_synchronous_area_id()
+    if first_sa_id is None:
+        return
+    for row in summary_rows:
+        if row.get("demand_model_name") != SynchronousAreaEnergyConsumptionParameter.__name__:
+            continue
+        try:
+            parent_id = int(row.get("parent_id"))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if parent_id != int(first_sa_id):
+            continue
+        if row.get("parameter_key") not in _FIRST_SA_FORMULA_TOOLTIP_PARAM_KEYS:
+            continue
+        code = str(row.get("perimeter_variant_code") or "")
+        tip = _first_sa_formula_tooltip_for_variant_code(code)
+        if not tip:
+            continue
+        row["pd_ec_summary_row_formula_tooltip"] = tip
+        text_key = _first_sa_formula_text_key_for_variant_code(code)
+        if text_key:
+            row["pd_ec_formula_text_key"] = text_key
+        # Backup-путь шаблона для «без заряда ГАЭС» (если tip вдруг сбросят).
+        if "without_gaes" in code and not row.get("gaes_without_charge_formula_kind"):
+            kind = _gaes_without_charge_formula_kind_for_row(row)
+            if kind:
+                row["gaes_without_charge_formula_kind"] = kind
 
 
 def apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(
@@ -9505,7 +9798,7 @@ def apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Первая СЗ с НТ с зарядом ГAЭС (с ЭС Калининграда) = сумма ОЭС первой СЗ."""
+    """Первая СЗ с НТ с зарядом ГАЭС = сумма ОЭС первой СЗ."""
     if not summary_rows or not years:
         return
 
@@ -9519,7 +9812,7 @@ def apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_VARIANT
+        in _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_CODES
     ]
     if not target_rows:
         return
@@ -9545,15 +9838,19 @@ def apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(
             summed,
             parameter_key=parameter_key,
             rounding_digits=rounding_digits,
+            respect_perimeter_variant_year_bounds=False,
         )
 
     _mark_first_sa_variant_block_formula_derived(
         summary_rows,
         first_sa_id=first_sa_id,
-        perimeter_variant_code=_FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_VARIANT,
+        perimeter_variant_code=_FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_CODES,
     )
     for row in target_rows:
-        if row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
+        if row.get("parameter_key") in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
             row["pd_ec_summary_row_formula_tooltip"] = (
                 _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP
             )
@@ -9564,7 +9861,7 @@ def apply_first_sa_with_nt_with_gaes_with_kaliningrad_sum_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_VARIANT
+        in _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_CODES
     ]
     _recompute_growth_rows_from_base_series(
         block_rows,
@@ -9589,7 +9886,7 @@ def apply_first_sa_without_nt_with_gaes_without_kaliningrad_sum_formula(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Первая СЗ без НТ с зарядом ГAЭС (без Калининграда) = сумма ОЭС первой СЗ."""
+    """Первая СЗ без НТ с зарядом ГАЭС = сумма ОЭС (с вычетом ЭС Калининграда с года выделения СЗ)."""
     if not summary_rows or not years:
         return
 
@@ -9597,13 +9894,17 @@ def apply_first_sa_without_nt_with_gaes_without_kaliningrad_sum_formula(
     if first_sa_id is None:
         return
 
+    # На сводке в binding — ``without_nt_with_gaes_kaliningrad``; legacy — ``*_without_kaliningrad_es``.
+    target_codes = (
+        _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_CODES
+        | _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_CODES
+    )
     target_rows = [
         row
         for row in summary_rows
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
-        and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_VARIANT
+        and str(row.get("perimeter_variant_code") or "") in target_codes
     ]
     if not target_rows:
         return
@@ -9617,27 +9918,22 @@ def apply_first_sa_without_nt_with_gaes_without_kaliningrad_sum_formula(
         if not _year_values_have_any_numeric(summed):
             continue
 
-        target_row = next(
-            (row for row in target_rows if row.get("parameter_key") == parameter_key),
-            None,
-        )
-        if target_row is None:
-            continue
-        _write_numeric_year_values_to_summary_row(
-            target_row,
-            years,
-            summed,
-            parameter_key=parameter_key,
-            rounding_digits=rounding_digits,
-        )
-
-    _mark_first_sa_variant_block_formula_derived(
-        summary_rows,
-        first_sa_id=first_sa_id,
-        perimeter_variant_code=_FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_VARIANT,
-    )
+        for target_row in (
+            row for row in target_rows if row.get("parameter_key") == parameter_key
+        ):
+            _write_numeric_year_values_to_summary_row(
+                target_row,
+                years,
+                summed,
+                parameter_key=parameter_key,
+                rounding_digits=rounding_digits,
+                respect_perimeter_variant_year_bounds=False,
+            )
     for row in target_rows:
-        if row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
+        if row.get("parameter_key") in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
             row["pd_ec_summary_row_formula_tooltip"] = (
                 _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP
             )
@@ -9647,8 +9943,7 @@ def apply_first_sa_without_nt_with_gaes_without_kaliningrad_sum_formula(
         for row in summary_rows
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
-        and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_VARIANT
+        and str(row.get("perimeter_variant_code") or "") in target_codes
     ]
     _recompute_growth_rows_from_base_series(
         block_rows,
@@ -9673,7 +9968,7 @@ def apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Первая СЗ с НТ без заряда ГAЭС (без Калининграда) = с зарядом (с Калининградом) − заряд ГAЭС."""
+    """Первая СЗ с НТ без заряда ГАЭС = с зарядом − заряд ГАЭС."""
     if not summary_rows or not years:
         return
 
@@ -9687,7 +9982,7 @@ def apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_VARIANT
+        in _FIRST_SA_WITH_NT_WITH_GAES_WITH_KALININGRAD_CODES
     ]
     target_rows = [
         row
@@ -9695,7 +9990,7 @@ def apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT
+        in _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES
     ]
     if not source_rows or not target_rows:
         return
@@ -9719,7 +10014,11 @@ def apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
         )
         if source_row is None or target_row is None:
             continue
-        source_by_year = _raw_year_values_from_summary_row(source_row, years)
+        source_by_year = _raw_year_values_from_summary_row(
+            source_row,
+            years,
+            ignore_perimeter_variant_year_bounds=True,
+        )
         adjusted: dict[int, Decimal | None] = {}
         for year in years:
             base_value = source_by_year.get(int(year))
@@ -9734,19 +10033,23 @@ def apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
             adjusted,
             parameter_key=parameter_key,
             rounding_digits=rounding_digits,
+            respect_perimeter_variant_year_bounds=False,
         )
 
     _mark_first_sa_variant_block_formula_derived(
         summary_rows,
         first_sa_id=first_sa_id,
-        perimeter_variant_code=_FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT,
+        perimeter_variant_code=_FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES,
     )
     for row in target_rows:
         row["pd_ec_formula_derived_row"] = True
         row["gaes_without_charge_formula_kind"] = (
             "first_sa_with_nt_without_kaliningrad_gaes_diff"
         )
-        if row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
+        if row.get("parameter_key") in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
             row["pd_ec_summary_row_formula_tooltip"] = (
                 _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP
             )
@@ -9757,7 +10060,7 @@ def apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT
+        in _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES
     ]
     _recompute_growth_rows_from_base_series(
         block_rows,
@@ -9777,12 +10080,17 @@ def apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula(
     )
 
 
+apply_first_sa_with_nt_without_gaes_without_kaliningrad_sum_formula = (
+    apply_first_sa_with_nt_without_gaes_without_kaliningrad_diff_formula
+)
+
+
 def apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
     summary_rows: list[dict[str, Any]],
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Первая СЗ без НТ без заряда ГAЭС (с Калининградом) = с зарядом (с Калининградом) − заряд ГAЭС."""
+    """Первая СЗ без НТ без заряда ГАЭС (с Калининградом) = с зарядом − заряд ГАЭС."""
     if not summary_rows or not years:
         return
 
@@ -9796,7 +10104,7 @@ def apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == CODE_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_ES
+        in _FIRST_SA_WITHOUT_NT_WITH_GAES_WITH_KALININGRAD_CODES
     ]
     target_rows = [
         row
@@ -9804,7 +10112,7 @@ def apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_VARIANT
+        in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_CODES
     ]
     if not source_rows or not target_rows:
         return
@@ -9828,7 +10136,11 @@ def apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
         )
         if source_row is None or target_row is None:
             continue
-        source_by_year = _raw_year_values_from_summary_row(source_row, years)
+        source_by_year = _raw_year_values_from_summary_row(
+            source_row,
+            years,
+            ignore_perimeter_variant_year_bounds=True,
+        )
         adjusted: dict[int, Decimal | None] = {}
         for year in years:
             base_value = source_by_year.get(int(year))
@@ -9843,19 +10155,23 @@ def apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
             adjusted,
             parameter_key=parameter_key,
             rounding_digits=rounding_digits,
+            respect_perimeter_variant_year_bounds=False,
         )
 
     _mark_first_sa_variant_block_formula_derived(
         summary_rows,
         first_sa_id=first_sa_id,
-        perimeter_variant_code=_FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_VARIANT,
+        perimeter_variant_code=_FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_CODES,
     )
     for row in target_rows:
         row["pd_ec_formula_derived_row"] = True
         row["gaes_without_charge_formula_kind"] = (
             "first_sa_without_nt_with_kaliningrad_gaes_diff"
         )
-        if row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
+        if row.get("parameter_key") in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
             row["pd_ec_summary_row_formula_tooltip"] = (
                 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_FORMULA_TOOLTIP
             )
@@ -9866,7 +10182,7 @@ def apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_VARIANT
+        in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITH_KALININGRAD_CODES
     ]
     _recompute_growth_rows_from_base_series(
         block_rows,
@@ -9886,12 +10202,17 @@ def apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula(
     )
 
 
+apply_first_sa_without_nt_without_gaes_with_kaliningrad_sum_formula = (
+    apply_first_sa_without_nt_without_gaes_with_kaliningrad_diff_formula
+)
+
+
 def apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
     summary_rows: list[dict[str, Any]],
     years: list[int],
     rounding_digits: int,
 ) -> None:
-    """Первая СЗ без НТ без заряда ГAЭС (без Калининграда) = с зарядом (без Калининграда) − заряд ГAЭС."""
+    """Первая СЗ без НТ без заряда ГАЭС = с зарядом − заряд ГАЭС."""
     if not summary_rows or not years:
         return
 
@@ -9905,7 +10226,7 @@ def apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_VARIANT
+        in _FIRST_SA_WITHOUT_NT_WITH_GAES_WITHOUT_KALININGRAD_CODES
     ]
     target_rows = [
         row
@@ -9913,7 +10234,7 @@ def apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT
+        in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES
     ]
     if not source_rows or not target_rows:
         return
@@ -9937,7 +10258,11 @@ def apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
         )
         if source_row is None or target_row is None:
             continue
-        source_by_year = _raw_year_values_from_summary_row(source_row, years)
+        source_by_year = _raw_year_values_from_summary_row(
+            source_row,
+            years,
+            ignore_perimeter_variant_year_bounds=True,
+        )
         adjusted: dict[int, Decimal | None] = {}
         for year in years:
             base_value = source_by_year.get(int(year))
@@ -9952,19 +10277,23 @@ def apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
             adjusted,
             parameter_key=parameter_key,
             rounding_digits=rounding_digits,
+            respect_perimeter_variant_year_bounds=False,
         )
 
     _mark_first_sa_variant_block_formula_derived(
         summary_rows,
         first_sa_id=first_sa_id,
-        perimeter_variant_code=_FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT,
+        perimeter_variant_code=_FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES,
     )
     for row in target_rows:
         row["pd_ec_formula_derived_row"] = True
         row["gaes_without_charge_formula_kind"] = (
             "first_sa_without_nt_without_kaliningrad_gaes_diff"
         )
-        if row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
+        if row.get("parameter_key") in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
             row["pd_ec_summary_row_formula_tooltip"] = (
                 _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_FORMULA_TOOLTIP
             )
@@ -9975,7 +10304,7 @@ def apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
         if row.get("demand_model_name") == SynchronousAreaEnergyConsumptionParameter.__name__
         and row.get("parent_id") == first_sa_id
         and str(row.get("perimeter_variant_code") or "")
-        == _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_VARIANT
+        in _FIRST_SA_WITHOUT_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES
     ]
     _recompute_growth_rows_from_base_series(
         block_rows,
@@ -9993,6 +10322,12 @@ def apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
         yoy_parameter_key=ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
         rounding_digits=rounding_digits,
     )
+
+
+apply_first_sa_without_nt_without_gaes_without_kaliningrad_sum_formula = (
+    apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula
+)
+
 
 
 def _mark_ees_russia_variant_block_formula_derived(
@@ -10788,6 +11123,71 @@ def _is_ees_or_synchronous_area_ec_summary_row(row: dict[str, Any]) -> bool:
     )
 
 
+def _is_summary_table_top_ees_sa_hub_sync_row(row: dict[str, Any]) -> bool:
+    """Верх сводной: ЭЭС России / ЕЭС России (тип ЭС) / синхронные зоны."""
+    dm = str(row.get("demand_model_name") or "")
+    if dm in (
+        EesRussiaEnergyConsumptionParameter.__name__,
+        SynchronousAreaEnergyConsumptionParameter.__name__,
+    ):
+        return True
+    if dm != EnergySystemTypeEnergyConsumptionParameter.__name__:
+        return False
+    return _summary_row_base_label_cf(row) == EES_UNIFIED_REF_NAME.casefold()
+
+
+def _ees_sa_top_aggregate_summary_row_match_key(
+    row: dict[str, Any],
+) -> tuple[str, int, str, str] | None:
+    if not _is_summary_table_top_ees_sa_hub_sync_row(row):
+        return None
+    dm = str(row.get("demand_model_name") or "").strip()
+    code = str(row.get("perimeter_variant_code") or "").strip()
+    parameter_key = str(row.get("parameter_key") or "").strip()
+    if not dm or not code or not parameter_key:
+        return None
+    parent_raw = row.get("parent_id")
+    try:
+        parent_id = int(parent_raw) if parent_raw is not None else 0
+    except (TypeError, ValueError):
+        parent_id = 0
+    return dm, parent_id, code, parameter_key
+
+
+def _copy_hub_reference_year_display_onto_matching_summary_rows(
+    summary_rows: list[dict[str, Any]],
+    reference_rows: list[dict[str, Any]],
+    *,
+    years: list[int],
+    rounding_digits: int,
+    match_key_fn,
+) -> None:
+    reference_by_key: dict[Any, dict[str, Any]] = {}
+    for row in reference_rows:
+        key = match_key_fn(row)
+        if key is not None:
+            reference_by_key[key] = row
+
+    for target_row in summary_rows:
+        key = match_key_fn(target_row)
+        if key is None:
+            continue
+        reference_row = reference_by_key.get(key)
+        if reference_row is None:
+            continue
+        _copy_summary_row_year_display_from_reference(
+            target_row,
+            reference_row,
+            years,
+            rounding_digits=rounding_digits,
+        )
+        if reference_row.get("pd_ec_formula_derived_row"):
+            target_row["pd_ec_formula_derived_row"] = True
+        tooltip = reference_row.get("pd_ec_summary_row_formula_tooltip")
+        if tooltip:
+            target_row["pd_ec_summary_row_formula_tooltip"] = tooltip
+
+
 def build_summary_table_hub_centralized_zone_reference_summary_rows(
     rounding_digits: int,
     *,
@@ -10820,8 +11220,9 @@ def build_summary_table_hub_ees_sa_reference_summary_rows(
     data_start_year: int | None = None,
     data_end_year: int | None = None,
     oes_territory_ordered: tuple[list[int], list[int], list[int], list[int]] | None = None,
+    consumption_only: bool = True,
 ) -> list[dict[str, Any]]:
-    """Строки ЭЭС России и синхронных зон после пайплайна summary_table (+без ГАЭС)."""
+    """Строки ЭЭС / ЕЭС России / СЗ после пайплайна summary_table (+без ГАЭС)."""
     summary_rows = build_summary_table_hub_oes_formula_pipeline_summary_rows(
         rounding_digits,
         start_year=start_year,
@@ -10831,12 +11232,18 @@ def build_summary_table_hub_ees_sa_reference_summary_rows(
         data_end_year=data_end_year,
         oes_territory_ordered=oes_territory_ordered,
     )
-    return [
+    rows = [
         row
         for row in summary_rows
-        if _is_ees_or_synchronous_area_ec_summary_row(row)
-        and str(row.get("parameter_key") or "") == "energy_consumption_mln_kvt_ch"
+        if _is_summary_table_top_ees_sa_hub_sync_row(row)
     ]
+    if consumption_only:
+        rows = [
+            row
+            for row in rows
+            if str(row.get("parameter_key") or "") == "energy_consumption_mln_kvt_ch"
+        ]
+    return rows
 
 
 def apply_federal_district_centralized_zone_values_from_summary_table_hub(
@@ -10869,30 +11276,78 @@ def apply_federal_district_centralized_zone_values_from_summary_table_hub(
     if not reference_rows:
         return
 
-    reference_by_key: dict[tuple[str, str], dict[str, Any]] = {}
-    for row in reference_rows:
-        key = _centralized_zone_russia_summary_row_match_key(row)
-        if key is not None:
-            reference_by_key[key] = row
+    _copy_hub_reference_year_display_onto_matching_summary_rows(
+        summary_rows,
+        reference_rows,
+        years=years,
+        rounding_digits=rounding_digits,
+        match_key_fn=_centralized_zone_russia_summary_row_match_key,
+    )
 
-    for target_row in summary_rows:
-        key = _centralized_zone_russia_summary_row_match_key(target_row)
-        if key is None:
-            continue
-        reference_row = reference_by_key.get(key)
-        if reference_row is None:
-            continue
-        _copy_summary_row_year_display_from_reference(
-            target_row,
-            reference_row,
-            years,
-            rounding_digits=rounding_digits,
-        )
-        if reference_row.get("pd_ec_formula_derived_row"):
-            target_row["pd_ec_formula_derived_row"] = True
-        tooltip = reference_row.get("pd_ec_summary_row_formula_tooltip")
-        if tooltip:
-            target_row["pd_ec_summary_row_formula_tooltip"] = tooltip
+
+def apply_summary_page_shared_top_aggregate_values_from_summary_table_hub(
+    summary_rows: list[dict[str, Any]],
+    *,
+    years: list[int],
+    rounding_digits: int,
+    start_year: int,
+    end_year: int,
+    filter_year_list: list[int],
+    data_start_year: int | None = None,
+    data_end_year: int | None = None,
+) -> None:
+    """Общий верх /summary/oes|federal_districts|energy_zones/: ЦЗ / ЭЭС / ЕЭС / СЗ как на /summary_table/.
+
+    Один прогон hub-пайплайна ОЭС — чтобы значения совпадали на всех трёх страницах.
+    """
+    if not summary_rows or not years:
+        return
+
+    need_cz = any(_is_centralized_zone_russia_summary_row(row) for row in summary_rows)
+    need_ees_sa = any(
+        _is_summary_table_top_ees_sa_hub_sync_row(row) for row in summary_rows
+    )
+    if not need_cz and not need_ees_sa:
+        return
+
+    dsy = data_start_year if data_start_year is not None else years[0]
+    dey = data_end_year if data_end_year is not None else years[-1]
+    hub_rows = build_summary_table_hub_oes_formula_pipeline_summary_rows(
+        rounding_digits,
+        start_year=start_year,
+        end_year=end_year,
+        data_start_year=dsy,
+        data_end_year=dey,
+        filter_year_list=filter_year_list,
+    )
+    if not hub_rows:
+        return
+
+    if need_cz:
+        cz_reference = [
+            row for row in hub_rows if _is_centralized_zone_russia_summary_row(row)
+        ]
+        if cz_reference:
+            _copy_hub_reference_year_display_onto_matching_summary_rows(
+                summary_rows,
+                cz_reference,
+                years=years,
+                rounding_digits=rounding_digits,
+                match_key_fn=_centralized_zone_russia_summary_row_match_key,
+            )
+
+    if need_ees_sa:
+        ees_sa_reference = [
+            row for row in hub_rows if _is_summary_table_top_ees_sa_hub_sync_row(row)
+        ]
+        if ees_sa_reference:
+            _copy_hub_reference_year_display_onto_matching_summary_rows(
+                summary_rows,
+                ees_sa_reference,
+                years=years,
+                rounding_digits=rounding_digits,
+                match_key_fn=_ees_sa_top_aggregate_summary_row_match_key,
+            )
 
 
 def _is_centralized_zone_o1_nt_source_row(
@@ -11322,7 +11777,8 @@ def _apply_ees_russia_with_gaes_sum_formula(
     rounding_digits: int,
     *,
     target_variant_code: str,
-    first_sa_variant_predicate: Callable[[dict[str, Any]], bool],
+    first_sa_variant_predicate: Callable[[dict[str, Any]], bool] | None = None,
+    first_sa_year_values_resolver: Callable[[str], dict[int, Decimal | None]] | None = None,
     extra_source_by_parameter: Callable[[str], dict[int, Decimal | None]] | None = None,
     formula_tooltip: str | None = None,
     include_kaliningrad_sync_area: bool = True,
@@ -11344,12 +11800,20 @@ def _apply_ees_russia_with_gaes_sum_formula(
         return
 
     for parameter_key in _EES_RUSSIA_WITHOUT_NT_WITH_GAES_SUM_PARAM_KEYS:
-        first_sa_row = _find_sync_area_source_row(
-            summary_rows,
-            parameter_key=parameter_key,
-            base_label_prefix_cf=_FIRST_SYNC_AREA_BASE_LABEL_CF,
-            variant_predicate=first_sa_variant_predicate,
-        )
+        source_maps: list[dict[int, Decimal | None]] = []
+        if first_sa_year_values_resolver is not None:
+            first_sa_values = first_sa_year_values_resolver(parameter_key)
+            if _year_values_have_any_numeric(first_sa_values):
+                source_maps.append(first_sa_values)
+        elif first_sa_variant_predicate is not None:
+            first_sa_row = _find_sync_area_source_row(
+                summary_rows,
+                parameter_key=parameter_key,
+                base_label_prefix_cf=_FIRST_SYNC_AREA_BASE_LABEL_CF,
+                variant_predicate=first_sa_variant_predicate,
+            )
+            if first_sa_row is not None:
+                source_maps.append(_raw_year_values_from_summary_row(first_sa_row, years))
         second_sa_row = _find_sync_area_source_row(
             summary_rows,
             parameter_key=parameter_key,
@@ -11368,9 +11832,6 @@ def _apply_ees_russia_with_gaes_sum_formula(
                 kaliningrad_sa_row = row
                 break
 
-        source_maps: list[dict[int, Decimal | None]] = []
-        if first_sa_row is not None:
-            source_maps.append(_raw_year_values_from_summary_row(first_sa_row, years))
         if second_sa_row is not None:
             source_maps.append(_raw_year_values_from_summary_row(second_sa_row, years))
         if kaliningrad_sa_row is not None:
@@ -11410,7 +11871,10 @@ def _apply_ees_russia_with_gaes_sum_formula(
         perimeter_variant_code=target_variant_code,
     )
     for row in target_rows:
-        if formula_tooltip and row.get("parameter_key") == "energy_consumption_mln_kvt_ch":
+        if formula_tooltip and row.get("parameter_key") in (
+            "energy_consumption_mln_kvt_ch",
+            "energy_consumption_sipr_mln_kvt_ch",
+        ):
             row["pd_ec_summary_row_formula_tooltip"] = formula_tooltip
 
     ees_block_rows = [
@@ -11448,13 +11912,26 @@ def apply_ees_russia_gaes_aggregate_formulas(
     """Пересчёт строк «ЭЭС России» с зарядом ГАЭС (с/без НТ) после готовности ТИТЭС.
 
     «ЕЭС России … с зарядом ГАЭС» заполняются вручную и здесь не пересчитываются.
+
+    Важно:
+    - с НТ: Первая СЗ уже включает ЭС Калининграда (через ОЭС СЗ), отдельно СЗ
+      Калининграда не прибавляем;
+    - без НТ: Первая СЗ на экране — *без* ЭС Калининграда, в ЭЭС берём её
+      «с ЭС Калининграда» = экранная Первая СЗ + СЗ Калининграда.
     """
     _apply_ees_russia_with_gaes_sum_formula(
         summary_rows,
         years,
         rounding_digits,
         target_variant_code=CODE_WITHOUT_NT_WITH_GAES,
-        first_sa_variant_predicate=_is_without_nt_with_gaes_with_kaliningrad_variant_row,
+        first_sa_year_values_resolver=lambda parameter_key: (
+            _first_sa_without_nt_with_gaes_with_kaliningrad_parameter_year_values(
+                summary_rows,
+                years,
+                parameter_key,
+                allow_db_fallback=False,
+            )
+        ),
         formula_tooltip=_EES_RUSSIA_WITHOUT_NT_WITH_GAES_FORMULA_TOOLTIP,
         include_kaliningrad_sync_area=False,
         eu_source_rows_for_tites=eu_source_rows_for_tites,
@@ -11466,6 +11943,7 @@ def apply_ees_russia_gaes_aggregate_formulas(
         target_variant_code=CODE_WITH_NT_WITH_GAES,
         first_sa_variant_predicate=_is_with_nt_with_gaes_variant_row,
         formula_tooltip=_EES_RUSSIA_WITH_NT_WITH_GAES_FORMULA_TOOLTIP,
+        include_kaliningrad_sync_area=False,
         eu_source_rows_for_tites=eu_source_rows_for_tites,
     )
 
@@ -11523,6 +12001,12 @@ def apply_summary_table_formula_calculations(
         rounding_digits,
     )
     apply_first_sa_without_nt_without_gaes_without_kaliningrad_diff_formula(
+        summary_rows,
+        years,
+        rounding_digits,
+    )
+    ensure_first_sa_variant_formula_tooltips(summary_rows)
+    _reapply_first_synchronous_area_gaes_variant_formulas(
         summary_rows,
         years,
         rounding_digits,
@@ -15133,14 +15617,19 @@ def _write_numeric_year_values_to_summary_row(
             values.append("—")
             tooltips.append("")
             continue
-        tooltips.append(_format_full_numeric_tooltip(raw))
         if parameter_key in (
             ENERGY_CONSUMPTION_YOY_PARAMETER_KEY,
             ENERGY_CONSUMPTION_SIPR_YOY_PARAMETER_KEY,
         ):
-            values.append(_format_yoy_pct_for_display(raw))
+            # Ячейка и hover — одинаково, 2 знака (не полная точность).
+            disp = _format_yoy_pct_for_display(raw)
+            values.append(disp)
+            tooltips.append(disp)
         else:
-            values.append(_format_summary_parameter_value(raw, parameter_key, rounding_digits))
+            tooltips.append(_format_full_numeric_tooltip(raw))
+            values.append(
+                _format_summary_parameter_value(raw, parameter_key, rounding_digits)
+            )
     row["year_values"] = values
     row["year_numeric_tooltips"] = tooltips
 
@@ -15201,22 +15690,25 @@ def _gaes_without_charge_formula_kind_for_row(row: dict[str, Any]) -> str | None
     if dm == SynchronousAreaEnergyConsumptionParameter.__name__:
         if base_label_cf.startswith(_FIRST_SYNC_AREA_BASE_LABEL_CF):
             if code.startswith("with_nt"):
-                if "without_kaliningrad_es" in code:
+                if (
+                    "without_kaliningrad_es" in code
+                    or code in _FIRST_SA_WITH_NT_WITHOUT_GAES_WITHOUT_KALININGRAD_CODES
+                ):
                     return "first_sa_with_nt_without_kaliningrad_gaes_diff"
                 return "first_sa_with_nt_gaes_diff"
-            if "with_kaliningrad_es" in code:
+            if "with_kaliningrad_es" in code or code.endswith("_kaliningrad"):
                 return "first_sa_without_nt_with_kaliningrad_gaes_diff"
-            if "without_kaliningrad_es" in code:
+            if "without_kaliningrad_es" in code or "without_kaliningrad" in code:
                 return "first_sa_without_nt_without_kaliningrad_gaes_diff"
         return "synchronous_area"
     if dm == FederalDistrictEnergyConsumptionParameter.__name__:
         return "fo"
     if dm == UnionEnergySystemEnergyConsumptionParameter.__name__:
-        if (
-            base_label_cf == SOUTH_UES_NAME_CF
-            and code == CODE_WITHOUT_NT_WITHOUT_GAES
-        ):
-            return "south_ues_without_nt_without_gaes"
+        if base_label_cf == SOUTH_UES_NAME_CF and "without_gaes" in code:
+            if code == CODE_WITHOUT_NT_WITHOUT_GAES:
+                return "south_ues_without_nt_without_gaes"
+            if code == CODE_WITH_NT_WITHOUT_GAES:
+                return "south_ues_with_nt_without_gaes"
         return "oes"
     return "generic"
 
@@ -15228,6 +15720,11 @@ def _is_ees_unified_without_gaes_summary_row(row: dict[str, Any]) -> bool:
     if _summary_row_base_label_cf(row) != EES_UNIFIED_REF_NAME.casefold():
         return False
     return "without_gaes" in str(row.get("perimeter_variant_code") or "")
+
+
+def _is_south_ues_without_gaes_formula_row(row: dict[str, Any]) -> bool:
+    """«ОЭС Юга … без заряда ГАЭС» (с НТ / без НТ) — расчётная строка (с зарядом − заряд)."""
+    return _summary_row_is_south_ues_without_gaes_db_row(row)
 
 
 def _is_south_ues_without_nt_without_gaes_formula_row(row: dict[str, Any]) -> bool:
@@ -15312,18 +15809,28 @@ def _recompute_growth_rows_from_base_series(
             )
 
 
-def _summary_row_is_south_ues_without_nt_without_gaes_db_row(
+def _summary_row_is_south_ues_without_gaes_db_row(
     row: dict[str, Any],
 ) -> bool:
-    """ОЭС Юга «без НТ без заряда ГАЭС» (идентификация строки для расчётной формулы)."""
+    """ОЭС Юга «… без заряда ГАЭС» (с НТ / без НТ) — идентификация для расчётной формулы."""
     if (
         str(row.get("demand_model_name") or "")
         != UnionEnergySystemEnergyConsumptionParameter.__name__
     ):
         return False
-    if str(row.get("perimeter_variant_code") or "") != CODE_WITHOUT_NT_WITHOUT_GAES:
+    code = str(row.get("perimeter_variant_code") or "")
+    if code not in (CODE_WITHOUT_NT_WITHOUT_GAES, CODE_WITH_NT_WITHOUT_GAES):
         return False
     return _summary_row_base_label_cf(row) == SOUTH_UES_NAME_CF
+
+
+def _summary_row_is_south_ues_without_nt_without_gaes_db_row(
+    row: dict[str, Any],
+) -> bool:
+    """ОЭС Юга «без НТ без заряда ГАЭС» (идентификация строки для расчётной формулы)."""
+    if str(row.get("perimeter_variant_code") or "") != CODE_WITHOUT_NT_WITHOUT_GAES:
+        return False
+    return _summary_row_is_south_ues_without_gaes_db_row(row)
 
 
 def _without_gaes_block_has_independent_db_values(
@@ -15368,8 +15875,10 @@ def _without_gaes_row_prefers_db_values(
     row_by_variant_param: dict[tuple[Any, ...], dict[str, Any]],
 ) -> bool:
     """Не пересчитывать «без заряда», если в БД уже есть самостоятельные значения."""
-    # ОЭС Юга без НТ без заряда ГАЭС всегда по формуле — см. apply_gaes_…
-    if _is_south_ues_without_nt_without_gaes_formula_row(row):
+    # ОЭС Юга … без заряда ГAЭС всегда по формуле — см. apply_gaes_…
+    if _is_south_ues_without_gaes_formula_row(row):
+        return False
+    if _is_first_sa_without_gaes_formula_row(row):
         return False
     model = str(row.get("demand_model_name") or "")
     if model in (
@@ -15378,6 +15887,21 @@ def _without_gaes_row_prefers_db_values(
         CentralizedZoneEnergyConsumptionParameter.__name__,
         SynchronousAreaEnergyConsumptionParameter.__name__,
     ):
+        # Если парная «с зарядом ГАЭС» уже пересчитана формулой (сумма СЗ/ТИТЭС/…),
+        # «без заряда» = эта формула − заряд. Иначе prefers_db оставлял бы устаревшую
+        # копию БД (часто равную старому «с зарядом») — расхождение FO vs hub/PD.
+        code = str(row.get("perimeter_variant_code") or "")
+        with_gaes_code = _with_gaes_variant_code(code)
+        if with_gaes_code:
+            source_row = row_by_variant_param.get(
+                (
+                    *_gaes_charge_entity_key(row),
+                    with_gaes_code,
+                    "energy_consumption_mln_kvt_ch",
+                )
+            )
+            if source_row is not None and source_row.get("pd_ec_formula_derived_row"):
+                return False
         return _without_gaes_block_has_independent_db_values(
             row, years, row_by_variant_param
         )
@@ -15412,11 +15936,12 @@ def apply_gaes_without_charge_formula_to_summary_rows(
         code = str(row.get("perimeter_variant_code") or "")
         if "without_gaes" not in code:
             continue
-        # «ЕЭС России … без заряда ГАЭС» и «ОЭС Юга без НТ без заряда ГАЭС»
+        # «ЕЭС России … без заряда ГАЭС» и «ОЭС Юга … без заряда ГАЭС»
         # всегда по формуле; БД не перекрывает.
         if (
             not _is_ees_unified_without_gaes_summary_row(row)
-            and not _is_south_ues_without_nt_without_gaes_formula_row(row)
+            and not _is_south_ues_without_gaes_formula_row(row)
+            and not _is_first_sa_without_gaes_formula_row(row)
             and _without_gaes_row_prefers_db_values(
                 row, years, row_by_variant_param
             )
@@ -15436,11 +15961,15 @@ def apply_gaes_without_charge_formula_to_summary_rows(
         entity_key = _gaes_charge_entity_key(row)
         gaes_by_year = _gaes_charge_totals_for_summary_row(row, gaes_totals)
         formula_kind = _gaes_without_charge_formula_kind_for_row(row)
-        force_formula_derived = _is_ees_unified_without_gaes_summary_row(
+        force_always_formula = (
+            _is_ees_unified_without_gaes_summary_row(row)
+            or _is_south_ues_without_gaes_formula_row(row)
+            or _is_first_sa_without_gaes_formula_row(row)
+        )
+        # ЕЭС и ОЭС Юга без НТ без заряда: без ограничений «Год с»/«Год по».
+        skip_year_bounds = _is_ees_unified_without_gaes_summary_row(
             row
         ) or _is_south_ues_without_nt_without_gaes_formula_row(row)
-        # ЕЭС и ОЭС Юга без НТ без заряда: без ограничений «Год с»/«Год по».
-        skip_year_bounds = force_formula_derived
         block_rows = [
             item
             for item in summary_rows
@@ -15448,15 +15977,15 @@ def apply_gaes_without_charge_formula_to_summary_rows(
             and str(item.get("perimeter_variant_code") or "") == code
         ]
         for block_row in block_rows:
-            if force_formula_derived:
-                # Расчётная строка — без ручного ввода.
-                block_row["pd_ec_formula_derived_row"] = True
-                if _is_south_ues_without_nt_without_gaes_formula_row(block_row):
-                    # without_nt_*_gaes без «Год с»/«Год по» — все годы на экране.
-                    block_row["pd_ec_skip_perimeter_variant_year_bounds"] = True
-            else:
-                # Прочие «без заряда ГАЭС»: формула заполняет отображение, ввод допустим.
-                block_row.pop("pd_ec_formula_derived_row", None)
+            # Формула на экране → те же значения пишутся в БД (persist_computed_rows).
+            block_row["pd_ec_formula_derived_row"] = True
+            if force_always_formula and _is_south_ues_without_nt_without_gaes_formula_row(
+                block_row
+            ):
+                # without_nt_*_gaes без «Год с»/«Год по» — все годы на экране.
+                block_row["pd_ec_skip_perimeter_variant_year_bounds"] = True
+            elif _is_ees_unified_without_gaes_summary_row(block_row):
+                block_row["pd_ec_skip_perimeter_variant_year_bounds"] = True
             block_row["gaes_without_charge_formula_kind"] = formula_kind
 
         for parameter_key in _GAES_WITHOUT_CHARGE_FORMULA_PARAM_KEYS:

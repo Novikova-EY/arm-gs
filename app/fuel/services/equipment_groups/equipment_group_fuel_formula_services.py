@@ -35,6 +35,7 @@ def get_equipment_groups_with_fuel_formula_data(
     from app.refdata.models.energy_systems.regional_energy_system_model import (
         RegionalEnergySystem,
     )
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
     from sqlalchemy.orm import selectinload
 
     _start = start_year if start_year is not None else get_filter_start_year()
@@ -120,6 +121,10 @@ def get_equipment_groups_with_fuel_formula_data(
             selectinload(EquipmentGroup.regional_energy_system).selectinload(
                 RegionalEnergySystem.union_energy_system
             ),
+            selectinload(EquipmentGroup.territories_energy_external_mapping),
+            selectinload(EquipmentGroup.regional_district).selectinload(
+                RegionalDistrict.regional_energy_systems
+            ),
         )
         .order_by(
             EquipmentGroup.name,
@@ -131,12 +136,22 @@ def get_equipment_groups_with_fuel_formula_data(
         .all()
     )
 
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        apply_numb1120_filter_to_eg_param_rows,
+    )
+
+    rows, numb1120_filter_choices = apply_numb1120_filter_to_eg_param_rows(
+        rows, _filters
+    )
+    total_count = len(rows)
+
     return {
         "rows": rows,
         "total_count": total_count,
         "total_pages": 1,
         "page": 1,
         "per_page": total_count or 1,
+        "numb1120_filter_choices": numb1120_filter_choices,
     }
 
 

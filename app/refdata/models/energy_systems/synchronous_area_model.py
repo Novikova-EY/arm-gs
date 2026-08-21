@@ -19,6 +19,7 @@ class SynchronousArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixi
     display_order = db.Column(db.Integer, nullable=True)
     number = db.Column(db.String(256), unique=True, nullable=True, index=True)
     name = db.Column(db.String(256), unique=True, nullable=False, index=True)
+    name_full = db.Column(db.String(256), nullable=True, index=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -45,4 +46,4 @@ class SynchronousArea(db.Model, AuditMixin, VersionedModelMixin, RefdataUuidMixi
     )
 
     def __repr__(self) -> str:
-        return f"<SynchronousArea id={self.id} number={self.number!r} name={self.name!r}>"
+        return f"<SynchronousArea id={self.id} number={self.number!r} name={self.name!r} name_full={self.name_full!r}>"

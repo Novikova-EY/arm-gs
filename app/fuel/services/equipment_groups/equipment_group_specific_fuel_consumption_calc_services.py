@@ -105,6 +105,20 @@ def calc_sntp_calc(param) -> Decimal:
     return D0
 
 
+def calc_snk_calc(param):
+    """
+    СН на выработку ЭЭ, % (расчёт).
+
+    Равно SNK на странице топливных параметров: sn_ee / e · 100 при наличии
+    входов, иначе сохранённый FuelParam.snk. None, если значения нет.
+    """
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        displayed_fuel_param_snk,
+    )
+
+    return displayed_fuel_param_snk(param)
+
+
 def calc_bk_calc(param, btp_calc, sntp_calc) -> Decimal:
     """
     УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч (расчет).

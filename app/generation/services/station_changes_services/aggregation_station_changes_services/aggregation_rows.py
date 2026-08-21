@@ -122,19 +122,32 @@ def get_energy_system_type_id(machine):
     return None
 
 
+def _is_current_year_fact_row(power_row: dict) -> bool:
+    """Строка текущего года с bucket=fact — не должна попадать в плановые суммы ОЭС/субъектов."""
+    if not isinstance(power_row, dict):
+        return False
+    return str(power_row.get("current_year_bucket") or "").strip().lower() == "fact"
+
+
 def get_full_aggregation_rows(machines):
     rows = []
 
     for m in machines:
         if not m.event_types:
             continue
+        # Архивные агрегаты не участвуют в суммах изменений мощности
+        if bool(getattr(m, "is_archived", False)):
+            continue
 
         station = m.machine_station
         regional_district = station.regional_district if station else None
 
         for p in m.powers_by_year:
+            # Для планового представления (колонка «план» / итоги ОЭС) факт текущего года исключаем.
+            if _is_current_year_fact_row(p):
+                continue
             year = p["year"]
-            p_ust = Decimal(p["p_ust"])
+            p_ust = Decimal(str(p["p_ust"]))
             event_code = p.get("event")
 
             rows.append(SimpleNamespace(
@@ -150,6 +163,7 @@ def get_full_aggregation_rows(machines):
                 year=year,
                 p_ust=p_ust,
                 event_type=event_code,
+                current_year_bucket=p.get("current_year_bucket"),
             ))
 
     return rows
@@ -187,6 +201,7 @@ def get_full_aggregation_rows_old(start_year, end_year, station_ids, machine_ids
         .join(UnionEnergySystem.energy_system_type)
         .filter(
             Station.id.in_(station_ids),
+            Machine.is_archived.isnot(True),
             MachinePower.year_number.between(start_year, end_year)
         )
     )

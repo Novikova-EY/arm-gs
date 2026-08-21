@@ -10,17 +10,17 @@ from typing import Any
 from app.common.services.help_services import values_equal_by_display_precision
 from app.extensions import db
 from app.fuel.models.fue_restriction_model import FuelRestriction
-from app.fuel.services.fuel_restrictions_all_versions_services import (
+from app.fuel.services.restrictions.fuel_restrictions_all_versions_services import (
     FR_SYNC_DATA_ATTRS,
     data_dict_from_restriction,
     delete_fuel_restriction_in_all_versions,
     upsert_fuel_restriction_in_all_versions,
 )
-from app.fuel.services.fuel_restrictions_list_services import (
+from app.fuel.services.restrictions.fuel_restrictions_list_services import (
     resolve_obl_codes_from_regional_energy_system_ids,
     resolve_oes_codes_from_union_energy_system_ids,
 )
-from app.fuel.services.import_distribution_parameters_services import _parse_decimal
+from app.fuel.services.distribution_parameters.import_distribution_parameters_services import _parse_decimal
 
 
 _NEW_ROW_TOKEN_RE = re.compile(r"^new_[1-9][0-9]*$")

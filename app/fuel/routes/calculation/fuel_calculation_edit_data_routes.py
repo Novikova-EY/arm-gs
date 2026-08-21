@@ -21,7 +21,6 @@ from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import 
 )
 from app.fuel.routes.equipment_group_fuel_batch_ui_routes import _csrf_ok
 from app.fuel.routes.fuel_calculation_common import (
-    fuel_calculation_form_url,
     fuel_calculation_form_url_from_tep_edit_args,
 )
 from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
@@ -37,8 +36,12 @@ from app.fuel.services.calculation.fuel_calculation_specific_consumption_edit_da
     copy_specific_fuel_consumption_between_years_for_filters,
     get_specific_fuel_consumption_calculation_edit_data_view_model,
 )
-from app.fuel.services.equipment_groups.equipment_group_details_specific_params_services import (
-    CONSUMPTION_FORMULAS,
+from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+    FUEL_PARAM_DERIVED_FORMULAS,
+    FUEL_PARAM_DERIVED_SOURCES,
+)
+from app.fuel.services.formula_text.fuel_formula_text_services import (
+    get_consumption_formulas,
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS,
@@ -48,6 +51,9 @@ from app.fuel.services.equipment_groups.fuel_station_hierarchy_pagination import
     count_fuel_eg_groups_in_hierarchy,
     fuel_eg_station_hierarchy_nonempty,
     paginate_fuel_eg_station_hierarchy,
+)
+from app.fuel.services.equipment_groups.composite_parts_sum_recalc_services import (
+    recalculate_composite_parent_from_children,
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_write_services import (
     apply_equipment_group_fuel_params_bulk_save_from_form,
@@ -271,8 +277,8 @@ def equipment_group_fuel_params_edit_data_add_heat_year():
         )
     else:
         flash(
-            f"Заполнены показатели тепла на {target_num} г.: q — из «Тепло и тарифы из СТ» "
-            f"(иначе с {source_num} г.), qotr/nt_sum/turt — с {source_num} г.; "
+            f"Заполнены показатели тепла на {target_num} г.: q — из «Тепло и тарифы (схемы теплоснабжения)» "
+            f"(иначе с {source_num} г.), qotr/nt_sum/turt/snk/sn_t — с {source_num} г.; "
             f"nust, nr, nt — по правилам целевого года. Операций: {copied} (в выборке групп: {total_groups}, "
             f"без данных за {source_num} г.: {skipped}).",
             "success",
@@ -377,8 +383,8 @@ def equipment_group_fuel_params_edit_data_add_heat_period():
         )
     else:
         flash(
-            f"Заполнены показатели тепла на годы {n_lo}—{n_hi}: q — из «Тепло и тарифы из СТ» "
-            f"(иначе с {source_num} г.), qotr/nt_sum/turt — с {source_num} г.; "
+            f"Заполнены показатели тепла на годы {n_lo}—{n_hi}: q — из «Тепло и тарифы (схемы теплоснабжения)» "
+            f"(иначе с {source_num} г.), qotr/nt_sum/turt/snk/sn_t — с {source_num} г.; "
             f"nust, nr, nt — по правилам целевого года (операций: {copied}; в выборке групп: {total_groups}).",
             "success",
         )
@@ -539,8 +545,8 @@ def equipment_group_fuel_params_edit_data():
         equipment_group_fuel_params_hierarchy
     )
 
-    # Только фильтры формы расчёта — без equipment_group_ids / show_empty_rows и т.п.
-    calculation_back_url = fuel_calculation_form_url(request.args)
+    # Интервал как у ТЭП: start=базовый, end=расчётный → «Назад к расчёту».
+    calculation_back_url = fuel_calculation_form_url_from_tep_edit_args(request.args)
 
     data = {
         "stations": [],
@@ -572,7 +578,9 @@ def equipment_group_fuel_params_edit_data():
     template_vars = {
         **vm,
         **context,
-        "consumption_formulas": CONSUMPTION_FORMULAS,
+        "consumption_formulas": get_consumption_formulas(),
+        "fuel_param_derived_formulas": FUEL_PARAM_DERIVED_FORMULAS,
+        "fuel_param_derived_sources": FUEL_PARAM_DERIVED_SOURCES,
         "consumption_column_labels": {
             **EquipmentGroupSpecificFuelConsumption.COLUMN_LABELS,
             "k": "Коэффициент экономии от теплофикации",
@@ -812,6 +820,72 @@ def equipment_group_fuel_params_edit_data_save():
     return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
 
 
+@fuel_bp.route(
+    "/calculation/equipment_group_fuel_params_edit_data/recalc_composite_parts",
+    methods=["POST"],
+)
+@login_required
+def equipment_group_fuel_params_edit_data_recalc_composite_parts():
+    """Access «Сумма»: записать на родителя составной станции Σ детей за год и пересчитать удельные."""
+    if not getattr(current_user, "has_admin", False):
+        flash("Недостаточно прав для пересчёта.", "danger")
+        return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
+    if not _csrf_ok():
+        flash("Ошибка проверки CSRF.", "danger")
+        return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
+
+    gid = request.form.get("equipment_group_id", type=int)
+    year_number = request.form.get("year_number", type=int)
+    if gid is None:
+        flash("Не указана группа оборудования для пересчёта.", "danger")
+        return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
+    if year_number is None:
+        flash("Не указан год для пересчёта по составным ГО.", "danger")
+        return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
+
+    try:
+        result = recalculate_composite_parent_from_children(gid, year_number)
+        if not result.get("ok"):
+            db.session.rollback()
+            flash(result.get("error") or "Не удалось выполнить пересчёт.", "warning")
+            return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
+
+        specific_ids = [int(gid)]
+        for cid in result.get("child_ids") or []:
+            cid_int = int(cid)
+            if cid_int not in specific_ids:
+                specific_ids.append(cid_int)
+        recalc_n = recalculate_all_specific_fuel_consumption_calc(
+            equipment_group_ids=specific_ids,
+            start_year=year_number,
+            end_year=year_number,
+            commit=False,
+        )
+        db.session.commit()
+        from app.generation.services.station_services.station_services import (
+            clear_station_aggregation_cache,
+        )
+
+        clear_station_aggregation_cache(
+            "после пересчёта составной станции по дочерним ГО"
+        )
+        msg = (
+            f"Пересчитаны параметры составной станции за {year_number} год "
+            f"(сумма по {result.get('children_count') or 0} группам оборудования)."
+        )
+        if recalc_n:
+            msg += (
+                f" Пересчитаны расчётные удельные показатели "
+                f"(станция и дочерние ГО): {recalc_n}."
+            )
+        flash(msg, "success")
+    except Exception as exc:
+        db.session.rollback()
+        flash(f"Ошибка при пересчёте по составным ГО: {exc}", "danger")
+
+    return _redirect_equipment_group_fuel_params_edit_data_after_bulk_save()
+
+
 def _redirect_equipment_group_specific_fuel_consumption_edit_data(md: MultiDict):
     qs = urlencode(list(md.items(multi=True)))
     base = url_for("fuel_bp.equipment_group_specific_fuel_consumption_edit_data")
@@ -889,21 +963,29 @@ def fuel_calculation_coeff_copy_specific_consumption_year():
     return _redirect_equipment_group_specific_fuel_consumption_edit_data(md)
 
 
-def _resolve_filter_year_interval_from_md(md: MultiDict) -> tuple[int, int]:
-    sy = md.get("start_year", type=int)
-    ey = md.get("end_year", type=int)
-    if sy is None and ey is None:
-        sy = get_filter_start_year()
-        ey = get_filter_end_year()
-    elif sy is None:
-        sy = ey
-    elif ey is None:
-        ey = sy
-    if sy is not None and ey is not None and sy > ey:
-        sy, ey = ey, sy
-    if sy is None or ey is None:
-        sy, ey = get_filter_start_year(), get_filter_end_year()
-    return sy, ey
+def _specific_fc_ref_year_range_error(n_lo: int, n_hi: int) -> str | None:
+    """None, если все годы n_lo…n_hi есть в справочнике текущей версии."""
+    known = {
+        int(y.number)
+        for y in get_year_list_full()
+        if y.number is not None
+    }
+    for n in range(int(n_lo), int(n_hi) + 1):
+        if n not in known:
+            return f"В справочнике текущей версии БД нет года с номером {n}."
+    return None
+
+
+def _redirect_specific_fc_interval_only(*, y_min: int, y_max: int):
+    """Access U.Seek: строк не создаём, только расширяем интервал таблицы."""
+    md = _md_from_heat_add_form()
+    _merge_interval_onto_md(md, y_min=int(y_min), y_max=int(y_max))
+    flash(
+        f"Интервал таблицы расширен до {md.get('start_year')}—{md.get('end_year')}. "
+        "Удельные не копируются: расчёт берёт последнюю строку year ≤ расчётного.",
+        "success",
+    )
+    return _redirect_equipment_group_specific_fuel_consumption_edit_data(md)
 
 
 @fuel_bp.route(
@@ -925,63 +1007,20 @@ def equipment_group_specific_fuel_consumption_edit_data_add_year():
             or url_for("fuel_bp.equipment_group_specific_fuel_consumption_edit_data")
         )
 
-    id_base = request.form.get("id_base_year", type=int)
     id_target = request.form.get("id_target_year", type=int)
-    source_num = _year_number_from_ref_year_id(id_base)
     target_num = _year_number_from_ref_year_id(id_target)
-    if source_num is None or id_base is None:
-        flash("Выберите базовый год в справочнике.", "danger")
-        return _redirect_equipment_group_specific_fuel_consumption_edit_data(
-            _md_from_heat_add_form()
-        )
     if target_num is None or id_target is None:
-        flash("Выберите расчитываемый год в справочнике.", "danger")
+        flash("Выберите год в справочнике.", "danger")
         return _redirect_equipment_group_specific_fuel_consumption_edit_data(
             _md_from_heat_add_form()
         )
-    if source_num == target_num:
-        flash("Базовый и расчитываемый год должны различаться.", "warning")
+    err = _specific_fc_ref_year_range_error(target_num, target_num)
+    if err:
+        flash(err, "danger")
         return _redirect_equipment_group_specific_fuel_consumption_edit_data(
             _md_from_heat_add_form()
         )
-
-    md = _md_from_heat_add_form()
-    filters = extract_filters_from_args(md)
-    filters.pop("page", None)
-    sy, ey = _resolve_filter_year_interval_from_md(md)
-
-    try:
-        copied, skipped, total_groups = copy_specific_fuel_consumption_between_years_for_filters(
-            filters,
-            filter_start_year=sy,
-            filter_end_year=ey,
-            source_year=source_num,
-            target_year=target_num,
-        )
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        flash(f"Ошибка: {exc}", "danger")
-        return _redirect_equipment_group_specific_fuel_consumption_edit_data(md)
-
-    _merge_interval_onto_md(md, y_min=target_num, y_max=target_num)
-
-    if total_groups == 0:
-        flash("По текущим фильтрам не найдено групп оборудования.", "warning")
-    elif copied == 0:
-        flash(
-            f"Не скопировано ни одной записи: нет данных за {source_num} г. "
-            f"у выбранных групп (в выборке: {total_groups}, пропущено: {skipped}).",
-            "warning",
-        )
-    else:
-        flash(
-            f"Скопированы удельные показатели с {source_num} г. на {target_num} г.: "
-            f"операций {copied} (в выборке групп: {total_groups}, "
-            f"без данных за {source_num} г.: {skipped}).",
-            "success",
-        )
-    return _redirect_equipment_group_specific_fuel_consumption_edit_data(md)
+    return _redirect_specific_fc_interval_only(y_min=target_num, y_max=target_num)
 
 
 @fuel_bp.route(
@@ -1003,90 +1042,25 @@ def equipment_group_specific_fuel_consumption_edit_data_add_period():
             or url_for("fuel_bp.equipment_group_specific_fuel_consumption_edit_data")
         )
 
-    id_base = request.form.get("id_base_year", type=int)
     id_from = request.form.get("id_year_from", type=int)
     id_to = request.form.get("id_year_to", type=int)
-    source_num = _year_number_from_ref_year_id(id_base)
     n_from = _year_number_from_ref_year_id(id_from)
     n_to = _year_number_from_ref_year_id(id_to)
 
-    if source_num is None or id_base is None:
-        flash("Выберите базовый год в справочнике.", "danger")
-        return _redirect_equipment_group_specific_fuel_consumption_edit_data(
-            _md_from_heat_add_form()
-        )
     if n_from is None or n_to is None:
-        flash("Укажите границы периода (расчитываемые годы) в справочнике.", "danger")
+        flash("Укажите границы периода в справочнике.", "danger")
         return _redirect_equipment_group_specific_fuel_consumption_edit_data(
             _md_from_heat_add_form()
         )
 
     n_lo, n_hi = (n_from, n_to) if n_from <= n_to else (n_to, n_from)
-    for n in range(n_lo, n_hi + 1):
-        if not any(
-            y.number is not None and int(y.number) == n for y in get_year_list_full()
-        ):
-            flash(
-                f"В справочнике текущей версии БД нет года с номером {n}.",
-                "danger",
-            )
-            return _redirect_equipment_group_specific_fuel_consumption_edit_data(
-                _md_from_heat_add_form()
-            )
-
-    target_nums = [n for n in range(n_lo, n_hi + 1) if n != source_num]
-    if not target_nums:
-        flash(
-            "Период не содержит расчитываемых годов, отличных от базового: нечего копировать.",
-            "warning",
-        )
+    err = _specific_fc_ref_year_range_error(n_lo, n_hi)
+    if err:
+        flash(err, "danger")
         return _redirect_equipment_group_specific_fuel_consumption_edit_data(
             _md_from_heat_add_form()
         )
-
-    md = _md_from_heat_add_form()
-    filters = extract_filters_from_args(md)
-    filters.pop("page", None)
-    sy, ey = _resolve_filter_year_interval_from_md(md)
-
-    try:
-        copied = 0
-        skipped = 0
-        total_groups = 0
-        for target_num in target_nums:
-            c, s, t = copy_specific_fuel_consumption_between_years_for_filters(
-                filters,
-                filter_start_year=sy,
-                filter_end_year=ey,
-                source_year=source_num,
-                target_year=target_num,
-            )
-            copied += c
-            skipped += s
-            total_groups = t
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        flash(f"Ошибка: {exc}", "danger")
-        return _redirect_equipment_group_specific_fuel_consumption_edit_data(md)
-
-    _merge_interval_onto_md(md, y_min=n_lo, y_max=n_hi)
-
-    if total_groups == 0:
-        flash("По текущим фильтрам не найдено групп оборудования.", "warning")
-    elif copied == 0:
-        flash(
-            f"Не скопировано ни одной записи: нет данных за {source_num} г. "
-            f"(в выборке: {total_groups}, пропущено: {skipped}).",
-            "warning",
-        )
-    else:
-        flash(
-            f"Скопированы удельные показатели с {source_num} г. на годы {n_lo}—{n_hi}: "
-            f"операций {copied} (в выборке групп: {total_groups}).",
-            "success",
-        )
-    return _redirect_equipment_group_specific_fuel_consumption_edit_data(md)
+    return _redirect_specific_fc_interval_only(y_min=n_lo, y_max=n_hi)
 
 
 @fuel_bp.route(
@@ -1215,7 +1189,7 @@ def equipment_group_specific_fuel_consumption_edit_data():
     template_vars = {
         **vm,
         **context,
-        "consumption_formulas": CONSUMPTION_FORMULAS,
+        "consumption_formulas": get_consumption_formulas(),
         "consumption_column_labels": {
             **EquipmentGroupSpecificFuelConsumption.COLUMN_LABELS,
             "numb1120": "Код группы оборудования",
@@ -1238,7 +1212,7 @@ def equipment_group_specific_fuel_consumption_edit_data():
 )
 @login_required
 def equipment_group_specific_fuel_consumption_edit_data_save():
-    """Массовое сохранение удельных (k и *_calc); numb1120 ← numb группы; годы «факт» — только чтение."""
+    """Массовое сохранение удельных (k, y/btp/sntp/bk/snk и *_calc); numb1120 ← numb группы; годы «факт» — только чтение."""
     if not getattr(current_user, "has_admin", False):
         flash("Недостаточно прав для сохранения.", "danger")
         return _redirect_equipment_group_specific_fuel_consumption_edit_data_after_bulk_save()

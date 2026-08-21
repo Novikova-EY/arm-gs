@@ -92,6 +92,13 @@ _HEADER_ALIASES: dict[str, str] = {
 
 _OES_IN_FILTER_RE = re.compile(r"oes\s*=\s*(\d+)", re.IGNORECASE)
 
+# Access «Параметры-распределения».name / nameoes → UnionEnergySystem.name (casefold).
+# В БД Топливо oes=10 — «Норильск» / «Норильск.эн.р-н», в АРМ — «ТИТЭС Сибири».
+_ACCESS_UES_LABEL_ALIASES: dict[str, str] = {
+    "норильск": "титэс сибири",
+    "норильск.эн.р-н": "титэс сибири",
+}
+
 
 def _normalize_header_cell(value) -> str | None:
     if value is None:
@@ -174,6 +181,43 @@ def _year_id_by_number(year_num: int | None, version_id: int | None) -> int | No
     return row.id if row else None
 
 
+def _apply_access_ues_aliases(
+    *,
+    label_to_ues_id: dict[str, int],
+    oes_to_ues_id: dict[str, int],
+    name_to_ues_id: dict[str, int],
+    unmatched_mappings: list,
+) -> None:
+    """Access-имена, которые не совпадают 1:1 с external_name / external_nameoes."""
+    for access_label, ues_name in _ACCESS_UES_LABEL_ALIASES.items():
+        uid = name_to_ues_id.get(ues_name)
+        if uid is None:
+            continue
+        label_to_ues_id.setdefault(access_label, uid)
+
+    for m in unmatched_mappings:
+        labels: list[str] = []
+        for raw in (getattr(m, "external_nameoes", None), getattr(m, "external_name", None)):
+            if raw and str(raw).strip():
+                labels.append(str(raw).strip().casefold())
+        uid = None
+        for lab in labels:
+            alias_ues = _ACCESS_UES_LABEL_ALIASES.get(lab)
+            if alias_ues:
+                uid = name_to_ues_id.get(alias_ues)
+            if uid is None:
+                uid = label_to_ues_id.get(lab)
+            if uid is not None:
+                break
+        if uid is None:
+            continue
+        ext_id = getattr(m, "external_id", None)
+        if ext_id is not None and str(ext_id).strip():
+            oes_to_ues_id.setdefault(str(ext_id).strip(), uid)
+        for lab in labels:
+            label_to_ues_id.setdefault(lab, uid)
+
+
 def _build_ues_resolvers(version_id: int | None):
     """
     Сопоставление Access → UnionEnergySystem.id только через
@@ -187,19 +231,22 @@ def _build_ues_resolvers(version_id: int | None):
         ues_q = ues_q.filter(UnionEnergySystem.database_version_id.is_(None))
 
     by_uuid: dict[str, int] = {}
+    name_to_ues_id: dict[str, int] = {}
     for u in ues_q.all():
         if getattr(u, "ref_uuid", None):
             by_uuid[u.ref_uuid] = u.id
+        if getattr(u, "name", None) and str(u.name).strip():
+            name_to_ues_id[str(u.name).strip().casefold()] = u.id
 
     oes_to_ues_id: dict[str, int] = {}
     label_to_ues_id: dict[str, int] = {}
+    unmatched_mappings: list = []
 
-    mappings = UnionEnergySystemExternalMapping.query.filter(
-        UnionEnergySystemExternalMapping.union_energy_system_ref_uuid.isnot(None)
-    ).all()
+    mappings = UnionEnergySystemExternalMapping.query.all()
     for m in mappings:
         ues_id = by_uuid.get(m.union_energy_system_ref_uuid or "")
         if ues_id is None:
+            unmatched_mappings.append(m)
             continue
         if m.external_id is not None and str(m.external_id).strip():
             oes_to_ues_id[str(m.external_id).strip()] = ues_id
@@ -211,6 +258,12 @@ def _build_ues_resolvers(version_id: int | None):
             tes = f"ТЭС {str(m.external_name).strip()}"
             label_to_ues_id[tes.casefold()] = ues_id
 
+    _apply_access_ues_aliases(
+        label_to_ues_id=label_to_ues_id,
+        oes_to_ues_id=oes_to_ues_id,
+        name_to_ues_id=name_to_ues_id,
+        unmatched_mappings=unmatched_mappings,
+    )
     return oes_to_ues_id, label_to_ues_id
 
 
@@ -405,7 +458,7 @@ def import_distribution_parameters_from_excel(
     Returns:
         (добавлено копий по версиям, обновлено копий, список_ошибок/предупреждений)
     """
-    from app.fuel.services.distribution_parameters_all_versions_services import (
+    from app.fuel.services.distribution_parameters.distribution_parameters_all_versions_services import (
         upsert_distribution_parameter_in_all_versions,
     )
     from app.refdata.services.refdata_all_versions_common import (

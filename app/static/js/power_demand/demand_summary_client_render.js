@@ -267,6 +267,37 @@
         return "long";
     }
 
+    function coeffManualVisibleYearRange() {
+        var table = document.getElementById("powerDemandSummaryTable");
+        if (!table || table.getAttribute("data-pd-coeff-years-applied") !== "1") {
+            return null;
+        }
+        var sy = parseInt(table.getAttribute("data-pd-coeff-visible-year-min") || "", 10);
+        var ey = parseInt(table.getAttribute("data-pd-coeff-visible-year-max") || "", 10);
+        if (isNaN(sy) || isNaN(ey)) {
+            return null;
+        }
+        return { sy: Math.min(sy, ey), ey: Math.max(sy, ey) };
+    }
+
+    function applyCoeffManualYearHiddenClass(el, year) {
+        var range = coeffManualVisibleYearRange();
+        if (!range || !el) {
+            return;
+        }
+        var y = parseInt(year, 10);
+        if (isNaN(y)) {
+            return;
+        }
+        el.classList.toggle("pd-coeff-year-col-hidden", y < range.sy || y > range.ey);
+    }
+
+    function reapplyCoeffManualYearVisibility() {
+        if (typeof window.__pdPdSummaryReapplyCoeffYearVisibility === "function") {
+            window.__pdPdSummaryReapplyCoeffYearVisibility();
+        }
+    }
+
     function isFoCoeffCzTotalRow(row) {
         return !!(row && row.pd_fo_coeff_cz_total);
     }
@@ -279,6 +310,9 @@
         if (row.pd_pd_verify_for_row) {
             return false;
         }
+        if (isFoCoeffCzTotalRow(row)) {
+            return false;
+        }
         if (row.pd_pd_aggregation_level_full_row || row.pd_pd_aggregation_level_row) {
             return false;
         }
@@ -286,6 +320,60 @@
             return false;
         }
         return true;
+    }
+
+    var COEFF_K_VISIBLE_STORAGE_KEY = "powerDemandCoeffKColumnsVisibleV2";
+
+    /**
+     * Предпочтительная видимость строк k (sessionStorage + дефолт).
+     * При pd_page_size=0 (все секции) по умолчанию скрываем — иначе DOM ~×2.
+     */
+    function preferCoeffKColumnsVisible() {
+        try {
+            var v = sessionStorage.getItem(COEFF_K_VISIBLE_STORAGE_KEY);
+            if (v === "1") {
+                return true;
+            }
+            if (v === "0") {
+                return false;
+            }
+        } catch (eStor) {
+            /* ignore */
+        }
+        try {
+            var raw = new URLSearchParams(window.location.search || "").get(
+                "pd_page_size"
+            );
+            if (raw === "0") {
+                return false;
+            }
+        } catch (eUrl) {
+            /* ignore */
+        }
+        return true;
+    }
+
+    /** Синхронизировать класс таблицы до первого рендера tbody. */
+    function applyInitialCoeffKVisibilityClass() {
+        var table = document.getElementById("powerDemandSummaryTable");
+        if (!table || !table.classList.contains("pd-coeff-year-seg-table")) {
+            return;
+        }
+        if (preferCoeffKColumnsVisible()) {
+            table.classList.remove("pd-coeff-hide-k-columns");
+        } else {
+            table.classList.add("pd-coeff-hide-k-columns");
+        }
+    }
+    applyInitialCoeffKVisibilityClass();
+
+    /** Строки k в DOM нужны только когда блоки k видимы (иначе — лишний объём). */
+    function coeffKColumnsVisibleInDom() {
+        var table = document.getElementById("powerDemandSummaryTable");
+        if (!table || !table.classList.contains("pd-coeff-year-seg-table")) {
+            return false;
+        }
+        return !table.classList.contains("pd-coeff-hide-k-columns");
     }
 
     /** Строка «Проверка …» относится к указанному parameter_key (якорь A). */
@@ -653,6 +741,7 @@
                     coeffYearSegment(year, baseYear)
                 );
             }
+            applyCoeffManualYearHiddenClass(td, year);
         }
         if (planHide) {
             td.classList.add("summary-plan-empty");
@@ -985,6 +1074,7 @@
                     coeffYearSegment(year, baseYear)
                 );
             }
+            applyCoeffManualYearHiddenClass(td, year);
             if (kTt && !planHide) {
                 td.setAttribute("title", kTt);
             }
@@ -1341,6 +1431,10 @@
         );
         var nodes = [tr];
         if (!isCoeffRoute(cfg)) {
+            return nodes;
+        }
+        /* Не создавать строки k, пока они скрыты — при pd_page_size=0 это ~половина DOM. */
+        if (!coeffKColumnsVisibleInDom()) {
             return nodes;
         }
         var deferOwnK =
@@ -2724,6 +2818,7 @@
         }
 
         injectLiveCalcData(payload);
+        reapplyCoeffManualYearVisibility();
         if (typeof window.__pdPdSummarySyncPerimeterVariantLabels === "function") {
             window.__pdPdSummarySyncPerimeterVariantLabels();
         }
@@ -2753,6 +2848,7 @@
         lastRenderedSummaryPayload = payload;
         repositionAllVerifyRowsInTbody(tbody);
         injectLiveCalcData(payload);
+        reapplyCoeffManualYearVisibility();
         if (typeof window.__pdPdSummarySyncPerimeterVariantLabels === "function") {
             window.__pdPdSummarySyncPerimeterVariantLabels();
         }

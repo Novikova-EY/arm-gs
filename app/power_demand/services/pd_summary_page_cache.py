@@ -13,9 +13,8 @@ from flask import request
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.aggregation_cache import get_redis_client
 
-# v29: в значении кэша хранится поколение — get отбрасывает записи после clear,
-# даже если SCAN/delete по Redis не удалил ключ.
-PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 29
+# v35: потребление ЭЭ «с НТ» с года, где есть данные по Новым территориям.
+PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 35
 _CACHE_TIMEOUT = timedelta(minutes=30)
 _memory_cache: dict[str, tuple[int, Any, datetime]] = {}
 # Поколение кэша: отсекает «опоздавшие» записи после clear (threaded/gunicorn).

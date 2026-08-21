@@ -17,7 +17,6 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
     EQUIPMENT_GROUP_ID_HEADER,
     FILL_EST,
     FILL_RES_HEADER,
-    FILL_RES_SUMMARY,
     FILL_STATION_SUMMARY,
     FILL_UES,
     equipment_group_id_cell,
@@ -37,17 +36,6 @@ def _format_cell_value(param, attr, is_numeric, rounding_digits):
     if is_numeric:
         return format_decimal_for_display(val, digits=rounding_digits)
     return str(val) if val is not None else "—"
-
-
-def _format_summary_value(summary, attr, is_numeric, rounding_digits):
-    if summary is None or attr not in summary:
-        return "—"
-    val = summary.get(attr)
-    if val is None:
-        return "—"
-    if is_numeric:
-        return format_decimal_for_display(val, digits=rounding_digits)
-    return str(val)
 
 
 def export_stations_equipment_group_specific_fuel_consumption_to_excel(
@@ -145,6 +133,10 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
                             )
                             or "—"
                         )
+                        is_composite_parent = bool(
+                            group_block.get("is_composite_parent")
+                            or group_block.get("is_composite_total_row")
+                        )
                         for _eg, param in group_block.get("rows") or []:
                             row_data = [
                                 equipment_group_id_cell(group_entity),
@@ -152,41 +144,16 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
                             ]
                             for attr, _label, is_numeric in SPECIFIC_FUEL_CONSUMPTION_COLUMNS:
                                 row_data.append(
-                                    _format_cell_value(param, attr, is_numeric, rounding_digits)
+                                    _format_cell_value(
+                                        param, attr, is_numeric, rounding_digits
+                                    )
                                 )
                             _bump_lengths(row_data)
                             ws.append(apply_nbsp_to_row(row_data))
-
-                    gb_count = len(station_block.get("group_blocks") or [])
-                    if gb_count > 1 and not station_block.get("is_virtual"):
-                        st_name = station_block.get("station_name") or "—"
-                        label = f"{st_name}, всего"
-                        summary = station_block.get("station_summary") or {}
-                        row_data = ["—", label]
-                        for attr, _label, is_numeric in SPECIFIC_FUEL_CONSUMPTION_COLUMNS:
-                            row_data.append(
-                                _format_summary_value(
-                                    summary, attr, is_numeric, rounding_digits
+                            if is_composite_parent:
+                                style_data_row(
+                                    ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
                                 )
-                            )
-                        _bump_lengths(row_data)
-                        ws.append(apply_nbsp_to_row(row_data))
-                        style_data_row(
-                            ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
-                        )
-
-                if res_block.get("group_blocks"):
-                    res_nm = res_block.get("res_name") or "—"
-                    label = f"{res_nm}, всего"
-                    summary = res_block.get("res_summary") or {}
-                    row_data = ["—", label]
-                    for attr, _label, is_numeric in SPECIFIC_FUEL_CONSUMPTION_COLUMNS:
-                        row_data.append(
-                            _format_summary_value(summary, attr, is_numeric, rounding_digits)
-                        )
-                    _bump_lengths(row_data)
-                    ws.append(apply_nbsp_to_row(row_data))
-                    style_data_row(ws, ws.max_row, bold=True, fill=FILL_RES_SUMMARY)
 
     for col_idx, max_length in enumerate(max_lengths, start=1):
         adjusted_width = min(max_length + 2, 60)

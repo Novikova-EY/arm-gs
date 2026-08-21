@@ -64,13 +64,13 @@ class EquipmentGroup(db.Model):
     # Название (БД Топливо)
     name_ext = db.Column(db.String(255), nullable=True)
 
-    # Признак группы оборудования
+    # Access Имена_станций.NIV — признак группы оборудования (обычно 1 у дочерней ГО).
     niv = db.Column(db.Integer, nullable=True)
 
-    # Признак электростанции, разбитой на группы оборудования
+    # Access Имена_станций.COMP — 1 у родителя составной станции (разбита / разбивается на ГО).
     comp = db.Column(db.Integer, nullable=True)
 
-    # Код группы оборудования, в которую входит данная группа
+    # Access Имена_станций.MAIN — numb родителя у дочерней ГО; у родителя / простой ТЭС = 0/NULL.
     main = db.Column(db.Integer, nullable=True)
 
     # Признак действующей электростанции
@@ -82,7 +82,8 @@ class EquipmentGroup(db.Model):
     # Признак ФОРЭМ
     forem = db.Column(db.Integer, nullable=True)
 
-    # Ведомство
+    # Access Имена_станций.Ведомство (справочник): 1 — отрасль, 2 — пром.
+    # Не путать с рабочим FuelParam.ved (0/1/2/3/4/99) из «Станции(Схема)».
     vedomstvo = db.Column(db.Integer, nullable=True)
 
     # Код субъекта РФ (FK -> TerritoriesEnergyExternalMapping.external_id)
@@ -246,14 +247,76 @@ class EquipmentGroup(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
+    def _find_composite_parent(self):
+        """Родитель составной станции: EquipmentGroup.numb == self.main, та же версия БД."""
+        from app.fuel.services.equipment_groups.composite_station_semantics import (
+            _as_int,
+            is_composite_child_group,
+        )
+
+        if not is_composite_child_group(self):
+            return None
+        main = _as_int(getattr(self, "main", None))
+        if main is None:
+            return None
+        gvid = getattr(self, "database_version_id", None)
+        if gvid is not None:
+            found = (
+                EquipmentGroup.query.filter(
+                    EquipmentGroup.numb == main,
+                    EquipmentGroup.database_version_id == gvid,
+                )
+                .order_by(EquipmentGroup.id.asc())
+                .first()
+            )
+            if found is not None:
+                return found
+        return (
+            EquipmentGroup.query.filter(
+                EquipmentGroup.numb == main,
+                EquipmentGroup.database_version_id.is_(None),
+            )
+            .order_by(EquipmentGroup.id.asc())
+            .first()
+        )
+
+    def _apply_regional_ids_from_parent(self, parent=None) -> bool:
+        """
+        Копирует Субъект РФ (regional_district_id, obl) и РЭС с родителя по main.
+        Возвращает True, если Субъект РФ удалось проставить с родителя.
+        """
+        parent = parent if parent is not None else self._find_composite_parent()
+        if parent is None:
+            return False
+        version_id = getattr(self, "database_version_id", None)
+        new_rd = coerce_regional_district_id_for_db_version(
+            getattr(parent, "regional_district_id", None),
+            version_id,
+        )
+        new_res = coerce_regional_energy_system_id_for_db_version(
+            getattr(parent, "regional_energy_system_id", None),
+            version_id,
+        )
+        parent_obl = getattr(parent, "obl", None)
+        if parent_obl is not None:
+            self.obl = parent_obl
+        if new_rd is not None:
+            self.regional_district_id = new_rd
+        if new_res is not None:
+            self.regional_energy_system_id = new_res
+        return new_rd is not None
+
     def _populate_regional_ids(self) -> None:
         """
         Заполняет regional_district_id и regional_energy_system_id:
+        0) для дочерней группы составной станции — с родителя (main=parent.numb);
         1) из Station через EquipmentGroupSet -> EquipmentGroupSetStation;
         2) для standalone-групп (котельные) — по obl через TerritoriesEnergyExternalMapping.
         """
         self.regional_district_id = None
         self.regional_energy_system_id = None
+        if self._apply_regional_ids_from_parent():
+            return
         if self.id is None:
             return
         # 1. EquipmentGroup -> EquipmentGroupSet (equipment_group_id)

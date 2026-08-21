@@ -172,6 +172,14 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # ожидаемый год ввода в эксплуатацию
     date_exploitation_expected = db.Column(db.Integer, nullable=True)
 
+    # ввод в 4 квартале ожидаемого года ввода в эксплуатацию
+    is_commissioning_q4 = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        server_default=db.text("false"),
+    )
+
     # фактическая дата ввода в работу
     date_commission_fact = db.Column(db.String(10), nullable=True)
     
@@ -211,6 +219,15 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     # примечание
     note = db.Column(db.String(512), nullable=True)
 
+    # Архивный агрегат: показывается в конце списка, не участвует в суммах мощностей
+    is_archived = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        server_default=db.text("false"),
+        index=True,
+    )
+
     # Документ-основание для изменения параметров агрегата
     change_document = db.Column(db.Text, nullable=True)  
 
@@ -235,14 +252,75 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
     )
 
     # ----- Runtime helpers (не маппятся в БД) -----
+    def _is_pgu_parent_with_parts(self) -> bool:
+        """PGU parent: years of commission/modernization shown on parts, not on whole PGU."""
+        try:
+            tmt = getattr(self, "tes_machine_type", None)
+            name = (getattr(tmt, "name", None) or "").strip().lower()
+            if name != "пгу":
+                return False
+            parts = getattr(self, "pgu_machines", None) or getattr(self, "pgu_submachines", None) or []
+            return len(parts) > 0
+        except Exception:
+            return False
+
+    def _fact_display_years(self, raw) -> list[int]:
+        """Years from fact date field(s), applying 01.01.Y → Y-1."""
+        from app.common.services.help_services import normalize_date_list, convert_to_date
+
+        if not raw:
+            return []
+        years: list[int] = []
+        normalized = normalize_date_list(raw) if isinstance(raw, str) else str(raw)
+        if not normalized:
+            return []
+        for token in (t.strip() for t in normalized.split(",") if t.strip()):
+            dt = convert_to_date(token)
+            if dt is None:
+                continue
+            years.append(dt.year - 1 if dt.month == 1 and dt.day == 1 else dt.year)
+        return years
+
+    def _has_fact_in_current_year(self, raw) -> bool:
+        from app.common.services.get_services.years.years_get_services import get_current_year
+
+        current = get_current_year()
+        if current is None:
+            return bool(raw)
+        # Also treat calendar year of non-01.01 dates and shifted 01.01 years.
+        years = self._fact_display_years(raw)
+        if current in years:
+            return True
+        # Raw calendar year match (without 01.01 shift) for "in current year" checks.
+        from app.common.services.help_services import normalize_date_list, convert_to_date
+
+        if not raw:
+            return False
+        normalized = normalize_date_list(raw) if isinstance(raw, str) else str(raw)
+        if not normalized:
+            return False
+        for token in (t.strip() for t in normalized.split(",") if t.strip()):
+            dt = convert_to_date(token)
+            if dt is not None and dt.year == current:
+                return True
+        return False
+
     @property
     def commission_display(self) -> str | int | None:
         """
         Отображаемое значение для колонки 'Ввод в работу' на station_list:
         Machine.date_commission_year или Machine.date_exploitation_expected.
+        При фактическом вводе/присоединении в текущем году ожидаемый год не показываем.
+        Для ПГУ-родителя с частями — год только у агрегатов ПГУ.
         """
+        if self._is_pgu_parent_with_parts():
+            return None
         if self.date_commission_year is not None:
             return self.date_commission_year
+        if self._has_fact_in_current_year(self.date_commission_fact) or self._has_fact_in_current_year(
+            self.date_joining_fact
+        ):
+            return None
         if self.date_exploitation_expected is not None:
             return self.date_exploitation_expected
         return None
@@ -253,9 +331,14 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Отображаемое значение для колонки 'Ввод в экспл.' на station_list:
         - фактический год ввода в эксплуатацию (date_exploitation), если указан;
         - иначе ожидаемый год ввода в эксплуатацию (date_exploitation_expected).
+        При фактическом вводе/присоединении в текущем году ожидаемый год скрываем.
         """
         if self.date_exploitation is not None:
             return self.date_exploitation
+        if self._has_fact_in_current_year(self.date_commission_fact) or self._has_fact_in_current_year(
+            self.date_joining_fact
+        ):
+            return None
         if self.date_exploitation_expected is not None:
             return self.date_exploitation_expected
         return None
@@ -266,6 +349,7 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         Отображаемое значение для колонки 'Год вывода' на station_details:
         либо Ожидаемый год вывода из эксплуатации (date_decompressing_expected),
         либо год из фактической даты (date_decompressing_fact), при этом 01.01.год → год-1.
+        При фактическом отсоединении ожидаемый год вывода не показываем.
         """
         from app.common.services.help_services import convert_to_date
 
@@ -276,6 +360,10 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
                 if dt.month == 1 and dt.day == 1:
                     return dt.year - 1
                 return dt.year
+        if self.date_detatchment_fact:
+            # Факт отсоединения — ожидаемый вывод не показываем
+            years = self._fact_display_years(self.date_detatchment_fact)
+            return years[0] if years else None
         if self.date_decompressing_expected is not None:
             return self.date_decompressing_expected
         return None
@@ -304,74 +392,57 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
         """
         Отображаемое значение для колонки 'Модерн.' на station_list.
 
-        Требование:
-        - показывать один год:
-          * либо ожидаемый год модернизации с изменением мощности (date_modernization_power_change_expected),
-          * либо ожидаемый год модернизации без изменения мощности (date_modernization_no_power_change_expected),
-          * либо максимальный год, полученный из поля фактической даты(дат) перемаркировки
-            (date_relabing_fact) с учетом правила:
-              - если дата 01.01.год → отображаемый год = год-1.
-        - если есть и ожидаемый год модернизации, и годы из перемаркировок,
-          берем максимальный год из всех.
+        При фактической перемаркировке/уточнении в текущем году ожидаемые годы
+        модернизации не показываем (только факт). Для ПГУ-родителя с частями — пусто.
         """
-        from app.common.services.help_services import normalize_date_list, convert_to_date
+        if self._is_pgu_parent_with_parts():
+            return None
 
-        years: list[int] = []
+        fact_years: list[int] = []
+        fact_years.extend(self._fact_display_years(self.date_relabing_fact))
+        fact_years.extend(self._fact_display_years(self.date_update_fact))
 
-        # 1) ожидаемые годы модернизации (с/без изменения мощности)
-        if self.date_modernization_power_change_expected is not None:
-            years.append(self.date_modernization_power_change_expected)
-        if self.date_modernization_no_power_change_expected is not None:
-            years.append(self.date_modernization_no_power_change_expected)
+        suppress_expected = (
+            self._has_fact_in_current_year(self.date_relabing_fact)
+            or self._has_fact_in_current_year(self.date_update_fact)
+        )
 
-        # 2) годы из фактических дат перемаркировки (может быть несколько дат)
-        if self.date_relabing_fact:
-            normalized = normalize_date_list(self.date_relabing_fact)
-            if normalized:
-                tokens = [t.strip() for t in normalized.split(",") if t.strip()]
-                for token in tokens:
-                    dt = convert_to_date(token)
-                    if dt is None:
-                        continue
-                    display_year = self._relabing_year_for_display(dt)
-                    if display_year is not None:
-                        years.append(display_year)
+        years: list[int] = list(fact_years)
+        if not suppress_expected:
+            if self.date_modernization_power_change_expected is not None:
+                years.append(self.date_modernization_power_change_expected)
+            if self.date_modernization_no_power_change_expected is not None:
+                years.append(self.date_modernization_no_power_change_expected)
 
         if not years:
             return None
-
-        # Возвращаем максимальный год среди всех возможных источников
         return str(max(years))
 
     @property
     def modernization_power_change_display(self) -> str | None:
         """
         Год для колонки «Модерн. с изм. мощ-ти» на station_list:
-        максимум из ожидаемого года модернизации с изменением мощности и годов из фактической перемаркировки
-        (без учёта date_modernization_no_power_change_expected).
+        при факте перемаркировки/уточнения в текущем году — только факт;
+        иначе максимум из ожидаемого года и факта.
         """
-        from app.common.services.help_services import normalize_date_list, convert_to_date
+        if self._is_pgu_parent_with_parts():
+            return None
 
-        years: list[int] = []
+        fact_years: list[int] = []
+        fact_years.extend(self._fact_display_years(self.date_relabing_fact))
+        fact_years.extend(self._fact_display_years(self.date_update_fact))
 
-        if self.date_modernization_power_change_expected is not None:
+        suppress_expected = (
+            self._has_fact_in_current_year(self.date_relabing_fact)
+            or self._has_fact_in_current_year(self.date_update_fact)
+        )
+
+        years: list[int] = list(fact_years)
+        if not suppress_expected and self.date_modernization_power_change_expected is not None:
             years.append(self.date_modernization_power_change_expected)
-
-        if self.date_relabing_fact:
-            normalized = normalize_date_list(self.date_relabing_fact)
-            if normalized:
-                tokens = [t.strip() for t in normalized.split(",") if t.strip()]
-                for token in tokens:
-                    dt = convert_to_date(token)
-                    if dt is None:
-                        continue
-                    display_year = self._relabing_year_for_display(dt)
-                    if display_year is not None:
-                        years.append(display_year)
 
         if not years:
             return None
-
         return str(max(years))
 
     @property

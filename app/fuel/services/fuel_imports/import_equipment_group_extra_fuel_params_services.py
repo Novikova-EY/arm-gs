@@ -10,14 +10,11 @@ import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import pandas as pd
-from sqlalchemy import cast
-from sqlalchemy.types import String
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions import db
 from app.logs.services.logging_service import log_to_db
 from app.fuel.models.fue_equipment_group_extra_fuel_param_model import EquipmentGroupExtraFuelParam
-from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.refdata.models.years.year_model import Year
 
 
@@ -181,20 +178,16 @@ def _numb1120_for_match(value) -> str | None:
 
 
 def _resolve_equipment_groups_from_row(row):
-    """
-    Возвращает список (equipment_group_id, database_version_id) для строки.
-    Сопоставление по numb1120 = EquipmentGroup.numb (все версии БД).
-    """
-    numb1120_str = _numb1120_for_match(_extract_cell_value(row, "numb1120"))
-    if not numb1120_str:
-        return []
-
-    groups = (
-        EquipmentGroup.query
-        .filter(cast(EquipmentGroup.numb, String) == numb1120_str)
-        .all()
+    """Цели записи во все версии БД (numb + external_code; без ГО — (None, version))."""
+    from app.fuel.services.fuel_imports.fuel_import_all_versions import (
+        resolve_equipment_group_import_targets,
     )
-    return [(g.id, g.database_version_id) for g in groups]
+
+    return resolve_equipment_group_import_targets(
+        _extract_cell_value(row, "numb1120"),
+        fill_missing_versions=True,
+        require_group_match=True,
+    )
 
 
 def import_equipment_group_extra_fuel_params_from_excel(file, user: str, year: int) -> dict:
@@ -265,11 +258,16 @@ def import_equipment_group_extra_fuel_params_from_excel(file, user: str, year: i
                 skipped_no_year += 1
                 continue
 
-            param_query = EquipmentGroupExtraFuelParam.query.filter_by(
+            from app.fuel.services.fuel_imports.fuel_import_all_versions import (
+                lookup_imported_row,
+            )
+
+            param = lookup_imported_row(
+                EquipmentGroupExtraFuelParam,
                 equipment_group_id=equipment_group_id,
                 year_number=year,
+                database_version_id=eg_database_version_id,
             )
-            param = param_query.first()
             if param is None:
                 param = EquipmentGroupExtraFuelParam(
                     equipment_group_id=equipment_group_id,
@@ -300,7 +298,7 @@ def import_equipment_group_extra_fuel_params_from_excel(file, user: str, year: i
 
     elapsed = time.perf_counter() - t0
     message = (
-        "Загрузка данных в EquipmentGroupExtraFuelParam завершена. "
+        "Загрузка данных в EquipmentGroupExtraFuelParam завершена (во все версии БД). "
         "Создано: {created}, обновлено: {updated}, "
         "пропущено (нет numb1120): {skipped_no_match}, "
         "пропущено (нет года в версии): {skipped_no_year}."

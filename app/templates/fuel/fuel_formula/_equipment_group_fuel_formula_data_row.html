@@ -1,21 +1,24 @@
 {# Одна строка таблицы формул: Group | Год | numb1120 (авто) | formtxt (edit для текущий/план) #}
 {# Ожидает: group_entity, group_name, gid, row_span, is_first_row, param, formula_value_columns #}
 {#           can_edit_bulk, formtxt_editable_years, nust_changed_from_prev_year_rows #}
+{#           опционально group_block (is_composite_total_row) #}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label %}
+{% set is_composite_total = group_block.get('is_composite_total_row') if group_block is defined and group_block else false %}
+{% set _gb = group_block if group_block is defined and group_block else none %}
 {% set ynum = param.year_number if param is not none and param.year_number is not none else '' %}
 {% set variant_num = param.variant_number if param is not none and param.variant_number is not none else 0 %}
-{% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
+{% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows and not is_composite_total %}
 {% set row_is_empty = not param %}
-{% set can_formtxt_edit = can_edit_bulk and gid and ynum != '' and formtxt_editable_years is defined and ynum in formtxt_editable_years %}
-<tr class="text-center align-middle"
+{% set can_formtxt_edit = can_edit_bulk and gid and ynum != '' and formtxt_editable_years is defined and ynum in formtxt_editable_years and not is_composite_total %}
+<tr class="text-center align-middle{% if is_composite_total %} fuel-param-summary-row fuel-param-composite-parent-row fw-bold{% endif %}"
     data-fuel-edit-data-row="1"
     data-fuel-group-id="{{ gid }}"
+    {% if group_block is defined and group_block and group_block.get('is_composite_parent') %}data-composite-role="parent"{% elif group_block is defined and group_block and group_block.get('is_composite_child') %}data-composite-role="child"{% endif %}
     {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
     {% if row_is_empty %}data-row-empty="1"{% endif %}>
 {% if is_first_row %}
-<td rowspan="{{ row_span }}" data-fuel-group-label="1">
-    {% if group_entity and group_entity.id %}
-    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
-    {% else %}{{ group_name }}{% endif %}
+<td class="{{ eg_name_cell_class(_gb) }}" rowspan="{{ row_span }}" data-fuel-group-label="1">
+    {{ eg_name_label(group_entity, group_name, _gb) }}
 </td>
 {% endif %}
 <td{% if nust_highlight_row %} class="table-warning"{% endif %}>{% if ynum != '' %}{{ ynum }}{% else %}—{% endif %}</td>

@@ -31,6 +31,7 @@ from app.generation.services.station_changes_services.aggregation_station_change
 from app.generation.services.station_services.station_services import (
     get_current_machine_tes_types_map,
     assign_machine_powers_by_year,
+    _apply_machine_display_names,
     )
 from app.common.services.get_services.years.years_get_services import (
     get_current_year,
@@ -165,6 +166,36 @@ EVENT_TYPES = [
     ("change_power", "Изменение мощности"),
 ]
 
+
+def _normalize_year_feature_label(label) -> str:
+    return str(label or "").strip().lower().replace(" ", "")
+
+
+def power_row_matches_changes_mode(power_row: dict, changes_mode: str, year_features: dict, current_year_split) -> bool:
+    """Фильтр строк powers_by_year для режима fact|plan (changes_mode).
+
+    - fact: годы с признаком «факт» + bucket=fact у текущего (оценка) года
+    - plan: годы с признаком «план» + bucket≠fact у текущего (оценка) года
+    """
+    if not isinstance(power_row, dict):
+        return False
+    mode = str(changes_mode or "plan").strip().lower()
+    if mode not in ("fact", "plan"):
+        mode = "plan"
+    year = power_row.get("year")
+    bucket = str(power_row.get("current_year_bucket") or "").strip().lower()
+    feat = _normalize_year_feature_label((year_features or {}).get(year, ""))
+
+    if current_year_split is not None and year == current_year_split:
+        if mode == "fact":
+            return bucket == "fact"
+        return bucket != "fact"
+
+    if mode == "fact":
+        return feat == "факт" or feat.startswith("факт")
+    # plan
+    return feat == "план" or "план" in feat
+
 def get_tes_type_for_year(self, year):
     for rel in self.machine_tes_types:
         if rel.year_number == year and rel.tes_type:
@@ -198,10 +229,12 @@ def get_station_changes_list(
     base_machine_filters = []
 
     if filters.get("tes_type_filter"):
+        # Тип ТЭС должен учитываться по любому году в выбранном диапазоне,
+        # а не только по календарному current_year (иначе остаются лишь вводы текущего года).
         base_machine_filters.append(
             Machine.machine_tes_types.any(
                 and_(
-                    MachineTesType.year_number == current_year,
+                    MachineTesType.year_number.between(start_year, end_year),
                     MachineTesType.id_tes_type.in_(filters["tes_type_filter"])
                 )
             )
@@ -362,7 +395,7 @@ def get_station_changes_list(
     if isinstance(per_page, str) and per_page.lower() == "all":
         station_ids = [row[0] for row in station_ids_query.all()]
     else:
-        per_page = int(per_page or 10)
+        per_page = int(per_page or 25)
         offset = (page - 1) * per_page
         station_ids = [row[0] for row in station_ids_query.offset(offset).limit(per_page).all()]
 
@@ -462,14 +495,18 @@ def get_station_changes_list_data(
             per_page_int = int(per_page)
             show_all = False
         except (TypeError, ValueError):
-            per_page_int = 10
+            per_page_int = 25
             show_all = False
 
     # 1. Все электростанции без пагинации
+    # Важно: передаём start_year/end_year — иначе отбор станций идёт по дефолтному диапазону
+    # и расходится с фильтрами/агрегацией страницы.
     station_data = get_station_changes_list(
         page=1,
         per_page="all",
         rounding_digits=rounding_digits,
+        start_year=start_year,
+        end_year=end_year,
         **filters
     )
 
@@ -477,13 +514,17 @@ def get_station_changes_list_data(
     all_stations = station_data["stations"]
     station_ids = [s.id for s in all_stations]
 
-    # 3. Загрузка всех агрегатов
+    # 3. Загрузка агрегатов с теми же machine-фильтрами, что и отбор станций
+    # (иначе при «Ввод» + «Тип агрегата ТЭС» в суммы попадают лишние/пустые наборы)
     all_machines = load_all_machines_with_changes(
         station_ids=station_ids,
         start_year=start_year,
         end_year=end_year,
         rounding_digits=rounding_digits,
         event_type_filter=filters.get("event_type_filter"),
+        tes_type_filter=filters.get("tes_type_filter"),
+        tes_machine_type_filter=filters.get("tes_machine_type_filter"),
+        fuel_type_filter=filters.get("fuel_type_filter"),
     )
 
     # 3.1. Находим "текущий (оценка)" год (в выбранной версии БД) и делим его на факт/план.
@@ -541,6 +582,29 @@ def get_station_changes_list_data(
     except Exception:
         current_year_split = None
 
+    # Режим факт/план: changes_mode=fact|plan (по умолчанию plan)
+    try:
+        changes_mode = str(filters.get("changes_mode") or "plan").strip().lower()
+        if changes_mode not in ("fact", "plan"):
+            changes_mode = "plan"
+        year_features_for_mode = get_year_feature_dict() or {}
+        split_for_mode = current_year_split
+        for m in all_machines:
+            rows = getattr(m, "powers_by_year", None) or []
+            filtered = [
+                p for p in rows
+                if power_row_matches_changes_mode(
+                    p, changes_mode, year_features_for_mode, split_for_mode
+                )
+            ]
+            m.powers_by_year = filtered
+            m.total_rows = len(filtered)
+            m.event_types = set(p.get("event") for p in filtered if isinstance(p, dict) and p.get("event"))
+        # В однорежимном виде не дублируем колонку факт/план
+        current_year_split = None
+    except Exception:
+        pass
+
     # 3.1. Итоги по отображаемому периоду (только годы с признаком "план")
     try:
         from decimal import Decimal
@@ -566,6 +630,9 @@ def get_station_changes_list_data(
                         continue
                     if p.get("year") not in plan_years_set:
                         continue
+                    # Факт текущего года не входит в плановые итоги периода
+                    if str(p.get("current_year_bucket") or "").strip().lower() == "fact":
+                        continue
                     v = p.get("p_ust")
                     if v is None:
                         continue
@@ -584,6 +651,12 @@ def get_station_changes_list_data(
         for m in all_machines:
             setattr(m, "plan_period_sum", None)
             setattr(m, "plan_period_sum_by_event", {})
+
+    # Отображаемое имя ГО: «до (после)» для плановой модернизации / перемаркировки
+    try:
+        _apply_machine_display_names(all_machines)
+    except Exception:
+        pass
 
     # 4. Отбираем только машины с event_type
     machines_with_event = [m for m in all_machines if m.event_types]
@@ -610,122 +683,87 @@ def get_station_changes_list_data(
         station.machines = [m for m in all_machines if m.id_station == station.id]
         # Сортируем машины внутри электростанции по генкомпании
         station.machines.sort(key=lambda m: (
+            1 if bool(getattr(m, "is_archived", False)) else 0,
+            (m.gen_company.name or "").lower() if m.gen_company else "\uffff",
             m.gen_company.id if m.gen_company else 999999,
             m.id
         ))
         if station.machines:
             apply_all_rowspans_for_station(station.machines)
-    
-    # 6. Глобальное объединение ячеек по субъекту РФ и генкомпании
-    # Сначала строим иерархию, чтобы знать фактический порядок рендера (теперь сверху — синхронные зоны)
+
+    # 6. Иерархия в порядке рендера + soft-пагинация по субъекту/энергоузлу
     hierarchy_data = build_est_then_sync_area_hierarchy_structure_for_changes(all_stations, include_names=True)
-    # Формируем последовательность машин В ТОЧНОМ порядке рендера шаблона
-    machines_in_display_order: list[Machine] = []
-    grouped = rows and hierarchy_data.get("grouped_stations", {}) or {}
-    for es_type_id, es_group in grouped.items():
-        for sa_id, sa_group in es_group.items():
-            for ues_id, ues_group in sa_group.items():
-                for res_id, res_group in ues_group.items():
-                    for rd_id, stations_in_rd in res_group.items():
-                        if rd_id == 0:
-                            continue
-                        for st in stations_in_rd:
-                            if getattr(st, "machines", None):
-                                for _m in st.machines:
-                                    setattr(_m, "_display_rd_id", rd_id)
-                                    setattr(_m, "_display_res_id", res_id)
-                                    setattr(_m, "_display_region_key", (res_id, rd_id))
-                                    machines_in_display_order.append(_m)
+    # Станции внутри субъекта/энергоузла — по генкомпании (непрерывные блоки одной ГК)
+    grouped_all = hierarchy_data.get("grouped_stations", {}) or {}
+    _sort_stations_in_hierarchy_by_gen_company(grouped_all)
 
-    # На всякий случай сбрасываем предыдущие значения и отфильтровываем невидимые агрегаты
-    visible_machines_in_order = []
-    for m in machines_in_display_order:
-        if getattr(m, "total_rows", 0) and m.total_rows > 0:
-            setattr(m, "region_rowspan", 0)
-            setattr(m, "gen_company_rowspan", 0)
-            visible_machines_in_order.append(m)
+    flat_items = _flatten_stations_changes_hierarchy(grouped_all)
+    total_count = len(flat_items)
+    est_names_for_totals = hierarchy_data.get("energy_system_type_name", {}) or {}
 
-    # 6.1. Объединение по субъекту РФ (континуальные блоки в отображаемой последовательности)
-    current_region_key = None
-    rd_start_idx = 0
-    for idx, m in enumerate(visible_machines_in_order):
-        region_key = getattr(m, "_display_region_key", None) or (getattr(m, "_display_res_id", None), getattr(m, "_display_rd_id", None))
+    next_item = None
+    if show_all or per_page_int is None:
+        page_flat_items = flat_items
+        stations = [item["station"] for item in page_flat_items]
+        total_pages = 1
+        page = 1
+        grouped_page = grouped_all
+        parent_totals_flags = _determine_changes_parent_totals_flags(
+            page_flat_items,
+            None,
+            show_all=True,
+            energy_system_type_names=est_names_for_totals,
+        )
+    else:
+        start_idx, end_idx, total_pages, page = _slice_changes_page_range(
+            flat_items, per_page_int, page
+        )
+        page_flat_items = flat_items[start_idx:end_idx]
+        next_item = flat_items[end_idx] if end_idx < len(flat_items) else None
+        stations = [item["station"] for item in page_flat_items]
+        grouped_page = _filter_grouped_stations_to_page(grouped_all, page_flat_items)
+        parent_totals_flags = _determine_changes_parent_totals_flags(
+            page_flat_items,
+            next_item,
+            show_all=False,
+            energy_system_type_names=est_names_for_totals,
+        )
+        print(
+            f"[PAGINATION] station_changes Page {page}: "
+            f"range [{start_idx}:{end_idx}], showing {len(stations)} stations, "
+            f"total_pages={total_pages}"
+        )
 
-        if region_key != current_region_key:
-            if current_region_key is not None and rd_start_idx < idx:
-                total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(rd_start_idx, idx))
-                if total_rows > 0:
-                    visible_machines_in_order[rd_start_idx].region_rowspan = total_rows
-                    for i in range(rd_start_idx + 1, idx):
-                        visible_machines_in_order[i].region_rowspan = 0
-
-            current_region_key = region_key
-            rd_start_idx = idx
-
-    # Завершаем последний блок субъекта
-    if current_region_key is not None and rd_start_idx < len(visible_machines_in_order):
-        total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(rd_start_idx, len(visible_machines_in_order)))
-        if total_rows > 0:
-            visible_machines_in_order[rd_start_idx].region_rowspan = total_rows
-            for i in range(rd_start_idx + 1, len(visible_machines_in_order)):
-                visible_machines_in_order[i].region_rowspan = 0
-
-    # 6.2. Объединение по генкомпании (внутри субъекта РФ)
-    current_key = None  # (region_key, gen_company_id)
-    gc_start_idx = 0
-    for idx, m in enumerate(visible_machines_in_order):
-        region_key = getattr(m, "_display_region_key", None) or (getattr(m, "_display_res_id", None), getattr(m, "_display_rd_id", None))
-        gen_company_id = m.gen_company.id if m.gen_company else None
-        key = (region_key, gen_company_id)
-
-        if key != current_key:
-            if current_key is not None and gc_start_idx < idx:
-                total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(gc_start_idx, idx))
-                if total_rows > 0:
-                    visible_machines_in_order[gc_start_idx].gen_company_rowspan = total_rows
-                    for i in range(gc_start_idx + 1, idx):
-                        visible_machines_in_order[i].gen_company_rowspan = 0
-
-            current_key = key
-            gc_start_idx = idx
-
-    # Завершаем последний блок генкомпании
-    if current_key is not None and gc_start_idx < len(visible_machines_in_order):
-        total_rows = sum(getattr(visible_machines_in_order[i], "total_rows", 0) for i in range(gc_start_idx, len(visible_machines_in_order)))
-        if total_rows > 0:
-            visible_machines_in_order[gc_start_idx].gen_company_rowspan = total_rows
-            for i in range(gc_start_idx + 1, len(visible_machines_in_order)):
-                visible_machines_in_order[i].gen_company_rowspan = 0
-
-    # 7. Строим иерархию с обычными станциями (уже построена выше)
-    
-    filtered_stations = all_stations
+    # 7. Rowspan только для станций текущей страницы (границы субъектов не рвём)
+    _apply_region_and_gen_company_rowspans(grouped_page)
 
     # Маппинг "субъект РФ -> синхронная зона" (нужен для агрегатов по синхронным зонам)
     rd_to_sa_id: dict[int, int] = {}
     rd_to_ez_id: dict[int, int] = {}
+    try:
+        from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+            get_synchronous_area_list_full,
+        )
+        _sa_list = get_synchronous_area_list_full() or []
+        _sa_by_id = {sa.id: sa for sa in _sa_list if getattr(sa, "id", None) is not None}
+    except Exception:
+        _sa_by_id = {}
+    _year_for_sa = get_current_year()
     for st in all_stations:
         rd_id = getattr(st, "id_regional_district", None)
         rd_obj = getattr(st, "regional_district", None)
         if not rd_id or not rd_obj:
             continue
-        sa_id = getattr(rd_obj, "id_synchronous_area", None) or 0
+        sa_id = resolve_effective_sync_area_id(st, _sa_by_id, current_year=_year_for_sa)
         ez_id = getattr(rd_obj, "id_energy_zone", None) or 0
         rd_to_sa_id[int(rd_id)] = int(sa_id)
         rd_to_ez_id[int(rd_id)] = int(ez_id)
 
-    # 9. Постраничная нарезка
-    total_count = len(filtered_stations)
-    total_pages = 1 if show_all else max(1, (total_count + per_page_int - 1) // per_page_int)
-    if not show_all:
-        stations = filtered_stations[(page - 1) * per_page_int: page * per_page_int]
-    else:
-        stations = filtered_stations
-
-
     result = {
         "stations": station_data,
-        "stations_grouped": hierarchy_data.get("grouped_stations", {}),
+        "stations_grouped": grouped_page,
+        # Полная иерархия — для экспорта из кэша страницы
+        "stations_grouped_all": grouped_all,
         "synchronous_area_names": hierarchy_data.get("synchronous_area_name", {}),
         "energy_unit_names_override": hierarchy_data.get("energy_unit_name", {}),
         "rd_to_synchronous_area_id": rd_to_sa_id,
@@ -736,6 +774,7 @@ def get_station_changes_list_data(
         "page": page,
         "per_page": per_page,
         "current_year_split": current_year_split,
+        "should_show_parent_totals": parent_totals_flags,
         }
     
     result.update({
@@ -862,7 +901,12 @@ def load_all_machines_with_changes(
     end_year: int,
     rounding_digits: int = 1,
     event_type_filter: list[str] | None = None,
+    tes_type_filter: list[int] | None = None,
+    tes_machine_type_filter: list[int] | None = None,
+    fuel_type_filter: list[int] | None = None,
 ) -> list[Machine]:
+    from app.generation.models.pgu_machine.pgu_machine_model import PGUMachine
+
     current_db_version_id = get_current_db_version_id()
     machines_query = Machine.query.options(
         joinedload(Machine.machine_station).joinedload(Station.regional_district),
@@ -872,9 +916,32 @@ def load_all_machines_with_changes(
         selectinload(Machine.machine_fuels),
         selectinload(Machine.machine_tes_types).selectinload(MachineTesType.tes_type),
         joinedload(Machine.tes_machine_type),
+        selectinload(Machine.pgu_submachines).selectinload(PGUMachine.pgu_machine_powers),
     )
     machines_query = filter_by_explicit_db_version(machines_query, Machine, current_db_version_id)
-    machines = machines_query.filter(Machine.id_station.in_(station_ids)).all()
+    machines_query = machines_query.filter(Machine.id_station.in_(station_ids))
+
+    if tes_type_filter:
+        machines_query = machines_query.filter(
+            Machine.machine_tes_types.any(
+                and_(
+                    MachineTesType.year_number.between(start_year, end_year),
+                    MachineTesType.id_tes_type.in_(tes_type_filter),
+                )
+            )
+        )
+    if tes_machine_type_filter:
+        machines_query = machines_query.filter(
+            Machine.id_tes_machine_type.in_(tes_machine_type_filter)
+        )
+    if fuel_type_filter:
+        machines_query = machines_query.filter(
+            Machine.machine_fuels.any(
+                MachineFuel.fuel.has(Fuel.id_fuel_type.in_(fuel_type_filter))
+            )
+        )
+
+    machines = machines_query.all()
 
     # Фильтруем связанные данные по версии БД после загрузки
     # (selectinload загружает все связанные записи, нужно отфильтровать вручную)
@@ -902,6 +969,24 @@ def load_all_machines_with_changes(
                 if getattr(mtt, 'database_version_id', None) == current_db_version_id
                 or (current_db_version_id is None and getattr(mtt, 'database_version_id', None) is None)
             ]
+
+        # Фильтруем части ПГУ и их мощности по версии БД
+        if hasattr(m, "pgu_submachines") and m.pgu_submachines:
+            parts = []
+            for part in m.pgu_submachines:
+                if not (
+                    getattr(part, "database_version_id", None) == current_db_version_id
+                    or (current_db_version_id is None and getattr(part, "database_version_id", None) is None)
+                ):
+                    continue
+                if getattr(part, "pgu_machine_powers", None):
+                    part.pgu_machine_powers = [
+                        pp for pp in part.pgu_machine_powers
+                        if getattr(pp, "database_version_id", None) == current_db_version_id
+                        or (current_db_version_id is None and getattr(pp, "database_version_id", None) is None)
+                    ]
+                parts.append(part)
+            m.pgu_submachines = parts
 
     # Назначаем данные по годам
     for m in machines:
@@ -989,7 +1074,419 @@ def apply_all_rowspans_for_station(machines: list[Machine]):
     )
 
 
+def _round_power_value(p_ust_val, rounding_digits):
+    """Округление p_ust для событий изменений мощности (Decimal, без float-шума)."""
+    from decimal import Decimal, ROUND_HALF_UP, localcontext
+
+    value = Decimal(str(p_ust_val if p_ust_val is not None else 0))
+    if rounding_digits == 0:
+        # «Не округлять»: убираем артефакты float, оставляем до 3 знаков (QA по итогам ОЭС/субъектов).
+        with localcontext() as ctx:
+            ctx.rounding = ROUND_HALF_UP
+            value = value.quantize(Decimal("0.001"))
+        return value
+    if rounding_digits == -1:
+        return value.to_integral_value(rounding=ROUND_HALF_UP)
+    digits = int(rounding_digits) if rounding_digits is not None else 1
+    with localcontext() as ctx:
+        ctx.rounding = ROUND_HALF_UP
+        quant = Decimal("1." + ("0" * digits))
+        return value.quantize(quant)
+
+
+def display_machine_number(machine_number) -> str:
+    """Пустой станционный номер в UI/экспорте показываем как «–»."""
+    if machine_number is None:
+        return "–"
+    text = str(machine_number).strip()
+    return text if text else "–"
+
+
+def _station_gen_company_sort_key(st):
+    names = []
+    for m in getattr(st, "machines", []) or []:
+        if bool(getattr(m, "is_archived", False)):
+            continue
+        gc = getattr(m, "gen_company", None)
+        names.append((gc.name or "").lower() if gc else "\uffff")
+    primary = min(names) if names else "\uffff"
+    return (primary, (st.name or "").lower(), getattr(st, "id", 0) or 0)
+
+
+def _sort_stations_in_hierarchy_by_gen_company(grouped_stations) -> None:
+    """Сортирует списки станций в листьях иерархии по генкомпании (in-place)."""
+    if not isinstance(grouped_stations, dict):
+        return
+
+    def _walk(node):
+        if isinstance(node, list):
+            node.sort(key=_station_gen_company_sort_key)
+            return
+        if isinstance(node, dict):
+            for child in node.values():
+                _walk(child)
+
+    _walk(grouped_stations)
+
+
+def _flatten_stations_changes_hierarchy(grouped_stations) -> list[dict]:
+    """
+    Плоский список станций в порядке рендера шаблона + ключ soft-границы.
+
+    Граница как на station_list при суммах: не рвём субъект РФ / энергоузел
+    (leaf_id в рамках EST→SA), даже если станции попали в разные РЭС.
+    """
+    flat_items: list[dict] = []
+    if not isinstance(grouped_stations, dict):
+        return flat_items
+
+    for est_id, es_group in grouped_stations.items():
+        if not isinstance(es_group, dict):
+            continue
+        for sa_id, sa_group in es_group.items():
+            if not isinstance(sa_group, dict):
+                continue
+            for ues_id, ues_group in sa_group.items():
+                if not isinstance(ues_group, dict):
+                    continue
+                for res_id, res_group in ues_group.items():
+                    if not isinstance(res_group, dict):
+                        continue
+                    for leaf_id, stations_in_leaf in res_group.items():
+                        if leaf_id == 0 or not stations_in_leaf:
+                            continue
+                        # Без res_id: итог «Итого по субъекту» один на leaf_id,
+                        # станции одного субъекта не должны уезжать на разные страницы
+                        # из‑за разных РЭС.
+                        boundary_key = (est_id, sa_id, leaf_id)
+                        for st in stations_in_leaf:
+                            flat_items.append(
+                                {
+                                    "station": st,
+                                    "boundary_key": boundary_key,
+                                    "est_id": est_id,
+                                    "sa_id": sa_id,
+                                    "ues_id": ues_id,
+                                    "res_id": res_id,
+                                    "leaf_id": leaf_id,
+                                }
+                            )
+    return flat_items
+
+
+def _compute_changes_page_start_index(flat_items: list[dict], per_page_int: int, target_page: int) -> int:
+    """Индекс начала страницы при правиле «не рвать субъект/энергоузел»."""
+    if per_page_int is None or per_page_int <= 0 or target_page <= 1:
+        return 0
+    if not flat_items:
+        return 0
+
+    idx = 0
+    current_page = 1
+    total = len(flat_items)
+
+    while current_page < target_page and idx < total:
+        count = 0
+        current_key = None
+        while idx < total:
+            key = flat_items[idx]["boundary_key"]
+            if (
+                count >= per_page_int
+                and current_key is not None
+                and key != current_key
+            ):
+                break
+            current_key = key
+            idx += 1
+            count += 1
+        current_page += 1
+
+    return idx
+
+
+def _compute_changes_effective_total_pages(flat_items: list[dict], per_page_int: int) -> int:
+    """Фактическое число страниц с учётом удлинения до конца субъекта/энергоузла."""
+    if per_page_int is None or per_page_int <= 0:
+        return 1
+    if not flat_items:
+        return 1
+
+    idx = 0
+    total_count = len(flat_items)
+    total_pages = 0
+    while idx < total_count:
+        total_pages += 1
+        count = 0
+        current_key = None
+        while idx < total_count:
+            key = flat_items[idx]["boundary_key"]
+            if (
+                count >= per_page_int
+                and current_key is not None
+                and key != current_key
+            ):
+                break
+            idx += 1
+            count += 1
+            current_key = key
+
+    return total_pages if total_pages > 0 else 1
+
+
+def _slice_changes_page_range(
+    flat_items: list[dict],
+    per_page_int: int,
+    page: int,
+) -> tuple[int, int, int, int]:
+    """Возвращает (start_idx, end_idx, total_pages, current_page)."""
+    if not flat_items:
+        return 0, 0, 1, 1
+
+    total_pages = _compute_changes_effective_total_pages(flat_items, per_page_int)
+    requested_page = max(int(page or 1), 1)
+    current_page = min(requested_page, total_pages)
+    start_idx = _compute_changes_page_start_index(flat_items, per_page_int, current_page)
+
+    idx = start_idx
+    count = 0
+    current_key = None
+    total_count = len(flat_items)
+    while idx < total_count:
+        key = flat_items[idx]["boundary_key"]
+        if (
+            count >= per_page_int
+            and current_key is not None
+            and key != current_key
+        ):
+            break
+        current_key = key
+        idx += 1
+        count += 1
+
+    return start_idx, idx, total_pages, current_page
+
+
+def _filter_grouped_stations_to_page(grouped_stations, page_flat_items: list[dict]):
+    """Оставляет в иерархии только станции текущей страницы (листы не рвём)."""
+    from collections import OrderedDict
+
+    if not isinstance(grouped_stations, dict):
+        return {}
+
+    allowed_station_ids = {
+        getattr(item["station"], "id", None) for item in page_flat_items
+    }
+    allowed_station_ids.discard(None)
+    # Какие листья (est, sa, leaf) попали на страницу — для отсечения чужих веток
+    allowed_leaves = {
+        (item["est_id"], item["sa_id"], item["leaf_id"]) for item in page_flat_items
+    }
+
+    result = OrderedDict()
+    for est_id, es_group in grouped_stations.items():
+        if not isinstance(es_group, dict):
+            continue
+        new_es = OrderedDict()
+        for sa_id, sa_group in es_group.items():
+            if not isinstance(sa_group, dict):
+                continue
+            new_sa = OrderedDict()
+            for ues_id, ues_group in sa_group.items():
+                if not isinstance(ues_group, dict):
+                    continue
+                new_ues = OrderedDict()
+                for res_id, res_group in ues_group.items():
+                    if not isinstance(res_group, dict):
+                        continue
+                    new_res = OrderedDict()
+                    for leaf_id, stations in res_group.items():
+                        if (est_id, sa_id, leaf_id) not in allowed_leaves:
+                            continue
+                        page_stations = [
+                            s for s in (stations or [])
+                            if getattr(s, "id", None) in allowed_station_ids
+                        ]
+                        if page_stations:
+                            new_res[leaf_id] = page_stations
+                    if new_res:
+                        new_ues[res_id] = new_res
+                if new_ues:
+                    new_sa[ues_id] = new_ues
+            if new_sa:
+                new_es[sa_id] = new_sa
+        if new_es:
+            result[est_id] = new_es
+    return result
+
+
+def _apply_region_and_gen_company_rowspans(grouped_stations) -> None:
+    """Глобальные rowspan по субъекту РФ и генкомпании в порядке рендера страницы."""
+    machines_in_display_order: list[Machine] = []
+    grouped = grouped_stations or {}
+    for _es_type_id, es_group in grouped.items():
+        for _sa_id, sa_group in es_group.items():
+            for _ues_id, ues_group in sa_group.items():
+                for res_id, res_group in ues_group.items():
+                    for rd_id, stations_in_rd in res_group.items():
+                        if rd_id == 0:
+                            continue
+                        for st in stations_in_rd:
+                            if getattr(st, "machines", None):
+                                for _m in st.machines:
+                                    setattr(_m, "_display_rd_id", rd_id)
+                                    setattr(_m, "_display_res_id", res_id)
+                                    setattr(_m, "_display_region_key", (res_id, rd_id))
+                                    machines_in_display_order.append(_m)
+
+    visible_machines_in_order = []
+    for m in machines_in_display_order:
+        if getattr(m, "total_rows", 0) and m.total_rows > 0:
+            setattr(m, "region_rowspan", 0)
+            setattr(m, "gen_company_rowspan", 0)
+            visible_machines_in_order.append(m)
+
+    current_region_key = None
+    rd_start_idx = 0
+    for idx, m in enumerate(visible_machines_in_order):
+        region_key = getattr(m, "_display_region_key", None) or (
+            getattr(m, "_display_res_id", None),
+            getattr(m, "_display_rd_id", None),
+        )
+
+        if region_key != current_region_key:
+            if current_region_key is not None and rd_start_idx < idx:
+                total_rows = sum(
+                    getattr(visible_machines_in_order[i], "total_rows", 0)
+                    for i in range(rd_start_idx, idx)
+                )
+                if total_rows > 0:
+                    visible_machines_in_order[rd_start_idx].region_rowspan = total_rows
+                    for i in range(rd_start_idx + 1, idx):
+                        visible_machines_in_order[i].region_rowspan = 0
+
+            current_region_key = region_key
+            rd_start_idx = idx
+
+    if current_region_key is not None and rd_start_idx < len(visible_machines_in_order):
+        total_rows = sum(
+            getattr(visible_machines_in_order[i], "total_rows", 0)
+            for i in range(rd_start_idx, len(visible_machines_in_order))
+        )
+        if total_rows > 0:
+            visible_machines_in_order[rd_start_idx].region_rowspan = total_rows
+            for i in range(rd_start_idx + 1, len(visible_machines_in_order)):
+                visible_machines_in_order[i].region_rowspan = 0
+
+    current_key = None
+    gc_start_idx = 0
+    for idx, m in enumerate(visible_machines_in_order):
+        region_key = getattr(m, "_display_region_key", None) or (
+            getattr(m, "_display_res_id", None),
+            getattr(m, "_display_rd_id", None),
+        )
+        gen_company_id = m.gen_company.id if m.gen_company else None
+        key = (region_key, gen_company_id)
+
+        if key != current_key:
+            if current_key is not None and gc_start_idx < idx:
+                total_rows = sum(
+                    getattr(visible_machines_in_order[i], "total_rows", 0)
+                    for i in range(gc_start_idx, idx)
+                )
+                if total_rows > 0:
+                    visible_machines_in_order[gc_start_idx].gen_company_rowspan = total_rows
+                    for i in range(gc_start_idx + 1, idx):
+                        visible_machines_in_order[i].gen_company_rowspan = 0
+
+            current_key = key
+            gc_start_idx = idx
+
+    if current_key is not None and gc_start_idx < len(visible_machines_in_order):
+        total_rows = sum(
+            getattr(visible_machines_in_order[i], "total_rows", 0)
+            for i in range(gc_start_idx, len(visible_machines_in_order))
+        )
+        if total_rows > 0:
+            visible_machines_in_order[gc_start_idx].gen_company_rowspan = total_rows
+            for i in range(gc_start_idx + 1, len(visible_machines_in_order)):
+                visible_machines_in_order[i].gen_company_rowspan = 0
+
+
+def _determine_changes_parent_totals_flags(
+    page_flat_items: list[dict],
+    next_item: dict | None,
+    *,
+    show_all: bool,
+    energy_system_type_names: dict | None = None,
+) -> dict:
+    """
+    Какие итоги выше субъекта показывать на странице.
+    Субъект/энергоузел не рвётся пагинацией — его итог всегда допустим при show_totals.
+    """
+    if show_all or not page_flat_items:
+        return {
+            "union_energy_systems": None,  # None = показывать все присутствующие
+            "synchronous_areas": None,
+            "energy_system_types": None,
+            "tites_total": True,
+            "total": True,
+        }
+
+    est_names = energy_system_type_names or {}
+
+    def _is_tites_est(est_id) -> bool:
+        name = str(est_names.get(est_id, "") or "").lower().replace(" ", "")
+        return "титэс" in name
+
+    ues_show: dict = {}
+    sa_show: dict = {}
+    est_show: dict = {}
+
+    for i, item in enumerate(page_flat_items):
+        follower = page_flat_items[i + 1] if i + 1 < len(page_flat_items) else next_item
+        ues_key = (item["est_id"], item["sa_id"], item["ues_id"])
+        sa_key = (item["est_id"], item["sa_id"])
+        est_key = item["est_id"]
+
+        if follower is None or (follower["est_id"], follower["sa_id"], follower["ues_id"]) != ues_key:
+            ues_show[item["ues_id"]] = True
+        if follower is None or (follower["est_id"], follower["sa_id"]) != sa_key:
+            sa_show[item["sa_id"]] = True
+        if follower is None or follower["est_id"] != est_key:
+            est_show[item["est_id"]] = True
+
+    last = page_flat_items[-1]
+    next_is_tites = next_item is not None and _is_tites_est(next_item["est_id"])
+    tites_total = (
+        _is_tites_est(last["est_id"])
+        and bool(est_show.get(last["est_id"]))
+        and not next_is_tites
+    )
+
+    return {
+        "union_energy_systems": ues_show,
+        "synchronous_areas": sa_show,
+        "energy_system_types": est_show,
+        "tites_total": tites_total,
+        "total": next_item is None,
+    }
+
+
+def energy_unit_dative_for_totals(eu_name: str | None, eu_name_dat: str | None = None) -> str:
+    """
+    Подпись для «Итого по …» по энергоузлу.
+    Берётся из name_dat (дательный падеж), иначе — из наименования.
+    """
+    name_dat = (eu_name_dat or "").strip()
+    if name_dat:
+        return name_dat
+    name = (eu_name or "").strip()
+    return name or "энергоузлу"
+
+
 def assign_machine_powers_changes_by_year(machine, start_year, end_year, rounding_digits):
+    from decimal import Decimal
+
     machine.powers_by_year = []
     machine.event_types = set()
     machine.total_rows = 0
@@ -1006,41 +1503,95 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
         return
 
     # Собираем мощности по годам в словарь (на случай дублей по году берем последнюю)
-    # rounding_digits: 0 = не округлять, -1 = целое число, >0 = знаков после запятой
-    year_to_power: dict[int, float] = {}
+    # rounding_digits: 0 = не округлять (с ограничением float-шума), -1 = целое, >0 = знаков
+    year_to_power: dict[int, Decimal] = {}
     for mp in machine.machine_powers:
         y = getattr(mp, "year_number", None)
         if y is None:
             continue
         if y < start_year - 1 or y > end_year + 1:
             continue
-        p_ust_val = float(getattr(mp, "p_ust", 0) or 0)
-        if rounding_digits == 0:
-            year_to_power[int(y)] = p_ust_val
-        elif rounding_digits == -1:
-            year_to_power[int(y)] = round(p_ust_val)
-        else:
-            year_to_power[int(y)] = round(p_ust_val, rounding_digits)
+        year_to_power[int(y)] = _round_power_value(getattr(mp, "p_ust", 0), rounding_digits)
 
     if not year_to_power:
         return
 
+    def _as_display_number(value: Decimal):
+        # Для шаблонов/JSON оставляем Decimal; сравнение уже точное.
+        return value
+
     # 1) Изменение мощности (before/after/delta) — событие относится к году Y,
-    # где значение изменилось относительно предыдущего года (Y-1)
+    # где значение изменилось относительно предыдущего года (Y-1).
+    # Для ПГУ: если есть части — показываем только изменившиеся части, не весь ПГУ.
+    pgu_parts = list(getattr(machine, "pgu_submachines", None) or [])
+
+    def _part_year_powers(part) -> dict[int, Decimal]:
+        out: dict[int, Decimal] = {}
+        for pp in getattr(part, "pgu_machine_powers", None) or []:
+            y = getattr(pp, "year_number", None)
+            if y is None or y < start_year - 1 or y > end_year + 1:
+                continue
+            out[int(y)] = _round_power_value(getattr(pp, "p_ust", 0), rounding_digits)
+        return out
+
     for year in range(start_year, end_year + 1):
         if year not in year_to_power or (year - 1) not in year_to_power:
             continue
         prev_value = year_to_power[year - 1]
         value = year_to_power[year]
         if value != prev_value and prev_value > 0 and value > 0:
-            delta = value - prev_value
-            machine.event_types.update({"before_modernization", "after_modernization", "change_power"})
-            machine.powers_by_year.extend([
-                {"year": year, "p_ust": prev_value, "event": "before_modernization"},
-                {"year": year, "p_ust": value, "event": "after_modernization"},
-                {"year": year, "p_ust": delta, "event": "change_power"},
-            ])
-            machine.total_rows += 3
+            part_change_rows = []
+            for part in pgu_parts:
+                part_map = _part_year_powers(part)
+                if year not in part_map or (year - 1) not in part_map:
+                    continue
+                p_prev = part_map[year - 1]
+                p_val = part_map[year]
+                if p_val == p_prev or not (p_prev > 0 and p_val > 0):
+                    continue
+                p_delta = p_val - p_prev
+                part_name = getattr(part, "machine_name", None) or machine.machine_name
+                part_number = getattr(part, "machine_number", None)
+                part_change_rows.extend([
+                    {
+                        "year": year,
+                        "p_ust": _as_display_number(p_prev),
+                        "event": "before_modernization",
+                        "display_machine_name": part_name,
+                        "display_machine_number": part_number,
+                        "pgu_part_id": getattr(part, "id", None),
+                    },
+                    {
+                        "year": year,
+                        "p_ust": _as_display_number(p_val),
+                        "event": "after_modernization",
+                        "display_machine_name": part_name,
+                        "display_machine_number": part_number,
+                        "pgu_part_id": getattr(part, "id", None),
+                    },
+                    {
+                        "year": year,
+                        "p_ust": _as_display_number(p_delta),
+                        "event": "change_power",
+                        "display_machine_name": part_name,
+                        "display_machine_number": part_number,
+                        "pgu_part_id": getattr(part, "id", None),
+                    },
+                ])
+
+            if part_change_rows:
+                machine.event_types.update({"before_modernization", "after_modernization", "change_power"})
+                machine.powers_by_year.extend(part_change_rows)
+                machine.total_rows += len(part_change_rows)
+            else:
+                delta = value - prev_value
+                machine.event_types.update({"before_modernization", "after_modernization", "change_power"})
+                machine.powers_by_year.extend([
+                    {"year": year, "p_ust": _as_display_number(prev_value), "event": "before_modernization"},
+                    {"year": year, "p_ust": _as_display_number(value), "event": "after_modernization"},
+                    {"year": year, "p_ust": _as_display_number(delta), "event": "change_power"},
+                ])
+                machine.total_rows += 3
 
     # 2) Вывод из эксплуатации — фиксируем год (Y), где мощность стала 0,
     # а в предыдущем году (Y-1) была > 0.
@@ -1053,7 +1604,7 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
             machine.event_types.add("decommission")
             machine.powers_by_year.append({
                 "year": year,
-                "p_ust": prev_value,
+                "p_ust": _as_display_number(prev_value),
                 "event": "decommission",
             })
             machine.total_rows += 1
@@ -1067,13 +1618,138 @@ def assign_machine_powers_changes_by_year(machine, start_year, end_year, roundin
             machine.event_types.add("commission")
             machine.powers_by_year.append({
                 "year": commission_year,
-                "p_ust": year_to_power[commission_year],
+                "p_ust": _as_display_number(year_to_power[commission_year]),
                 "event": "commission",
             })
             machine.total_rows += 1
 
     if not machine.powers_by_year:
         machine.total_rows = 0
+
+
+def _find_first_sync_area_id(sa_by_id: dict) -> int | None:
+    """Id 1-й синхронной зоны ЕЭС (по number/name)."""
+    for sid, sa in (sa_by_id or {}).items():
+        number = (getattr(sa, "number", "") or "").strip()
+        name_l = (getattr(sa, "name", "") or "").strip().lower()
+        if number == "1":
+            return sid
+        if "перв" in name_l and "калининград" not in name_l:
+            return sid
+    return None
+
+
+def _find_second_sync_area_id(sa_by_id: dict) -> int | None:
+    """Id 2-й синхронной зоны ЕЭС (по number/name)."""
+    for sid, sa in (sa_by_id or {}).items():
+        number = (getattr(sa, "number", "") or "").strip()
+        name_l = (getattr(sa, "name", "") or "").strip().lower()
+        if number == "2":
+            return sid
+        if "втор" in name_l and "калининград" not in name_l:
+            return sid
+    return None
+
+
+def _sync_area_semantic_key(sa) -> tuple:
+    """Семантический ключ СЗ для сопоставления между версиями БД."""
+    number = (getattr(sa, "number", "") or "").strip().lower().replace("ё", "е")
+    name_l = (getattr(sa, "name", "") or "").strip().lower().replace("ё", "е")
+    if "калининград" in name_l:
+        return ("kaliningrad",)
+    if number == "1" or ("перв" in name_l and "калининград" not in name_l):
+        return ("1",)
+    if number == "2" or ("втор" in name_l and "калининград" not in name_l):
+        return ("2",)
+    if number in ("не указано", "не указан") or name_l.startswith("не указан"):
+        return ("unspecified",)
+    if number:
+        return ("number", number)
+    return ("name", name_l)
+
+
+def _remap_sync_area_id_to_catalog(sa_id: int, sa_by_id: dict) -> int:
+    """
+    Если у субъекта FK на СЗ из другой версии БД (нет в текущем каталоге),
+    маппим на эквивалентную СЗ текущей версии по number/name.
+    Пример: id=51 (1-я СЗ v22) → id=39 (1-я СЗ v20).
+    """
+    try:
+        sa_id = int(sa_id or 0)
+    except Exception:
+        return 0
+    if not sa_id:
+        return 0
+    if sa_id in (sa_by_id or {}):
+        return sa_id
+
+    try:
+        from app.refdata.models.energy_systems.synchronous_area_model import SynchronousArea
+        from app.extensions import db
+        orphan = db.session.get(SynchronousArea, sa_id)
+    except Exception:
+        orphan = None
+    if not orphan:
+        return 0
+
+    orphan_key = _sync_area_semantic_key(orphan)
+    for sid, sa in (sa_by_id or {}).items():
+        if _sync_area_semantic_key(sa) == orphan_key:
+            return int(sid)
+
+    if orphan_key == ("1",):
+        found = _find_first_sync_area_id(sa_by_id)
+        return int(found) if found is not None else 0
+    if orphan_key == ("2",):
+        found = _find_second_sync_area_id(sa_by_id)
+        return int(found) if found is not None else 0
+    return 0
+
+
+def _is_first_sync_area(sa, sa_id: int = 0) -> bool:
+    if not sa:
+        return False
+    number = (getattr(sa, "number", "") or "").strip()
+    name_l = (getattr(sa, "name", "") or "").strip().lower()
+    if number == "1":
+        return True
+    return "перв" in name_l and "калининград" not in name_l
+
+
+def resolve_effective_sync_area_id(
+    station,
+    sa_by_id: dict,
+    *,
+    current_year: int | None = None,
+) -> int:
+    """
+    Эффективная синхронная зона с учётом QA:
+    - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 — отдельная СЗ;
+    - Таймыр/Норильск: не наследуют 1-ю СЗ (исключаем из 1-й СЗ);
+    - FK на СЗ из другой версии БД → ремап в текущий каталог.
+    """
+    rd = getattr(station, "regional_district", None)
+    sa_id = getattr(rd, "id_synchronous_area", None) or 0
+    sa_id = _remap_sync_area_id_to_catalog(sa_id, sa_by_id)
+    rd_name = (getattr(rd, "name", None) or "").strip().lower()
+    sa = sa_by_id.get(sa_id) if sa_by_id else None
+    sa_name = (getattr(sa, "name", "") or "").strip().lower()
+
+    is_taimyr = ("таймыр" in rd_name) or ("норильск" in rd_name)
+    if is_taimyr and _is_first_sync_area(sa, sa_id):
+        return 0
+
+    is_kaliningrad = ("калининград" in sa_name) or ("калининград" in rd_name)
+    if is_kaliningrad:
+        year = current_year if current_year is not None else get_current_year()
+        # До 2025 Калининград учитывается в составе 1-й СЗ
+        if year is not None and int(year) < 2025:
+            first_id = _find_first_sync_area_id(sa_by_id or {})
+            if first_id is not None:
+                return first_id
+        return sa_id
+
+    return sa_id
 
 
 def build_hierarchy_structure_for_changes(stations: list[Station], include_names=False):
@@ -1303,12 +1979,13 @@ def build_sync_area_hierarchy_structure_for_changes(stations: list[Station], inc
         indices = [ues_order_index.get(ues_id, 10**9) for ues_id in es_group.keys()]
         return min(indices) if indices else 10**9
 
+    _year_for_sa = get_current_year()
     for station in stations:
         # Пропускаем электростанции без субъекта РФ или без энергосистем
         if not station.regional_district or not station.regional_district.regional_energy_systems:
             continue
 
-        sa_id = getattr(station.regional_district, "id_synchronous_area", None) or 0
+        sa_id = resolve_effective_sync_area_id(station, sa_by_id, current_year=_year_for_sa)
         rd_id = station.id_regional_district
 
         # Для сортировки субъектов РФ по алфавиту
@@ -1518,6 +2195,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
             return (1, 1 if is_siberia else 0, n)
         return (2, 0, n)
 
+    _year_for_sa = get_current_year()
     for station in stations:
         if not station.regional_district or not station.regional_district.regional_energy_systems:
             continue
@@ -1531,7 +2209,7 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
             rd_id = int(rd_id_raw or rd_obj_id or 0)
         except Exception:
             rd_id = int(rd_obj_id or 0) if rd_obj_id is not None else 0
-        sa_id = getattr(station.regional_district, "id_synchronous_area", None) or 0
+        sa_id = resolve_effective_sync_area_id(station, sa_by_id, current_year=_year_for_sa)
 
         rd_names[rd_id] = station.regional_district.name if station.regional_district else ""
 
@@ -1567,6 +2245,17 @@ def build_est_then_sync_area_hierarchy_structure_for_changes(stations: list[Stat
 
             # Для ТИТЭС второй уровень отсутствует (одна группа)
             second_level_id = 0 if is_tites else int(sa_id)
+
+            # Страховка: ОЭС Востока всегда во 2-й СЗ (даже если у субъекта в справочнике
+            # ошибочно проставлена 1-я СЗ / «не указано»).
+            if not is_tites:
+                ues_name_key = ues_name.lower().replace(" ", "")
+                if "оэсвостока" in ues_name_key or (
+                    "востока" in ues_name.lower() and "титэс" not in ues_name_key
+                ):
+                    second_id = _find_second_sync_area_id(sa_by_id or {})
+                    if second_id is not None:
+                        second_level_id = int(second_id)
 
             key = (est_id, second_level_id, int(ues_id), int(res_id))
             if key in seen_keys:
@@ -1802,6 +2491,13 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     energy_unit_query = filter_by_db_version(energy_unit_query, EnergyUnit)
     energy_units = energy_unit_query.order_by(EnergyUnit.id.asc()).all()
     energy_unit_names = {eu.id: eu.name for eu in energy_units}
+    energy_unit_names_dp = {eu.id: getattr(eu, "name_dp", None) for eu in energy_units}
+    energy_unit_names_dat = {eu.id: getattr(eu, "name_dat", None) for eu in energy_units}
+    # Подписи для «Итого по …» — из name_dat (дательный падеж)
+    energy_unit_names_for_totals = {
+        eu_id: energy_unit_dative_for_totals(name, energy_unit_names_dat.get(eu_id))
+        for eu_id, name in energy_unit_names.items()
+    }
 
     station_type_query = StationType.query
     station_type_query = filter_by_db_version(station_type_query, StationType)
@@ -1866,6 +2562,13 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
 
     stations_grouped = data.get("stations_grouped", {})
     synchronous_area_names = data.get("synchronous_area_names", {}) or {}
+    should_show_parent_totals = data.get("should_show_parent_totals") or {
+        "union_energy_systems": None,
+        "synchronous_areas": None,
+        "energy_system_types": None,
+        "tites_total": True,
+        "total": True,
+    }
     # Event-based агрегаты по энергоузлам (спец-логика ОЭС "ТИТЭС Сибири")
     energy_units_events_yearly_p_ust = (
         data.get("aggregate_changes_by_energy_units_events", {})
@@ -1901,6 +2604,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         "event_types_dict": dict(EVENT_TYPES),
         "stations_grouped": stations_grouped,
         "synchronous_area_names": synchronous_area_names,
+        "should_show_parent_totals": should_show_parent_totals,
         "sorted_energy_system_type_ids": sorted_energy_system_type_ids,
         "station_ids": data.get("station_ids", []),
         "total_count": data.get("total_count", 0),
@@ -1973,6 +2677,9 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         "current_year_split": data.get("current_year_split"),
         "machine_tes_types_map": machine_tes_types_map,
         "energy_unit_names": energy_unit_names,
+        "energy_unit_names_dp": energy_unit_names_dp,
+        "energy_unit_names_dat": energy_unit_names_dat,
+        "energy_unit_names_for_totals": energy_unit_names_for_totals,
         # JSON-готовые данные для Select2 в station_changes
         "regional_energy_system_list_json": regional_energy_system_list_json,
         "regional_district_list_json": regional_district_list_json,
@@ -2017,6 +2724,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
         data,
         station_type_list,
         EVENT_TYPES,
+        tes_machine_type_list=tes_machine_type_list,
     )
 
     # Динамический rowspan для объединенных энергосистем (ОЭС)
@@ -2586,18 +3294,28 @@ def compute_regional_district_rowspans(
     data,
     station_type_list: dict,
     event_types: list[tuple[str, str]],
+    tes_machine_type_list: dict | None = None,
 ) -> dict[int, int]:
     """Возвращает {rd_id: rowspan} для блока субъекта РФ.
 
-    Считаем количество реально отображаемых строк:
-      - по каждому событию, если есть агрегаты для субъекта
-      - по каждому событию и типу электростанции, если есть агрегаты
+    Считаем строки ровно как в шаблоне aggregated_regional_districts_*:
+      - «Всего» по событию
+      - тип электростанции по событию
+      - тип агрегата ТЭС (только под строкой ТЭС, без «не указано»)
     """
     rd_event_map = data.get("aggregate_changes_by_regional_districts", {}).get("aggregated", {}).get("p_ust", {})
     rd_by_station_map = data.get("aggregate_changes_regional_districts_by_station_types", {}).get("aggregated", {}).get("p_ust", {})
+    rd_by_tm_map = data.get("aggregate_changes_regional_districts_by_tes_machine_types", {}).get("aggregated", {}).get("p_ust", {})
+    tm_names = tes_machine_type_list or {}
 
-    # Собираем множество всех rd_id, присутствующих в агрегатах
-    rd_ids = set(rd_event_map.keys()) | set(rd_by_station_map.keys())
+    # id типов станций с именем «ТЭС» — под ними в шаблоне идут типы агрегатов
+    tes_station_type_ids = {
+        int(st_id)
+        for st_id, st_name in (station_type_list or {}).items()
+        if st_id != 0 and str(st_name or "").strip().lower() == "тэс"
+    }
+
+    rd_ids = set(rd_event_map.keys()) | set(rd_by_station_map.keys()) | set(rd_by_tm_map.keys())
 
     result: dict[int, int] = {}
     event_codes = [code for code, _ in event_types]
@@ -2605,21 +3323,36 @@ def compute_regional_district_rowspans(
     for rd_id in rd_ids:
         rows = 0
 
-        # Строки "Всего" по событиям
-        rd_events = rd_event_map.get(rd_id, {})
+        rd_events = rd_event_map.get(rd_id, {}) or {}
+        rd_stations = rd_by_station_map.get(rd_id, {}) or {}
+        rd_tm = rd_by_tm_map.get(rd_id, {}) or {}
+
         for code in event_codes:
             if rd_events.get(code):
                 rows += 1
 
-        # Строки по типам станций, по событиям
-        rd_stations = rd_by_station_map.get(rd_id, {})
-        for code in event_codes:
-            for st_id in station_type_list.keys():
+            has_tes_station_row = False
+            for st_id, st_name in (station_type_list or {}).items():
                 if st_id == 0:
                     continue
-                event_years_map = rd_stations.get(st_id, {}).get(code)
-                if event_years_map:
-                    rows += 1
+                event_years_map = (rd_stations.get(st_id, {}) or {}).get(code)
+                if not event_years_map:
+                    continue
+                rows += 1
+                if str(st_name or "").strip().lower() == "тэс":
+                    has_tes_station_row = True
+
+            # Типы агрегатов ТЭС — только если есть строка «ТЭС» для этого события
+            if has_tes_station_row or tes_station_type_ids:
+                if not has_tes_station_row:
+                    continue
+                for _tes_type_id, tm_map in rd_tm.items():
+                    for tm_id, ev_map in (tm_map or {}).items():
+                        tm_name = str(tm_names.get(tm_id, "") or "").strip()
+                        if not tm_name or tm_name.lower() == "не указано":
+                            continue
+                        if (ev_map or {}).get(code):
+                            rows += 1
 
         result[rd_id] = max(rows, 1)
 

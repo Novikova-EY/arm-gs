@@ -10,7 +10,7 @@
         <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
             {% if not ns.printed %}
                 <td class="total-row-cell" rowspan="{{ energy_unit_rowspans[current_rd_id] or 1 }}" colspan="8" style="font-weight: bold;">
-                    {{ energy_unit_names[current_rd_id] }}, всего
+                    Итого по {{ energy_unit_names_for_totals.get(current_rd_id) or energy_unit_names[current_rd_id] }}
                 </td>
                 {% set ns.printed = true %}
             {% endif %}

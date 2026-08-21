@@ -3,10 +3,12 @@
 Write/update-слой для EquipmentGroupSpecificFuelConsumption.
 
 Ручной ввод полей k, y, btp, sntp, bk, snk (и др.) с карточки группы.
-На странице расчётного модуля edit_data — k и *_calc;
+На странице расчётного модуля edit_data — те же столбцы, что на
+stations_equipment_group_specific_fuel_consumption: numb1120, k, y/y_calc,
+btp/btp_calc, sntp/sntp_calc, bk/bk_calc, snk/snk_calc;
 numb1120 только просмотр, при сохранении = EquipmentGroup.numb;
-годы «факт» — *_calc только чтение; для остальных признаков (в т.ч. «план»)
-*_calc редактируются. Входные y/btp/sntp/bk/snk на этой странице скрыты.
+годы «факт» — входные и *_calc только чтение; для остальных признаков (в т.ч. «план»)
+входные и *_calc редактируются.
 
 Справочно: полный список колонок таблицы — SPECIFIC_FUEL_CONSUMPTION_COLUMNS в
 equipment_group_specific_fuel_consumption_services.

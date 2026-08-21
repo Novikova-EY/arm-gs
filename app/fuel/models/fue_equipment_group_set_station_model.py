@@ -32,11 +32,11 @@ class EquipmentGroupSetStation(db.Model):
     )
     station = db.relationship("Station", back_populates="equipment_group_type_links_v2")
 
-    # FK -> EquipmentGroupType
+    # FK -> EquipmentGroupType. NULL = прочерк (оболочка составной станции, без типа ГО).
     equipment_group_type_id = db.Column(
         db.Integer,
         db.ForeignKey(f"{SCHEMA_REFDATA}.gs_sys_equipment_groups.id", ondelete="RESTRICT"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     equipment_group_type = db.relationship(

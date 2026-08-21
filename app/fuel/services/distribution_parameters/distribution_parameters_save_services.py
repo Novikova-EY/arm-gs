@@ -10,7 +10,7 @@ from app.common.services.database_version_filter import get_current_db_version_i
 from app.common.services.help_services import values_equal_by_display_precision
 from app.extensions import db
 from app.fuel.models.fue_distribution_parameter_model import DistributionParameter
-from app.fuel.services.import_distribution_parameters_services import _parse_decimal, _parse_int
+from app.fuel.services.distribution_parameters.import_distribution_parameters_services import _parse_decimal, _parse_int
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.years.year_model import Year
 
@@ -330,7 +330,7 @@ def apply_distribution_parameters_bulk_apply_from_payload(
     Сохраняет строки во **все версии БД** (как импорт / сохранение формы).
     Вставка или обновление по ОЭС + базовый год + расчётный год.
     """
-    from app.fuel.services.distribution_parameters_all_versions_services import (
+    from app.fuel.services.distribution_parameters.distribution_parameters_all_versions_services import (
         upsert_distribution_parameter_in_all_versions,
         ues_ref_uuid_by_id,
         year_number_by_id,
@@ -436,7 +436,7 @@ def apply_distribution_parameters_save_from_form(
     Returns:
         (число затронутых логических строк, список ошибок).
     """
-    from app.fuel.services.distribution_parameters_all_versions_services import (
+    from app.fuel.services.distribution_parameters.distribution_parameters_all_versions_services import (
         DP_SYNC_DATA_ATTRS,
         ensure_dp_ref_uuid,
         upsert_distribution_parameter_in_all_versions,

@@ -351,6 +351,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function setupPerPageToggle() {
         const showTotalsCheckbox = document.getElementById("show_totals_switch");
         const fuelCheckCheckbox = document.getElementById("fuel_check_switch");
+        const umGt100Checkbox = document.getElementById("um_gt_100_switch");
         const perPageSelect = document.getElementById("per_page_select");
 
         // Обработчик переключателя отображения сумм
@@ -361,6 +362,20 @@ document.addEventListener("DOMContentLoaded", () => {
                     params.set("show_totals", "1");
                 } else {
                     params.delete("show_totals");
+                }
+                params.set("page", 1); // Сбрасываем на первую страницу
+                window.location.href = window.location.pathname + "?" + params.toString();
+            });
+        }
+
+        // Обработчик фильтра «Станции с УМ > 100 МВт»
+        if (umGt100Checkbox) {
+            umGt100Checkbox.addEventListener("change", () => {
+                const params = new URLSearchParams(window.location.search);
+                if (umGt100Checkbox.checked) {
+                    params.set("um_gt_100", "1");
+                } else {
+                    params.delete("um_gt_100");
                 }
                 params.set("page", 1); // Сбрасываем на первую страницу
                 window.location.href = window.location.pathname + "?" + params.toString();
@@ -438,12 +453,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Обновляем стиль кнопки и текст
             if (isHidden) {
-                hideAggregatesLabel.classList.remove('btn-outline-secondary', 'text-dark');
-                hideAggregatesLabel.classList.add('btn-primary');
+                hideAggregatesLabel.classList.remove('btn-outline-warning');
+                hideAggregatesLabel.classList.add('btn-warning');
                 hideAggregatesLabel.textContent = 'Показать агрегаты';
             } else {
-                hideAggregatesLabel.classList.remove('btn-primary');
-                hideAggregatesLabel.classList.add('btn-outline-secondary', 'text-dark');
+                hideAggregatesLabel.classList.remove('btn-warning');
+                hideAggregatesLabel.classList.add('btn-outline-warning');
                 hideAggregatesLabel.textContent = 'Скрыть агрегаты';
             }
         }
@@ -636,4 +651,30 @@ document.addEventListener("DOMContentLoaded", () => {
     setupRoundingDigits();
     setupExportFormSync();
     setupExportSiprSync();
+
+    // Пересечение годовых фильтров (ввод/вывод/модерн) при смене Год начала/конца
+    window.updateHiddenFields = function updateHiddenFields() {
+        const form = document.getElementById('yearForm');
+        if (!form) return;
+        const startSel = document.getElementById('start_year');
+        const endSel = document.getElementById('end_year');
+        if (!startSel || !endSel) return;
+        let startY = parseInt(startSel.value, 10);
+        let endY = parseInt(endSel.value, 10);
+        if (Number.isNaN(startY) || Number.isNaN(endY)) return;
+        if (startY > endY) {
+            const tmp = startY;
+            startY = endY;
+            endY = tmp;
+        }
+        form.querySelectorAll('input[data-year-filter="1"]').forEach((input) => {
+            const raw = (input.value || '').trim();
+            if (raw === '' || raw === 'null' || raw === 'None') return;
+            const y = parseInt(raw, 10);
+            if (Number.isNaN(y)) return;
+            if (y < startY || y > endY) {
+                input.remove();
+            }
+        });
+    };
 });

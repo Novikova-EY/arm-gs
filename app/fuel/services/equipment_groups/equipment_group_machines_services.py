@@ -29,8 +29,33 @@ from app.common.services.database_version_filter import (
 )
 
 
+def resolve_equipment_group_ids_for_machines(
+    equipment_group,
+    member_equipment_groups: Optional[List[dict]] = None,
+) -> List[int]:
+    """
+    Для составной станции (comp=1) агрегаты берутся из самой группы и из дочерних
+    (MAIN=parent.NUMB): иначе агрегаты, ещё висящие на родителе, пропадают с карточки.
+    """
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        _as_int,
+    )
+
+    if equipment_group is None:
+        return []
+    ids = [int(equipment_group.id)]
+    members = member_equipment_groups or []
+    if _as_int(getattr(equipment_group, "comp", None)) == 1 and members:
+        for item in members:
+            child = item.get("equipment_group") if isinstance(item, dict) else None
+            child_id = getattr(child, "id", None)
+            if child_id is not None:
+                ids.append(int(child_id))
+    return list(dict.fromkeys(ids))
+
+
 def get_equipment_group_machines_data(
-    equipment_group_id: int,
+    equipment_group_id: int | List[int],
     start_year: int,
     end_year: int,
     version_id: Optional[int] = None,
@@ -41,15 +66,29 @@ def get_equipment_group_machines_data(
     Связь: EquipmentGroupSet (equipment_group_id) -> EquipmentGroupSetStation (station_id, equipment_group_type_id).
     Machine.id_station = station_id, Machine.id_equipment_group = equipment_group_type_id.
 
+    equipment_group_id — одна группа или список (для составной станции: дочерние
+    группы с MAIN=parent.NUMB).
+
     Returns:
         Список кортежей (station, machines), где machines отсортированы по станционному номеру.
     """
     if version_id is None:
         version_id = get_current_db_version_id()
 
-    # Получаем пары (station_id, equipment_group_type_id) из связей группы
+    if isinstance(equipment_group_id, (list, tuple, set)):
+        eg_ids = [int(x) for x in equipment_group_id if x is not None]
+    else:
+        eg_ids = [int(equipment_group_id)] if equipment_group_id is not None else []
+    # Сохраняем порядок, убираем дубли
+    eg_ids = list(dict.fromkeys(eg_ids))
+    if not eg_ids:
+        return []
+
+    # Получаем пары (station_id, equipment_group_type_id) из связей группы(групп)
     pairs = set()
-    sets_q = EquipmentGroupSet.query.filter_by(equipment_group_id=equipment_group_id).all()
+    sets_q = EquipmentGroupSet.query.filter(
+        EquipmentGroupSet.equipment_group_id.in_(eg_ids)
+    ).all()
     for s in sets_q:
         link = EquipmentGroupSetStation.query.get(s.equipment_group_set_station_id)
         if link:
@@ -88,7 +127,7 @@ def get_equipment_group_machines_data(
         .filter(or_(*or_conds))
         .filter(
             or_(
-                MachineFuelParam.equipment_group_id == equipment_group_id,
+                MachineFuelParam.equipment_group_id.in_(eg_ids),
                 MachineFuelParam.equipment_group_id.is_(None),
             )
         )

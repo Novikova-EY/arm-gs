@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
+from sqlalchemy.exc import IntegrityError
+
 from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
@@ -132,14 +134,17 @@ def get_or_create_equipment_group_fuel_formula(
 
     vn = int(variant_number or 0)
 
-    row = (
-        EquipmentGroupFuelFormula.query.filter_by(
-            equipment_group_id=equipment_group_id,
-            year_number=year_number,
-            variant_number=vn,
-            database_version_id=effective_db_version,
-        ).first()
-    )
+    def _lookup():
+        return (
+            EquipmentGroupFuelFormula.query.filter_by(
+                equipment_group_id=equipment_group_id,
+                year_number=year_number,
+                variant_number=vn,
+                database_version_id=effective_db_version,
+            ).first()
+        )
+
+    row = _lookup()
     if row:
         return row
 
@@ -150,9 +155,16 @@ def get_or_create_equipment_group_fuel_formula(
         database_version_id=effective_db_version,
     )
     set_db_version_on_create(row)
-    db.session.add(row)
-    db.session.flush()
-    return row
+    try:
+        with db.session.begin_nested():
+            db.session.add(row)
+            db.session.flush()
+        return row
+    except IntegrityError:
+        existing = _lookup()
+        if existing is None:
+            raise
+        return existing
 
 
 def update_equipment_group_fuel_formula_fields(

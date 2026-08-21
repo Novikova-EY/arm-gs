@@ -579,6 +579,15 @@ def create_app():
 
         return fuel_header_code(attr)
 
+    @app.template_filter("fuel_param_derived")
+    def fuel_param_derived_filter(param, attr):
+        """eurt/turt/snk/sn_t по формуле при наличии входов; иначе None."""
+        from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+            compute_fuel_param_derived_value,
+        )
+
+        return compute_fuel_param_derived_value(param, attr)
+
     @app.template_filter("extra_fuel_attr")
     def extra_fuel_attr_filter(obj, attr, children_by_parent=None):
         """

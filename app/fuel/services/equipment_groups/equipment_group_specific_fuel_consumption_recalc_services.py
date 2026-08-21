@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from decimal import Decimal, InvalidOperation
+from typing import Iterable
 
 from app.extensions import db
 from app.common.services.database_version_filter import (
@@ -27,6 +28,7 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumptio
     calc_btp_calc,
     calc_sntp_calc,
     calc_bk_calc,
+    calc_snk_calc,
 )
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_write_services import (
     _sync_numb1120_from_equipment_group,
@@ -37,6 +39,7 @@ def recalculate_all_specific_fuel_consumption_calc(
     year: int | None = None,
     *,
     equipment_group_id: int | None = None,
+    equipment_group_ids: Iterable[int] | None = None,
     start_year: int | None = None,
     end_year: int | None = None,
     commit: bool = True,
@@ -54,6 +57,7 @@ def recalculate_all_specific_fuel_consumption_calc(
     :param year: если задан, пересчитывать только этот год (глобальный режим)
     :param equipment_group_id: если задан, ограничить группу оборудования
         (year не должен быть задан; можно задать start_year/end_year)
+    :param equipment_group_ids: несколько групп (объединяется с equipment_group_id)
     :param start_year, end_year: вместе с equipment_group_id — диапазон лет
     :param commit: False при вызове из orchestrator до общего commit
     :param all_versions: если True — пересчёт по всем версиям БД (без фильтра
@@ -64,9 +68,15 @@ def recalculate_all_specific_fuel_consumption_calc(
     if year is not None:
         query = query.filter(EquipmentGroupFuelParam.year_number == year)
     else:
+        ids: list[int] = []
         if equipment_group_id is not None:
+            ids.append(int(equipment_group_id))
+        if equipment_group_ids:
+            ids.extend(int(x) for x in equipment_group_ids if x is not None)
+        unique_ids = sorted(set(ids))
+        if unique_ids:
             query = query.filter(
-                EquipmentGroupFuelParam.equipment_group_id == equipment_group_id
+                EquipmentGroupFuelParam.equipment_group_id.in_(unique_ids)
             )
         if start_year is not None:
             query = query.filter(EquipmentGroupFuelParam.year_number >= start_year)
@@ -128,7 +138,7 @@ def recalculate_all_specific_fuel_consumption_calc(
             btp_calc_val = calc_btp_calc(param, coeff_k)
             sntp_calc_val = calc_sntp_calc(param)
             bk_calc_val = calc_bk_calc(param, btp_calc_val, sntp_calc_val)
-            snk_calc_val = getattr(param, "snk", None)
+            snk_calc_val = calc_snk_calc(param)
 
             y_calc_val = q6(y_calc_val)
             btp_calc_val = q6(btp_calc_val)

@@ -24,6 +24,7 @@ from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import 
     EquipmentGroupSpecificFuelConsumption,
 )
 from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
+    _prefer_matching_db_version,
     build_fuel_param_row_warn_sets,
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
@@ -33,6 +34,7 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_services import (
     build_equipment_group_specific_fuel_consumption_hierarchy,
     get_equipment_groups_with_specific_fuel_consumption_data,
+    overlay_snk_calc_from_fuel_params,
 )
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_write_services import (
     CONSUMPTION_EDITABLE_ATTRS,
@@ -69,10 +71,11 @@ def _plan_year_numbers_for_current_version() -> frozenset[int]:
 class _MissingYearSpecificFuelParam:
     """Год из интервала без строки в gs_fue_equipment_group_specific_fuel_consumption."""
 
-    __slots__ = ("year_number",)
+    __slots__ = ("year_number", "snk_calc")
 
     def __init__(self, year_number: int) -> None:
         self.year_number = int(year_number)
+        self.snk_calc = None
 
     def __bool__(self) -> bool:
         return False
@@ -151,6 +154,7 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
     )
     rows = specific_data.get("rows") or []
     rows = _expand_specific_rows_for_year_interval(rows, start_year, end_year)
+    overlay_snk_calc_from_fuel_params(rows)
 
     def _row_sort_key(item: tuple) -> tuple:
         eg, param = item
@@ -168,6 +172,12 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
 
     row_groups = _group_specific_rows_by_equipment_group(rows)
     hierarchy = build_equipment_group_specific_fuel_consumption_hierarchy(rows)
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        apply_suppress_aggregate_rows_to_hierarchy,
+        should_suppress_aggregate_rows_for_filters,
+    )
+    if should_suppress_aggregate_rows_for_filters(f):
+        apply_suppress_aggregate_rows_to_hierarchy(hierarchy)
 
     # Жёлтая подсветка строк при изменении Nуст — как на equipment_group_fuel_params_edit_data
     fuel_params_data = get_equipment_groups_with_fuel_params_data(
@@ -194,6 +204,7 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
         "end_year": end_year,
         "rounding_digits": rounding_digits,
         "bulk_edit_equipment_group_ids": bulk_edit_equipment_group_ids,
+        "numb1120_filter_choices": specific_data.get("numb1120_filter_choices") or [],
     }
 
 
@@ -202,15 +213,11 @@ def _get_specific_consumption_for_group_year(
     year_number: int,
     version_id: int | None,
 ) -> EquipmentGroupSpecificFuelConsumption | None:
-    q = EquipmentGroupSpecificFuelConsumption.query.filter_by(
+    rows = EquipmentGroupSpecificFuelConsumption.query.filter_by(
         equipment_group_id=equipment_group_id,
         year_number=year_number,
-    )
-    if version_id is not None:
-        q = q.filter(EquipmentGroupSpecificFuelConsumption.database_version_id == version_id)
-    else:
-        q = q.filter(EquipmentGroupSpecificFuelConsumption.database_version_id.is_(None))
-    return q.first()
+    ).all()
+    return _prefer_matching_db_version(rows, version_id)
 
 
 def copy_specific_fuel_consumption_between_years_for_filters(
@@ -221,6 +228,11 @@ def copy_specific_fuel_consumption_between_years_for_filters(
     source_year: int,
     target_year: int,
 ) -> tuple[int, int, int]:
+    """Явное копирование года (coeff_copy_specific_consumption_year).
+
+    «Добавить год/период» на странице удельных это не вызывает: Access U.Seek
+    не требует строки расчётного года, без неё берётся последняя year ≤ цели.
+    """
     if source_year == target_year:
         return 0, 0, 0
 

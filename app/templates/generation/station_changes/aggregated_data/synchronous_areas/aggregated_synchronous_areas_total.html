@@ -16,9 +16,9 @@
                     {% set _sa_l = (_sa_name|string)|lower %}
                     {% if 'калининград' in _sa_l %}
                         Итого по синхронной зоне Калининградской области
-                    {% elif ('перва' in _sa_l) or ('1' in _sa_l) %}
+                    {% elif ('перва' in _sa_l) or _sa_l.startswith('1-') or _sa_l.startswith('1 ') %}
                         Итого по 1-й синхронной зоне ЕЭС России
-                    {% elif ('втор' in _sa_l) or ('2' in _sa_l) %}
+                    {% elif ('втор' in _sa_l) or _sa_l.startswith('2-') or _sa_l.startswith('2 ') %}
                         Итого по 2-й синхронной зоне ЕЭС России
                     {% else %}
                         Итого по {{ _sa_name }}

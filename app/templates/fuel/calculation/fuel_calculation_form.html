@@ -308,7 +308,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     >
                   </th>
                   <th class="text-center">
-                    Удельные часы<br /><span class="text-muted small fw-normal"
+                    ЧЧИУМ, ч<br /><span class="text-muted small fw-normal"
                       >({{ 'h'|fuel_header_code }})</span
                     >
                   </th>
@@ -438,25 +438,25 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     >
                   </th>
                   <th class="text-center">
-                    Мощность новых агрегатов<br /><span
+                    Установленная мощность<br>новых агрегатов, МВт<br /><span
                       class="text-muted small fw-normal"
                       >(N<sub>нов</sub>)</span
                     >
                   </th>
                   <th class="text-center">
-                    ЧЧИУМ действующих агрегатов<br /><span
+                    ЧЧИУМ<br>действующих агрегатов, ч<br /><span
                       class="text-muted small fw-normal"
                       >(hd)</span
                     >
                   </th>
                   <th class="text-center">
-                    Коэффициент загрузки нового оборудования (расчётный)<br /><span
+                    Коэффициент загрузки<br>нового оборудования<br>(расчетный)<br /><span
                       class="text-muted small fw-normal"
                       >(kn)</span
                     >
                   </th>
                   <th class="text-center">
-                    ЧЧИУМ нового оборудования<br /><span
+                    ЧЧИУМ<br>нового оборудования, ч<br /><span
                       class="text-muted small fw-normal"
                       >(hn) — ввод; K<sub>нов</sub> пересчитывается</span
                     >
@@ -725,104 +725,6 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
             </div>
             {% endif %}
 
-            {% if distribution_stage_last_result %}
-            <div class="table-responsive">
-              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
-                <thead class="table-success">
-                  <tr>
-                    <th class="text-start" scope="col">Показатель · Распред</th>
-                    <th class="text-center" scope="col">Значение</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="text-start">
-                      {{ dp_l['e'] }} (цель распределения), тыс.кВтч
-                      <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
-                    </td>
-                    <td class="text-center">{{ distribution_stage_last_result.e_target }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-start">ΣE после распределения, тыс.кВтч</td>
-                    <td class="text-center">{{ distribution_stage_last_result.total_distributed_e }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-start">Групп в фильтре</td>
-                    <td class="text-center">
-                      {{ distribution_stage_last_result.selected_group_count if
-                      distribution_stage_last_result.selected_group_count is not none else '—' }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-start">Обработано групп</td>
-                    <td class="text-center">
-                      {{ distribution_stage_last_result.processed_group_count if
-                      distribution_stage_last_result.processed_group_count is not none else '—' }}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="text-start">Обновлено строк топлива</td>
-                    <td class="text-center">
-                      {{ distribution_stage_last_result.updated_fuel_rows if
-                      distribution_stage_last_result.updated_fuel_rows is not none else '—' }}
-                    </td>
-                  </tr>
-                  <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
-                    <td class="text-start">
-                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
-                    </td>
-                    <td class="text-center">
-                      {% if _missing_fuel_count and _missing_fuel_url %}
-                      <a href="{{ _missing_fuel_url }}" target="_blank" rel="noopener noreferrer" title="Открыть основные данные этих групп">{{ _missing_fuel_count }}</a>
-                      {% elif _missing_spec is not none %}
-                      0
-                      {% else %}
-                      —
-                      {% endif %}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {% endif %}
-
-            {% if fuel_stage_last_result %}
-            <div class="table-responsive">
-              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
-                <thead class="table-success">
-                  <tr>
-                    <th class="text-start" scope="col">Показатель · Топливо</th>
-                    <th class="text-center" scope="col">Значение</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="text-start">
-                      {{ dp_l['e'] }} (контроль перед Топливо), тыс.кВтч
-                      <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
-                    </td>
-                    <td class="text-center">{{ fuel_stage_last_result.e_target }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-start">ΣE расчётного года, тыс.кВтч</td>
-                    <td class="text-center">{{ fuel_stage_last_result.sum_e_cyear }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-start">|Ераспред − ΣE|</td>
-                    <td class="text-center">{{ fuel_stage_last_result.delta_e }}</td>
-                  </tr>
-                  <tr>
-                    <td class="text-start">ΣB (расход топлива, всего)</td>
-                    <td class="text-center">{{ fuel_stage_last_result.total_fuel_b }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            {% endif %}
-          </div>
-
-          {# Правый столбец #}
-          <div class="col-12 col-md-6 d-flex flex-column gap-3">
             {% if coeff_stage_last_result %}
             <div class="table-responsive">
               <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
@@ -890,6 +792,104 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     </td>
                   </tr>
                   {% endif %}
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+
+            {% if fuel_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · Топливо</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">
+                      {{ dp_l['e'] }} (контроль перед Топливо), тыс.кВтч
+                      <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
+                    </td>
+                    <td class="text-center">{{ fuel_stage_last_result.e_target }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">ΣE расчётного года, тыс.кВтч</td>
+                    <td class="text-center">{{ fuel_stage_last_result.sum_e_cyear }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">|Ераспред − ΣE|</td>
+                    <td class="text-center">{{ fuel_stage_last_result.delta_e }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">ΣB (расход топлива, всего)</td>
+                    <td class="text-center">{{ fuel_stage_last_result.total_fuel_b }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {% endif %}
+          </div>
+
+          {# Правый столбец #}
+          <div class="col-12 col-md-6 d-flex flex-column gap-3">
+            {% if distribution_stage_last_result %}
+            <div class="table-responsive">
+              <table class="{{ _srt_tbl }}" data-auto-export-excel="off">
+                <thead class="table-success">
+                  <tr>
+                    <th class="text-start" scope="col">Показатель · Распред</th>
+                    <th class="text-center" scope="col">Значение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-start">
+                      {{ dp_l['e'] }} (цель распределения), тыс.кВтч
+                      <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
+                    </td>
+                    <td class="text-center">{{ distribution_stage_last_result.e_target }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">ΣE после распределения, тыс.кВтч</td>
+                    <td class="text-center">{{ distribution_stage_last_result.total_distributed_e }}</td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Групп в фильтре</td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.selected_group_count if
+                      distribution_stage_last_result.selected_group_count is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Обработано групп</td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.processed_group_count if
+                      distribution_stage_last_result.processed_group_count is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="text-start">Обновлено строк топлива</td>
+                    <td class="text-center">
+                      {{ distribution_stage_last_result.updated_fuel_rows if
+                      distribution_stage_last_result.updated_fuel_rows is not none else '—' }}
+                    </td>
+                  </tr>
+                  <tr{% if _missing_fuel_count %} class="table-warning"{% endif %}>
+                    <td class="text-start">
+                      Нет строки топлива за {{ _missing_spec_year if _missing_spec_year is not none else '—' }} год
+                    </td>
+                    <td class="text-center">
+                      {% if _missing_fuel_count and _missing_fuel_url %}
+                      <a href="{{ _missing_fuel_url }}" target="_blank" rel="noopener noreferrer" title="Открыть основные данные этих групп">{{ _missing_fuel_count }}</a>
+                      {% elif _missing_spec is not none %}
+                      0
+                      {% else %}
+                      —
+                      {% endif %}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -1011,10 +1011,34 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
     if (typeof initializeStationFilters === "function") {
       initializeStationFilters();
     }
+    function syncFuelCalcEditLinkYears() {
+      var baseEl = document.getElementById("base_year");
+      var calcEl = document.getElementById("start_year");
+      var baseYear = baseEl && String(baseEl.value || "").trim();
+      var calcYear = calcEl && String(calcEl.value || "").trim();
+      var intervalStart = baseYear || calcYear;
+      var intervalEnd = calcYear || baseYear;
+      document.querySelectorAll(".fuel-calc-edit-links a[href]").forEach(function (a) {
+        try {
+          var url = new URL(a.getAttribute("href"), window.location.origin);
+          if (intervalStart) url.searchParams.set("start_year", intervalStart);
+          if (intervalEnd) url.searchParams.set("end_year", intervalEnd);
+          if (baseYear) url.searchParams.set("base_year", baseYear);
+          else url.searchParams.delete("base_year");
+          a.setAttribute("href", url.pathname + url.search);
+        } catch (err) {}
+      });
+    }
+    syncFuelCalcEditLinkYears();
+    var editLinks = document.querySelector(".fuel-calc-edit-links");
+    if (editLinks) {
+      editLinks.addEventListener("mousedown", syncFuelCalcEditLinkYears);
+      editLinks.addEventListener("auxclick", syncFuelCalcEditLinkYears);
+    }
     function syncFuelCalcStageE() {
       var visible = document.getElementById("e_eraspred");
       var value = visible ? visible.value : "";
-      ["runCoeffFormE", "runDistributionFormE"].forEach(function (id) {
+      ["runCoeffFormE", "runDistributionFormE", "nrHfixApplyFormE", "nrHfixSkipFormE"].forEach(function (id) {
         var hidden = document.getElementById(id);
         if (hidden) hidden.value = value;
       });
@@ -1025,7 +1049,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
       eInput.addEventListener("input", syncFuelCalcStageE);
       eInput.addEventListener("change", syncFuelCalcStageE);
     }
-    ["runCoeffForm", "runDistributionForm"].forEach(function (id) {
+    ["runCoeffForm", "runDistributionForm", "nrHfixApplyForm"].forEach(function (id) {
       var formEl = document.getElementById(id);
       if (formEl) {
         formEl.addEventListener("submit", syncFuelCalcStageE);
@@ -1075,6 +1099,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
             var by = document.getElementById("base_year");
             if (by) by.value = "";
           }
+          syncFuelCalcEditLinkYears();
           clearDistributionParameterId();
           scheduleSubmit();
         });

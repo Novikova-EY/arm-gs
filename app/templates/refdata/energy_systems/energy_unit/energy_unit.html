@@ -167,9 +167,11 @@
                             </th>
 
                             <!-- Шапка таблицы. Столбец "Энергорайон (род. пад.)" -->
-                            <th class="text-center align-middle" style="width: 15%;">Энергорайон (род. пад.)</th>
+                            <th class="text-center align-middle" style="width: 12%;">Энергорайон (род. пад.)</th>
                             <!-- Шапка таблицы. Столбец "Энергорайон (предл. пад.)" -->
-                            <th class="text-center align-middle" style="width: 15%;">Энергорайон (предл. пад.)</th>
+                            <th class="text-center align-middle" style="width: 12%;">Энергорайон (предл. пад.)</th>
+                            <!-- Шапка таблицы. Столбец "Наименование (в дательном падеже)" -->
+                            <th class="text-center align-middle" style="width: 12%;">Наименование (в дательном падеже)</th>
 
                             <!-- Шапка таблицы. Столбец "Субъект РФ" -->
                             <th class="text-center align-middle" style="width: 20%;">
@@ -421,6 +423,15 @@
                                         value="{{ energy_unit.name_dp }}"
                                     >
                                 </td>
+                                <!-- Строки таблицы. Столбец "Наименование (в дательном падеже)" -->
+                                <td>
+                                    <input 
+                                        type="text" 
+                                        name="energy_unit_names_dat[]" 
+                                        class="form-control" 
+                                        value="{{ energy_unit.name_dat or '' }}"
+                                    >
+                                </td>
                                 
                                 <!-- Столбец "Субъекты РФ" -->
                                 <td>
@@ -471,7 +482,7 @@
                             </tr>
                             {% else %}
                             <tr>
-                                <td colspan="8" class="text-center align-middle">Нет данных для отображения</td>
+                                <td colspan="9" class="text-center align-middle">Нет данных для отображения</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -533,9 +544,11 @@
                             </a>
                         </th>
                         <!-- Шапка таблицы. Столбец "Энергорайон (род. пад.)" -->
-                        <th class="text-center align-middle" style="width: 15%;">Энергорайон (род. пад.)</th>
+                        <th class="text-center align-middle" style="width: 12%;">Энергорайон (род. пад.)</th>
                         <!-- Шапка таблицы. Столбец "Энергорайон (предл. пад.)" -->
-                        <th class="text-center align-middle" style="width: 15%;">Энергорайон (предл. пад.)</th>
+                        <th class="text-center align-middle" style="width: 12%;">Энергорайон (предл. пад.)</th>
+                        <!-- Шапка таблицы. Столбец "Наименование (в дательном падеже)" -->
+                        <th class="text-center align-middle" style="width: 12%;">Наименование (в дательном падеже)</th>
 
                         <!-- Шапка таблицы. Столбец "Субъект РФ" -->
                         <th class="text-center align-middle" style="width: 20%;">
@@ -761,6 +774,8 @@
                             <td>{{ item.name_rp }}</td>
                             <!-- Строки таблицы. Столбец "Энергорайон (предл. пад.)" -->
                             <td>{{ item.name_dp }}</td>
+                            <!-- Строки таблицы. Столбец "Наименование (в дательном падеже)" -->
+                            <td>{{ item.name_dat or '—' }}</td>
 
                             <!-- Строки таблицы. Столбец "Субъект РФ" -->
                             <td>{{ item.regional_district.name if item.regional_district else '—' }}</td>
@@ -773,7 +788,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="7" class="text-center align-middle">Нет данных для отображения</td>
+                            <td colspan="8" class="text-center align-middle">Нет данных для отображения</td>
                         </tr>
                     {% endfor %}
                 </tbody>

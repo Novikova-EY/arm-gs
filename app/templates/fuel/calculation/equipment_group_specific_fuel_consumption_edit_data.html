@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% from 'fuel/_shared/_value_macros.html' import render_numeric_or_dash %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
 {# Подсказка с полным значением из БД (без округления UI), как на equipment_group_fuel_params_edit_data #}
 {% macro specific_fc_tooltip_title(attr, is_numeric, param) -%}
@@ -17,6 +19,7 @@
 
 {% macro specific_fc_data_cell(attr, is_numeric, param) -%}
 {% if param is none %}—
+{% elif attr == 'snk_calc' %}{% set v = param|get_attr('snk_calc') %}{% if v is none %}—{% else %}{{ v|format_decimal }}{% endif %}
 {% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}
 {% else %}{% set v = param|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}
 {%- endmacro %}
@@ -100,18 +103,11 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
                 </div>
                 <div class="modal-body">
+                    <p class="text-muted mb-3">Только расширяет интервал таблицы. Удельные не копируются: расчёт берёт последнюю строку year ≤ расчётного.</p>
                     <div class="mb-3">
-                        <label class="form-label" for="specificFcAddYearBase">Базовый год</label>
-                        <select name="id_base_year" id="specificFcAddYearBase" class="form-select form-select-lg" aria-label="Базовый год" required>
+                        <label class="form-label" for="specificFcAddYearTarget">Год</label>
+                        <select name="id_target_year" id="specificFcAddYearTarget" class="form-select form-select-lg" aria-label="Год" required>
                             <option value="">—</option>
-                            {% for y in year_list_for_edit %}
-                            <option value="{{ y.id }}">{{ y.number }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="specificFcAddYearTarget">Расчитываемый год</label>
-                        <select name="id_target_year" id="specificFcAddYearTarget" class="form-select form-select-lg" aria-label="Расчитываемый год" required>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -140,9 +136,10 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
                 </div>
                 <div class="modal-body">
+                    <p class="text-muted mb-3">Только расширяет интервал таблицы. Удельные не копируются: расчёт берёт последнюю строку year ≤ расчётного.</p>
                     <div class="mb-3">
-                        <label class="form-label" for="specificFcAddPeriodBase">Базовый год</label>
-                        <select name="id_base_year" id="specificFcAddPeriodBase" class="form-select form-select-lg" aria-label="Базовый год для периода" required>
+                        <label class="form-label" for="specificFcAddPeriodFrom">Год с</label>
+                        <select name="id_year_from" id="specificFcAddPeriodFrom" class="form-select form-select-lg" aria-label="Начало периода" required>
                             <option value="">—</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
@@ -150,16 +147,9 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="specificFcAddPeriodFrom">Расчитываемый год с</label>
-                        <select name="id_year_from" id="specificFcAddPeriodFrom" class="form-select form-select-lg" aria-label="Начало периода" required>
-                            {% for y in year_list_for_edit %}
-                            <option value="{{ y.id }}">{{ y.number }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label" for="specificFcAddPeriodTo">Расчитываемый год по</label>
+                        <label class="form-label" for="specificFcAddPeriodTo">Год по</label>
                         <select name="id_year_to" id="specificFcAddPeriodTo" class="form-select form-select-lg" aria-label="Конец периода" required>
+                            <option value="">—</option>
                             {% for y in year_list_for_edit %}
                             <option value="{{ y.id }}">{{ y.number }}</option>
                             {% endfor %}
@@ -184,15 +174,21 @@
    kind: 'view' | 'input' | 'calc'
    — input: редактируется кроме годов «факт»
    — calc: только просмотр для «факт»; редактируется для остальных признаков (в т.ч. «план»)
-   Входные y/btp/sntp/bk/snk скрыты; показываем numb1120, k и *_calc #}
+   Столбцы как на stations_equipment_group_specific_fuel_consumption:
+   numb1120, k, y/y_calc, btp/btp_calc, sntp/sntp_calc, bk/bk_calc, snk/snk_calc #}
 {# numb1120 только просмотр; при сохранении подставляется EquipmentGroup.numb #}
 {% set specific_fc_columns = [
     ('numb1120', 'Код группы оборудования', false, 'view'),
     ('k', 'K', true, 'input'),
+    ('y', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал', true, 'input'),
     ('y_calc', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал', true, 'calc'),
+    ('btp', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч', true, 'input'),
     ('btp_calc', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч', true, 'calc'),
+    ('sntp', 'Коэффициент отпуска ЭЭ в теплофикационном режиме', true, 'input'),
     ('sntp_calc', 'Коэффициент отпуска ЭЭ в теплофикационном режиме', true, 'calc'),
+    ('bk', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч', true, 'input'),
     ('bk_calc', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч', true, 'calc'),
+    ('snk', 'СН на выработку ЭЭ, %', true, 'input'),
     ('snk_calc', 'СН на выработку ЭЭ, %', true, 'calc'),
 ] %}
 {% set column_count = specific_fc_columns|length + 2 %}
@@ -212,29 +208,27 @@
                 <th style="min-width: 9rem;">Группа оборудования</th>
                 <th style="min-width: 3.5rem;">Год</th>
                 {% for attr, _lbl, is_numeric, kind in specific_fc_columns %}
+                {% if attr == 'numb1120' %}
+                {{ fuel_param_numb1120_header_th(1, hdr.get(attr, _lbl), (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
+                {% else %}
                 <th style="min-width: 4rem;" class="specific-fc-col-{{ attr }}">
                     {{ hdr.get(attr, _lbl) }}{% if consumption_formulas is defined and consumption_formulas.get(attr) %}
                     <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>
                     {% endif %}
                     <br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
+                {% endif %}
                 {% endfor %}
             </tr>
         </thead>
         <tbody>
             {% if equipment_group_specific_fuel_consumption_hierarchy and equipment_group_specific_fuel_consumption_hierarchy|length > 0 %}
             {% for est_block in equipment_group_specific_fuel_consumption_hierarchy %}
-                <tr class="table-light text-center fw-bold">
-                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
-                </tr>
+                {{ fuel_hierarchy_level_header(est_block.est_id, est_block.est_name, column_count, 'table-light text-center fw-bold') }}
                 {% for ues_block in est_block.ues_list %}
-                    <tr class="table-primary text-center fw-bold">
-                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
-                    </tr>
+                    {{ fuel_hierarchy_level_header(ues_block.ues_id, ues_block.ues_name, column_count, 'table-primary text-center fw-bold') }}
                     {% for res_block in ues_block.res_list %}
-                        <tr class="table-secondary text-center fw-bold">
-                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
-                        </tr>
+                        {{ fuel_hierarchy_level_header(res_block.res_id, res_block.res_name, column_count, 'table-secondary text-center fw-bold') }}
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
@@ -252,7 +246,7 @@
                                     {% set can_calc_edit = can_edit_bulk and gid and ynum != '' and not is_fact_year %}
                                     {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
                                     {% set row_is_empty = not param %}
-                                    <tr class="text-center align-middle{% if nust_highlight_row %} table-warning{% endif %}"
+                                    <tr class="text-center align-middle{% if group_block.get('is_composite_parent') or group_block.get('is_composite_total_row') %} fuel-param-composite-parent-row fw-bold{% elif nust_highlight_row %} table-warning{% endif %}"
                                         data-fuel-edit-data-row="1"
                                         data-fuel-group-id="{{ gid }}"
                                         {% if is_fact_year %}data-fact-year="1"{% endif %}
@@ -260,15 +254,13 @@
                                         {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
                                         {% if row_is_empty %}data-row-empty="1"{% endif %}>
                                         {% if is_first_row %}
-                                        <td rowspan="{{ row_span }}" data-fuel-group-label="1">
-                                            {% if group_entity and group_entity.id %}
-                                            <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
-                                            {% else %}{{ group_name }}{% endif %}
+                                        <td class="{{ eg_name_cell_class(group_block) }}" rowspan="{{ row_span }}" data-fuel-group-label="1">
+                                            {{ eg_name_label(group_entity, group_name, group_block) }}
                                         </td>
                                         {% endif %}
                                         <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
                                         {% for attr, _2, is_numeric, kind in specific_fc_columns %}
-                                        {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit) %}
+                                        {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit and attr != 'snk_calc') %}
                                         {% if attr == 'numb1120' %}
                                         {% set cell_ttip = specific_fc_numb1120_tooltip(param, group_entity)|trim %}
                                         {% elif not do_edit_cell %}
@@ -318,15 +310,13 @@
                     {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
                     {% if row_is_empty %}data-row-empty="1"{% endif %}>
                     {% if is_first_row %}
-                    <td rowspan="{{ row_span }}" data-fuel-group-label="1">
-                        {% if group_entity and group_entity.id %}
-                        <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}" class="text-decoration-none">{{ group_name }}</a>
-                        {% else %}{{ group_name }}{% endif %}
+                    <td class="{{ eg_name_cell_class() }}" rowspan="{{ row_span }}" data-fuel-group-label="1">
+                        {{ eg_name_label(group_entity, group_name) }}
                     </td>
                     {% endif %}
                     <td>{% if param is not none and param.year_number is not none %}{{ param.year_number }}{% else %}—{% endif %}</td>
                     {% for attr, _2, is_numeric, kind in specific_fc_columns %}
-                    {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit) %}
+                    {% set do_edit_cell = (kind == 'input' and can_row_edit) or (kind == 'calc' and can_calc_edit and attr != 'snk_calc') %}
                     {% if attr == 'numb1120' %}
                     {% set cell_ttip = specific_fc_numb1120_tooltip(param, group_entity)|trim %}
                     {% elif not do_edit_cell %}
@@ -476,13 +466,20 @@
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
         box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
     }
-    /* Руст изменился к предыдущему году: вся строка одним фоном */
-    #specificFcEditTable tbody tr.table-warning > td,
-    #specificFcEditTable tbody tr[data-row-yellow="1"] > td {
-        --bs-table-bg: var(--bs-warning-bg-subtle, #fff3cd);
-        --bs-table-bg-type: var(--bs-warning-bg-subtle, #fff3cd);
+    /* Руст изменился к предыдущему году: желто-красный фон (отдельно от жёлтых составных групп) */
+    #specificFcEditTable tbody tr.table-warning:not(.fuel-param-composite-parent-row) > td,
+    #specificFcEditTable tbody tr[data-row-yellow="1"]:not(.fuel-param-composite-parent-row) > td {
+        --bs-table-bg: #fdd0b0;
+        --bs-table-bg-type: #fdd0b0;
         --bs-table-accent-bg: transparent;
-        background-color: var(--bs-warning-bg-subtle, #fff3cd) !important;
+        background-color: #fdd0b0 !important;
+    }
+    #specificFcEditTable tr.fuel-param-composite-parent-row > td {
+        background-color: #fff3cd !important;
+    }
+    #specificFcEditTable.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+        --bs-table-accent-bg: transparent;
+        background-color: #fff3cd !important;
     }
     /* Поля ввода — как обычные ячейки (без «белых окон» внутри строки) */
     #specificFcEditTable tbody td:has(> input.form-control) {
@@ -515,6 +512,7 @@
     }
 </style>
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {

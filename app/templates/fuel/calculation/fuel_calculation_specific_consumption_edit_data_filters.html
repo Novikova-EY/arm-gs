@@ -1,4 +1,5 @@
-{# Как fuel_calculation_edit_data_filters, но маршруты — страница удельных из расчётного модуля #}
+{# Как stations_equipment_group_specific_fuel_consumption: тот же Excel-импорт/экспорт ТЭП,
+   но интервал лет и возврат на страницу редактирования из расчётного модуля. #}
 {% set center_top_pagination = true %}
 {% set show_fuel_calc_edit_save_in_filters = true %}
 {% set hide_fuel_calc_edit_save_in_filters = false %}
@@ -14,12 +15,10 @@
 {% set per_page_all_label = 'группы оборудования' %}
 {% set import_redirect_endpoint = 'fuel_bp.equipment_group_specific_fuel_consumption_edit_data' %}
 {% set use_single_year = false %}
-{% set show_fuel_params_import = false %}
-{% set show_specific_fuel_consumption_import = true %}
-{% set show_fuel_params_export = false %}
-{% set hide_fuel_params_export_button = true %}
-{% set hide_specific_fuel_consumption_import_button = true %}
+{% set show_specific_fuel_consumption_calc_import = true %}
+{% set show_specific_fuel_consumption_export = true %}
 {% set show_rounding_digits = true %}
-{% set import_specific_fuel_consumption_action = url_for('fuel_bp.import_equipment_group_specific_fuel_consumption') %}
-{% set import_specific_fuel_consumption_redirect_to = 'fuel_bp.equipment_group_specific_fuel_consumption_edit_data' %}
+{% set import_specific_fuel_consumption_calc_action = url_for('fuel_bp.import_equipment_group_specific_fuel_consumption_calculated') %}
+{% set import_specific_fuel_consumption_calc_redirect_to = 'fuel_bp.equipment_group_specific_fuel_consumption_edit_data' %}
+{% set selected_year = selected_year|default(start_year)|default(end_year) %}
 {% include 'fuel/_shared/station_filters.html' %}

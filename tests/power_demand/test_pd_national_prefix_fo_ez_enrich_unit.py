@@ -91,6 +91,62 @@ def test_apply_national_prefix_oes_formulas_skips_rebuild_when_ues_already_prese
     )
 
 
+def test_apply_national_prefix_oes_formulas_excludes_fo_territory_tree() -> None:
+    """На ФО в working только префикс + скрытые ОЭС, без строк федеральных округов."""
+    years = [2024]
+    prefix_row = {
+        "demand_model_name": "CentralizedZoneDemandParameter",
+        "parameter_key": "max_power",
+        "year_values": ["1"],
+        "show_entity_cell": True,
+        "entity_kind": "centralized_zone",
+        "entity_depth": 0,
+        "entity_rowspan": 1,
+    }
+    fo_row = {
+        "demand_model_name": "FederalDistrictDemandParameter",
+        "parameter_key": "max_power",
+        "year_values": ["999"],
+        "show_entity_cell": True,
+        "entity_kind": "group",
+        "entity_depth": 0,
+        "entity_rowspan": 1,
+        "parent_id": 3,
+        "parent_fk_column": "id_federal_district",
+    }
+    source_row = {
+        "demand_model_name": "UnionEnergySystemDemandParameter",
+        "parameter_key": "combined_on_ees",
+        "year_values": ["100"],
+        "show_entity_cell": True,
+        "id_union_energy_system": 7,
+    }
+    rows = [prefix_row, fo_row]
+
+    with (
+        patch.object(
+            dss,
+            "_build_oes_national_prefix_source_rows",
+            return_value=[source_row],
+        ),
+        patch.object(dss, "_enrich_national_prefix_calculated_max_like_oes") as enrich_calc,
+        patch.object(dss, "apply_second_sa_from_ues_east_formula"),
+        patch.object(dss, "apply_kaliningrad_sa_from_kaliningrad_es_formula"),
+    ):
+        dss._apply_national_prefix_oes_formulas(
+            rows,
+            years,
+            rounding_digits=0,
+            enrich_calculated=True,
+        )
+
+    working = enrich_calc.call_args.args[0]
+    assert prefix_row in working
+    assert source_row in working
+    assert fo_row not in working
+    assert rows == [prefix_row, fo_row]
+
+
 def test_finalize_fo_summary_context_applies_national_prefix_formulas() -> None:
     from app.power_demand.services.pd_summary_data_segments import (
         PD_SUMMARY_SEGMENT_CALC_MAX,

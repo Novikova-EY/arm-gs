@@ -204,6 +204,10 @@ def set_session_version(version_id):
             get_ues_to_rd_ids_map,
             get_ues_to_fd_ids_map,
         )
+        from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+            get_synchronous_area_list_full,
+            get_synchronous_area_list,
+        )
 
         for fn in (
             get_union_energy_system_list_full,
@@ -214,6 +218,8 @@ def set_session_version(version_id):
             get_ues_to_est_id_map,
             get_ues_to_rd_ids_map,
             get_ues_to_fd_ids_map,
+            get_synchronous_area_list_full,
+            get_synchronous_area_list,
         ):
             if hasattr(fn, "cache_clear"):
                 fn.cache_clear()

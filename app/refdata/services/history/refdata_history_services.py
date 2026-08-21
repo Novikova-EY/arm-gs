@@ -271,6 +271,8 @@ def _synchronous_area_payload(area: SynchronousArea) -> dict[str, Any]:
     return {
         "number": area.number,
         "name": area.name,
+        "name_full": area.name_full,
+        "display_order": area.display_order,
     }
 
 

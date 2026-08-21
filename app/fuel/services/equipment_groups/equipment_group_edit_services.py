@@ -66,41 +66,163 @@ def _effective_group_database_version_id(group) -> int | None:
     return get_current_db_version_id()
 
 
+def _load_composite_member_groups(group: EquipmentGroup) -> list[dict]:
+    """
+    Дочерние группы оборудования составной станции (MAIN = parent.NUMB)
+    для блока «Группы оборудования, входящие в эту группу» при COMP=1.
+    """
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        _as_int,
+    )
+
+    if group is None or _as_int(getattr(group, "comp", None)) != 1:
+        return []
+    parent_numb = _as_int(getattr(group, "numb", None))
+    if parent_numb is None:
+        return []
+
+    effective_vid = _effective_group_database_version_id(group)
+    child_q = EquipmentGroup.query.filter(EquipmentGroup.main == parent_numb)
+    if effective_vid is not None:
+        # Сначала строки текущей версии; если пусто — legacy NULL (как у связей SetStation).
+        versioned = (
+            child_q.filter(EquipmentGroup.database_version_id == effective_vid)
+            .order_by(
+                EquipmentGroup.ordnumb.asc().nullslast(),
+                EquipmentGroup.numb.asc().nullslast(),
+                EquipmentGroup.id.asc(),
+            )
+            .all()
+        )
+        if versioned:
+            children = versioned
+        else:
+            children = (
+                child_q.filter(EquipmentGroup.database_version_id.is_(None))
+                .order_by(
+                    EquipmentGroup.ordnumb.asc().nullslast(),
+                    EquipmentGroup.numb.asc().nullslast(),
+                    EquipmentGroup.id.asc(),
+                )
+                .all()
+            )
+    else:
+        children = (
+            child_q.filter(EquipmentGroup.database_version_id.is_(None))
+            .order_by(
+                EquipmentGroup.ordnumb.asc().nullslast(),
+                EquipmentGroup.numb.asc().nullslast(),
+                EquipmentGroup.id.asc(),
+            )
+            .all()
+        )
+
+    if not children:
+        return []
+
+    child_ids = [c.id for c in children]
+    set_rows = (
+        EquipmentGroupSet.query.filter(
+            EquipmentGroupSet.equipment_group_id.in_(child_ids)
+        )
+        .options(
+            joinedload(EquipmentGroupSet.equipment_group_set_station).joinedload(
+                EquipmentGroupSetStation.equipment_group_type
+            )
+        )
+        .all()
+    )
+    types_by_eg: dict[int, list[str]] = {}
+    for es in set_rows:
+        lnk = getattr(es, "equipment_group_set_station", None)
+        egt = getattr(lnk, "equipment_group_type", None) if lnk else None
+        name = (getattr(egt, "name", None) or "").strip() if egt else ""
+        if not name:
+            continue
+        types_by_eg.setdefault(es.equipment_group_id, [])
+        if name not in types_by_eg[es.equipment_group_id]:
+            types_by_eg[es.equipment_group_id].append(name)
+
+    machine_counts: dict[int, int] = {cid: 0 for cid in child_ids}
+    if child_ids:
+        from sqlalchemy import func
+
+        rows = (
+            MachineFuelParam.query.filter(
+                MachineFuelParam.equipment_group_id.in_(child_ids),
+                MachineFuelParam.machine_id.isnot(None),
+            )
+            .with_entities(
+                MachineFuelParam.equipment_group_id,
+                func.count(func.distinct(MachineFuelParam.machine_id)),
+            )
+            .group_by(MachineFuelParam.equipment_group_id)
+            .all()
+        )
+        for eg_id, cnt in rows:
+            machine_counts[int(eg_id)] = int(cnt or 0)
+
+    result = []
+    for child in children:
+        type_names = types_by_eg.get(child.id) or []
+        result.append(
+            {
+                "equipment_group": child,
+                "types_display": ", ".join(type_names) if type_names else "—",
+                "machines_count": machine_counts.get(child.id, 0),
+            }
+        )
+    return result
+
+
 def _display_relevant_set_station_links(set_rows, preferred_version_id):
     """
-    Возвращает связи EquipmentGroupSetStation для отображения карточки группы.
+    Связи EquipmentGroupSetStation для карточки группы: по одной на каждую станцию.
 
-    Приоритет:
-    1. Связи явной текущей/эффективной версии.
-    2. Если таких нет, legacy-связи с database_version_id = NULL.
-    3. Если и их нет, любые имеющиеся связи группы, чтобы карточка не выглядела пустой
-       после merge между legacy/версионированными записями.
+    Для станции берётся связь текущей/эффективной версии, иначе legacy NULL,
+    иначе любая. Раньше при наличии хотя бы одной «точной» версии остальные
+    станции (legacy) пропадали с карточки — сохранение numb снимало их с группы.
     """
-    exact_links = []
-    legacy_links = []
-    other_links = []
+    by_station: dict[int, object] = {}
+    no_station = []
+
+    def _rank(link) -> int:
+        link_vid = getattr(link, "database_version_id", None)
+        if preferred_version_id is None:
+            return 2 if link_vid is None else 0
+        if link_vid == preferred_version_id:
+            return 2
+        if link_vid is None:
+            return 1
+        return 0
 
     for es in set_rows or []:
         lnk = getattr(es, "equipment_group_set_station", None)
         if not lnk:
             continue
-        link_vid = getattr(lnk, "database_version_id", None)
-        if preferred_version_id is None:
-            if link_vid is None:
-                legacy_links.append(lnk)
+        sid = getattr(lnk, "station_id", None)
+        if sid is None:
+            no_station.append(lnk)
             continue
-        if link_vid == preferred_version_id:
-            exact_links.append(lnk)
-        elif link_vid is None:
-            legacy_links.append(lnk)
-        else:
-            other_links.append(lnk)
+        sid = int(sid)
+        prev = by_station.get(sid)
+        if prev is None or _rank(lnk) > _rank(prev):
+            by_station[sid] = lnk
 
-    if exact_links:
-        return exact_links
-    if legacy_links:
-        return legacy_links
-    return other_links
+    if by_station:
+        return list(by_station.values())
+    if preferred_version_id is None:
+        return [lnk for lnk in no_station if getattr(lnk, "database_version_id", None) is None]
+    exact = [
+        lnk for lnk in no_station
+        if getattr(lnk, "database_version_id", None) == preferred_version_id
+    ]
+    if exact:
+        return exact
+    legacy = [
+        lnk for lnk in no_station if getattr(lnk, "database_version_id", None) is None
+    ]
+    return legacy or no_station
 
 
 def get_equipment_group_edit_context(equipment_group_id):
@@ -149,13 +271,38 @@ def get_equipment_group_edit_context(equipment_group_id):
 def _station_id_from_group_set_rows(set_rows, group_version_id) -> int | None:
     """
     Станция(и), с которыми группа связана через EquipmentGroupSet → EquipmentGroupSetStation.
-    При нескольких связях (редко) — первая по порядку обхода.
+    При нескольких связях — первая по порядку обхода (для логики сохранения).
     """
-    relevant_links = _display_relevant_set_station_links(set_rows, group_version_id)
-    for lnk in relevant_links:
-        if lnk.station_id is not None:
-            return lnk.station_id
-    return None
+    ids = _station_ids_from_group_set_rows(set_rows, group_version_id)
+    return ids[0] if ids else None
+
+
+def _station_ids_from_group_set_rows(set_rows, group_version_id) -> list[int]:
+    """Все station_id группы в выбранной версии БД, по имени станции."""
+    return [
+        item["id"]
+        for item in _station_bindings_from_set_station_links(
+            _display_relevant_set_station_links(set_rows, group_version_id)
+        )
+    ]
+
+
+def _station_bindings_from_set_station_links(links) -> list[dict]:
+    """Уникальные станции из связей группы: [{id, name}, ...], по имени."""
+    by_id: dict[int, dict] = {}
+    for lnk in links or []:
+        sid = getattr(lnk, "station_id", None)
+        if sid is None or sid in by_id:
+            continue
+        st = getattr(lnk, "station", None)
+        name = "—"
+        if st is not None:
+            name = ((getattr(st, "name", None) or "—").strip() or "—")
+        by_id[int(sid)] = {"id": int(sid), "name": name}
+    return sorted(
+        by_id.values(),
+        key=lambda item: ((item["name"] or "").lower(), item["id"]),
+    )
 
 
 def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
@@ -292,14 +439,16 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         .all()
     )
     display_links = _display_relevant_set_station_links(set_rows, effective_vid)
-    station_from_sets = _station_id_from_group_set_rows(set_rows, effective_vid)
-    grouping_station_effective_id = station_from_sets
+    grouping_station_bindings = _station_bindings_from_set_station_links(display_links)
+    grouping_station_effective_id = (
+        grouping_station_bindings[0]["id"] if grouping_station_bindings else None
+    )
     station_q = filter_by_explicit_db_version(
         Station.query, Station, effective_vid
     ).order_by(Station.name, Station.id)
     all_stations = list(station_q.all())
     _station_ids = {s.id for s in all_stations}
-    for extra_sid in (grouping_station_effective_id,):
+    for extra_sid in [b["id"] for b in grouping_station_bindings]:
         if not extra_sid or extra_sid in _station_ids:
             continue
         st_e = (
@@ -331,17 +480,6 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         ("", "не указано"),
         *[(str(s.id), ((s.name or "").strip() or "—")) for s in all_stations],
     ]
-
-    def _grouping_station_label_from_set_chain(sid) -> str | None:
-        if sid is None:
-            return None
-        for lnk in display_links:
-            if lnk.station_id != sid:
-                continue
-            st = lnk.station
-            if st:
-                return ((getattr(st, "name", None) or "—").strip() or "—")
-        return None
 
     # Отображаемые значения для режима чтения (по choices)
     def _label_for(choices, val):
@@ -395,7 +533,9 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
             tids.add(lnk.equipment_group_type_id)
     equipment_group_type_selected = str(next(iter(tids))) if len(tids) == 1 else ""
 
-    _gstation_display = _grouping_station_label_from_set_chain(grouping_station_effective_id)
+    _gstation_display = ", ".join(
+        b["name"] for b in grouping_station_bindings if b.get("name")
+    ) or None
     choice_displays = {
         "grouping_station_id": (
             _gstation_display
@@ -426,11 +566,57 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         "vedomstvo": _label_for(vedomstvo_choices, group.vedomstvo),
     }
 
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        is_composite_child_group,
+        is_composite_parent_group,
+        is_main_empty,
+    )
+
+    if is_composite_parent_group(group):
+        composite_role = "parent"
+        composite_role_label = "Родитель составной станции (COMP=1)"
+    elif is_composite_child_group(group):
+        composite_role = "child"
+        composite_role_label = f"Дочерняя группа оборудования (MAIN={group.main})"
+    elif not is_main_empty(getattr(group, "main", None)):
+        composite_role = "child"
+        composite_role_label = f"Часть станции (MAIN={group.main})"
+    else:
+        composite_role = "plain"
+        composite_role_label = "Обычная станция / группа без разбиения"
+
+    parent_eg_for_main = None
+    if is_composite_child_group(group) and group.main is not None:
+        parent_q = EquipmentGroup.query.filter(EquipmentGroup.numb == int(group.main))
+        if getattr(group, "database_version_id", None) is not None:
+            parent_q = parent_q.filter(
+                (EquipmentGroup.database_version_id == group.database_version_id)
+                | (EquipmentGroup.database_version_id.is_(None))
+            )
+        parent_eg_for_main = parent_q.order_by(EquipmentGroup.id).first()
+
+    member_equipment_groups = _load_composite_member_groups(group)
+
+    from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
+        count_machines_bound_to_equipment_group,
+        get_rebind_target_choices_for_group,
+    )
+
+    rebind_target_choices = get_rebind_target_choices_for_group(
+        group,
+        _effective_group_database_version_id(group),
+    )
+    rebind_bound_machines_count = count_machines_bound_to_equipment_group(
+        group.id,
+        _effective_group_database_version_id(group),
+    )
+
     return {
         "equipment_group": group,
         "equipment_group_type_choices": equipment_group_type_choices,
         "equipment_group_type_selected": equipment_group_type_selected,
         "grouping_station_effective_id": grouping_station_effective_id,
+        "grouping_station_bindings": grouping_station_bindings,
         "grouping_station_choices": grouping_station_choices,
         "regional_district_choices": regional_district_choices,
         "regional_energy_system_choices": regional_energy_system_choices,
@@ -448,18 +634,24 @@ def _build_equipment_group_edit_context_after_coerce(group, group_version_id):
         "forem_choices": forem_choices,
         "vedomstvo_choices": vedomstvo_choices,
         "choice_displays": choice_displays,
+        "composite_role": composite_role,
+        "composite_role_label": composite_role_label,
+        "parent_eg_for_main": parent_eg_for_main,
+        "member_equipment_groups": member_equipment_groups,
+        "rebind_target_choices": rebind_target_choices,
+        "rebind_bound_machines_count": rebind_bound_machines_count,
     }
 
 
 def _update_machines_id_equipment_group_for_fuel_group(
     equipment_group_id: int,
-    station_id: int,
-    old_type_id: int,
-    new_type_id: int,
+    station_id: int | None,
+    old_type_id: int | None,
+    new_type_id: int | None,
     version_id,
 ) -> None:
     """Обновляет Machine.id_equipment_group у агрегатов, привязанных к этой fuel-группе."""
-    if old_type_id == new_type_id:
+    if old_type_id == new_type_id or station_id is None:
         return
     from app.extensions import db
 
@@ -472,11 +664,12 @@ def _update_machines_id_equipment_group_for_fuel_group(
                 MachineFuelParam.equipment_group_id == equipment_group_id,
             ),
         )
-        .filter(
-            Machine.id_station == station_id,
-            Machine.id_equipment_group == old_type_id,
-        )
+        .filter(Machine.id_station == station_id)
     )
+    if old_type_id is None:
+        q = q.filter(Machine.id_equipment_group.is_(None))
+    else:
+        q = q.filter(Machine.id_equipment_group == old_type_id)
     q = filter_by_explicit_db_version(q, Machine, version_id)
     for m in q.all():
         m.id_equipment_group = new_type_id
@@ -512,24 +705,31 @@ def _count_sets_using_link(set_station_id: int) -> int:
 
 def _apply_equipment_group_type_change_from_form(
     equipment_group_id: int,
-    new_type_id: int,
+    new_type_id: int | None,
     group_version_id,
 ) -> str | None:
     """
     Меняет equipment_group_type_id у связей EquipmentGroupSetStation,
-    ведущих к данной equipment group, на new_type_id. При необходимости переносит
-    EquipmentGroupSet на существующую запись (station, type, version) и снимает дубликат.
+    ведущих к данной equipment group, на new_type_id (None — прочерк / без типа).
+    При необходимости переносит EquipmentGroupSet на существующую запись
+    (station, type, version) и снимает дубликат.
 
     Синхронизирует Machine.id_equipment_group для агрегатов из этой fuel-группы.
     Возвращает None при успехе или строку с ошибкой.
     """
     from app.extensions import db
+    from app.fuel.services.equipment_groups.equipment_group_set_services import (
+        _point_group_set_at_link,
+        find_or_create_versioned_equipment_group_set_station,
+        resolve_station_and_type_for_version,
+    )
 
-    tq = filter_by_explicit_db_version(
-        EquipmentGroupType.query, EquipmentGroupType, group_version_id
-    ).filter(EquipmentGroupType.id == new_type_id)
-    if tq.first() is None:
-        return "Тип группы оборудования не найден в текущей версии БД."
+    if new_type_id is not None:
+        tq = filter_by_explicit_db_version(
+            EquipmentGroupType.query, EquipmentGroupType, group_version_id
+        ).filter(EquipmentGroupType.id == new_type_id)
+        if tq.first() is None:
+            return "Тип группы оборудования не найден в текущей версии БД."
 
     set_rows = (
         EquipmentGroupSet.query.filter_by(equipment_group_id=equipment_group_id)
@@ -539,49 +739,52 @@ def _apply_equipment_group_type_change_from_form(
     if not set_rows:
         return None
 
-    changed_any = False
     for set_row in set_rows:
         old_link = EquipmentGroupSetStation.query.get(
             set_row.equipment_group_set_station_id
         )
         if not old_link:
             return "Связь станция — тип группы оборудования (EquipmentGroupSetStation) не найдена."
-        st_id = old_link.station_id
-        v_id = old_link.database_version_id
+        v_id = (
+            group_version_id
+            if group_version_id is not None
+            else old_link.database_version_id
+        )
+        resolved_station_id, resolved_type_id = resolve_station_and_type_for_version(
+            old_link.station_id, new_type_id, v_id
+        )
+        if old_link.station_id is not None and resolved_station_id is None:
+            return "Станция связи не найдена в версии БД этой группы."
+        st_id = (
+            resolved_station_id
+            if resolved_station_id is not None
+            else old_link.station_id
+        )
+        type_id = resolved_type_id if resolved_type_id is not None else new_type_id
         old_tid = old_link.equipment_group_type_id
-        if old_tid == new_type_id:
+        if (
+            old_link.station_id == st_id
+            and old_tid == type_id
+            and old_link.database_version_id == v_id
+        ):
             continue
 
         _update_machines_id_equipment_group_for_fuel_group(
-            equipment_group_id, st_id, old_tid, new_type_id, group_version_id
+            equipment_group_id, st_id, old_tid, type_id, group_version_id
         )
-        changed_any = True
 
-        target = _find_equipment_group_set_station_link(st_id, new_type_id, v_id)
-
-        if target is None or target.id == old_link.id:
-            old_link.equipment_group_type_id = new_type_id
-            db.session.add(old_link)
-            db.session.flush()
+        target = find_or_create_versioned_equipment_group_set_station(
+            st_id, type_id, v_id
+        )
+        if target is None:
+            return "Не удалось создать связь станция — тип группы оборудования."
+        if target.id == old_link.id:
+            if old_link.equipment_group_type_id != type_id:
+                old_link.equipment_group_type_id = type_id
+                db.session.add(old_link)
+                db.session.flush()
             continue
-
-        dup = (
-            EquipmentGroupSet.query.filter_by(
-                equipment_group_id=equipment_group_id,
-                equipment_group_set_station_id=target.id,
-            )
-            .first()
-        )
-        if dup is not None and dup.id != set_row.id:
-            db.session.delete(set_row)
-        else:
-            set_row.equipment_group_set_station_id = target.id
-            db.session.add(set_row)
-        db.session.flush()
-
-        if _count_sets_using_link(old_link.id) == 0:
-            db.session.delete(old_link)
-        db.session.flush()
+        _point_group_set_at_link(set_row, target)
 
     return None
 
@@ -589,13 +792,20 @@ def _apply_equipment_group_type_change_from_form(
 def _apply_grouping_station_on_type_station_links(
     equipment_group_id: int,
     new_station_id: int | None,
+    version_id=None,
 ) -> str | None:
     """
     Записывает «Станция для группировки» в gs_fue_equipment_group_type_stations.station_id
     для всех связей EquipmentGroupSet данной группы. При конфликте уникального ключа
     переносит EquipmentGroupSet на существующую строку (station_id, type, version).
+
+    Станция и тип приводятся к version_id (или к версии самой связи).
     """
-    from app.extensions import db
+    from app.fuel.services.equipment_groups.equipment_group_set_services import (
+        _point_group_set_at_link,
+        find_or_create_versioned_equipment_group_set_station,
+        resolve_station_and_type_for_version,
+    )
 
     set_rows = (
         EquipmentGroupSet.query.filter_by(equipment_group_id=equipment_group_id)
@@ -612,59 +822,36 @@ def _apply_grouping_station_on_type_station_links(
         if not old_link:
             return "Связь станция — тип группы оборудования (EquipmentGroupSetStation) не найдена."
         type_id = old_link.equipment_group_type_id
-        v_id = old_link.database_version_id
-        if old_link.station_id == new_station_id:
-            continue
-
-        target = _find_equipment_group_set_station_link(new_station_id, type_id, v_id)
-
-        if target is None:
-            old_link_usage_count = _count_sets_using_link(old_link.id)
-            if old_link_usage_count <= 1:
-                old_link.station_id = new_station_id
-                db.session.add(old_link)
-                db.session.flush()
-                continue
-
-            # Не меняем shared link "на месте": иначе перенесутся все группы,
-            # которые используют ту же строку связи station+type+version.
-            target = EquipmentGroupSetStation(
-                station_id=new_station_id,
-                equipment_group_type_id=type_id,
-                database_version_id=v_id,
+        v_id = version_id if version_id is not None else old_link.database_version_id
+        resolved_station_id, resolved_type_id = resolve_station_and_type_for_version(
+            new_station_id, type_id, v_id
+        )
+        if new_station_id is not None and resolved_station_id is None:
+            return (
+                "Выбранная станция для группировки не найдена в версии БД этой группы."
             )
-            db.session.add(target)
-            db.session.flush()
-
-            set_row.equipment_group_set_station_id = target.id
-            db.session.add(set_row)
-            db.session.flush()
-
-            if _count_sets_using_link(old_link.id) == 0:
-                db.session.delete(old_link)
-                db.session.flush()
+        if type_id is not None and resolved_type_id is None:
+            return "Тип группы оборудования не найден в версии БД этой группы."
+        if resolved_type_id is not None:
+            type_id = resolved_type_id
+        if resolved_station_id is not None:
+            new_station_id = resolved_station_id
+        if (
+            old_link.station_id == new_station_id
+            and old_link.equipment_group_type_id == type_id
+            and old_link.database_version_id == v_id
+        ):
             continue
 
+        target = find_or_create_versioned_equipment_group_set_station(
+            new_station_id, type_id, v_id
+        )
+        if target is None:
+            return "Не удалось создать связь станция — тип группы оборудования."
         if target.id == old_link.id:
             continue
 
-        dup = (
-            EquipmentGroupSet.query.filter_by(
-                equipment_group_id=equipment_group_id,
-                equipment_group_set_station_id=target.id,
-            )
-            .first()
-        )
-        if dup is not None and dup.id != set_row.id:
-            db.session.delete(set_row)
-        else:
-            set_row.equipment_group_set_station_id = target.id
-            db.session.add(set_row)
-        db.session.flush()
-
-        if _count_sets_using_link(old_link.id) == 0:
-            db.session.delete(old_link)
-        db.session.flush()
+        _point_group_set_at_link(set_row, target)
 
     return None
 
@@ -714,6 +901,232 @@ def _resolve_grouping_station_id_for_db_version(
     return anchor_station_id if station_obj else None
 
 
+def sync_composite_children_subject_rf_from_parents() -> int:
+    """
+    Для всех дочерних групп (main>0) проставляет Субъект РФ с родителя.
+    Нужен после импорта Excel: дети могут обработаться раньше родителя.
+    Возвращает число групп, у которых изменился regional_district_id.
+    """
+    children = EquipmentGroup.query.filter(
+        EquipmentGroup.main.isnot(None),
+        EquipmentGroup.main > 0,
+    ).all()
+    updated = 0
+    for child in children:
+        old_rd = child.regional_district_id
+        if child._apply_regional_ids_from_parent() and child.regional_district_id != old_rd:
+            updated += 1
+    return updated
+
+
+def _form_getlist(form_data, key) -> list:
+    """Значения ключа из Flask MultiDict или dict (в т.ч. list-значение)."""
+    if not form_data:
+        return []
+    if hasattr(form_data, "getlist"):
+        return [v for v in form_data.getlist(key) if v is not None]
+    val = form_data.get(key)
+    if val is None:
+        return []
+    if isinstance(val, (list, tuple)):
+        return list(val)
+    return [val]
+
+
+def _parse_int_form_id(val) -> int | None:
+    if val is None or not str(val).strip():
+        return None
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def form_has_grouping_station_sync(form_data) -> bool:
+    """Форма задаёт полный набор станций (карточка группы / fuelParamsForm)."""
+    if not form_data:
+        return False
+    return (
+        "grouping_station_ids_present" in form_data
+        or "grouping_station_ids" in form_data
+    )
+
+
+def grouping_station_ids_from_form(form_data, key: str = "grouping_station_ids") -> list[int]:
+    """Уникальные id станций из ключа формы (+ устаревший grouping_station_id)."""
+    ids: list[int] = []
+    seen: set[int] = set()
+    values = _form_getlist(form_data, key)
+    if key == "grouping_station_ids":
+        extra = form_data.get("grouping_station_id") if form_data else None
+        if extra is not None:
+            values = list(values) + [extra]
+    for raw in values:
+        parsed = _parse_int_form_id(raw)
+        if parsed is None or parsed in seen:
+            continue
+        seen.add(parsed)
+        ids.append(parsed)
+    return ids
+
+
+def _unique_type_id_from_group_sets(equipment_group_id: int, version_id) -> int | None:
+    set_rows = EquipmentGroupSet.query.filter_by(
+        equipment_group_id=equipment_group_id
+    ).all()
+    type_ids = {
+        lnk.equipment_group_type_id
+        for lnk in _display_relevant_set_station_links(set_rows, version_id)
+        if getattr(lnk, "equipment_group_type_id", None) is not None
+    }
+    if len(type_ids) != 1:
+        return None
+    return next(iter(type_ids))
+
+
+def _unlink_equipment_group_from_station(
+    equipment_group_id: int,
+    station_id: int,
+    version_id=None,
+) -> None:
+    """Снимает связи EquipmentGroupSet группы с указанной станцией в версии БД."""
+    from app.extensions import db
+
+    query = EquipmentGroupSet.query.join(
+        EquipmentGroupSetStation,
+        EquipmentGroupSetStation.id == EquipmentGroupSet.equipment_group_set_station_id,
+    ).filter(
+        EquipmentGroupSet.equipment_group_id == equipment_group_id,
+        EquipmentGroupSetStation.station_id == station_id,
+    )
+    if version_id is None:
+        query = query.filter(EquipmentGroupSetStation.database_version_id.is_(None))
+    else:
+        query = query.filter(EquipmentGroupSetStation.database_version_id == version_id)
+    for set_row in query.all():
+        old_link_id = set_row.equipment_group_set_station_id
+        db.session.delete(set_row)
+        db.session.flush()
+        if old_link_id and _count_sets_using_link(old_link_id) == 0:
+            old_link = db.session.get(EquipmentGroupSetStation, old_link_id)
+            if old_link is not None:
+                db.session.delete(old_link)
+                db.session.flush()
+
+
+def sync_equipment_group_grouping_stations(
+    equipment_group_id: int,
+    desired_station_ids: list[int] | None,
+    *,
+    version_id=None,
+    equipment_group_type_id: int | None = None,
+    loaded_station_ids: list[int] | None = None,
+) -> str | None:
+    """
+    Приводит набор станций группы к desired_station_ids: добавляет недостающие
+    связи. Снимает только те станции, которые были на карточке (loaded) и
+    пользователь убрал. Станции, которых не было в форме, не трогает —
+    иначе сохранение numb отвязывало ТЭС-3, если её чипа не было на карточке.
+    """
+    from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
+        ensure_equipment_group_linked_to_station,
+        linked_station_ids_for_equipment_group,
+    )
+
+    desired: list[int] = []
+    seen: set[int] = set()
+    for raw_id in desired_station_ids or []:
+        if raw_id is None:
+            continue
+        sid = int(raw_id)
+        if sid in seen:
+            continue
+        seen.add(sid)
+        desired.append(sid)
+
+    current_ids = linked_station_ids_for_equipment_group(equipment_group_id, version_id)
+    current_set = set(current_ids)
+    desired_set = set(desired)
+    if loaded_station_ids is None:
+        keep_hidden = set()
+        to_unlink = current_set - desired_set
+    else:
+        loaded_set = {int(sid) for sid in loaded_station_ids if sid is not None}
+        keep_hidden = current_set - loaded_set
+        to_unlink = (loaded_set & current_set) - desired_set
+    final_desired = list(desired)
+    for sid in keep_hidden:
+        if sid not in desired_set:
+            final_desired.append(sid)
+            desired_set.add(sid)
+
+    type_id = equipment_group_type_id
+    if type_id is None:
+        type_id = _unique_type_id_from_group_sets(equipment_group_id, version_id)
+
+    for sid in final_desired:
+        created = ensure_equipment_group_linked_to_station(
+            equipment_group_id=equipment_group_id,
+            station_id=sid,
+            version_id=version_id,
+            equipment_group_type_id=type_id,
+        )
+        if created is None and sid not in current_set:
+            return (
+                "Не удалось создать привязку к выбранной станции. "
+                "Укажите тип группы оборудования и сохраните."
+            )
+
+    for sid in to_unlink:
+        _unlink_equipment_group_from_station(equipment_group_id, sid, version_id)
+    return None
+
+
+def _bind_equipment_group_grouping_station(
+    equipment_group_id: int,
+    new_station_id: int | None,
+    *,
+    version_id=None,
+    equipment_group_type_id: int | None = None,
+) -> str | None:
+    """
+    Привязывает группу к станции Generation: обновляет существующие связи
+    EquipmentGroupSet или создаёт новую, если связей ещё нет.
+
+    Для составной станции (ребёнок берёт Station родителя) — замена на одну
+    станцию. Для карточки группы используйте sync_equipment_group_grouping_stations.
+    """
+    has_sets = (
+        EquipmentGroupSet.query.filter_by(equipment_group_id=equipment_group_id).first()
+        is not None
+    )
+    if has_sets:
+        return _apply_grouping_station_on_type_station_links(
+            equipment_group_id,
+            new_station_id,
+            version_id=version_id,
+        )
+    if new_station_id is None:
+        return None
+
+    from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
+        ensure_equipment_group_linked_to_station,
+    )
+
+    created = ensure_equipment_group_linked_to_station(
+        equipment_group_id=equipment_group_id,
+        station_id=new_station_id,
+        version_id=version_id,
+        equipment_group_type_id=equipment_group_type_id,
+    )
+    if created is None:
+        return (
+            "Не удалось создать привязку к выбранной станции. "
+            "Укажите тип группы оборудования и сохраните."
+        )
+    return None
+
+
 def persist_equipment_group_grouping_station_if_in_form(
     target_group: EquipmentGroup,
     form_data,
@@ -721,54 +1134,102 @@ def persist_equipment_group_grouping_station_if_in_form(
     version_id=None,
 ) -> str | None:
     """
-    Если в form_data есть ключ grouping_station_id — валидирует станцию и обновляет
-    gs_fue_equipment_group_type_stations.station_id (через связи EquipmentGroupSet).
-    Иначе ничего не делает. Возвращает текст ошибки или None.
+    Если в form_data задан набор станций (grouping_station_ids) — синхронизирует
+    связи группы со станциями Generation. Устаревший ключ grouping_station_id
+    без списка только добавляет станцию, не снимая уже привязанные.
 
     version_id — версия БД целевой группы (для «сохранить во всех версиях»);
-    станция из формы разрешается по external_code, как в update_equipment_group_all_versions.
+    станции из формы разрешаются по external_code.
     """
-    if "grouping_station_id" not in form_data:
+    if not form_data:
         return None
 
-    def _parse_int(val):
-        if not val or not str(val).strip():
-            return None
-        try:
-            return int(val)
-        except (ValueError, TypeError):
-            return None
+    has_sync = form_has_grouping_station_sync(form_data)
+    has_legacy = "grouping_station_id" in form_data
+    if not has_sync and not has_legacy:
+        return None
 
-    grouping_station_val = form_data.get("grouping_station_id")
-    anchor_grouping_station_id = _parse_int(grouping_station_val)
     effective_vid = (
         version_id
         if version_id is not None
         else _effective_group_database_version_id(target_group)
     )
-    new_grouping_station_id = _resolve_grouping_station_id_for_db_version(
-        anchor_grouping_station_id, effective_vid
-    )
-
-    if grouping_station_val is not None and anchor_grouping_station_id is not None:
-        if new_grouping_station_id is None:
-            if version_id is not None:
-                return None
-            return "Выбранная станция для группировки не найдена в текущей версии БД."
-
+    type_id = _parse_int_form_id(form_data.get("equipment_group_type_id"))
     target_id = target_group.id
-    has_sets = (
-        EquipmentGroupSet.query.filter_by(equipment_group_id=target_id).first()
-        is not None
-    )
-    if has_sets:
-        egs_err = _apply_grouping_station_on_type_station_links(
-            target_id,
-            new_grouping_station_id,
-        )
-        if egs_err:
-            return egs_err
 
+    def _resolve_or_skip(anchor_id: int) -> int | None:
+        resolved = _resolve_grouping_station_id_for_db_version(anchor_id, effective_vid)
+        if resolved is not None:
+            return resolved
+        if version_id is not None:
+            return None
+        return None
+
+    if has_sync:
+        anchors = grouping_station_ids_from_form(form_data)
+        resolved_ids: list[int] = []
+        unresolved = False
+        for anchor in anchors:
+            resolved = _resolve_grouping_station_id_for_db_version(anchor, effective_vid)
+            if resolved is None:
+                unresolved = True
+                if version_id is None:
+                    return "Выбранная станция для группировки не найдена в текущей версии БД."
+                continue
+            if resolved not in resolved_ids:
+                resolved_ids.append(resolved)
+        if anchors and unresolved and not resolved_ids and version_id is not None:
+            return None
+        loaded_ids = None
+        if (
+            "grouping_station_ids_loaded" in form_data
+            or "grouping_station_ids_loaded_present" in form_data
+        ):
+            loaded_ids = []
+            for anchor in grouping_station_ids_from_form(
+                form_data, key="grouping_station_ids_loaded"
+            ):
+                resolved = _resolve_grouping_station_id_for_db_version(
+                    anchor, effective_vid
+                )
+                if resolved is None:
+                    if version_id is None:
+                        loaded_ids.append(int(anchor))
+                    continue
+                if resolved not in loaded_ids:
+                    loaded_ids.append(resolved)
+        return sync_equipment_group_grouping_stations(
+            target_id,
+            resolved_ids,
+            version_id=effective_vid,
+            equipment_group_type_id=type_id,
+            loaded_station_ids=loaded_ids,
+        )
+
+    grouping_station_val = form_data.get("grouping_station_id")
+    anchor_grouping_station_id = _parse_int_form_id(grouping_station_val)
+    if anchor_grouping_station_id is None:
+        return None
+    new_grouping_station_id = _resolve_or_skip(anchor_grouping_station_id)
+    if new_grouping_station_id is None:
+        if version_id is not None:
+            return None
+        return "Выбранная станция для группировки не найдена в текущей версии БД."
+    from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
+        ensure_equipment_group_linked_to_station,
+    )
+
+    created = ensure_equipment_group_linked_to_station(
+        equipment_group_id=target_id,
+        station_id=new_grouping_station_id,
+        version_id=effective_vid,
+        equipment_group_type_id=type_id,
+    )
+    if created is None:
+        return (
+            "Не удалось создать привязку к выбранной станции. "
+            "Укажите тип группы оборудования и сохраните."
+        )
     return None
 
 
@@ -922,6 +1383,12 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
                 _format_val_for_log(new_val),
             ))
 
+    # Валидация / синхронизация составности (comp/main) вместо «Станция для группировки».
+    verr = _validate_and_sync_composite_fields(target_group)
+    if verr:
+        db.session.rollback()
+        return False, verr, [], None
+
     def _format_fk_for_log(model_class, pk_id, name_attr="name"):
         """Форматирует FK для лога: название или ID, или —."""
         if pk_id is None:
@@ -952,62 +1419,102 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
             _format_fk_for_log(RegionalEnergySystem, new_res_id),
         ))
 
+    # Дочерняя группа: Субъект РФ / РЭС / obl с родителя по main, даже если в форме другое значение.
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        is_composite_child_group,
+    )
+
+    if is_composite_child_group(target_group):
+        before_rd = target_group.regional_district_id
+        before_res = target_group.regional_energy_system_id
+        before_obl = target_group.obl
+        if target_group._apply_regional_ids_from_parent():
+            if target_group.regional_district_id != before_rd:
+                label = _EQUIPMENT_GROUP_FIELD_LABELS.get(
+                    "regional_district_id", "regional_district_id"
+                )
+                change_details.append((
+                    label,
+                    _format_fk_for_log(RegionalDistrict, before_rd),
+                    _format_fk_for_log(RegionalDistrict, target_group.regional_district_id),
+                ))
+            if target_group.regional_energy_system_id != before_res:
+                label = _EQUIPMENT_GROUP_FIELD_LABELS.get(
+                    "regional_energy_system_id", "regional_energy_system_id"
+                )
+                change_details.append((
+                    label,
+                    _format_fk_for_log(RegionalEnergySystem, before_res),
+                    _format_fk_for_log(RegionalEnergySystem, target_group.regional_energy_system_id),
+                ))
+            if target_group.obl != before_obl:
+                label = _EQUIPMENT_GROUP_FIELD_LABELS.get("obl", "obl")
+                change_details.append((
+                    label,
+                    _format_val_for_log(before_obl),
+                    _format_val_for_log(target_group.obl),
+                ))
+
     egt_key = "equipment_group_type_id"
     if egt_key in form_data:
         egt_raw = form_data.get(egt_key)
         new_egt_id = _parse_int(egt_raw) if (egt_raw is not None and str(egt_raw).strip()) else None
-        if new_egt_id is not None:
-            set_rows_egt = EquipmentGroupSet.query.filter_by(
-                equipment_group_id=target_id
-            ).all()
-            needs_egt_change = False
-            old_egt_ids: list[int] = []
-            for s in set_rows_egt:
-                lnk_egt = EquipmentGroupSetStation.query.get(
-                    s.equipment_group_set_station_id
-                )
-                if lnk_egt:
-                    old_egt_ids.append(lnk_egt.equipment_group_type_id)
-                    if lnk_egt.equipment_group_type_id != new_egt_id:
-                        needs_egt_change = True
-            if needs_egt_change and set_rows_egt:
-                egt_err = _apply_equipment_group_type_change_from_form(
-                    target_id,
-                    new_egt_id,
-                    _effective_group_database_version_id(target_group),
-                )
-                if egt_err:
-                    db.session.rollback()
-                    return False, egt_err, [], None
-                old_egt_labels = " / ".join(
-                    _format_fk_for_log(EquipmentGroupType, t)
-                    for t in sorted(set(old_egt_ids))
-                ) or "—"
-                change_details.append((
-                    "Тип группы оборудования (связь со станцией)",
-                    old_egt_labels,
-                    _format_fk_for_log(EquipmentGroupType, new_egt_id),
-                ))
+        set_rows_egt = EquipmentGroupSet.query.filter_by(
+            equipment_group_id=target_id
+        ).all()
+        needs_egt_change = False
+        old_egt_ids: list[int | None] = []
+        for s in set_rows_egt:
+            lnk_egt = EquipmentGroupSetStation.query.get(
+                s.equipment_group_set_station_id
+            )
+            if lnk_egt:
+                old_egt_ids.append(lnk_egt.equipment_group_type_id)
+                if lnk_egt.equipment_group_type_id != new_egt_id:
+                    needs_egt_change = True
+        if needs_egt_change and set_rows_egt:
+            egt_err = _apply_equipment_group_type_change_from_form(
+                target_id,
+                new_egt_id,
+                _effective_group_database_version_id(target_group),
+            )
+            if egt_err:
+                db.session.rollback()
+                return False, egt_err, [], None
+            old_egt_labels = " / ".join(
+                _format_fk_for_log(EquipmentGroupType, t)
+                for t in sorted(set(old_egt_ids), key=lambda x: (x is None, x))
+            ) or "—"
+            change_details.append((
+                "Тип группы оборудования (связь со станцией)",
+                old_egt_labels,
+                _format_fk_for_log(EquipmentGroupType, new_egt_id),
+            ))
 
-    if "grouping_station_id" in form_data:
-        old_eff_gs = _station_id_from_group_set_rows(
+    if form_has_grouping_station_sync(form_data) or "grouping_station_id" in form_data:
+        old_ids = _station_ids_from_group_set_rows(
             EquipmentGroupSet.query.filter_by(
                 equipment_group_id=target_id
             ).all(),
             _effective_group_database_version_id(target_group),
         )
-        new_grouping_station_id = _parse_int(form_data.get("grouping_station_id"))
         gerr = persist_equipment_group_grouping_station_if_in_form(
             target_group, form_data
         )
         if gerr:
             db.session.rollback()
             return False, gerr, [], None
-        if old_eff_gs != new_grouping_station_id:
+        new_ids = _station_ids_from_group_set_rows(
+            EquipmentGroupSet.query.filter_by(
+                equipment_group_id=target_id
+            ).all(),
+            _effective_group_database_version_id(target_group),
+        )
+        if old_ids != new_ids:
             change_details.append((
-                "Станция для группировки",
-                _format_fk_for_log(Station, old_eff_gs),
-                _format_fk_for_log(Station, new_grouping_station_id),
+                "Привязка к станции (Модуль «Генерация»)",
+                ", ".join(_format_fk_for_log(Station, sid) for sid in old_ids) or "не указано",
+                ", ".join(_format_fk_for_log(Station, sid) for sid in new_ids) or "не указано",
             ))
 
     try:
@@ -1018,6 +1525,100 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
     except Exception as e:
         db.session.rollback()
         return False, str(e), [], None
+
+
+def _validate_and_sync_composite_fields(group: EquipmentGroup) -> str | None:
+    """
+    Проверяет comp/main и при MAIN>0 подтягивает Station родителя на связи ребёнка.
+    Возвращает текст ошибки или None.
+    """
+    from app.extensions import db
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        is_composite_parent_group,
+        _as_int,
+    )
+
+    main = _as_int(getattr(group, "main", None))
+    if main == 0:
+        group.main = None
+        main = None
+
+    if is_composite_parent_group(group) and main is not None and main > 0:
+        return "У родителя составной станции (comp=1) поле main должно быть пустым."
+
+    if main is not None and main > 0:
+        gvid = getattr(group, "database_version_id", None)
+
+        def _parent_by_numb(numb: int):
+            q = EquipmentGroup.query.filter(EquipmentGroup.numb == numb)
+            if gvid is not None:
+                q = q.filter(
+                    (EquipmentGroup.database_version_id == gvid)
+                    | (EquipmentGroup.database_version_id.is_(None))
+                )
+            return q.order_by(EquipmentGroup.id).first()
+
+        parent = _parent_by_numb(main)
+        # Частая ошибка UI: в main вводят id карточки родителя вместо его numb.
+        if parent is None:
+            by_id = EquipmentGroup.query.get(main)
+            if by_id is not None and _as_int(getattr(by_id, "numb", None)):
+                parent_numb = int(by_id.numb)
+                resolved = _parent_by_numb(parent_numb)
+                if resolved is not None:
+                    group.main = parent_numb
+                    parent = resolved
+
+        if parent is None:
+            return (
+                f"Код родителя (main={main}): группа с numb={main} не найдена. "
+                "В поле main нужен код родителя (numb), не id из URL."
+            )
+
+        # Синхронизация Station с родителя (машины/фильтры), не замена main.
+        parent_station_id = _get_station_id_for_equipment_group(parent.id)
+        if parent_station_id:
+            resolved_station_id = _resolve_grouping_station_id_for_db_version(
+                parent_station_id, gvid
+            )
+            if resolved_station_id:
+                has_sets = (
+                    EquipmentGroupSet.query.filter_by(equipment_group_id=group.id).first()
+                    is not None
+                )
+                if has_sets:
+                    egs_err = _apply_grouping_station_on_type_station_links(
+                        group.id, resolved_station_id, version_id=gvid
+                    )
+                    if egs_err:
+                        return egs_err
+                else:
+                    parent_type_id = None
+                    parent_sets = EquipmentGroupSet.query.filter_by(
+                        equipment_group_id=parent.id
+                    ).all()
+                    for parent_set in parent_sets:
+                        parent_link = getattr(
+                            parent_set, "equipment_group_set_station", None
+                        )
+                        if parent_link and parent_link.equipment_group_type_id:
+                            parent_type_id = parent_link.equipment_group_type_id
+                            break
+                    from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
+                        ensure_equipment_group_linked_to_station,
+                    )
+
+                    ensure_equipment_group_linked_to_station(
+                        equipment_group_id=group.id,
+                        station_id=resolved_station_id,
+                        version_id=gvid,
+                        equipment_group_type_id=parent_type_id,
+                    )
+                db.session.flush()
+
+        group._apply_regional_ids_from_parent(parent=parent)
+
+    return None
 
 
 def _delete_equipment_groups_by_ids(group_ids: list[int]) -> dict:

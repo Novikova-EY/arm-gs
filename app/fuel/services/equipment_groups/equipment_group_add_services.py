@@ -189,6 +189,7 @@ def add_equipment_group_service(form_data, user):
     try:
         db.session.add(equipment_group)
         db.session.flush()
+        equipment_group._apply_regional_ids_from_parent()
         db.session.commit()
         return equipment_group, None
     except Exception as e:

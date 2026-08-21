@@ -806,7 +806,7 @@
                data-active-summary="{{ active_summary }}"
                {% if active_summary in ('oes', 'fo', 'ez') %}data-summary-view="{{ active_summary }}" data-summary-route-variant="{{ summary_route_variant }}" data-summary-log-scope="{{ active_summary }}"{% endif %}
                {% if pd_pd_max_year_segments %}data-ec-max-year-segments="1" data-coeff-long-loaded="1" data-pd-server-medium-loaded="{% if summary_include_medium_years | default(false) %}1{% else %}0{% endif %}"{% endif %}
-               {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-pd-rounding-digits-k="{{ rounding_digits_k if rounding_digits_k is defined else 3 }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}" data-pd-coeff-years-applied="{% if pd_coeff_years_applied | default(false) %}1{% else %}0{% endif %}"{% endif %}
+               {% if summary_route_variant == 'coeff' %}data-pd-rounding-digits="{{ rounding_digits }}" data-pd-rounding-digits-k="{{ rounding_digits_k if rounding_digits_k is defined else 3 }}" data-coeff-long-loaded="{% if coeff_include_long | default(false) %}1{% else %}0{% endif %}" data-pd-coeff-years-applied="{% if pd_coeff_years_applied | default(false) %}1{% else %}0{% endif %}"{% if pd_coeff_years_applied | default(false) %} data-pd-coeff-visible-year-min="{{ start_year }}" data-pd-coeff-visible-year-max="{{ end_year }}"{% endif %}{% endif %}
                {% if coeff_base_year is defined %}data-coeff-base-year="{{ coeff_base_year }}"{% endif %}
                {% if can_edit_summary_cells %}
                data-save-cell-url="{{ url_for('power_demand_bp.demand_summary_save_cell') }}"
@@ -1469,7 +1469,7 @@
                     {% endif %}
                     {% endif %}
                 </tr>
-                {% if summary_route_variant == 'coeff' and row.parameter_key != 'max_power' and not row.get('pd_pd_verify_for_row') and not row.get('pd_pd_aggregation_level_full_row') and not row.get('pd_pd_chi_row') and not row.get('pd_pd_ee_row') %}
+                {% if summary_route_variant == 'coeff' and row.parameter_key != 'max_power' and not row.get('pd_pd_verify_for_row') and not _cz_fo_tot and not row.get('pd_pd_aggregation_level_full_row') and not row.get('pd_pd_chi_row') and not row.get('pd_pd_ee_row') %}
                 <tr class="summary-kind-{{ row.entity_kind }} summary-row-coeff-k{% if row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
                     data-parameter-key="{{ row.parameter_key }}"
                     {% if row.demand_model_name %}data-demand-model-name="{{ row.demand_model_name|e }}"{% endif %}
@@ -1650,16 +1650,15 @@
             <div class="card">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                    <table class="table table-hover table-striped table-bordered" id="pd-summary-logs-table"
+                    <table class="table table-hover table-striped table-bordered change-log-table" id="pd-summary-logs-table"
                            data-pd-logs-base-url="{{ url_for('power_demand_bp.demand_summary_scope_logs', scope=active_summary) }}"
                            data-pd-logs-initial-limit="{{ pd_logs_initial_limit }}"
                            data-pd-logs-load-more-limit="{{ pd_logs_load_more_limit }}"
                            {% if pd_summary_logs_lazy | default(false) %}data-pd-logs-lazy="1"{% endif %}>
                         <thead class="table-light">
                             <tr>
-                                <th class="pd-log-col-date" style="width:140px;">Дата</th>
-                                <th class="pd-log-col-time" style="width:120px;">Время</th>
-                                <th class="pd-log-col-user" style="width:260px;">Пользователь</th>
+                                <th data-key="datetime" class="pd-log-col-datetime log-col-datetime" style="width:260px; cursor: pointer;">Дата и время</th>
+                        <th data-key="user" class="pd-log-col-user log-col-user" style="width:300px; cursor: pointer;">Пользователь</th>
                                 <th class="pd-log-col-action">Действие</th>
                                 <th class="pd-log-col-ver" style="width:150px;">Версия базы данных</th>
                                 <th class="pd-log-col-details">Информация</th>
@@ -1669,8 +1668,7 @@
                             {% if pd_summary_logs_formatted is defined and pd_summary_logs_formatted and pd_summary_logs_formatted|length > 0 %}
                                 {% for log in pd_summary_logs_formatted %}
                                     <tr>
-                                        <td data-date="{{ log.date }}">{{ log.date }}</td>
-                                        <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                        <td data-datetime="{{ log.datetime }}" data-date="{{ log.date }}">{{ log.datetime }}</td>
                                         <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
                                         <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
                                         <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
@@ -1679,11 +1677,11 @@
                                 {% endfor %}
                             {% elif pd_summary_logs_lazy | default(false) %}
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted p-3">Загрузка журнала…</td>
+                                    <td colspan="5" class="text-center text-muted p-3">Загрузка журнала…</td>
                                 </tr>
                             {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
+                                    <td colspan="5" class="text-center text-muted p-3">Нет записей</td>
                                 </tr>
                             {% endif %}
                         </tbody>
@@ -1714,10 +1712,6 @@
     </div>
 
 {% if active_summary in ('oes', 'fo', 'ez') and (pd_summary_logs_formatted is defined or pd_summary_logs_lazy | default(false)) %}
-<style>
-#pd-summary-logs-table td:nth-child(4) div, #pd-summary-logs-table td:nth-child(6) div { white-space: pre-wrap; }
-#pd-summary-logs-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
-</style>
 <script>
 (function () {
     var tbl = document.getElementById("pd-summary-logs-table");
@@ -1738,17 +1732,20 @@
     }
     function rowFromLog(log) {
         var tr = document.createElement("tr");
+        if (window.ChangeLogTable && ChangeLogTable.rowFromLog) {
+            return ChangeLogTable.rowFromLog(log);
+        }
+        var dt = (log.datetime || ((log.date || '') + (log.time ? ' ' + log.time : '')).trim());
         tr.innerHTML =
-            '<td data-date="' + (log.date || "") + '">' + (log.date || "") + "</td>" +
-            '<td data-time="' + (log.time || "") + '">' + (log.time || "") + "</td>" +
-            '<td data-user="' + (log.username_lower || "") + '">' + (log.username || "") + "</td>" +
-            '<td><div data-action="' + (log.action_lower || "") + '">' + (log.action || "") + "</div></td>" +
-            '<td data-database-version="' + String(log.database_version || "").toLowerCase() + '">' + (log.database_version || "") + "</td>" +
+            '<td data-datetime="' + dt + '" data-date="' + (log.date || '') + '">' + dt + '</td>' +
+            '<td data-user="' + (log.username_lower || '') + '">' + (log.username || '') + '</td>' +
+            '<td><div data-action="' + (log.action_lower || '') + '">' + (log.action || '') + '</div></td>' +
+            '<td data-database-version="' + String(log.database_version || '').toLowerCase() + '">' + (log.database_version || '') + '</td>' +
             '<td>' + (log.details
-                ? '<div data-details="' + (log.details_lower || "") + '" style="white-space: pre-wrap;"></div>'
-                : "") + "</td>";
+                ? '<div data-details="' + (log.details_lower || '') + '" style="white-space: pre-wrap;"></div>'
+                : '') + '</td>';
         if (log.details) {
-            tr.cells[5].querySelector("div").textContent = log.details;
+            tr.cells[4].querySelector('div').textContent = log.details;
         }
         return tr;
     }
@@ -1761,6 +1758,8 @@
             tb.replaceChildren();
         }
         logs.forEach(function (log) { tb.appendChild(rowFromLog(log)); });
+        if (tbl._applyLogFilters) tbl._applyLogFilters();
+        else if (window.ChangeLogTable) ChangeLogTable.applyFilters(tbl);
     }
     function updateLogsPaging(off, total, hasMore) {
         if (shownEl) {
@@ -1855,7 +1854,7 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=21"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=22"></script>
 {% endif %}
 
 <script>
@@ -3197,6 +3196,9 @@ if (summaryTable) {
         window.__pdPdSummarySyncNoteFieldHeights = syncSummaryNoteFieldHeights;
 
         window.__pdPdSummaryReapplyRowVisibility = function () {
+            if (typeof window.__pdPdSummaryReapplyCoeffYearVisibility === "function") {
+                window.__pdPdSummaryReapplyCoeffYearVisibility();
+            }
             applyVisibilityFromKeys(lastApplied);
         };
 
@@ -5166,6 +5168,16 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
+        window.__pdPdSummaryReapplyCoeffYearVisibility = function () {
+            if (!yearsApplied) {
+                return;
+            }
+            var appliedYears = readAppliedYearsFromFormOrUrl();
+            if (appliedYears) {
+                applyManualYearVisibility(appliedYears.sy, appliedYears.ey);
+            }
+        };
+
         function syncManualPeriodButtons() {
             bar.querySelectorAll("button[data-coeff-seg]").forEach(function (btn) {
                 var seg = btn.getAttribute("data-coeff-seg");
@@ -6767,15 +6779,14 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        function applyCoeffKColumnsVisible(show) {
-            if (show) {
-                table.classList.remove("pd-coeff-hide-k-columns");
-            } else {
-                table.classList.add("pd-coeff-hide-k-columns");
-            }
-            try {
-                sessionStorage.setItem(STORAGE_KEY, show ? "1" : "0");
-            } catch (e) { /* */ }
+        function tbodyHasCoeffKRows() {
+            var tbody =
+                document.getElementById("powerDemandSummaryTbody") ||
+                table.querySelector("tbody");
+            return !!(tbody && tbody.querySelector("tr.summary-row-coeff-k"));
+        }
+
+        function afterCoeffKVisibilityChange(show) {
             syncCoeffKToggleButton();
             if (typeof window.__pdPdSummaryRepositionEntityCells === "function") {
                 window.__pdPdSummaryRepositionEntityCells();
@@ -6788,6 +6799,40 @@ document.addEventListener("DOMContentLoaded", function () {
             window.requestAnimationFrame(function () {
                 window.dispatchEvent(new Event("resize"));
             });
+            if (show && typeof window.refreshPowerDemandCoeffMixins === "function") {
+                window.refreshPowerDemandCoeffMixins();
+            }
+        }
+
+        function applyCoeffKColumnsVisible(show) {
+            if (show) {
+                table.classList.remove("pd-coeff-hide-k-columns");
+            } else {
+                table.classList.add("pd-coeff-hide-k-columns");
+            }
+            try {
+                sessionStorage.setItem(STORAGE_KEY, show ? "1" : "0");
+            } catch (e) { /* */ }
+            /* Строки k при скрытии не строились — дорисовать при включении «Коэффициенты». */
+            if (
+                show &&
+                !tbodyHasCoeffKRows() &&
+                typeof window.__pdPdSummaryRerenderTableBody === "function"
+            ) {
+                var rerender = window.__pdPdSummaryRerenderTableBody();
+                if (rerender && typeof rerender.then === "function") {
+                    rerender.then(
+                        function () {
+                            afterCoeffKVisibilityChange(true);
+                        },
+                        function () {
+                            afterCoeffKVisibilityChange(true);
+                        }
+                    );
+                    return;
+                }
+            }
+            afterCoeffKVisibilityChange(show);
         }
 
         function readStoredShowK() {
@@ -6800,30 +6845,29 @@ document.addEventListener("DOMContentLoaded", function () {
                     return false;
                 }
             } catch (e2) { /* */ }
-            /* pd-coeff-hide-k-columns — по умолчанию блоки k под МВт показаны */
+            /* pd_page_size=0 (все секции): по умолчанию без строк k — быстрее первый показ */
+            try {
+                var ps = new URLSearchParams(window.location.search || "").get(
+                    "pd_page_size"
+                );
+                if (ps === "0") {
+                    return false;
+                }
+            } catch (e3) { /* */ }
             return true;
         }
 
         var wantShowK = readStoredShowK();
         if (wantShowK) {
             applyCoeffKColumnsVisible(true);
-            if (typeof window.refreshPowerDemandCoeffMixins === "function") {
-                window.refreshPowerDemandCoeffMixins();
-            }
         } else {
             applyCoeffKColumnsVisible(false);
-            if (typeof window.__pdPdSummaryRepositionEntityCells === "function") {
-                window.__pdPdSummaryRepositionEntityCells();
-            }
         }
 
         if (btnToggle) {
             btnToggle.addEventListener("click", function () {
                 var hidden = table.classList.contains("pd-coeff-hide-k-columns");
                 applyCoeffKColumnsVisible(hidden);
-                if (typeof window.refreshPowerDemandCoeffMixins === "function") {
-                    window.refreshPowerDemandCoeffMixins();
-                }
             });
         }
     })();

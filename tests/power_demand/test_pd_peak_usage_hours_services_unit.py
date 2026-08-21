@@ -34,7 +34,6 @@ from app.power_demand.models.territories.federal_district_demand_parameter_model
 from app.power_demand.services.pd_peak_usage_hours_services import (
     PEAK_MAX_POWER_USAGE_HOURS_KEY,
     _chi_ec_consumption_mln_for_anchor,
-    _chi_ec_consumption_mln_for_south_fd_with_nt,
     _chi_ec_consumption_pvc_for_anchor,
     _chi_ec_consumption_scale_for_pd_model,
     _divide_hours,
@@ -170,15 +169,20 @@ def test_decentralized_zone_chi_uses_same_perimeter_variant():
         "id_energy_unit": 42,
         "perimeter_variant_code": "with_nt",
     }
-    hit = _chi_ec_consumption_mln_for_anchor(
-        anchor,
-        2025,
-        ec_index=ec_index,
-        ec_model_name="EnergyUnitEnergyConsumptionParameter",
-        ec_parent_id=42,
-        fk_column="id_energy_unit",
-        years=[2025],
-    )
+    from unittest.mock import patch
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    with patch.object(chi_svc, "_sum_nt_subjects_ec_mln_for_chi", return_value=1.0):
+        hit = _chi_ec_consumption_mln_for_anchor(
+            anchor,
+            2025,
+            ec_index=ec_index,
+            ec_model_name="EnergyUnitEnergyConsumptionParameter",
+            ec_parent_id=42,
+            fk_column="id_energy_unit",
+            years=[2025],
+        )
     assert hit == 99.0
 
 
@@ -267,15 +271,20 @@ def test_russia_federation_chi_scales_ec_consumption_by_1000():
         "demand_model_name": RussiaFederationDemandParameter.__name__,
         "perimeter_variant_code": CODE_WITH_NT,
     }
-    hit = _chi_ec_consumption_mln_for_anchor(
-        anchor,
-        2025,
-        ec_index=ec_index,
-        ec_model_name="RussiaFederationEnergyConsumptionParameter",
-        ec_parent_id=0,
-        fk_column=None,
-        years=[2025],
-    )
+    from unittest.mock import patch
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    with patch.object(chi_svc, "_sum_nt_subjects_ec_mln_for_chi", return_value=1.0):
+        hit = _chi_ec_consumption_mln_for_anchor(
+            anchor,
+            2025,
+            ec_index=ec_index,
+            ec_model_name="RussiaFederationEnergyConsumptionParameter",
+            ec_parent_id=0,
+            fk_column=None,
+            years=[2025],
+        )
     assert hit == 1500.0
 
 
@@ -364,6 +373,17 @@ def test_ec_consumption_pvc_candidates_for_without_nt_include_null_fallback():
     ]
 
 
+def test_ec_consumption_pvc_candidates_for_kaliningrad_sa_include_hub_codes():
+    anchor = {
+        "demand_model_name": SynchronousAreaDemandParameter.__name__,
+        "entity_label": "Синхронная зона Калининградской области без НТ",
+        "perimeter_variant_code": CODE_WITHOUT_NT,
+    }
+    candidates = _ec_consumption_pvc_candidates_for_chi(anchor)
+    assert "without_nt_without_gaes_with_kaliningrad_es" in candidates
+    assert "without_nt_with_gaes_with_kaliningrad_es" in candidates
+
+
 def test_lookup_chi_falls_back_to_null_perimeter_variant_for_without_nt():
     ec_index = {
         (
@@ -417,7 +437,8 @@ def test_lookup_chi_does_not_fallback_to_null_perimeter_variant_for_with_nt():
     )
 
 
-def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_when_nt_nonzero():
+def test_south_fd_with_nt_chi_uses_res_aggregate_plus_nt_subjects():
+    """Южный ФО с НТ: Σ РЭС(with_nt) + субъекты НТ (НТ=0 допустим), как на EC."""
     south_fd_id = 125
     years = [2022, 2023, 2024]
     ec_index = {
@@ -427,24 +448,6 @@ def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_when_nt_nonzero()
             CODE_WITHOUT_NT_WITHOUT_GAES,
             2022,
         ): 80.0,
-        (
-            "FederalDistrictEnergyConsumptionParameter",
-            south_fd_id,
-            CODE_WITHOUT_NT_WITHOUT_GAES,
-            2023,
-        ): 100.0,
-        (
-            "FederalDistrictEnergyConsumptionParameter",
-            south_fd_id,
-            CODE_WITHOUT_NT_WITHOUT_GAES,
-            2024,
-        ): 120.0,
-        (
-            "FederalDistrictEnergyConsumptionParameter",
-            south_fd_id,
-            CODE_WITH_NT_WITHOUT_GAES,
-            2024,
-        ): 999.0,
         ("RegionalDistrictEnergyConsumptionParameter", 916, None, 2023): 5.0,
         ("RegionalDistrictEnergyConsumptionParameter", 916, None, 2024): 20.0,
     }
@@ -459,11 +462,23 @@ def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_when_nt_nonzero()
     from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
 
     chi_svc._south_federal_district_id_for_chi.cache_clear()
+    chi_svc._fo_res_mln_aggregates_for_chi.cache_clear()
     try:
         with patch.object(
             chi_svc,
             "_south_federal_district_id_for_chi",
             return_value=south_fd_id,
+        ), patch.object(
+            chi_svc,
+            "_lookup_fo_res_aggregate_mln_for_chi",
+            side_effect=lambda _fd, _anchor, slice_key: (
+                True,
+                {
+                    2022: None,
+                    2023: 100.0,
+                    2024: 120.0,
+                }.get(slice_key),
+            ),
         ), patch.object(
             chi_svc,
             "_sum_nt_subjects_ec_mln_for_chi",
@@ -473,8 +488,9 @@ def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_when_nt_nonzero()
                 2024: 20.0,
             }.get(slice_key),
         ):
+            # Нет базы РЭС и НТ=0 → пусто (не подставляем «без НТ» из БД).
             assert (
-                _chi_ec_consumption_mln_for_south_fd_with_nt(
+                _chi_ec_consumption_mln_for_anchor(
                     anchor,
                     2022,
                     ec_index=ec_index,
@@ -511,9 +527,169 @@ def test_south_fd_with_nt_chi_uses_without_nt_plus_nt_subjects_when_nt_nonzero()
             )
     finally:
         chi_svc._south_federal_district_id_for_chi.cache_clear()
+        chi_svc._fo_res_mln_aggregates_for_chi.cache_clear()
 
 
-def test_south_fd_without_nt_chi_uses_direct_lookup_for_all_years():
+def test_south_fd_with_nt_chi_empty_until_nt_subjects_have_data():
+    """Южный ФО с НТ: пусто, пока нет данных по субъектам НТ (не жёстко с 2023)."""
+    south_fd_id = 125
+    years = [2021, 2022, 2023]
+    anchor = {
+        "demand_model_name": FederalDistrictDemandParameter.__name__,
+        "entity_label": "Южный ФО с НТ",
+        "perimeter_variant_code": CODE_WITH_NT_WITHOUT_GAES,
+    }
+
+    from unittest.mock import patch
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    chi_svc._south_federal_district_id_for_chi.cache_clear()
+    try:
+        with patch.object(
+            chi_svc,
+            "_south_federal_district_id_for_chi",
+            return_value=south_fd_id,
+        ), patch.object(
+            chi_svc,
+            "_lookup_fo_res_aggregate_mln_for_chi",
+            return_value=(True, 81762.8),
+        ), patch.object(
+            chi_svc,
+            "_sum_nt_subjects_ec_mln_for_chi",
+            side_effect=lambda slice_key, **kwargs: (
+                None if int(slice_key) < 2023 else 0.0
+            ),
+        ):
+            for year in (2021, 2022):
+                assert (
+                    _chi_ec_consumption_mln_for_anchor(
+                        anchor,
+                        year,
+                        ec_index={},
+                        ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                        ec_parent_id=south_fd_id,
+                        fk_column="id_federal_district",
+                        years=years,
+                    )
+                    is None
+                )
+            assert (
+                _chi_ec_consumption_mln_for_anchor(
+                    anchor,
+                    2023,
+                    ec_index={},
+                    ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                    ec_parent_id=south_fd_id,
+                    fk_column="id_federal_district",
+                    years=years,
+                )
+                == 81762.8
+            )
+    finally:
+        chi_svc._south_federal_district_id_for_chi.cache_clear()
+
+
+def test_south_fd_with_nt_allows_zero_nt_when_res_aggregate_present():
+    south_fd_id = 125
+    years = [2026]
+    anchor = {
+        "demand_model_name": FederalDistrictDemandParameter.__name__,
+        "entity_label": "Южный ФО с НТ",
+        "perimeter_variant_code": CODE_WITH_NT_WITHOUT_GAES,
+    }
+    from unittest.mock import patch
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    chi_svc._south_federal_district_id_for_chi.cache_clear()
+    try:
+        with patch.object(
+            chi_svc,
+            "_south_federal_district_id_for_chi",
+            return_value=south_fd_id,
+        ), patch.object(
+            chi_svc,
+            "_lookup_fo_res_aggregate_mln_for_chi",
+            return_value=(True, 88818.0),
+        ), patch.object(
+            chi_svc,
+            "_sum_nt_subjects_ec_mln_for_chi",
+            return_value=0.0,
+        ):
+            assert (
+                _chi_ec_consumption_mln_for_anchor(
+                    anchor,
+                    2026,
+                    ec_index={},
+                    ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                    ec_parent_id=south_fd_id,
+                    fk_column="id_federal_district",
+                    years=years,
+                )
+                == 88818.0
+            )
+    finally:
+        chi_svc._south_federal_district_id_for_chi.cache_clear()
+
+
+def test_south_fd_without_nt_prefers_res_aggregate_over_corrupt_without_gaes_db():
+    """ФО: не брать without_gaes из БД, если есть сумма РЭС (как формула на EC)."""
+    south_fd_id = 125
+    years = [2024]
+    # В БД without_gaes лежит «чужой» год (как в v20: копия 2016).
+    ec_index = {
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITHOUT_NT_WITHOUT_GAES,
+            2024,
+        ): 72755.8,
+        (
+            "FederalDistrictEnergyConsumptionParameter",
+            south_fd_id,
+            CODE_WITHOUT_NT,
+            2024,
+        ): 86150.3,
+    }
+    anchor = {
+        "demand_model_name": FederalDistrictDemandParameter.__name__,
+        "entity_label": "Южный ФО без НТ",
+        "perimeter_variant_code": CODE_WITHOUT_NT_WITHOUT_GAES,
+    }
+
+    from unittest.mock import patch
+
+    from app.power_demand.services import pd_peak_usage_hours_services as chi_svc
+
+    chi_svc._south_federal_district_id_for_chi.cache_clear()
+    try:
+        with patch.object(
+            chi_svc,
+            "_south_federal_district_id_for_chi",
+            return_value=south_fd_id,
+        ), patch.object(
+            chi_svc,
+            "_lookup_fo_res_aggregate_mln_for_chi",
+            return_value=(True, 86150.3),
+        ):
+            assert (
+                _chi_ec_consumption_mln_for_anchor(
+                    anchor,
+                    2024,
+                    ec_index=ec_index,
+                    ec_model_name="FederalDistrictEnergyConsumptionParameter",
+                    ec_parent_id=south_fd_id,
+                    fk_column="id_federal_district",
+                    years=years,
+                )
+                == 86150.3
+            )
+    finally:
+        chi_svc._south_federal_district_id_for_chi.cache_clear()
+
+
+def test_south_fd_without_nt_chi_uses_res_aggregate_or_direct_lookup():
     south_fd_id = 125
     years = [2022, 2023]
     ec_index = {
@@ -546,6 +722,10 @@ def test_south_fd_without_nt_chi_uses_direct_lookup_for_all_years():
             chi_svc,
             "_south_federal_district_id_for_chi",
             return_value=south_fd_id,
+        ), patch.object(
+            chi_svc,
+            "_lookup_fo_res_aggregate_mln_for_chi",
+            return_value=(False, None),
         ):
             assert (
                 _chi_ec_consumption_mln_for_anchor(
@@ -620,11 +800,19 @@ def test_inject_combined_peak_usage_hours_after_combined_on_row():
     )
 
     original = chi_svc._build_ec_consumption_index
+    original_hub = chi_svc._build_oes_top_hub_ec_indexes
     chi_svc._build_ec_consumption_index = lambda _years: ec_index
+    chi_svc._build_oes_top_hub_ec_indexes = (
+        lambda _years, _rd, *, need_cz, need_ees_sa, pipeline_rows=None: (
+            None,
+            {} if need_ees_sa else None,
+        )
+    )
     try:
         inject_combined_peak_usage_hours_rows(rows, years, 0)
     finally:
         chi_svc._build_ec_consumption_index = original
+        chi_svc._build_oes_top_hub_ec_indexes = original_hub
 
     chi_key = peak_combined_usage_hours_key("combined_on_ees")
     chi_rows = [r for r in rows if r.get("parameter_key") == chi_key]

@@ -20,6 +20,10 @@ from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_specific_fuel_price_model import (
     EquipmentGroupSpecificFuelPrice,
 )
+from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services import (
+    resolve_composite_parents_by_numb,
+    territorial_ids_for_equipment_group,
+)
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_price_calc_services import (
     calc_specific_fuel_price_fields,
 )
@@ -503,12 +507,22 @@ def get_equipment_groups_with_specific_fuel_price_data(
 
     _apply_calculated_specific_fuel_prices(rows)
 
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        apply_numb1120_filter_to_eg_param_rows,
+    )
+
+    rows, numb1120_filter_choices = apply_numb1120_filter_to_eg_param_rows(
+        rows, _filters
+    )
+    total_count = len(rows)
+
     return {
         "rows": rows,
         "total_count": total_count,
         "total_pages": 1,
         "page": 1,
         "per_page": total_count or 1,
+        "numb1120_filter_choices": numb1120_filter_choices,
     }
 
 
@@ -527,6 +541,10 @@ def build_equipment_group_specific_fuel_price_hierarchy(rows):
         get_union_energy_systems_map,
         union_energy_system_hierarchy_sort_key,
     )
+    from app.fuel.services.equipment_groups.composite_display_cluster_services import (
+        apply_simple_station_summaries,
+        build_station_blocks_from_group_items,
+    )
     from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
         _equipment_group_station_sort_key,
         _get_equipment_group_station_mapping_with_display_order,
@@ -541,6 +559,8 @@ def build_equipment_group_specific_fuel_price_hierarchy(rows):
     res_names[-1] = "Не указано"
 
     equipment_group_ids = [eg.id for eg, _ in (rows or []) if eg]
+    _vid = get_current_db_version_id()
+    parent_by_numb = resolve_composite_parents_by_numb(rows, database_version_id=_vid)
     eg_station_metadata = _get_equipment_group_station_mapping_with_display_order(
         equipment_group_ids, all_versions=True
     )
@@ -560,16 +580,9 @@ def build_equipment_group_specific_fuel_price_hierarchy(rows):
     for eg, param in rows or []:
         if not eg:
             continue
-        res = getattr(eg, "regional_energy_system", None)
-        ues = getattr(res, "union_energy_system", None) if res else None
-        est_id = getattr(ues, "id_energy_system_type", None) if ues else None
-        ues_id = ues.id if ues else None
-        res_id = res.id if res else None
-
-        _est = est_id if est_id is not None else -1
-        _ues = ues_id if ues_id is not None else -1
-        _res = res_id if res_id is not None else -1
-
+        _est, _ues, _res = territorial_ids_for_equipment_group(
+            eg, parent_by_numb=parent_by_numb
+        )
         hierarchy[_est][_ues][_res][eg.id].append((eg, param))
 
     def _sort_key_est(eid):
@@ -632,36 +645,22 @@ def build_equipment_group_specific_fuel_price_hierarchy(rows):
                     ),
                 )
 
-                by_station = defaultdict(list)
-                for eg_id, eg_rows in eg_items:
+                for _eg_id, eg_rows in eg_items:
                     all_res_rows.extend(eg_rows)
-                    eg = eg_rows[0][0] if eg_rows else None
-                    station_key = _get_primary_station(eg_id)
-                    by_station[station_key].append(
-                        {"equipment_group": eg, "rows": eg_rows}
-                    )
 
                 res_summary = _compute_summary(all_res_rows) if all_res_rows else {}
 
-                station_blocks = []
-                for station_key in sorted(by_station.keys(), key=_station_sort_key):
-                    group_blocks = by_station[station_key]
-                    station_rows = []
-                    for gb in group_blocks:
-                        station_rows.extend(gb["rows"])
-                    station_summary = (
-                        _compute_summary(station_rows) if station_rows else {}
-                    )
-                    st_id, st_name = station_key if station_key else (None, "—")
-                    station_blocks.append(
-                        {
-                            "station_id": st_id,
-                            "station_name": st_name,
-                            "group_blocks": group_blocks,
-                            "station_summary": station_summary,
-                            "is_virtual": False,
-                        }
-                    )
+                station_blocks = build_station_blocks_from_group_items(
+                    eg_items,
+                    eg_to_stations,
+                    allow_station_composite_fallback=False,
+                    parent_by_numb=parent_by_numb,
+                )
+                apply_simple_station_summaries(
+                    station_blocks,
+                    _compute_summary,
+                    parent_by_numb=parent_by_numb,
+                )
 
                 res_list.append(
                     {

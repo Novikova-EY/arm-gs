@@ -16,6 +16,7 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_params_services imp
     get_equipment_groups_with_fuel_params_data,
     build_name_maps_from_rows,
     build_equipment_group_fuel_params_hierarchy,
+    should_suppress_aggregate_rows_for_filters,
 )
 from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
     EQUIPMENT_GROUP_ID_HEADER,
@@ -39,12 +40,14 @@ FUEL_PARAM_COLUMNS = [
     ("eotp", EquipmentGroupFuelParam.EOTP_COLUMN_LABEL, True),
     ("eust", "Расх топ ээ", True),
     ("eurt", EquipmentGroupFuelParam.EURT_COLUMN_LABEL, True),
+    ("sn_ee", EquipmentGroupFuelParam.SN_EE_COLUMN_LABEL, True),
     ("snk", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
     ("q", EquipmentGroupFuelParam.Q_COLUMN_LABEL, True),
     ("qotr", "Тепловое потребление (отборов турбин), тыс.Гкал", True),
     ("turt", EquipmentGroupFuelParam.TURT_COLUMN_LABEL, True),
     ("tust", EquipmentGroupFuelParam.TUST_COLUMN_LABEL, True),
-    ("sn_t", "СН, кВтч/⁠Гкал", True),
+    ("sn_te", EquipmentGroupFuelParam.SN_TE_COLUMN_LABEL, True),
+    ("sn_t", EquipmentGroupFuelParam.SN_T_COLUMN_LABEL, True),
     ("b", "Расход топлива, всего", True),
     ("gaz", "Газ", True),
     ("isk_gaz", "Иск. газ", True),
@@ -82,8 +85,13 @@ FUEL_PARAM_COLUMNS = [
 ]
 
 
-def _format_cell_value(param, attr, is_numeric, name_maps, rounding_digits):
+def _format_cell_value(param, attr, is_numeric, name_maps, rounding_digits, group_entity=None):
     """Форматирует значение ячейки по аналогии с шаблоном."""
+    if attr == "numb1120":
+        val = getattr(param, "numb1120", None) if param is not None else None
+        if val is None and group_entity is not None:
+            val = getattr(group_entity, "numb", None)
+        return str(val) if val is not None else "—"
     if param is None:
         return "—"
     val = getattr(param, attr, None)
@@ -162,7 +170,9 @@ def export_stations_equipment_group_fuel_params_to_excel(
 
     name_maps = build_name_maps_from_rows(rows)
     hierarchy = build_equipment_group_fuel_params_hierarchy(
-        rows, use_equipment_group_hierarchy_only=False
+        rows,
+        use_equipment_group_hierarchy_only=False,
+        suppress_aggregate_rows=should_suppress_aggregate_rows_for_filters(filters),
     )
     if not hierarchy:
         return None
@@ -231,43 +241,58 @@ def export_stations_equipment_group_fuel_params_to_excel(
                             )
                             or "—"
                         )
+                        is_total = bool(group_block.get("is_composite_total_row"))
+                        if is_total and not str(group_name).endswith(", всего"):
+                            group_name = f"{group_name}, всего"
+                        summary = station_block.get("station_summary") or {}
                         for _eg, param in group_block.get("rows") or []:
                             row_data = [
-                                equipment_group_id_cell(group_entity),
+                                equipment_group_id_cell(group_entity)
+                                if not is_total
+                                else (
+                                    str(getattr(group_entity, "numb", None))
+                                    if getattr(group_entity, "numb", None) is not None
+                                    else "—"
+                                ),
                                 group_name,
                             ]
                             for attr, _label, is_numeric in FUEL_PARAM_COLUMNS:
-                                row_data.append(
-                                    _format_cell_value(
-                                        param, attr, is_numeric, name_maps, rounding_digits
+                                if attr == "numb1120" and (
+                                    is_total or group_block.get("use_station_summary")
+                                ):
+                                    row_data.append(
+                                        str(getattr(group_entity, "numb", None))
+                                        if group_entity is not None
+                                        and getattr(group_entity, "numb", None) is not None
+                                        else "—"
                                     )
-                                )
+                                elif is_total or group_block.get("use_station_summary"):
+                                    row_data.append(
+                                        _format_summary_value(
+                                            summary, attr, is_numeric, rounding_digits
+                                        )
+                                    )
+                                else:
+                                    row_data.append(
+                                        _format_cell_value(
+                                            param,
+                                            attr,
+                                            is_numeric,
+                                            name_maps,
+                                            rounding_digits,
+                                            group_entity=group_entity,
+                                        )
+                                    )
                             _bump_lengths(row_data)
                             ws.append(apply_nbsp_to_row(row_data))
-
-                    gb_count = len(station_block.get("group_blocks") or [])
-                    if (
-                        gb_count > 1
-                        and not station_block.get("is_virtual")
-                        and not station_block.get("suppress_station_summary")
-                    ):
-                        st_name = station_block.get("station_name") or "—"
-                        label = f"{st_name}, всего"
-                        summary = station_block.get("station_summary") or {}
-                        row_data = ["—", label]
-                        for attr, _label, is_numeric in FUEL_PARAM_COLUMNS:
-                            row_data.append(
-                                _format_summary_value(
-                                    summary, attr, is_numeric, rounding_digits
+                            if is_total:
+                                style_data_row(
+                                    ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
                                 )
-                            )
-                        _bump_lengths(row_data)
-                        ws.append(apply_nbsp_to_row(row_data))
-                        style_data_row(
-                            ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
-                        )
 
-                if res_block.get("group_blocks"):
+                    # Жёлтая «станция, всего» отключена — итог на строке родителя.
+
+                if res_block.get("group_blocks") and not res_block.get("hide_res_summary"):
                     res_nm = res_block.get("res_name") or "—"
                     label = f"{res_nm}, всего"
                     summary = res_block.get("res_summary") or {}

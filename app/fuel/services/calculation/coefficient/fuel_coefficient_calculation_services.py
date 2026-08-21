@@ -18,8 +18,24 @@ from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
+from app.fuel.services.calculation.access_bdis_cursor import (
+    fuel_param_access_n1,
+    sort_access_filter_rows,
+    walk_access_bdis_cursor,
+)
 from app.fuel.services.calculation.equipment_group_selection import (
+    access_ved_filter_year_row_participates,
+    participating_group_ids_for_year,
     select_equipment_group_ids_for_calculation,
+)
+from app.fuel.services.calculation.station_ewtp import (
+    apply_access_coeff_ewtp,
+    fill_ewtp_if_empty,
+    resolve_station_ewtp,
+)
+from app.fuel.services.calculation.specific_consumption_lookup import (
+    query_specific_consumption_access_seek,
+    query_specific_consumption_for_fuel,
 )
 
 
@@ -99,6 +115,7 @@ class FuelCoefficientCalculationService:
         byear: int | None,
         cyear: int,
         effective_db_version: int | None,
+        all_years: bool = False,
     ) -> dict[tuple[int, int], EquipmentGroupFuelParam]:
         """
         Словарь (equipment_group_id, year_number) -> строка топлива.
@@ -107,17 +124,18 @@ class FuelCoefficientCalculationService:
         gs_fue_equipment_group_fuel_param не совпадает с версией параметра распределения,
         из‑за чего этап «Коэфф» не видел ни одной строки года.
         """
-        if byear is not None:
-            year_filter = EquipmentGroupFuelParam.year_number.in_([byear, cyear])
-        else:
-            year_filter = EquipmentGroupFuelParam.year_number == cyear
+        if not group_ids:
+            return {}
+        filters = [EquipmentGroupFuelParam.equipment_group_id.in_(group_ids)]
+        if not all_years:
+            if byear is not None:
+                filters.append(EquipmentGroupFuelParam.year_number.in_([byear, cyear]))
+            else:
+                filters.append(EquipmentGroupFuelParam.year_number == cyear)
 
         rows = (
             self.session.query(EquipmentGroupFuelParam)
-            .filter(
-                EquipmentGroupFuelParam.equipment_group_id.in_(group_ids),
-                year_filter,
-            )
+            .filter(*filters)
             .all()
         )
         by_key: dict[tuple[int, int], EquipmentGroupFuelParam] = {}
@@ -131,38 +149,43 @@ class FuelCoefficientCalculationService:
         return by_key
 
     def _select_group_ids(self, row: DistributionParameter, effective_db_version: int | None) -> list[int]:
+        years: list[int] = []
+        if row.year is not None and getattr(row.year, "number", None) is not None:
+            years.append(int(row.year.number))
+        if row.base_year is not None and getattr(row.base_year, "number", None) is not None:
+            years.append(int(row.base_year.number))
+        # Группа в выборке, если ved>0 хотя бы в одном из лет; строку года
+        # циклы ниже ещё режут access_ved_filter_year_row_participates (как Access).
+        year_numbers = sorted(set(years)) or None
         return select_equipment_group_ids_for_calculation(
             self.session,
             filter_text=row.filter_text,
             effective_db_version=effective_db_version,
+            year_numbers=year_numbers,
         )
 
     def _latest_specific_row(self, equipment_group_id: int, target_year: int, effective_db_version: int | None):
-        q = self.session.query(EquipmentGroupSpecificFuelConsumption).filter(
-            EquipmentGroupSpecificFuelConsumption.equipment_group_id == equipment_group_id,
-            EquipmentGroupSpecificFuelConsumption.year_number <= target_year,
+        # Access U.NoMatch — только если строк нет. Пустой y=0/Bk Null (1330) — Match.
+        return query_specific_consumption_for_fuel(
+            self.session,
+            equipment_group_id=equipment_group_id,
+            target_year=target_year,
+            database_version_id=effective_db_version,
         )
 
-        if effective_db_version is not None and hasattr(EquipmentGroupSpecificFuelConsumption, "database_version_id"):
-            q = q.filter(
-                or_(
-                    EquipmentGroupSpecificFuelConsumption.database_version_id == effective_db_version,
-                    EquipmentGroupSpecificFuelConsumption.database_version_id.is_(None),
-                )
-            )
-
-        row = q.order_by(EquipmentGroupSpecificFuelConsumption.year_number.desc()).first()
-        if row is not None:
-            return row
-        # Запасной вариант без фильтра по версии (см. комментарий к _fuel_param_by_group_year).
-        return (
-            self.session.query(EquipmentGroupSpecificFuelConsumption)
-            .filter(
-                EquipmentGroupSpecificFuelConsumption.equipment_group_id == equipment_group_id,
-                EquipmentGroupSpecificFuelConsumption.year_number <= target_year,
-            )
-            .order_by(EquipmentGroupSpecificFuelConsumption.year_number.desc())
-            .first()
+    def _bdis_specific_row(
+        self,
+        equipment_group_id: int,
+        byear: int | None,
+        cyear: int,
+        effective_db_version: int | None,
+    ):
+        return query_specific_consumption_access_seek(
+            self.session,
+            equipment_group_id=equipment_group_id,
+            byear=byear,
+            cyear=cyear,
+            database_version_id=effective_db_version,
         )
 
     def list_groups_missing_specific_for_distribution_parameter(
@@ -237,6 +260,15 @@ class FuelCoefficientCalculationService:
 
         fuel_eg_ids = {
             int(gid)
+            for gid in participating_group_ids_for_year(
+                self.session,
+                group_ids,
+                year_number=cyear,
+                effective_db_version=effective_db_version,
+            )
+        }
+        cyear_row_ids = {
+            int(gid)
             for (gid,) in self.session.query(EquipmentGroupFuelParam.equipment_group_id)
             .filter(
                 EquipmentGroupFuelParam.equipment_group_id.in_(group_ids),
@@ -246,7 +278,7 @@ class FuelCoefficientCalculationService:
             .all()
             if gid is not None
         }
-        missing_fuel_ids = sorted(set(int(g) for g in group_ids) - fuel_eg_ids)
+        missing_fuel_ids = sorted(set(int(g) for g in group_ids) - cyear_row_ids)
         missing_fuel_groups = _groups_payload(missing_fuel_ids)
 
         if not fuel_eg_ids:
@@ -334,10 +366,41 @@ class FuelCoefficientCalculationService:
 
         byear = row.base_year.number if row.base_year is not None else None
         cyear = row.year.number
+        if byear is not None and int(cyear) > int(byear):
+            from app.fuel.services.calculation.ensure_calculation_year_data_services import (
+                heat_seed_target_years,
+            )
+            from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
+                apply_heat_and_tariffs_q_for_groups,
+            )
+
+            apply_heat_and_tariffs_q_for_groups(
+                group_ids,
+                heat_seed_target_years(int(byear), int(cyear)),
+                effective_db_version,
+            )
+            self.session.flush()
+
         e_target = d0(row.e)
 
         by_key = self._fuel_param_by_group_year(
-            group_ids, byear, cyear, effective_db_version
+            group_ids, byear, cyear, effective_db_version, all_years=True
+        )
+        groups_by_id: dict[int, EquipmentGroup] = {}
+        if group_ids:
+            for g in (
+                self.session.query(EquipmentGroup)
+                .filter(EquipmentGroup.id.in_(group_ids))
+                .all()
+            ):
+                groups_by_id[g.id] = g
+        cursor_rows = sort_access_filter_rows(
+            [
+                fp
+                for fp in by_key.values()
+                if access_ved_filter_year_row_participates(fp)
+            ],
+            n1_of=lambda fp: fuel_param_access_n1(fp, groups_by_id),
         )
 
         bsumnust = Decimal("0")
@@ -356,32 +419,39 @@ class FuelCoefficientCalculationService:
         sum_e_cyear = Decimal("0")
 
         updated_fuel_rows = 0
+        last_spec = None
 
-        for equipment_group_id in group_ids:
-            base_row = by_key.get((equipment_group_id, byear)) if byear is not None else None
-            cur_row = by_key.get((equipment_group_id, cyear))
-
-            # Базовый год в Access: суммы по всем строкам w с year=byear под фильтром (не только
-            # если есть строка расчётного года).
-            if base_row is not None:
-                bsumnust += d0(base_row.nust)
-                bsume += d0(base_row.e)
-                bsumetp += d0(base_row.ewtp)
-                bsumq += d0(base_row.q)
-                bsumqotr += d0(base_row.qotr)
-
-            if cur_row is None:
+        for kind, fp, cursor in walk_access_bdis_cursor(
+            cursor_rows,
+            byear=byear,
+            cyear=cyear,
+        ):
+            if kind == "byear":
+                # Access: суммы по строкам w с year=byear под filter1 (ved>0).
+                bsumnust += d0(fp.nust)
+                bsume += d0(fp.e)
+                bsumetp += d0(fp.ewtp)
+                bsumq += d0(fp.q)
+                bsumqotr += d0(fp.qotr)
                 continue
 
-            base_nust = d0(base_row.nust) if base_row is not None else Decimal("0")
+            cur_row = fp
+            equipment_group_id = cur_row.equipment_group_id
 
-            # Access: If U.NoMatch Then GoTo Skip — без EWTP и без сумм расчётного года.
-            spec = self._latest_specific_row(equipment_group_id, cyear, effective_db_version)
+            # Access: bnust1 — NUST последней строки byear курсора, не Seek по этой станции.
+            base_nust = cursor.bnust1
+
+            spec = self._bdis_specific_row(
+                equipment_group_id, byear, cyear, effective_db_version
+            )
+            if spec is None:
+                spec = last_spec
             if spec is None:
                 continue
+            last_spec = spec
 
-            cur_row.ewtp = d0(cur_row.qotr) * d0(spec.y) / Decimal("1000")
-            updated_fuel_rows += 1
+            if apply_access_coeff_ewtp(cur_row, spec.y):
+                updated_fuel_rows += 1
 
             csumnust += d0(cur_row.nust)
             if base_nust == 0:
@@ -517,8 +587,7 @@ class FuelCoefficientCalculationService:
         """
         Агрегаты по базовому году для первой строки таблицы «Коэфф» при загрузке страницы.
 
-        Те же отбор групп и условие «есть строка расчётного года», что в
-        ``run_for_distribution_parameter`` (логика Access Кнопка5_Click).
+        Как Access Кнопка5_Click: суммы по строкам year=byear с ved>0 (filter1).
         """
         row = self.session.get(
             DistributionParameter,
@@ -551,7 +620,7 @@ class FuelCoefficientCalculationService:
 
         for equipment_group_id in group_ids:
             base_row = by_key.get((equipment_group_id, byear))
-            if base_row is None:
+            if not access_ved_filter_year_row_participates(base_row):
                 continue
             had_base = True
             bsumnust += d0(base_row.nust)
@@ -623,16 +692,18 @@ class FuelCoefficientCalculationService:
             base_row = by_key.get((equipment_group_id, byear)) if byear is not None else None
             cur_row = by_key.get((equipment_group_id, cyear))
 
-            if cur_row is None:
+            if not access_ved_filter_year_row_participates(cur_row):
                 continue
 
             base_nust = d0(base_row.nust) if base_row is not None else Decimal("0")
 
-            # Access Skip без удельных — не копить суммы расчётного года.
+            # Без удельника и без уже заданного EWTP — как Access Skip.
             spec = self._latest_specific_row(equipment_group_id, cyear, effective_db_version)
-            if spec is None:
+            if spec is None and cur_row.ewtp is None:
                 continue
-            ewtp = d0(cur_row.qotr) * d0(spec.y) / Decimal("1000")
+            ewtp = resolve_station_ewtp(
+                cur_row, spec.y if spec is not None else None
+            )
 
             csumnust += d0(cur_row.nust)
             if base_nust == 0:

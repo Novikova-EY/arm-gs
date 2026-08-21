@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import fuel_hierarchy_level_header %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
 {% block title %}Структура топливного баланса{% endblock %}
 
@@ -150,31 +152,32 @@
                 <th style="min-width: 9rem;">Группа оборудования</th>
                 <th style="min-width: 3.5rem;">Год</th>
                 {% for attr, label, is_numeric in formula_value_columns %}
+                {% if attr == 'numb1120' %}
+                {{ fuel_param_numb1120_header_th(1, label, (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
+                {% else %}
                 <th style="min-width: {% if attr == 'formtxt' %}16rem{% else %}4rem{% endif %};">
                     {{ label }}
                     <br><span class="text-muted small">({{ attr|fuel_header_code }})</span>
                 </th>
+                {% endif %}
                 {% endfor %}
             </tr>
         </thead>
         <tbody>
             {% if equipment_group_fuel_formula_hierarchy and equipment_group_fuel_formula_hierarchy|length > 0 %}
             {% for est_block in equipment_group_fuel_formula_hierarchy %}
-                <tr class="table-light text-center fw-bold">
-                    <td colspan="{{ column_count }}">{{ est_block.est_name }}</td>
-                </tr>
+                {{ fuel_hierarchy_level_header(est_block.est_id, est_block.est_name, column_count, 'table-light text-center fw-bold') }}
                 {% for ues_block in est_block.ues_list %}
-                    <tr class="table-primary text-center fw-bold">
-                        <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
-                    </tr>
+                    {{ fuel_hierarchy_level_header(ues_block.ues_id, ues_block.ues_name, column_count, 'table-primary text-center fw-bold') }}
                     {% for res_block in ues_block.res_list %}
-                        <tr class="table-secondary text-center fw-bold">
-                            <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
-                        </tr>
+                        {{ fuel_hierarchy_level_header(res_block.res_id, res_block.res_name, column_count, 'table-secondary text-center fw-bold') }}
                         {% for station_block in res_block.station_blocks %}
                         {% for group_block in station_block.group_blocks %}
                                 {% set group_entity = group_block.equipment_group %}
                                 {% set group_name = (group_entity.name if group_entity and group_entity.name else (group_entity.name_ext if group_entity and group_entity.name_ext else '—')) %}
+                                {% if group_block.get('is_composite_total_row') %}
+                                {% set group_name = group_name ~ ', всего' %}
+                                {% endif %}
                                 {% set row_span = group_block.rows|length %}
                                 {% if row_span > 0 %}
                                 {% set gid = group_entity.id if group_entity and group_entity.id else 0 %}
@@ -323,6 +326,13 @@
         vertical-align: middle;
         text-align: left;
     }
+    #fuelFormulaTable tr.fuel-param-composite-parent-row > td {
+        background-color: #fff3cd !important;
+    }
+    #fuelFormulaTable.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+        --bs-table-accent-bg: transparent;
+        background-color: #fff3cd !important;
+    }
     .fuel-calc-edit-shell #fuelFormulaTable td.fuel-formula-formtxt-cell pre.fuel-formula-formtxt-pre {
         display: block;
         width: 100%;
@@ -389,6 +399,7 @@
     }
 </style>
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {

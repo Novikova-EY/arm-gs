@@ -21,7 +21,9 @@ from app.fuel.models.fue_distribution_parameter_model import (
     DISTRIBUTION_PARAMETER_LIST_COLUMN_HEADINGS,
     DistributionParameter,
 )
-from app.fuel.models.fue_restriction_model import FUEL_RESTRICTION_LIST_COLUMN_HEADINGS
+from app.fuel.models.fue_restriction_model import (
+    FUEL_RESTRICTION_LIST_COLUMN_HEADINGS,
+)
 from app.fuel.models.coefficient.distribution_coefficient_summary_model import (
     DistributionCoefficientSummary,
 )
@@ -44,41 +46,45 @@ from app.fuel.routes.coefficient_stage_routes import (
 from app.fuel.services.calculation.coefficient.fuel_coefficient_calculation_services import (
     FuelCoefficientCalculationService,
 )
-from app.fuel.services.distribution_parameters_list_services import (
+from app.fuel.services.distribution_parameters.distribution_parameters_list_services import (
     distribution_parameter_year_numbers_for_filter_dropdown,
     get_distribution_parameters_list,
 )
-from app.fuel.services.fuel_restrictions_list_services import (
+from app.fuel.services.restrictions.fuel_restrictions_list_services import (
     build_restriction_obl_name_map,
     build_restriction_oes_name_map,
     get_fuel_restrictions_list,
     get_restriction_obl_choices,
     get_restriction_oes_choices,
 )
-from app.fuel.services.fuel_restrictions_save_services import (
+from app.fuel.services.restrictions.fuel_restrictions_save_services import (
     apply_fuel_restrictions_save_from_form,
 )
-from app.fuel.services.export_fuel_restrictions_services import (
+from app.fuel.services.restrictions.export_fuel_restrictions_services import (
     export_fuel_restrictions_to_excel,
 )
-from app.fuel.services.import_fuel_restrictions_services import (
+from app.fuel.services.restrictions.import_fuel_restrictions_services import (
     import_fuel_restrictions_from_upload,
 )
-from app.fuel.services.distribution_parameters_bulk_copy_services import (
+from app.fuel.services.distribution_parameters.distribution_parameters_bulk_copy_services import (
     build_distribution_parameters_bulk_copy_rows,
     build_distribution_parameters_bulk_copy_rows_for_period,
 )
-from app.fuel.services.distribution_parameters_save_services import (
+from app.fuel.services.distribution_parameters.distribution_parameters_save_services import (
     apply_distribution_parameters_bulk_apply_from_payload,
     apply_distribution_parameters_save_from_form,
 )
-from app.fuel.services.export_distribution_parameters_services import (
+from app.fuel.services.distribution_parameters.export_distribution_parameters_services import (
     export_distribution_parameters_to_excel,
 )
-from app.fuel.services.import_distribution_parameters_services import (
+from app.fuel.services.distribution_parameters.import_distribution_parameters_services import (
     import_distribution_parameters_from_upload,
 )
 from app.fuel.services.calculation.fuel.fuel_stage_services import FuelStageService
+from app.fuel.services.equipment_groups.composite_calc_consistency_check_services import (
+    equipment_group_ids_for_composite_energy_level_issues,
+    find_composite_energy_level_issues,
+)
 from app.fuel.services.calculation.ensure_calculation_year_data_services import (
     ensure_calculation_year_data_from_base,
 )
@@ -92,135 +98,16 @@ from app.common.services.help_services import format_decimal_trim_for_display
 from app.fuel.routes.fuel_calculation_common import (
     FUEL_COEFF_LAST_RUN_SESSION_KEY,
     FUEL_DISTRIBUTION_LAST_RUN_SESSION_KEY,
+    FUEL_NR_HFIX_PENDING_SESSION_KEY,
     FUEL_STAGE_LAST_RUN_SESSION_KEY,
     fuel_calculation_form_query_string,
     fuel_calculation_tep_edit_query_string,
 )
 from . import fuel_bp
-
-# Подсказки у значений в таблицах «Коэфф» на /fuel/calculation (см. FuelCoefficientCalculationService).
-# Префиксы b_/c_ — строка базового / расчётного года; tech_* — вторая таблица по типу строки.
-FUEL_CALC_COEFF_CELL_TOOLTIPS = {
-    "b_nust": (
-        "Сумма установленной мощности N_уст (поле nust топливных параметров) по группам фильтра параметра "
-        "распределения, для которых есть строка за базовый год."
-    ),
-    "c_nust": (
-        "Сумма nust за расчётный год по группам фильтра, у которых есть строка топлива за расчётный год "
-        "и найден удельник с year ≤ расчётного (последний такой год; если ни одного — Skip)."
-    ),
-    "b_e": (
-        "Сумма выработки ЭЭ, тыс.кВтч (поле e топливных параметров групп) за базовый год — столбец «E»."
-    ),
-    "c_e": (
-        "В строке расчётного года столбец «E» (e) не заполняется суммой по станциям; целевое Ераспред "
-        "см. в колонке «Выработка ТЭС» (e) таблицы параметров распределения."
-    ),
-    "b_etp": (
-        "Сумма теплофикационной выработки ЭЭ, тыс.кВтч (поле ewtp) за базовый год — столбец «Eтп»."
-    ),
-    "c_etp": (
-        "Сумма теплофикационной выработки ЭЭ, тыс.кВтч за расчётный год (cetp): Σ ewtp после пересчёта "
-        "ewtp = qotr·y/1000 только по станциям с удельником year ≤ расчётного (иначе Skip)."
-    ),
-    "b_q": (
-        "Сумма отпуска ТЭ, тыс.Гкал (поле q топливных параметров) по группам фильтра за базовый год."
-    ),
-    "c_q": (
-        "Сумма отпуска ТЭ, тыс.Гкал за расчётный год по группам со строкой топлива и удельником year ≤ расчётного "
-        "(если ни одного удельника — Skip)."
-    ),
-    "b_qotr": (
-        "Сумма теплового потребления (отборов турбин), тыс.Гкал (поле qotr) "
-        "по группам фильтра за базовый год."
-    ),
-    "c_qotr": (
-        "Сумма теплового потребления (отборов турбин), тыс.Гкал за расчётный год "
-        "по группам со строкой топлива и удельником year ≤ расчётного "
-        "(если ни одного удельника — Skip)."
-    ),
-    "b_ptp": (
-        "Доля тепла в электроэнергии, %: (сумма теплофикационной выработки ЭЭ)/(сумма E)·100 "
-        "за базовый год (bptp = betp/be·100)."
-    ),
-    "c_ptp": (
-        "Как в Access (Кнопка5_Click): cptp = csumetp / E · 100, где E — Ераспред (поле e параметра), "
-        "csumetp — сумма пересчитанной теплофикационной выработки ЭЭ, тыс.кВтч (ewtp) за расчётный год. "
-        "Если E в параметре не задан, при расчёте "
-        "в знаменателе используется ΣE по строкам топлива расчётного года."
-    ),
-    "b_h": (
-        "Удельные часы Н (ч) за базовый год: ΣE / ΣN_уст·1000 (bh в расчёте «Коэфф»; не поле h станции)."
-    ),
-    "c_h": (
-        "Удельные часы Н (ч) за расчётный год: Ераспред / ΣN_уст·1000 (ch), где ΣN_уст — по станциям "
-        "с топливом и удельником year ≤ расчётного (если ни одного — Skip)."
-    ),
-    "tech_n": (
-        "Сумма N_уст расчётного года по «новым» группам данного типа: в базовом году N_уст было 0; "
-        "станция учтена только если есть удельник year ≤ расчётного (иначе Skip). "
-        "Отнесение к ПСУ/ГТУ/ПГУ — по коду obor: ГТУ 20|90, ПГУ 21|91, ПСУ = остальное новое."
-    ),
-    "tech_h_col_empty": (
-        "В строках ПСУ/ГТУ/ПГУ коэффициенты hn (hnps, hngt, hnpg) вводятся в столбце «ЧЧИУМ»; "
-        "столбец K_нов пересчитывается (kn = hn/ch) после сохранения."
-    ),
-    "tech_h_psu": ("Коэффициент hnps вводится в столбце «ЧЧИУМ»; здесь значение не дублируется."),
-    "tech_h_gtu": ("Коэффициент hngt вводится в столбце «ЧЧИУМ»; здесь значение не дублируется."),
-    "tech_h_pgu": ("Коэффициент hnpg вводится в столбце «ЧЧИУМ»; здесь значение не дублируется."),
-    "tech_k_psu": ("K_нов для ПСУ: knps = hnps / ch (этап «Коэфф»; значение в сводке коэффициентов)."),
-    "tech_k_gtu": ("K_нов для ГТУ: kngt = hngt / ch."),
-    "tech_k_pgu": ("K_нов для ПГУ: knpg = hnpg / ch."),
-    "tech_agg_n": (
-        "Сумма мощностей новых агрегатов (cnustn): Σ N_уст по группам, где в базовом году N_уст было 0 "
-        "(и есть удельник year ≤ расчётного — иначе Skip)."
-    ),
-    "tech_agg_hd": (
-        "Hдейств (hd), ч: "
-        "hd = (Ераспред − (Nпс·knps + Nгт·kngt + Nпг·knpg)·ch/1000) / (Nуст − Nнов) · 1000 "
-        "(как в Access Кнопка5; при Nуст=Nнов → 0)."
-    ),
-    "tech_hd_col_ph": (
-        "PH = hd / bh: отношение удельных часов на действующую часть парка (hd в строке выше) к базовым удельным часам bh "
-        "(как в сводке этапа «Коэфф»). Выводится в строке ПСУ под тем же столбцом, что и hd."
-    ),
-    "tech_agg_kn": (
-        "Средневзвешенный K_нов по новым мощностям (kn): (N_пс·knps + N_гт·kngt + N_пг·knpg) / cnustn."
-    ),
-    "tech_ch_psu": (
-        "Ввод ЧЧИУМ hnps для ПСУ (поле параметра распределения). После сохранения пересчитывается этап «Коэфф»: "
-        "knps = hnps/ch и связанные поля сводки."
-    ),
-    "tech_ch_gtu": (
-        "Ввод ЧЧИУМ hngt для ГТУ. После сохранения: kngt = hngt/ch и пересчёт этапа «Коэфф»."
-    ),
-    "tech_ch_pgu": (
-        "Ввод ЧЧИУМ hnpg для ПГУ. После сохранения: knpg = hnpg/ch и пересчёт этапа «Коэфф»."
-    ),
-    "r_nust": (
-        "Для отношения текущего года к базовому по N_уст отдельный коэффициент в этой строке не выводится."
-    ),
-    "r_pe": (
-        "PE = Ераспред / ΣE за базовый год (отношение целевой выработки к сумме E базы)."
-    ),
-    "r_etp": (
-        "PETP = Σ теплофикационной выработки ЭЭ расчётного года / Σ базового года "
-        "(суммы поля ewtp по фильтру). "
-        "Не путать с PQ — это отношение по столбцу Q (см. следующий столбец)."
-    ),
-    "r_pq": "PQ = ΣQ расчётного года / ΣQ базового года.",
-    "r_potr": (
-        "Pотр = Σ теплового потребления (отборов турбин) расчётного года / Σ базового года "
-        "(суммы поля qotr по фильтру)."
-    ),
-    "r_ptp": (
-        "Для доли %тп отдельное отношение к базе в этой строке не показывается "
-        "(см. столбцы E, Q, тепловое потребление/qotr, Н)."
-    ),
-    "r_ph1": (
-        "PH1 = ch / bh: отношение удельных часов (Ераспред/ΣNуст·1000) расчётного года к базовым (ΣE/ΣNуст·1000)."
-    ),
-}
+from app.fuel.services.formula_text.fuel_formula_text_services import (
+    get_coeff_cell_tooltips,
+    get_restriction_column_formulas,
+)
 
 
 def _d_decimal(val):
@@ -309,6 +196,54 @@ def _coeff_ratio_row(
     potr = cqotr / bqotr if cqotr is not None and bqotr is not None and bqotr > 0 else None
     ph1 = ch / bh if ch is not None and bh is not None and bh > 0 else None
     return {"pe": pe, "petp": petp, "pq": pq, "potr": potr, "ph1": ph1}
+
+
+def _nr_hfix_pending_for_page(selected_row: DistributionParameter | None):
+    """
+    Пауза Распред: список станций NUST>0 / NR=0 / HFIX≠1 для текущего параметра.
+    """
+    if selected_row is None:
+        return None
+    raw = session.get(FUEL_NR_HFIX_PENDING_SESSION_KEY)
+    if not isinstance(raw, dict):
+        return None
+    try:
+        if int(raw.get("distribution_parameter_id")) != selected_row.id:
+            return None
+    except (TypeError, ValueError):
+        return None
+    candidates = raw.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        return None
+
+    def _fmt(v):
+        if v is None or v == "":
+            return "—"
+        try:
+            # Как ячейки nust/nr/h на equipment_group_fuel_params_edit_data (view).
+            return format_decimal_trim_for_display(Decimal(str(v)))
+        except Exception:
+            return str(v)
+
+    formatted = []
+    for c in candidates:
+        if not isinstance(c, dict):
+            continue
+        item = dict(c)
+        item["nust_display"] = _fmt(c.get("nust"))
+        item["nr_display"] = _fmt(c.get("nr"))
+        item["h_display"] = _fmt(c.get("h"))
+        formatted.append(item)
+    return {
+        "distribution_parameter_id": selected_row.id,
+        "distribution_name": (
+            selected_row.union_energy_system.name
+            if selected_row.union_energy_system is not None
+            else None
+        ),
+        "year_number": raw.get("year_number"),
+        "candidates": formatted,
+    }
 
 
 def _distribution_last_run_display_for_page(selected_row: DistributionParameter | None):
@@ -531,7 +466,8 @@ def fuel_calculation_form():
         if not base_year_from_query and selected_row is not None and selected_row.base_year is not None:
             base_year = selected_row.base_year.number
 
-    # Нет строк ТЭП / формул / удельных показателей за расчётный год — как «Добавить год» на edit-страницах.
+    # Нет строк ТЭП за расчётный год — посев с базового (без формул и удельных:
+    # Access Seek year ≤ расчётный, копия 2024 перекрыла бы 2025/2026).
     if (
         start_year is not None
         and base_year is not None
@@ -550,17 +486,21 @@ def fuel_calculation_form():
                 heat = ensure_result.get("heat") or (0, 0, 0)
                 formulas = ensure_result.get("formulas") or (0, 0, 0)
                 specific = ensure_result.get("specific") or (0, 0, 0)
+                hat_q = int(ensure_result.get("hat_q") or 0)
                 if heat[0]:
                     parts.append(f"ТЭП: {heat[0]}")
                 if formulas[0]:
                     parts.append(f"формулы: {formulas[0]}")
                 if specific[0]:
                     parts.append(f"удельные показатели: {specific[0]}")
-                flash(
-                    f"Для расчётного {start_year} г. автоматически добавлены данные "
-                    f"с базового {base_year} г. ({'; '.join(parts)}).",
-                    "success",
-                )
+                if hat_q:
+                    parts.append(f"Q из схем теплоснабжения: {hat_q}")
+                if parts:
+                    flash(
+                        f"Для расчётного {start_year} г. обновлены данные "
+                        f"({'; '.join(parts)}).",
+                        "success",
+                    )
         except Exception as exc:
             db.session.rollback()
             current_app.logger.exception(
@@ -595,6 +535,7 @@ def fuel_calculation_form():
     coeff_calc_year_is_preview = False
     fuel_stage_readiness = None
     missing_specific_groups = None
+    composite_energy_level_issues = None
     if selected_row:
         coeff_svc = FuelCoefficientCalculationService()
         coeff_summary = _get_coeff_summary_for_distribution_parameter(selected_row)
@@ -621,9 +562,30 @@ def fuel_calculation_form():
             )
         except Exception:
             missing_specific_groups = None
+        try:
+            composite_year = (
+                int(selected_row.year.number) if selected_row.year is not None else None
+            )
+            composite_group_ids = (
+                list(fuel_stage_readiness.selected_group_ids)
+                if fuel_stage_readiness is not None
+                else []
+            )
+            if composite_year is not None and composite_group_ids:
+                composite_energy_level_issues = find_composite_energy_level_issues(
+                    db.session,
+                    database_version_id=(
+                        selected_row.database_version_id or get_current_db_version_id()
+                    ),
+                    year_number=composite_year,
+                    selected_group_ids=composite_group_ids,
+                )
+        except Exception:
+            composite_energy_level_issues = None
 
     missing_specific_edit_url = None
     missing_fuel_edit_url = None
+    composite_energy_level_edit_url = None
     if missing_specific_groups:
         calc_y = missing_specific_groups.get("year_number") or start_year
         interval_start = base_year if base_year is not None else calc_y
@@ -663,6 +625,21 @@ def fuel_calculation_form():
                     per_page="all",
                 )
 
+    if composite_energy_level_issues:
+        composite_ids = equipment_group_ids_for_composite_energy_level_issues(
+            composite_energy_level_issues
+        )
+        if composite_ids:
+            composite_energy_level_edit_url = url_for(
+                "fuel_bp.equipment_group_fuel_params_edit_data",
+                equipment_group_ids=composite_ids,
+                start_year=base_year if base_year is not None else start_year,
+                end_year=start_year if start_year is not None else base_year,
+                union_energy_system_filter=ues_ids if ues_ids else None,
+                base_year=base_year if base_year is not None else None,
+                per_page="all",
+            )
+
     coeff_tech_rows = coeff_tech_type_table(coeff_calc_year_display)
     coeff_tech_aggregate_row = get_coeff_tech_aggregate_row(coeff_calc_year_display)
 
@@ -681,6 +658,9 @@ def fuel_calculation_form():
     union_energy_system_list = [
         {"id": ues.id, "name": ues.name} for ues in union_energy_system_objects
     ]
+    tes_type_names = [
+        {"id": t.id, "name": t.name} for t in get_tes_type_list_full()
+    ]
 
     return render_template(
         "fuel/calculation/fuel_calculation_form.html",
@@ -689,6 +669,7 @@ def fuel_calculation_form():
         distribution_parameter_field_labels=DISTRIBUTION_PARAMETER_FIELD_LABELS,
         distribution_param_headings=DISTRIBUTION_PARAMETER_LIST_COLUMN_HEADINGS,
         distribution_stage_last_result=_distribution_last_run_display_for_page(selected_row),
+        nr_hfix_pending=_nr_hfix_pending_for_page(selected_row),
         fuel_stage_last_result=_fuel_stage_last_run_display_for_page(selected_row),
         coeff_stage_last_result=_coeff_last_run_display_for_page(selected_row),
         coeff_summary=coeff_summary,
@@ -704,23 +685,26 @@ def fuel_calculation_form():
         missing_specific_groups=missing_specific_groups,
         missing_specific_edit_url=missing_specific_edit_url,
         missing_fuel_edit_url=missing_fuel_edit_url,
-        coeff_cell_tooltips=FUEL_CALC_COEFF_CELL_TOOLTIPS,
+        composite_energy_level_issues=composite_energy_level_issues,
+        composite_energy_level_edit_url=composite_energy_level_edit_url,
+        coeff_cell_tooltips=get_coeff_cell_tooltips(),
         filter_year_list=distribution_parameter_year_numbers_for_filter_dropdown(),
         start_year=start_year,
         base_year=base_year,
         apply_restrictions=apply_restrictions,
         restriction_rows=restriction_rows,
         restriction_headings=FUEL_RESTRICTION_LIST_COLUMN_HEADINGS,
+        restriction_column_formulas=get_restriction_column_formulas(),
         restriction_oes_name_map=restriction_oes_name_map,
         restriction_obl_name_map=restriction_obl_name_map,
         rounding_digits=_parse_rounding_digits_from_request(),
         tes_type_filter=filters.get("tes_type_filter"),
-        tes_type_names=get_tes_type_list_full(),
+        tes_type_names=tes_type_names,
         union_energy_system_list=union_energy_system_list,
         union_energy_system_filter=ues_ids,
-        # Ссылки на edit_data — только фильтры расчёта (без equipment_group_ids и т.п.).
+        # Fallback, если tep-qs пуст (без годов/фильтров).
         calculation_edit_links_qs=fuel_calculation_form_query_string(request.args),
-        # ТЭП: Год начала = базовый, Год конца = расчётный.
+        # Сведения / ТЭП / формулы: Год начала = базовый, Год конца = расчётный.
         calculation_tep_edit_links_qs=fuel_calculation_tep_edit_query_string(
             base_year=base_year,
             calc_year=start_year,
@@ -962,6 +946,7 @@ def fuel_restrictions_list():
         "fuel/restrictions/fuel_restrictions_list.html",
         restriction_rows=restriction_rows,
         restriction_headings=FUEL_RESTRICTION_LIST_COLUMN_HEADINGS,
+        restriction_column_formulas=get_restriction_column_formulas(),
         filter_year_list=distribution_parameter_year_numbers_for_filter_dropdown(),
         start_year_filter=start_year_filter,
         start_year=start_year_filter[0] if len(start_year_filter) == 1 else None,
@@ -1132,7 +1117,7 @@ def distribution_parameter_row_delete(row_id: int):
     from sqlalchemy.exc import IntegrityError
 
     from app.extensions import db
-    from app.fuel.services.distribution_parameters_save_services import (
+    from app.fuel.services.distribution_parameters.distribution_parameters_save_services import (
         _write_distribution_parameter_delete_logs,
     )
 
@@ -1153,7 +1138,7 @@ def distribution_parameter_row_delete(row_id: int):
         return redirect(redirect_target)
 
     try:
-        from app.fuel.services.distribution_parameters_all_versions_services import (
+        from app.fuel.services.distribution_parameters.distribution_parameters_all_versions_services import (
             delete_distribution_parameter_in_all_versions,
         )
 

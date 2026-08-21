@@ -18,6 +18,14 @@ from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
+from app.fuel.services.equipment_groups.composite_display_cluster_services import (
+    apply_simple_station_summaries,
+    build_station_blocks_from_group_items,
+)
+from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services import (
+    resolve_composite_parents_by_numb,
+    territorial_ids_for_equipment_group,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     normalize_equipment_group_ids_filter,
 )
@@ -116,6 +124,61 @@ SPECIFIC_FUEL_CONSUMPTION_SUMMARY_NUMERIC_ATTRS = [
     attr for attr, _, is_num in SPECIFIC_FUEL_CONSUMPTION_COLUMNS
     if is_num and attr != "k"
 ]
+
+
+def overlay_snk_calc_from_fuel_params(rows) -> None:
+    """
+    В таблице удельных snk_calc = SNK топливных параметров
+    (формула sn_ee / e · 100 или сохранённый FuelParam.snk).
+
+    Только для реальных строк удельников. Год без записи (плейсхолдер
+    интервала) не заполняем — иначе Seek-годы 2027–2031 показывают чужой SNK.
+
+    Подставляет значение в загруженные строки без пометки session dirty.
+    """
+    from sqlalchemy.orm.attributes import set_committed_value
+
+    from app.fuel.models.fue_equipment_group_fuel_param_model import (
+        EquipmentGroupFuelParam,
+    )
+    from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_calc_services import (
+        calc_snk_calc,
+    )
+
+    pairs = []
+    for eg, cons in rows or []:
+        # Пустой год интервала (нет строки удельников) — не подставляем SNK из ТЭП,
+        # иначе 2027–2031 выглядят заполненными при Seek-логике без копирования.
+        if not cons:
+            continue
+        gid = cons.equipment_group_id or (getattr(eg, "id", None) if eg else None)
+        year = getattr(cons, "year_number", None)
+        if gid is None or year is None:
+            continue
+        pairs.append((cons, int(gid), int(year)))
+    if not pairs:
+        return
+
+    gids = {gid for _, gid, _ in pairs}
+    years = {year for _, _, year in pairs}
+    params = EquipmentGroupFuelParam.query.filter(
+        EquipmentGroupFuelParam.equipment_group_id.in_(gids),
+        EquipmentGroupFuelParam.year_number.in_(years),
+    ).all()
+    by_key = {
+        (int(p.equipment_group_id), int(p.year_number)): p
+        for p in params
+        if p.equipment_group_id is not None and p.year_number is not None
+    }
+    for cons, gid, year in pairs:
+        value = calc_snk_calc(by_key.get((gid, year)))
+        try:
+            set_committed_value(cons, "snk_calc", value)
+        except Exception:
+            try:
+                cons.snk_calc = value
+            except Exception:
+                object.__setattr__(cons, "snk_calc", value)
 
 
 def get_equipment_groups_with_specific_fuel_consumption_data(
@@ -228,12 +291,23 @@ def get_equipment_groups_with_specific_fuel_consumption_data(
         .all()
     )
 
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        apply_numb1120_filter_to_eg_param_rows,
+    )
+
+    rows, numb1120_filter_choices = apply_numb1120_filter_to_eg_param_rows(
+        rows, _filters
+    )
+    total_count = len(rows)
+    overlay_snk_calc_from_fuel_params(rows)
+
     return {
         "rows": rows,
         "total_count": total_count,
         "total_pages": 1,
         "page": 1,
         "per_page": total_count or 1,
+        "numb1120_filter_choices": numb1120_filter_choices,
     }
 
 
@@ -267,6 +341,8 @@ def build_equipment_group_specific_fuel_consumption_hierarchy(rows):
     res_names[-1] = "Не указано"
 
     equipment_group_ids = [eg.id for eg, _ in (rows or []) if eg]
+    _vid = get_current_db_version_id()
+    parent_by_numb = resolve_composite_parents_by_numb(rows, database_version_id=_vid)
     eg_station_metadata = _get_equipment_group_station_mapping_with_display_order(
         equipment_group_ids, all_versions=True
     )
@@ -286,16 +362,9 @@ def build_equipment_group_specific_fuel_consumption_hierarchy(rows):
     for eg, param in rows or []:
         if not eg:
             continue
-        res = getattr(eg, "regional_energy_system", None)
-        ues = getattr(res, "union_energy_system", None) if res else None
-        est_id = getattr(ues, "id_energy_system_type", None) if ues else None
-        ues_id = ues.id if ues else None
-        res_id = res.id if res else None
-
-        _est = est_id if est_id is not None else -1
-        _ues = ues_id if ues_id is not None else -1
-        _res = res_id if res_id is not None else -1
-
+        _est, _ues, _res = territorial_ids_for_equipment_group(
+            eg, parent_by_numb=parent_by_numb
+        )
         hierarchy[_est][_ues][_res][eg.id].append((eg, param))
 
     def _sort_key_est(eid):
@@ -349,42 +418,23 @@ def build_equipment_group_specific_fuel_consumption_hierarchy(rows):
                     ),
                 )
 
-                by_station = defaultdict(list)
-                for eg_id, eg_rows in eg_items:
+                for _eg_id, eg_rows in eg_items:
                     all_res_rows.extend(eg_rows)
-                    eg = eg_rows[0][0] if eg_rows else None
-                    station_key = _get_primary_station(eg_id)
-                    by_station[station_key].append(
-                        {"equipment_group": eg, "rows": eg_rows}
-                    )
 
                 res_summary = _compute_summary(all_res_rows) if all_res_rows else {}
 
-                station_blocks = []
-                for station_key in sorted(by_station.keys(), key=_station_sort_key):
-                    group_blocks = by_station[station_key]
-                    station_rows = []
-                    for gb in group_blocks:
-                        station_rows.extend(gb["rows"])
-                    station_summary = (
-                        _compute_summary(station_rows) if station_rows else {}
-                    )
-                    st_id, st_name = station_key if station_key else (None, "—")
-                    station_blocks.append(
-                        {
-                            "station_id": st_id,
-                            "station_name": st_name,
-                            "group_blocks": group_blocks,
-                            "station_summary": station_summary,
-                            "is_virtual": False,
-                            "suppress_station_summary": should_suppress_fuel_params_station_summary_row(
-                                st_id,
-                                st_name,
-                                group_blocks,
-                                set(),
-                            ),
-                        }
-                    )
+                station_blocks = build_station_blocks_from_group_items(
+                    eg_items,
+                    eg_to_stations,
+                    allow_station_composite_fallback=False,
+                    should_suppress_summary=should_suppress_fuel_params_station_summary_row,
+                    parent_by_numb=parent_by_numb,
+                )
+                apply_simple_station_summaries(
+                    station_blocks,
+                    _compute_summary,
+                    parent_by_numb=parent_by_numb,
+                )
 
                 res_list.append(
                     {

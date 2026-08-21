@@ -11,47 +11,52 @@
         <h1 class="text-center mb-4">Действия пользователей</h1>
 
         <!-- Форма фильтрации и выбора количества строк -->
-        <form method="get" action="{{ url_for('logs.view_logs') }}" class="row g-3 mb-4 align-items-center">
-            <div class="col-md-2">
+        <form method="get" action="{{ url_for('logs.view_logs') }}" class="d-flex flex-nowrap align-items-end gap-2 mb-4">
+            <div class="flex-grow-1" style="min-width: 8rem;">
                 <input type="text" name="username" class="form-control" placeholder="Фильтр по пользователю" value="{{ request.args.get('username', '') }}">
             </div>
-            {% if is_strict_admin %}
-                <div class="col-md-2">
-                    <select name="database_version_id" class="form-select">
-                        <option value="">Все версии БД</option>
-                        {% for version in database_versions %}
-                            <option value="{{ version.id }}" {% if database_version_filter and database_version_filter|int == version.id %}selected{% endif %}>
-                                {{ version.version_number }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            {% endif %}
-            <div class="col-md-2">
-                <input type="text" name="action" class="form-control" placeholder="Фильтр по действию" value="{{ request.args.get('action', '') }}">
-            </div>
-            <div class="col-md-2">
-                <input type="text" name="details" class="form-control" placeholder="Фильтр по деталям" value="{{ request.args.get('details', '') }}">
-            </div>
-            <div class="col-md-1">
-                <select name="per_page" class="form-select" onchange="this.form.submit()">
-                    <option value="10" {% if request.args.get('per_page', '10')|int == 10 %}selected{% endif %}>10</option>
-                    <option value="25" {% if request.args.get('per_page', '10')|int == 25 %}selected{% endif %}>25</option>
-                    <option value="50" {% if request.args.get('per_page', '10')|int == 50 %}selected{% endif %}>50</option>
-                    <option value="100" {% if request.args.get('per_page', '10')|int == 100 %}selected{% endif %}>100</option>
+            <div class="flex-shrink-0">
+                <select name="database_version_id" id="logs-database-version-filter" class="form-select">
+                    <option value="">Все версии БД</option>
+                    {% for version in database_versions %}
+                        <option value="{{ version.id }}" {% if database_version_filter and database_version_filter|int == version.id %}selected{% endif %}>
+                            {{ version.version_number }}
+                        </option>
+                    {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="show_page_events" value="true" id="show_page_events" 
-                           {% if show_page_events %}checked{% endif %}>
-                    <label class="form-check-label" for="show_page_events" style="font-size: 0.9em;">
-                        Показать события "открыта страница"
-                    </label>
-                </div>
+            <div class="flex-grow-1" style="min-width: 8rem;">
+                <input type="text" name="action" class="form-control" placeholder="Фильтр по действию" value="{{ request.args.get('action', '') }}">
             </div>
-            <div class="col-md-1">
-                <button type="submit" class="btn btn-primary w-100">Применить</button>
+            <div class="flex-grow-1" style="min-width: 8rem;">
+                <input type="text" name="details" class="form-control" placeholder="Фильтр по деталям" value="{{ request.args.get('details', '') }}">
+            </div>
+            <div style="min-width: 8.5rem;">
+                <label class="form-label mb-0" style="font-size: 0.85em;">Дата с</label>
+                <input type="date" name="date_from" class="form-control" value="{{ date_from or '' }}">
+            </div>
+            <div style="min-width: 8.5rem;">
+                <label class="form-label mb-0" style="font-size: 0.85em;">Дата по</label>
+                <input type="date" name="date_to" class="form-control" value="{{ date_to or '' }}">
+            </div>
+            <div style="width: 4.5rem; flex-shrink: 0;">
+                <select name="per_page" class="form-select" onchange="this.form.submit()">
+                    <option value="10" {% if request.args.get('per_page', '25')|int == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if request.args.get('per_page', '25')|int == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if request.args.get('per_page', '25')|int == 50 %}selected{% endif %}>50</option>
+                    <option value="100" {% if request.args.get('per_page', '25')|int == 100 %}selected{% endif %}>100</option>
+                </select>
+            </div>
+            <div class="form-check mb-2 flex-shrink-0" style="white-space: nowrap;">
+                <input class="form-check-input" type="checkbox" name="show_page_events" value="true" id="show_page_events"
+                       {% if show_page_events %}checked{% endif %}>
+                <label class="form-check-label" for="show_page_events" style="font-size: 0.85em;">
+                    Показать события "открыта страница"
+                </label>
+            </div>
+            <div class="flex-shrink-0 d-flex gap-2">
+                <button type="submit" class="btn btn-outline-primary">Применить</button>
+                <a href="{{ url_for('logs.view_logs') }}" class="btn btn-outline-danger">Сбросить</a>
             </div>
         </form>
         
@@ -65,11 +70,13 @@
                             <a href="{{ 
                             url_for('logs.view_logs', 
                             sort_by='timestamp', sort_dir='asc' if sort_by != 'timestamp' or sort_dir == 'desc' else 'desc', 
-                            per_page=request.args.get('per_page', 10),
+                            per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
+                            date_from=date_from or '',
+                            date_to=date_to or '',
                             show_page_events='true' if show_page_events else 'false') }}">
                                 Время
                             </a>
@@ -79,28 +86,45 @@
                             url_for('logs.view_logs', 
                             sort_by='username', 
                             sort_dir='asc' if sort_by != 'username' or sort_dir == 'desc' else 'desc', 
-                            per_page=request.args.get('per_page', 10),
+                            per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
+                            date_from=date_from or '',
+                            date_to=date_to or '',
                             show_page_events='true' if show_page_events else 'false') }}">
                                 Пользователь
                             </a>
                         </th>
-                        {% if is_strict_admin %}
-                            <th class="p-3" style="width: 10%;">Версия базы данных</th>
-                        {% endif %}
+                        <th class="p-3" style="width: 10%;">
+                            <a href="{{ 
+                            url_for('logs.view_logs', 
+                            sort_by='database_version_id', 
+                            sort_dir='asc' if sort_by != 'database_version_id' or sort_dir == 'desc' else 'desc', 
+                            per_page=request.args.get('per_page', 25),
+                            username=request.args.get('username', ''),
+                            action=request.args.get('action', ''),
+                            details=request.args.get('details', ''),
+                            database_version_id=request.args.get('database_version_id', ''),
+                            date_from=date_from or '',
+                            date_to=date_to or '',
+                            show_page_events='true' if show_page_events else 'false') }}">
+                                Версия
+                            </a>
+                        </th>
                         <th class="p-3" style="width: 25%;">
                             <a href="{{ 
                             url_for('logs.view_logs', 
                             sort_by='action', 
                             sort_dir='asc' if sort_by != 'action' or sort_dir == 'desc' else 'desc', 
-                            per_page=request.args.get('per_page', 10),
+                            per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
+                            date_from=date_from or '',
+                            date_to=date_to or '',
                             show_page_events='true' if show_page_events else 'false') }}">
                                 Действие
                             </a>
@@ -110,11 +134,13 @@
                             url_for('logs.view_logs', 
                             sort_by='details', 
                             sort_dir='asc' if sort_by != 'details' or sort_dir == 'desc' else 'desc', 
-                            per_page=request.args.get('per_page', 10),
+                            per_page=request.args.get('per_page', 25),
                             username=request.args.get('username', ''),
                             action=request.args.get('action', ''),
                             details=request.args.get('details', ''),
                             database_version_id=request.args.get('database_version_id', ''),
+                            date_from=date_from or '',
+                            date_to=date_to or '',
                             show_page_events='true' if show_page_events else 'false') }}">
                                 Детали
                             </a>
@@ -126,9 +152,7 @@
                         <tr>
                             <td class="p-3">{{ log.timestamp_msk.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3] if log.timestamp_msk else '' }}</td>
                             <td class="p-3">{{ log.username }}</td>
-                            {% if is_strict_admin %}
-                                <td class="p-3">{{ log.database_version_display or '—' }}</td>
-                            {% endif %}
+                            <td class="p-3">{{ log.database_version_display or '—' }}</td>
                             <td class="p-3">{{ log.action }}</td>
                             <td class="p-3">{{ log.details if log.details is not none else '—' }}</td>
                         </tr>
@@ -143,4 +167,24 @@
         </div>
     </div>
 </div>
+<script>
+(function () {
+    const select = document.getElementById('logs-database-version-filter');
+    if (!select) return;
+    const style = window.getComputedStyle(select);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.font = [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].filter(Boolean).join(' ');
+    let maxWidth = 0;
+    for (const option of select.options) {
+        maxWidth = Math.max(maxWidth, ctx.measureText(option.text.trim()).width);
+    }
+    const padLeft = parseFloat(style.paddingLeft) || 0;
+    const padRight = parseFloat(style.paddingRight) || 0;
+    const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+    const borderRight = parseFloat(style.borderRightWidth) || 0;
+    // запас под стрелку Bootstrap form-select
+    select.style.width = Math.ceil(maxWidth + padLeft + padRight + borderLeft + borderRight + 28) + 'px';
+})();
+</script>
 {% endblock %}

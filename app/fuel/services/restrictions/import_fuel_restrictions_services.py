@@ -10,10 +10,10 @@ from typing import BinaryIO
 from openpyxl import load_workbook
 
 from app.extensions import db
-from app.fuel.services.fuel_restrictions_all_versions_services import (
+from app.fuel.services.restrictions.fuel_restrictions_all_versions_services import (
     upsert_fuel_restriction_in_all_versions,
 )
-from app.fuel.services.import_distribution_parameters_services import _parse_decimal
+from app.fuel.services.distribution_parameters.import_distribution_parameters_services import _parse_decimal
 
 # Канонические ключи (Access / gs_fue_restrictions).
 _EXCEL_CANONICAL_HEADERS = frozenset(

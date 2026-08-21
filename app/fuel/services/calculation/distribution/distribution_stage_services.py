@@ -13,9 +13,8 @@
 - после сходимости K пересчитывает kobl по emin/emax (Ограничения_Click)
   и повторяет внешний цикл до 14 раз (Access: irestr < 15).
 
-Ограничения текущего порта:
-- интерактивный MsgBox Access «нет располагаемой мощности → HFIX=1» в веб не переносится
-  (учитывается уже установленный флаг hfix).
+Access MsgBox «нет NR → HFIX»: в вебе — двухшаговый сценарий на /fuel/calculation
+(список кандидатов → фиксация H=0/hfix=1 по выбранным → продолжение Распред).
 """
 from __future__ import annotations
 
@@ -42,8 +41,26 @@ from app.fuel.services.calculation.coefficient.fuel_coefficient_calculation_serv
     CoeffStageRunResult,
     FuelCoefficientCalculationService,
 )
+from app.fuel.services.calculation.access_bdis_cursor import (
+    AccessBdisCursorState,
+    fuel_param_access_n1,
+    sort_access_filter_rows,
+    walk_access_bdis_cursor,
+)
 from app.fuel.services.calculation.equipment_group_selection import (
+    access_ved_filter_year_row_participates,
     select_equipment_group_ids_for_calculation,
+)
+from app.fuel.services.calculation.station_ewtp import fill_ewtp_if_empty
+from app.fuel.services.calculation.specific_consumption_lookup import (
+    query_specific_consumption_access_seek,
+    query_specific_consumption_for_fuel,
+)
+from app.fuel.services.equipment_groups.composite_station_semantics import (
+    fuel_param_row_participates,
+)
+from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+    hours_from_energy_and_capacity,
 )
 
 
@@ -59,7 +76,46 @@ D200 = Decimal("200")
 D275 = Decimal("2.75")
 D1000 = Decimal("1000")
 D6000 = Decimal("6000")
+D6500 = Decimal("6500")
 D7000 = Decimal("7000")
+# Живая Кнопка27 СиПР: новые ГТ — obor 20|90|24|89 → ch·kngt (не knps).
+# gs_fue_restrictions.kobl — numeric(36, 16). Access ~0.3–3; больше 100 — срыв цикла.
+KOBL_ABS_MAX = Decimal("100")
+
+
+def clamp_restriction_kobl(kobl: Decimal) -> Decimal:
+    """Не даём kobl взорвать numeric(36,16) на повторных проходах BDis."""
+    if kobl > KOBL_ABS_MAX:
+        return KOBL_ABS_MAX
+    if kobl < -KOBL_ABS_MAX:
+        return -KOBL_ABS_MAX
+    return kobl
+
+
+def oes_ved_restriction_filter_text(oes_code: int) -> str:
+    """Access ecur: вся ОЭС, ved>0, без filter1 параметра."""
+    return f"(oes={int(oes_code)}) and (ved>0)"
+
+
+def restriction_subject_targets_unmet(
+    rows: list,
+    oes_code: int,
+    *,
+    tolerance: Decimal = D03,
+) -> bool:
+    """True, если именованный субъект ещё вне emin/emax (не строка «прочие»)."""
+    residual = 100 + int(oes_code)
+    for r in rows:
+        if r.obl is None or int(r.obl) == residual:
+            continue
+        emin = d0(getattr(r, "emin", None))
+        emax = d0(getattr(r, "emax", None))
+        ecur = d0(getattr(r, "ecur", None))
+        if emin > 0 and ecur + tolerance < emin:
+            return True
+        if emax > 0 and ecur > emax + tolerance:
+            return True
+    return False
 
 
 def d0(value) -> Decimal:
@@ -68,6 +124,33 @@ def d0(value) -> Decimal:
     if isinstance(value, Decimal):
         return value
     return Decimal(str(value))
+
+
+def sum_e_of_distribution_processed_rows(
+    group_ids: list[int],
+    *,
+    cyear: int,
+    by_key: dict[tuple[int, int], object],
+    group_ids_with_specific: set[int],
+) -> tuple[Decimal, int]:
+    """
+    ΣE по тем же строкам, что пишет «Распред»: ved>0 на расчётном годе и есть удельник.
+
+    Превью «Коэфф» иначе включает группы без ТЭП, если EWTP уже задан (импорт/копия года),
+    и их старое E ломает допуск «Топливо» после успешного Распред.
+    """
+    total = D0
+    counted = 0
+    year_key = int(cyear)
+    for gid in group_ids:
+        cur_row = by_key.get((int(gid), year_key))
+        if not access_ved_filter_year_row_participates(cur_row):
+            continue
+        if int(gid) not in group_ids_with_specific:
+            continue
+        counted += 1
+        total += d0(getattr(cur_row, "e", None))
+    return total, counted
 
 
 def _obor_int(obor) -> int | None:
@@ -103,6 +186,16 @@ def _is_hfix(row: EquipmentGroupFuelParam | None) -> bool:
         return False
 
 
+def _access_allows_capacity_growth(row: EquipmentGroupFuelParam | None) -> bool:
+    """Access: ``z(w!HFIX <> 1)``. Null → z(Null)=0 → прирост мощности выкл."""
+    if row is None or getattr(row, "hfix", None) is None:
+        return False
+    try:
+        return int(row.hfix) != 1
+    except (TypeError, ValueError):
+        return False
+
+
 @dataclass
 class DistributionStageRunResult:
     distribution_parameter_id: int
@@ -121,6 +214,19 @@ class DistributionStageRunResult:
     final_kn: Decimal | None = None
     # Автозапуск «Коэфф» перед Распред (для блока «Результат последнего этапа «Коэфф»»).
     coeff_run: CoeffStageRunResult | None = None
+
+
+@dataclass
+class NrHfixCandidate:
+    """Станция расчётного года: NUST>0, NR=0, HFIX≠1 (Access MsgBox перед calce)."""
+
+    equipment_group_id: int
+    name: str
+    year_number: int
+    nust: Decimal
+    nr: Decimal
+    h: Decimal | None
+    hfix: int | None
 
 
 class DistributionStageService:
@@ -144,10 +250,47 @@ class DistributionStageService:
         row: DistributionParameter,
         effective_db_version: int | None,
     ) -> list[int]:
+        years: list[int] = []
+        if row.year is not None and getattr(row.year, "number", None) is not None:
+            years.append(int(row.year.number))
+        if row.base_year is not None and getattr(row.base_year, "number", None) is not None:
+            years.append(int(row.base_year.number))
+        year_numbers = sorted(set(years)) or None
         return select_equipment_group_ids_for_calculation(
             self.session,
             filter_text=row.filter_text,
             effective_db_version=effective_db_version,
+            year_numbers=year_numbers,
+        )
+
+    def sum_processed_calc_year_e(
+        self,
+        *,
+        group_ids: list[int],
+        cyear: int,
+        effective_db_version: int | None,
+    ) -> tuple[Decimal, int]:
+        """ΣE и число строк расчётного года, которые «Распред» реально пишет."""
+        by_key = self._fuel_param_by_group_year(
+            group_ids=group_ids,
+            byear=None,
+            cyear=int(cyear),
+            effective_db_version=effective_db_version,
+        )
+        with_specific: set[int] = set()
+        for gid in group_ids:
+            spec = self._latest_specific_row(
+                equipment_group_id=int(gid),
+                target_year=int(cyear),
+                effective_db_version=effective_db_version,
+            )
+            if spec is not None:
+                with_specific.add(int(gid))
+        return sum_e_of_distribution_processed_rows(
+            group_ids,
+            cyear=int(cyear),
+            by_key=by_key,
+            group_ids_with_specific=with_specific,
         )
 
     def list_equipment_group_ids_for_distribution_parameter(
@@ -162,6 +305,140 @@ class DistributionStageService:
             return []
         effective = self._resolve_effective_db_version(row, None)
         return self._select_equipment_group_ids(row=row, effective_db_version=effective)
+
+    def find_nr_hfix_candidates(
+        self,
+        *,
+        distribution_parameter_id: int,
+        database_version_id: int | None = None,
+    ) -> list[NrHfixCandidate]:
+        """
+        Access: NUST>0 And NR=0 And HFIX<>1 на расчётном годе (после успешного Seek удельника).
+        """
+        row = self.session.get(
+            DistributionParameter,
+            distribution_parameter_id,
+            options=[
+                joinedload(DistributionParameter.year),
+                joinedload(DistributionParameter.base_year),
+            ],
+        )
+        if row is None or row.year is None:
+            return []
+
+        effective_db_version = self._resolve_effective_db_version(row, database_version_id)
+        group_ids = self._select_equipment_group_ids(
+            row=row,
+            effective_db_version=effective_db_version,
+        )
+        cyear = int(row.year.number)
+        byear = row.base_year.number if row.base_year is not None else None
+        by_key = self._fuel_param_by_group_year(
+            group_ids=group_ids,
+            byear=byear,
+            cyear=cyear,
+            effective_db_version=effective_db_version,
+        )
+
+        pending: list[tuple[int, EquipmentGroupFuelParam]] = []
+        for equipment_group_id in group_ids:
+            cur_row = by_key.get((equipment_group_id, cyear))
+            if not access_ved_filter_year_row_participates(cur_row):
+                continue
+            if self._latest_specific_row(
+                equipment_group_id=equipment_group_id,
+                target_year=cyear,
+                effective_db_version=effective_db_version,
+            ) is None:
+                continue
+            if d0(cur_row.nust) <= 0:
+                continue
+            # Числовой шум импорта (напр. 8E-16) считаем NR=0, как Access z(NR)=0.
+            if abs(d0(cur_row.nr)) > Decimal("1e-9"):
+                continue
+            if _is_hfix(cur_row):
+                continue
+            pending.append((equipment_group_id, cur_row))
+
+        # Подпись в блоке «Ррасп = 0» — поле «Название» из «Общая информация»,
+        # а не FuelParam.name (там часто старое имя из БД Топливо).
+        name_by_id: dict[int, str] = {}
+        pending_ids = [gid for gid, _ in pending]
+        if pending_ids:
+            for gid, name, name_ext in (
+                self.session.query(
+                    EquipmentGroup.id,
+                    EquipmentGroup.name,
+                    EquipmentGroup.name_ext,
+                )
+                .filter(EquipmentGroup.id.in_(pending_ids))
+                .all()
+            ):
+                display = (name or "").strip() or (name_ext or "").strip() or f"id={gid}"
+                name_by_id[int(gid)] = display
+
+        candidates: list[NrHfixCandidate] = []
+        for equipment_group_id, cur_row in pending:
+            candidates.append(
+                NrHfixCandidate(
+                    equipment_group_id=equipment_group_id,
+                    name=name_by_id.get(equipment_group_id) or f"id={equipment_group_id}",
+                    year_number=cyear,
+                    nust=d0(cur_row.nust),
+                    nr=d0(cur_row.nr),
+                    h=cur_row.h,
+                    hfix=cur_row.hfix,
+                )
+            )
+        return candidates
+
+    def apply_nr_hfix_zero(
+        self,
+        *,
+        distribution_parameter_id: int,
+        equipment_group_ids: list[int],
+        database_version_id: int | None = None,
+        commit: bool = True,
+    ) -> int:
+        """
+        Access MsgBox Yes: w!H = 0, w!HFIX = 1 на расчётном годе.
+        Возвращает число обновлённых строк FuelParam.
+        """
+        if not equipment_group_ids:
+            return 0
+
+        row = self.session.get(
+            DistributionParameter,
+            distribution_parameter_id,
+            options=[joinedload(DistributionParameter.year)],
+        )
+        if row is None or row.year is None:
+            raise ValueError(f"Не найдена строка DistributionParameter id={distribution_parameter_id}")
+
+        effective_db_version = self._resolve_effective_db_version(row, database_version_id)
+        cyear = int(row.year.number)
+        by_key = self._fuel_param_by_group_year(
+            group_ids=list(dict.fromkeys(equipment_group_ids)),
+            byear=None,
+            cyear=cyear,
+            effective_db_version=effective_db_version,
+        )
+
+        updated = 0
+        for eg_id in equipment_group_ids:
+            cur_row = by_key.get((eg_id, cyear))
+            if cur_row is None:
+                continue
+            cur_row.h = D0
+            cur_row.hfix = 1
+            self.session.add(cur_row)
+            updated += 1
+
+        if commit:
+            self.session.commit()
+        else:
+            self.session.flush()
+        return updated
 
     @staticmethod
     def _pick_best_fuel_param_row(
@@ -190,21 +467,21 @@ class DistributionStageService:
         byear: int | None,
         cyear: int,
         effective_db_version: int | None,
+        all_years: bool = False,
     ) -> dict[tuple[int, int], EquipmentGroupFuelParam]:
         if not group_ids:
             return {}
 
-        if byear is not None:
-            year_filter = EquipmentGroupFuelParam.year_number.in_([byear, cyear])
-        else:
-            year_filter = EquipmentGroupFuelParam.year_number == cyear
+        filters = [EquipmentGroupFuelParam.equipment_group_id.in_(group_ids)]
+        if not all_years:
+            if byear is not None:
+                filters.append(EquipmentGroupFuelParam.year_number.in_([byear, cyear]))
+            else:
+                filters.append(EquipmentGroupFuelParam.year_number == cyear)
 
         rows = (
             self.session.query(EquipmentGroupFuelParam)
-            .filter(
-                EquipmentGroupFuelParam.equipment_group_id.in_(group_ids),
-                year_filter,
-            )
+            .filter(*filters)
             .all()
         )
 
@@ -227,56 +504,67 @@ class DistributionStageService:
         target_year: int,
         effective_db_version: int | None,
     ) -> EquipmentGroupSpecificFuelConsumption | None:
-        q = self.session.query(EquipmentGroupSpecificFuelConsumption).filter(
-            EquipmentGroupSpecificFuelConsumption.equipment_group_id == equipment_group_id,
-            EquipmentGroupSpecificFuelConsumption.year_number <= target_year,
+        # Access U.NoMatch — только если строк нет. Пустой y=0/Bk Null (1330) — Match.
+        return query_specific_consumption_for_fuel(
+            self.session,
+            equipment_group_id=equipment_group_id,
+            target_year=target_year,
+            database_version_id=effective_db_version,
         )
 
-        if effective_db_version is not None and hasattr(
-            EquipmentGroupSpecificFuelConsumption, "database_version_id"
-        ):
-            q = q.filter(
-                or_(
-                    EquipmentGroupSpecificFuelConsumption.database_version_id == effective_db_version,
-                    EquipmentGroupSpecificFuelConsumption.database_version_id.is_(None),
-                )
-            )
-
-        row = q.order_by(EquipmentGroupSpecificFuelConsumption.year_number.desc()).first()
-        if row is not None:
-            return row
-
-        return (
-            self.session.query(EquipmentGroupSpecificFuelConsumption)
-            .filter(
-                EquipmentGroupSpecificFuelConsumption.equipment_group_id == equipment_group_id,
-                EquipmentGroupSpecificFuelConsumption.year_number <= target_year,
-            )
-            .order_by(EquipmentGroupSpecificFuelConsumption.year_number.desc())
-            .first()
+    def _bdis_specific_row(
+        self,
+        *,
+        equipment_group_id: int,
+        byear: int | None,
+        cyear: int,
+        effective_db_version: int | None,
+    ) -> EquipmentGroupSpecificFuelConsumption | None:
+        return query_specific_consumption_access_seek(
+            self.session,
+            equipment_group_id=equipment_group_id,
+            byear=byear,
+            cyear=cyear,
+            database_version_id=effective_db_version,
         )
 
     @staticmethod
-    def _hours_from_fuel_row(row: EquipmentGroupFuelParam | None) -> Decimal:
+    def _hours_from_fuel_row(
+        row: EquipmentGroupFuelParam | None,
+        *,
+        synthesize_from_e_nust: bool = False,
+    ) -> Decimal:
         """
-        Часы базы для Распред.
+        Часы из строки FuelParam для Распред (база hb и HFIX).
 
-        Access: ``hb = z(w("h"))`` — NULL→0 (ветка «новая мощность»).
-        В АРМ после импорта ``h`` часто пуст при заполненных e/nust; без восстановления
-        все станции уходят в kn*=0 и E=EWTP·1.04. Если h не задан — H = E/NUST·1000
-        (как после calce в Access: ``H = E/NUST*1000``).
+        Access: ``hb = z(w("h"))`` / ``z(w("h"))`` при hfix — NULL→0.
+        В АРМ после импорта ``h`` часто пуст при заполненных e/nust; без
+        восстановления действующие уходят в ветку «новая» (H=ch·kn*), подбор k
+        не на чем крутить, ΣE зависает (типично EWTP·1.04 или ch·kn*).
+        Если ``synthesize_from_e_nust`` и h пуст — H = E/NUST·1000
+        (как после calce в Access). Для HFIX синтез не используем.
         """
         if row is None:
             return D0
         h = d0(row.h)
         if h > 0:
             return h
-        nust = d0(row.nust)
-        if nust > 0:
-            e = d0(row.e)
-            if e > 0:
-                return e / nust * D1000
+        if synthesize_from_e_nust:
+            computed = hours_from_energy_and_capacity(row.e, row.nust)
+            if computed is not None and computed > 0:
+                return computed
         return D0
+
+    @staticmethod
+    def _seed_bisection_k(k: Decimal) -> Decimal:
+        """
+        Access берёт k с формы и ищет в [k−0.1, k+0.1]. После несошедших
+        прогонов k уезжает к краю окна (например 0.58) — следующее окно уже
+        не покрывает рабочую область ~1. Тогда стартуем с 1.
+        """
+        if k <= 0 or k < Decimal("0.8") or k > Decimal("1.2"):
+            return D1
+        return k
 
     @staticmethod
     def _distribution_bounds_from_ph(ph: Decimal, doptim: Decimal) -> tuple[Decimal, Decimal]:
@@ -287,7 +575,10 @@ class DistributionStageService:
         return ph - doptim, ph + doptim
 
     @staticmethod
-    def _koptim_from_bk(*, bk: Decimal, kmin: Decimal, kplus: Decimal) -> Decimal:
+    def _koptim_from_bk(*, bk: Decimal | None, kmin: Decimal, kplus: Decimal) -> Decimal:
+        # Access: If U!Bk < 350 / > 550. Null не True и не False → Else, z(Bk)=0.
+        if bk is None:
+            return kmin + (kplus - kmin) * D275
         if bk < D350:
             return kplus
         if bk > D550:
@@ -317,9 +608,9 @@ class DistributionStageService:
         kngt: Decimal,
         knpg: Decimal,
     ) -> Decimal:
-        # Access: ГТ только obor 20|90 → kngt; 24|89 идут в knps («иначе»).
+        # Access Кнопка27 (СиПР): 20|90|24|89 → kngt; 21|91 → knpg; иначе knps.
         oc = _obor_int(obor)
-        if oc in (20, 90):
+        if oc in (20, 90, 24, 89):
             return ch * kngt
         if oc in (21, 91):
             return ch * knpg
@@ -327,10 +618,12 @@ class DistributionStageService:
 
     @staticmethod
     def _clamp_hours(*, hours: Decimal, hb: Decimal, hd: Decimal) -> Decimal:
-        # Access: hb > 6000 And hb < 7000 And hd < 6000 ...
+        # Access Кнопка27 (СиПР): If hb>7000 And H>hb Then H=hb
+        # затем If hb>6500 And hb<7000 And hd<6000 And H>hb*1.05 Then …
+        # Else: If H>7000 Then H=7000
         if hb > D7000 and hours > hb:
-            return hb
-        if hb > D6000 and hb < D7000 and hd < D6000 and hours > hb * D005:
+            hours = hb
+        if hb > D6500 and hb < D7000 and hd < D6000 and hours > hb * D005:
             return min(hb * D005, D7000)
         if hours > D7000:
             return D7000
@@ -352,8 +645,8 @@ class DistributionStageService:
             return ewtp
 
         nust = d0(cur_row.nust)
-        # Access: ... And HFIX <> 1 — без формулы прироста мощности при фиксированных часах
-        if (not hfix) and nust > nustb and h_current > ch and nustb > 0:
+        # Access: z(w!HFIX <> 1) — Null HFIX не включает формулу прироста
+        if _access_allows_capacity_growth(cur_row) and nust > nustb and h_current > ch and nustb > 0:
             e1 = (nustb * h_current + (nust - nustb) * ch) / D1000
         else:
             _ = hb
@@ -439,21 +732,33 @@ class DistributionStageService:
         lim_reset: bool,
         by_key: dict[tuple[int, int], EquipmentGroupFuelParam],
         groups_by_id: dict[int, EquipmentGroup],
+        effective_db_version: int | None = None,
     ) -> None:
         """
         Порт Ограничения_Click: пересчёт ecur/ecurdis/H/Hdis/etp/kobl по emin/emax.
+
+        ecur — ΣE субъекта по ОЭС/ved>0/году текущей версии БД (Access: одна
+        рабочая таблица). Без версии сюда попадали копии станций всех версий,
+        ecur раздувался в ~8 раз, kobl за 14 проходов BDis переполнял numeric.
         """
-        all_oes_groups = (
-            self.session.query(EquipmentGroup)
-            .filter(EquipmentGroup.oes == oes_code)
-            .all()
+        all_oes_ids = select_equipment_group_ids_for_calculation(
+            self.session,
+            filter_text=oes_ved_restriction_filter_text(int(oes_code)),
+            effective_db_version=effective_db_version,
+            year_numbers=[int(cyear)],
         )
-        all_oes_ids = [g.id for g in all_oes_groups]
+        all_oes_groups = []
+        if all_oes_ids:
+            all_oes_groups = (
+                self.session.query(EquipmentGroup)
+                .filter(EquipmentGroup.id.in_(all_oes_ids))
+                .all()
+            )
         all_by_key = self._fuel_param_by_group_year(
             group_ids=all_oes_ids,
             byear=None,
             cyear=cyear,
-            effective_db_version=None,
+            effective_db_version=effective_db_version,
         )
         all_groups = {g.id: g for g in all_oes_groups}
 
@@ -472,11 +777,11 @@ class DistributionStageService:
                 g = source_groups.get(gid)
                 if g is None or g.obl is None or int(g.obl) != obl_code:
                     continue
-                if not only_filter:
-                    if g.vedomstvo is None or int(g.vedomstvo) <= 0:
-                        continue
                 row = source_map.get((gid, cyear))
                 if row is None:
+                    continue
+                # Access: (ved>0) на рабочей строке года, не vedomstvo справочника.
+                if not fuel_param_row_participates(row):
                     continue
                 sum_e += d0(row.e)
                 sum_n += d0(row.nust)
@@ -516,7 +821,7 @@ class DistributionStageService:
             if emax > 0 and ecur > emax and ecurdis > 0:
                 kobl = kobl * (emax - ecur + ecurdis) / ecurdis
                 deltaoes += emax - ecur
-            restr.kobl = kobl
+            restr.kobl = clamp_restriction_kobl(kobl)
             self.session.add(restr)
 
         residual = next(
@@ -532,10 +837,10 @@ class DistributionStageService:
             for gid, g in all_groups.items():
                 if g.obl is None or int(g.obl) in fltr_set:
                     continue
-                if g.vedomstvo is None or int(g.vedomstvo) <= 0:
-                    continue
                 row = all_by_key.get((gid, cyear))
                 if row is None:
+                    continue
+                if not fuel_param_row_participates(row):
                     continue
                 sum_e += d0(row.e)
                 sum_n += d0(row.nust)
@@ -543,11 +848,11 @@ class DistributionStageService:
                 g = groups_by_id.get(gid)
                 if g is None or g.obl is None or int(g.obl) in fltr_set:
                     continue
-                # Access sumprochdis: (ved>0) and filter1
-                if g.vedomstvo is None or int(g.vedomstvo) <= 0:
-                    continue
+                # Access sumprochdis: (ved>0) and filter1 — FuelParam.ved за год
                 row = by_key.get((gid, cyear))
                 if row is None:
+                    continue
+                if not fuel_param_row_participates(row):
                     continue
                 sum_edis += d0(row.e)
                 sum_etp += d0(row.ewtp)
@@ -560,7 +865,7 @@ class DistributionStageService:
             residual.etp = sum_etp
             if sum_edis > 0:
                 kobl = kobl * (sum_edis - deltaoes) / sum_edis
-            residual.kobl = kobl
+            residual.kobl = clamp_restriction_kobl(kobl)
             self.session.add(residual)
 
         self.session.flush()
@@ -617,11 +922,27 @@ class DistributionStageService:
             cyear=cyear,
             effective_db_version=effective_db_version,
         )
+        cursor_by_key = self._fuel_param_by_group_year(
+            group_ids=group_ids,
+            byear=byear,
+            cyear=cyear,
+            effective_db_version=effective_db_version,
+            all_years=True,
+        )
 
         groups_by_id: dict[int, EquipmentGroup] = {}
         if group_ids:
             for g in self.session.query(EquipmentGroup).filter(EquipmentGroup.id.in_(group_ids)).all():
                 groups_by_id[g.id] = g
+
+        cursor_rows = sort_access_filter_rows(
+            [
+                fp
+                for fp in cursor_by_key.values()
+                if access_ved_filter_year_row_participates(fp)
+            ],
+            n1_of=lambda fp: fuel_param_access_n1(fp, groups_by_id),
+        )
 
         oes_code = _parse_oes_from_filter(row.filter_text)
         restriction_rows: list[FuelRestriction] = []
@@ -642,8 +963,12 @@ class DistributionStageService:
                     f"Нет строк ограничений для oes={oes_code}, year={cyear}. "
                     "Откройте «Ограничения» и проверьте данные."
                 )
-            # Access: при открытом окне первый проход берёт текущие kobl из формы
-            # (пересчёт Ограничения_Click — только после enddis, уже с lim=1).
+            # Access без открытой формы: UPDATE kobl=1. В АРМ галочка = «форма открыта»,
+            # но в БД часто лежат чужие/сорванные kobl (86000) — первый проход с ними
+            # не сходится, k уезжает к 0, kobl ещё растёт. Стартуем с 1 и подбираем.
+            for restr in restriction_rows:
+                restr.kobl = D1
+                self.session.add(restr)
             kobl_by_obl = self._kobl_map_from_rows(restriction_rows)
 
         e_target = d0(row.e)
@@ -653,7 +978,7 @@ class DistributionStageService:
         ph = d0(coeff_summary.ph)
         hd = d0(coeff_summary.hd)
 
-        k_value = d0(row.k)
+        k_value = self._seed_bisection_k(d0(row.k))
         kn_value = d0(coeff_summary.kn if coeff_summary.kn is not None else row.kn)
         knps = d0(coeff_summary.knps if coeff_summary.knps is not None else row.knps)
         kngt = d0(coeff_summary.kngt if coeff_summary.kngt is not None else row.kngt)
@@ -669,9 +994,13 @@ class DistributionStageService:
         # Access: irestr=1 … If irestr < 15 Then GoTo BDis → 14 внешних прохода.
         outer_max = 14 if apply_restrictions else 1
         restriction_outer_iterations = 0
+        # VBA: Dim hb на уровне Кнопка27_Click — живёт через again: и GoTo BDis.
+        cursor_state = AccessBdisCursorState()
+        last_spec = None
 
         for outer in range(1, outer_max + 1):
             restriction_outer_iterations = outer
+            k_value = self._seed_bisection_k(k_value)
             kl = k_value - D01
             kh = k_value + D01
             kln = kn_value - D01
@@ -686,26 +1015,34 @@ class DistributionStageService:
                 updated_fuel_rows = 0
                 total_distributed_e = D0
 
-                for equipment_group_id in group_ids:
-                    cur_row = by_key.get((equipment_group_id, cyear))
-                    if cur_row is None:
-                        skipped_group_ids.append(equipment_group_id)
+                for kind, cur_row, cursor in walk_access_bdis_cursor(
+                    cursor_rows,
+                    byear=byear,
+                    cyear=cyear,
+                    state=cursor_state,
+                ):
+                    if kind != "cyear":
                         continue
+                    equipment_group_id = cur_row.equipment_group_id
 
-                    spec = self._latest_specific_row(
+                    spec = self._bdis_specific_row(
                         equipment_group_id=equipment_group_id,
-                        target_year=cyear,
+                        byear=byear,
+                        cyear=cyear,
                         effective_db_version=effective_db_version,
                     )
                     if spec is None:
+                        spec = last_spec
+                    if spec is None:
                         skipped_group_ids.append(equipment_group_id)
                         continue
+                    last_spec = spec
 
-                    base_row = by_key.get((equipment_group_id, byear)) if byear is not None else None
-                    hb = self._hours_from_fuel_row(base_row)
-                    nustb = d0(base_row.nust) if base_row is not None else D0
+                    # Access: hb/nustb с курсора filter1 (не Seek по numb этой станции).
+                    hb = cursor.hb
+                    nustb = cursor.nustb
 
-                    cur_row.ewtp = d0(cur_row.qotr) * d0(spec.y) / D1000
+                    fill_ewtp_if_empty(cur_row, spec.y)
 
                     hfix = _is_hfix(cur_row)
                     if hfix:
@@ -721,7 +1058,7 @@ class DistributionStageService:
                         )
                     else:
                         koptim = self._koptim_from_bk(
-                            bk=d0(spec.bk),
+                            bk=spec.bk,
                             kmin=kmin_local,
                             kplus=kplus_local,
                         )
@@ -793,6 +1130,13 @@ class DistributionStageService:
             if not apply_restrictions:
                 break
 
+            inner_ok = abs(e_target - total_distributed_e) < D03
+            if not inner_ok:
+                # Не пересчитывать kobl по несходящейся раздаче: emin/ecur →
+                # kobl→∞, k→0 за оставшиеся внешние проходы.
+                k_value = D1
+                continue
+
             # Access enddis + Ограничения_Click + повтор BDis
             row.lim = 1
             self._recalculate_restriction_kobl(
@@ -803,8 +1147,11 @@ class DistributionStageService:
                 lim_reset=False,
                 by_key=by_key,
                 groups_by_id=groups_by_id,
+                effective_db_version=effective_db_version,
             )
             kobl_by_obl = self._kobl_map_from_rows(restriction_rows)
+            if not restriction_subject_targets_unmet(restriction_rows, int(oes_code)):
+                break
 
         if not apply_restrictions:
             row.lim = 0

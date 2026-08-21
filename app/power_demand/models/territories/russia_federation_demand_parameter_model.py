@@ -39,7 +39,7 @@ class RussiaFederationDemandParameter(db.Model, AuditMixin, PerimeterVariantColu
     max_power_consumption_mw = db.Column(Numeric(25, 3), nullable=True)
 
     # Дата и время максимума потребления мощности, МВт
-    peak_datetime_msk = db.Column(db.DateTime(timezone=True), nullable=True)
+    peak_datetime = db.Column(db.DateTime(timezone=True), nullable=True)
 
     # Средняя дневная температура воздуха, °C
     avg_daily_air_temp_c = db.Column(Numeric(10, 2), nullable=True)

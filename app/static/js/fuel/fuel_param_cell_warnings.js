@@ -2,7 +2,9 @@
  * Живая подсветка ячеек топливных параметров:
  * - qotr: (qotr/nt)*1000 >= 8000
  * - q: (q/nt_sum)*1000 >= 8000
+ * - h (ЧЧИУМ): h >= 8000
  * - qotr: nust изменился к предыдущему году и qotr тот же
+ * - data-parts-sum-mismatch-msg: Σ групп ≠ значение родителя (|Δ|>0.5)
  */
 (function (global) {
   "use strict";
@@ -12,8 +14,6 @@
   var CLASS_DANGER = "table-danger";
   var CLASS_WARN = "table-warning";
   var CLASS_CELL_WARN = "fuel-param-cell-warn";
-  var MSG_HOURS =
-    "Число часов использования установленной тепловой мощности больше 8000 часов! Проверьте значение!";
   var MSG_COMPOSITION =
     "Произошло изменение состава агрегатов! Проверьте значение!";
 
@@ -34,9 +34,34 @@
     return effectiveNum(a) === effectiveNum(b);
   }
 
-  function ratioGeThreshold(numer, denom) {
-    if (numer == null || denom == null || denom === 0) return false;
-    return (numer / denom) * RATIO_SCALE >= RATIO_THRESHOLD;
+  function computeHoursRatio(numer, denom) {
+    if (numer == null || denom == null || denom === 0) return null;
+    return (numer / denom) * RATIO_SCALE;
+  }
+
+  function formatHoursForWarn(hours) {
+    if (hours == null || !isFinite(hours)) return "?";
+    return String(Math.round(hours));
+  }
+
+  function hoursRatioWarnMessage(hours) {
+    return (
+      "ЧЧИ тепловой мощности = " +
+      formatHoursForWarn(hours) +
+      " (> " +
+      RATIO_THRESHOLD +
+      ", проверьте значение!)"
+    );
+  }
+
+  function hHoursWarnMessage(hours) {
+    return (
+      "ЧЧИУМ " +
+      formatHoursForWarn(hours) +
+      " (> " +
+      RATIO_THRESHOLD +
+      ", проверьте значение!)"
+    );
   }
 
   function getCellTd(tr, attr) {
@@ -47,24 +72,52 @@
     var td = getCellTd(tr, attr);
     if (!td) return null;
     var inp = td.querySelector(
-      "input.fuel-param-input, input.fuel-hier-sum-input, input.fuel-detail-sync-input"
+      "input.fuel-param-input, input.fuel-hier-sum-input, input.fuel-detail-sync-input",
     );
     if (inp) return parseFuelNum(inp.value);
     return parseFuelNum(td.textContent);
+  }
+
+  function rowIsCompletelyEmpty(tr) {
+    if (!tr) return true;
+    var tds = tr.querySelectorAll("td[data-column]");
+    var hasMetricTd = false;
+    for (var i = 0; i < tds.length; i++) {
+      var attr = tds[i].getAttribute("data-column");
+      if (attr === "numb1120") continue;
+      hasMetricTd = true;
+      if (getCellNum(tr, attr) != null) return false;
+      var inp = tds[i].querySelector(
+        "input.fuel-param-input, select.fuel-param-input, textarea",
+      );
+      if (inp) {
+        var v = (inp.value || "").trim();
+        if (v && v !== "—" && v !== "-" && v.toLowerCase() !== "none") return false;
+      } else {
+        var t = (tds[i].textContent || "").trim();
+        if (t && t !== "—" && t !== "-" && t.toLowerCase() !== "none") return false;
+      }
+    }
+    if (tr.getAttribute("data-row-empty") === "1") return true;
+    return hasMetricTd;
   }
 
   function getPrevCompare(table, tr) {
     var gid = tr.getAttribute("data-fuel-detail-group-id");
     var year = parseInt(tr.getAttribute("data-fuel-detail-year") || "", 10);
     if (table && gid && isFinite(year)) {
-      var prevTr = table.querySelector(
-        'tr[data-fuel-detail-group-id="' +
-          gid.replace(/"/g, '\\"') +
-          '"][data-fuel-detail-year="' +
-          (year - 1) +
-          '"]'
-      );
-      if (prevTr) {
+      for (var y = year - 1; y >= year - 25; y--) {
+        var prevTr = table.querySelector(
+          'tr[data-fuel-detail-group-id="' +
+            gid.replace(/"/g, '\\"') +
+            '"][data-fuel-detail-year="' +
+            y +
+            '"]',
+        );
+        if (!prevTr) {
+          break;
+        }
+        if (rowIsCompletelyEmpty(prevTr)) continue;
         return {
           nust: getCellNum(prevTr, "nust"),
           qotr: getCellNum(prevTr, "qotr"),
@@ -72,7 +125,10 @@
         };
       }
     }
-    if (!tr.hasAttribute("data-prev-nust") && !tr.hasAttribute("data-prev-qotr")) {
+    if (
+      !tr.hasAttribute("data-prev-nust") &&
+      !tr.hasAttribute("data-prev-qotr")
+    ) {
       return { nust: null, qotr: null, hasPrev: false };
     }
     return {
@@ -87,7 +143,7 @@
     if (title) td.setAttribute("title", title);
     else td.removeAttribute("title");
     var inp = td.querySelector(
-      "input.fuel-param-input, input.fuel-detail-sync-input"
+      "input.fuel-param-input, input.fuel-detail-sync-input",
     );
     if (inp) {
       if (title) inp.setAttribute("title", title);
@@ -124,7 +180,10 @@
   function getYearTd(tr) {
     var tds = tr.querySelectorAll("td");
     for (var i = 0; i < tds.length; i++) {
-      if (!tds[i].hasAttribute("data-column") && !tds[i].classList.contains("fuel-param-group-span")) {
+      if (
+        !tds[i].hasAttribute("data-column") &&
+        !tds[i].classList.contains("fuel-param-group-span")
+      ) {
         var txt = (tds[i].textContent || "").trim();
         if (/^\d{4}$/.test(txt)) return tds[i];
       }
@@ -133,16 +192,53 @@
   }
 
   function applyRowWarnings(table, tr) {
-    if (!tr || tr.classList.contains("fuel-param-summary-row")) return;
+    if (!tr) return;
+
+    // Итоги РЭС без сверки; строка родителя «…, всего» — только серверный
+    // контроль Σ частей (data-parts-sum-mismatch-msg), без qotr/nust live-логики.
+    if (
+      tr.classList.contains("fuel-param-summary-row") &&
+      !tr.classList.contains("fuel-param-composite-parent-row")
+    ) {
+      return;
+    }
+    if (
+      tr.classList.contains("fuel-param-summary-row") &&
+      tr.classList.contains("fuel-param-composite-parent-row")
+    ) {
+      var parentTds = tr.querySelectorAll("td[data-column]");
+      for (var pi = 0; pi < parentTds.length; pi++) {
+        var ptd = parentTds[pi];
+        var pmsg = ptd.getAttribute("data-parts-sum-mismatch-msg");
+        if (pmsg) applyDanger(ptd, [pmsg]);
+      }
+      return;
+    }
+
+    if (rowIsCompletelyEmpty(tr)) {
+      var emptyYearTd = getYearTd(tr);
+      if (emptyYearTd) emptyYearTd.classList.remove(CLASS_WARN);
+      var emptyTds = tr.querySelectorAll("td[data-column]");
+      for (var ei = 0; ei < emptyTds.length; ei++) {
+        if (emptyTds[ei].getAttribute("data-column") === "numb1120") continue;
+        clearWarnClasses(emptyTds[ei]);
+      }
+      tr.removeAttribute("data-row-yellow");
+      return;
+    }
 
     var qotr = getCellNum(tr, "qotr");
     var nt = getCellNum(tr, "nt");
     var q = getCellNum(tr, "q");
     var ntSum = getCellNum(tr, "nt_sum");
     var nust = getCellNum(tr, "nust");
+    var hVal = getCellNum(tr, "h");
 
-    var qotrNtWarn = ratioGeThreshold(qotr, nt);
-    var qSumNtWarn = ratioGeThreshold(q, ntSum);
+    var qotrHours = computeHoursRatio(qotr, nt);
+    var qSumHours = computeHoursRatio(q, ntSum);
+    var qotrNtWarn = qotrHours != null && qotrHours >= RATIO_THRESHOLD;
+    var qSumNtWarn = qSumHours != null && qSumHours >= RATIO_THRESHOLD;
+    var hHoursWarn = hVal != null && hVal >= RATIO_THRESHOLD;
 
     var prev = getPrevCompare(table, tr);
     var nustChanged = false;
@@ -164,17 +260,23 @@
       var attr = td.getAttribute("data-column");
       if (attr === "numb1120") continue;
 
+      var partsMsg = td.getAttribute("data-parts-sum-mismatch-msg");
+      var msgs = [];
+      if (partsMsg) msgs.push(partsMsg);
+
       if (attr === "qotr") {
-        var qotrMsgs = [];
-        if (qotrNtWarn) qotrMsgs.push(MSG_HOURS);
-        if (compositionWarn) qotrMsgs.push(MSG_COMPOSITION);
-        if (qotrMsgs.length) {
-          applyDanger(td, qotrMsgs);
-          continue;
-        }
+        if (qotrNtWarn) msgs.push(hoursRatioWarnMessage(qotrHours));
+        if (compositionWarn) msgs.push(MSG_COMPOSITION);
       }
       if (attr === "q" && qSumNtWarn) {
-        applyDanger(td, [MSG_HOURS]);
+        msgs.push(hoursRatioWarnMessage(qSumHours));
+      }
+      if (attr === "h" && hHoursWarn) {
+        msgs.push(hHoursWarnMessage(hVal));
+      }
+
+      if (msgs.length) {
+        applyDanger(td, msgs);
         continue;
       }
 
@@ -190,7 +292,7 @@
       var rows = table.querySelectorAll(
         'tr.fuel-param-detail-row[data-fuel-detail-group-id="' +
           gid.replace(/"/g, '\\"') +
-          '"]'
+          '"]',
       );
       for (var i = 0; i < rows.length; i++) applyRowWarnings(table, rows[i]);
       return;
@@ -206,7 +308,7 @@
       var inp =
         ev.target && ev.target.closest
           ? ev.target.closest(
-              "input.fuel-param-input[name], input.fuel-detail-sync-input[name]"
+              "input.fuel-param-input[name], input.fuel-detail-sync-input[name]",
             )
           : null;
       if (!inp) return;

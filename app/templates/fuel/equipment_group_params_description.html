@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="d-flex flex-wrap align-items-start gap-2 mb-3 w-100">
+        <div class="d-flex flex-wrap gap-2 flex-grow-1" style="min-width:0;"></div>
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5 flex-shrink-0 ms-md-auto">
+            <i class="bi bi-gear-wide-connected"></i> Модуль «Топливо»
+        </a>
+    </div>
+
+    <h1 class="text-center mb-2">{{ page_title }}</h1>
+    <p class="text-muted text-center mb-3">
+        Справочник: код поля, физический смысл, единицы измерения, модель и формулы.
+        Источники: FuelParam / SpecificFuelConsumption, FUEL_PARAM_LABELS, логика расчёта энергоблока.
+    </p>
+
+    <div class="row g-3 justify-content-center mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card text-center h-100">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-semibold">{{ stats.total }}</div>
+                    <div class="text-muted small">Записей в каталоге</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center h-100 border-success">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-semibold text-success">{{ stats.confirmed }}</div>
+                    <div class="text-muted small">Ед. подтверждены</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center h-100 border-warning">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-semibold text-warning">{{ stats.inferred }}</div>
+                    <div class="text-muted small">Ед. по формуле</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center h-100 border-danger">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-semibold text-danger">{{ stats.unknown }}</div>
+                    <div class="text-muted small">Ед. неясны</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info" role="alert">
+        Единицы с пометкой «по формуле» выведены из размерности расчёта
+        (E в тыс. кВт·ч, eust = E·b/1000 → b в г у.т./кВт·ч, eust в т у.т.).
+        Если в отчётности Access/СиПР приняты другие обозначения — уточните строку каталога.
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header fw-semibold">Фильтры</div>
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-5">
+                    <label for="fueParamSearch" class="form-label small text-muted mb-1">Поиск</label>
+                    <input type="search" id="fueParamSearch" class="form-control"
+                           placeholder="btp, удельный расход, тыс. кВт·ч…">
+                </div>
+                <div class="col-12 col-md-4">
+                    <label for="fueParamGroup" class="form-label small text-muted mb-1">Группа</label>
+                    <select id="fueParamGroup" class="form-select">
+                        <option value="">Все</option>
+                        {% for g in param_groups %}
+                        <option value="{{ g }}">{{ g }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <label for="fueParamUncertain" class="form-label small text-muted mb-1">Только спорные ед.</label>
+                    <select id="fueParamUncertain" class="form-select">
+                        <option value="no">нет</option>
+                        <option value="yes">да (по формуле + неясны)</option>
+                    </select>
+                </div>
+            </div>
+            <p class="small text-muted mb-0 mt-3">
+                Показано <span id="fueParamVisibleCount" class="fw-semibold">{{ param_rows|length }}</span>
+                из {{ param_rows|length }}
+            </p>
+        </div>
+    </div>
+
+    <h2 class="h4 mb-3">Каталог параметров</h2>
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered table-hover align-middle" id="fueParamCatalogTable">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Код АРМ</th>
+                    <th scope="col">Access (как есть)</th>
+                    <th scope="col">Наименование / смысл</th>
+                    <th scope="col">Ед. изм.</th>
+                    <th scope="col">Достоверность</th>
+                    <th scope="col">Тип</th>
+                    <th scope="col">Модель</th>
+                    <th scope="col">Формула / заметки</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in param_rows %}
+                <tr class="fue-param-row{% if row.unit_conf == 'unknown' %} table-danger{% elif row.unit_conf == 'inferred' %} table-warning{% endif %}"
+                    data-group="{{ row.group }}"
+                    data-unit-conf="{{ row.unit_conf }}"
+                    data-search="{{ (row.code ~ ' ' ~ row.access ~ ' ' ~ row.label ~ ' ' ~ row.meaning ~ ' ' ~ row.unit ~ ' ' ~ row.formula_notes ~ ' ' ~ row.model ~ ' ' ~ row.group)|e|lower }}">
+                    <td><code>{{ row.code }}</code></td>
+                    <td><code>{{ row.access }}</code></td>
+                    <td>
+                        <div class="fw-semibold">{{ row.label }}</div>
+                        <div class="small text-muted">{{ row.meaning }}</div>
+                    </td>
+                    <td>{{ row.unit }}</td>
+                    <td>
+                        {% if row.unit_conf == 'confirmed' %}
+                        <span class="badge text-bg-success">{{ row.unit_conf_label }}</span>
+                        {% elif row.unit_conf == 'inferred' %}
+                        <span class="badge text-bg-warning">{{ row.unit_conf_label }}</span>
+                        {% else %}
+                        <span class="badge text-bg-secondary">{{ row.unit_conf_label }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ row.kind_label }}</td>
+                    <td class="small">{{ row.model }}</td>
+                    <td class="small">{{ row.formula_notes }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h2 class="h4 mb-2">Цепочка энергоблока (напоминание)</h2>
+    <p class="small text-muted mb-3">
+        Связь удельных и FuelParam при расчёте топлива энергоблока
+    </p>
+    <div class="table-responsive mb-5">
+        <table class="table table-bordered table-sm align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">Шаг</th>
+                    <th scope="col">Результат</th>
+                    <th scope="col">Формула</th>
+                    <th scope="col">Ед. результата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for step in energy_chain %}
+                <tr>
+                    <td>{{ step.step }}</td>
+                    <td><code>{{ step.result }}</code></td>
+                    <td><code>{{ step.formula }}</code></td>
+                    <td>{{ step.unit }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function () {
+    var searchEl = document.getElementById('fueParamSearch');
+    var groupEl = document.getElementById('fueParamGroup');
+    var uncertainEl = document.getElementById('fueParamUncertain');
+    var countEl = document.getElementById('fueParamVisibleCount');
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#fueParamCatalogTable tbody .fue-param-row'));
+
+    function applyFilters() {
+        var q = (searchEl.value || '').trim().toLowerCase();
+        var group = groupEl.value || '';
+        var onlyUncertain = uncertainEl.value === 'yes';
+        var visible = 0;
+        rows.forEach(function (row) {
+            var ok = true;
+            if (group && row.getAttribute('data-group') !== group) ok = false;
+            if (ok && onlyUncertain && row.getAttribute('data-unit-conf') === 'confirmed') ok = false;
+            if (ok && q) {
+                var hay = row.getAttribute('data-search') || '';
+                if (hay.indexOf(q) === -1) ok = false;
+            }
+            row.style.display = ok ? '' : 'none';
+            if (ok) visible += 1;
+        });
+        if (countEl) countEl.textContent = String(visible);
+    }
+
+    [searchEl, groupEl, uncertainEl].forEach(function (el) {
+        if (!el) return;
+        el.addEventListener('input', applyFilters);
+        el.addEventListener('change', applyFilters);
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

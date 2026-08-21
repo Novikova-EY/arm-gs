@@ -16,7 +16,7 @@ from app.energy_consumption.services.energy_consumption_summary_export_services 
     build_demand_summary_excel_stream,
 )
 from app.energy_consumption.services.energy_consumption_summary_import_services import (
-    persist_all_energy_consumption_summary_computed_rows,
+    persist_all_energy_consumption_summary_computed_rows_for_all_versions,
 )
 from app.energy_consumption.services.energy_consumption_summary_import_jobs import (
     get_energy_consumption_summary_import_job,
@@ -700,7 +700,10 @@ def demand_summary_save_cell():
 @energy_consumption_bp.route("/summary/persist_computed_rows", methods=["POST"])
 @login_required
 def demand_summary_persist_computed_rows():
-    """После сохранения ячеек: пересчитать и записать все расчётные показатели сводки в БД."""
+    """После сохранения ячеек: пересчитать формулы сводки и записать во все версии БД.
+
+    Временно — как импорт Excel; позже вернёмся к пересчёту только текущей версии.
+    """
     if not can_edit_energy_consumption(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     data = request.get_json(silent=True) or {}
@@ -712,18 +715,18 @@ def demand_summary_persist_computed_rows():
     if rounding_digits not in (-1, 0, 1, 2, 3):
         rounding_digits = 1
 
-    vid = get_current_version()
-    if vid is None:
+    if get_current_version() is None:
         return jsonify(ok=False, error="Не выбрана версия базы данных."), 400
-    years_ok = sorted(get_year_numbers_sorted_for_current_db_version() or [])
-    if not years_ok:
-        return jsonify(ok=False, error="В версии БД нет годов для пересчёта."), 400
 
     try:
-        updated = persist_all_energy_consumption_summary_computed_rows(
-            database_version_id=int(vid),
-            years=years_ok,
+        user = None
+        if current_user and getattr(current_user, "is_authenticated", False):
+            user = str(
+                getattr(current_user, "username", None) or current_user.get_id() or ""
+            )
+        result = persist_all_energy_consumption_summary_computed_rows_for_all_versions(
             rounding_digits=rounding_digits,
+            user=user or None,
         )
         db.session.commit()
     except ValueError as e:
@@ -732,11 +735,15 @@ def demand_summary_persist_computed_rows():
     except Exception:
         db.session.rollback()
         current_app.logger.exception(
-            "persist_all_energy_consumption_summary_computed_rows"
+            "persist_all_energy_consumption_summary_computed_rows_for_all_versions"
         )
         return jsonify(ok=False, error="Не удалось записать расчётные значения в БД."), 400
 
-    return jsonify(ok=True, cells_written_formula=updated)
+    return jsonify(
+        ok=True,
+        cells_written_formula=int(result.get("cells_written_formula") or 0),
+        database_versions_processed=int(result.get("database_versions_processed") or 0),
+    )
 
 
 @energy_consumption_bp.route("/summary/perimeter_variant", methods=["POST"])
@@ -891,19 +898,28 @@ def demand_summary_persist_formula_block():
         rounding_digits = 3
 
     try:
-        vid = get_current_version()
-        if vid is None:
+        if get_current_version() is None:
             raise ValueError("Не выбрана версия базы данных.")
-        updated = persist_all_energy_consumption_summary_computed_rows(
-            database_version_id=int(vid),
-            years=years,
+        user = None
+        if current_user and getattr(current_user, "is_authenticated", False):
+            user = str(
+                getattr(current_user, "username", None) or current_user.get_id() or ""
+            )
+        # Временно — во все версии БД (как импорт Excel).
+        result = persist_all_energy_consumption_summary_computed_rows_for_all_versions(
             rounding_digits=rounding_digits,
+            years=years,
+            user=user or None,
         )
         db.session.commit()
     except ValueError as e:
         db.session.rollback()
         return jsonify(ok=False, error=str(e)), 400
-    return jsonify(ok=True, updated=updated)
+    return jsonify(
+        ok=True,
+        updated=int(result.get("cells_written_formula") or 0),
+        database_versions_processed=int(result.get("database_versions_processed") or 0),
+    )
 
 
 @energy_consumption_bp.route("/summary/logs/<scope>", methods=["GET"])

@@ -41,6 +41,54 @@
                 </td>
                 <td></td>
             </tr>
+
+            {# При фильтре «Тип агрегата ТЭС» / для ТЭС — строки по типам агрегатов (с учётом event) #}
+            {% if st_name == 'ТЭС' and regional_districts_by_tes_machine_types_yearly_p_ust is defined %}
+                {% for tes_type_id, tes_map in regional_districts_by_tes_machine_types_yearly_p_ust.get(current_rd_id, {}).items() %}
+                    {% for tm_id, tm_events in (tes_map or {}).items() %}
+                        {% set tm_yearly = (tm_events or {}).get(event_type) if tm_events else none %}
+                        {% if tm_yearly %}
+                            {% set tm_name = tes_machine_type_list.get(tm_id, '') if tes_machine_type_list is defined else '' %}
+                            {% if tm_name and tm_name|lower != 'не указано' %}
+                            <tr class="table-secondary text-center total-power-row" style="vertical-align: middle;">
+                                <td class="total-row-cell" style="font-weight: bold; padding-left: 2rem;">
+                                    {{ tm_name }}
+                                </td>
+                                <td colspan="4"></td>
+                                <td></td>
+                                {% for y in range(start_year, end_year + 1) %}
+                                    {% if current_year_split is not none and y == current_year_split %}
+                                        <td class="power-column"></td>
+                                        <td class="power-column">
+                                            {{ tm_yearly.get(y) | default('—') | format_decimal if tm_yearly.get(y) is not none }}
+                                        </td>
+                                    {% else %}
+                                        <td class="power-column">
+                                            {{ tm_yearly.get(y) | default('—') | format_decimal if tm_yearly.get(y) is not none }}
+                                        </td>
+                                    {% endif %}
+                                {% endfor %}
+                                <td class="power-column fw-bold">
+                                    {% if plan_years %}
+                                        {% set ns_tm = namespace(v=0) %}
+                                        {% for y in plan_years %}
+                                            {% set val = tm_yearly.get(y) %}
+                                            {% if val is not none %}
+                                                {% set ns_tm.v = ns_tm.v + val %}
+                                            {% endif %}
+                                        {% endfor %}
+                                        {% if ns_tm.v != 0 %}{{ ns_tm.v | format_decimal }}{% endif %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td></td>
+                            </tr>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            {% endif %}
         {% endif %}
 
     {% endif %}

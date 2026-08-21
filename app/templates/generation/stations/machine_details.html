@@ -213,9 +213,12 @@
                                     <div class="col-7 text-start">
                                         {% if can_edit_fuel %}
                                             {{ main_form.id_fuel_equipment_group(class="form-select machine-details-searchable-select", id="id_fuel_equipment_group") }}
+                                            <div class="form-text">Можно выбрать дочернюю группу составной станции по коду (numb).</div>
                                         {% else %}
-                                            {% if machine and machine.machine_fuel_param and machine.machine_fuel_param.equipment_group %}
-                                                {{ machine.machine_fuel_param.equipment_group.name }}
+                                            {% set fuel_eg_choices = dict(main_form.id_fuel_equipment_group.choices or []) %}
+                                            {% set fuel_eg_sel = main_form.id_fuel_equipment_group.data %}
+                                            {% if fuel_eg_sel and fuel_eg_sel in fuel_eg_choices and fuel_eg_sel != 0 %}
+                                                {{ fuel_eg_choices[fuel_eg_sel] }}
                                             {% else %}
                                                 —
                                             {% endif %}
@@ -338,11 +341,21 @@
                                 <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год ввода в эксплуатацию:</div>
                                     <div class="col-7 text-start">
-                                        {% if can_edit_generation_fields %}
-                                            {{ main_form.date_exploitation_expected(class="form-control") }}
-                                        {% else %}
-                                            {{ main_form.date_exploitation_expected.data if main_form.date_exploitation_expected.data else '—' }}
-                                        {% endif %}
+                                        <div class="d-flex align-items-center gap-3 w-100">
+                                            {% if can_edit_generation_fields %}
+                                                {{ main_form.date_exploitation_expected(class="form-control flex-grow-1", id="main_date_exploitation_expected") }}
+                                                <div class="form-check mb-0 flex-shrink-0">
+                                                    {{ main_form.is_commissioning_q4(class="form-check-input", id="main_is_commissioning_q4") }}
+                                                    {{ main_form.is_commissioning_q4.label(class="form-check-label", for="main_is_commissioning_q4") }}
+                                                </div>
+                                            {% else %}
+                                                <span>{{ main_form.date_exploitation_expected.data if main_form.date_exploitation_expected.data else '—' }}</span>
+                                                <div class="form-check mb-0 flex-shrink-0">
+                                                    {{ main_form.is_commissioning_q4(class="form-check-input", id="main_is_commissioning_q4", disabled=True) }}
+                                                    {{ main_form.is_commissioning_q4.label(class="form-check-label", for="main_is_commissioning_q4") }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
@@ -390,6 +403,7 @@
                                 <input type="hidden" name="{{ main_form.date_commission_year.name }}" value="{{ main_form.date_commission_year.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_exploitation.name }}" value="{{ main_form.date_exploitation.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_exploitation_expected.name }}" value="{{ main_form.date_exploitation_expected.data or '' }}">
+                                <input type="hidden" name="{{ main_form.is_commissioning_q4.name }}" value="{{ 'true' if main_form.is_commissioning_q4.data else '' }}">
                                 <input type="hidden" name="{{ main_form.date_decompressing_expected.name }}" value="{{ main_form.date_decompressing_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_modernization_power_change_expected.name }}" value="{{ main_form.date_modernization_power_change_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_modernization_no_power_change_expected.name }}" value="{{ main_form.date_modernization_no_power_change_expected.data or '' }}">
@@ -997,7 +1011,7 @@
             return false;
         }
         initOneSearchableSelect($('#id_gen_company'), "Выберите компанию (начните вводить для поиска)", true);
-        initOneSearchableSelect($('#id_fuel_equipment_group'), "Группа оборудования (поиск по названию)", false);
+        initOneSearchableSelect($('#id_fuel_equipment_group'), "Группа оборудования (поиск по названию или коду)", false);
         return true;
     }
 
@@ -1011,7 +1025,7 @@
                     if ($el.data('select2')) return;
                     var isFuel = $el.attr('id') === 'id_fuel_equipment_group';
                     var ph = isFuel
-                        ? "Группа оборудования (поиск по названию)"
+                        ? "Группа оборудования (поиск по названию или коду)"
                         : "Выберите компанию (начните вводить для поиска)";
                     initOneSearchableSelect($el, ph, !isFuel);
                 });
@@ -2152,6 +2166,27 @@ document.addEventListener("DOMContentLoaded", function () {
         // Теперь фактический год вводится пользователем вручную, а ожидания
         // рассчитываются отдельно (и заполняются в `date_exploitation_expected`).
         // Поэтому оставляем `date_exploitation` без автозаполнения.
+        syncCommissioningQ4Availability();
+    }
+
+    function syncCommissioningQ4Availability() {
+        const yearField = document.getElementById("main_date_exploitation_expected");
+        const q4Field = document.getElementById("main_is_commissioning_q4");
+        if (!yearField || !q4Field || yearField.disabled || yearField.readOnly) return;
+
+        const hasYear = !!String(yearField.value || "").trim();
+        q4Field.disabled = !hasYear;
+        if (!hasYear) {
+            q4Field.checked = false;
+        }
+    }
+
+    function attachCommissioningQ4Availability() {
+        const yearField = document.getElementById("main_date_exploitation_expected");
+        if (!yearField) return;
+        yearField.addEventListener("input", syncCommissioningQ4Availability);
+        yearField.addEventListener("change", syncCommissioningQ4Availability);
+        syncCommissioningQ4Availability();
     }
     
     function attachDatesAutoFill() {
@@ -2401,6 +2436,7 @@ document.addEventListener("DOMContentLoaded", function () {
     attachNamesAutoFill();
     attachOgrAutoCalc();
     attachDatesAutoFill();
+    attachCommissioningQ4Availability();
     attachTesAndFuelAutoEmpty();
     attachTesAndFuelAutoFill();
     attachTesAndFuelPrefillFromRust();
@@ -2476,11 +2512,10 @@ document.addEventListener("DOMContentLoaded", function () {
     <div class="card">
         <div class="card-body p-0">
             <div class="table-responsive">
-            <table class="table table-hover table-striped table-bordered" id="machine-logs-table" data-auto-export-excel="off">
+            <table class="table table-hover table-striped table-bordered change-log-table" id="machine-logs-table" data-auto-export-excel="off">
                 <thead class="table-light">
                     <tr>
-                        <th data-key="date" class="log-col-date" style="cursor: pointer;">Дата</th>
-                        <th data-key="time" class="log-col-time" style="cursor: pointer;">Время</th>
+                        <th data-key="datetime" class="log-col-datetime" style="cursor: pointer;">Дата и время</th>
                         <th data-key="user" class="log-col-user" style="cursor: pointer;">Пользователь</th>
                         <th data-key="action" class="log-col-action" style="cursor: pointer;">Действие</th>
                         <th data-key="database_version" class="log-col-database-version" style="cursor: pointer;">Версия базы данных</th>
@@ -2491,8 +2526,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     {% if machine_logs and machine_logs|length > 0 %}
                         {% for log in machine_logs %}
                             <tr>
-                                <td data-date="{{ log.date }}">{{ log.date }}</td>
-                                <td data-time="{{ log.time }}">{{ log.time }}</td>
+                                <td data-datetime="{{ log.datetime }}" data-date="{{ log.date }}">{{ log.datetime }}</td>
                                 <td data-user="{{ log.username_lower }}">{{ log.username }}</td>
                                 <td><div data-action="{{ log.action_lower }}">{{ log.action }}</div></td>
                                 <td data-database-version="{{ log.database_version|lower }}">{{ log.database_version }}</td>
@@ -2501,7 +2535,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted p-3">Нет записей</td>
+                            <td colspan="5" class="text-center text-muted p-3">Нет записей</td>
                         </tr>
                     {% endif %}
                 </tbody>
@@ -2529,91 +2563,8 @@ document.addEventListener("DOMContentLoaded", function () {
     <div class="my-3"></div>
  </div>
 
-<script>
-(function(){
-    const table = document.getElementById('machine-logs-table');
-    if (!table) return;
-    const thead = table.tHead;
-    const tbody = table.tBodies[0];
-    let sortState = { key: 'date', asc: false };
-    function val(node, dataKey){
-        if (!node) return '';
-        return (node.dataset && node.dataset[dataKey]) ? node.dataset[dataKey] : node.textContent.trim().toLowerCase();
-    }
-    function sortBy(key){
-        const rows = Array.from(tbody.rows);
-        rows.sort((r1, r2)=>{
-            let a='', b='';
-            if (key === 'date'){ a=val(r1.cells[0], 'date'); b=val(r2.cells[0], 'date'); }
-            else if (key === 'time'){ a=val(r1.cells[1], 'time'); b=val(r2.cells[1], 'time'); }
-            else if (key === 'user'){ a=val(r1.cells[2], 'user'); b=val(r2.cells[2], 'user'); }
-            else if (key === 'action'){
-                a = val(r1.cells[3].querySelector('[data-action]')||r1.cells[3], 'action');
-                b = val(r2.cells[3].querySelector('[data-action]')||r2.cells[3], 'action');
-            } else if (key === 'database_version'){
-                a = val(r1.cells[4], 'database-version');
-                b = val(r2.cells[4], 'database-version');
-            } else if (key === 'details'){
-                a = val(r1.cells[5].querySelector('[data-details]')||r1.cells[5], 'details');
-                b = val(r2.cells[5].querySelector('[data-details]')||r2.cells[5], 'details');
-            }
-            if (a<b) return sortState.asc ? -1 : 1;
-            if (a>b) return sortState.asc ? 1 : -1;
-            return 0;
-        });
-        tbody.append(...rows);
-        sortState = { key, asc: !sortState.asc };
-    }
-    thead.addEventListener('click', (e)=>{
-        const th = e.target.closest('th[data-key]');
-        if (!th) return;
-        sortBy(th.dataset.key);
-    });
-    const filterRow = document.createElement('tr');
-    ['date','time','user','action','database_version','details'].forEach((key)=>{
-        const td = document.createElement('td');
-        const input = document.createElement('input');
-        input.className = 'form-control form-control-sm';
-        input.placeholder = 'Фильтр';
-        input.addEventListener('input', ()=>{
-            const terms = Array.from(filterRow.querySelectorAll('input')).map(i=>i.value.trim().toLowerCase());
-            for (const tr of tbody.rows){
-                const dDate = val(tr.cells[0], 'date');
-                const dTime = val(tr.cells[1], 'time');
-                const dUser = val(tr.cells[2], 'user');
-                const dAction = val(tr.cells[3].querySelector('[data-action]')||tr.cells[3], 'action');
-                const dDatabaseVersion = val(tr.cells[4], 'database-version');
-                const dDetails = val(tr.cells[5].querySelector('[data-details]')||tr.cells[5], 'details');
-                const data = [dDate, dTime, dUser, dAction, dDatabaseVersion, dDetails];
-                const ok = terms.every((t,i)=> t==='' || data[i].includes(t));
-                tr.style.display = ok ? '' : 'none';
-            }
-        });
-        td.appendChild(input);
-        filterRow.appendChild(td);
-    });
-    thead.appendChild(filterRow);
-})();
-</script>
-
 <style>
-#machine-logs-table { table-layout: fixed; width: 100%; }
-/* Фиксированные ширины первых трех колонок */
-#machine-logs-table th.log-col-date, #machine-logs-table td:nth-child(1) { width: 140px !important; }
-#machine-logs-table th.log-col-time, #machine-logs-table td:nth-child(2) { width: 120px !important; }
-#machine-logs-table th.log-col-user, #machine-logs-table td:nth-child(3) { width: 300px !important; }
-/* Действие, Версия БД и Информация — поровну */
-#machine-logs-table th.log-col-action, #machine-logs-table td:nth-child(4) { width: 33.33% !important; }
-#machine-logs-table th.log-col-database-version, #machine-logs-table td:nth-child(5) { width: 150px !important; }
-#machine-logs-table th.log-col-details, #machine-logs-table td:nth-child(6) { width: 33.33% !important; }
-#machine-logs-table td:nth-child(4) div, #machine-logs-table td:nth-child(6) div { white-space: pre-wrap; }
-#machine-logs-table td:nth-child(5) { white-space: normal; overflow-wrap: anywhere; word-break: break-word; }
-
-/* Переопределяем глобальные ограничения таблиц выше в файле */
-#machine-logs-table th, #machine-logs-table td { max-width: none !important; overflow-wrap: normal; }
-#machine-logs-table td:nth-child(1),
-#machine-logs-table td:nth-child(2),
-#machine-logs-table td:nth-child(3) { white-space: nowrap; }
+/* Ширины столбцов журнала — change_log_table.css */
 
 /* Стили для поля документов-оснований */
 .change-document-input {
@@ -2956,17 +2907,26 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 // Добавляем новые строки в таблицу
                 data.logs.forEach(log => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td data-date="${log.date}">${log.date}</td>
-                        <td data-time="${log.time}">${log.time}</td>
-                        <td data-user="${log.username_lower}">${log.username}</td>
-                        <td><div data-action="${log.action_lower}">${log.action}</div></td>
-                        <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
-                        <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
-                    `;
+                    const row = (window.ChangeLogTable && ChangeLogTable.rowFromLog)
+                        ? ChangeLogTable.rowFromLog(log)
+                        : (() => {
+                            const r = document.createElement('tr');
+                            const dt = log.datetime || ((log.date || '') + (log.time ? ' ' + log.time : '')).trim();
+                            r.innerHTML = `
+                                <td data-datetime="${dt}" data-date="${log.date || ''}">${dt}</td>
+                                <td data-user="${log.username_lower}">${log.username}</td>
+                                <td><div data-action="${log.action_lower}">${log.action}</div></td>
+                                <td data-database-version="${(log.database_version || '—').toString().toLowerCase()}">${log.database_version || '—'}</td>
+                                <td>${log.details ? `<div data-details="${log.details_lower}" style="white-space: pre-wrap;">${log.details}</div>` : ''}</td>
+                            `;
+                            return r;
+                        })();
                     logsTable.appendChild(row);
                 });
+
+                const tbl = document.getElementById('machine-logs-table');
+                if (tbl && typeof tbl._applyLogFilters === 'function') tbl._applyLogFilters();
+                else if (window.ChangeLogTable) ChangeLogTable.applyFilters(tbl);
                 
                 // Обновляем счетчик
                 currentOffset += data.count;

@@ -235,6 +235,7 @@ def update_energy_unit_service(data, user):
             name = record.get("name")
             name_rp = (record.get("name_rp") or "").strip() or name
             name_dp = (record.get("name_dp") or "").strip() or name
+            name_dat = (record.get("name_dat") or "").strip()
             regional_district_id = record.get("regional_district_id")
             regional_energy_system_id = record.get("regional_energy_system_id")
 
@@ -283,6 +284,9 @@ def update_energy_unit_service(data, user):
             if name_dp != (obj.name_dp or ""):
                 changes.append(format_field_change("name_dp", obj.name_dp or "не указано", name_dp, "energy_unit"))
                 obj.name_dp = name_dp
+            if name_dat != (obj.name_dat or ""):
+                changes.append(format_field_change("name_dat", obj.name_dat or "не указано", name_dat or "не указано", "energy_unit"))
+                obj.name_dat = name_dat
 
             # Проверка наличия субъекта РФ
             if "regional_district_id" in record:
@@ -376,6 +380,7 @@ def add_energy_unit_service(data, user):
                 name = (record.get("name") or "").strip()
                 name_rp = (record.get("name_rp") or name or "").strip()
                 name_dp = (record.get("name_dp") or name or "").strip()
+                name_dat = (record.get("name_dat") or "").strip()
                 regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
                 regional_energy_system_id = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
 
@@ -410,6 +415,7 @@ def add_energy_unit_service(data, user):
                     name=name,
                     name_rp=name_rp,
                     name_dp=name_dp,
+                    name_dat=name_dat,
                     id_regional_district=rd_obj.id,
                     id_regional_energy_system=res_obj.id,
                 )
@@ -578,6 +584,7 @@ def export_energy_unit_service(
             "Энергорайон": o.name,
             "Энергорайон (род. пад.)": o.name_rp or "",
             "Энергорайон (предл. пад.)": o.name_dp or "",
+            "Наименование (в дательном падеже)": o.name_dat or "",
             "Субъект РФ": o.regional_district.name if o.regional_district else "Не указан",
             "Региональная энергосистема": o.regional_energy_system.name if o.regional_energy_system else "Не указана",
             "ОЭС": o.union_energy_system.name if o.union_energy_system else "Не указана",
@@ -625,6 +632,7 @@ def add_energy_unit_all_versions_service(data, user):
         name = (record.get("name") or "").strip()
         name_rp = (record.get("name_rp") or "").strip() or name
         name_dp = (record.get("name_dp") or "").strip() or name
+        name_dat = (record.get("name_dat") or "").strip()
         regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
         regional_energy_system_id = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
         if not name or not regional_district_id or not regional_energy_system_id:
@@ -633,6 +641,7 @@ def add_energy_unit_all_versions_service(data, user):
             "name": name,
             "name_rp": name_rp,
             "name_dp": name_dp,
+            "name_dat": name_dat,
             "regional_district_id": regional_district_id,
             "regional_energy_system_id": regional_energy_system_id,
         }
@@ -642,6 +651,7 @@ def add_energy_unit_all_versions_service(data, user):
             "name": clean["name"],
             "name_rp": clean["name_rp"],
             "name_dp": clean["name_dp"],
+            "name_dat": clean["name_dat"],
             "id_regional_district": fk_id_for_version(RegionalDistrict, clean["regional_district_id"], version_id),
             "id_regional_energy_system": fk_id_for_version(RegionalEnergySystem, clean["regional_energy_system_id"], version_id),
         }
@@ -668,6 +678,7 @@ def update_energy_unit_all_versions_service(data, user):
         name = (record.get("name") or "").strip()
         name_rp = (record.get("name_rp") or "").strip() or name
         name_dp = (record.get("name_dp") or "").strip() or name
+        name_dat = (record.get("name_dat") or "").strip()
         regional_district_id = _to_int_or_none(record.get("regional_district_id"), keep_zero=False)
         regional_energy_system_id = _to_int_or_none(record.get("regional_energy_system_id"), keep_zero=False)
         if not name or not regional_district_id or not regional_energy_system_id:
@@ -677,6 +688,7 @@ def update_energy_unit_all_versions_service(data, user):
             "name": name,
             "name_rp": name_rp,
             "name_dp": name_dp,
+            "name_dat": name_dat,
             "regional_district_id": regional_district_id,
             "regional_energy_system_id": regional_energy_system_id,
         }
@@ -686,6 +698,7 @@ def update_energy_unit_all_versions_service(data, user):
             "name": clean["name"],
             "name_rp": clean["name_rp"],
             "name_dp": clean["name_dp"],
+            "name_dat": clean["name_dat"],
             "id_regional_district": fk_id_for_version(RegionalDistrict, clean["regional_district_id"], version_id),
             "id_regional_energy_system": fk_id_for_version(RegionalEnergySystem, clean["regional_energy_system_id"], version_id),
         }
@@ -698,7 +711,7 @@ def update_energy_unit_all_versions_service(data, user):
         pk_field="energy_unit_id",
         normalize_record=normalize_record,
         resolve_for_version=resolve_for_version,
-        tracked_fields=['name', 'name_rp', 'name_dp', 'id_regional_district', 'id_regional_energy_system'],
+        tracked_fields=['name', 'name_rp', 'name_dp', 'name_dat', 'id_regional_district', 'id_regional_energy_system'],
         unique_fields=['name'],
         temp_fields=['name'],
         clear_fields=[]

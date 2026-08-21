@@ -1,5 +1,7 @@
 {% extends 'base.html' %} {% from 'fuel/_shared/_value_macros.html' import
-render_numeric_or_dash %} {% block title %}Тепло и тарифы из СТ{% endblock %} {%
+render_numeric_or_dash %} {% from 'fuel/_shared/equipment_group_name_macros.html'
+import eg_name_cell_class, eg_name_label %} {% from 'fuel/_shared/fuel_param_edit_macros.html'
+import fuel_param_numb1120_header_th %} {% block title %}Тепло и тарифы (схемы теплоснабжения){% endblock %} {%
 block content %} {% if current_user.is_authenticated %}
 
 <div
@@ -48,7 +50,7 @@ block content %} {% if current_user.is_authenticated %}
   </div>
 
   <div class="col-12 mb-2">
-    <h2 class="text-center mb-4">Тепло и тарифы из схем теплоснабжения</h2>
+    <h2 class="text-center mb-4">Тепло и тарифы (схемы теплоснабжения)</h2>
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
       <a
         href="{{ url_for('station_bp.add_station') }}"
@@ -94,6 +96,13 @@ block content %} {% if current_user.is_authenticated %}
     #heatAndTariffsTable thead .hat-year-col {
       white-space: nowrap;
     }
+    #heatAndTariffsTable tr.fuel-param-composite-parent-row > td {
+      background-color: #fff3cd !important;
+    }
+    #heatAndTariffsTable.table-striped > tbody > tr.fuel-param-composite-parent-row > * {
+      --bs-table-accent-bg: transparent;
+      background-color: #fff3cd !important;
+    }
   </style>
 
   <div class="table-responsive" id="heatAndTariffsScrollWrap">
@@ -105,13 +114,19 @@ block content %} {% if current_user.is_authenticated %}
         <tr class="text-center align-middle">
           <th style="min-width: 140px">Группа оборудования</th>
           {% for attr, label, is_numeric in identity_columns %}
+          {% if attr == 'numb1120' %}
+          {{ fuel_param_numb1120_header_th(1, label, (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
+          {% else %}
           <th
             style="min-width: 80px"
             class="hat-col-{{ attr }}"
             data-column="{{ attr }}"
           >
-            {{ label }}<br /><span class="text-muted small">({{ attr|fuel_header_code }})</span>
+            {{ label }}<br /><span class="text-muted small"
+              >({{ attr|fuel_header_code }})</span
+            >
           </th>
+          {% endif %}
           {% endfor %}
           <th style="min-width: 90px">Показатель</th>
           {% for year in years %}
@@ -158,22 +173,20 @@ block content %} {% if current_user.is_authenticated %}
         in station_block.group_blocks %} {% set group_entity =
         group_block.equipment_group %} {% set group_name = (group_entity.name if
         group_entity and group_entity.name else (group_entity.name_ext if
-        group_entity and group_entity.name_ext else '—')) %} {% set identity =
+        group_entity and group_entity.name_ext else '—')) %} {% if
+        group_block.get('is_composite_total_row') %} {% set group_name =
+        group_name ~ ', всего' %} {% endif %} {% set identity =
         group_block.identity|default({}) %} {% set metric_rows =
         group_block.metric_rows|default([]) %} {% set n_metrics =
-        metric_rows|length if metric_rows else metric_count %} {% for metric in
-        metric_rows %}
-        <tr class="text-center align-middle">
+        metric_rows|length if metric_rows else metric_count %} {% set
+        station_summary = station_block.station_summary|default({}) %} {% for
+        metric in metric_rows %}
+        <tr
+          class="text-center align-middle{% if group_block.get('is_composite_total_row') %} fuel-param-summary-row fuel-param-composite-parent-row fw-bold{% endif %}"
+        >
           {% if loop.first %}
-          <td rowspan="{{ n_metrics }}">
-            {% if group_entity and group_entity.id and group_entity.id > 0 %}
-            <a
-              href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=group_entity.id, **request.args) }}"
-              class="text-decoration-none"
-            >
-              {{ group_name }}
-            </a>
-            {% else %} {{ group_name }} {% endif %}
+          <td class="{{ eg_name_cell_class(group_block) }}" rowspan="{{ n_metrics }}">
+            {{ eg_name_label(group_entity, group_name, group_block) }}
           </td>
           {% for attr, label, is_numeric in identity_columns %}
           <td
@@ -194,8 +207,13 @@ block content %} {% if current_user.is_authenticated %}
             data-year="{{ year }}"
             data-column="{{ metric.attr }}"
           >
-            {{ render_numeric_or_dash(metric.values_by_year.get(year) if
-            metric.values_by_year else none) }}
+            {% if group_block.get('use_station_summary') or
+            group_block.get('is_composite_total_row') %} {% if metric.attr ==
+            'q' and station_summary.get('q') %} {{
+            render_numeric_or_dash(station_summary.q.get(year)) }} {% else %}—{%
+            endif %} {% else %} {{
+            render_numeric_or_dash(metric.values_by_year.get(year) if
+            metric.values_by_year else none) }} {% endif %}
           </td>
           {% endfor %}
         </tr>
@@ -222,7 +240,7 @@ block content %} {% if current_user.is_authenticated %}
           </td>
           {% endfor %}
         </tr>
-        {% endfor %} {% endif %} {% endfor %} {% if res_block.group_blocks %} {%
+        {% endfor %} {% endif %} {% endfor %} {% if res_block.group_blocks and not res_block.get('hide_res_summary') %} {%
         set res_summary = res_block.res_summary|default({}) %} {% for attr,
         label, is_numeric in metric_columns %}
         <tr
@@ -300,6 +318,7 @@ block content %} {% if current_user.is_authenticated %}
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     if (typeof initializeStationFilters === "function") {

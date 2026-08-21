@@ -49,7 +49,7 @@ def synchronous_area_query(
     """ Базовый запрос для выборки частей энергосистемы России с фильтрацией и сортировкой. """
 
     # Валидация сортировки
-    allowed_sort_by = {"id", "name", "display_order", "number"}
+    allowed_sort_by = {"id", "name", "name_full", "display_order", "number"}
     sort_by = sort_by if sort_by in allowed_sort_by else "display_order"
 
     sort_dir = (sort_dir or "asc").lower()
@@ -64,12 +64,13 @@ def synchronous_area_query(
         query = query.filter(
             or_(
                 SynchronousArea.name.ilike(f"%{synchronous_area_filter}%"),
+                SynchronousArea.name_full.ilike(f"%{synchronous_area_filter}%"),
             )
         )
 
     # Сортировка
-    if sort_by == "name":
-        sort_field = SynchronousArea.name
+    if sort_by in {"name", "name_full"}:
+        sort_field = SynchronousArea.name_full if sort_by == "name_full" else SynchronousArea.name
         query = query.order_by(sort_field.desc() if sort_dir == "desc" else sort_field.asc())
     elif sort_by == "display_order":
         # Сортируем по порядку отображения, значения NULL в конце
@@ -133,6 +134,7 @@ def update_synchronous_area_service(data, user):
             synchronous_area_id = record.get("synchronous_area_id")
             number = record.get("number")
             name = record.get("name")
+            name_full = (record.get("name_full") or "").strip() or None
             display_order = record.get("display_order")
 
             # Проверки на валидность данных
@@ -171,6 +173,14 @@ def update_synchronous_area_service(data, user):
                 if q.first():
                     raise ValueError(f"Запись с номером «{number}» уже существует.")
 
+            # Проверка уникальности name_full
+            if name_full and name_full != (obj.name_full or ""):
+                q = (apply_version_filter(SynchronousArea.query, SynchronousArea)
+                     .filter(SynchronousArea.name_full == name_full,
+                             SynchronousArea.id != synchronous_area_id))
+                if q.first():
+                    raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
+
             # Проверка уникальности display_order
             if display_order is not None and display_order != obj.display_order:
                 q_display = (
@@ -190,6 +200,15 @@ def update_synchronous_area_service(data, user):
             if name != (obj.name or ""):
                 changes.append(format_field_change("name", obj.name or "не указано", name, "synchronous_area"))
                 obj.name = name
+
+            if name_full != (obj.name_full or None):
+                changes.append(format_field_change(
+                    "name_full",
+                    obj.name_full or "не указано",
+                    name_full or "не указано",
+                    "synchronous_area",
+                ))
+                obj.name_full = name_full
 
             if number != (obj.number or ""):
                 old_val = obj.number if obj.number is not None else "не указано"
@@ -266,6 +285,7 @@ def add_synchronous_area_service(data, user):
             for record in data:
                 number = (record.get("number") or "").strip()
                 name = (record.get("name") or "").strip()
+                name_full = (record.get("name_full") or "").strip() or name or None
                 display_order = record.get("display_order")
 
                 # Проверка на наличие необходимых данных
@@ -285,11 +305,20 @@ def add_synchronous_area_service(data, user):
                     raise ValueError(f"Запись с наименованием «{name}» уже существует.")
                 
                 # Проверяем уникальность number при создании
-                dup_full = (apply_version_filter(SynchronousArea.query, SynchronousArea)
-                        .filter(SynchronousArea.number == number)
-                        .with_for_update().first())
-                if dup_full:
-                    raise ValueError(f"Запись с полным наименованием «{number}» уже существует.")
+                if number:
+                    dup_number = (apply_version_filter(SynchronousArea.query, SynchronousArea)
+                            .filter(SynchronousArea.number == number)
+                            .with_for_update().first())
+                    if dup_number:
+                        raise ValueError(f"Запись с номером «{number}» уже существует.")
+
+                # Проверяем уникальность name_full при создании
+                if name_full:
+                    dup_full = (apply_version_filter(SynchronousArea.query, SynchronousArea)
+                            .filter(SynchronousArea.name_full == name_full)
+                            .with_for_update().first())
+                    if dup_full:
+                        raise ValueError(f"Запись с полным наименованием «{name_full}» уже существует.")
 
                 # Проверяем уникальность display_order при создании
                 if display_order is not None:
@@ -307,6 +336,7 @@ def add_synchronous_area_service(data, user):
                 # Создаем новую запись
                 obj = SynchronousArea(
                     name=name,
+                    name_full=name_full,
                     number=number or None,
                     display_order=display_order,
                 )
@@ -318,8 +348,9 @@ def add_synchronous_area_service(data, user):
                     user, 
                     "Создана синхронная зона",
                     (
-                        f"Номер: {_dash(number)};"
+                        f"Номер: {_dash(number)}; "
                         f"Наименование: {name}; "
+                        f"Полное наименование: {_dash(name_full)}; "
                     ),
                     entity_type="synchronous_area", 
                     entity_id=obj.id)
@@ -462,7 +493,9 @@ def export_synchronous_area_service(
     for idx, o in enumerate(items, start=1):
         data.append({
             "№": idx + 1,
+            "Порядок отображения": o.display_order if o.display_order is not None else "",
             "Наименование синхронной зоны": _dash(o.name),
+            "Полное наименование синхронной зоны": _dash(o.name_full),
         })
 
     log_to_db(
@@ -505,10 +538,12 @@ def add_synchronous_area_all_versions_service(data, user):
         display_order = record.get("display_order")
         number = (record.get("number") or "").strip() or None
         name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip() or name or None
         if not name:
             raise ValueError("Каждая запись должна содержать 'name'.")
         return {
             "name": name,
+            "name_full": name_full,
             "number": number,
             "display_order": display_order,
         }
@@ -516,6 +551,7 @@ def add_synchronous_area_all_versions_service(data, user):
     def resolve_for_version(clean, version_id):
         return {
             "name": clean["name"],
+            "name_full": clean["name_full"],
             "number": clean["number"],
             "display_order": clean["display_order"],
         }
@@ -527,7 +563,7 @@ def add_synchronous_area_all_versions_service(data, user):
         entity_type="synchronous_area",
         normalize_record=normalize_record,
         resolve_for_version=resolve_for_version,
-        unique_fields=['name', 'number', 'display_order']
+        unique_fields=['name', 'name_full', 'number', 'display_order']
     )
 
 
@@ -540,11 +576,13 @@ def update_synchronous_area_all_versions_service(data, user):
         display_order = record.get("display_order")
         number = (record.get("number") or "").strip() or None
         name = (record.get("name") or "").strip()
+        name_full = (record.get("name_full") or "").strip() or None
         if not name:
             raise ValueError("Поле 'name' обязательно для заполнения.")
         return {
             "synchronous_area_id": synchronous_area_id,
             "name": name,
+            "name_full": name_full,
             "number": number,
             "display_order": display_order,
         }
@@ -552,6 +590,7 @@ def update_synchronous_area_all_versions_service(data, user):
     def resolve_for_version(clean, version_id):
         return {
             "name": clean["name"],
+            "name_full": clean["name_full"],
             "number": clean["number"],
             "display_order": clean["display_order"],
         }
@@ -564,9 +603,9 @@ def update_synchronous_area_all_versions_service(data, user):
         pk_field="synchronous_area_id",
         normalize_record=normalize_record,
         resolve_for_version=resolve_for_version,
-        tracked_fields=['name', 'number', 'display_order'],
-        unique_fields=['name', 'number', 'display_order'],
-        temp_fields=['name', 'number'],
+        tracked_fields=['name', 'name_full', 'number', 'display_order'],
+        unique_fields=['name', 'name_full', 'number', 'display_order'],
+        temp_fields=['name', 'name_full', 'number'],
         clear_fields=['display_order']
     )
 # === all_versions_synchronous_area end ===

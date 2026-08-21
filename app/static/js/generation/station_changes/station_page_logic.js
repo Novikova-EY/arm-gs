@@ -273,6 +273,45 @@ document.addEventListener("DOMContentLoaded", () => {
         toggle.addEventListener('change', updateUrl);
     }
 
+    // === 6c. Режим факт / план (changes_mode)
+    function setupChangesModeButtons() {
+        document.querySelectorAll('[data-changes-mode]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const mode = btn.getAttribute('data-changes-mode') || 'plan';
+                const url = new URL(window.location.href);
+                url.searchParams.set('changes_mode', mode);
+                url.searchParams.set('page', '1');
+                window.location.href = url.toString();
+            });
+        });
+    }
+
+    // === 6d. Пересечение годовых фильтров при смене Год начала/конца
+    window.updateHiddenFields = function updateHiddenFields() {
+        const form = document.getElementById('yearForm');
+        if (!form) return;
+        const startSel = document.getElementById('start_year');
+        const endSel = document.getElementById('end_year');
+        if (!startSel || !endSel) return;
+        let startY = parseInt(startSel.value, 10);
+        let endY = parseInt(endSel.value, 10);
+        if (Number.isNaN(startY) || Number.isNaN(endY)) return;
+        if (startY > endY) {
+            const tmp = startY;
+            startY = endY;
+            endY = tmp;
+        }
+        form.querySelectorAll('input[data-year-filter="1"]').forEach((input) => {
+            const raw = (input.value || '').trim();
+            if (raw === '' || raw === 'null' || raw === 'None') return;
+            const y = parseInt(raw, 10);
+            if (Number.isNaN(y)) return;
+            if (y < startY || y > endY) {
+                input.remove();
+            }
+        });
+    };
+
     // === Инициализация всех блоков ===
     setupCollapseToggle(
         "filtersCollapse",
@@ -296,4 +335,5 @@ document.addEventListener("DOMContentLoaded", () => {
     setupPerPageToggle();
     setupRoundingDigits();
     setupShowTotalsToggle();
+    setupChangesModeButtons();
 });

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Сервис экспорта «Тепло и тарифы из СТ» в Excel."""
+"""Сервис экспорта «Тепло и тарифы (схемы теплоснабжения)» в Excel."""
 
 from io import BytesIO
 
@@ -72,7 +72,7 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Тепло и тарифы из СТ"
+    ws.title = "Тепло и тарифы (сх. теплосн.)"
 
     columns = (
         [EQUIPMENT_GROUP_ID_HEADER, "Группа оборудования"]
@@ -102,29 +102,64 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
             if v is not None and len(str(v)) > max_lengths[i]:
                 max_lengths[i] = len(str(v))
 
-    def _append_metric_rows(group_entity, group_name, identity, metric_rows):
-        eg_id_cell = (
-            equipment_group_id_cell(group_entity)
-            if getattr(group_entity, "id", None) and group_entity.id > 0
-            else "—"
-        )
+    def _append_metric_rows(
+        group_entity,
+        group_name,
+        identity,
+        metric_rows,
+        *,
+        is_total=False,
+        use_station_summary=False,
+        station_summary=None,
+    ):
+        if is_total:
+            eg_id_cell = (
+                str(getattr(group_entity, "numb", None))
+                if getattr(group_entity, "numb", None) is not None
+                else "—"
+            )
+        else:
+            eg_id_cell = (
+                equipment_group_id_cell(group_entity)
+                if getattr(group_entity, "id", None) and group_entity.id > 0
+                else "—"
+            )
         identity_vals = [
             _format_identity(identity.get(attr))
             for attr, _label, _num in HEAT_AND_TARIFFS_IDENTITY_COLUMNS
         ]
-        for metric in metric_rows or []:
-            values_by_year = metric.get("values_by_year") or {}
+        station_summary = station_summary or {}
+        q_by_year = station_summary.get("q") or {}
+        rows_to_write = list(metric_rows or [])
+        if (is_total or use_station_summary) and not rows_to_write:
+            rows_to_write = [
+                {"attr": attr, "label": label, "values_by_year": {}}
+                for attr, label, _is_num in HEAT_AND_TARIFFS_METRIC_COLUMNS
+            ]
+        for metric in rows_to_write:
+            if is_total or use_station_summary:
+                if metric.get("attr") == "q":
+                    year_vals = [
+                        _format_numeric(q_by_year.get(y), rounding_digits) for y in years
+                    ]
+                else:
+                    year_vals = ["—"] * len(years)
+            else:
+                values_by_year = metric.get("values_by_year") or {}
+                year_vals = [
+                    _format_numeric(values_by_year.get(y), rounding_digits)
+                    for y in years
+                ]
             row_data = (
                 [eg_id_cell, group_name]
                 + identity_vals
                 + [metric.get("label") or metric.get("attr") or "—"]
-                + [
-                    _format_numeric(values_by_year.get(y), rounding_digits)
-                    for y in years
-                ]
+                + year_vals
             )
             _bump_lengths(row_data)
             ws.append(apply_nbsp_to_row(row_data))
+            if is_total:
+                style_data_row(ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY)
 
     def _append_summary_rows(label, summary, fill):
         summary = summary or {}
@@ -185,11 +220,19 @@ def export_stations_equipment_group_heat_and_tariffs_to_excel(
                             )
                             or "—"
                         )
+                        is_total = bool(group_block.get("is_composite_total_row"))
+                        if is_total and not str(group_name).endswith(", всего"):
+                            group_name = f"{group_name}, всего"
                         _append_metric_rows(
                             group_entity,
                             group_name,
                             group_block.get("identity") or {},
                             group_block.get("metric_rows") or [],
+                            is_total=is_total,
+                            use_station_summary=bool(
+                                group_block.get("use_station_summary")
+                            ),
+                            station_summary=station_block.get("station_summary"),
                         )
 
                     gb_count = len(station_block.get("group_blocks") or [])

@@ -4,7 +4,7 @@
 
 В отличие от старого прямого batch-вызова, сервис:
 - проверяет, что перед запуском выполнен «Распред.»
-  (сумма ΣE по строкам топлива близка к целевому Ераспред);
+  (ΣE по строкам, которые Распред пишет, близка к целевому Ераспред);
 - запускает пакетный расчёт топлива по уже распределённым строкам;
 - возвращает сводку для flash/UI.
 """
@@ -17,17 +17,21 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.extensions import db
 from app.fuel.models.fue_distribution_parameter_model import DistributionParameter
-from app.fuel.services.calculation.coefficient.fuel_coefficient_calculation_services import (
-    FuelCoefficientCalculationService,
-)
 from app.fuel.services.calculation.distribution.distribution_stage_services import (
     D03,
     DistributionStageService,
     d0,
 )
+from app.fuel.services.calculation.equipment_group_selection import (
+    participating_group_ids_for_year,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_batch_calculation_services import (
     BatchCalculationResult,
     EquipmentGroupFuelBatchCalculationService,
+)
+from app.fuel.services.equipment_groups.composite_calc_consistency_check_services import (
+    find_composite_energy_level_issues,
+    flash_text_for_composite_energy_level_issues,
 )
 
 
@@ -59,7 +63,6 @@ class FuelStageService:
     def __init__(self, session: Session | None = None):
         self.session = session or db.session
         self.distribution_service = DistributionStageService(session=self.session)
-        self.coeff_service = FuelCoefficientCalculationService(session=self.session)
         self.batch_service = EquipmentGroupFuelBatchCalculationService(session=self.session)
 
     def get_readiness(self, distribution_parameter_id: int) -> FuelStageReadiness:
@@ -85,6 +88,12 @@ class FuelStageService:
         )
         group_ids = self.distribution_service._select_equipment_group_ids(
             row=row,
+            effective_db_version=effective_db_version,
+        )
+        group_ids = participating_group_ids_for_year(
+            self.session,
+            group_ids,
+            year_number=int(row.year.number),
             effective_db_version=effective_db_version,
         )
         distribution_name = (
@@ -118,8 +127,12 @@ class FuelStageService:
                 delta_e=None,
             )
 
-        preview = self.coeff_service.compute_calc_year_preview_for_distribution_parameter(row.id)
-        if not preview:
+        sum_e_cyear, counted = self.distribution_service.sum_processed_calc_year_e(
+            group_ids=group_ids,
+            cyear=int(row.year.number),
+            effective_db_version=effective_db_version,
+        )
+        if counted == 0:
             return FuelStageReadiness(
                 ready=False,
                 reason="Этап «Топливо» недоступен: нет данных расчётного года для контроля ΣE.",
@@ -132,7 +145,6 @@ class FuelStageService:
                 delta_e=None,
             )
 
-        sum_e_cyear = d0(preview.get("sum_e_cyear"))
         delta_e = abs(e_target - sum_e_cyear)
         ready = delta_e <= D03
         reason = None
@@ -141,6 +153,16 @@ class FuelStageService:
                 "Этап «Топливо» недоступен: сначала выполните «Распред.». "
                 f"Сейчас ΣE={sum_e_cyear:.1f}, Ераспред={e_target:.1f}, отклонение={delta_e:.1f}."
             )
+            composite_hint = flash_text_for_composite_energy_level_issues(
+                find_composite_energy_level_issues(
+                    self.session,
+                    database_version_id=effective_db_version,
+                    year_number=int(row.year.number),
+                    selected_group_ids=group_ids,
+                )
+            )
+            if composite_hint:
+                reason = f"{reason} {composite_hint}"
 
         return FuelStageReadiness(
             ready=ready,
