@@ -66,6 +66,45 @@ def _version_id_for_station_link(place) -> int | None:
     return get_current_db_version_id()
 
 
+def _annotate_places_with_linked_station_flag(places) -> None:
+    """Для списка площадок: place.has_linked_station — как «Электростанция» в параметрах площадки."""
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_model import Station
+
+    for place in places:
+        place.has_linked_station = False
+
+    codes_by_version: dict = {}
+    for place in places:
+        code = (getattr(place, "external_code", None) or "").strip()
+        if not code:
+            continue
+        vid = _version_id_for_station_link(place)
+        codes_by_version.setdefault(vid, set()).add(code)
+
+    if not codes_by_version:
+        return
+
+    linked_codes_by_version: dict = {}
+    for vid, codes in codes_by_version.items():
+        rows = (
+            filter_by_explicit_db_version(Station.query, Station, vid)
+            .filter(Station.external_code.in_(list(codes)))
+            .with_entities(Station.external_code)
+            .all()
+        )
+        linked_codes_by_version[vid] = {
+            (c or "").strip() for (c,) in rows if (c or "").strip()
+        }
+
+    for place in places:
+        code = (getattr(place, "external_code", None) or "").strip()
+        if not code:
+            continue
+        vid = _version_id_for_station_link(place)
+        place.has_linked_station = code in linked_codes_by_version.get(vid, set())
+
+
 def _get_station_link_context(place) -> dict:
     from app.common.services.database_version_filter import filter_by_explicit_db_version
     from app.generation.models.station.station_model import Station
@@ -113,6 +152,7 @@ def _get_station_link_context(place) -> dict:
             ("", "не указано"),
             *[(str(st.id), _station_choice_label(st)) for st in stations],
         ],
+        "linked_station": linked_station,
         "linked_station_id": str(linked_station.id) if linked_station else "",
         "linked_station_display": (
             _station_choice_label(linked_station) if linked_station else "не указано"
@@ -249,6 +289,7 @@ def prospective_places_start():
 def prospective_places_aes():
     """Характеристика актуальных площадок размещения новых АЭС."""
     stations, filters, filter_context = _load_prospective_places_aes_stations_and_filters()
+    _annotate_places_with_linked_station_flag(stations)
 
     return render_template(
         "generation/prospective_places/aes/prospective_places_aes.html",
@@ -409,6 +450,16 @@ def prospective_places_aes_tep_reserve():
     )
 
 
+def _aes_details_redirect_kwargs(place_id: int) -> dict:
+    """Сохраняет годы/округление в URL после POST на карточке АЭС."""
+    kwargs = {"id": place_id}
+    for key in ("start_year", "end_year", "rounding_digits_gen"):
+        val = request.args.get(key)
+        if val not in (None, ""):
+            kwargs[key] = val
+    return kwargs
+
+
 @prospective_places_bp.route("/aes/<int:id>/", methods=["GET", "POST"])
 @login_required
 def prospective_place_aes_details(id):
@@ -431,6 +482,29 @@ def prospective_place_aes_details(id):
     from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
         get_union_energy_systems_map,
     )
+    from app.common.services.get_services.years.years_get_services import (
+        get_filter_end_year,
+        get_filter_start_year,
+        get_year_list_full,
+    )
+    from app.common.services.get_services.years.year_feature_services import (
+        get_year_feature_dict,
+    )
+    from app.common.services.help_services import format_decimal_for_display
+    from app.generation.services.station_services.generation_year_filter_services import (
+        resolve_generation_year_filters_for_request,
+    )
+    from app.generation.services.station_services.station_services import (
+        save_station_energy_generation_service,
+        station_annual_energy_by_year,
+    )
+    from app.generation.routes.stations.station_details_routes import (
+        get_station_details_rounding_triplet,
+    )
+
+    start_year, end_year, year_redirect = resolve_generation_year_filters_for_request()
+    if year_redirect is not None and request.method == "GET":
+        return year_redirect
 
     place = (
         StationProspectivePlaceAES.query
@@ -460,6 +534,55 @@ def prospective_place_aes_details(id):
     sort_machines_by_station_block_number(place)
 
     can_edit = _prospective_place_can_edit()
+    station_link_ctx = _get_station_link_context(place)
+    linked_station = station_link_ctx.get("linked_station")
+    _, rounding_digits_gen, _ = get_station_details_rounding_triplet()
+
+    is_energy_submit = request.form.get("aes_energy_generation_submit") == "1"
+    if is_energy_submit:
+        if not can_edit:
+            flash("Недостаточно прав для изменения прогноза выработки.", "warning")
+            return redirect(
+                url_for(
+                    "prospective_places_bp.prospective_place_aes_details",
+                    **_aes_details_redirect_kwargs(place.id),
+                )
+            )
+        if linked_station is None:
+            flash(
+                "Свяжите электростанцию, чтобы сохранять прогноз выработки.",
+                "warning",
+            )
+            return redirect(
+                url_for(
+                    "prospective_places_bp.prospective_place_aes_details",
+                    **_aes_details_redirect_kwargs(place.id),
+                )
+            )
+        try:
+            station_version_id = getattr(linked_station, "database_version_id", None)
+            if station_version_id is None:
+                station_version_id = _version_id_for_station_link(place)
+            changes = save_station_energy_generation_service(
+                current_user,
+                linked_station,
+                station_version_id,
+                start_year,
+                end_year,
+                request.form,
+            )
+            if changes:
+                flash("Прогноз выработки электроэнергии сохранён.", "success")
+            else:
+                flash("Изменений в прогнозе выработки нет.", "info")
+        except Exception as e:
+            flash(f"Ошибка при сохранении прогноза выработки: {str(e)}", "danger")
+        return redirect(
+            url_for(
+                "prospective_places_bp.prospective_place_aes_details",
+                **_aes_details_redirect_kwargs(place.id),
+            )
+        )
 
     form = ProspectivePlaceAESEditForm()
     rd_list = get_regional_district_list_full()
@@ -500,7 +623,12 @@ def prospective_place_aes_details(id):
             place.selection_factor = (form.selection_factor.data or "").strip() or None
             db.session.commit()
             flash("Перспективная площадка успешно сохранена.", "success")
-            return redirect(url_for("prospective_places_bp.prospective_place_aes_details", id=place.id))
+            return redirect(
+                url_for(
+                    "prospective_places_bp.prospective_place_aes_details",
+                    **_aes_details_redirect_kwargs(place.id),
+                )
+            )
         except Exception as e:
             db.session.rollback()
             flash(f"Ошибка при сохранении: {str(e)}", "danger")
@@ -540,16 +668,46 @@ def prospective_place_aes_details(id):
         "ozp": _all_same(lambda mp: mp.ozp),
         "vlp": _all_same(lambda mp: mp.vlp),
     }
-    station_link_ctx = _get_station_link_context(place)
+
+    if linked_station is not None:
+        station_version_id = getattr(linked_station, "database_version_id", None)
+        if station_version_id is None:
+            station_version_id = _version_id_for_station_link(place)
+        linked_station.station_energy_by_year = station_annual_energy_by_year(
+            linked_station.id, start_year, end_year, station_version_id
+        )
+        energy_station = linked_station
+    else:
+        from types import SimpleNamespace
+
+        energy_station = SimpleNamespace(station_energy_by_year={})
+
+    _years_from_db = [y.number for y in get_year_list_full()]
+    filter_year_list = (
+        _years_from_db
+        if _years_from_db
+        else list(range(get_filter_start_year(), get_filter_end_year() + 1))
+    )
+
+    def format_station_energy_gen_display(val):
+        return format_decimal_for_display(val, digits=rounding_digits_gen)
 
     return render_template(
         "generation/prospective_places/aes/prospective_place_aes_details.html",
         place=place,
         form=form,
         can_edit=can_edit,
+        can_edit_station_energy=can_edit and linked_station is not None,
         res_auto_map=res_auto_map,
         total_capacity_mw=total_capacity_mw,
         merged_values=merged_values,
+        start_year=start_year,
+        end_year=end_year,
+        filter_year_list=filter_year_list,
+        year_features=get_year_feature_dict(),
+        rounding_digits_gen=rounding_digits_gen,
+        energy_station=energy_station,
+        format_station_energy_gen_display=format_station_energy_gen_display,
         **station_link_ctx,
     )
 

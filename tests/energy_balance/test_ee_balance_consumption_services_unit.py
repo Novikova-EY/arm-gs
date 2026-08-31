@@ -12,6 +12,9 @@ from app.energy_balance.services.ee_balance_consumption_services import (
     load_ee_balance_consumption_inputs,
     year_values_from_consumption_rows,
 )
+from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
+    EnergyUnitEnergyConsumptionParameter,
+)
 from app.energy_consumption.models.energy_systems.union_energy_system_energy_consumption_parameter_model import (
     UnionEnergySystemEnergyConsumptionParameter,
 )
@@ -54,7 +57,7 @@ def test_load_ues_without_nt_consumption():
         captured["model"] = model
         captured["fk"] = fk
         captured["parent_id"] = parent_id
-        captured["code"] = perimeter_variant_code
+        captured.setdefault("codes", []).append(perimeter_variant_code)
         return [_row(year=2026, value=Decimal("77"))]
 
     with patch(
@@ -69,5 +72,91 @@ def test_load_ues_without_nt_consumption():
     assert captured["model"] is UnionEnergySystemEnergyConsumptionParameter
     assert captured["fk"] == "id_union_energy_system"
     assert captured["parent_id"] == 10
-    assert captured["code"] == CODE_WITHOUT_NT
+    assert CODE_WITHOUT_NT in captured["codes"]
     assert inputs["centr"]["consumption"][2026] == Decimal("77")
+
+
+def test_load_energy_unit_consumption_for_tites_sheet():
+    sheets = [
+        {
+            "slug": "eu-104",
+            "layout": "oes_standard",
+            "group": "eu",
+            "sheet_name": "Чаун-Билибинский энергорайон",
+            "territory": {
+                "kind": "eu",
+                "id": 104,
+                "name": "Чаун-Билибинский энергорайон",
+            },
+        }
+    ]
+    captured = {}
+
+    def fake_rows(model, fk, parent_id, perimeter_variant_code=None):
+        captured["model"] = model
+        captured["fk"] = fk
+        captured["parent_id"] = parent_id
+        captured.setdefault("codes", []).append(perimeter_variant_code)
+        if perimeter_variant_code is None:
+            return [_row(year=2026, value=Decimal("41"))]
+        if perimeter_variant_code in {"o1", "o1_without_nt"}:
+            return [_row(year=2026, value=Decimal("999"))]
+        return []
+
+    with patch(
+        "app.energy_balance.services.ee_balance_consumption_services.resolve_demand_max_territory",
+        return_value={
+            "kind": "eu",
+            "id": 104,
+            "name": "Чаун-Билибинский энергорайон",
+        },
+    ), patch(
+        "app.energy_balance.services.ee_balance_consumption_services.get_demand_rows",
+        fake_rows,
+    ):
+        inputs = load_ee_balance_consumption_inputs([2026], sheets=sheets)
+
+    assert captured["model"] is EnergyUnitEnergyConsumptionParameter
+    assert captured["fk"] == "id_energy_unit"
+    assert captured["parent_id"] == 104
+    assert None in captured["codes"]
+    assert "o1" not in captured["codes"]
+    assert "o1_without_nt" not in captured["codes"]
+    assert inputs["eu-104"]["consumption"][2026] == Decimal("41")
+
+
+def test_tites_eu_consumption_does_not_fall_back_to_o1():
+    sheets = [
+        {
+            "slug": "eu-104",
+            "layout": "oes_standard",
+            "group": "eu",
+            "sheet_name": "Чаун-Билибинский энергорайон",
+            "territory": {
+                "kind": "eu",
+                "id": 104,
+                "name": "Чаун-Билибинский энергорайон",
+            },
+        }
+    ]
+
+    def fake_rows(model, fk, parent_id, perimeter_variant_code=None):
+        code = str(perimeter_variant_code or "")
+        if "o1" in code.replace("о", "o"):
+            return [_row(year=2026, value=Decimal("999"))]
+        return []
+
+    with patch(
+        "app.energy_balance.services.ee_balance_consumption_services.resolve_demand_max_territory",
+        return_value={
+            "kind": "eu",
+            "id": 104,
+            "name": "Чаун-Билибинский энергорайон",
+        },
+    ), patch(
+        "app.energy_balance.services.ee_balance_consumption_services.get_demand_rows",
+        fake_rows,
+    ):
+        inputs = load_ee_balance_consumption_inputs([2026], sheets=sheets)
+
+    assert "eu-104" not in inputs

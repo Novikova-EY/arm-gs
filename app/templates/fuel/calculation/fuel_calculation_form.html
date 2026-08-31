@@ -214,12 +214,12 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
     <a
       href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
       class="btn btn-secondary fs-5"
-      >Группы оборудования</a
+      >Словарь станций и групп оборудования</a
     >
     <a
       href="{{ url_for('fuel_bp.stations_equipment_group_fuel_params') }}"
       class="btn btn-secondary fs-5"
-      >Топливные параметры (основные)</a
+      >Сведения о работе ТЭС</a
     >
   </div>
 
@@ -280,7 +280,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                     >
                   </th>
                   <th class="text-center">
-                    Выработка ЭЭ, тыс.кВтч<br /><span
+                    Выработка ЭЭ, млн кВтч<br /><span
                       class="text-muted small fw-normal"
                       >({{ 'e'|fuel_header_code }})</span
                     >
@@ -737,7 +737,7 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                 <tbody>
                   <tr>
                     <td class="text-start">
-                      {{ dp_l['e'] }} (Ераспред), тыс.кВтч
+                      {{ dp_l['e'] }} (Ераспред), млн кВтч
                       <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
                     </td>
                     <td class="text-center">{{ coeff_stage_last_result.e_target }}</td>
@@ -809,13 +809,13 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                 <tbody>
                   <tr>
                     <td class="text-start">
-                      {{ dp_l['e'] }} (контроль перед Топливо), тыс.кВтч
+                      {{ dp_l['e'] }} (контроль перед Топливо), млн кВтч
                       <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
                     </td>
                     <td class="text-center">{{ fuel_stage_last_result.e_target }}</td>
                   </tr>
                   <tr>
-                    <td class="text-start">ΣE расчётного года, тыс.кВтч</td>
+                    <td class="text-start">ΣE расчётного года, млн кВтч</td>
                     <td class="text-center">{{ fuel_stage_last_result.sum_e_cyear }}</td>
                   </tr>
                   <tr>
@@ -846,13 +846,13 @@ distribution_parameter_field_labels %} {% set _fcalc_drop_params = [
                 <tbody>
                   <tr>
                     <td class="text-start">
-                      {{ dp_l['e'] }} (цель распределения), тыс.кВтч
+                      {{ dp_l['e'] }} (цель распределения), млн кВтч
                       <span class="text-muted small fw-normal">({{ 'e'|fuel_header_code }})</span>
                     </td>
                     <td class="text-center">{{ distribution_stage_last_result.e_target }}</td>
                   </tr>
                   <tr>
-                    <td class="text-start">ΣE после распределения, тыс.кВтч</td>
+                    <td class="text-start">ΣE после распределения, млн кВтч</td>
                     <td class="text-center">{{ distribution_stage_last_result.total_distributed_e }}</td>
                   </tr>
                   <tr>

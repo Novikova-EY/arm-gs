@@ -48,6 +48,27 @@ def dedupe_equipment_group_ids_prefer_version(
     return sorted(result)
 
 
+def drop_null_groups_shadowed_by_versioned_numb(
+    rows: list[tuple[int, int | None, int | None]],
+    versioned_numbs: set[int],
+) -> list[tuple[int, int | None, int | None]]:
+    """
+    NULL-копия станции не участвует в расчёте, если в версии БД уже есть
+    группа с тем же numb — даже если версионная строка не проходит ved>0.
+
+    Иначе в «Нет строки топлива» попадает legacy id (database_version_id IS NULL),
+    а ссылка на редактирование (только текущая версия) открывает пустую выборку.
+    """
+    if not versioned_numbs:
+        return list(rows)
+    out: list[tuple[int, int | None, int | None]] = []
+    for gid, numb, vid in rows:
+        if vid is None and numb is not None and int(numb) in versioned_numbs:
+            continue
+        out.append((gid, numb, vid))
+    return out
+
+
 def select_equipment_group_ids_for_calculation(
     session: Session,
     *,
@@ -67,8 +88,10 @@ def select_equipment_group_ids_for_calculation(
     Access проверяет ved ещё раз на *строке года* (FindFirst filter1) — см.
     ``access_ved_filter_year_row_participates``.
 
-    При заданной версии в выборку попадают и versioned, и NULL-группы (как раньше),
-    но одинаковый numb не суммируется дважды — приоритет у строки effective_db_version.
+    При заданной версии в выборку попадают и versioned, и NULL-группы, но
+    одинаковый numb не суммируется дважды — приоритет у строки effective_db_version.
+    NULL-группа отбрасывается, если группа с тем же numb уже есть в версии
+    (даже когда версионная копия не проходит ved>0 за base/calc год).
     """
     query = session.query(
         EquipmentGroup.id,
@@ -111,6 +134,22 @@ def select_equipment_group_ids_for_calculation(
     rows = [(int(r[0]), r[1], r[2]) for r in query.order_by(EquipmentGroup.id).all()]
     if effective_db_version is None:
         return [gid for gid, _numb, _vid in rows]
+    null_numbs = {
+        int(n) for _gid, n, vid in rows if vid is None and n is not None
+    }
+    versioned_numbs: set[int] = set()
+    if null_numbs and hasattr(EquipmentGroup, "database_version_id"):
+        versioned_numbs = {
+            int(n)
+            for (n,) in session.query(EquipmentGroup.numb)
+            .filter(
+                EquipmentGroup.database_version_id == effective_db_version,
+                EquipmentGroup.numb.in_(list(null_numbs)),
+            )
+            .all()
+            if n is not None
+        }
+    rows = drop_null_groups_shadowed_by_versioned_numb(rows, versioned_numbs)
     return dedupe_equipment_group_ids_prefer_version(rows, effective_db_version)
 
 

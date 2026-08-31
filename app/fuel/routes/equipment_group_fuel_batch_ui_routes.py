@@ -367,6 +367,13 @@ def equipment_group_fuel_batch_calculation_batch_api():
         default=False,
     )
     chunk_size = int(data.get("chunk_size") or 200)
+    raw_byear = data.get("base_year_number")
+    base_year_number = None
+    if raw_byear not in (None, ""):
+        try:
+            base_year_number = int(raw_byear)
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "Неверный base_year_number"}), 400
 
     svc = EquipmentGroupFuelBatchCalculationService()
     try:
@@ -380,6 +387,7 @@ def equipment_group_fuel_batch_calculation_batch_api():
             final_commit=final_commit,
             stop_on_error=stop_on_error,
             chunk_size=chunk_size,
+            base_year_number=base_year_number,
         )
     except Exception as exc:
         db.session.rollback()

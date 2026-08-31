@@ -63,9 +63,10 @@ FUEL_PARAM_LABELS = {
     "nr": EquipmentGroupFuelParam.NR_COLUMN_LABEL,
     "h": EquipmentGroupFuelParam.H_COLUMN_LABEL,
     "hfix": EquipmentGroupFuelParam.HFIX_COLUMN_LABEL,
-    "e": "Выработка ЭЭ, тыс.кВтч", "ewtp": "Теплофикационная выработка ЭЭ, тыс.кВтч",
+    "e": EquipmentGroupFuelParam.E_COLUMN_LABEL, "ewtp": "Теплофикационная выработка ЭЭ, тыс.кВтч",
     "eotp": EquipmentGroupFuelParam.EOTP_COLUMN_LABEL,
-    "eurt": EquipmentGroupFuelParam.EURT_COLUMN_LABEL, "eust": "Расх топ ээ",
+    "eurt": EquipmentGroupFuelParam.EURT_COLUMN_LABEL,
+    "eust": EquipmentGroupFuelParam.EUST_COLUMN_LABEL,
     "sn_ee": EquipmentGroupFuelParam.SN_EE_COLUMN_LABEL,
     "snk": EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL,
     "q": EquipmentGroupFuelParam.Q_COLUMN_LABEL, "qotr": "Тепловое потребление (отборов турбин), тыс.Гкал", "turt": EquipmentGroupFuelParam.TURT_COLUMN_LABEL, "tust": EquipmentGroupFuelParam.TUST_COLUMN_LABEL,
@@ -549,6 +550,28 @@ def normalize_equipment_group_ids_filter(raw) -> list[int] | None:
     return out or None
 
 
+def restrict_equipment_group_query_to_current_version(
+    query,
+    current_version_id,
+    *,
+    skip: bool = False,
+):
+    """
+    Обычные страницы ТЭП — только текущая версия БД.
+
+    skip=True: ссылки «нет строки топлива» / «нет ТЭП» передают конкретные
+    equipment_group_ids (в т.ч. legacy database_version_id IS NULL) — их нужно
+    показать, иначе выборка пустая.
+    """
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    if skip or not hasattr(EquipmentGroup, "database_version_id"):
+        return query
+    if current_version_id is not None:
+        return query.filter(EquipmentGroup.database_version_id == current_version_id)
+    return query.filter(EquipmentGroup.database_version_id.is_(None))
+
+
 def displayed_numb1120(equipment_group, param) -> int | None:
     """Код, который видит пользователь: numb1120 строки ТЭП, иначе EquipmentGroup.numb."""
     if param is not None:
@@ -679,8 +702,9 @@ def get_equipment_group_ids_for_fuel_params_filters(
     end_year=None,
 ):
     """
-    Список id групп оборудования в текущей версии БД по тем же фильтрам,
-    что и get_equipment_groups_with_fuel_params_data (без соединения с параметрами по годам).
+    Список id групп оборудования по тем же фильтрам, что и
+    get_equipment_groups_with_fuel_params_data (без соединения с параметрами по годам).
+    По умолчанию — текущая версия БД; при явном equipment_group_ids версия не режет.
 
     Параметры start_year/end_year сохранены для совместимости вызовов;
     территориальный фильтр eg-first от диапазона лет не зависит.
@@ -691,16 +715,6 @@ def get_equipment_group_ids_for_fuel_params_filters(
     current_version_id = get_current_db_version_id()
 
     base_query = db.session.query(EquipmentGroup.id)
-
-    if hasattr(EquipmentGroup, "database_version_id"):
-        if current_version_id is not None:
-            base_query = base_query.filter(
-                EquipmentGroup.database_version_id == current_version_id
-            )
-        else:
-            base_query = base_query.filter(
-                EquipmentGroup.database_version_id.is_(None)
-            )
 
     territorial_keys = (
         "energy_system_type_filter",
@@ -716,6 +730,11 @@ def get_equipment_group_ids_for_fuel_params_filters(
     equipment_group_name_filter = (_filters.get("equipment_group_name_filter") or "").strip() or None
     id_list = normalize_equipment_group_ids_filter(_filters.get("equipment_group_ids"))
     numb1120_filter = normalize_numb1120_filter(_filters.get("numb1120_filter"))
+    base_query = restrict_equipment_group_query_to_current_version(
+        base_query,
+        current_version_id,
+        skip=bool(id_list),
+    )
     if id_list:
         base_query = base_query.filter(EquipmentGroup.id.in_(id_list))
     elif any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:
@@ -753,7 +772,8 @@ def get_equipment_groups_with_fuel_params_data(
     """
     Выбирает позиции из gs_fue_equipment_groups с присоединением параметров
     gs_fue_equipment_group_fuel_param. Без постанционной логики.
-    Отображаются только группы с текущей database_version_id.
+    Отображаются группы текущей database_version_id; явный equipment_group_ids
+    (ссылки контроля расчёта) показывается независимо от версии.
 
     Возвращает:
         rows: list[(EquipmentGroup, EquipmentGroupFuelParam)]
@@ -796,17 +816,6 @@ def get_equipment_groups_with_fuel_params_data(
         .outerjoin(EquipmentGroupFuelParam, join_cond)
     )
 
-    # Фильтр по версии БД: только текущая версия или только NULL (если версий нет)
-    if hasattr(EquipmentGroup, "database_version_id"):
-        if current_version_id is not None:
-            base_query = base_query.filter(
-                EquipmentGroup.database_version_id == current_version_id
-            )
-        else:
-            base_query = base_query.filter(
-                EquipmentGroup.database_version_id.is_(None)
-            )
-
     # Территориальные фильтры и поиск по группе оборудования (как на stations_equipment_groups)
     territorial_keys = (
         "energy_system_type_filter",
@@ -819,6 +828,11 @@ def get_equipment_groups_with_fuel_params_data(
                 if k not in ("page", "start_year", "end_year")}
     equipment_group_name_filter = (_filters.get("equipment_group_name_filter") or "").strip() or None
     id_list = normalize_equipment_group_ids_filter(_filters.get("equipment_group_ids"))
+    base_query = restrict_equipment_group_query_to_current_version(
+        base_query,
+        current_version_id,
+        skip=bool(id_list),
+    )
     if id_list:
         base_query = base_query.filter(EquipmentGroup.id.in_(id_list))
     elif any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:

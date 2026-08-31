@@ -473,6 +473,19 @@ def get_demand_rows(
     """
     Список строк параметров для родителя. fk_column_name=None — модель без FK (РФ целиком).
     """
+    from app.energy_consumption.services.ec_demand_rows_bulk_cache import (
+        get_demand_rows_from_bulk,
+        is_energy_consumption_rows_bulk_active,
+    )
+
+    if is_energy_consumption_rows_bulk_active():
+        return get_demand_rows_from_bulk(
+            demand_model,
+            fk_column_name,
+            parent_id,
+            perimeter_variant_code=perimeter_variant_code,
+        )
+
     q = demand_model.query
     q = filter_demand_by_version(q, demand_model)
     if fk_column_name is not None and parent_id is not None:
@@ -496,10 +509,20 @@ def peek_stored_perimeter_variant_code_for_parent(
         return None
     if fk_column_name is None or parent_id is None:
         return None
-    q = demand_model.query
-    q = filter_demand_by_version(q, demand_model)
-    q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
-    rows = q.order_by(demand_model.year_number.asc().nullsfirst()).all()
+    from app.energy_consumption.services.ec_demand_rows_bulk_cache import (
+        get_all_demand_rows_for_parent_from_bulk,
+        is_energy_consumption_rows_bulk_active,
+    )
+
+    if is_energy_consumption_rows_bulk_active():
+        rows = get_all_demand_rows_for_parent_from_bulk(
+            demand_model, fk_column_name, parent_id
+        )
+    else:
+        q = demand_model.query
+        q = filter_demand_by_version(q, demand_model)
+        q = q.filter(getattr(demand_model, fk_column_name) == parent_id)
+        rows = q.order_by(demand_model.year_number.asc().nullsfirst()).all()
     for row in rows:
         if getattr(row, "year_number", None) is not None:
             continue

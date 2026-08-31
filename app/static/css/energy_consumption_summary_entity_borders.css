@@ -1,0 +1,15 @@
+/* Разделительные полосы между блоками сущностей — как /power_demand/summary/oes/. */
+#powerDemandSummaryTable.power-demand-summary-table > tbody > tr > td {
+    border-top-width: 0 !important;
+    border-bottom-width: 0 !important;
+}
+
+/*
+ * Граница между блоками: border-top на первой видимой строке следующего блока.
+ * Так линия идёт через все столбцы, включая rowspan «Энергосистема»/«Примечание».
+ */
+#powerDemandSummaryTable.power-demand-summary-table > tbody > tr.pd-summary-entity-block-first > td {
+    border-top-width: 2px !important;
+    border-top-style: solid !important;
+    border-top-color: #6c757d !important;
+}

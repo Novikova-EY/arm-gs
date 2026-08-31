@@ -131,6 +131,7 @@ class FuelStageService:
             group_ids=group_ids,
             cyear=int(row.year.number),
             effective_db_version=effective_db_version,
+            byear=int(row.base_year.number) if row.base_year is not None else None,
         )
         if counted == 0:
             return FuelStageReadiness(
@@ -181,10 +182,12 @@ class FuelStageService:
         if not readiness.ready:
             raise ValueError(readiness.reason or "Этап «Топливо» недоступен.")
 
+        dp = self.session.get(DistributionParameter, distribution_parameter_id)
         effective_db_version = self.distribution_service._resolve_effective_db_version(
-            self.session.get(DistributionParameter, distribution_parameter_id),
+            dp,
             None,
         )
+        byear = int(dp.base_year.number) if dp is not None and dp.base_year is not None else None
         batch_result = self.batch_service.calculate_for_many_groups(
             equipment_group_ids=readiness.selected_group_ids,
             year_number=readiness.year_number,
@@ -192,6 +195,7 @@ class FuelStageService:
             commit_each=True,
             final_commit=True,
             stop_on_error=False,
+            base_year_number=byear,
         )
 
         total_fuel_b = Decimal("0")

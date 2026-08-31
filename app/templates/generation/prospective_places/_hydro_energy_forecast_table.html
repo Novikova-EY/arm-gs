@@ -1,0 +1,107 @@
+{# Помесячный прогноз выработки (водохозяйственный год V–IV), ГЭС/ГАЭС.
+   Поля входят в общую форму карточки (кнопки Сохранить / Отмена снаружи). #}
+{% set hydro = hydro_forecast %}
+{% set can_edit_hydro = can_edit_hydro_forecast if can_edit_hydro_forecast is defined else can_edit %}
+<div class="container-fluid mt-4 mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <h3 class="mb-0 ms-3">Прогноз выработки электрической энергии электростанцией, млн кВтч</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-responsive machines-table hydro-forecast-table" id="hydro-energy-forecast-table" data-auto-export-excel="off">
+            <thead class="table-success">
+                <tr class="text-center align-middle">
+                    <th class="align-middle" style="min-width: 14rem;">Показатель</th>
+                    {% for month in hydro.month_order %}
+                    <th class="text-center align-middle" style="min-width: 4.25rem;">{{ hydro.month_romans[month] }}</th>
+                    {% endfor %}
+                    <th class="text-center align-middle" style="min-width: 5rem;">Год</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for scenario in hydro.scenarios %}
+                <tr class="table-secondary">
+                    <td colspan="14" class="text-center fw-semibold align-middle">{{ scenario.title }}</td>
+                </tr>
+                <tr class="hydro-forecast-data-row" data-scenario="{{ scenario.code }}">
+                    <td class="text-start align-middle">Выработка электроэнергии, млн.кВт·ч</td>
+                    {% for month in hydro.month_order %}
+                    {% set v = scenario.months.get(month) %}
+                    {% set field = 'hydro_gen_' ~ scenario.code ~ '_' ~ month %}
+                    {% set disp = hydro.format_value(v) if v is not none else '' %}
+                    <td class="text-center align-middle">
+                        {% if can_edit_hydro %}
+                        <input type="hidden" name="{{ field }}_orig" value="{{ disp }}">
+                        <input
+                            type="text"
+                            class="form-control text-center hydro-forecast-month-input forecast-paste-input"
+                            name="{{ field }}"
+                            inputmode="decimal"
+                            autocomplete="off"
+                            value="{{ disp }}"
+                            data-month="{{ month }}"
+                            style="min-width: 4rem;"
+                        >
+                        {% else %}
+                            {{ disp if disp else '—' }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                    <td class="text-center align-middle fw-semibold hydro-forecast-year-total">
+                        {{ scenario.year_total_display if scenario.year_total_display else '—' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% if can_edit_hydro %}
+<script src="{{ url_for('static', filename='js/generation/prospective_place_forecast_row_paste.js') }}"></script>
+<script>
+(function() {
+    function parseRuNumber(raw) {
+        const s = (raw || '').toString().trim().replace(/\s+/g, '').replace(',', '.');
+        if (!s) return null;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : null;
+    }
+    function formatRuNumber(n) {
+        if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+        const digits = {{ hydro.rounding_digits|default(1)|int }};
+        let out;
+        if (digits === -1) {
+            out = String(Math.round(n));
+        } else if (digits === 0) {
+            out = String(n);
+        } else {
+            out = n.toFixed(digits);
+        }
+        return out.replace('.', ',');
+    }
+    function refreshYearTotal(row) {
+        if (!row) return;
+        let sum = 0;
+        let hasAny = false;
+        row.querySelectorAll('.hydro-forecast-month-input').forEach(function(inp) {
+            const n = parseRuNumber(inp.value);
+            if (n === null) return;
+            sum += n;
+            hasAny = true;
+        });
+        const cell = row.querySelector('.hydro-forecast-year-total');
+        if (cell) cell.textContent = hasAny ? formatRuNumber(sum) : '—';
+    }
+    document.querySelectorAll('.hydro-forecast-data-row').forEach(function(row) {
+        row.querySelectorAll('.hydro-forecast-month-input').forEach(function(inp) {
+            inp.addEventListener('input', function() { refreshYearTotal(row); });
+            inp.addEventListener('change', function() { refreshYearTotal(row); });
+        });
+    });
+
+    var table = document.getElementById('hydro-energy-forecast-table');
+    if (table && typeof window.initProspectivePlaceForecastRowPaste === 'function') {
+        window.initProspectivePlaceForecastRowPaste(table);
+    }
+})();
+</script>
+{% endif %}

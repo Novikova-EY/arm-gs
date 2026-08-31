@@ -540,6 +540,23 @@ def _station_union_energy_system_sql_filter(union_energy_system_filter):
     )
 
 
+def _station_energy_unit_sql_filter(energy_unit_filter):
+    ids = energy_unit_filter
+    if ids is None or ids == "" or ids == []:
+        return None
+    if not isinstance(ids, (list, tuple, set)):
+        ids = [ids]
+    parsed: list[int] = []
+    for item in ids:
+        try:
+            parsed.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    if not parsed:
+        return None
+    return Station.id_energy_unit.in_(parsed)
+
+
 def get_stations_list(
     page=1,
     per_page=None,
@@ -609,7 +626,6 @@ def get_stations_list(
 
         # Проверка топлива: показываем "проблемные" агрегаты:
         if filters.get("fuel_check"):
-            from sqlalchemy import func
             from app.refdata.models.fuels.fuel_type_model import FuelType
             from app.common.services.database_version_filter import get_current_db_version_id
             from app.common.services.get_services.years.years_get_services import (
@@ -761,6 +777,10 @@ def get_stations_list(
             Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
         )
 
+    eu_cond = _station_energy_unit_sql_filter(filters.get("energy_unit_filter"))
+    if eu_cond is not None:
+        station_ids_query = station_ids_query.filter(eu_cond)
+
     if filters.get("union_energy_system_filter"):
         station_ids_query = station_ids_query.filter(
             _station_union_energy_system_sql_filter(
@@ -813,8 +833,6 @@ def get_stations_list(
         station_ids_in_rows = list({row[0] for row in station_rows})
         machine_counts = {}
         if station_ids_in_rows:
-            from sqlalchemy import func
-
             machine_counts = dict(
                 db.session.query(Machine.id_station, func.count(Machine.id))
                 .filter(Machine.id_station.in_(station_ids_in_rows))
@@ -934,6 +952,9 @@ def get_stations_list(
             pgu_station_query = pgu_station_query.filter(
                 Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
             )
+        eu_cond = _station_energy_unit_sql_filter(filters.get("energy_unit_filter"))
+        if eu_cond is not None:
+            pgu_station_query = pgu_station_query.filter(eu_cond)
         if filters.get("union_energy_system_filter"):
             pgu_station_query = pgu_station_query.filter(
                 _station_union_energy_system_sql_filter(
@@ -1004,6 +1025,9 @@ def get_stations_list(
                     filters["regional_energy_system_filter"]
                 )
             )
+        eu_cond = _station_energy_unit_sql_filter(filters.get("energy_unit_filter"))
+        if eu_cond is not None:
+            station_query = station_query.filter(eu_cond)
         if filters.get("union_energy_system_filter"):
             station_query = station_query.filter(
                 _station_union_energy_system_sql_filter(
@@ -2701,6 +2725,10 @@ def get_filtered_station_ids(filters):
             Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
         )
 
+    eu_cond = _station_energy_unit_sql_filter(filters.get("energy_unit_filter"))
+    if eu_cond is not None:
+        station_ids_query = station_ids_query.filter(eu_cond)
+
     if filters.get("union_energy_system_filter"):
         station_ids_query = station_ids_query.filter(
             Station.regional_energy_system_obj.has(
@@ -2782,6 +2810,9 @@ def get_filtered_station_ids(filters):
             station_query = station_query.filter(
                 Station.id_regional_energy_system.in_(filters["regional_energy_system_filter"])
             )
+        eu_cond = _station_energy_unit_sql_filter(filters.get("energy_unit_filter"))
+        if eu_cond is not None:
+            station_query = station_query.filter(eu_cond)
         if filters.get("union_energy_system_filter"):
             station_query = station_query.filter(
                 Station.regional_energy_system_obj.has(

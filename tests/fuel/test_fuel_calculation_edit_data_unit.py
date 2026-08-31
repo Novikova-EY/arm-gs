@@ -108,3 +108,97 @@ def test_missing_year_placeholder_is_skipped_by_snk_overlay():
     missing = _MissingYearSpecificFuelParam(2027)
     assert not missing
     assert missing.snk_calc is None
+    assert missing.ved is None
+
+
+def test_overlay_ved_from_fuel_params_sets_year_and_placeholder():
+    from types import SimpleNamespace
+
+    from app.fuel.services.calculation.fuel_calculation_specific_consumption_edit_data_services import (
+        _MissingYearSpecificFuelParam,
+        _overlay_ved_from_fuel_params,
+    )
+
+    eg = SimpleNamespace(id=10)
+    real = SimpleNamespace(equipment_group_id=10, year_number=2021)
+    missing = _MissingYearSpecificFuelParam(2022)
+    fp_2021 = SimpleNamespace(year_number=2021, ved=2)
+    fp_2022 = SimpleNamespace(year_number=2022, ved=1)
+
+    _overlay_ved_from_fuel_params(
+        [(eg, real), (eg, missing)],
+        [(eg, fp_2021), (eg, fp_2022)],
+    )
+
+    assert real.ved == 2
+    assert missing.ved == 1
+
+
+def _empty_specific_row(*, year_number, ved=None, **overrides):
+    base = dict(
+        year_number=year_number,
+        ved=ved,
+        y=None,
+        snk=None,
+        sntp=None,
+        bk=None,
+        btp=None,
+        snbas=None,
+        ksn=None,
+        bbas=None,
+        kh=None,
+    )
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def test_empty_specific_check_keeps_ved_positive_all_years_empty():
+    from app.fuel.services.calculation.fuel_calculation_specific_consumption_edit_data_services import (
+        filter_rows_empty_specific_with_ved,
+        group_matches_empty_specific_check,
+    )
+
+    eg = SimpleNamespace(id=11)
+    rows = [
+        (eg, _empty_specific_row(year_number=2026, ved=2)),
+        (eg, _empty_specific_row(year_number=2027, ved=2)),
+    ]
+    assert group_matches_empty_specific_check(rows) is True
+    kept = filter_rows_empty_specific_with_ved(rows)
+    assert len(kept) == 2
+
+
+def test_empty_specific_check_skips_ved_zero_and_missing():
+    from app.fuel.services.calculation.fuel_calculation_specific_consumption_edit_data_services import (
+        group_matches_empty_specific_check,
+    )
+
+    eg = SimpleNamespace(id=12)
+    assert group_matches_empty_specific_check(
+        [(eg, _empty_specific_row(year_number=2026, ved=0))]
+    ) is False
+    assert group_matches_empty_specific_check(
+        [(eg, _empty_specific_row(year_number=2026, ved=None))]
+    ) is False
+
+
+def test_empty_specific_check_skips_when_any_displayed_year_has_payload():
+    from app.fuel.services.calculation.fuel_calculation_specific_consumption_edit_data_services import (
+        filter_rows_empty_specific_with_ved,
+        group_matches_empty_specific_check,
+    )
+
+    empty_eg = SimpleNamespace(id=21)
+    filled_eg = SimpleNamespace(id=22)
+    empty_rows = [
+        (empty_eg, _empty_specific_row(year_number=2026, ved=1)),
+        (empty_eg, _empty_specific_row(year_number=2027, ved=1)),
+    ]
+    mixed_rows = [
+        (filled_eg, _empty_specific_row(year_number=2026, ved=1)),
+        (filled_eg, _empty_specific_row(year_number=2027, ved=1, y=Decimal("1646.77"))),
+    ]
+    assert group_matches_empty_specific_check(empty_rows) is True
+    assert group_matches_empty_specific_check(mixed_rows) is False
+    kept = filter_rows_empty_specific_with_ved(empty_rows + mixed_rows)
+    assert {eg.id for eg, _ in kept} == {21}

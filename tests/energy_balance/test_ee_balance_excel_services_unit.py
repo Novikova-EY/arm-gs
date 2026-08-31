@@ -123,3 +123,4 @@ def test_export_writes_sheet_per_tab_and_energy_title():
     assert ws["A3"].value == "Потребление электрической энергии"
     assert ws["B3"].value == 10
     assert ws["A4"].value == "АЭС"
+    assert ws.cell(2, 3).value == "Примечание"

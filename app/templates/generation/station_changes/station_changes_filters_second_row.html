@@ -1,26 +1,39 @@
 <!-- Вторая строка фильтров -->
 <div class="col-12 mb-2">
-    <div class="collapse" id="importExportCollapse">
+  <div class="collapse" id="importExportCollapse">
+    <div
+      class="d-flex justify-content-between align-items-start w-100 flex-nowrap"
+    >
+      <!-- Левая часть (экспорт) -->
+      <div class="d-flex align-items-center gap-2 flex-nowrap me-4">
+        <button
+          id="exportStationChangesExcel"
+          class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+          style="white-space: nowrap"
+        >
+          <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в
+          Excel
+        </button>
+        <button
+          id="exportStationChangesAppendixBExcel"
+          class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+          style="white-space: nowrap"
+        >
+          <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Приложение
+          Б (ЕЭС)
+        </button>
+        <button
+          id="exportStationChangesPril2RussiaExcel"
+          class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+          style="white-space: nowrap"
+        >
+          <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Приложение
+          2 (Россия)
+        </button>
+      </div>
 
-        <div class="d-flex justify-content-between align-items-start w-100 flex-nowrap">
-
-            <!-- Левая часть (экспорт) -->
-            <div class="d-flex align-items-center gap-2 flex-nowrap me-4">
-                <button id="exportStationChangesExcel" class="btn btn-outline-success" style="white-space: nowrap;">
-                    Экспорт списка отображаемых изменений
-                </button>
-                <button id="exportStationChangesAppendixBExcel" class="btn btn-outline-success" style="white-space: nowrap;">
-                    Приложение Б (ЕЭС)
-                </button>
-                <button id="exportStationChangesPril2RussiaExcel" class="btn btn-outline-success" style="white-space: nowrap;">
-                    Приложение 2 (Россия)
-                </button>
-            </div>
-
-            <!-- Правая часть (импорт) -->
-            <div class="d-flex align-items-center gap-2 flex-nowrap ms-4">
-            </div>
-
-        </div>
+      <!-- Правая часть (импорт) -->
+      <div class="d-flex align-items-center gap-2 flex-nowrap ms-4"></div>
     </div>
+  </div>
 </div>

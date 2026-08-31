@@ -154,36 +154,84 @@
                         clearStickyTheadRowVars(table);
                         return;
                     }
-                    const theadRect = thead.getBoundingClientRect();
-                    if (!theadRect.height) {
+                    if (!(thead.offsetHeight || thead.getBoundingClientRect().height)) {
                         return;
                     }
                     clearStickyTheadRowVars(table);
+                    /*
+                     * offsetTop — позиция в вёрстке. getBoundingClientRect() у <tr> — объединение
+                     * ячеек, и после прокрутки в него попадают уже «залипшие» th / rowspan,
+                     * из‑за этого top второй строки шапки завышается: строки тела заезжают
+                     * в щель под нижней строкой шапки.
+                     *
+                     * У thead с position:sticky Chrome часто даёт tr.offsetTop = 0 для всех строк.
+                     * Тогда --sticky-thead-row2-top = 0, вторая строка шапки липнет к верху
+                     * скролла и наезжает на первую строку тела (coeff ОЭС/ФО/ЭЗ).
+                     */
+                    const base = rows[0].offsetTop;
+                    function rowLayoutHeight(row) {
+                        /* Только offsetHeight ячеек: getBoundingClientRect() у sticky-tr
+                           после прокрутки даёт объединение строк → слишком большой top
+                           и щель в шапке, через которую видно тело. */
+                        var h = 0;
+                        var cells = row.cells;
+                        for (var ci = 0; ci < cells.length; ci++) {
+                            var ch = cells[ci].offsetHeight;
+                            if (ch > h) {
+                                h = ch;
+                            }
+                        }
+                        if (h < 1) {
+                            h = Math.round(row.offsetHeight || 0);
+                        }
+                        return h;
+                    }
+                    function stickyTopPx(row, overlapPx) {
+                        var raw = row.offsetTop - base;
+                        var off = Math.max(0, Math.round(raw));
+                        if (overlapPx && off > 0) {
+                            off = Math.max(0, off - overlapPx);
+                        }
+                        return off;
+                    }
+                    var accHeight = 0;
+                    var heightOverlap = 2;
                     rows.forEach(function (row, idx) {
-                        const rRect = row.getBoundingClientRect();
-                        const off = Math.max(0, rRect.top - theadRect.top);
-                        table.style.setProperty('--sticky-thead-row' + (idx + 1) + '-top', off + 'px');
+                        var nth = Array.prototype.indexOf.call(thead.rows, row) + 1;
+                        if (nth < 1) {
+                            return;
+                        }
+                        var off = stickyTopPx(row, nth > 1 ? 1 : 0);
+                        if (idx > 0 && off < 1) {
+                            off = Math.max(0, accHeight - heightOverlap);
+                        }
+                        table.style.setProperty(
+                            '--sticky-thead-row' + nth + '-top',
+                            off + 'px'
+                        );
+                        accHeight += rowLayoutHeight(row);
                     });
                     /* Совместимость со сводками спроса / старым CSS */
                     if (rows.length >= 2) {
-                        const r1Rect = rows[1].getBoundingClientRect();
+                        var row2Top = stickyTopPx(rows[1], 1);
+                        if (row2Top < 1) {
+                            row2Top = Math.max(0, rowLayoutHeight(rows[0]) - heightOverlap);
+                        }
                         table.style.setProperty(
                             '--sticky-thead-row1-height',
-                            Math.max(0, r1Rect.top - theadRect.top) + 'px'
+                            row2Top + 'px'
                         );
                     }
                     if (rows.length >= 3) {
-                        const r2Rect = rows[2].getBoundingClientRect();
                         table.style.setProperty(
                             '--sticky-thead-row3-offset',
-                            Math.max(0, r2Rect.top - theadRect.top) + 'px'
+                            stickyTopPx(rows[2], 1) + 'px'
                         );
                     }
                     if (rows.length >= 4) {
-                        const r3Rect = rows[3].getBoundingClientRect();
                         table.style.setProperty(
                             '--sticky-thead-row4-offset',
-                            Math.max(0, r3Rect.top - theadRect.top) + 'px'
+                            stickyTopPx(rows[3], 1) + 'px'
                         );
                     }
                 });

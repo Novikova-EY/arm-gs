@@ -59,7 +59,12 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
           <a
             href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
             class="btn btn-secondary fs-5"
-            >Группы оборудования</a
+            >Словарь станций и групп оборудования</a
+          >
+          <a
+            href="{{ url_for('fuel_bp.equipment_group_fuel_params_edit_data', **request.args) }}"
+            class="btn btn-secondary fs-5"
+            >Сведения о работе ТЭС (редактирование)</a
           >
           <a
             href="{{ url_for('station_bp.station_list') }}"
@@ -123,9 +128,9 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
         fuel_param_column_hierarchy|default({}) %} {% set fuel_param_columns =
         _fuel_hier.get('fuel_param_columns') if
         _fuel_hier.get('fuel_param_columns') else [ ('numb1120', 'Код группы оборудования', false), ('nust', 'Суммарная установленная мощность, МВт', true),
-        ('nr', 'Суммарная располагаемая мощность, МВт', true), ('e', 'Выработка ЭЭ, тыс.кВтч',
+        ('nr', 'Суммарная располагаемая мощность, МВт', true), ('e', 'Выработка ЭЭ, млн кВтч',
         true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true),
-        ('eotp', 'Отпуск ЭЭ, тыс.кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true),
+        ('eotp', 'Отпуск ЭЭ, млн кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true),
         ('sn_ee', 'СН на производство электроэнергии, тыс. кВт·ч', true),
         ('snk', 'СН на выработку ЭЭ, %', true), ('nt', 'Тепловая мощность отборов, Гкал/ч',
         true), ('nt_sum', 'Сумма тепловых мощностей, Гкал/ч', true), ('q', 'Отпуск ТЭ, тыс.Гкал', true), ('qotr', 'Тепловое потребление (отборов турбин), тыс.Гкал', true), ('turt',

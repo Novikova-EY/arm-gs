@@ -39,13 +39,6 @@ from app.fuel.services.equipment_groups.equipment_group_fuel_calculation_service
     UGLI1,
     collect_fuel_names_from_formtxt,
 )
-from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_calc_services import (
-    calc_bk_calc,
-    calc_btp_calc,
-    calc_snk_calc,
-    calc_sntp_calc,
-    calc_y_calc,
-)
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     EQUIPMENT_GROUP_DETAILS_MAIN_ATTRS,
     EQUIPMENT_GROUP_DETAILS_TABLE1_ATTRS,
@@ -79,7 +72,7 @@ FUEL_EDIT_DATA_PARAM_COLUMNS: tuple[tuple[str, str, bool], ...] = (
     ("h", EquipmentGroupFuelParam.H_COLUMN_LABEL, True),
     ("hfix", EquipmentGroupFuelParam.HFIX_COLUMN_LABEL, False),
     ("ved", "Тип ТЭС", False),
-    ("e", "Выработка ЭЭ, тыс.кВтч", True),
+    ("e", EquipmentGroupFuelParam.E_COLUMN_LABEL, True),
     ("ewtp", "Теплофикационная выработка ЭЭ, тыс.кВтч", True),
     ("eotp", EquipmentGroupFuelParam.EOTP_COLUMN_LABEL, True),
     ("eust", EquipmentGroupFuelParam.EUST_COLUMN_LABEL, True),
@@ -1366,8 +1359,9 @@ def build_fuel_calculation_edit_detail_panels_data(
 ) -> dict[str, dict[str, list]]:
     """
     Данные для нижней панели страницы equipment_group_fuel_params_edit_data:
-    удельные показатели, формулы топлива и таблица «Параметры топлива» — сумма уникальных
-    имён из formtxt на интервале лет (столбцы отсортированы по русскому названию топлива);
+    удельные показатели (вводимые y/btp/sntp/bk/snk, не *_calc), формулы топлива
+    и таблица «Параметры топлива» — сумма уникальных имён из formtxt на интервале лет
+    (столбцы отсортированы по русскому названию топлива);
     значения из EquipmentGroupExtraFuelParam (UGLI1) и из EquipmentGroupFuelParam
     (TOPLS|UGLI), согласно разбору формулы.
     (ключ — str(equipment_group_id)).
@@ -1491,58 +1485,18 @@ def build_fuel_calculation_edit_detail_panels_data(
         spec_out: list[dict[str, str | int]] = []
         for y in years:
             r = _pick_specific_row_for_group_year(by_gy, gid, y, version_id)
-            # Нижняя панель — только просмотр *_calc. Считаем по текущим топливным
-            # параметрам (как recalc), чтобы не показывать прочерки при пустых
-            # полях в gs_fue_equipment_group_specific_fuel_consumption.
-            param = _pick_specific_row_for_group_year(by_gy_main, gid, y, version_id)
-            if param is not None:
-                coeff_k = (
-                    r.k if (r is not None and getattr(r, "k", None) is not None) else None
+            # Нижняя панель — просмотр вводимых удельных (y/btp/sntp/bk/snk), не *_calc.
+            row_d: dict[str, str | int] = {"year": y}
+            tips: dict[str, str] = {}
+            for attr in ("y", "btp", "sntp", "bk", "snk"):
+                raw = getattr(r, attr, None) if r else None
+                row_d[attr] = _fuel_edit_detail_numeric_cell(
+                    raw,
+                    rounding_digits=rounding_digits,
                 )
-                v_y_calc = calc_y_calc(param)
-                v_btp_calc = calc_btp_calc(param, coeff_k)
-                v_sntp_calc = calc_sntp_calc(param)
-                v_bk_calc = calc_bk_calc(param, v_btp_calc, v_sntp_calc)
-                v_snk_calc = calc_snk_calc(param)
-            else:
-                v_snk_calc = getattr(r, "snk_calc", None) if r else None
-                v_btp_calc = getattr(r, "btp_calc", None) if r else None
-                v_sntp_calc = getattr(r, "sntp_calc", None) if r else None
-                v_bk_calc = getattr(r, "bk_calc", None) if r else None
-                v_y_calc = getattr(r, "y_calc", None) if r else None
-            spec_out.append(
-                {
-                    "year": y,
-                    "snk_calc": _fuel_edit_detail_numeric_cell(
-                        v_snk_calc,
-                        rounding_digits=rounding_digits,
-                        show_zero=True,
-                    ),
-                    "btp_calc": _fuel_edit_detail_numeric_cell(
-                        v_btp_calc,
-                        rounding_digits=rounding_digits,
-                    ),
-                    "sntp_calc": _fuel_edit_detail_numeric_cell(
-                        v_sntp_calc,
-                        rounding_digits=rounding_digits,
-                    ),
-                    "bk_calc": _fuel_edit_detail_numeric_cell(
-                        v_bk_calc,
-                        rounding_digits=rounding_digits,
-                    ),
-                    "y_calc": _fuel_edit_detail_numeric_cell(
-                        v_y_calc,
-                        rounding_digits=rounding_digits,
-                    ),
-                    "db_tooltips": {
-                        "snk_calc": _fuel_edit_detail_db_tooltip_numeric(v_snk_calc),
-                        "btp_calc": _fuel_edit_detail_db_tooltip_numeric(v_btp_calc),
-                        "sntp_calc": _fuel_edit_detail_db_tooltip_numeric(v_sntp_calc),
-                        "bk_calc": _fuel_edit_detail_db_tooltip_numeric(v_bk_calc),
-                        "y_calc": _fuel_edit_detail_db_tooltip_numeric(v_y_calc),
-                    },
-                }
-            )
+                tips[attr] = _fuel_edit_detail_db_tooltip_numeric(raw)
+            row_d["db_tooltips"] = tips
+            spec_out.append(row_d)
 
         formulas_src = _sort_formulas(by_formula_group.get(gid, []))
         formulas_out = [

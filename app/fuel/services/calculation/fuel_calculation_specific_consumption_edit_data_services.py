@@ -27,7 +27,14 @@ from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
     _prefer_matching_db_version,
     build_fuel_param_row_warn_sets,
 )
+from app.fuel.services.calculation.specific_consumption_lookup import (
+    specific_consumption_has_payload,
+)
+from app.fuel.services.equipment_groups.composite_station_semantics import (
+    fuel_param_ved_participates,
+)
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+    FUEL_PARAM_VED_DISPLAY,
     get_equipment_group_ids_for_fuel_params_filters,
     get_equipment_groups_with_fuel_params_data,
 )
@@ -71,11 +78,12 @@ def _plan_year_numbers_for_current_version() -> frozenset[int]:
 class _MissingYearSpecificFuelParam:
     """Год из интервала без строки в gs_fue_equipment_group_specific_fuel_consumption."""
 
-    __slots__ = ("year_number", "snk_calc")
+    __slots__ = ("year_number", "snk_calc", "ved")
 
     def __init__(self, year_number: int) -> None:
         self.year_number = int(year_number)
         self.snk_calc = None
+        self.ved = None
 
     def __bool__(self) -> bool:
         return False
@@ -134,12 +142,76 @@ def _group_specific_rows_by_equipment_group(rows: list) -> list[list]:
     return [list(g) for _, g in groupby(rows, key=_key)]
 
 
+def group_matches_empty_specific_check(group_rows: list) -> bool:
+    """Группа с ved > 0 и пустыми удельниками во всех отображаемых годах.
+
+    ved — FuelParam.ved (есть и > 0 хотя бы в одном году интервала).
+    Пустой удельник — нет полезной нагрузки y/snk/sntp/bk/btp/… (нули как пусто).
+    """
+    if not group_rows:
+        return False
+    has_ved_gt_zero = False
+    for _eg, param in group_rows:
+        ved = getattr(param, "ved", None) if param is not None else None
+        if fuel_param_ved_participates(ved):
+            has_ved_gt_zero = True
+        if specific_consumption_has_payload(param):
+            return False
+    return has_ved_gt_zero
+
+
+def filter_rows_empty_specific_with_ved(rows: list) -> list:
+    """Оставить только группы, подходящие под кнопку «Проверка» на ТЭП edit_data."""
+    keep_ids: set[int] = set()
+    for group_rows in _group_specific_rows_by_equipment_group(rows):
+        if not group_matches_empty_specific_check(group_rows):
+            continue
+        eg = group_rows[0][0]
+        if eg is not None and getattr(eg, "id", None) is not None:
+            keep_ids.add(int(eg.id))
+    if not keep_ids:
+        return []
+    return [
+        (eg, param)
+        for eg, param in rows
+        if eg is not None and getattr(eg, "id", None) is not None and int(eg.id) in keep_ids
+    ]
+
+
+def _overlay_ved_from_fuel_params(specific_rows: list, fuel_param_rows: list) -> None:
+    """Подставляет FuelParam.ved на строки удельных (в т.ч. пустые годы интервала)."""
+    ved_by_key: dict[tuple[int, int], Any] = {}
+    for eg, fp in fuel_param_rows or []:
+        if not eg or fp is None:
+            continue
+        gid = getattr(eg, "id", None)
+        year = getattr(fp, "year_number", None)
+        if gid is None or year is None:
+            continue
+        ved_by_key[(int(gid), int(year))] = getattr(fp, "ved", None)
+
+    for eg, cons in specific_rows or []:
+        if cons is None:
+            continue
+        gid = getattr(cons, "equipment_group_id", None) or (
+            getattr(eg, "id", None) if eg else None
+        )
+        year = getattr(cons, "year_number", None)
+        if gid is None or year is None:
+            continue
+        try:
+            cons.ved = ved_by_key.get((int(gid), int(year)))
+        except Exception:
+            pass
+
+
 def get_specific_fuel_consumption_calculation_edit_data_view_model(
     filters: dict[str, Any],
     *,
     start_year: int,
     end_year: int,
     rounding_digits: int,
+    check_empty_specific: bool = False,
 ) -> dict[str, Any]:
     f = {**filters}
     f.pop("page", None)
@@ -166,6 +238,22 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
 
     rows = sorted(rows, key=_row_sort_key)
 
+    # Жёлтая подсветка строк при изменении Nуст — как на equipment_group_fuel_params_edit_data
+    fuel_params_data = get_equipment_groups_with_fuel_params_data(
+        filters=f,
+        per_page="all",
+        page=1,
+        start_year=start_year,
+        end_year=end_year,
+        show_all=True,
+    )
+    fuel_param_rows = fuel_params_data.get("rows") or []
+    fuel_param_warn_sets = build_fuel_param_row_warn_sets(fuel_param_rows)
+    _overlay_ved_from_fuel_params(rows, fuel_param_rows)
+
+    if check_empty_specific:
+        rows = filter_rows_empty_specific_with_ved(rows)
+
     bulk_edit_equipment_group_ids = sorted(
         {int(eg.id) for eg, _ in rows if eg is not None and getattr(eg, "id", None) is not None}
     )
@@ -178,17 +266,6 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
     )
     if should_suppress_aggregate_rows_for_filters(f):
         apply_suppress_aggregate_rows_to_hierarchy(hierarchy)
-
-    # Жёлтая подсветка строк при изменении Nуст — как на equipment_group_fuel_params_edit_data
-    fuel_params_data = get_equipment_groups_with_fuel_params_data(
-        filters=f,
-        per_page="all",
-        page=1,
-        start_year=start_year,
-        end_year=end_year,
-        show_all=True,
-    )
-    fuel_param_warn_sets = build_fuel_param_row_warn_sets(fuel_params_data.get("rows") or [])
 
     return {
         "equipment_group_specific_fuel_consumption_rows": rows,
@@ -205,6 +282,7 @@ def get_specific_fuel_consumption_calculation_edit_data_view_model(
         "rounding_digits": rounding_digits,
         "bulk_edit_equipment_group_ids": bulk_edit_equipment_group_ids,
         "numb1120_filter_choices": specific_data.get("numb1120_filter_choices") or [],
+        "fuel_param_ved_labels": FUEL_PARAM_VED_DISPLAY,
     }
 
 

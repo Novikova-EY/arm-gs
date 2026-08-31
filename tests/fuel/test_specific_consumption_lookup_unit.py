@@ -95,15 +95,15 @@ def test_inherit_skips_empty_year_then_uses_earlier_as_is():
     assert picked.bk is None
 
 
-def test_access_seek_skips_empty_arm_year_in_window():
-    """Липецк 268: пустой 2026 в АРМ, в Access строки нет — берём 2024."""
+def test_access_seek_last_year_in_window_even_if_empty():
+    """Пустой 2026 в окне — Match; 2024 не подставляем (нет шага назад)."""
     old = _row(2021, bk=Decimal("400"))
     base = _row(2024, y=Decimal("599.65"), bk=Decimal("310"))
     empty_2026 = _row(2026)
     picked = pick_specific_consumption_access_seek(
         [old, base, empty_2026], byear=2024, cyear=2026
     )
-    assert picked is base
+    assert picked is empty_2026
 
 
 def test_access_seek_explicit_cyear_payload_wins():

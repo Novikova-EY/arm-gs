@@ -1768,9 +1768,27 @@ def _plan_year_extra_editable(demand_model_name: str, parameter_key: str) -> boo
     dm = demand_model_name or ""
     # РЭС на странице ОЭС: совмещённые строки и сохранённые k.
     if dm == "RegionalEnergySystemDemandParameter":
-        return pk in ("combined_on_oes", "combined_on_ees")
+        return pk in (
+            "combined_on_oes",
+            "combined_on_ees",
+            "combined_on_fo",
+            "combined_on_cz",
+            "combined_on_ez",
+        )
     # Строка объекта объединённой энергосистемы на странице ОЭС.
     if dm == "UnionEnergySystemDemandParameter":
+        return pk in (
+            "combined_on_ees",
+            "calculated_max_power_mw",
+            "calculated_combined_on_ees_mw",
+        )
+    if dm == "FederalDistrictDemandParameter":
+        return pk in (
+            "combined_on_cz",
+            "calculated_max_power_mw",
+            "calculated_combined_on_cz_mw",
+        )
+    if dm == "EnergyZoneDemandParameter":
         return pk in (
             "combined_on_ees",
             "calculated_max_power_mw",

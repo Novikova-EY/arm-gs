@@ -457,6 +457,8 @@
     </div>
     </div><!-- /.pd-ec-summary-sticky-stack -->
 
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/energy_consumption_summary_entity_borders.css') }}">
+    <script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_entity_borders.js') }}"></script>
     <style>
     /* «Сохранить», «Применить» (годы), «СиПР» — одна базовая ширина кнопки .btn */
     #demandSummarySaveBtn,
@@ -800,6 +802,18 @@
                 <span class="visually-hidden">Загрузка...</span>
             </div>
         </div>
+        <div id="powerDemandSummarySegmentLoadingOverlay"
+             class="power-demand-summary-segment-loader-overlay"
+             aria-live="polite"
+             aria-hidden="true"
+             hidden
+             style="--loader-size: 3.5rem;">
+            <div class="text-center">
+                <div class="loader loader-dual-ring" aria-hidden="true"></div>
+                <div class="mt-2 small text-muted">Загрузка данных…</div>
+                <span class="visually-hidden">Загрузка данных</span>
+            </div>
+        </div>
         <div id="powerDemandSummaryScrollWrap" class="table-responsive power-demand-summary-scroll{% if summary_route_variant == 'coeff' %} pd-coeff-summary-scroll-wrap{% endif %}" style="visibility: hidden;">
         <table id="powerDemandSummaryTable" class="table table-bordered table-striped{% if can_edit_summary_cells %} table-hover fuel-params-edit-table{% endif %} align-middle power-demand-summary-table{% if summary_route_variant == 'coeff' %} pd-coeff-year-seg-table{% if not (coeff_include_long | default(false)) %} pd-coeff-seg-hide-long{% endif %} pd-coeff-hide-k-columns{% elif pd_ec_max_year_segments %} pd-ec-max-year-visibility-table{% endif %}{% if show_perimeter_variant_column %} pd-summary-perimeter-variant-col-hidden{% endif %}"
                {% if energy_consumption_gaes_charge_only_page %}data-ec-gaes-charge-only="1"{% endif %}
@@ -1061,7 +1075,8 @@
                 </tr>
                 {% endif %}
             </thead>
-            <tbody>
+            <tbody{% if pd_summary_client_render | default(false) %} id="powerDemandSummaryTbody"{% endif %}>
+                {% if not (pd_summary_client_render | default(false)) %}
                 {% for row in summary_rows %}
                 {% set _pd_ec_verification = (row.entity_label or '').startswith('Проверка ') %}
                 {% set _pd_ec_verify_for = (row.entity_label or '').startswith('Проверка для ') or row.entity_kind == 'oes_ees_model_verification' or row.entity_kind == 'oes_ees_sync_table_verification' %}
@@ -1570,10 +1585,18 @@
                     </td>
                 </tr>
                 {% endfor %}
+                {% endif %}
             </tbody>
         </table>
+        {% if pd_summary_client_render | default(false) %}
+        <nav id="pdSummaryEntityPagination" class="mt-3 mb-2" hidden aria-label="Пагинация сводки"></nav>
+        {% endif %}
         </div>
     </div>
+{% if pd_summary_client_render | default(false) %}
+<script type="application/json" id="ec-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
+<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_client_render.js') }}?v=6"></script>
+{% endif %}
 {% if active_summary in ('oes', 'fo', 'ez') and ec_summary_logs_formatted is defined %}
 <h3 class="mb-0 ms-3 mt-4">Журнал изменений</h3>
 <div class="container-fluid mt-3">
@@ -1873,12 +1896,24 @@ const powerDemandSummaryScrollWrap = document.getElementById("powerDemandSummary
 const pdEcSummaryLoaderStartedAt = Date.now();
 const PD_EC_SUMMARY_LOADER_MIN_MS = 400;
 
-function finishPowerDemandSummaryInitialRender() {
+function finishPowerDemandSummaryInitialRenderNow() {
     if (!powerDemandSummaryLoaderShell || powerDemandSummaryLoaderShell.dataset.ready === "1") {
         return;
     }
     powerDemandSummaryLoaderShell.dataset.ready = "1";
     var waitMs = Math.max(0, PD_EC_SUMMARY_LOADER_MIN_MS - (Date.now() - pdEcSummaryLoaderStartedAt));
+
+    function refreshEcSummaryStickyLayout() {
+        if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
+            window.armGsUpdatePdSummaryControlsStickyHeight();
+        }
+        if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+            window.armGsApplyStickyTheadOffsets();
+        }
+        if (typeof window.armGsUpdateHorizontalScrollFlags === "function") {
+            window.armGsUpdateHorizontalScrollFlags();
+        }
+    }
 
     function revealPowerDemandSummaryTable() {
         window.requestAnimationFrame(function () {
@@ -1890,15 +1925,47 @@ function finishPowerDemandSummaryInitialRender() {
                     powerDemandSummaryLoadingOverlay.style.display = "none";
                 }
                 powerDemandSummaryLoaderShell.setAttribute("aria-busy", "false");
+                refreshEcSummaryStickyLayout();
+                window.requestAnimationFrame(refreshEcSummaryStickyLayout);
             });
         });
     }
 
-    if (waitMs > 0) {
-        setTimeout(revealPowerDemandSummaryTable, waitMs);
-    } else {
-        revealPowerDemandSummaryTable();
+    function waitForEcEntityLayoutThenReveal() {
+        var table = document.getElementById("powerDemandSummaryTable");
+        var tbody = table && table.querySelector("tbody");
+        var started = Date.now();
+        function tick() {
+            var layoutBusy = tbody && tbody.style.visibility === "hidden";
+            if (!layoutBusy || Date.now() - started > 8000) {
+                revealPowerDemandSummaryTable();
+                return;
+            }
+            window.requestAnimationFrame(tick);
+        }
+        tick();
     }
+
+    if (waitMs > 0) {
+        setTimeout(waitForEcEntityLayoutThenReveal, waitMs);
+    } else {
+        waitForEcEntityLayoutThenReveal();
+    }
+}
+
+function finishPowerDemandSummaryInitialRender() {
+    if (window.__ecSummaryRowsReady && typeof window.__ecSummaryRowsReady.then === "function") {
+        if (window.__ecSummaryFinishWaitAttached) {
+            return;
+        }
+        window.__ecSummaryFinishWaitAttached = true;
+        window.__ecSummaryRowsReady.then(
+            finishPowerDemandSummaryInitialRenderNow,
+            finishPowerDemandSummaryInitialRenderNow
+        );
+        return;
+    }
+    finishPowerDemandSummaryInitialRenderNow();
 }
 
 window.__pdPdSummaryFinishInitialRender = finishPowerDemandSummaryInitialRender;
@@ -1982,7 +2049,9 @@ if (summaryTable) {
                 );
             } catch (eTc) { /* */ }
             syncPdEcTerritoryCompactToggleUi();
-            if (typeof window.__pdEcSummaryReapplyRowVisibility === "function") {
+            if (typeof window.__pdSummaryOnTerritoryCompactToggle === "function") {
+                window.__pdSummaryOnTerritoryCompactToggle();
+            } else if (typeof window.__pdEcSummaryReapplyRowVisibility === "function") {
                 window.__pdEcSummaryReapplyRowVisibility();
             }
         });
@@ -2196,6 +2265,9 @@ if (summaryTable) {
     }
 
     function applyEcBlockRowBackgrounds() {
+        if (typeof window.__pdEcSummaryApplyEntityLevelBorders === "function") {
+            window.__pdEcSummaryApplyEntityLevelBorders();
+        }
         if (summaryTable.getAttribute("data-ec-unify-block-bg") !== "1") {
             return;
         }
@@ -2501,14 +2573,21 @@ if (summaryTable) {
 
         /**
          * После смены видимости строк пересчёт rowspan дорогой на больших таблицах и блокирует вкладку.
-         * Для многих блоков — порции в requestAnimationFrame; tbody кратко скрываем, чтобы не показывать «ломаную» сетку.
+         * Спиннер уже показан поверх строк; tbody не прячем — иначе остаётся только шапка.
          */
+        function pdEcHideBusySpinner() {
+            if (typeof window.__pdEcSummaryHideTableSpinner === "function") {
+                window.__pdEcSummaryHideTableSpinner();
+            }
+        }
+
         function repositionEntityCellsAndRowspansAfterVisibility() {
             pdEcLayoutJobId += 1;
             var jobId = pdEcLayoutJobId;
             var tbody = summaryTable.querySelector("tbody");
             if (!tbody) {
                 syncPdEcGaesAdjustedEntityLabels();
+                pdEcHideBusySpinner();
                 return;
             }
             var startRows = tbody.querySelectorAll(
@@ -2532,44 +2611,43 @@ if (summaryTable) {
                     /* */
                 }
                 syncPdEcGaesAdjustedEntityLabels();
+                pdEcHideBusySpinner();
                 return;
             }
 
             if (n <= SYNC_THRESHOLD) {
-                tbody.style.visibility = "";
                 try {
                     runSyncFull();
                 } catch (eRepo) {
                     /* */
                 }
+                tbody.style.visibility = "";
+                pdEcHideBusySpinner();
                 return;
             }
 
-            tbody.style.visibility = "hidden";
             var layoutSafetyTimer = setTimeout(function () {
-                if (tbody.style.visibility === "hidden") {
-                    tbody.style.visibility = "";
-                }
+                pdEcHideBusySpinner();
             }, 12000);
             var idx = 0;
             function finishBatched() {
                 clearTimeout(layoutSafetyTimer);
                 if (jobId !== pdEcLayoutJobId) {
-                    tbody.style.visibility = "";
+                    pdEcHideBusySpinner();
                     return;
                 }
-                tbody.style.visibility = "";
                 try {
                     applyEcBlockRowBackgrounds();
                 } catch (eBg) {
                     /* */
                 }
                 syncPdEcGaesAdjustedEntityLabels();
+                pdEcHideBusySpinner();
             }
             function step() {
                 if (jobId !== pdEcLayoutJobId) {
                     clearTimeout(layoutSafetyTimer);
-                    tbody.style.visibility = "";
+                    pdEcHideBusySpinner();
                     return;
                 }
                 try {
@@ -2580,7 +2658,7 @@ if (summaryTable) {
                 } catch (eRepo) {
                     clearTimeout(layoutSafetyTimer);
                     if (jobId === pdEcLayoutJobId) {
-                        tbody.style.visibility = "";
+                        pdEcHideBusySpinner();
                     }
                     return;
                 }
@@ -2848,7 +2926,12 @@ if (summaryTable) {
         }
 
         window.__pdEcSummaryReapplyRowVisibility = function () {
-            applyVisibilityFromKeys(lastApplied);
+            if (typeof window.__pdEcSummaryShowTableSpinner === "function") {
+                window.__pdEcSummaryShowTableSpinner();
+            }
+            window.requestAnimationFrame(function () {
+                applyVisibilityFromKeys(lastApplied);
+            });
         };
 
         function parseFromStorage(raw) {
@@ -3201,6 +3284,19 @@ if (summaryTable) {
     }
     .power-demand-summary-loader-overlay {
         transition: opacity 0.12s ease;
+    }
+    .power-demand-summary-segment-loader-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 1053;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.78);
+        cursor: wait;
+    }
+    .power-demand-summary-segment-loader-overlay:not([hidden]) {
+        display: flex;
     }
     .power-demand-summary-scroll {
         width: 100%;
@@ -3807,7 +3903,7 @@ if (summaryTable) {
 </style>
 
 {% if pd_ec_max_year_segments %}
-<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_year_period_mode.js') }}"></script>
+<script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_year_period_mode.js') }}?v=2"></script>
 <script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_excel_import.js') }}"></script>
 {% endif %}
 {% if can_edit_summary_cells %}

@@ -14,6 +14,49 @@ from app.generation.services.station_changes_services.station_changes_services i
 
 # Порядок типов станций в итоговых блоках Excel (включая СНЭЭ).
 STATION_TYPE_ORDER_FOR_TOTALS = ["АЭС", "ГЭС", "ГАЭС", "ТЭС", "ВЭС", "СЭС", "СНЭЭ"]
+
+# Короткое тире утверждённой формы Приложения 2 (не длинное «—»).
+PRIL2_DASH = "–"
+
+PRIL2_FOOTNOTES: list[tuple[str, float]] = [
+    ("Примечания", 30.6),
+    (
+        "1) В соответствии с Правилами оптового рынка электрической энергии и мощности, "
+        "утвержденными постановлением Правительства Российской Федерации от 27.12.2010 № 1172, "
+        "поставщики мощности по договорам о предоставлении мощности квалифицированных генерирующих "
+        "объектов, функционирующих на основе использования возобновляемых источников энергии, "
+        "заключенным по результатам отбора проектов, вправе изменить планируемое местонахождение "
+        "генерирующего объекта. В соответствии с постановлением Правительства Российской Федерации "
+        "от 20.05.2022 № 912 поставщик мощности по указанным договорам вправе до наступления даты "
+        "начала поставки мощности осуществить отсрочку начала периода поставки мощности.",
+        154.15,
+    ),
+    (
+        "2) В связи в наличием рисков отсрочки ввода Загорской ГАЭС-2, указанный объект не учитывался "
+        "при анализе балансовой ситуации в энергосистеме г. Москвы и Московской области в приложении "
+        "№ 3 к СиПР ЭЭС России на 2026–2031 годы.",
+        67.15,
+    ),
+    (
+        "3) Установленная мощность Кубанской ГАЭС и Загорской ГАЭС-2 соответствует величине мощности "
+        "электростанций в турбинном режиме.",
+        34.5,
+    ),
+    (
+        "4) Мероприятия по развитию генерирующих объектов приведены в соответствии с Протоколом "
+        "Правительственной комиссии от 29.10.2025 № 8пр.",
+        34.5,
+    ),
+    (
+        "5) Системы накопления электрической энергии в энергосистемах Республики Адыгея и Краснодарского "
+        "края и Республики Крым и г. Севастополя планируется размещать на объектах ПАО «Россети».",
+        67.35,
+    ),
+    (
+        "6) Срок ввода в эксплуатацию новых генерирующих объектов может быть уточнен.",
+        34.5,
+    ),
+]
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
     get_union_energy_systems_map,
@@ -163,6 +206,71 @@ def _synchronous_area_total_label(sa_name: str | None, sa_number: str | int | No
     return f"Итого по {sa_name or 'Синхронная зона'}"
 
 
+def _pril2_mw_value(value):
+    """Ноль в итоговых блоках Приложения 2. На листе нули скрыты (hide_zero)."""
+    if value is None:
+        return 0
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0
+    if abs(number) < 1e-12:
+        return 0
+    return value
+
+
+def _pril2_object_mw_cell(value):
+    """В строках объектов ноль не пишем: в эталоне включено «не отображать нули»."""
+    if value is None:
+        return None
+    try:
+        if abs(float(value)) < 1e-12:
+            return None
+    except (TypeError, ValueError):
+        return None
+    return value
+
+
+def _pril2_row_period_total(year, p_ust, sum_years):
+    """Итого 2026–2031 по строке объекта: только эта строка, не сумма блоков станции."""
+    if year not in sum_years:
+        return None
+    return _pril2_object_mw_cell(p_ust)
+
+
+def _pril2_empty_text(value) -> str:
+    text = "" if value is None else str(value).strip()
+    if not text or text in {"—", "-", "–"}:
+        return PRIL2_DASH
+    return text
+
+
+def _write_pril2_footnotes(worksheet, start_row: int, last_col_name: str, workbook) -> int:
+    """Примечания 1)–6) после таблицы, как в утверждённом Приложении 2."""
+    title_format = workbook.add_format({
+        "font_name": "Times New Roman",
+        "font_size": 24,
+        "align": "left",
+        "valign": "vcenter",
+        "text_wrap": True,
+    })
+    note_format = workbook.add_format({
+        "font_name": "Times New Roman",
+        "font_size": 24,
+        "align": "justify",
+        "valign": "top",
+        "text_wrap": True,
+    })
+    row = start_row
+    for idx, (text, height) in enumerate(PRIL2_FOOTNOTES):
+        cell_format = title_format if idx == 0 else note_format
+        display = f"         {text}"
+        worksheet.merge_range(f"A{row + 1}:{last_col_name}{row + 1}", display, cell_format)
+        worksheet.set_row(row, height)
+        row += 1
+    return row
+
+
 def _get_expected_export_years(
     start_year: int,
     end_year: int,
@@ -232,6 +340,106 @@ def _get_expected_export_years(
         export_years = list(range(safe_start, int(end_year) + 1))
 
     return export_years, current_year_split
+
+
+def _machine_has_modernization(machine) -> bool:
+    events = getattr(machine, "event_types", None) or set()
+    if isinstance(events, dict):
+        events = set(events)
+    return "before_modernization" in events and "after_modernization" in events
+
+
+def _power_row_machine_number(machine, power_row: dict) -> str:
+    """Станционный номер как на веб-странице: только у «до модернизации», иначе «–»."""
+    if isinstance(power_row, dict) and "display_machine_number" in power_row:
+        raw = power_row.get("display_machine_number")
+    else:
+        raw = getattr(machine, "machine_number", None)
+    event = power_row.get("event") if isinstance(power_row, dict) else None
+    if _machine_has_modernization(machine) and event in ("after_modernization", "change_power"):
+        return ""
+    return display_machine_number(raw)
+
+
+def _power_row_machine_name(machine, power_row: dict) -> str:
+    """Тип ГО как на веб: до/после при смене имени; если имя то же — только на «до модернизации»."""
+    part_name = None
+    if isinstance(power_row, dict):
+        part_name = power_row.get("display_machine_name")
+    has_mod = _machine_has_modernization(machine)
+    event = power_row.get("event") if isinstance(power_row, dict) else None
+    hide_on_later_mod = has_mod and event in ("after_modernization", "change_power")
+    before = getattr(machine, "display_name_before", None)
+    after = getattr(machine, "display_name_after", None)
+    names_differ = bool(has_mod and before and after)
+
+    if part_name:
+        if hide_on_later_mod:
+            return ""
+        return part_name
+
+    if names_differ:
+        if event == "before_modernization":
+            return before
+        if event == "after_modernization":
+            return after
+        if event == "change_power":
+            return ""
+    if hide_on_later_mod:
+        return ""
+    return (
+        getattr(machine, "display_name", None)
+        or getattr(machine, "machine_name", None)
+        or "—"
+    )
+
+
+def _should_split_machine_identity(machine, power_rows: list) -> bool:
+    """Не объединять ст. № / тип ГО, если на вебе они тоже построчные."""
+    if _machine_has_modernization(machine):
+        return True
+    for p in power_rows or []:
+        if not isinstance(p, dict):
+            continue
+        if p.get("display_machine_name") or ("display_machine_number" in p):
+            return True
+    return False
+
+
+def _write_machine_identity_cells(
+    *,
+    worksheet,
+    merge_if_needed,
+    cell_format,
+    machine,
+    power_rows: list,
+    first_row: int,
+    last_row: int,
+    machine_num_col: int,
+    machine_name_col: int,
+):
+    """Пишет ст. № и тип генерирующего оборудования по правилам веб-таблицы."""
+    if not _should_split_machine_identity(machine, power_rows):
+        merge_if_needed(
+            first_row,
+            machine_num_col,
+            last_row,
+            machine_num_col,
+            display_machine_number(getattr(machine, "machine_number", None)),
+            cell_format,
+        )
+        name = (
+            getattr(machine, "display_name", None)
+            or getattr(machine, "machine_name", None)
+            or "—"
+        )
+        merge_if_needed(first_row, machine_name_col, last_row, machine_name_col, name, cell_format)
+        return
+
+    for offset, power_row in enumerate(power_rows):
+        row = first_row + offset
+        worksheet.write(row, machine_num_col, _power_row_machine_number(machine, power_row), cell_format)
+        worksheet.write(row, machine_name_col, _power_row_machine_name(machine, power_row), cell_format)
 
 
 def export_station_changes_to_excel(
@@ -739,9 +947,18 @@ def export_station_changes_to_excel(
                                 machine_rows = len(filtered_power_rows)
                                 last_row_for_machine = first_row_for_machine + machine_rows - 1
 
-                                # Поля агрегата — один раз на агрегат, объединяем на фактическую высоту агрегата
-                                merge_if_needed(first_row_for_machine, machine_num_col, last_row_for_machine, machine_num_col, display_machine_number(getattr(machine, "machine_number", None)), text_center_format)
-                                merge_if_needed(first_row_for_machine, machine_name_col, last_row_for_machine, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
+                                # Ст. № и тип ГО — как на веб: без merge при модернизации / частях ПГУ
+                                _write_machine_identity_cells(
+                                    worksheet=worksheet,
+                                    merge_if_needed=merge_if_needed,
+                                    cell_format=text_center_format,
+                                    machine=machine,
+                                    power_rows=filtered_power_rows,
+                                    first_row=first_row_for_machine,
+                                    last_row=last_row_for_machine,
+                                    machine_num_col=machine_num_col,
+                                    machine_name_col=machine_name_col,
+                                )
 
                                 station_type_obj = getattr(station, "station_type", None)
                                 station_type_name = getattr(station_type_obj, "name", None)
@@ -1521,9 +1738,18 @@ def export_station_changes_pril_b_to_excel(
                                 machine_rows = len(filtered_power_rows)
                                 last_row_for_machine = first_row_for_machine + machine_rows - 1
 
-                                # Поля агрегата — один раз на агрегат, объединяем на фактическую высоту агрегата
-                                merge_if_needed(first_row_for_machine, machine_num_col, last_row_for_machine, machine_num_col, display_machine_number(getattr(machine, "machine_number", None)), text_center_format)
-                                merge_if_needed(first_row_for_machine, machine_name_col, last_row_for_machine, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
+                                # Ст. № и тип ГО — как на веб: без merge при модернизации / частях ПГУ
+                                _write_machine_identity_cells(
+                                    worksheet=worksheet,
+                                    merge_if_needed=merge_if_needed,
+                                    cell_format=text_center_format,
+                                    machine=machine,
+                                    power_rows=filtered_power_rows,
+                                    first_row=first_row_for_machine,
+                                    last_row=last_row_for_machine,
+                                    machine_num_col=machine_num_col,
+                                    machine_name_col=machine_name_col,
+                                )
 
                                 station_type_obj = getattr(station, "station_type", None)
                                 station_type_name = getattr(station_type_obj, "name", None)
@@ -1730,9 +1956,12 @@ def export_station_changes_pril_2_russia_to_excel(
     show_totals: bool,
     data: dict | None = None,
 ):
-    """Приложение 2 (Россия): полный дубль export_station_changes_to_excel.
-    Изменена только преамбула перед таблицей (как в форме) и смещение шапки таблицы.
+    """Приложение 2 (Россия): форма утверждённого перечня изменений мощности.
+
+    Итоги, примечания, шапка и преамбула не зависят от переключателей на странице.
     """
+    # Как у «Приложение Б»: итоги всегда, независимо от show_totals на странице.
+    show_totals = True
     current_db_version_id = get_current_db_version_id()
 
     # Сбрасываем кэши справочников, чтобы загрузить актуальные данные для текущей версии БД
@@ -1790,6 +2019,7 @@ def export_station_changes_pril_2_russia_to_excel(
 
     workbook = xlsxwriter.Workbook(output, {"in_memory": True})
     worksheet = workbook.add_worksheet("Приложение")
+    worksheet.hide_zero()
 
     # Стили
 
@@ -1825,7 +2055,7 @@ def export_station_changes_pril_2_russia_to_excel(
         "Генерирующая компания",
         "Электростанция",
         "Вид мероприятия",
-        "Тип  электростанции",
+        "Тип электростанции1)",
         "Станционный номер",
         "Тип генерирующего оборудования",
         "Вид топлива",
@@ -1852,7 +2082,7 @@ def export_station_changes_pril_2_russia_to_excel(
     else:
         sum_years = []
         all_years_header = ""
-    note_header = "Документ-основание"
+    note_header = "Документ-основание1)"
 
     # Индексы колонок согласно static_headers
     subject_col = 0
@@ -1920,7 +2150,6 @@ def export_station_changes_pril_2_russia_to_excel(
         header_center_format,
     )
     worksheet.set_row(2, 89.25)
-    # 4-я строка Excel — без дополнительного отступа
 
     preamble_text = (
         "ПЕРЕЧЕНЬ\n"
@@ -1928,22 +2157,22 @@ def export_station_changes_pril_2_russia_to_excel(
         "изолированных территориальных электроэнергетических системах\n"
         f"на период {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годов"
     )
-    # Пустая строка ПЕРЕД «ПЕРЕЧЕНЬ...»
-    worksheet.set_row(4, 33)  # строка 5 Excel
+    # Строка 4 Excel — отступ перед «ПЕРЕЧЕНЬ...» (как в утверждённом файле)
+    worksheet.set_row(3, 33.75)
 
-    # «ПЕРЕЧЕНЬ...» — объединяем по всей ширине таблицы
-    worksheet.merge_range(f"A6:{last_col_name}6", preamble_text, header_center_format_bold)
-    worksheet.set_row(5, 117.75)  # строка 6 Excel
+    # «ПЕРЕЧЕНЬ...» — строка 5 Excel, на всю ширину до колонки «Итого»
+    worksheet.merge_range(f"A5:{last_col_name}5", preamble_text, header_center_format_bold)
+    worksheet.set_row(4, 117.75)
 
     # Пустая строка ПОСЛЕ «ПЕРЕЧЕНЬ...»
-    worksheet.set_row(6, 15.75)  # строка 7 Excel
+    worksheet.set_row(5, 15.75)
 
-    # (МВт) — строка 8 Excel, над колонкой "Итого" (сумма по диапазону годов)
-    worksheet.write(7, all_years_col, "(МВт)", preamble_unit_format)
-    worksheet.set_row(7, 23.25)  # строка 8 Excel
+    # (МВт) — строка 7 Excel, над колонкой "Итого"
+    worksheet.write(6, all_years_col, "(МВт)", preamble_unit_format)
+    worksheet.set_row(6, 24.0)
 
-    # Шапка таблицы теперь начинается с 9-й строки Excel
-    sub_row = 8
+    # Шапка таблицы — 8-я строка Excel
+    sub_row = 7
 
     # Шапка таблицы: конкретные заголовки
     for idx, name in enumerate(static_headers):
@@ -1954,9 +2183,9 @@ def export_station_changes_pril_2_russia_to_excel(
     worksheet.write(sub_row, all_years_col, all_years_header, text_center_format)
     worksheet.write(sub_row, note_col, note_header, text_center_format)
 
-    # Высота строки заголовков таблицы и фиксация панели (как в примере)
+    # Высота шапки; при печати повторять «(МВт)» + шапку (строки 7–8)
     worksheet.set_row(sub_row, 60)
-    worksheet.freeze_panes(sub_row + 1, 0)
+    worksheet.repeat_rows(6, 7)
 
     # Ширины колонок приблизительно как на экране
     widths = [29, 25.86, 29.43, 23.43, 19.86, 17, 35.29, 15.71]
@@ -2089,19 +2318,19 @@ def export_station_changes_pril_2_russia_to_excel(
         merge_if_needed(block_start_row, subject_col, block_start_row + total_block_height - 1, subject_col, label, text_center_format)
         
         # Столбец 1 (Генкомпания): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, gen_company_col, block_start_row + total_block_height - 1, gen_company_col, "—", text_center_format)
+        merge_if_needed(block_start_row, gen_company_col, block_start_row + total_block_height - 1, gen_company_col, PRIL2_DASH, text_center_format)
         
         # Столбец 2 (Наименование): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, station_name_col, block_start_row + total_block_height - 1, station_name_col, "—", text_center_format)
+        merge_if_needed(block_start_row, station_name_col, block_start_row + total_block_height - 1, station_name_col, PRIL2_DASH, text_center_format)
         
         # Столбец 5 (Станционный номер): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_num_col, block_start_row + total_block_height - 1, machine_num_col, "—", text_center_format)
+        merge_if_needed(block_start_row, machine_num_col, block_start_row + total_block_height - 1, machine_num_col, PRIL2_DASH, text_center_format)
         
         # Столбец 6 (Тип генерирующего оборудования): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_name_col, block_start_row + total_block_height - 1, machine_name_col, "—", text_center_format)
+        merge_if_needed(block_start_row, machine_name_col, block_start_row + total_block_height - 1, machine_name_col, PRIL2_DASH, text_center_format)
         
         # Столбец 7 (Вид топлива): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, fuel_col, block_start_row + total_block_height - 1, fuel_col, "—", text_center_format)
+        merge_if_needed(block_start_row, fuel_col, block_start_row + total_block_height - 1, fuel_col, PRIL2_DASH, text_center_format)
         
         # Обрабатываем каждое мероприятие
         for ev_code, ev_title in event_types:
@@ -2120,11 +2349,11 @@ def export_station_changes_pril_2_russia_to_excel(
             # а не range(start_year, end_year) — иначе суммы съезжают на +1 год.
             for i, y in enumerate(export_years):
                 val = years_map_total.get(y)
-                display_val = val if val and val != 0 else None
+                display_val = _pril2_mw_value(val)
                 worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
                 if val is not None and y in sum_years:
                     row_sum += val
-            worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
+            worksheet.write(current_row, all_years_col, _pril2_mw_value(row_sum), text_center_format)
             worksheet.write(current_row, note_col, "", text_center_format)
             current_row += 1
             
@@ -2141,11 +2370,11 @@ def export_station_changes_pril_2_russia_to_excel(
                 row_sum = 0
                 for i, y in enumerate(export_years):
                     val = years_map_st.get(y)
-                    display_val = val if val and val != 0 else None
+                    display_val = _pril2_mw_value(val)
                     worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
                     if val is not None and y in sum_years:
                         row_sum += val
-                worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
+                worksheet.write(current_row, all_years_col, _pril2_mw_value(row_sum), text_center_format)
                 worksheet.write(current_row, note_col, "", text_center_format)
                 current_row += 1
 
@@ -2292,53 +2521,51 @@ def export_station_changes_pril_2_russia_to_excel(
                                 machine_rows = len(filtered_power_rows)
                                 last_row_for_machine = first_row_for_machine + machine_rows - 1
 
-                                # Поля агрегата — один раз на агрегат, объединяем на фактическую высоту агрегата
-                                merge_if_needed(first_row_for_machine, machine_num_col, last_row_for_machine, machine_num_col, display_machine_number(getattr(machine, "machine_number", None)), text_center_format)
-                                merge_if_needed(first_row_for_machine, machine_name_col, last_row_for_machine, machine_name_col, getattr(machine, "machine_name", None), text_center_format)
+                                # Ст. № и тип ГО — как на веб: без merge при модернизации / частях ПГУ
+                                _write_machine_identity_cells(
+                                    worksheet=worksheet,
+                                    merge_if_needed=merge_if_needed,
+                                    cell_format=text_center_format,
+                                    machine=machine,
+                                    power_rows=filtered_power_rows,
+                                    first_row=first_row_for_machine,
+                                    last_row=last_row_for_machine,
+                                    machine_num_col=machine_num_col,
+                                    machine_name_col=machine_name_col,
+                                )
 
                                 station_type_obj = getattr(station, "station_type", None)
                                 station_type_name = getattr(station_type_obj, "name", None)
                                 if not station_type_name:
                                     st_id = getattr(station, "id_station_type", None)
                                     station_type_name = station_type_names.get(st_id) if st_id else None
-                                station_type_name = station_type_name or "—"
+                                station_type_name = _pril2_empty_text(station_type_name)
                                 merge_if_needed(first_row_for_machine, station_type_col, last_row_for_machine, station_type_col, station_type_name, text_center_format)
 
-                                # Топливо (по СО ЕЭС) — на высоту агрегата
-                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
+                                # Топливо (по СО ЕЭС) — короткое тире, как в утверждённой форме
+                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, _pril2_empty_text(getattr(machine, "fuel_so", None)), text_center_format)
 
                                 # Основание — на высоту агрегата
                                 change_doc = getattr(machine, "change_document", None)
                                 doc_text = _extract_document_names(change_doc) if change_doc else None
                                 merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
 
-                                # Сумма "Итого" по отображаемым годам отдельно для каждого мероприятия
-                                event_sum_map: dict = {}
-                                for _p in filtered_power_rows:
-                                    _ev = _p.get("event")
-                                    _y = _p.get("year")
-                                    _v = _p.get("p_ust")
-                                    if _y in sum_years and _ev:
-                                        event_sum_map[_ev] = (event_sum_map.get(_ev) or 0) + (_v or 0)
-                                seen_events: set = set()
-
                                 for power_row in filtered_power_rows:
                                     # Мероприятие — построчно
                                     worksheet.write(current_row, event_col, _get_event_label(event_types, power_row["event"]), text_center_format)
 
-                                    # Годы — значение только в год power_row["year"], остальное пусто
+                                    # Годы: значение только в год строки; нули не пишем
                                     for i, y in enumerate(export_years):
                                         val = power_row["p_ust"] if power_row["year"] == y else None
-                                        worksheet.write(current_row, years_start_col + i, val, text_center_format)
+                                        worksheet.write(current_row, years_start_col + i, _pril2_object_mw_cell(val), text_center_format)
 
-                                    # Столбец "Итого" — по каждому мероприятию, без объединений (пишем один раз на мероприятие)
-                                    ev_code = power_row.get("event")
-                                    if ev_code and ev_code not in seen_events:
-                                        seen_events.add(ev_code)
-                                        ev_sum = event_sum_map.get(ev_code)
-                                        worksheet.write(current_row, all_years_col, ev_sum if ev_sum and ev_sum != 0 else None, text_center_format)
-                                    else:
-                                        worksheet.write(current_row, all_years_col, None, text_center_format)
+                                    # «Итого» 2026–2031 — сумма лет этой строки, не всех блоков станции
+                                    worksheet.write(
+                                        current_row,
+                                        all_years_col,
+                                        _pril2_row_period_total(power_row.get("year"), power_row.get("p_ust"), sum_years),
+                                        text_center_format,
+                                    )
 
                                     current_row += 1
 
@@ -2540,17 +2767,18 @@ def export_station_changes_pril_2_russia_to_excel(
             total_by_station_map,
         )
 
-    # Включаем автофильтры на строке заголовков по всей области таблицы
+    # Автофильтр только по таблице, без блока примечаний
     try:
         worksheet.autofilter(sub_row, 0, max(current_row - 1, sub_row), note_col)
     except Exception:
         pass
 
+    _write_pril2_footnotes(worksheet, current_row, last_col_name, workbook)
+
     workbook.close()
     output.seek(0)
 
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    # Для обычной кнопки экспорта возвращаем "классическое" имя файла
     filename = f"Приложение 2_{ts}.xlsx"
     return filename, output
 

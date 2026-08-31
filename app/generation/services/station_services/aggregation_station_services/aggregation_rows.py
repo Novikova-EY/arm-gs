@@ -12,6 +12,7 @@ from app.refdata.models.fuels.fuel_model import Fuel
 from app.refdata.models.fuels.fuel_type_model import FuelType
 from app.refdata.models.refdata_for_stations.machine.tes_machine_type_model import TesMachineType
 from app.refdata.models.refdata_for_stations.machine.tes_type_model import TesType
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
 from app.generation.services.station_services.aggregation_cache import cache_aggregation
 from app.common.services.get_services.stations.tes_type_get_services import (
@@ -76,6 +77,10 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.name.label("regional_district_name"),
+            UnionEnergySystem.name.label("union_energy_system_name"),
+            RegionalEnergySystem.name.label("regional_energy_system_name"),
+            EnergyUnit.name.label("energy_unit_name"),
             RegionalDistrict.id_federal_district.label("federal_district_id"),
             RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
@@ -113,6 +118,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .outerjoin(FuelType, and_(FuelType.id == Fuel.id_fuel_type, _version_cond(FuelType)))
         # Территориальная иерархия (субъект РФ можем взять, если есть)
         .outerjoin(Station.regional_district)
+        .outerjoin(EnergyUnit, EnergyUnit.id == Station.id_energy_unit)
         # Иерархия РЭС/ОЭС/типов энергосистем по прямой связи
         .join(RegionalEnergySystem, RegionalEnergySystem.id == Station.id_regional_energy_system)
         .join(UnionEnergySystem, UnionEnergySystem.id == RegionalEnergySystem.id_union_energy_system)
@@ -138,6 +144,10 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
             UnionEnergySystem.id.label("union_energy_system_id"),
             RegionalEnergySystem.id.label("regional_energy_system_id"),
             RegionalDistrict.id.label("regional_district_id"),
+            RegionalDistrict.name.label("regional_district_name"),
+            UnionEnergySystem.name.label("union_energy_system_name"),
+            RegionalEnergySystem.name.label("regional_energy_system_name"),
+            EnergyUnit.name.label("energy_unit_name"),
             RegionalDistrict.id_federal_district.label("federal_district_id"),
             RegionalDistrict.id_synchronous_area.label("synchronous_area_id"),
             Station.id_energy_unit.label("energy_unit_id"),
@@ -175,6 +185,7 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         .outerjoin(FuelType, and_(FuelType.id == Fuel.id_fuel_type, _version_cond(FuelType)))
         # Старый путь: через субъект РФ и M2M связь с РЭС
         .join(Station.regional_district)
+        .outerjoin(EnergyUnit, EnergyUnit.id == Station.id_energy_unit)
         .join(RegionalDistrict.regional_energy_systems)
         .join(RegionalEnergySystem.union_energy_system)
         .join(UnionEnergySystem.energy_system_type)
@@ -301,6 +312,10 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.name,
+        UnionEnergySystem.name,
+        RegionalEnergySystem.name,
+        EnergyUnit.name,
         RegionalDistrict.id_federal_district,
         RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,
@@ -316,6 +331,10 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         UnionEnergySystem.id,
         RegionalEnergySystem.id,
         RegionalDistrict.id,
+        RegionalDistrict.name,
+        UnionEnergySystem.name,
+        RegionalEnergySystem.name,
+        EnergyUnit.name,
         RegionalDistrict.id_federal_district,
         RegionalDistrict.id_synchronous_area,
         Station.id_energy_unit,

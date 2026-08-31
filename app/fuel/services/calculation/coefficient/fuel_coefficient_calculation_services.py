@@ -35,7 +35,6 @@ from app.fuel.services.calculation.station_ewtp import (
 )
 from app.fuel.services.calculation.specific_consumption_lookup import (
     query_specific_consumption_access_seek,
-    query_specific_consumption_for_fuel,
 )
 
 
@@ -164,13 +163,12 @@ class FuelCoefficientCalculationService:
             year_numbers=year_numbers,
         )
 
-    def _latest_specific_row(self, equipment_group_id: int, target_year: int, effective_db_version: int | None):
-        # Access U.NoMatch — только если строк нет. Пустой y=0/Bk Null (1330) — Match.
-        return query_specific_consumption_for_fuel(
-            self.session,
-            equipment_group_id=equipment_group_id,
-            target_year=target_year,
-            database_version_id=effective_db_version,
+    def _latest_specific_row(
+        self, equipment_group_id: int, target_year: int, effective_db_version: int | None,
+        byear: int | None = None,
+    ):
+        return self._bdis_specific_row(
+            equipment_group_id, byear, target_year, effective_db_version
         )
 
     def _bdis_specific_row(
@@ -195,7 +193,7 @@ class FuelCoefficientCalculationService:
         """
         Группы фильтра для контроля Skip на Коэфф / Распред / Топливо:
         - без строки топлива за расчётный год;
-        - с топливом за расчётный год, но без удельника year ≤ расчётного.
+        - с топливом за расчётный год, но без удельника в окне [byear, cyear].
         """
         row = self.session.get(
             DistributionParameter,
@@ -215,6 +213,7 @@ class FuelCoefficientCalculationService:
         effective_db_version = self._resolve_effective_db_version(row)
         group_ids = self._select_group_ids(row, effective_db_version)
         cyear = int(row.year.number)
+        byear = int(row.base_year.number) if row.base_year is not None else None
 
         def _groups_payload(ids: list[int]) -> list[dict]:
             if not ids:
@@ -292,6 +291,10 @@ class FuelCoefficientCalculationService:
             EquipmentGroupSpecificFuelConsumption.equipment_group_id.in_(fuel_eg_ids),
             EquipmentGroupSpecificFuelConsumption.year_number <= cyear,
         )
+        if byear is not None:
+            specific_q = specific_q.filter(
+                EquipmentGroupSpecificFuelConsumption.year_number >= byear
+            )
         if effective_db_version is not None and hasattr(
             EquipmentGroupSpecificFuelConsumption, "database_version_id"
         ):
@@ -310,19 +313,21 @@ class FuelCoefficientCalculationService:
         # Как _latest_specific_row: если с фильтром версии пусто — запасной поиск без версии.
         still_missing = fuel_eg_ids - with_specific
         if still_missing:
+            fallback_q = self.session.query(
+                EquipmentGroupSpecificFuelConsumption.equipment_group_id
+            ).filter(
+                EquipmentGroupSpecificFuelConsumption.equipment_group_id.in_(
+                    still_missing
+                ),
+                EquipmentGroupSpecificFuelConsumption.year_number <= cyear,
+            )
+            if byear is not None:
+                fallback_q = fallback_q.filter(
+                    EquipmentGroupSpecificFuelConsumption.year_number >= byear
+                )
             fallback = {
                 int(gid)
-                for (gid,) in self.session.query(
-                    EquipmentGroupSpecificFuelConsumption.equipment_group_id
-                )
-                .filter(
-                    EquipmentGroupSpecificFuelConsumption.equipment_group_id.in_(
-                        still_missing
-                    ),
-                    EquipmentGroupSpecificFuelConsumption.year_number <= cyear,
-                )
-                .distinct()
-                .all()
+                for (gid,) in fallback_q.distinct().all()
                 if gid is not None
             }
             with_specific |= fallback
@@ -419,7 +424,6 @@ class FuelCoefficientCalculationService:
         sum_e_cyear = Decimal("0")
 
         updated_fuel_rows = 0
-        last_spec = None
 
         for kind, fp, cursor in walk_access_bdis_cursor(
             cursor_rows,
@@ -445,10 +449,7 @@ class FuelCoefficientCalculationService:
                 equipment_group_id, byear, cyear, effective_db_version
             )
             if spec is None:
-                spec = last_spec
-            if spec is None:
                 continue
-            last_spec = spec
 
             if apply_access_coeff_ewtp(cur_row, spec.y):
                 updated_fuel_rows += 1
@@ -698,7 +699,9 @@ class FuelCoefficientCalculationService:
             base_nust = d0(base_row.nust) if base_row is not None else Decimal("0")
 
             # Без удельника и без уже заданного EWTP — как Access Skip.
-            spec = self._latest_specific_row(equipment_group_id, cyear, effective_db_version)
+            spec = self._latest_specific_row(
+                equipment_group_id, cyear, effective_db_version, byear=byear
+            )
             if spec is None and cur_row.ewtp is None:
                 continue
             ewtp = resolve_station_ewtp(

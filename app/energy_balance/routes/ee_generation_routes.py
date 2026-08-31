@@ -1,17 +1,25 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 
-from flask import current_app, flash, redirect, render_template, request, send_file, session, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import login_required
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
 from app.energy_balance.services.station_ee_generation_page_services import (
+    CONTROL_TOOLTIP,
     EE_PERIOD_MODE_MONTHS,
     EE_PERIOD_MODE_YEARS,
+    TOTAL_TOOLTIP_ENERGY_UNIT,
+    TOTAL_TOOLTIP_REGIONAL_DISTRICT,
+    TOTAL_TOOLTIP_RUSSIA,
+    TOTAL_TOOLTIP_UES,
+    VERIFICATION_TOOLTIP,
     format_generation_cell,
+    format_generation_input_value,
     get_station_ee_generation_page_data,
     is_verification_nonzero,
     resolve_single_year_filter,
+    update_res_control_generation_value,
 )
 from app.generation.forms.station_forms import StationFilterForm
 from app.generation.services.station_services.filters_services import (
@@ -154,9 +162,18 @@ def ee_generation():
     context["generation_aggregates"] = page_data.get("generation_aggregates", {})
     context["res_show_rd_level_map"] = page_data.get("res_show_rd_level_map", {})
     context["res_control_by_res"] = page_data.get("res_control_by_res", {})
+    context["res_stations_left_by_res"] = page_data.get("res_stations_left_by_res", {})
     context["res_verification_by_res"] = page_data.get("res_verification_by_res", {})
     context["is_verification_nonzero"] = is_verification_nonzero
+    context["format_generation_input_value"] = format_generation_input_value
+    context["total_tooltip_energy_unit"] = TOTAL_TOOLTIP_ENERGY_UNIT
+    context["total_tooltip_regional_district"] = TOTAL_TOOLTIP_REGIONAL_DISTRICT
+    context["total_tooltip_ues"] = TOTAL_TOOLTIP_UES
+    context["total_tooltip_russia"] = TOTAL_TOOLTIP_RUSSIA
+    context["control_tooltip"] = CONTROL_TOOLTIP
+    context["verification_tooltip"] = VERIFICATION_TOOLTIP
     context["show_ee_generation_import"] = True
+    context["ee_control_save_url"] = url_for("energy_balance_bp.ee_generation_control_value")
 
     has_active_filters = has_any_filters(request.args)
 
@@ -164,6 +181,58 @@ def ee_generation():
         "energy_balance/ee_generation/ee_generation.html",
         has_active_filters=has_active_filters,
         **context,
+    )
+
+
+@energy_balance_bp.route("/ee_generation/control_value/", methods=["PATCH"])
+@login_required
+def ee_generation_control_value():
+    """Сохранение контрольного значения выработки ЭЭ по РЭС."""
+    data = request.get_json(silent=True) or {}
+    if "res_id" not in data or "period" not in data:
+        return jsonify(ok=False, error="Неверный запрос"), 400
+
+    ee_period_mode = data.get("ee_period_mode") or _parse_ee_period_mode()
+    if ee_period_mode not in (EE_PERIOD_MODE_YEARS, EE_PERIOD_MODE_MONTHS):
+        ee_period_mode = EE_PERIOD_MODE_YEARS
+
+    selected_year = data.get("selected_year")
+    if selected_year is None and ee_period_mode == EE_PERIOD_MODE_MONTHS:
+        selected_year = request.args.get("year", type=int)
+    try:
+        selected_year_int = int(selected_year) if selected_year is not None else None
+    except (TypeError, ValueError):
+        selected_year_int = None
+
+    try:
+        rounding_digits = int(
+            data.get("rounding_digits", request.args.get("rounding_digits", 1))
+        )
+    except (TypeError, ValueError):
+        rounding_digits = 1
+
+    try:
+        saved = update_res_control_generation_value(
+            data.get("res_id"),
+            data.get("period"),
+            data.get("value"),
+            period_mode=ee_period_mode,
+            selected_year=selected_year_int,
+        )
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception("Не удалось сохранить контрольное значение выработки")
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+
+    value = saved.get("value")
+    display = format_generation_input_value(value, rounding_digits)
+    return jsonify(
+        ok=True,
+        res_id=saved["res_id"],
+        period=saved["period_key"],
+        value=None if value is None else str(value),
+        display=display,
     )
 
 

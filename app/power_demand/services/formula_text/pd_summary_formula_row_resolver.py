@@ -285,6 +285,32 @@ def resolve_pd_summary_parameter_formula_base_key(row: dict[str, Any]) -> str | 
     return None
 
 
+_COEFF_K_SKIP_PARAMETER_KEYS = frozenset({"peak_datetime", "avg_temp", "max_power"})
+COEFF_K_FORMULA_DEFAULT_SUFFIX = " / Максимальное потребление мощности, МВт"
+
+
+def fallback_pd_coeff_k_formula_tooltip(
+    row: dict[str, Any],
+    *,
+    suffix: str | None = None,
+) -> str:
+    """Текст формулы k по подписи показателя (как запасной вариант в шаблоне)."""
+    if row.get("pd_pd_skip_coeff_k_row"):
+        return ""
+    pk = str(row.get("parameter_key") or "")
+    if pk in _COEFF_K_SKIP_PARAMETER_KEYS:
+        return ""
+    label = (
+        str(row.get("parameter_label") or "")
+        .replace(", МВт", "")
+        .replace(", °C", "")
+        .strip()
+    )
+    if not label:
+        return ""
+    return f"k = «{label}»{(suffix if suffix is not None else COEFF_K_FORMULA_DEFAULT_SUFFIX)}"
+
+
 def resolve_pd_summary_coeff_k_formula_base_key(row: dict[str, Any]) -> str | None:
     """Базовый ключ формулы для столбца k на сводках «коэффициенты»."""
     if row.get("pd_fo_coeff_cz_total"):
@@ -298,7 +324,17 @@ def resolve_pd_summary_coeff_k_formula_base_key(row: dict[str, Any]) -> str | No
         return "coeff_k_ues_combined_ees"
     if pk == "combined_on_ees":
         return "coeff_res_ees_k"
+    if pk == "combined_on_cz":
+        return "coeff_res_cz_k"
+    if pk == "combined_on_fo":
+        return "coeff_res_fo_k"
+    if pk == "combined_on_ez":
+        return "coeff_res_ez_k"
     if pk == "calculated_max_power_mw":
+        if dm == "FederalDistrictDemandParameter":
+            return "coeff_k_fo_calc_max"
+        if dm == "EnergyZoneDemandParameter":
+            return "coeff_k_ez_calc_max"
         return "coeff_k_ues_calc_max_oes"
     if pk == "calculated_combined_on_ees_mw":
         return "coeff_k_ues_calc_combined_ees"

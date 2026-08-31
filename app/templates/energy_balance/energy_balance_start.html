@@ -37,8 +37,8 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('energy_balance_bp.power_balance_hub') }}" class="btn btn-success fs-4 w-100 py-4">
-                            Расчет балансов мощности
+                        <a href="{{ url_for('energy_balance_bp.power_balance_table', slug='ees-rossii') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Балансы мощности
                         </a>
                     </div>
                 </div>
@@ -46,8 +46,8 @@
             <div class="col-12 col-md-6">
                 <div class="card shadow-sm w-100">
                     <div class="card-body text-center">
-                        <a href="{{ url_for('energy_balance_bp.ee_balance_hub') }}" class="btn btn-success fs-4 w-100 py-4">
-                            Расчет балансов электрической энергии
+                        <a href="{{ url_for('energy_balance_bp.ee_balance_table', slug='ees-rossii') }}" class="btn btn-success fs-4 w-100 py-4">
+                            Балансы энергии
                         </a>
                     </div>
                 </div>

@@ -16,6 +16,9 @@ from app.energy_balance.services.power_balance_page_services import build_power_
 from app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model import (
     EnergySystemTypeDemandParameter,
 )
+from app.power_demand.models.energy_systems.energy_unit_demand_parameter_model import (
+    EnergyUnitDemandParameter,
+)
 from app.power_demand.models.energy_systems.synchronous_area_demand_parameter_model import (
     SynchronousAreaDemandParameter,
 )
@@ -178,6 +181,38 @@ def test_sz2_demand_resolves_tweaked_sa_name_without_territory():
         inputs = load_power_balance_demand_max_inputs([2026], sheets=sheets)
 
     assert inputs["2-sz-ees-vostok"]["demand_max"][2026] == Decimal("9")
+
+
+def test_load_energy_unit_max_power_for_tites_sheet():
+    sheets = [
+        {
+            "slug": "eu-105",
+            "layout": "oes_standard",
+            "group": "eu",
+            "sheet_name": "Анадырский энергорайон",
+            "territory": {"kind": "eu", "id": 105, "name": "Анадырский энергорайон"},
+        }
+    ]
+    captured = {}
+
+    def fake_block(model, fk, parent_id, display_perimeter_variant_code=None):
+        captured["model"] = model
+        captured["fk"] = fk
+        captured["parent_id"] = parent_id
+        captured["code"] = display_perimeter_variant_code
+        return [_row(year=2026, value=Decimal("18.5"))]
+
+    with patch(
+        "app.energy_balance.services.power_balance_demand_max_services.get_demand_rows_for_summary_block",
+        fake_block,
+    ):
+        inputs = load_power_balance_demand_max_inputs([2026], sheets=sheets)
+
+    assert captured["model"] is EnergyUnitDemandParameter
+    assert captured["fk"] == "id_energy_unit"
+    assert captured["parent_id"] == 105
+    assert captured["code"] == CODE_WITHOUT_NT
+    assert inputs["eu-105"]["demand_max"][2026] == Decimal("18.5")
 
 
 def test_tables_fill_demand_max_from_loader():

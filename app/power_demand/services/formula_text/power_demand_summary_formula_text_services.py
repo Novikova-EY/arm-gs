@@ -13,6 +13,7 @@ from app.power_demand.models.formula_text.power_demand_summary_formula_text_mode
     PowerDemandSummaryFormulaText,
 )
 from app.power_demand.services.formula_text.pd_summary_formula_row_resolver import (
+    fallback_pd_coeff_k_formula_tooltip,
     resolve_pd_summary_coeff_k_formula_base_key,
     resolve_pd_summary_parameter_formula_base_key,
     resolve_pd_summary_row_formula_key,
@@ -165,6 +166,13 @@ def apply_row_formula_text_overrides(summary_rows: list[dict[str, Any]] | None) 
         coeff_key = resolve_pd_summary_row_formula_key(row, base_key=coeff_base)
         if coeff_key:
             row["pd_coeff_k_formula_tooltip"] = pd_formula_text(coeff_key)
+        elif not str(row.get("pd_coeff_k_formula_tooltip") or "").strip():
+            fallback = fallback_pd_coeff_k_formula_tooltip(
+                row,
+                suffix=pd_formula_text("coeff_k_formula_default_suffix"),
+            )
+            if fallback:
+                row["pd_coeff_k_formula_tooltip"] = fallback
 
 
 def list_formulas_for_admin(*, page: str | None = None) -> list[dict[str, Any]]:

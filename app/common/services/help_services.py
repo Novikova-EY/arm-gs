@@ -330,15 +330,17 @@ def rounded_decimal(value, digits=15):
 
 def values_equal_by_display_precision(old_val, new_val, display_digits=6):
     """
-    Считает значения равными, если разница меньше половины последнего значащего
-    разряда округления. Используется, чтобы не считать «изменением» ситуацию,
-    когда пользователь сохранил форму без правок, а в форме пришло округленное
-    значение (было в БД 1683.738997, в форме 1683.7).
-    display_digits: число знаков после запятой при отображении (1, 2, 3 и т.д.).
-    Для -1 (целые) используем digits=0.
-    Для 0 («Не округлять») значения сравниваются строго (без допуска по округлению),
-    т.к. в интерфейсе отображаются все знаки после запятой.
-    Нулевое значение и None считаются эквивалентными (0.000000 → — не логируем).
+    True, если ``new_val`` — то, что UI показал бы для ``old_val`` при округлении.
+
+    «Округл» в шапке таблицы — только отображение. Нельзя сравнивать old и new
+    допуском «полразряда»: при 1 знаке |1.045−1.0296|<0.05, и эталонный k
+    молча не сохраняется. Сравниваем posted с округлённым текстом ячейки.
+    Не трогали поле (в POST пришло «1» из ячейки) — считаем равным, полный
+    хвост в БД остаётся. Ввели другое число — это правка, даже если оно
+    округляется так же.
+
+    display_digits: знаки после запятой (1, 2, 3); -1 целые; 0 — без округления,
+    строгое равенство. None и 0 считаются эквивалентными.
     """
     if old_val is None and new_val is None:
         return True
@@ -360,9 +362,23 @@ def values_equal_by_display_precision(old_val, new_val, display_digits=6):
     if display_digits == 0:
         return o == n
 
-    d = max(0, min(10, int(display_digits))) if display_digits != -1 else 0
-    tol = Decimal("0.5") * (Decimal(10) ** -d)
-    return abs(o - n) < tol
+    shown = format_decimal_trim_for_display(o, digits=display_digits)
+    if not shown or shown == "—":
+        return n == 0
+    try:
+        shown_d = parse_decimal_from_display(shown)
+    except (InvalidOperation, ValueError, TypeError):
+        return o == n
+    if shown_d is None:
+        return n == 0
+    return shown_d == n
+
+
+def coalesce_posted_numeric_with_stored(stored, posted, display_digits):
+    """Posted совпал с отображением stored → вернуть полный stored, иначе posted."""
+    if values_equal_by_display_precision(stored, posted, display_digits):
+        return stored
+    return posted
 
 
 

@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 from app.power_demand.services.formula_text.pd_summary_formula_row_resolver import (
+    fallback_pd_coeff_k_formula_tooltip,
     nt_group_for_pd_formula_row,
+    resolve_pd_summary_coeff_k_formula_base_key,
     resolve_pd_summary_parameter_formula_base_key,
     resolve_pd_summary_row_formula_key,
     strip_pd_formula_nt_suffix,
@@ -160,4 +162,69 @@ def test_ues_and_fo_verify_follow_perimeter_nt_group() -> None:
             base_key=resolve_pd_summary_parameter_formula_base_key(fo_with),
         )
         == "fo_verify_calc_max_mw_with_nt"
+    )
+
+
+def test_fo_ez_coeff_k_formula_keys_and_fallback() -> None:
+    fo_cz = {
+        "parameter_key": "combined_on_cz",
+        "demand_model_name": "FederalDistrictDemandParameter",
+        "parameter_label": "Совмещенное потребление мощности на час максимума ЦЗ России, МВт",
+        "perimeter_variant_code": "without_nt",
+    }
+    fo_calc = {
+        "parameter_key": "calculated_max_power_mw",
+        "demand_model_name": "FederalDistrictDemandParameter",
+        "perimeter_variant_code": "without_nt",
+    }
+    ez_ees = {
+        "parameter_key": "combined_on_ees",
+        "demand_model_name": "EnergyZoneDemandParameter",
+        "perimeter_variant_code": "without_nt",
+    }
+    ez_calc = {
+        "parameter_key": "calculated_max_power_mw",
+        "demand_model_name": "EnergyZoneDemandParameter",
+    }
+    ues_calc = {
+        "parameter_key": "calculated_max_power_mw",
+        "demand_model_name": "UnionEnergySystemDemandParameter",
+        "perimeter_variant_code": "without_nt",
+    }
+
+    assert resolve_pd_summary_coeff_k_formula_base_key(fo_cz) == "coeff_res_cz_k"
+    assert resolve_pd_summary_row_formula_key(fo_cz, base_key="coeff_res_cz_k") == (
+        "coeff_res_cz_k"
+    )
+    assert get_formula_def("coeff_res_cz_k") is not None
+
+    assert resolve_pd_summary_coeff_k_formula_base_key(fo_calc) == "coeff_k_fo_calc_max"
+    assert resolve_pd_summary_row_formula_key(
+        fo_calc, base_key="coeff_k_fo_calc_max"
+    ) == "coeff_k_fo_calc_max_without_nt"
+    assert get_formula_def("coeff_k_fo_calc_max_without_nt") is not None
+
+    assert resolve_pd_summary_coeff_k_formula_base_key(ez_ees) == "coeff_res_ees_k"
+    assert resolve_pd_summary_coeff_k_formula_base_key(ez_calc) == "coeff_k_ez_calc_max"
+    assert get_formula_def("coeff_k_ez_calc_max") is not None
+
+    assert resolve_pd_summary_coeff_k_formula_base_key(ues_calc) == (
+        "coeff_k_ues_calc_max_oes"
+    )
+    assert resolve_pd_summary_coeff_k_formula_base_key(
+        {"parameter_key": "combined_on_fo"}
+    ) == "coeff_res_fo_k"
+    assert resolve_pd_summary_coeff_k_formula_base_key(
+        {"parameter_key": "combined_on_ez"}
+    ) == "coeff_res_ez_k"
+
+    fallback = fallback_pd_coeff_k_formula_tooltip(fo_cz)
+    assert fallback.startswith("k = «Совмещенное потребление мощности на час максимума ЦЗ России»")
+    assert "Максимальное потребление мощности, МВт" in fallback
+    assert fallback_pd_coeff_k_formula_tooltip({"parameter_key": "max_power"}) == ""
+    assert (
+        fallback_pd_coeff_k_formula_tooltip(
+            {**fo_cz, "pd_pd_skip_coeff_k_row": True}
+        )
+        == ""
     )

@@ -244,7 +244,7 @@
                         <tr>
                             {% if loop.first %}
                             <td class="text-center align-middle" rowspan="{{ machine_count }}">{{ station_index }}</td>
-                            <td class="text-center align-middle" rowspan="{{ machine_count }}"><a href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=station.id) }}">{{ station.site_name or '—' }}</a></td>
+                            <td class="text-center align-middle" rowspan="{{ machine_count }}">{% set details_endpoint = 'prospective_places_bp.prospective_place_aes_details' %}{% include 'generation/prospective_places/_place_name_with_station_link.html' %}</td>
                             <td class="text-center align-middle" rowspan="{{ machine_count }}">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>
                             <td class="text-center align-middle" rowspan="{{ machine_count }}">{{ (station.regional_district.name_full if station.regional_district else None) or '—' }}</td>
                             <td class="text-center align-middle" rowspan="{{ machine_count }}">{{ station.geo_location or '—' }}</td>
@@ -263,7 +263,7 @@
                     {% else %}
                         <tr>
                             <td class="text-center">{{ station_index }}</td>
-                            <td class="text-center"><a href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=station.id) }}">{{ station.site_name or '—' }}</a></td>
+                            <td class="text-center">{% set details_endpoint = 'prospective_places_bp.prospective_place_aes_details' %}{% include 'generation/prospective_places/_place_name_with_station_link.html' %}</td>
                             <td class="text-center">{{ (station.regional_energy_system.union_energy_system.name if station.regional_energy_system and station.regional_energy_system.union_energy_system else None) or '—' }}</td>
                             <td class="text-center">{{ (station.regional_district.name_full if station.regional_district else None) or '—' }}</td>
                             <td class="text-center">{{ station.geo_location or '—' }}</td>

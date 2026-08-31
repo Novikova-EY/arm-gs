@@ -245,6 +245,14 @@
         return visible;
     }
 
+    var yearPeriodCtx = null;
+
+    function reapplyYearColumnVisibility() {
+        if (yearPeriodCtx) {
+            yearPeriodCtx.applyAll();
+        }
+    }
+
     function applyYearVisibility(state, table, n, longSegEnabled) {
         var visible = buildVisibleYears(state, n, longSegEnabled);
         table.querySelectorAll("[data-ec-summary-col-year]").forEach(function (el) {
@@ -486,6 +494,29 @@
             syncSegmentButtons(state, bar, longSegEnabled);
         }
 
+        yearPeriodCtx = { applyAll: applyAll };
+        applyAll();
+
+        if (!global.__ecSummaryYearPeriodRowsHooked) {
+            global.__ecSummaryYearPeriodRowsHooked = true;
+            document.addEventListener(
+                "pd-summary-rows-rendered",
+                reapplyYearColumnVisibility
+            );
+            document.addEventListener(
+                "ec-summary-rows-rendered",
+                reapplyYearColumnVisibility
+            );
+        }
+        var rowsReady = global.__ecSummaryRowsReady || global.__pdSummaryRowsReady;
+        if (rowsReady && typeof rowsReady.then === "function") {
+            rowsReady
+                .then(function () {
+                    reapplyYearColumnVisibility();
+                })
+                .catch(function () { /* */ });
+        }
+
         function resetManualState() {
             state.mode = "manual";
             state.reporting = false;
@@ -494,8 +525,6 @@
             writeState(state);
             applyAll();
         }
-
-        applyAll();
 
         var yearForm = document.getElementById("powerDemandSummaryYearForm");
         if (yearForm) {

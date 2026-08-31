@@ -351,7 +351,7 @@ def _coeff_last_run_display_for_page(selected_row: DistributionParameter | None)
     trigger_label = {
         "run_coeff": "кнопка «Коэфф»",
         "update_tech_hn": "сохранение ЧЧИУМ (hn)",
-        "run_distribution": "кнопка «Распред» (авто-Коэфф)",
+        "run_distribution": "кнопка «Распред»",
     }.get(trigger, trigger)
 
     return {
@@ -623,6 +623,7 @@ def fuel_calculation_form():
                     union_energy_system_filter=ues_ids if ues_ids else None,
                     base_year=base_year if base_year is not None else None,
                     per_page="all",
+                    show_empty_rows="1",
                 )
 
     if composite_energy_level_issues:

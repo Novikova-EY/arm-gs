@@ -31,19 +31,6 @@ content %} {% if current_user.is_authenticated %}
 
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-      <a
-        href="{{ url_for('energy_balance_bp.hub') }}"
-        class="btn btn-secondary fs-5"
-        >Модуль «Балансы ЭЭ и ЭМ»</a
-      >
-      <a
-        href="{{ url_for('station_bp.station_list') }}"
-        class="btn btn-secondary fs-5"
-        >Электростанции РФ</a
-      >
-    </div>
-
     <div class="col-12 mb-2 text-center">
       <h2 class="mb-4">Выработка электроэнергии электростанциями</h2>
     </div>
@@ -73,6 +60,15 @@ content %} {% if current_user.is_authenticated %}
       }
       #eeGenerationTable tbody tr.ee-verify-for-row > td {
         background-color: #e2ecf7 !important;
+      }
+      #eeGenerationTable tbody tr.ee-control-row > td {
+        background-color: var(--bs-secondary-bg, #e2e3e5) !important;
+      }
+      #eeGenerationTable input.ee-control-value {
+        min-width: 4.5rem;
+        max-width: 7rem;
+        margin: 0 auto;
+        font-weight: 600;
       }
       #eeGenerationTable tbody tr.summary-row-hidden {
         display: none;
@@ -142,7 +138,8 @@ content %} {% if current_user.is_authenticated %}
         = generation_aggregates|default({}) %} {% set should_show_totals =
         should_show_totals|default({}) %} {% set res_show_rd_level_map =
         res_show_rd_level_map|default({}) %} {% set res_control_by_res =
-        res_control_by_res|default({}) %} {% set res_verification_by_res =
+        res_control_by_res|default({}) %} {% set res_stations_left_by_res =
+        res_stations_left_by_res|default({}) %} {% set res_verification_by_res =
         res_verification_by_res|default({}) %} {% for est_block in hierarchy %}
         {% if per_page == 'all' or (show_headers and est_block.est_id in
         show_headers.get('energy_system_types', [])) %}
@@ -205,24 +202,28 @@ content %} {% if current_user.is_authenticated %}
         energy_unit_names.get(eu_block.eu_id) or eu_block.eu_name %} {% with
         label=eu_total_name ~ ', всего',
         period_totals=generation_aggregates.get('energy_units',
-        {}).get(eu_block.eu_id, {}), row_class='table-success' %} {% include
+        {}).get(eu_block.eu_id, {}), row_class='table-success',
+        info_tooltip=total_tooltip_energy_unit %} {% include
         'energy_balance/ee_generation/ee_generation_total_row.html' %} {%
         endwith %} {% endif %} {% endif %} {% endfor %} {% if show_rd_totals and
         rd_block.rd_name|lower != 'не указано' %} {% with
         label=(regional_district_names.get(rd_block.rd_id) or rd_block.rd_name)
         ~ ', всего',
         period_totals=generation_aggregates.get('regional_districts',
-        {}).get(rd_block.rd_id, {}), row_class='table-warning' %} {% include
+        {}).get(rd_block.rd_id, {}), row_class='table-warning',
+        info_tooltip=total_tooltip_regional_district %} {% include
         'energy_balance/ee_generation/ee_generation_total_row.html' %} {%
         endwith %} {% endif %} {% endfor %} {% set show_res_totals =
         should_show_totals.get('regional_energy_systems',
-        {}).get(res_block.res_id) %} {% if show_res_totals %} {% with
+        {}).get(res_block.res_id) %}         {% if show_res_totals %} {% with
         label=res_block.res_name ~ ', всего',
-        period_totals=generation_aggregates.get('regional_energy_systems',
-        {}).get(res_block.res_id, {}), row_class='table-secondary' %} {% include
-        'energy_balance/ee_generation/ee_generation_total_row.html' %} {%
+        period_totals=res_control_by_res.get(res_block.res_id, {}),
+        res_id=res_block.res_id, info_tooltip=control_tooltip %} {% include
+        'energy_balance/ee_generation/ee_generation_control_row.html' %} {%
         endwith %} {% with label='Проверка для ' ~ res_block.res_name,
-        period_totals=res_verification_by_res.get(res_block.res_id, {}) %} {%
+        period_totals=res_verification_by_res.get(res_block.res_id, {}),
+        left_totals=res_stations_left_by_res.get(res_block.res_id, {}),
+        res_id=res_block.res_id, info_tooltip=verification_tooltip %} {%
         include
         'energy_balance/ee_generation/ee_generation_verification_row.html' %} {%
         endwith %} {% endif %} {% endfor %} {% set show_ues_totals =
@@ -231,12 +232,13 @@ content %} {% if current_user.is_authenticated %}
         label=(union_energy_system_names.get(ues_block.ues_id) or
         ues_block.ues_name) ~ ', всего',
         period_totals=generation_aggregates.get('union_energy_systems',
-        {}).get(ues_block.ues_id, {}), row_class='table-primary' %} {% include
+        {}).get(ues_block.ues_id, {}), row_class='table-primary',
+        info_tooltip=total_tooltip_ues %} {% include
         'energy_balance/ee_generation/ee_generation_total_row.html' %} {%
         endwith %} {% endif %} {% endfor %} {% endfor %} {% if
         should_show_totals.get('total') %} {% with label='Россия, всего',
         period_totals=generation_aggregates.get('total', {}),
-        row_class='table-danger' %} {% include
+        row_class='table-danger', info_tooltip=total_tooltip_russia %} {% include
         'energy_balance/ee_generation/ee_generation_total_row.html' %} {%
         endwith %} {% endif %} {% else %}
         <tr>
@@ -299,6 +301,14 @@ content %} {% if current_user.is_authenticated %}
   document.addEventListener("DOMContentLoaded", function () {
     const loadingOverlay = document.getElementById("loading-overlay");
     if (loadingOverlay) loadingOverlay.style.display = "none";
+
+    if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
+      document
+        .querySelectorAll('#eeGenerationTable [data-bs-toggle="tooltip"]')
+        .forEach(function (el) {
+          new bootstrap.Tooltip(el);
+        });
+    }
 
     if (typeof initializeStationFilters === "function") {
       initializeStationFilters();
@@ -425,6 +435,171 @@ content %} {% if current_user.is_authenticated %}
         }
         syncVerificationToggleUi();
         reapplyVerificationVisibility();
+      });
+    })();
+
+    (function initEeGenerationControlSave() {
+      const table = document.getElementById("eeGenerationTable");
+      if (!table) return;
+
+      const SAVE_URL = {{ ee_control_save_url|default('')|tojson }};
+      if (!SAVE_URL) return;
+
+      const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
+      const PERIOD_MODE = {{ ee_period_mode|default('years')|tojson }};
+      const SELECTED_YEAR = {{ selected_year|default(none)|tojson }};
+      const DIGITS = {{ rounding_digits|default(1)|tojson }};
+      const timers = new WeakMap();
+
+      function parseRaw(text) {
+        if (text == null) return null;
+        const s = String(text)
+          .trim()
+          .replace(/\u2212/g, "-")
+          .replace(/\u00a0/g, "")
+          .replace(/\u202f/g, "")
+          .replace(/\s/g, "")
+          .replace(",", ".");
+        if (!s || s === "—" || s === "-" || s === "–") return null;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : NaN;
+      }
+
+      function formatNumber(n) {
+        if (n == null || !Number.isFinite(n)) return "";
+        let digits = DIGITS;
+        let value = n;
+        if (digits === -1) {
+          value = Math.round(n);
+          digits = 0;
+        }
+        let str =
+          digits === 0 ? String(value) : value.toFixed(digits);
+        str = str.replace(".", ",");
+        const neg = str.charAt(0) === "-";
+        if (neg) str = str.slice(1);
+        let intPart = str;
+        let frac = null;
+        const comma = str.indexOf(",");
+        if (comma >= 0) {
+          intPart = str.slice(0, comma);
+          frac = str.slice(comma + 1);
+          if (DIGITS !== 0 && DIGITS !== -1) {
+            frac = frac.replace(/0+$/, "");
+          }
+        }
+        intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        let out = frac ? intPart + "," + frac : intPart;
+        if (neg && out !== "0") out = "-" + out;
+        return out;
+      }
+
+      function updateVerificationCell(resId, period, controlRaw) {
+        const cell = table.querySelector(
+          'td.ee-verification-cell[data-res-id="' +
+            resId +
+            '"][data-period="' +
+            period +
+            '"]',
+        );
+        if (!cell) return;
+        const leftRaw = cell.getAttribute("data-left-sum");
+        const span = cell.querySelector("span");
+        if (!span) return;
+        if (leftRaw == null || leftRaw === "") {
+          if (controlRaw == null) {
+            span.textContent = "";
+            span.classList.remove("text-danger");
+            return;
+          }
+        }
+        const left = leftRaw === "" || leftRaw == null ? 0 : Number(leftRaw);
+        const control = controlRaw == null ? 0 : Number(controlRaw);
+        if (!Number.isFinite(left) && controlRaw == null) {
+          span.textContent = "";
+          span.classList.remove("text-danger");
+          return;
+        }
+        const leftNum = Number.isFinite(left) ? left : 0;
+        const diff = leftNum - (Number.isFinite(control) ? control : 0);
+        span.textContent = formatNumber(diff) || "0";
+        span.classList.toggle("text-danger", Math.abs(diff) > 1e-12);
+      }
+
+      function saveControlInput(input) {
+        const resId = input.getAttribute("data-res-id");
+        const period = input.getAttribute("data-period");
+        if (!resId || period == null) return;
+
+        const parsed = parseRaw(input.value);
+        if (Number.isNaN(parsed)) {
+          input.classList.add("is-invalid");
+          return;
+        }
+        input.classList.remove("is-invalid");
+
+        fetch(SAVE_URL, {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": CSRF || "",
+          },
+          body: JSON.stringify({
+            res_id: Number(resId),
+            period: Number(period),
+            value: parsed == null ? "" : input.value,
+            ee_period_mode: PERIOD_MODE,
+            selected_year: SELECTED_YEAR,
+            rounding_digits: DIGITS,
+          }),
+        })
+          .then(function (response) {
+            return response.json().then(function (payload) {
+              if (!response.ok || !payload || !payload.ok) {
+                throw new Error(
+                  (payload && payload.error) ||
+                    "Не удалось сохранить контрольное значение",
+                );
+              }
+              return payload;
+            });
+          })
+          .then(function (payload) {
+            input.value = payload.display || "";
+            const savedRaw =
+              payload.value == null || payload.value === ""
+                ? null
+                : Number(payload.value);
+            updateVerificationCell(resId, period, savedRaw);
+          })
+          .catch(function (error) {
+            input.classList.add("is-invalid");
+            console.error(error);
+          });
+      }
+
+      table.addEventListener("input", function (event) {
+        const input = event.target.closest("input.ee-control-value");
+        if (!input || !table.contains(input)) return;
+        input.classList.remove("is-invalid");
+        const prev = timers.get(input);
+        if (prev) clearTimeout(prev);
+        timers.set(
+          input,
+          setTimeout(function () {
+            saveControlInput(input);
+          }, 400),
+        );
+      });
+
+      table.addEventListener("change", function (event) {
+        const input = event.target.closest("input.ee-control-value");
+        if (!input || !table.contains(input)) return;
+        const prev = timers.get(input);
+        if (prev) clearTimeout(prev);
+        saveControlInput(input);
       });
     })();
 

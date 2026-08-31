@@ -8,7 +8,12 @@ from unittest.mock import patch
 from app.power_demand.services.demand_summary_services import (
     _finalize_oes_summary_context,
     _inject_oes_summary_verification_rows,
+    _refresh_oes_summary_verification_row_values,
     enrich_oes_summary_calculated_max_power_from_res_combined,
+    enrich_summary_rows_coeff_k_columns,
+)
+from app.power_demand.services.demand_summary_export_services import (
+    _excel_hide_plan_year_cell,
 )
 from app.power_demand.services.pd_summary_data_segments import PD_SUMMARY_SEGMENT_VERIFY
 
@@ -116,3 +121,77 @@ def test_finalize_oes_summary_verify_segment_triggers_calc_max_enrichment(
     )
 
     enrich_mock.assert_called_once_with(ctx, 1)
+
+
+def test_refresh_verify_row_values_uses_updated_plan_year_operands() -> None:
+    """После заполнения плановых МВт пересчёт «Проверка» = a − b."""
+    years = [2025, 2026]
+    rows = [
+        _param_row(
+            pk="max_power",
+            year_values=["100", "200"],
+            show_entity_cell=True,
+            ues_id=10,
+        ),
+        _param_row(pk="calculated_max_power_mw", year_values=["110", "—"], ues_id=10),
+    ]
+    rows[0]["entity_rowspan"] = 2
+    _inject_oes_summary_verification_rows(rows, years)
+    verify = next(
+        r for r in rows if r.get("parameter_key") == "verify_for_calculated_max_power_mw"
+    )
+    assert verify["year_values"][1] == "—"
+
+    calc = next(r for r in rows if r.get("parameter_key") == "calculated_max_power_mw")
+    calc["year_values"][1] = "210"
+    calc["year_numeric_tooltips"][1] = "210"
+    _refresh_oes_summary_verification_row_values(rows, years)
+    assert verify["year_values"] == ["10", "10"]
+
+
+def test_coeff_k_enrichment_refreshes_verify_rows() -> None:
+    years = [2025]
+    rows = [
+        _param_row(
+            pk="max_power",
+            year_values=["100"],
+            show_entity_cell=True,
+            ues_id=10,
+        ),
+    ]
+    rows[0]["entity_rowspan"] = 1
+    with (
+        patch(
+            "app.power_demand.services.demand_summary_services._summary_rows_include_ues_blocks",
+            return_value=False,
+        ),
+        patch(
+            "app.power_demand.services.demand_summary_services._refresh_oes_summary_verification_row_values"
+        ) as refresh_mock,
+    ):
+        enrich_summary_rows_coeff_k_columns(
+            rows,
+            years,
+            rounding_digits=1,
+            year_is_plan={2025: False},
+            coeff_base_year=2025,
+        )
+    refresh_mock.assert_called_once_with(rows, years)
+
+
+def test_excel_does_not_hide_verify_plan_year_cells() -> None:
+    row = {
+        "parameter_key": "verify_for_calculated_max_power_mw",
+        "pd_pd_verify_for_row": True,
+        "demand_model_name": "UnionEnergySystemDemandParameter",
+    }
+    assert (
+        _excel_hide_plan_year_cell(
+            2026,
+            "verify_for_calculated_max_power_mw",
+            row,
+            {2026: True},
+            2025,
+        )
+        is False
+    )

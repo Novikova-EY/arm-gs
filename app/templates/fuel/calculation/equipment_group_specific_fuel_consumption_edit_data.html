@@ -3,15 +3,23 @@
 {% from 'fuel/_shared/equipment_group_name_macros.html' import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %}
 {% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
 
+{# Подпись FuelParam.ved (Тип ТЭС) по справочнику FUEL_PARAM_VED_LABELS. #}
+{% macro fuel_param_ved_display(ved) -%}
+{%- if ved is none -%}—{%- else -%}{{- (fuel_param_ved_labels|default({})).get(ved|int, ved) -}}{%- endif -%}
+{%- endmacro %}
+
 {# Подсказка с полным значением из БД (без округления UI), как на equipment_group_fuel_params_edit_data #}
 {% macro specific_fc_tooltip_title(attr, is_numeric, param) -%}
 {%- if param is none -%}
 {%- elif is_numeric -%}
-{%- set v = param|get_attr(attr) -%}
+    {%- set v = param|get_attr(attr) -%}
 {%- if v is not none -%}{{ v|format_decimal(0) }}{%- endif -%}
 {%- elif attr == 'numb1120' -%}
 {%- set _sc = param|get_attr('numb1120') -%}
 {%- if _sc is not none and (_sc|string|trim != '') and (_sc|string|trim|lower != 'none') -%}{{ _sc }}{%- endif -%}
+{%- elif attr == 'ved' -%}
+{%- set _ved = param|get_attr('ved') -%}
+{%- if _ved is not none -%}{{ fuel_param_ved_display(_ved) }}{%- endif -%}
 {%- else -%}
 {{- param|get_attr(attr)|default('', true) -}}
 {%- endif -%}
@@ -19,6 +27,7 @@
 
 {% macro specific_fc_data_cell(attr, is_numeric, param) -%}
 {% if param is none %}—
+{% elif attr == 'ved' %}{{ fuel_param_ved_display(param|get_attr('ved')) }}
 {% elif attr == 'snk_calc' %}{% set v = param|get_attr('snk_calc') %}{% if v is none %}—{% else %}{{ v|format_decimal }}{% endif %}
 {% elif is_numeric %}{{ render_numeric_or_dash(param|get_attr(attr)) }}
 {% else %}{% set v = param|get_attr(attr) %}{{ v if v is not none else '—' }}{% endif %}
@@ -75,7 +84,7 @@
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 py-1">
         <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Словарь станций и групп оборудования</a>
     </div>
     </div><!-- /.fuel-calc-edit-sticky-nav -->
 
@@ -175,10 +184,12 @@
    — input: редактируется кроме годов «факт»
    — calc: только просмотр для «факт»; редактируется для остальных признаков (в т.ч. «план»)
    Столбцы как на stations_equipment_group_specific_fuel_consumption:
-   numb1120, k, y/y_calc, btp/btp_calc, sntp/sntp_calc, bk/bk_calc, snk/snk_calc #}
+   numb1120, ved (из FuelParam), k, y/y_calc, btp/btp_calc, sntp/sntp_calc, bk/bk_calc, snk/snk_calc #}
 {# numb1120 только просмотр; при сохранении подставляется EquipmentGroup.numb #}
+{# ved — только просмотр, значение из FuelParam за тот же год (как на equipment_group_fuel_params_edit_data) #}
 {% set specific_fc_columns = [
     ('numb1120', 'Код группы оборудования', false, 'view'),
+    ('ved', 'Тип ТЭС', false, 'view'),
     ('k', 'K', true, 'input'),
     ('y', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал', true, 'input'),
     ('y_calc', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал', true, 'calc'),
@@ -211,7 +222,7 @@
                 {% if attr == 'numb1120' %}
                 {{ fuel_param_numb1120_header_th(1, hdr.get(attr, _lbl), (numb1120_filter|default([])), (numb1120_filter_choices|default([]))) }}
                 {% else %}
-                <th style="min-width: 4rem;" class="specific-fc-col-{{ attr }}">
+                <th {% if attr == 'ved' %}data-column="ved" title="Сортировать по типу ТЭС"{% else %}style="min-width: 4rem;"{% endif %} class="specific-fc-col-{{ attr }}{% if attr == 'ved' %} specific-fc-sortable-th{% endif %}">
                     {{ hdr.get(attr, _lbl) }}{% if consumption_formulas is defined and consumption_formulas.get(attr) %}
                     <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ consumption_formulas.get(attr) }}" style="cursor: help; font-size: 0.9em;"></i>
                     {% endif %}
@@ -246,9 +257,11 @@
                                     {% set can_calc_edit = can_edit_bulk and gid and ynum != '' and not is_fact_year %}
                                     {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
                                     {% set row_is_empty = not param %}
+                                    {% set row_ved = param|get_attr('ved') if param is not none else none %}
                                     <tr class="text-center align-middle{% if group_block.get('is_composite_parent') or group_block.get('is_composite_total_row') %} fuel-param-composite-parent-row fw-bold{% elif nust_highlight_row %} table-warning{% endif %}"
                                         data-fuel-edit-data-row="1"
                                         data-fuel-group-id="{{ gid }}"
+                                        {% if row_ved is not none %}data-ved="{{ row_ved }}"{% endif %}
                                         {% if is_fact_year %}data-fact-year="1"{% endif %}
                                         {% if is_plan_year %}data-plan-year="1"{% endif %}
                                         {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
@@ -268,7 +281,7 @@
                                         {% else %}
                                         {% set cell_ttip = '' %}
                                         {% endif %}
-                                        <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>
+                                        <td class="specific-fc-col-{{ attr }}" data-column="{{ attr }}"{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>
                                             {% if attr == 'numb1120' %}
                                             {{ specific_fc_numb1120_cell(param, group_entity) }}
                                             {% elif do_edit_cell %}
@@ -302,9 +315,11 @@
                 {% set can_calc_edit = can_edit_bulk and gid and ynum != '' and not is_fact_year %}
                 {% set nust_highlight_row = ynum != '' and nust_changed_from_prev_year_rows is defined and (gid ~ ':' ~ ynum) in nust_changed_from_prev_year_rows %}
                 {% set row_is_empty = not param %}
+                {% set row_ved = param|get_attr('ved') if param is not none else none %}
                 <tr class="text-center align-middle{% if nust_highlight_row %} table-warning{% endif %}"
                     data-fuel-edit-data-row="1"
                     data-fuel-group-id="{{ gid }}"
+                    {% if row_ved is not none %}data-ved="{{ row_ved }}"{% endif %}
                     {% if is_fact_year %}data-fact-year="1"{% endif %}
                     {% if is_plan_year %}data-plan-year="1"{% endif %}
                     {% if nust_highlight_row %}data-row-yellow="1"{% endif %}
@@ -324,7 +339,7 @@
                     {% else %}
                     {% set cell_ttip = '' %}
                     {% endif %}
-                    <td{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>
+                    <td class="specific-fc-col-{{ attr }}" data-column="{{ attr }}"{% if cell_ttip %} title="{{ cell_ttip|e }}"{% endif %}>
                         {% if attr == 'numb1120' %}
                         {{ specific_fc_numb1120_cell(param, group_entity) }}
                         {% elif do_edit_cell %}
@@ -450,6 +465,38 @@
     .fuel-calc-edit-shell #specificFcEditTable .text-muted.small {
         font-size: 0.85em;
     }
+    /* ved: та же ширина, что у numb1120 (значение --specific-fc-ved-col-width задаёт JS) */
+    #specificFcEditTable th.specific-fc-col-ved,
+    #specificFcEditTable td.specific-fc-col-ved {
+        width: var(--specific-fc-ved-col-width, 1%);
+        min-width: var(--specific-fc-ved-col-width, 0);
+        max-width: var(--specific-fc-ved-col-width, none);
+        box-sizing: border-box;
+    }
+    #specificFcEditTable th.specific-fc-col-ved {
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: normal;
+        vertical-align: middle;
+    }
+    #specificFcEditTable td.specific-fc-col-ved {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+    }
+    #specificFcEditTable th.specific-fc-sortable-th {
+        cursor: pointer;
+        user-select: none;
+    }
+    #specificFcEditTable th.specific-fc-sortable-th:hover {
+        filter: brightness(0.97);
+    }
+    #specificFcEditTable th.specific-fc-sortable-th .specific-fc-sort-indicator {
+        font-size: 0.7em;
+        opacity: 0.75;
+        white-space: nowrap;
+    }
     /*
       overflow на #stationsTableContainer ломает sticky у thead относительно .fuel-calc-edit-top.
       Горизонтальный и вертикальный скролл — у .fuel-calc-edit-top (overflow-auto).
@@ -514,6 +561,7 @@
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
+<script src="{{ url_for('static', filename='js/fuel/fuel_ved_header_sort.js') }}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     if (typeof initializeStationFilters === "function") initializeStationFilters();

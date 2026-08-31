@@ -1,5 +1,5 @@
 {% set current_slug = current_slug|default('') %}
-{% set nav_variant = nav_variant|default('hub') %}
+{% set first_row_active_slug = first_row_active_slug|default(current_slug) %}
 {% macro power_balance_sheet_url(sheet_slug) -%}
   {%- if start_year is defined and end_year is defined and rounding_digits is defined -%}
     {{ url_for('energy_balance_bp.power_balance_table', slug=sheet_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}
@@ -7,35 +7,24 @@
     {{ url_for('energy_balance_bp.power_balance_table', slug=sheet_slug) }}
   {%- endif -%}
 {%- endmacro %}
-{% if nav_variant == 'hub' %}
+<div class="d-flex flex-nowrap gap-2 w-100 overflow-auto pb-1">
   {% for group in sheet_groups %}
-    {% if not loop.first %}
-    <hr class="my-4 border-secondary border-2 opacity-50">
-    {% endif %}
-    <div class="row g-4 justify-content-center{% if loop.last %} pb-4{% endif %}">
-      {% for sheet in group.sheets %}
-      <div class="col-12 col-md-6">
-        <div class="card shadow-sm w-100">
-          <div class="card-body text-center">
-            <a href="{{ power_balance_sheet_url(sheet.slug) }}"
-               class="btn btn-success fs-4 w-100 py-4 text-wrap">
-              {{ sheet.sheet_name }}
-            </a>
-          </div>
-        </div>
-      </div>
-      {% endfor %}
-    </div>
-  {% endfor %}
-{% else %}
-  <div class="d-flex flex-nowrap gap-2 w-100 overflow-auto pb-1">
-    {% for group in sheet_groups %}
-      {% for sheet in group.sheets %}
-      <a href="{{ power_balance_sheet_url(sheet.slug) }}"
-         class="btn {% if sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0">
-        {{ sheet.sheet_name }}
-      </a>
-      {% endfor %}
+    {% for nav_sheet in group.sheets %}
+    {% set href_slug = nav_sheet.first_child_slug if nav_sheet.first_child_slug else nav_sheet.slug %}
+    <a href="{{ power_balance_sheet_url(href_slug) }}"
+       class="btn {% if nav_sheet.slug == first_row_active_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0">
+      {{ nav_sheet.sheet_name }}
+    </a>
     {% endfor %}
-  </div>
+  {% endfor %}
+</div>
+{% if tites_east_child_sheets %}
+<div class="d-flex flex-nowrap gap-2 w-100 overflow-auto pb-1" role="navigation" aria-label="Энергосистемы ТИТЭС Востока">
+  {% for nav_sheet in tites_east_child_sheets %}
+  <a href="{{ power_balance_sheet_url(nav_sheet.slug) }}"
+     class="btn {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0">
+    {{ nav_sheet.sheet_name }}
+  </a>
+  {% endfor %}
+</div>
 {% endif %}

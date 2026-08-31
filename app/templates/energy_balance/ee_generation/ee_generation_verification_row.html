@@ -1,11 +1,25 @@
 {# Строка проверки сумм по РЭС (скрыта по умолчанию, включается кнопкой «Проверка») #}
-<tr class="ee-verification-row ee-verify-for-row summary-row-hidden text-center align-middle" style="font-weight: bold;">
+<tr class="ee-verification-row ee-verify-for-row summary-row-hidden text-center align-middle"
+    style="font-weight: bold;"
+    data-res-id="{{ res_id }}">
     <td></td>
-    <td class="text-start">{{ label }}</td>
+    <td class="text-start">
+        {{ label }}{% if info_tooltip %}
+        <i class="bi bi-info-circle text-primary ms-1 ee-total-tip"
+           data-bs-toggle="tooltip"
+           data-bs-placement="top"
+           title="{{ info_tooltip|e }}"
+           style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;"
+           aria-label="Логика проверки"></i>{% endif %}
+    </td>
     <td colspan="6"></td>
     {% for period_num, period_label in period_columns %}
     {% set verification_value = period_totals.get(period_num) %}
-    <td>
+    {% set left_value = (left_totals or {}).get(period_num) %}
+    <td class="ee-verification-cell"
+        data-res-id="{{ res_id }}"
+        data-period="{{ period_num }}"
+        data-left-sum="{% if left_value is not none %}{{ left_value }}{% endif %}">
         <span class="{% if is_verification_nonzero(verification_value) %}text-danger{% endif %}">
             {{ format_verification_cell(verification_value) }}
         </span>

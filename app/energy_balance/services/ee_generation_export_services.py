@@ -261,6 +261,7 @@ def export_ee_generation_to_excel(
     generation_aggregates = page_data.get("generation_aggregates") or {}
     should_show_totals = page_data.get("should_show_totals") or {}
     res_show_rd_level_map = page_data.get("res_show_rd_level_map") or {}
+    res_control_by_res = page_data.get("res_control_by_res") or {}
     res_verification_by_res = page_data.get("res_verification_by_res") or {}
 
     columns = STATIC_COLUMNS + [label for _key, label in period_columns]
@@ -361,7 +362,7 @@ def export_ee_generation_to_excel(
                         row_idx,
                         f"{res_name}, всего",
                         period_columns,
-                        generation_aggregates.get("regional_energy_systems", {}).get(res_id, {}),
+                        res_control_by_res.get(res_id, {}),
                         rounding_digits,
                         fill=FILL_RES_HEADER,
                     )

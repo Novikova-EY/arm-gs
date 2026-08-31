@@ -1,0 +1,6 @@
+            <td class="align-middle pb-note-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">
+              <textarea class="form-control form-control-sm pb-row-note"
+                        rows="1"
+                        maxlength="4000"
+                        aria-label="Примечание">{{ row.note|default('') }}</textarea>
+            </td>

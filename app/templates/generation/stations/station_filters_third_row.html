@@ -51,12 +51,12 @@
                 <!-- Горизонтальное размещение блоков -->
                 <div class="d-flex align-items-center flex-wrap gap-2 justify-content-end">
                     {% if not external_code_check_mode %}
-                    <!-- Станции с УМ > 100 МВт -->
+                    <!-- Станции > 100 МВт -->
                     <input type="checkbox" class="btn-check" id="um_gt_100_switch" autocomplete="off"
                         {% if request.args.get('um_gt_100') == '1' or (um_gt_100 is defined and um_gt_100) %}checked{% endif %}>
                     <label for="um_gt_100_switch"
                         class="btn {% if request.args.get('um_gt_100') == '1' or (um_gt_100 is defined and um_gt_100) %}btn-primary{% else %}btn-outline-secondary{% endif %} text-wrap flex-shrink-0">
-                        Станции с УМ &gt; 100 МВт
+                        Станции &gt; 100 МВт
                     </label>
 
                     <!-- Проверка топлива -->

@@ -63,6 +63,8 @@
             s.indexOf("мвт") >= 0 ||
             s.indexOf("мск") >= 0 ||
             s.indexOf("потреблен") >= 0 ||
+            s.indexOf("прирост") >= 0 ||
+            s.indexOf("озп") >= 0 ||
             s.indexOf("сипр") >= 0 ||
             s.indexOf("млн") >= 0 ||
             s.indexOf("квт") >= 0 ||

@@ -32,6 +32,184 @@ from app.generation.services.station_services.station_access_services import (
 )
 
 
+_YEAR_IN_TEXT_RE = re.compile(r"(?:19|20)\d{2}")
+
+
+def parse_machine_commission_year(value) -> int | None:
+    """Достаёт календарный год из int/str/«01.01.2031»."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if 1900 <= value <= 2100 else None
+    try:
+        as_int = int(value)
+        if 1900 <= as_int <= 2100:
+            return as_int
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    match = _YEAR_IN_TEXT_RE.search(text)
+    if match:
+        return int(match.group(0))
+    return None
+
+
+def machine_commission_year_sort_value(machine) -> int:
+    """Год ввода для сортировки строк (меньше — раньше). Нет года — в конец."""
+    for attr in ("date_commission_year", "date_exploitation_expected", "commission_display"):
+        year = parse_machine_commission_year(getattr(machine, attr, None))
+        if year is not None:
+            return year
+    rows = getattr(machine, "powers_by_year", None)
+    if isinstance(rows, list):
+        years = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if row.get("event") not in (None, "commission"):
+                continue
+            year = parse_machine_commission_year(row.get("year"))
+            if year is not None:
+                years.append(year)
+        if years:
+            return min(years)
+    elif isinstance(rows, dict) and rows:
+        years = []
+        for raw_year in rows.keys():
+            year = parse_machine_commission_year(raw_year)
+            if year is not None:
+                years.append(year)
+        if years:
+            return min(years)
+    return 10**9
+
+
+def machine_has_station_number(machine) -> bool:
+    raw = getattr(machine, "machine_number", None)
+    if raw is None:
+        return False
+    text = str(raw).strip()
+    if not text or text in {"–", "—", "-"}:
+        return False
+    return bool(re.search(r"\d+", text))
+
+
+def machine_number_sort_key(value):
+    s = str(value).strip() if value is not None else ""
+    match = re.match(r"(\d+)", s)
+    if match:
+        num = int(match.group(1))
+        suffix = s[match.end():].lower()
+        return (0, num, suffix)
+    return (1, float("inf"), s.lower())
+
+
+def machine_year_then_number_sort_key(machine, number_key=None):
+    """
+    Нумерные агрегаты (ТЭС) — по станционному номеру, затем году.
+    ВЭС/СЭС без номера — по году ввода ASC, иначе получается «чет/нечет» по id.
+    """
+    if number_key is None:
+        number_key = machine_number_sort_key
+    year = machine_commission_year_sort_value(machine)
+    number = number_key(getattr(machine, "machine_number", None))
+    name = (getattr(machine, "machine_name", None) or "").strip().lower()
+    mid = getattr(machine, "id", 0) or 0
+    if machine_has_station_number(machine):
+        return (0, number, year, name, mid)
+    return (1, year, number, name, mid)
+
+
+def _machines_block_year_key(machines) -> int:
+    return min(machine_commission_year_sort_value(m) for m in machines)
+
+
+def _machines_block_has_station_number(machines) -> bool:
+    return any(machine_has_station_number(m) for m in machines)
+
+
+def _machine_group_sort_key(value):
+    raw = str(value).strip() if value is not None else ""
+    if not raw or raw.lower() == "не указано":
+        return (1, float("inf"), "")
+    match = re.match(r"(\d+)", raw)
+    if match:
+        num = int(match.group(1))
+        suffix = raw[match.end():].lower()
+        return (0, num, suffix)
+    return (0, float("inf"), raw.lower())
+
+
+def _fuel_sort_key(machine):
+    raw = (getattr(machine, "fuel_so", None) or "").strip()
+    if not raw or raw.lower() == "не указано":
+        return (1, raw.lower())
+    return (0, raw.lower())
+
+
+def _group_min_number_key(machines):
+    return min(machine_number_sort_key(getattr(m, "machine_number", None)) for m in machines)
+
+
+def _fuel_groups_sort_key(group):
+    # Пустое топливо даёт отдельный блок на каждый id — без года снова «чет/нечет».
+    return (
+        _group_min_number_key(group) if _machines_block_has_station_number(group) else (1, float("inf"), ""),
+        _machines_block_year_key(group),
+        _group_min_number_key(group),
+    )
+
+
+def order_station_machines_for_display(machine_list: list) -> tuple[list, list]:
+    """
+    Порядок агрегатов внутри электростанции: блоки группы оборудования вместе.
+    ВЭС/СЭС без станционного номера — по году ввода ASC (не по id).
+    ТЭС с номером — по номеру, затем году.
+    Возвращает (блоки групп оборудования, блоки топлива) для rowspan.
+    """
+    equipment_group_blocks_dict = defaultdict(list)
+    for m in machine_list:
+        is_arch = 1 if bool(getattr(m, "is_archived", False)) else 0
+        group_value = (getattr(m, "machine_group", None) or "").strip()
+        if not group_value or group_value.lower() == "не указано":
+            block_key = (is_arch, "__machine__", m.id)
+        else:
+            block_key = (is_arch, "group", group_value)
+        equipment_group_blocks_dict[block_key].append(m)
+
+    ordered_group_blocks = []
+    ordered_fuel_blocks = []
+    for _, equipment_group_block in sorted(
+        equipment_group_blocks_dict.items(),
+        key=lambda item: (
+            item[0][0],
+            0 if _machines_block_has_station_number(item[1]) else 1,
+            _group_min_number_key(item[1]) if _machines_block_has_station_number(item[1]) else (0, 0, ""),
+            _machines_block_year_key(item[1]),
+            _group_min_number_key(item[1]),
+            _machine_group_sort_key(item[1][0].machine_group),
+        ),
+    ):
+        fuel_groups_dict = defaultdict(list)
+        for m in equipment_group_block:
+            fkey = _fuel_sort_key(m)
+            if fkey[0] == 1:
+                fkey = (1, m.id)
+            fuel_groups_dict[fkey].append(m)
+
+        for group in fuel_groups_dict.values():
+            group.sort(key=machine_year_then_number_sort_key)
+
+        sorted_fuel_groups = sorted(fuel_groups_dict.values(), key=_fuel_groups_sort_key)
+        ordered_group_blocks.append([m for group in sorted_fuel_groups for m in group])
+        ordered_fuel_blocks.extend(sorted_fuel_groups)
+
+    machine_list[:] = [m for group in ordered_group_blocks for m in group]
+    return ordered_group_blocks, ordered_fuel_blocks
+
+
 def is_current_version(entity) -> bool:
     """Checks if entity matches current DB version or is common (NULL)."""
     from flask import g, has_app_context
@@ -574,99 +752,7 @@ def fetch_machines_with_rowspans(
         station_machine_map[target_station_id].append(m)
 
     for station_id, machine_list in station_machine_map.items():
-        def machine_number_key(value):
-            s = str(value).strip() if value is not None else ''
-            match = re.match(r"(\d+)", s)
-            if match:
-                num = int(match.group(1))
-                suffix = s[match.end():].lower()
-                return (0, num, suffix)
-            return (1, float('inf'), s.lower())
-
-        def machine_group_key(value):
-            raw = str(value).strip() if value is not None else ''
-            if not raw or raw.lower() == 'не указано':
-                return (1, float('inf'), '')
-            match = re.match(r"(\d+)", raw)
-            if match:
-                num = int(match.group(1))
-                suffix = raw[match.end():].lower()
-                return (0, num, suffix)
-            return (0, float('inf'), raw.lower())
-
-        def fuel_sort_key(m):
-            """Ключ для сортировки: топливо по СО ЕЭС (пустое/не указано — в конец)."""
-            raw = (getattr(m, 'fuel_so', None) or '').strip()
-            if not raw or raw.lower() == 'не указано':
-                return (1, raw.lower())  # в конец
-            return (0, raw.lower())
-
-        # Порядок блоков внутри электростанции определяем по минимальному станционному номеру.
-        # Сначала держим агрегаты одной группы оборудования вместе, а внутри группы
-        # оставляем прежнюю группировку по топливу и номеру агрегата.
-        def group_min_number_key(machines):
-            return min(machine_number_key(getattr(m, 'machine_number', None)) for m in machines)
-
-        equipment_group_blocks_dict = defaultdict(list)
-        for m in machine_list:
-            is_arch = 1 if bool(getattr(m, "is_archived", False)) else 0
-            group_value = (getattr(m, 'machine_group', None) or '').strip()
-            if not group_value or group_value.lower() == 'не указано':
-                block_key = (is_arch, "__machine__", m.id)
-            else:
-                block_key = (is_arch, "group", group_value)
-            equipment_group_blocks_dict[block_key].append(m)
-
-        ordered_group_blocks = []
-        ordered_fuel_blocks = []
-        for _, equipment_group_block in sorted(
-            equipment_group_blocks_dict.items(),
-            key=lambda item: (
-                item[0][0],  # архивные блоки — в конце списка агрегатов
-                group_min_number_key(item[1]),
-                machine_group_key(item[1][0].machine_group),
-            ),
-        ):
-            fuel_groups_dict = defaultdict(list)
-            for m in equipment_group_block:
-                fkey = fuel_sort_key(m)
-                if fkey[0] == 1:
-                    fkey = (1, m.id)  # уникальный ключ для пустого/не указано
-                fuel_groups_dict[fkey].append(m)
-
-            def _commission_year_key(m):
-                """Сортировка вводов по возрастанию года (ГС до 2042), затем номер агрегата."""
-                val = getattr(m, "commission_display", None)
-                if val is None:
-                    val = getattr(m, "date_commission_year", None)
-                if val is None:
-                    val = getattr(m, "date_exploitation_expected", None)
-                try:
-                    return (0, int(val))
-                except (TypeError, ValueError):
-                    return (1, 10**9)
-
-            sort_by_commission = bool((filters or {}).get("date_commission_filter"))
-            for group in fuel_groups_dict.values():
-                if sort_by_commission:
-                    group.sort(key=lambda m: (
-                        _commission_year_key(m),
-                        machine_number_key(getattr(m, 'machine_number', None)),
-                        (getattr(m, 'machine_name', None) or '').strip().lower(),
-                        getattr(m, 'id', 0) or 0,
-                    ))
-                else:
-                    group.sort(key=lambda m: (
-                        machine_number_key(getattr(m, 'machine_number', None)),
-                        (getattr(m, 'machine_name', None) or '').strip().lower(),
-                        getattr(m, 'id', 0) or 0,
-                    ))
-
-            sorted_fuel_groups = sorted(fuel_groups_dict.values(), key=group_min_number_key)
-            ordered_group_blocks.append([m for group in sorted_fuel_groups for m in group])
-            ordered_fuel_blocks.extend(sorted_fuel_groups)
-
-        machine_list[:] = [m for group in ordered_group_blocks for m in group]
+        ordered_group_blocks, ordered_fuel_blocks = order_station_machines_for_display(machine_list)
 
         # Сначала задаем total_rows каждой машине (нужно для fuel_rowspan)
         for m in machine_list:

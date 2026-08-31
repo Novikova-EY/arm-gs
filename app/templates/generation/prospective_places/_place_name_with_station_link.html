@@ -1,0 +1,2 @@
+{# Ожидает: station, details_endpoint #}
+<a href="{{ url_for(details_endpoint, id=station.id) }}">{{ station.site_name or '—' }}</a>{% if station.has_linked_station %}<i class="bi bi-check-circle-fill text-success ms-1" title="Станция связана" style="cursor: help;" aria-label="Станция связана"></i>{% endif %}

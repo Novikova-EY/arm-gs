@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload
 
 from app.extensions import db
 from app.common.services.database_version_filter import get_current_db_version_id
+from app.common.services.help_services import parse_decimal_from_display
 from app.fuel.models.external_mapping.fue_em_union_energy_system_model import (
     UnionEnergySystemExternalMapping,
 )
@@ -125,18 +126,12 @@ def _cell_str(value) -> str | None:
 
 
 def _parse_decimal(value):
-    if value is None or value == "":
-        return None
-    if isinstance(value, Decimal):
-        return value
-    if isinstance(value, (int, float)):
-        return Decimal(str(value))
-    s = str(value).strip().replace(",", ".")
-    if not s:
+    """Разбор числа с формы/Excel: пробелы тысяч и запятая как в format_decimal_trim."""
+    if isinstance(value, bool):
         return None
     try:
-        return Decimal(s)
-    except InvalidOperation:
+        return parse_decimal_from_display(value)
+    except (InvalidOperation, ValueError, TypeError):
         return None
 
 

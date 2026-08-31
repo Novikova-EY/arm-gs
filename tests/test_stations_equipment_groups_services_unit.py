@@ -13,6 +13,7 @@ from app.fuel.services.stations.stations_equipment_groups_services import (
     _reapply_display_merges_for_page_blocks,
     _split_group_block_by_station_hierarchy,
     _territorial_filter_or_fk_or_obl,
+    filter_legacy_duplicate_equipment_group_ids,
     prepare_equipment_group_blocks_for_display,
 )
 
@@ -165,18 +166,22 @@ def test_reapply_display_merges_after_page_slice_restores_station_cells():
     assert page_tail[1]["station_entries"][0]["show_merged_station_cells"] is False
 
 
-def test_merge_adjacent_group_blocks_for_display_uses_group_name():
+def test_merge_adjacent_group_blocks_for_display_uses_group_name_and_numb():
     blocks = [
         {
-            "equipment_group": _equipment_group(1, "Архангельская ТЭЦ (ТЭЦ-130 ата)"),
+            "equipment_group": _equipment_group(
+                1, "Архангельская ТЭЦ (ТЭЦ-130 ата)", numb=130
+            ),
             "rowspan": 2,
         },
         {
-            "equipment_group": _equipment_group(77, "Архангельская ТЭЦ (ТЭЦ-130 ата)"),
+            "equipment_group": _equipment_group(
+                77, "Архангельская ТЭЦ (ТЭЦ-130 ата)", numb=130
+            ),
             "rowspan": 4,
         },
         {
-            "equipment_group": _equipment_group(2, "Вельская ГТ-ТЭЦ"),
+            "equipment_group": _equipment_group(2, "Вельская ГТ-ТЭЦ", numb=12),
             "rowspan": 1,
         },
     ]
@@ -188,6 +193,28 @@ def test_merge_adjacent_group_blocks_for_display_uses_group_name():
     assert blocks[1]["show_merged_group_cells"] is False
     assert blocks[2]["show_merged_group_cells"] is True
     assert blocks[2]["merged_group_rowspan"] == 1
+
+
+def test_merge_adjacent_group_blocks_does_not_hide_numb_behind_empty_sibling():
+    blocks = [
+        {
+            "equipment_group": _equipment_group(28289, "ТЭЦ-14 Первомайская"),
+            "rowspan": 1,
+        },
+        {
+            "equipment_group": _equipment_group(
+                28293, "ТЭЦ-14 Первомайская", numb=66
+            ),
+            "rowspan": 1,
+        },
+    ]
+
+    _merge_adjacent_group_blocks_for_display(blocks)
+
+    assert blocks[0]["show_merged_group_cells"] is True
+    assert blocks[0]["merged_group_rowspan"] == 1
+    assert blocks[1]["show_merged_group_cells"] is True
+    assert blocks[1]["merged_group_rowspan"] == 1
 
 
 def test_group_block_display_sort_key_puts_composite_parent_first():
@@ -781,3 +808,15 @@ def test_duplicate_numb_equipment_group_ids_ignores_missing_and_uniques():
         numb_rows,
     )
     assert kept == {1, 2, 3, 4, 7}
+
+
+def test_filter_legacy_duplicate_equipment_group_ids_keeps_current_version():
+    rows = [
+        (28289, "4aaf789b-b89f-5d63-93cb-4b0c674b16ab", None),
+        (28293, "4aaf789b-b89f-5d63-93cb-4b0c674b16ab", 37),
+        (17121, "a8107f76-df19-563f-b7e6-42e99f48fbf4", None),
+        (17333, "a8107f76-df19-563f-b7e6-42e99f48fbf4", 37),
+        (30805, "unique-legacy-only", None),
+    ]
+    kept = filter_legacy_duplicate_equipment_group_ids(rows, 37)
+    assert kept == {28293, 17333, 30805}

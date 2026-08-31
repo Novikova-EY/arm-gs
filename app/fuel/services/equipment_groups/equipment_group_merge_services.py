@@ -1155,6 +1155,10 @@ def update_equipment_group_all_versions(
         grouping_station_ids_from_form,
         persist_equipment_group_grouping_station_if_in_form,
     )
+    from app.fuel.services.equipment_groups.equipment_group_set_services import (
+        apply_auto_equipment_group_name,
+        suggested_equipment_group_name,
+    )
 
     raw_form = form_data or {}
     grouping_sync = form_has_grouping_station_sync(raw_form)
@@ -1306,6 +1310,30 @@ def update_equipment_group_all_versions(
             _format_fk_for_log("grouping_station_id", sid) for sid in ids
         )
 
+    def _snapshot_name_state(group: EquipmentGroup) -> tuple[str, str | None]:
+        old_n = (group.name or "").strip()
+        return old_n, suggested_equipment_group_name(group.id, current_name=old_n)
+
+    def _autofill_group_name_after_bindings(
+        group: EquipmentGroup,
+        *,
+        name_before: str,
+        suggested_before: str | None,
+    ) -> tuple[bool, Optional[tuple[str, str, str]]]:
+        auto = apply_auto_equipment_group_name(
+            group,
+            old_name=name_before,
+            submitted_name=values["name"] if "name" in values else None,
+            old_suggested=suggested_before,
+        )
+        if not auto:
+            return False, None
+        return True, (
+            _EQUIPMENT_GROUP_FIELD_LABELS.get("name", "Наименование"),
+            _format_val_for_log(name_before or None),
+            _format_val_for_log(auto),
+        )
+
     def _apply_grouping_stations_from_form(
         group: EquipmentGroup, persist_version_id
     ) -> tuple[Optional[str], bool, Optional[tuple[str, str, str]]]:
@@ -1339,6 +1367,7 @@ def update_equipment_group_all_versions(
     external_code = (current_group.external_code or "").strip()
     if not external_code:
         # Fallback: обновить только текущую группу
+        name_before_fb, suggested_before_fb = _snapshot_name_state(current_group)
         _, change_details = _apply_values_to_group(current_group, values)
         out_details = list(change_details or [])
         if grouping_sync or "grouping_station_id" in form_data:
@@ -1401,6 +1430,17 @@ def update_equipment_group_all_versions(
                     "equipment_group_type_skip_warnings": egt_skips_fb,
                     "equipment_group_type_only_skipped": True,
                 }
+        auto_changed_fb, auto_log_fb = _autofill_group_name_after_bindings(
+            current_group,
+            name_before=name_before_fb,
+            suggested_before=suggested_before_fb,
+        )
+        if auto_changed_fb and auto_log_fb:
+            out_details = [
+                c for c in out_details
+                if c[0] != _EQUIPMENT_GROUP_FIELD_LABELS.get("name", "Наименование")
+            ]
+            out_details.append(auto_log_fb)
         if not out_details:
             return {"versions_touched": 0, "updated_count": 0, "no_changes": True}
         return {
@@ -1487,6 +1527,9 @@ def update_equipment_group_all_versions(
 
         version_changed = False
         field_changed_ids: set[int] = set()
+        name_snapshots = {
+            g.id: _snapshot_name_state(g) for g in groups_to_update
+        }
         for g in groups_to_update:
             if g.id not in updated_ids:
                 updated_ids.add(g.id)
@@ -1547,6 +1590,28 @@ def update_equipment_group_all_versions(
                             ),
                         )
                     ]
+        for g in groups_to_update:
+            snap = name_snapshots.get(g.id) or _snapshot_name_state(g)
+            auto_changed, auto_log = _autofill_group_name_after_bindings(
+                g,
+                name_before=snap[0],
+                suggested_before=snap[1],
+            )
+            if auto_changed:
+                version_changed = True
+                if g.id not in field_changed_ids:
+                    updated_count += 1
+                    field_changed_ids.add(g.id)
+                if auto_log and not change_details:
+                    change_details = [auto_log]
+                elif auto_log and change_details:
+                    change_details = [
+                        c for c in change_details
+                        if c[0] != _EQUIPMENT_GROUP_FIELD_LABELS.get(
+                            "name", "Наименование"
+                        )
+                    ]
+                    change_details.append(auto_log)
         if version_changed:
             versions_touched_set.add(version_id)
 
@@ -1556,6 +1621,7 @@ def update_equipment_group_all_versions(
         if user_group:
             vid = getattr(user_group, "database_version_id", None)
             eff_u = _effective_group_database_version_id(user_group)
+            name_before_u, suggested_before_u = _snapshot_name_state(user_group)
             values_to_apply = dict(values)
             if "regional_district_id" in form_data:
                 if new_rd_id is None:
@@ -1628,6 +1694,26 @@ def update_equipment_group_all_versions(
                                 ),
                             )
                         ]
+            auto_changed_u, auto_log_u = _autofill_group_name_after_bindings(
+                user_group,
+                name_before=name_before_u,
+                suggested_before=suggested_before_u,
+            )
+            if auto_changed_u:
+                if not changed and not grouping_changed_u:
+                    updated_count += 1
+                versions_touched_set.add(vid)
+                if auto_log_u:
+                    if change_details:
+                        change_details = [
+                            c for c in change_details
+                            if c[0] != _EQUIPMENT_GROUP_FIELD_LABELS.get(
+                                "name", "Наименование"
+                            )
+                        ]
+                        change_details.append(auto_log_u)
+                    else:
+                        change_details = [auto_log_u]
 
     result = {
         "versions_touched": len(versions_touched_set),

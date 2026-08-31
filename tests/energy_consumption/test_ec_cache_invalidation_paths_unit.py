@@ -2,8 +2,9 @@
 """
 Инвалидация кэшей отображения модуля «Спрос» на всех путях изменения данных.
 
-Сводки Спроса — SSR (без data.json), но после обновлений нужно сбрасывать:
-LRU заряда ГАЭС, request-кэш формул, индекс потребления для Нагрузок (+ pd_summary).
+Сводки Спроса — JSON data.json + Redis/memory кэш; после обновлений нужно сбрасывать:
+кэш страниц, пакетный кэш строк, LRU заряда ГАЭС, request-кэш формул,
+индекс потребления для Нагрузок (+ pd_summary).
 """
 
 from __future__ import annotations
@@ -23,6 +24,12 @@ def test_invalidate_energy_consumption_display_caches_calls_all_layers(app):
     with app.app_context():
         with (
             patch(
+                "app.energy_consumption.services.ec_summary_page_cache.clear_ec_summary_page_cache"
+            ) as clear_page,
+            patch(
+                "app.energy_consumption.services.ec_demand_rows_bulk_cache.clear_energy_consumption_rows_bulk_cache"
+            ) as clear_bulk,
+            patch(
                 "app.energy_consumption.services.energy_consumption_summary_services.clear_gaes_charge_summary_cache"
             ) as clear_gaes,
             patch(
@@ -33,6 +40,8 @@ def test_invalidate_energy_consumption_display_caches_calls_all_layers(app):
             ) as inv_pd_ec,
         ):
             ec_display_cache.invalidate_energy_consumption_display_caches(version_id=42)
+            clear_page.assert_called_once_with()
+            clear_bulk.assert_called_once_with()
             clear_gaes.assert_called_once_with()
             clear_formula.assert_called_once_with()
             inv_pd_ec.assert_called_once_with(version_id=42)

@@ -76,6 +76,15 @@ def _sample_tables():
                     "year_values": {2026: "20"},
                 },
                 {
+                    "key": "installed_machine_9",
+                    "label": "Нулевой агрегат",
+                    "kind": KIND_CHILD,
+                    "indent": 2,
+                    "hide_zero_capacity": True,
+                    "year_values_raw": {2026: Decimal("0")},
+                    "year_values": {2026: "0"},
+                },
+                {
                     "key": "export",
                     "label": "Экспорт мощности",
                     "kind": "value",
@@ -157,6 +166,7 @@ def test_export_writes_tab_per_sheet_and_title_row():
     assert "Установленная мощность" in labels
     assert "АЭС" not in labels
     assert "Экспорт мощности" in labels
+    assert ws.cell(2, 3).value == "Примечание"
     assert ws.cell(3, 2).value == 10.5
 
 
@@ -172,6 +182,25 @@ def test_export_includes_station_type_rows_when_checkbox_on():
     ws = load_workbook(stream)["Центр"]
     labels = [ws.cell(r, 1).value for r in range(3, ws.max_row + 1)]
     assert "АЭС" in labels
+    assert "Нулевой агрегат" not in labels
+
+
+def test_export_writes_row_note_column():
+    tables = _sample_tables()
+    tables["centr"]["rows"][0]["note"] = "Комментарий к строке"
+    stream = export_power_balance_to_excel(
+        years=[2026],
+        rounding_digits=1,
+        include_type_breakdown=False,
+        tables=tables,
+        sheets=_sample_sheets(),
+        year_features={},
+    )
+    ws = load_workbook(stream)["Центр"]
+    assert ws.cell(2, 3).value == "Примечание"
+    assert ws.cell(3, 3).value == "Комментарий к строке"
+    labels = [ws.cell(r, 1).value for r in range(3, ws.max_row + 1)]
+    assert "Примечание" not in labels
 
 
 def test_export_omits_empty_rows_when_toggle_off():

@@ -1,121 +1,158 @@
 <!-- Вторая строка фильтров -->
 <div class="col-12 mb-2">
-    <div class="collapse power-demand-import-export-collapse" id="importExportCollapse">
+  <div
+    class="collapse power-demand-import-export-collapse"
+    id="importExportCollapse"
+  >
+    <div
+      class="d-flex justify-content-between align-items-start w-100 flex-nowrap"
+    >
+      <!-- Левая часть (экспорт) -->
+      <div class="d-flex gap-2">
+        <!-- Экспорт в Excel -->
+        <form
+          method="GET"
+          action="{{ url_for('station_bp.export_station_full_routes') }}"
+          id="exportExcelFormFull"
+        >
+          {% for key, value in request.args.items() %}
+          <input type="hidden" name="{{ key }}" value="{{ value }}" />
+          {% endfor %}
+          <button
+            type="button"
+            id="exportExcelFull"
+            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+            style="white-space: nowrap"
+          >
+            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт
+            в Excel
+          </button>
+        </form>
 
-        <div class="d-flex justify-content-between align-items-start w-100 flex-nowrap">
+        <!-- СиПР -->
+        <form
+          method="GET"
+          action="{{ url_for('station_bp.export_station_sipr_ees_application_A_routes') }}"
+          id="exportSiprForm"
+        >
+          {% for key, value in request.args.items() %}
+          <input type="hidden" name="{{ key }}" value="{{ value }}" />
+          {% endfor %}
+          <button
+            type="button"
+            id="exportExcelSipr"
+            class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+            style="white-space: nowrap"
+          >
+            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+            Приложение А (СиПР)
+          </button>
+        </form>
+      </div>
 
-            <!-- Левая часть (экспорт) -->
-            <div class="d-flex gap-2">
+      <!-- Правая часть (импорт) -->
+      <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+        {% if current_user.has_admin %}
+        <!-- Импорт -->
+        <form
+          action="{{ url_for('station_bp.import_station_list_from_excel_routes') }}"
+          method="POST"
+          enctype="multipart/form-data"
+          class="d-flex align-items-center"
+          id="stationListImportForm"
+        >
+          {{ form.csrf_token }}
+          <input
+            type="file"
+            name="file"
+            class="d-none"
+            accept=".xlsx,.xls"
+            id="stationListImportFile"
+            required
+          />
+          <button
+            type="button"
+            class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2"
+            style="white-space: nowrap"
+            id="stationListImportBtn"
+          >
+            <i class="bi bi-upload"></i> Импорт из Excel
+          </button>
+        </form>
 
-                <!-- Экспорт в Excel -->
-                <form method="GET" action="{{ url_for('station_bp.export_station_full_routes') }}" id="exportExcelFormFull">
-                    {% for key, value in request.args.items() %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endfor %}
-                    <button type="button" id="exportExcelFull" class="btn btn-outline-success" style="white-space: nowrap;">
-                        Экспорт списка отображаемых станций
-                    </button>
-                </form>
-
-                <!-- СиПР -->
-                <form method="GET" action="{{ url_for('station_bp.export_station_sipr_ees_application_A_routes') }}" id="exportSiprForm">
-                    {% for key, value in request.args.items() %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endfor %}
-                    <button type="button" id="exportExcelSipr" class="btn btn-outline-success" style="white-space: nowrap;">
-                        Приложение А (СиПР)
-                    </button>
-                </form>
-            </div>
-
-            <!-- Правая часть (импорт) -->
-            <div class="d-flex align-items-center gap-2 ms-auto flex-wrap">
-                {% if current_user.has_admin %}
-                <!-- Импорт -->
-                <form action="{{ url_for('station_bp.import_station_list_from_excel_routes') }}"
-                    method="POST" enctype="multipart/form-data"
-                    class="d-flex align-items-center"
-                    id="stationListImportForm">
-                    {{ form.csrf_token }}
-                    <input type="file"
-                           name="file"
-                           class="d-none"
-                           accept=".xlsx,.xls"
-                           id="stationListImportFile"
-                           required>
-                    <button type="button"
-                            class="btn btn-outline-danger"
-                            style="white-space: nowrap;"
-                            id="stationListImportBtn">
-                        Импорт
-                    </button>
-                </form>
-
-                <!-- Подгрузка топлива -->
-                <form action="{{ url_for('station_bp.import_fuel_tes_station_from_excel_routes') }}"
-                    method="POST" enctype="multipart/form-data"
-                    class="d-flex align-items-center"
-                    id="stationFuelImportForm">
-                    {{ form.csrf_token }}
-                    <input type="file"
-                           name="file"
-                           class="d-none"
-                           accept=".xlsx,.xls"
-                           id="stationFuelImportFile"
-                           required>
-                    <button type="button"
-                            class="btn btn-outline-danger"
-                            style="white-space: nowrap;"
-                            id="stationFuelImportBtn">
-                        Подгрузка топлива
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-
-        </div>
+        <!-- Подгрузка топлива -->
+        <form
+          action="{{ url_for('station_bp.import_fuel_tes_station_from_excel_routes') }}"
+          method="POST"
+          enctype="multipart/form-data"
+          class="d-flex align-items-center"
+          id="stationFuelImportForm"
+        >
+          {{ form.csrf_token }}
+          <input
+            type="file"
+            name="file"
+            class="d-none"
+            accept=".xlsx,.xls"
+            id="stationFuelImportFile"
+            required
+          />
+          <button
+            type="button"
+            class="btn btn-outline-primary d-inline-flex align-items-center justify-content-center gap-2"
+            style="white-space: nowrap"
+            id="stationFuelImportBtn"
+          >
+            <i class="bi bi-upload"></i> Подгрузка топлива
+          </button>
+        </form>
+        {% endif %}
+      </div>
     </div>
+  </div>
 </div>
 
 <script>
-(function() {
+  (function () {
     function bindDirectFileImport(formId, buttonId, inputId, loadingText) {
-        var form = document.getElementById(formId);
-        var button = document.getElementById(buttonId);
-        var fileInput = document.getElementById(inputId);
+      var form = document.getElementById(formId);
+      var button = document.getElementById(buttonId);
+      var fileInput = document.getElementById(inputId);
 
-        if (!form || !button || !fileInput) {
-            return;
+      if (!form || !button || !fileInput) {
+        return;
+      }
+
+      button.addEventListener("click", function () {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", function () {
+        if (fileInput.files && fileInput.files.length > 0) {
+          form.requestSubmit ? form.requestSubmit() : form.submit();
         }
+      });
 
-        button.addEventListener('click', function() {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', function() {
-            if (fileInput.files && fileInput.files.length > 0) {
-                form.requestSubmit ? form.requestSubmit() : form.submit();
-            }
-        });
-
-        form.addEventListener('submit', function() {
-            button.disabled = true;
-            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + loadingText;
-        });
+      form.addEventListener("submit", function () {
+        button.disabled = true;
+        button.innerHTML =
+          '<span class="spinner-border spinner-border-sm me-1"></span>' +
+          loadingText;
+      });
     }
 
     bindDirectFileImport(
-        'stationListImportForm',
-        'stationListImportBtn',
-        'stationListImportFile',
-        'Импорт... (подождите)'
+      "stationListImportForm",
+      "stationListImportBtn",
+      "stationListImportFile",
+      "Импорт... (подождите)",
     );
 
     bindDirectFileImport(
-        'stationFuelImportForm',
-        'stationFuelImportBtn',
-        'stationFuelImportFile',
-        'Подгрузка... (подождите)'
+      "stationFuelImportForm",
+      "stationFuelImportBtn",
+      "stationFuelImportFile",
+      "Подгрузка... (подождите)",
     );
-})();
+  })();
 </script>

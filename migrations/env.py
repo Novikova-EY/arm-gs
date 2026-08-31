@@ -49,6 +49,8 @@ def import_all_models():
         "app.energy_balance.models.station_energy_generation_model",
         "app.energy_balance.models.espp_energy_generation_model",
         "app.energy_balance.models.regional_energy_system_energy_generation_model",
+        "app.energy_balance.models.ee_balance_manual_generation_value_model",
+        "app.generation.prospective_places.models.prospective_place_hydro_energy_forecast_model",
         "app.generation.models.boiler_model",
         "app.generation.models.machine_model",
         "app.generation.models.machine_power_model",
@@ -115,6 +117,7 @@ def import_all_models():
         "app.power_demand.models.territories.federal_district_demand_parameter_model",
         "app.power_demand.models.territories.regional_district_demand_parameter_model",
         "app.power_demand.models.territories.russia_federation_demand_parameter_model",
+        "app.power_demand.models.ozp_max_power_parameter_model",
     ]
     for m in modules:
         try:

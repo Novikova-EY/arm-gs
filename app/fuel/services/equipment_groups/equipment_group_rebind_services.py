@@ -111,7 +111,47 @@ def collect_composite_cluster_groups(
             version_id,
         ):
             by_id[int(parent.id)] = parent
-    return list(by_id.values())
+    return _prefer_current_version_groups(by_id.values(), version_id)
+
+
+def _choice_group_identity_key(group) -> str:
+    code = (getattr(group, "external_code", None) or "").strip()
+    if code:
+        return f"code:{code}"
+    numb = _as_int(getattr(group, "numb", None))
+    name = (getattr(group, "name", None) or getattr(group, "name_ext", None) or "").strip().lower()
+    if numb is not None or name:
+        return f"numb:{numb or ''}|name:{name}"
+    return f"id:{getattr(group, 'id', None)}"
+
+
+def _prefer_current_version_groups(
+    groups: Iterable[EquipmentGroup],
+    version_id: int | None,
+) -> list[EquipmentGroup]:
+    """
+    Одна строка на external_code (или numb+name): текущая версия БД, иначе legacy NULL.
+    Иначе в селекте карточки агрегата две копии с одним numb (версия + без версии).
+    """
+    items = [group for group in groups or [] if group is not None]
+    if version_id is None:
+        return [group for group in items if getattr(group, "database_version_id", None) is None]
+
+    def _rank(group) -> tuple:
+        gvid = getattr(group, "database_version_id", None)
+        return (
+            0 if gvid == version_id else 1,
+            0 if gvid is not None else 1,
+            -(int(getattr(group, "id", 0) or 0)),
+        )
+
+    by_key: dict[str, EquipmentGroup] = {}
+    for group in items:
+        key = _choice_group_identity_key(group)
+        current = by_key.get(key)
+        if current is None or _rank(group) < _rank(current):
+            by_key[key] = group
+    return list(by_key.values())
 
 
 def _sort_choice_groups(groups: Iterable[EquipmentGroup]) -> list[EquipmentGroup]:
@@ -149,7 +189,7 @@ def _linked_equipment_groups_for_station(
         .distinct()
         .all()
     )
-    return list(rows)
+    return _prefer_current_version_groups(rows, version_id)
 
 
 def linked_station_ids_for_equipment_group(
@@ -220,6 +260,7 @@ def get_station_fuel_equipment_group_choice_tuples(
     if not linked:
         return []
     groups = collect_composite_cluster_groups(linked, version_id)
+    groups = _prefer_current_version_groups(groups, version_id)
     return [
         (int(group.id), format_equipment_group_choice_label(group))
         for group in _sort_choice_groups(groups)
@@ -251,6 +292,7 @@ def get_rebind_target_choices_for_group(
         seed.extend(_linked_equipment_groups_for_station(station_id, version_id))
 
     cluster = collect_composite_cluster_groups(seed, version_id)
+    cluster = _prefer_current_version_groups(cluster, version_id)
     return [
         (int(item.id), format_equipment_group_choice_label(item))
         for item in _sort_choice_groups(cluster)

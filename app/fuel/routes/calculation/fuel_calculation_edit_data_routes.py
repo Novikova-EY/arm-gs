@@ -98,6 +98,25 @@ def _bulk_edit_group_ids_from_fuel_hierarchy(hierarchy) -> list[int]:
     return sorted(ids)
 
 
+def _request_flag_on(name: str) -> bool:
+    return str(request.args.get(name) or "0").lower() in ("1", "true", "yes", "on")
+
+
+def _toggle_query_flag_url(endpoint: str, flag: str, currently_on: bool) -> str:
+    args = request.args.to_dict(flat=False)
+    args.pop("page", None)
+    if currently_on:
+        args.pop(flag, None)
+    else:
+        args[flag] = ["1"]
+    kwargs: dict = {}
+    for key, values in args.items():
+        if not values:
+            continue
+        kwargs[key] = values[0] if len(values) == 1 else values
+    return url_for(endpoint, **kwargs)
+
+
 def _parse_rounding_digits() -> int:
     raw = request.args.get("rounding_digits")
     if raw is None or raw == "":
@@ -1097,12 +1116,19 @@ def equipment_group_specific_fuel_consumption_edit_data():
 
     start_year, end_year = _resolve_year_interval()
     rounding_digits = _parse_rounding_digits()
+    check_empty_specific = _request_flag_on("check_empty_specific")
+    check_empty_specific_toggle_url = _toggle_query_flag_url(
+        "fuel_bp.equipment_group_specific_fuel_consumption_edit_data",
+        "check_empty_specific",
+        check_empty_specific,
+    )
 
     vm = get_specific_fuel_consumption_calculation_edit_data_view_model(
         filters,
         start_year=start_year,
         end_year=end_year,
         rounding_digits=rounding_digits,
+        check_empty_specific=check_empty_specific,
     )
 
     hierarchy_full = vm.get("equipment_group_specific_fuel_consumption_hierarchy") or []
@@ -1189,10 +1215,13 @@ def equipment_group_specific_fuel_consumption_edit_data():
     template_vars = {
         **vm,
         **context,
+        "check_empty_specific": check_empty_specific,
+        "check_empty_specific_toggle_url": check_empty_specific_toggle_url,
         "consumption_formulas": get_consumption_formulas(),
         "consumption_column_labels": {
             **EquipmentGroupSpecificFuelConsumption.COLUMN_LABELS,
             "numb1120": "Код группы оборудования",
+            "ved": "Тип ТЭС",
             "k": "Коэффициент экономии от теплофикации",
         },
     }

@@ -70,6 +70,37 @@
     background-color: var(--bs-primary-bg-subtle, #cfe2ff);
     font-weight: 600;
 }
+/* Признаки годов в шапке таблицы прогноза выработки — как на station_details */
+.machines-table thead th.machines-year-th-with-feature {
+    min-width: 7.25rem !important;
+    max-width: 10rem !important;
+    width: auto !important;
+    word-break: normal;
+    overflow-wrap: normal;
+}
+.machines-table thead .machines-year-feature-caption {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.82em;
+    line-height: 1.3;
+    font-weight: inherit;
+    text-align: center;
+    word-break: normal;
+    overflow-wrap: normal;
+    word-wrap: normal;
+    hyphens: none;
+}
+/* Округление в тулбаре прогноза: как на карточке станции */
+.station-toolbar-rounding .form-select {
+    font-size: 1rem;
+    line-height: 1.5;
+    min-height: 38px;
+    padding-top: 0.375rem;
+    padding-bottom: 0.375rem;
+}
+.station-toolbar-rounding label {
+    font-size: 1rem;
+}
 </style>
 
 {% if current_user.is_authenticated %}
@@ -391,7 +422,108 @@
             </table>
         </div>
     </div>
+
+    <div style="width:100vw; margin-left: calc(50% - 50vw); border-top: 1px solid #dee2e6;" class="my-3"></div>
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0 ms-3">Прогноз выработки электрической энергии электростанцией, млн кВтч</h3>
+        </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <form method="GET" action="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=place.id) }}" class="d-flex align-items-center gap-2" id="aesEnergyYearForm">
+                {% for key, value in request.args.items() %}
+                    {% if key not in ['start_year', 'end_year', 'rounding_digits_gen'] %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+                <input type="hidden" name="rounding_digits_gen" id="aes_rounding_digits_gen_hidden" value="{{ rounding_digits_gen }}">
+                <label for="aes_start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                <select name="start_year" id="aes_start_year" class="form-select" style="width: auto;">
+                    {% for year in (filter_year_list|default([])) %}
+                    <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <label for="aes_end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                <select name="end_year" id="aes_end_year" class="form-select" style="width: auto;">
+                    {% for year in (filter_year_list|default([])) %}
+                    <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-outline-success">Применить</button>
+            </form>
+            <div class="d-flex align-items-center gap-1 station-toolbar-rounding">
+                <label for="rounding_digits_gen" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
+                <select id="rounding_digits_gen" class="form-select" style="min-width: 150px;" aria-label="Округление для прогноза выработки">
+                    <option value="0" {% if rounding_digits_gen == 0 %}selected{% endif %}>Не округлять</option>
+                    <option value="1" {% if rounding_digits_gen == 1 %}selected{% endif %}>1 знак</option>
+                    <option value="2" {% if rounding_digits_gen == 2 %}selected{% endif %}>2 знака</option>
+                    <option value="3" {% if rounding_digits_gen == 3 %}selected{% endif %}>3 знака</option>
+                    <option value="-1" {% if rounding_digits_gen == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+            </div>
+        </div>
+        {% if not linked_station_id %}
+        <div class="alert alert-secondary ms-3 me-3" role="status">
+            Свяжите электростанцию в блоке «Параметры площадки», чтобы просматривать и сохранять прогноз выработки (те же данные, что в таблице «Выработка электроэнергии» на карточке станции).
+        </div>
+        {% endif %}
+        <form method="POST" action="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=place.id, start_year=start_year, end_year=end_year, rounding_digits_gen=rounding_digits_gen) }}" id="aesEnergyGenerationForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="aes_energy_generation_submit" value="1">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered table-responsive machines-table" id="aes-energy-generation-table" data-auto-export-excel="off">
+                    <thead class="table-success">
+                        <tr class="text-center align-middle" style="word-wrap: break-word;">
+                            <th class="align-middle" style="min-width: 260px;"></th>
+                            {% for year in range(start_year, end_year + 1) %}
+                            <th class="text-center align-middle{% if year_features and year_features.get(year) %} machines-year-th-with-feature{% endif %}"{% if not (year_features and year_features.get(year)) %} style="min-width: 4.5rem;"{% endif %}>
+                                {{ year }}
+                                {% if year_features and year_features.get(year) %}
+                                    <div class="machines-year-feature-caption">{{ year_features.get(year) }}</div>
+                                {% endif %}
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody id="aes-energy-generation-tbody">
+                        {% include 'generation/prospective_places/aes/_aes_energy_generation_row.html' %}
+                    </tbody>
+                </table>
+            </div>
+            {% if can_edit_station_energy %}
+            <div class="d-flex justify-content-end mt-3 gap-3 flex-wrap">
+                <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
+                <a href="{{ url_for('prospective_places_bp.prospective_place_aes_details', id=place.id, start_year=start_year, end_year=end_year, rounding_digits_gen=rounding_digits_gen) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
 </div>
+{% endif %}
+
+<script>
+(function() {
+    var roundingSel = document.getElementById('rounding_digits_gen');
+    var roundingHidden = document.getElementById('aes_rounding_digits_gen_hidden');
+    if (!roundingSel) return;
+    roundingSel.addEventListener('change', function() {
+        var value = roundingSel.value;
+        if (roundingHidden) roundingHidden.value = value;
+        var url = new URL(window.location.href);
+        url.searchParams.set('rounding_digits_gen', value);
+        window.location.href = url.toString();
+    });
+})();
+</script>
+{% if can_edit_station_energy %}
+<script src="{{ url_for('static', filename='js/generation/prospective_place_forecast_row_paste.js') }}"></script>
+<script>
+(function() {
+    var table = document.getElementById('aes-energy-generation-table');
+    if (table && typeof window.initProspectivePlaceForecastRowPaste === 'function') {
+        window.initProspectivePlaceForecastRowPaste(table);
+    }
+})();
+</script>
 {% endif %}
 
 {% if can_edit %}

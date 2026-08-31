@@ -97,6 +97,7 @@ from app.common.services.get_services.gen_companies.gen_company_get_services imp
 )
 from app.generation.services.station_services.groupped_services import (
     fetch_machines_with_rowspans,
+    machine_year_then_number_sort_key,
     )
 from app.generation.services.station_changes_services.aggregation_station_changes_services.aggregation_services_energy_units import (
     aggregate_changes_by_energy_units,
@@ -686,7 +687,7 @@ def get_station_changes_list_data(
             1 if bool(getattr(m, "is_archived", False)) else 0,
             (m.gen_company.name or "").lower() if m.gen_company else "\uffff",
             m.gen_company.id if m.gen_company else 999999,
-            m.id
+            machine_year_then_number_sort_key(m),
         ))
         if station.machines:
             apply_all_rowspans_for_station(station.machines)
@@ -1636,7 +1637,24 @@ def _find_first_sync_area_id(sa_by_id: dict) -> int | None:
             return sid
         if "перв" in name_l and "калининград" not in name_l:
             return sid
+        if "1-ая" in name_l or "1-я" in name_l:
+            if "калининград" not in name_l:
+                return sid
     return None
+
+
+def _find_kaliningrad_sync_area_id(sa_by_id: dict) -> int | None:
+    """Id калининградской синхронной зоны в текущем каталоге."""
+    for sid, sa in (sa_by_id or {}).items():
+        name_l = (getattr(sa, "name", "") or "").strip().lower()
+        if "калининград" in name_l:
+            return sid
+    return None
+
+
+def _names_indicate_taimyr_norilsk(*names: str | None) -> bool:
+    blob = " ".join((n or "").strip().lower() for n in names)
+    return any(marker in blob for marker in ("таймыр", "норильск", "турухан"))
 
 
 def _find_second_sync_area_id(sa_by_id: dict) -> int | None:
@@ -1716,6 +1734,47 @@ def _is_first_sync_area(sa, sa_id: int = 0) -> bool:
     return "перв" in name_l and "калининград" not in name_l
 
 
+def resolve_effective_sync_area_id_from_parts(
+    rd_name: str | None,
+    sa_id: int | None,
+    sa_by_id: dict,
+    *,
+    year: int | None = None,
+    res_name: str | None = None,
+    ues_name: str | None = None,
+    eu_name: str | None = None,
+) -> int:
+    """
+    Эффективная синхронная зона с учётом QA (по полям строки агрегации):
+    - Калининград: в 2021–2024 входит в 1-ю СЗ; с 2025 — отдельная СЗ;
+    - Таймыр/Норильск: не наследуют 1-ю СЗ (исключаем из 1-й СЗ);
+    - FK на СЗ из другой версии БД → ремап в текущий каталог.
+
+    0 означает «не относить к синхронной зоне» (строка не идёт в итоги СЗ).
+    """
+    sa_id = _remap_sync_area_id_to_catalog(sa_id or 0, sa_by_id)
+    rd_name_l = (rd_name or "").strip().lower()
+    sa = sa_by_id.get(sa_id) if sa_by_id else None
+    sa_name = (getattr(sa, "name", "") or "").strip().lower()
+
+    if _names_indicate_taimyr_norilsk(rd_name, res_name, ues_name, eu_name) and _is_first_sync_area(sa, sa_id):
+        return 0
+
+    is_kaliningrad = ("калининград" in sa_name) or ("калининград" in rd_name_l)
+    if is_kaliningrad:
+        y = year if year is not None else get_current_year()
+        if y is not None and int(y) < 2025:
+            first_id = _find_first_sync_area_id(sa_by_id or {})
+            if first_id is not None:
+                return first_id
+        if sa_id:
+            return sa_id
+        kali_id = _find_kaliningrad_sync_area_id(sa_by_id or {})
+        return int(kali_id) if kali_id is not None else 0
+
+    return sa_id
+
+
 def resolve_effective_sync_area_id(
     station,
     sa_by_id: dict,
@@ -1729,27 +1788,18 @@ def resolve_effective_sync_area_id(
     - FK на СЗ из другой версии БД → ремап в текущий каталог.
     """
     rd = getattr(station, "regional_district", None)
-    sa_id = getattr(rd, "id_synchronous_area", None) or 0
-    sa_id = _remap_sync_area_id_to_catalog(sa_id, sa_by_id)
-    rd_name = (getattr(rd, "name", None) or "").strip().lower()
-    sa = sa_by_id.get(sa_id) if sa_by_id else None
-    sa_name = (getattr(sa, "name", "") or "").strip().lower()
-
-    is_taimyr = ("таймыр" in rd_name) or ("норильск" in rd_name)
-    if is_taimyr and _is_first_sync_area(sa, sa_id):
-        return 0
-
-    is_kaliningrad = ("калининград" in sa_name) or ("калининград" in rd_name)
-    if is_kaliningrad:
-        year = current_year if current_year is not None else get_current_year()
-        # До 2025 Калининград учитывается в составе 1-й СЗ
-        if year is not None and int(year) < 2025:
-            first_id = _find_first_sync_area_id(sa_by_id or {})
-            if first_id is not None:
-                return first_id
-        return sa_id
-
-    return sa_id
+    res_obj = getattr(station, "regional_energy_system_obj", None)
+    ues_obj = getattr(res_obj, "union_energy_system", None) if res_obj else None
+    eu = getattr(station, "energy_unit", None)
+    return resolve_effective_sync_area_id_from_parts(
+        getattr(rd, "name", None),
+        getattr(rd, "id_synchronous_area", None) or 0,
+        sa_by_id,
+        year=current_year,
+        res_name=getattr(res_obj, "name", None),
+        ues_name=getattr(ues_obj, "name", None),
+        eu_name=getattr(eu, "name", None),
+    )
 
 
 def build_hierarchy_structure_for_changes(stations: list[Station], include_names=False):

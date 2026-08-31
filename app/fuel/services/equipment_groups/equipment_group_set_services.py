@@ -188,20 +188,183 @@ def _machine_requires_new_equipment_group(machine: Machine | None, version_id: i
     return _year_has_plan_feature(year_number, version_id)
 
 
-def _compose_equipment_group_name(
+def compose_equipment_group_name(
     station: Station | None,
     group_type: EquipmentGroupType | None,
     *,
-    is_new_group: bool,
+    is_new_group: bool = False,
 ) -> str | None:
+    """«Станция (тип группы)» — для групп с ровно одной привязанной станцией."""
     if not station or not station.name or not group_type or not group_type.name:
         return None
     base_name = f"{station.name} ({group_type.name})"
     return f"{base_name}{NEW_EQUIPMENT_GROUP_SUFFIX}" if is_new_group else base_name
 
 
+def _compose_equipment_group_name(
+    station: Station | None,
+    group_type: EquipmentGroupType | None,
+    *,
+    is_new_group: bool,
+) -> str | None:
+    return compose_equipment_group_name(
+        station, group_type, is_new_group=is_new_group
+    )
+
+
 def _is_new_equipment_group_name(name: str | None) -> bool:
     return bool(name and str(name).strip().endswith(NEW_EQUIPMENT_GROUP_SUFFIX))
+
+
+def get_single_station_and_type_for_equipment_group(
+    equipment_group_id: int,
+) -> tuple[Station | None, EquipmentGroupType | None]:
+    """
+    Если у группы ровно одна уникальная станция в связях EquipmentGroupSet
+    и единый тип группы — возвращает (station, type), иначе (None, None) для типа
+    при неоднозначности (станцию всё же вернёт только при одной станции и одном типе).
+    """
+    if not equipment_group_id:
+        return None, None
+    set_rows = (
+        EquipmentGroupSet.query.filter_by(equipment_group_id=equipment_group_id)
+        .order_by(EquipmentGroupSet.id.asc())
+        .all()
+    )
+    stations_by_id: dict[int, Station] = {}
+    type_ids: set[int | None] = set()
+    type_by_id: dict[int, EquipmentGroupType] = {}
+    for set_row in set_rows:
+        link = getattr(set_row, "equipment_group_set_station", None)
+        if link is None:
+            link = EquipmentGroupSetStation.query.get(
+                set_row.equipment_group_set_station_id
+            )
+        if not link:
+            continue
+        sid = getattr(link, "station_id", None)
+        if sid is None:
+            continue
+        station = getattr(link, "station", None)
+        if station is None:
+            station = Station.query.get(sid)
+        if station is not None:
+            stations_by_id[int(sid)] = station
+        tid = getattr(link, "equipment_group_type_id", None)
+        type_ids.add(tid)
+        if tid is not None:
+            eg_type = getattr(link, "equipment_group_type", None)
+            if eg_type is None:
+                eg_type = EquipmentGroupType.query.get(tid)
+            if eg_type is not None:
+                type_by_id[int(tid)] = eg_type
+    if len(stations_by_id) != 1:
+        return None, None
+    station = next(iter(stations_by_id.values()))
+    # Нужен ровно один тип во всех связях (не «—» и не смесь типов)
+    if len(type_ids) != 1:
+        return None, None
+    only_type_id = next(iter(type_ids))
+    if only_type_id is None:
+        return None, None
+    group_type = type_by_id.get(int(only_type_id))
+    if group_type is None:
+        return None, None
+    return station, group_type
+
+
+def suggested_equipment_group_name(
+    equipment_group_id: int,
+    *,
+    current_name: str | None = None,
+) -> str | None:
+    """
+    Предлагаемое название при ровно одной станции и одном типе.
+    Сохраняет суффикс « (нов)», если он уже был в current_name.
+    """
+    station, group_type = get_single_station_and_type_for_equipment_group(
+        equipment_group_id
+    )
+    if not station or not group_type:
+        return None
+    return compose_equipment_group_name(
+        station,
+        group_type,
+        is_new_group=_is_new_equipment_group_name(current_name),
+    )
+
+
+def resolve_auto_equipment_group_name(
+    *,
+    suggested: str | None,
+    old_name: str | None,
+    submitted_name: str | None = None,
+    old_suggested: str | None = None,
+    force: bool = False,
+) -> str | None:
+    """
+    Решает, нужно ли выставить suggested как name.
+
+    force — всегда (массовое обновление).
+    Иначе: пустое имя; или пользователь не менял поле, а старое было
+    автосгенерированным / пустым / уже совпадает с новым suggested.
+    Ручное имя сохраняется.
+    """
+    if not suggested:
+        return None
+    suggested = suggested.strip()
+    if not suggested:
+        return None
+    if force:
+        return suggested
+    old = (old_name or "").strip()
+    submitted = (
+        old if submitted_name is None else (submitted_name or "").strip()
+    )
+    old_sug = (old_suggested or "").strip()
+    if not submitted:
+        return suggested
+    if submitted != old:
+        # Пользователь явно задал другое название в этой форме
+        return None
+    if not old or old == old_sug or old == suggested:
+        return suggested
+    return None
+
+
+def apply_auto_equipment_group_name(
+    group: EquipmentGroup,
+    *,
+    force: bool = False,
+    old_name: str | None = None,
+    submitted_name: str | None = None,
+    old_suggested: str | None = None,
+) -> str | None:
+    """
+    При необходимости пишет group.name. Возвращает новое имя или None,
+    если менять не нужно.
+    """
+    if group is None or getattr(group, "id", None) is None:
+        return None
+    baseline = old_name if old_name is not None else getattr(group, "name", None)
+    suggested = suggested_equipment_group_name(
+        int(group.id),
+        current_name=baseline if submitted_name is None else submitted_name or baseline,
+    )
+    new_name = resolve_auto_equipment_group_name(
+        suggested=suggested,
+        old_name=baseline,
+        submitted_name=submitted_name,
+        old_suggested=old_suggested,
+        force=force,
+    )
+    if not new_name:
+        return None
+    current = (getattr(group, "name", None) or "").strip()
+    if current == new_name:
+        return None
+    group.name = new_name
+    return new_name
 
 
 def _get_linked_equipment_groups(link_id: int, version_id: int | None = None) -> list[EquipmentGroup]:

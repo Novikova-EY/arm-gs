@@ -13,9 +13,17 @@ def aggregate_all_at_once(rows):
         get_decentralized_zone_energy_system_type_id,
         get_decentralized_zone_res_ids,
     )
+    from app.common.services.get_services.energy_systems.synchronous_area_get_services import (
+        get_synchronous_area_list_full,
+    )
+    from app.generation.services.station_changes_services.station_changes_services import (
+        resolve_effective_sync_area_id_from_parts,
+    )
 
     dz_res_ids = get_decentralized_zone_res_ids()
     dz_est_id = get_decentralized_zone_energy_system_type_id()
+    sa_list = get_synchronous_area_list_full() or []
+    sa_by_id = {sa.id: sa for sa in sa_list if getattr(sa, "id", None) is not None}
     
     # Инициализация структур данных для всех агрегаций
     # Energy Units
@@ -317,12 +325,23 @@ def aggregate_all_at_once(rows):
         est_row = row.energy_system_type_id
         is_dz = res in dz_res_ids
         est = dz_est_id if (is_dz and dz_est_id is not None) else est_row
-        sa = getattr(row, 'synchronous_area_id', None)  # Синхронная зона может быть None
         st = row.station_type_id
         tes_type = row.tes_type_id
         tes_machine = row.tes_machine_type_id
         fuel = row.fuel_type_id
         year = row.year
+        sa_raw = getattr(row, 'synchronous_area_id', None)
+        sa = resolve_effective_sync_area_id_from_parts(
+            getattr(row, "regional_district_name", None),
+            sa_raw,
+            sa_by_id,
+            year=year,
+            res_name=getattr(row, "regional_energy_system_name", None),
+            ues_name=getattr(row, "union_energy_system_name", None),
+            eu_name=getattr(row, "energy_unit_name", None),
+        )
+        if not sa:
+            sa = None
         db_version = getattr(row, 'database_version_id', 1)  # Используем database_version_id строки
         
         p_ust_val = row.p_ust or Decimal(0)

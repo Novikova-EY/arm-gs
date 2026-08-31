@@ -655,6 +655,7 @@
                             <table class="table table-hover table-striped table-bordered table-responsive align-middle mb-3 w-100" data-auto-export-excel="off">
                                 <thead class="table-success">
                                     <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                                        <th class="text-center" style="width: 140px;">Код группы оборудования</th>
                                         <th>Группа оборудования</th>
                                         <th class="text-center" style="width: 150px;">Тип группы оборудования</th>
                                         <th class="text-center" style="width: 140px;">Количество агрегатов</th>
@@ -686,6 +687,7 @@
                                         {% endfor %}
                                         {% set group_types_cell = (type_names_acc.names | join(', ')) if type_names_acc.names else '—' %}
                                         <tr>
+                                            <td class="text-center">{{ group_entity.numb if group_entity and group_entity.numb is not none else '—' }}</td>
                                             <td class="equipment-group-name">
                                                 {% if can_edit and group_entity and group_entity.id %}
                                                 <form method="POST" action="{{ url_for('station_bp.rename_station_equipment_group_v2', station_id=station.id, equipment_group_id=group_entity.id, **request.args) }}" class="d-flex gap-2 align-items-center flex-nowrap" style="max-width: 100%;" id="rename-equipment-group-v2-{{ group_entity.id }}">
@@ -954,7 +956,7 @@
                         {% endif %}
                     {% endif %}
                         <div class="table-responsive">
-                            <table class="table table-hover table-striped table-bordered table-responsive machines-table" data-auto-export-excel="off">
+                            <table class="table table-hover table-striped table-bordered table-responsive machines-table" id="station-energy-generation-table" data-auto-export-excel="off">
                                 <thead class="table-success">
                                     <tr class="text-center align-middle" style="word-wrap: break-word;">
                                         <th class="align-middle" style="min-width: 260px;"></th>
@@ -1026,6 +1028,17 @@
                         </div>
                         {% endif %}
                     </form>
+                    {% if can_edit_station_energy %}
+                    <script src="{{ url_for('static', filename='js/generation/prospective_place_forecast_row_paste.js') }}"></script>
+                    <script>
+                    (function() {
+                        var table = document.getElementById('station-energy-generation-table');
+                        if (table && typeof window.initProspectivePlaceForecastRowPaste === 'function') {
+                            window.initProspectivePlaceForecastRowPaste(table);
+                        }
+                    })();
+                    </script>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -8,6 +8,7 @@ from app.fuel.services.equipment_groups.equipment_group_machines_services import
 from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
     _ensure_machine_fuel_param,
     _get_machine_fuel_param,
+    _prefer_current_version_groups,
     apply_inferred_equipment_group_type_to_machine,
     composite_cluster_lookup_keys,
     format_equipment_group_choice_label,
@@ -28,6 +29,46 @@ def test_format_choice_label_includes_numb_and_composite_marker():
         "81 — ТЭЦ ПГУ ГСР Энерго (ПГУ-ТЭЦ) (составная)"
     )
     assert format_equipment_group_choice_label(child) == "1502 — ТЭЦ Ижорского з-да(тепл)"
+
+
+def test_prefer_current_version_groups_drops_legacy_copy_with_same_code():
+    legacy = SimpleNamespace(
+        id=28289,
+        numb=66,
+        name="ТЭЦ-14 Первомайская",
+        name_ext=None,
+        external_code="4aaf-same",
+        database_version_id=None,
+    )
+    current = SimpleNamespace(
+        id=28293,
+        numb=66,
+        name="ТЭЦ-14 Первомайская",
+        name_ext=None,
+        external_code="4aaf-same",
+        database_version_id=37,
+    )
+    other_legacy = SimpleNamespace(
+        id=17121,
+        numb=1083,
+        name="Первомайская ТЭЦ (ТЭЦ-14) (ПГУ-ТЭЦ)",
+        name_ext=None,
+        external_code="a810-same",
+        database_version_id=None,
+    )
+    other_current = SimpleNamespace(
+        id=17333,
+        numb=1083,
+        name="Первомайская ТЭЦ (ТЭЦ-14) (ПГУ-ТЭЦ)",
+        name_ext=None,
+        external_code="a810-same",
+        database_version_id=37,
+    )
+    kept = _prefer_current_version_groups(
+        [legacy, current, other_legacy, other_current],
+        37,
+    )
+    assert {int(g.id) for g in kept} == {28293, 17333}
 
 
 def test_composite_cluster_lookup_keys_from_parent_and_child():

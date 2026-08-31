@@ -153,6 +153,7 @@
             (show_fuel_calc_edit_add_year_period|default(false) and year_list_for_edit|default(none))
             or (show_fuel_calc_edit_save_in_filters|default(false) and not hide_fuel_calc_edit_save_in_filters|default(false))
             or show_fuel_calc_edit_hide_empty_toggle|default(false)
+            or show_specific_fc_empty_check_toggle|default(false)
             or show_fuel_detail_panels_toggle|default(false)
             or show_stations_without_equipment_group_button|default(false)
             or show_missing_numb_toggle|default(false)
@@ -217,6 +218,16 @@
                     title="{{ (_empty_title_on if _empty_default_on else _empty_title_off)|e }}">
                 Пустые строки
             </button>
+            {% endif %}
+            {% if show_specific_fc_empty_check_toggle|default(false) %}
+            {% set _empty_specific_check_on = check_empty_specific|default(false) %}
+            <a href="{{ check_empty_specific_toggle_url|default('#') }}"
+               id="specificFcEmptyCheckToggle"
+               class="btn flex-shrink-0 {% if _empty_specific_check_on %}btn-danger text-white{% else %}btn-outline-danger{% endif %}"
+               aria-pressed="{{ 'true' if _empty_specific_check_on else 'false' }}"
+               title="{% if _empty_specific_check_on %}Показать все группы оборудования{% else %}Показать группы с типом ТЭС (ved) &gt; 0, у которых удельные пустые во всех отображаемых годах{% endif %}">
+                Проверка
+            </a>
             {% endif %}
             {% if show_fuel_detail_panels_toggle|default(false) %}
             <button type="button"

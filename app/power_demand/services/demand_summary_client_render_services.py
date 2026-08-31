@@ -9,6 +9,9 @@ from typing import Any
 
 from flask import jsonify
 
+from app.power_demand.services.formula_text.pd_summary_formula_row_resolver import (
+    COEFF_K_FORMULA_DEFAULT_SUFFIX,
+)
 from app.power_demand.services.formula_text.power_demand_summary_formula_text_services import (
     apply_row_formula_text_overrides,
 )
@@ -275,6 +278,7 @@ def build_client_render_config(
         "data_path": data_path,
         "pd_readonly_parameter_keys": sorted(PD_READONLY_PARAMETER_KEYS_MAX),
         "segments": build_client_segment_config(scope),
+        "coeff_k_formula_default_suffix": COEFF_K_FORMULA_DEFAULT_SUFFIX,
     }
     if scope in PAGINATION_SCOPES:
         cfg["entity_pagination"] = client_entity_pagination_config(scope)
@@ -344,6 +348,7 @@ def build_summary_data_json_response(
                     context.get("can_edit_summary_cells")
                 ),
                 "pd_readonly_parameter_keys": sorted(PD_READONLY_PARAMETER_KEYS_MAX),
+                "coeff_k_formula_default_suffix": COEFF_K_FORMULA_DEFAULT_SUFFIX,
                 "coeff_base_year": context.get("coeff_base_year"),
                 "pd_pd_max_year_segments": bool(
                     context.get("summary_route_variant") != "coeff"

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from flask import current_app, jsonify, render_template, request, send_file, session
 from flask_login import current_user, login_required
 from app.common.services.get_services.years.years_get_services import (
@@ -84,6 +86,18 @@ from app.energy_consumption.pages._summary_page_common import finalize_ec_summar
 from app.energy_consumption.pages.summary_table_start_page_services import (
     PAGE_TEMPLATE as SUMMARY_TABLE_START_PAGE_TEMPLATE,
 )
+from app.energy_consumption.services.ec_summary_client_render_services import (
+    build_client_render_config,
+    build_summary_data_json_response,
+)
+from app.energy_consumption.services.ec_summary_entity_pagination import (
+    paginate_summary_rows_for_scope,
+    parse_ec_entity_pagination,
+)
+from app.energy_consumption.services.ec_summary_page_cache import (
+    cached_load_ec_summary_data,
+    cached_load_ec_summary_full_build,
+)
 from app.energy_consumption.services.energy_consumption_gaes_charge_summary_services import (
     build_energy_consumption_gaes_charge_only_context,
     remove_oes_and_subject_rows_from_gaes_charge_context,
@@ -102,6 +116,61 @@ from app.energy_consumption.services.energy_consumption_summary_services import 
 
 def _render_ec_summary_page(template: str, context: dict):
     return render_template(template, **finalize_ec_summary_page_context(context))
+
+
+def _attach_ec_summary_client_render(context: dict, *, scope: str, data_path: str) -> None:
+    context["pd_summary_client_render"] = True
+    cfg = build_client_render_config(
+        scope=scope,
+        data_path=data_path,
+    )
+    cfg["can_edit_summary_cells"] = bool(context.get("can_edit_summary_cells"))
+    context["pd_summary_client_render_config"] = cfg
+
+
+def _copy_summary_page_context(
+    full_context: dict,
+    *,
+    scope: str,
+    entity_pagination: tuple[int, int] | None,
+) -> tuple[dict, dict | None]:
+    """Копия только строк текущей страницы — без deepcopy всего дерева."""
+    rows = full_context.get("summary_rows")
+    pagination_meta = None
+    if entity_pagination is not None:
+        page, page_size = entity_pagination
+        rows, pagination_meta = paginate_summary_rows_for_scope(
+            rows,
+            scope,
+            page=page,
+            page_size=page_size,
+        )
+    page_context = dict(full_context)
+    page_context["summary_rows"] = [dict(row) for row in (rows or [])]
+    return page_context, pagination_meta
+
+
+def _build_summary_data_json_response(*, scope: str, context_builder) -> Any:
+    entity_pagination = parse_ec_entity_pagination(scope)
+
+    def full_build_loader() -> dict:
+        context = context_builder(for_shell=False)
+        return {"context": context}
+
+    def page_loader() -> dict:
+        bundle = cached_load_ec_summary_full_build(scope, full_build_loader)
+        page_context, pagination_meta = _copy_summary_page_context(
+            bundle["context"],
+            scope=scope,
+            entity_pagination=entity_pagination,
+        )
+        page_context = finalize_ec_summary_page_context(page_context)
+        return build_summary_data_json_response(
+            page_context,
+            pagination_meta=pagination_meta,
+        ).get_json()
+
+    return jsonify(cached_load_ec_summary_data(scope, page_loader))
 
 
 def _parse_rounding_digits() -> int:
@@ -975,76 +1044,103 @@ def demand_summary_scope_logs(scope: str):
 @energy_consumption_bp.route("/summary/oes/")
 @login_required
 def demand_summary_oes():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
-    )
-    oes_ordered = _parse_oes_territory_ordered()
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
     context = build_summary_oes_page_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        oes_territory_ordered=oes_ordered,
-        coeff_base_year=n,
-        include_medium_years=include_medium,
+        oes_territory_ordered=_parse_oes_territory_ordered(),
         can_edit_summary_cells=can_edit_energy_consumption(current_user),
+        for_shell=True,
+        **page_kw,
+    )
+    _attach_ec_summary_client_render(
+        context,
+        scope="oes",
+        data_path="/energy_consumption/summary/oes/data.json",
     )
     return _render_ec_summary_page(SUMMARY_OES_PAGE_TEMPLATE, context)
+
+
+@energy_consumption_bp.route("/summary/oes/data.json")
+@login_required
+def demand_summary_oes_data():
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
+
+    def _builder(*, for_shell: bool):
+        return build_summary_oes_page_context(
+            oes_territory_ordered=_parse_oes_territory_ordered(),
+            can_edit_summary_cells=can_edit_energy_consumption(current_user),
+            for_shell=for_shell,
+            **page_kw,
+        )
+
+    return _build_summary_data_json_response(scope="oes", context_builder=_builder)
 
 
 @energy_consumption_bp.route("/summary/energy_zones/")
 @login_required
 def demand_summary_energy_zones():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
-    )
-    ez_ordered = _parse_ez_territory_ordered()
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
     context = build_summary_ez_page_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        ez_territory_ordered=ez_ordered,
-        coeff_base_year=n,
-        include_medium_years=include_medium,
+        ez_territory_ordered=_parse_ez_territory_ordered(),
         can_edit_summary_cells=can_edit_energy_consumption(current_user),
+        for_shell=True,
+        **page_kw,
+    )
+    _attach_ec_summary_client_render(
+        context,
+        scope="ez",
+        data_path="/energy_consumption/summary/energy_zones/data.json",
     )
     return _render_ec_summary_page(SUMMARY_EZ_PAGE_TEMPLATE, context)
+
+
+@energy_consumption_bp.route("/summary/energy_zones/data.json")
+@login_required
+def demand_summary_energy_zones_data():
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
+
+    def _builder(*, for_shell: bool):
+        return build_summary_ez_page_context(
+            ez_territory_ordered=_parse_ez_territory_ordered(),
+            can_edit_summary_cells=can_edit_energy_consumption(current_user),
+            for_shell=for_shell,
+            **page_kw,
+        )
+
+    return _build_summary_data_json_response(scope="ez", context_builder=_builder)
 
 
 @energy_consumption_bp.route("/summary/federal_districts/")
 @login_required
 def demand_summary_federal_districts():
-    sy, ey = _parse_summary_year_range()
-    n = _summary_period_base_year_n()
-    include_medium = _parse_summary_include_medium_years()
-    eff_sy, eff_ey = _expand_summary_years_for_period_segments(
-        sy, ey, n, include_medium_years=include_medium
-    )
-    fo_sets = _parse_fo_filter_sets()
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
     context = build_summary_fo_page_context(
-        _parse_rounding_digits(),
-        start_year=sy,
-        end_year=ey,
-        data_start_year=eff_sy,
-        data_end_year=eff_ey,
-        filter_year_list=_filter_year_list_for_summary(),
-        fo_filter_sets=fo_sets,
-        coeff_base_year=n,
-        include_medium_years=include_medium,
+        fo_filter_sets=_parse_fo_filter_sets(),
         can_edit_summary_cells=can_edit_energy_consumption(current_user),
+        for_shell=True,
+        **page_kw,
+    )
+    _attach_ec_summary_client_render(
+        context,
+        scope="fo",
+        data_path="/energy_consumption/summary/federal_districts/data.json",
     )
     return _render_ec_summary_page(SUMMARY_FO_PAGE_TEMPLATE, context)
+
+
+@energy_consumption_bp.route("/summary/federal_districts/data.json")
+@login_required
+def demand_summary_federal_districts_data():
+    page_kw = _ec_summary_common_page_kwargs(summary_table_page=False)
+
+    def _builder(*, for_shell: bool):
+        return build_summary_fo_page_context(
+            fo_filter_sets=_parse_fo_filter_sets(),
+            can_edit_summary_cells=can_edit_energy_consumption(current_user),
+            for_shell=for_shell,
+            **page_kw,
+        )
+
+    return _build_summary_data_json_response(scope="fo", context_builder=_builder)
 
 
 @energy_consumption_bp.route("/summary/oes/gaes_charge/")

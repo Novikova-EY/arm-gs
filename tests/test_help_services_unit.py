@@ -70,3 +70,33 @@ def test_parse_decimal_from_display_invalid():
     with pytest.raises(InvalidOperation):
         parse_decimal_from_display("12 34abc")
 
+
+def test_display_precision_keeps_full_k_when_cell_shows_one_digit():
+    """Ячейка «1» при 1 знаке — не правка; 1.0296 вместо 1.045 — правка."""
+    from app.common.services.help_services import (
+        coalesce_posted_numeric_with_stored,
+        format_decimal_trim_for_display,
+        values_equal_by_display_precision,
+    )
+
+    stored = Decimal("1.04500427233594")
+    access_k = Decimal("1.02963561999219")
+    shown = format_decimal_trim_for_display(stored, digits=1)
+    posted_untouched = parse_decimal_from_display(shown)
+
+    assert values_equal_by_display_precision(stored, posted_untouched, 1)
+    assert coalesce_posted_numeric_with_stored(stored, posted_untouched, 1) == stored
+    assert not values_equal_by_display_precision(stored, access_k, 1)
+    assert coalesce_posted_numeric_with_stored(stored, access_k, 1) == access_k
+
+
+def test_display_precision_legacy_one_decimal_cell_not_a_change():
+    from app.common.services.help_services import values_equal_by_display_precision
+
+    assert values_equal_by_display_precision(
+        Decimal("1683.738997"), Decimal("1683.7"), 1
+    )
+    assert not values_equal_by_display_precision(
+        Decimal("1683.738997"), Decimal("1683.8"), 1
+    )
+

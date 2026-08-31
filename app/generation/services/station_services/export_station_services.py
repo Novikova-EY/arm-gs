@@ -132,6 +132,93 @@ from app.generation.services.station_services.export_station_application_a_helpe
 )
 from app.common.services.help_services import to_excel_nbsp
 
+_EMPTY_EQUIPMENT_GROUP = "—"
+
+
+def equipment_group_type_display_name(group_type) -> str:
+    """Подпись типа группы оборудования (EquipmentGroupType.name), как на карточке агрегата."""
+    if group_type is None:
+        return _EMPTY_EQUIPMENT_GROUP
+    name = (getattr(group_type, "name", None) or "").strip()
+    if not name:
+        return _EMPTY_EQUIPMENT_GROUP
+    name_lower = name.lower()
+    if "не указано" in name_lower or "не указан" in name_lower:
+        return _EMPTY_EQUIPMENT_GROUP
+    return name
+
+
+def _iter_export_machines(data, stations_grouped):
+    seen = set()
+
+    def walk(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                yield from walk(value)
+            return
+        if isinstance(node, (list, tuple)):
+            for item in node:
+                yield from walk(item)
+            return
+        for machine in getattr(node, "machines", None) or []:
+            mid = getattr(machine, "id", None)
+            key = mid if mid else id(machine)
+            if key in seen:
+                continue
+            seen.add(key)
+            yield machine
+
+    for station in data.get("stations") or []:
+        for machine in getattr(station, "machines", None) or []:
+            mid = getattr(machine, "id", None)
+            key = mid if mid else id(machine)
+            if key in seen:
+                continue
+            seen.add(key)
+            yield machine
+    yield from walk(stations_grouped)
+
+
+def build_equipment_group_type_name_map(data, stations_grouped):
+    """id_equipment_group -> название типа группы оборудования."""
+    from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
+        EquipmentGroupType,
+    )
+
+    names = {}
+    missing_ids = []
+    for machine in _iter_export_machines(data, stations_grouped):
+        type_id = getattr(machine, "id_equipment_group", None)
+        if not type_id:
+            continue
+        label = equipment_group_type_display_name(getattr(machine, "equipment_group", None))
+        if label != _EMPTY_EQUIPMENT_GROUP:
+            names[type_id] = label
+        elif type_id not in names:
+            missing_ids.append(type_id)
+
+    ids = [tid for tid in dict.fromkeys(missing_ids) if tid not in names]
+    if not ids:
+        return names
+
+    chunk_size = 2000
+    for offset in range(0, len(ids), chunk_size):
+        chunk = ids[offset:offset + chunk_size]
+        for group_type in EquipmentGroupType.query.filter(EquipmentGroupType.id.in_(chunk)).all():
+            names[group_type.id] = equipment_group_type_display_name(group_type)
+    return names
+
+
+def resolve_machine_equipment_group_label(machine, type_names_by_id=None) -> str:
+    """Тип группы оборудования агрегата для колонки Excel (не название топливной группы)."""
+    type_names_by_id = type_names_by_id or {}
+    type_id = getattr(machine, "id_equipment_group", None)
+    if type_id:
+        mapped = type_names_by_id.get(type_id)
+        if mapped and mapped != _EMPTY_EQUIPMENT_GROUP:
+            return mapped
+    return equipment_group_type_display_name(getattr(machine, "equipment_group", None))
+
 
 def round_value(val, digits):
     if val is None:
@@ -509,6 +596,7 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
     t4 = time.time()
     stations_grouped = data.get("stations_grouped") or data.get("grouped_stations", {})
     rows = []
+    equipment_group_type_names = build_equipment_group_type_name_map(data, stations_grouped)
 
     print(f"[EXPORT] Начало формирования строк данных. stations_grouped содержит {len(stations_grouped)} групп")
 
@@ -524,7 +612,10 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
         row_ust = {
             "ID  электростанции": machine.machine_station.id if machine.machine_station else "",
             "ID агрегата": machine.id,
-            "Группа оборудования": getattr(machine, "machine_group", None) or "—",
+            "Группа оборудования": resolve_machine_equipment_group_label(
+                machine,
+                type_names_by_id=equipment_group_type_names,
+            ),
             "Электростанция": machine.machine_number if machine.machine_number else "—",
             " ": machine.machine_name,
             "Генерирующая компания": machine.gen_company.name if machine.gen_company else "—",
@@ -1114,9 +1205,9 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                         tes_machine_type_data_ogr = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_ogr", {}) if show_p_ogr else {}
                         tes_machine_type_data_rasp = data[config["tes_machine_type_key"]].get("aggregated", {}).get("p_rasp", {}) if show_p_rasp else {}
 
-                    # Для ДЭС не показываем вложенность ниже видов топлива (типы агрегатов и их разбивку),
-                    # иначе дублируется «прочее» под «прочее»
-                    skip_machine_types_for_tes = "дэс" in tes_type_lower
+                    # Для ДЭС/ДГА не показываем вложенность ниже видов топлива (типы агрегатов
+                    # и их разбивку), иначе дублируется «прочее» под «прочее».
+                    skip_machine_types_for_tes = "дэс" in tes_type_lower or "дга" in tes_type_lower
 
                     # Типы агрегатов ТЭС также сортируем по display_order
                     # (tes_machine_type_ordered_ids), чтобы порядок совпадал со страницей.
@@ -1128,6 +1219,16 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
                             if machine_type_id is None:
                                 continue
                             machine_type_name = machine_type_names.get(machine_type_id, f"id={machine_type_id}")
+                            # Как на странице: тип агрегата «не указано» не выводим вместе
+                            # с вложенной разбивкой по топливу. Постфильтр иначе убирает
+                            # только строку «не указано», а «прочее» под ней остаётся.
+                            mt_name_lower = (machine_type_name or "").strip().lower()
+                            if (
+                                not mt_name_lower
+                                or "не указано" in mt_name_lower
+                                or "не указан" in mt_name_lower
+                            ):
+                                continue
                             row_mt = {
                                 "Электростанция": f"         {machine_type_name}",
                                 " ": "",
@@ -1550,7 +1651,9 @@ def generate_excel_export_with_all_totals(data, rows, start_year, end_year, roun
             val = row.get(col)
 
             # Преобразуем только числовые колонки (годы)
-            if isinstance(val, float) or isinstance(val, int):
+            if col == "Группа оборудования" and isinstance(val, str):
+                excel_row.append(val)
+            elif isinstance(val, float) or isinstance(val, int):
                 excel_row.append(val)
             elif isinstance(val, str):
                 try:

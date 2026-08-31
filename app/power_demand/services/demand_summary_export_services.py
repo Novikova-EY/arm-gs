@@ -107,24 +107,45 @@ def _excel_hide_plan_year_cell(
         return False
     if pk == "max_power":
         return False
+    if row.get("pd_pd_verify_for_row") or str(pk).startswith("verify_for_"):
+        return False
     if pk == "calculated_max_fo_mw":
         return False
     if (
         coeff_base_year is not None
         and (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
-        and pk in ("combined_on_oes", "combined_on_ees")
+        and pk
+        in (
+            "combined_on_oes",
+            "combined_on_ees",
+            "combined_on_fo",
+            "combined_on_cz",
+            "combined_on_ez",
+        )
         and row.get("demand_model_name") == "RegionalEnergySystemDemandParameter"
     ):
         return False
-    if coeff_base_year is not None and row.get("demand_model_name") == "UnionEnergySystemDemandParameter":
+    if coeff_base_year is not None:
         rep_med = (coeff_base_year - 9) <= y <= coeff_base_year or (
             (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
         )
         med_only = (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
-        if pk in ("calculated_max_power_mw", "calculated_combined_on_ees_mw") and rep_med:
-            return False
-        if pk == "combined_on_ees" and med_only:
-            return False
+        dm = row.get("demand_model_name")
+        if dm == "UnionEnergySystemDemandParameter":
+            if pk in ("calculated_max_power_mw", "calculated_combined_on_ees_mw") and rep_med:
+                return False
+            if pk == "combined_on_ees" and med_only:
+                return False
+        if dm == "FederalDistrictDemandParameter":
+            if pk in ("calculated_max_power_mw", "calculated_combined_on_cz_mw") and rep_med:
+                return False
+            if pk == "combined_on_cz" and med_only:
+                return False
+        if dm == "EnergyZoneDemandParameter":
+            if pk in ("calculated_max_power_mw", "calculated_combined_on_ees_mw") and rep_med:
+                return False
+            if pk == "combined_on_ees" and med_only:
+                return False
     return True
 
 

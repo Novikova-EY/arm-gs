@@ -28,6 +28,7 @@ from app.fuel.services.equipment_groups.composite_hierarchy_enrich_services impo
 )
 from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
     normalize_equipment_group_ids_filter,
+    restrict_equipment_group_query_to_current_version,
 )
 
 # Пары загруженное / расчётное для временного фильтра расхождений
@@ -229,16 +230,6 @@ def get_equipment_groups_with_specific_fuel_consumption_data(
         .outerjoin(EquipmentGroupSpecificFuelConsumption, join_cond)
     )
 
-    if hasattr(EquipmentGroup, "database_version_id"):
-        if current_version_id is not None:
-            base_query = base_query.filter(
-                EquipmentGroup.database_version_id == current_version_id
-            )
-        else:
-            base_query = base_query.filter(
-                EquipmentGroup.database_version_id.is_(None)
-            )
-
     territorial_keys = (
         "energy_system_type_filter",
         "union_energy_system_filter",
@@ -253,6 +244,11 @@ def get_equipment_groups_with_specific_fuel_consumption_data(
     }
     equipment_group_name_filter = (_filters.get("equipment_group_name_filter") or "").strip() or None
     id_list = normalize_equipment_group_ids_filter(_filters.get("equipment_group_ids"))
+    base_query = restrict_equipment_group_query_to_current_version(
+        base_query,
+        current_version_id,
+        skip=bool(id_list),
+    )
     if id_list:
         base_query = base_query.filter(EquipmentGroup.id.in_(id_list))
     elif any(_filters.get(k) for k in territorial_keys) or equipment_group_name_filter:

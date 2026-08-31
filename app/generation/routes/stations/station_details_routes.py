@@ -230,6 +230,9 @@ from app.generation.services.station_services.station_access_services import (
     get_decentralized_zone_energy_system_type_name,
     is_decentralized_zone_station,
 )
+from app.generation.services.station_services.groupped_services import (
+    machine_year_then_number_sort_key,
+)
 from app.generation.services.station_services.import_station_services import (
     import_station_list_from_excel, 
     import_fuel_tes_station_from_excel, 
@@ -667,21 +670,13 @@ def station_details(station_id):
     for machine in (station.machines or []):
         powers_count += len(machine.machine_powers) if hasattr(machine, 'machine_powers') else 0
     
-    # Сортировка агрегатов: активные по станционному номеру, архивные — в конце
+    # Сортировка агрегатов: ВЭС/СЭС по году ввода, ТЭС по станционному номеру; архивные — в конце
     if station and station.machines:
-        def _machine_sort_key(m):
-            num_key = float('inf')
-            try:
-                if m.machine_number:
-                    s = str(m.machine_number).strip()
-                    if s.isdigit():
-                        num_key = int(s)
-            except Exception:
-                num_key = float('inf')
-            archived_key = 1 if bool(getattr(m, "is_archived", False)) else 0
-            return (archived_key, num_key)
         try:
-            station.machines.sort(key=_machine_sort_key)
+            station.machines.sort(key=lambda m: (
+                1 if bool(getattr(m, "is_archived", False)) else 0,
+                machine_year_then_number_sort_key(m),
+            ))
         except Exception:
             pass
 
@@ -2065,21 +2060,13 @@ def _render_machines_tbody(
             p.powers_by_year = pgu_powers_by_year.get(p.id, {})
             pgu_by_parent[p.id_parent_machine].append(p)
 
-    # Сортируем агрегаты: активные по станционному номеру, архивные — в конце
+    # Сортировка агрегатов: ВЭС/СЭС по году ввода, ТЭС по станционному номеру; архивные — в конце
     if station and station.machines:
-        def _machine_sort_key(m):
-            num_key = float('inf')
-            try:
-                if m.machine_number:
-                    s = str(m.machine_number).strip()
-                    if s.isdigit():
-                        num_key = int(s)
-            except Exception:
-                num_key = float('inf')
-            archived_key = 1 if bool(getattr(m, "is_archived", False)) else 0
-            return (archived_key, num_key)
         try:
-            station.machines.sort(key=_machine_sort_key)
+            station.machines.sort(key=lambda m: (
+                1 if bool(getattr(m, "is_archived", False)) else 0,
+                machine_year_then_number_sort_key(m),
+            ))
         except Exception:
             pass
 

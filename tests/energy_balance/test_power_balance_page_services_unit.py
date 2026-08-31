@@ -9,8 +9,17 @@ from unittest.mock import patch
 import pytest
 
 from app.energy_balance.services.power_balance_page_services import (
+    DEMAND_MAX_COLD_LABEL,
+    DEMAND_MAX_COLD_ROW_KEY,
+    SURPLUS_N1_LABEL,
+    SURPLUS_N1_ROW_KEY,
+    SURPLUS_N2_LABEL,
+    SURPLUS_N2_ROW_KEY,
+    SURPLUS_NORMAL_LABEL,
     GROUP_EES,
+    GROUP_EU,
     GROUP_OES,
+    GROUP_RES,
     GROUP_SZ,
     KALININGRAD_LARGEST_UNIT_MW,
     POWER_BALANCE_SHEETS,
@@ -20,6 +29,7 @@ from app.energy_balance.services.power_balance_page_services import (
     build_power_balance_table_context,
     build_power_balance_tables,
     custom_flow_row_key,
+    first_row_active_slug,
     get_power_balance_sheet,
     get_power_balance_sheets,
     get_power_balance_year_columns,
@@ -29,6 +39,13 @@ from app.energy_balance.services.power_balance_page_services import (
     power_balance_station_list_query,
     resolve_power_balance_rounding_digits,
     mark_power_balance_empty_rows,
+    sheet_omits_power_flow_block,
+    sheet_omits_export_row,
+    sheet_includes_cold_demand_row,
+    sheet_includes_ego_outage_surplus,
+    sheet_uses_station_capacity_breakdown,
+    tites_east_child_nav_sheets,
+    tites_east_hub_redirect_slug,
 )
 
 
@@ -53,6 +70,18 @@ def _stable_station_types_and_no_db_load(monkeypatch):
     monkeypatch.setattr(
         "app.energy_balance.services.power_balance_page_services.load_power_balance_export_inputs",
         lambda years, sheets=None: {},
+    )
+    monkeypatch.setattr(
+        "app.energy_balance.services.power_balance_page_services.load_power_balance_demand_cold_inputs",
+        lambda years, sheets=None: {},
+    )
+    monkeypatch.setattr(
+        "app.energy_balance.services.power_balance_page_services.load_power_balance_station_capacity_breakdown",
+        lambda years, sheets=None: {},
+    )
+    monkeypatch.setattr(
+        "app.energy_balance.services.power_balance_page_services.attach_balance_sheet_notes",
+        lambda tables, kind: None,
     )
 
 
@@ -103,6 +132,13 @@ def test_each_layout_has_unique_row_keys_and_core_rows(sheet):
     assert not export.get("formula")
     assert "installed_aes" in keys
     assert "installed_ses_ves" in keys
+    assert "available_total" in keys
+    assert "available_aes" in keys
+    assert "available_ses_ves" in keys
+    assert keys.index("installed_total") < keys.index("available_total") < keys.index("constraints")
+    assert keys.index("available_total") == keys.index("installed_ses_ves") + 1
+    available_total = next(row for row in rows if row["key"] == "available_total")
+    assert available_total["label"] == "Располагаемая мощность"
     assert "flow_in" in keys
     assert "flow_out" in keys
     assert all(row["unit"] == "МВт" for row in rows)
@@ -274,6 +310,12 @@ def test_oes_formulas_match_excel():
                 "installed_tes": {2026: 30},
                 "installed_snee": {2026: 2},
                 "installed_ses_ves": {2026: 3},
+                "available_aes": {2026: 35},
+                "available_ges": {2026: 9},
+                "available_gaes": {2026: 4},
+                "available_tes": {2026: 28},
+                "available_snee": {2026: 1},
+                "available_ses_ves": {2026: 2},
                 "constraints": {2026: 8},
                 "commissioning_after_max": {2026: 4},
                 "flow_in": {2026: 7},
@@ -283,6 +325,7 @@ def test_oes_formulas_match_excel():
     )
     assert _row_display(tables, "centr", "demand_total", 2026) == "120"
     assert _row_display(tables, "centr", "installed_total", 2026) == "90"
+    assert _row_display(tables, "centr", "available_total", 2026) == "79"
     assert _row_display(tables, "centr", "coverage_total", 2026) == "78"
     assert _row_display(tables, "centr", "surplus_deficit", 2026) == "-42"
     assert _row_display(tables, "centr", "flow_total", 2026) == "4"
@@ -327,26 +370,30 @@ def test_ees_and_sz1_cross_sheet_formulas():
     tables = build_power_balance_tables(
         years,
         inputs={
-            "severo-zapad": {"installed_aes": {2026: 10}},
-            "centr": {"installed_aes": {2026: 20}},
-            "srednyaya-volga": {"installed_aes": {2026: 4}},
+            "severo-zapad": {"installed_aes": {2026: 10}, "available_aes": {2026: 9}},
+            "centr": {"installed_aes": {2026: 20}, "available_aes": {2026: 18}},
+            "srednyaya-volga": {"installed_aes": {2026: 4}, "available_aes": {2026: 3}},
             "yug": {
                 "installed_aes": {2026: 5},
+                "available_aes": {2026: 4},
                 "flow_out": {2026: -1090},
             },
-            "ural": {"installed_aes": {2026: 6}},
+            "ural": {"installed_aes": {2026: 6}, "available_aes": {2026: 5}},
             "sibir": {
                 "installed_aes": {2026: 7},
+                "available_aes": {2026: 6},
                 "flow_in": {2026: 240},
                 "flow_out": {2026: -38},
             },
-            "2-sz-ees-vostok": {"installed_aes": {2026: 8}},
-            "kaliningradskaya-sz-ees": {"installed_aes": {2026: 3}},
+            "2-sz-ees-vostok": {"installed_aes": {2026: 8}, "available_aes": {2026: 7}},
+            "kaliningradskaya-sz-ees": {"installed_aes": {2026: 3}, "available_aes": {2026: 2}},
         },
     )
     assert _row_display(tables, "ees-rossii", "installed_aes", 2026) == "60"
+    assert _row_display(tables, "ees-rossii", "available_aes", 2026) == "52"
     # 1-я СЗ: 10+20+4+5+6+7 − 3 = 49 (без Востока)
     assert _row_display(tables, "1-sz-ees", "installed_aes", 2026) == "49"
+    assert _row_display(tables, "1-sz-ees", "available_aes", 2026) == "43"
     sz1_by_key = {row["key"]: row for row in tables["1-sz-ees"]["rows"]}
     assert "flow_out_vostok" not in sz1_by_key
     assert "flow_out_south" not in sz1_by_key
@@ -414,6 +461,502 @@ def test_sheets_use_refdata_names_and_keep_group_order():
     assert "2-sz-ees-vostok" not in by_slug["1-sz-ees"]["source_slugs"]
 
 
+def test_tites_east_hub_exposes_energy_unit_children_and_skips_own_table():
+    est = [SimpleNamespace(id=1, name="ЕЭС России")]
+    ues = [
+        SimpleNamespace(id=11, name="ОЭС Центра", id_energy_system_type=1),
+        SimpleNamespace(id=15, name="ТИТЭС Востока", id_energy_system_type=2),
+    ]
+    sa = [SimpleNamespace(id=21, name="Первая синхронная зона")]
+    res = [
+        SimpleNamespace(id=41, name="ЭС Камчатского края", id_union_energy_system=15),
+        SimpleNamespace(id=42, name="ЭС Магаданской области", id_union_energy_system=15),
+        SimpleNamespace(id=43, name="ЭС Сахалинской области", id_union_energy_system=15),
+        SimpleNamespace(id=44, name="ЭС Чукотского АО", id_union_energy_system=15),
+        SimpleNamespace(id=99, name="Чукотская ЭС", id_union_energy_system=11),
+        SimpleNamespace(id=0, name="не указано", id_union_energy_system=15),
+    ]
+    energy_units = [
+        SimpleNamespace(
+            id=101,
+            name="Центральный энергорайон Камчатского края",
+            id_regional_energy_system=41,
+        ),
+        SimpleNamespace(
+            id=102,
+            name="Центральный энергорайон Магаданской области",
+            id_regional_energy_system=42,
+        ),
+        SimpleNamespace(
+            id=103,
+            name="Центральный энергорайон Сахалинской области",
+            id_regional_energy_system=43,
+        ),
+        SimpleNamespace(
+            id=104,
+            name="Чаун-Билибинский энергорайон",
+            id_regional_energy_system=44,
+        ),
+        SimpleNamespace(
+            id=105,
+            name="Анадырский энергорайон",
+            id_regional_energy_system=44,
+        ),
+        SimpleNamespace(
+            id=199,
+            name="Чужой энергорайон",
+            id_regional_energy_system=99,
+        ),
+    ]
+    with patch(
+        "app.energy_balance.services.power_balance_page_services.get_energy_system_type_list_full",
+        return_value=est,
+    ), patch(
+        "app.energy_balance.services.power_balance_page_services.get_union_energy_system_list_full",
+        return_value=ues,
+    ), patch(
+        "app.energy_balance.services.power_balance_page_services.get_synchronous_area_list_full",
+        return_value=sa,
+    ), patch(
+        "app.common.services.get_services.energy_systems.regional_energy_system_get_services.get_regional_energy_system_list_full",
+        return_value=res,
+    ), patch(
+        "app.common.services.get_services.energy_systems.energy_unit_get_services.get_energy_unit_list_full",
+        return_value=energy_units,
+    ):
+        sheets = get_power_balance_sheets()
+    by_slug = {sheet["slug"]: sheet for sheet in sheets}
+    hub = by_slug["oes-15"]
+    assert hub["skip_table"] is True
+    assert hub["is_tites_east_hub"] is True
+    assert hub["first_child_slug"] == "eu-101"
+    assert [sheet["slug"] for sheet in sheets if sheet.get("group") == GROUP_EU] == [
+        "eu-101",
+        "eu-102",
+        "eu-103",
+        "eu-104",
+        "eu-105",
+    ]
+    assert [sheet["sheet_name"] for sheet in sheets if sheet.get("group") == GROUP_EU] == [
+        "Центральный энергорайон Камчатского края",
+        "Центральный энергорайон Магаданской области",
+        "Центральный энергорайон Сахалинской области",
+        "Чаун-Билибинский энергорайон",
+        "Анадырский энергорайон",
+    ]
+    assert "res-44" not in by_slug
+    assert "eu-199" not in by_slug
+    groups = group_power_balance_sheets(sheets)
+    first_row = [item["slug"] for group in groups for item in group["sheets"]]
+    assert "oes-15" in first_row
+    assert "eu-101" not in first_row
+    children = tites_east_child_nav_sheets(sheets, "eu-104")
+    assert [item["slug"] for item in children] == [
+        "eu-101",
+        "eu-102",
+        "eu-103",
+        "eu-104",
+        "eu-105",
+    ]
+    assert first_row_active_slug(by_slug["eu-104"]) == "oes-15"
+    assert tites_east_hub_redirect_slug(hub) == "eu-101"
+    tables = build_power_balance_tables(years=[2026], inputs={}, sheets=sheets)
+    assert "oes-15" not in tables
+    assert "eu-101" in tables
+    assert "eu-105" in tables
+    query = power_balance_station_list_query(by_slug["eu-104"], sheets)
+    assert query["energy_unit_filter"] == 104
+    for slug in ("eu-101", "eu-102", "eu-103", "eu-104", "eu-105"):
+        assert by_slug[slug]["station_capacity_breakdown"] is True
+        assert sheet_uses_station_capacity_breakdown(by_slug[slug]) is True
+
+
+def test_tites_sibir_sheet_uses_station_capacity_breakdown():
+    est = [SimpleNamespace(id=1, name="ЕЭС России")]
+    ues = [
+        SimpleNamespace(id=318, name="ТИТЭС Сибири", id_energy_system_type=2),
+    ]
+    sa = [SimpleNamespace(id=21, name="Первая синхронная зона")]
+    with patch(
+        "app.energy_balance.services.power_balance_page_services.get_energy_system_type_list_full",
+        return_value=est,
+    ), patch(
+        "app.energy_balance.services.power_balance_page_services.get_union_energy_system_list_full",
+        return_value=ues,
+    ), patch(
+        "app.energy_balance.services.power_balance_page_services.get_synchronous_area_list_full",
+        return_value=sa,
+    ):
+        sheets = get_power_balance_sheets()
+    by_slug = {sheet["slug"]: sheet for sheet in sheets}
+    tites = by_slug["oes-318"]
+    assert tites["station_capacity_breakdown"] is True
+    assert sheet_uses_station_capacity_breakdown(tites) is True
+    assert tites.get("is_tites_east_hub") is not True
+
+
+def test_installed_capacity_station_rows_replace_type_groups():
+    rows = build_power_balance_rows(
+        "oes_standard",
+        station_items=[
+            {
+                "key": "installed_station_10",
+                "label": "Станция А",
+                "machines": [
+                    {"key": "installed_machine_1", "label": "1 Турбина"},
+                    {"key": "installed_machine_2", "label": "2 Турбина"},
+                ],
+            },
+            {
+                "key": "installed_station_11",
+                "label": "Станция Б",
+                "machines": [{"key": "installed_machine_3", "label": "Г-1"}],
+            },
+        ],
+    )
+    by_key = {row["key"]: row for row in rows}
+    assert "installed_aes" not in by_key
+    assert by_key["installed_station_10"]["collapsible"] is True
+    assert by_key["installed_station_10"]["is_station_row"] is True
+    assert by_key["installed_machine_1"]["is_machine_row"] is True
+    assert by_key["installed_machine_1"]["parent_station_key"] == "installed_station_10"
+    assert by_key["installed_machine_1"]["italic"] is True
+    station_keys = [term["row_key"] for term in by_key["installed_total"]["formula"]["terms"]]
+    assert station_keys == ["installed_station_10", "installed_station_11"]
+    machine_keys = [term["row_key"] for term in by_key["installed_station_10"]["formula"]["terms"]]
+    assert machine_keys == ["installed_machine_1", "installed_machine_2"]
+    assert "available_aes" not in by_key
+    assert by_key["available_station_10"]["collapsible"] is True
+    assert by_key["available_station_10"]["is_station_row"] is True
+    assert by_key["available_machine_1"]["parent_station_key"] == "available_station_10"
+    available_station_keys = [term["row_key"] for term in by_key["available_total"]["formula"]["terms"]]
+    assert available_station_keys == ["available_station_10", "available_station_11"]
+    keys = [row["key"] for row in rows]
+    assert len(keys) == len(set(keys))
+    assert keys.index("available_total") > keys.index("installed_station_11")
+    assert keys.index("available_total") < keys.index("constraints")
+
+
+def test_station_capacity_breakdown_fills_total_from_machines():
+    sheets = [
+        {
+            "slug": "oes-318",
+            "sheet_name": "ТИТЭС Сибири",
+            "group": GROUP_OES,
+            "layout": "oes_standard",
+            "title": "Баланс мощности ТИТЭС Сибири",
+            "source_slugs": (),
+            "subtract_slugs": (),
+            "territory": {"kind": "ues", "id": 318, "name": "ТИТЭС Сибири"},
+            "is_ees_member": False,
+            "skip_direct_capacity": False,
+            "station_capacity_breakdown": True,
+            "table_number": 1,
+        }
+    ]
+    breakdown = {
+        "oes-318": {
+            "stations": [
+                {
+                    "key": "installed_station_10",
+                    "label": "Станция А",
+                    "year_values": {2026: 15},
+                    "rasp_year_values": {2026: 12},
+                    "machines": [
+                        {
+                            "key": "installed_machine_1",
+                            "label": "1 Турбина",
+                            "year_values": {2026: 10},
+                            "rasp_year_values": {2026: 8},
+                        },
+                        {
+                            "key": "installed_machine_2",
+                            "label": "2 Турбина",
+                            "year_values": {2026: 5},
+                            "rasp_year_values": {2026: 4},
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+    with patch(
+        "app.energy_balance.services.power_balance_page_services.load_power_balance_station_capacity_breakdown",
+        return_value=breakdown,
+    ):
+        tables = build_power_balance_tables(years=[2026], inputs={}, sheets=sheets)
+    rows = {row["key"]: row for row in tables["oes-318"]["rows"]}
+    assert "installed_aes" not in rows
+    assert rows["installed_machine_1"]["year_values"][2026] == "10"
+    assert rows["installed_station_10"]["year_values"][2026] == "15"
+    assert rows["installed_total"]["year_values"][2026] == "15"
+    assert rows["available_machine_1"]["year_values"][2026] == "8"
+    assert rows["available_station_10"]["year_values"][2026] == "12"
+    assert rows["available_total"]["year_values"][2026] == "12"
+    assert rows["available_total"]["label"] == "Располагаемая мощность"
+    assert "flow_total" not in rows
+    assert "flow_in" not in rows
+    assert "flow_out" not in rows
+    assert "surplus_deficit_with_flow" not in rows
+    assert "surplus_deficit" in rows
+    assert rows["surplus_deficit"]["label"] == SURPLUS_NORMAL_LABEL
+    assert rows[SURPLUS_N1_ROW_KEY]["label"] == SURPLUS_N1_LABEL
+    assert rows[SURPLUS_N2_ROW_KEY]["label"] == SURPLUS_N2_LABEL
+    assert rows["surplus_deficit"]["year_values"][2026] == "-12"
+    assert rows[SURPLUS_N1_ROW_KEY]["year_values"][2026] == "-4"
+    assert rows[SURPLUS_N2_ROW_KEY]["year_values"][2026] == "0"
+    surplus_terms = [
+        (term.get("row_key"), term.get("coeff"))
+        for term in rows["surplus_deficit"]["formula"]["terms"]
+    ]
+    assert surplus_terms == [("demand_max", None), ("available_total", -1)]
+    assert rows[SURPLUS_N1_ROW_KEY]["year_cell_tooltip_lines"][2026] == [
+        "8 МВт — 1 Турбина — Станция А"
+    ]
+    assert rows[SURPLUS_N2_ROW_KEY]["year_cell_tooltip_lines"][2026] == [
+        "8 МВт — 1 Турбина — Станция А",
+        "4 МВт — 2 Турбина — Станция А",
+    ]
+    assert "Максимум потребления мощности" in (rows["surplus_deficit"].get("formula_tooltip") or "")
+    assert "Располагаемая мощность (суммарная)" in (rows["surplus_deficit"].get("formula_tooltip") or "")
+    assert "export" not in rows
+    assert "demand_total" not in rows
+    assert DEMAND_MAX_COLD_ROW_KEY in rows
+    keys = [row["key"] for row in tables["oes-318"]["rows"]]
+    assert keys.index("demand_max") + 1 == keys.index(DEMAND_MAX_COLD_ROW_KEY)
+    assert rows[DEMAND_MAX_COLD_ROW_KEY]["label"] == DEMAND_MAX_COLD_LABEL
+    assert not rows["installed_station_10"].get("formula_tooltip")
+    assert not rows["installed_machine_1"].get("formula_tooltip")
+    assert not rows["available_station_10"].get("formula_tooltip")
+    assert not rows["available_machine_1"].get("formula_tooltip")
+    assert "Станция А" in (rows["installed_total"].get("formula_tooltip") or "")
+
+
+def test_zero_installed_unit_hides_available_pair_in_displayed_years():
+    sheets = [
+        {
+            "slug": "oes-318",
+            "sheet_name": "ТИТЭС Сибири",
+            "group": GROUP_OES,
+            "layout": "oes_standard",
+            "title": "Баланс мощности ТИТЭС Сибири",
+            "source_slugs": (),
+            "subtract_slugs": (),
+            "territory": {"kind": "ues", "id": 318, "name": "ТИТЭС Сибири"},
+            "is_ees_member": False,
+            "skip_direct_capacity": False,
+            "station_capacity_breakdown": True,
+            "table_number": 1,
+        }
+    ]
+    breakdown = {
+        "oes-318": {
+            "stations": [
+                {
+                    "key": "installed_station_10",
+                    "label": "Станция А",
+                    "year_values": {2026: 10, 2027: 10},
+                    "rasp_year_values": {2026: 8, 2027: 8},
+                    "machines": [
+                        {
+                            "key": "installed_machine_1",
+                            "label": "1 Турбина",
+                            "year_values": {2026: 10, 2027: 10},
+                            "rasp_year_values": {2026: 8, 2027: 8},
+                        },
+                        {
+                            "key": "installed_machine_2",
+                            "label": "2 Турбина",
+                            "year_values": {2026: 0, 2027: 0},
+                            "rasp_year_values": {2026: 0, 2027: 0},
+                        },
+                    ],
+                },
+                {
+                    "key": "installed_station_11",
+                    "label": "Станция Б",
+                    "year_values": {2026: 0, 2027: 4},
+                    "rasp_year_values": {2026: 0, 2027: 3},
+                    "machines": [
+                        {
+                            "key": "installed_machine_3",
+                            "label": "Г-1",
+                            "year_values": {2026: 0, 2027: 4},
+                            "rasp_year_values": {2026: 5, 2027: 3},
+                        },
+                    ],
+                },
+            ]
+        }
+    }
+    with patch(
+        "app.energy_balance.services.power_balance_page_services.load_power_balance_station_capacity_breakdown",
+        return_value=breakdown,
+    ):
+        tables_2026 = build_power_balance_tables(years=[2026], inputs={}, sheets=sheets)
+        tables_range = build_power_balance_tables(years=[2026, 2027], inputs={}, sheets=sheets)
+    by_2026 = {row["key"]: row for row in tables_2026["oes-318"]["rows"]}
+    assert by_2026["installed_machine_1"].get("hide_zero_capacity") is not True
+    assert by_2026["available_machine_1"].get("hide_zero_capacity") is not True
+    assert by_2026["installed_machine_2"].get("hide_zero_capacity") is True
+    assert by_2026["available_machine_2"].get("hide_zero_capacity") is True
+    assert by_2026["installed_station_10"].get("hide_zero_capacity") is not True
+    assert by_2026["installed_station_10"]["collapsible"] is True
+    assert by_2026["installed_station_11"].get("hide_zero_capacity") is True
+    assert by_2026["available_station_11"].get("hide_zero_capacity") is True
+    assert by_2026["installed_machine_3"].get("hide_zero_capacity") is True
+    assert by_2026["available_machine_3"].get("hide_zero_capacity") is True
+    assert by_2026["installed_station_11"]["collapsible"] is False
+    by_range = {row["key"]: row for row in tables_range["oes-318"]["rows"]}
+    assert by_range["installed_station_11"].get("hide_zero_capacity") is not True
+    assert by_range["available_station_11"].get("hide_zero_capacity") is not True
+    assert by_range["installed_machine_3"].get("hide_zero_capacity") is not True
+    assert by_range["available_machine_3"].get("hide_zero_capacity") is not True
+    assert by_range["installed_machine_2"].get("hide_zero_capacity") is True
+    assert by_range["available_machine_2"].get("hide_zero_capacity") is True
+
+
+def test_zero_installed_type_rows_are_not_force_hidden():
+    tables = build_power_balance_tables(
+        [2026],
+        inputs={"centr": {"installed_tes": {2026: 30}, "available_tes": {2026: 25}}},
+    )
+    by_key = {row["key"]: row for row in tables["centr"]["rows"]}
+    assert by_key["installed_aes"].get("hide_zero_capacity") is not True
+    assert by_key["available_aes"].get("hide_zero_capacity") is not True
+    assert by_key["installed_aes"]["hide_when_empty"] is True
+    assert by_key["installed_tes"].get("hide_zero_capacity") is not True
+
+
+def test_tites_sheets_omit_power_flow_block():
+    assert sheet_omits_power_flow_block(
+        {"slug": "oes-417", "sheet_name": "ТИТЭС Сибири", "group": GROUP_OES}
+    )
+    assert sheet_omits_power_flow_block(
+        {"slug": "eu-348", "sheet_name": "Центральный энергорайон Камчатского края", "group": GROUP_EU}
+    )
+    assert sheet_omits_power_flow_block(
+        {
+            "slug": "res-41",
+            "sheet_name": "ЭС Камчатского края",
+            "group": GROUP_RES,
+            "parent_slug": "oes-15",
+        }
+    )
+    assert not sheet_omits_power_flow_block(
+        {"slug": "sibir", "sheet_name": "Сибирь", "group": GROUP_OES}
+    )
+    keys = {row["key"] for row in build_power_balance_rows("oes_standard", include_flow_block=False)}
+    assert "flow_total" not in keys
+    assert "surplus_deficit_with_flow" not in keys
+    assert "surplus_deficit" in keys
+
+
+def test_tites_sheets_omit_export_row():
+    assert sheet_omits_export_row(
+        {"slug": "oes-417", "sheet_name": "ТИТЭС Сибири", "group": GROUP_OES}
+    )
+    assert sheet_omits_export_row(
+        {"slug": "eu-348", "sheet_name": "Центральный энергорайон Камчатского края", "group": GROUP_EU}
+    )
+    assert not sheet_omits_export_row(
+        {"slug": "sibir", "sheet_name": "Сибирь", "group": GROUP_OES}
+    )
+    rows = build_power_balance_rows("oes_standard", include_export_row=False)
+    keys = [row["key"] for row in rows]
+    assert "export" not in keys
+    demand_total = next(row for row in rows if row["key"] == "demand_total")
+    assert [term["row_key"] for term in demand_total["formula"]["terms"]] == ["demand_max"]
+    assert "export" in {row["key"] for row in build_power_balance_rows("oes_standard")}
+
+
+def test_tites_sheets_include_cold_demand_row_after_demand_max():
+    assert sheet_includes_cold_demand_row(
+        {"slug": "oes-417", "sheet_name": "ТИТЭС Сибири", "group": GROUP_OES}
+    )
+    assert sheet_includes_cold_demand_row(
+        {"slug": "eu-348", "sheet_name": "Центральный энергорайон Камчатского края", "group": GROUP_EU}
+    )
+    assert not sheet_includes_cold_demand_row(
+        {"slug": "sibir", "sheet_name": "Сибирь", "group": GROUP_OES}
+    )
+    rows = build_power_balance_rows(
+        "oes_standard", include_export_row=False, include_cold_demand_row=True
+    )
+    keys = [row["key"] for row in rows]
+    assert keys.index("demand_max") + 1 == keys.index(DEMAND_MAX_COLD_ROW_KEY)
+    assert "export" not in keys
+    cold = next(row for row in rows if row["key"] == DEMAND_MAX_COLD_ROW_KEY)
+    assert cold["label"] == DEMAND_MAX_COLD_LABEL
+    assert cold["editable_values"] is True
+    assert cold["wrap_label"] is True
+    assert DEMAND_MAX_COLD_ROW_KEY not in {
+        row["key"] for row in build_power_balance_rows("oes_standard")
+    }
+
+
+def test_tites_sheets_include_ego_outage_surplus_rows():
+    assert sheet_includes_ego_outage_surplus(
+        {"slug": "oes-417", "sheet_name": "ТИТЭС Сибири", "group": GROUP_OES}
+    )
+    assert sheet_includes_ego_outage_surplus(
+        {"slug": "eu-348", "sheet_name": "Центральный энергорайон Камчатского края", "group": GROUP_EU}
+    )
+    assert not sheet_includes_ego_outage_surplus(
+        {"slug": "sibir", "sheet_name": "Сибирь", "group": GROUP_OES}
+    )
+    rows = build_power_balance_rows(
+        "oes_standard",
+        include_export_row=False,
+        include_flow_block=False,
+        include_ego_outage_surplus=True,
+    )
+    by_key = {row["key"]: row for row in rows}
+    keys = [row["key"] for row in rows]
+    assert keys.index("surplus_deficit") + 1 == keys.index(SURPLUS_N1_ROW_KEY)
+    assert keys.index(SURPLUS_N1_ROW_KEY) + 1 == keys.index(SURPLUS_N2_ROW_KEY)
+    assert by_key["surplus_deficit"]["label"] == SURPLUS_NORMAL_LABEL
+    assert by_key[SURPLUS_N1_ROW_KEY]["label"] == SURPLUS_N1_LABEL
+    assert by_key[SURPLUS_N2_ROW_KEY]["label"] == SURPLUS_N2_LABEL
+    assert "demand_total" not in by_key
+    assert SURPLUS_N1_ROW_KEY not in {
+        row["key"] for row in build_power_balance_rows("oes_standard")
+    }
+
+
+def test_tites_east_falls_back_to_res_when_energy_units_missing():
+    est = [SimpleNamespace(id=1, name="ЕЭС России")]
+    ues = [
+        SimpleNamespace(id=15, name="ТИТЭС Востока", id_energy_system_type=2),
+    ]
+    sa = [SimpleNamespace(id=21, name="Первая синхронная зона")]
+    res = [
+        SimpleNamespace(id=41, name="Камчатская ЭС", id_union_energy_system=15),
+        SimpleNamespace(id=42, name="Магаданская ЭС", id_union_energy_system=15),
+    ]
+    with patch(
+        "app.energy_balance.services.power_balance_page_services.get_energy_system_type_list_full",
+        return_value=est,
+    ), patch(
+        "app.energy_balance.services.power_balance_page_services.get_union_energy_system_list_full",
+        return_value=ues,
+    ), patch(
+        "app.energy_balance.services.power_balance_page_services.get_synchronous_area_list_full",
+        return_value=sa,
+    ), patch(
+        "app.common.services.get_services.energy_systems.regional_energy_system_get_services.get_regional_energy_system_list_full",
+        return_value=res,
+    ), patch(
+        "app.common.services.get_services.energy_systems.energy_unit_get_services.get_energy_unit_list_full",
+        return_value=[],
+    ):
+        sheets = get_power_balance_sheets()
+    assert [sheet["slug"] for sheet in sheets if sheet.get("group") == GROUP_RES] == [
+        "res-41",
+        "res-42",
+    ]
+
+
 def test_sz_layout_keeps_first_and_second_after_name_tweak():
     from app.energy_balance.services.power_balance_page_services import _sz_layout_and_slug
 
@@ -454,8 +997,8 @@ def test_sheets_keep_sz_layout_when_sa_name_tweaked():
     by_slug = {sheet["slug"]: sheet for sheet in sheets}
     assert names == [
         "ЕЭС России",
-        "1-ая СЗ",
-        "2-ая СЗ",
+        "Первая синхронная зона",
+        "Вторая синхронная зона",
         "Синхронная зона Калининградской области",
         "ОЭС Центра",
         "ОЭС Сибири",
@@ -509,6 +1052,8 @@ def test_broken_sa_row_does_not_switch_to_fallback_catalog():
 def test_persistable_slug_accepts_dynamic_sz_id():
     assert is_persistable_power_balance_slug("sz-112") is True
     assert is_persistable_power_balance_slug("oes-15") is True
+    assert is_persistable_power_balance_slug("res-41") is True
+    assert is_persistable_power_balance_slug("eu-101") is True
     assert is_persistable_power_balance_slug("sibir") is True
     assert is_persistable_power_balance_slug("nope") is False
     assert is_persistable_power_balance_slug("") is False

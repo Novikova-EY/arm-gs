@@ -302,9 +302,45 @@
         return !!(row && row.pd_fo_coeff_cz_total);
     }
 
+    function coeffKFormulaTooltip(row, cfg) {
+        var kTip = String((row && row.pd_coeff_k_formula_tooltip) || "").trim();
+        if (!kTip && isFoCoeffCzTotalRow(row)) {
+            kTip = String((row && row.pd_fo_coeff_cz_total_tooltip) || "").trim();
+        }
+        if (kTip) {
+            return kTip;
+        }
+        var pk = (row && row.parameter_key) || "";
+        if (pk === "peak_datetime" || pk === "avg_temp" || pk === "max_power") {
+            return "";
+        }
+        var label = String((row && row.parameter_label) || "")
+            .replace(", МВт", "")
+            .replace(", °C", "")
+            .replace(/\s+/g, " ")
+            .trim();
+        if (!label) {
+            return "";
+        }
+        var suffix =
+            (cfg && cfg.coeff_k_formula_default_suffix) ||
+            (shellConfig && shellConfig.coeff_k_formula_default_suffix) ||
+            " / Максимальное потребление мощности, МВт";
+        return "k = «" + label + "»" + suffix;
+    }
+
     function shouldBuildCoeffKRow(row) {
         var pk = row.parameter_key || "";
+        if (row.pd_pd_skip_coeff_k_row) {
+            return false;
+        }
         if (pk === "max_power") {
+            return false;
+        }
+        if (
+            pk === "calculated_combined_on_ees_mw" ||
+            pk === "calculated_combined_on_cz_mw"
+        ) {
             return false;
         }
         if (row.pd_pd_verify_for_row) {
@@ -318,6 +354,13 @@
         }
         if (row.pd_pd_chi_row || row.pd_pd_ee_row) {
             return false;
+        }
+        var dm = row.demand_model_name || "";
+        if (dm === "FederalDistrictDemandParameter") {
+            return pk === "calculated_max_power_mw" || pk === "combined_on_cz";
+        }
+        if (dm === "EnergyZoneDemandParameter") {
+            return pk === "calculated_max_power_mw" || pk === "combined_on_ees";
         }
         return true;
     }
@@ -401,6 +444,9 @@
         if (!yearIsPlan[String(year)] || pk === "max_power") {
             return false;
         }
+        if (row.pd_pd_verify_for_row || String(pk).indexOf("verify_for_") === 0) {
+            return false;
+        }
         if (isFoCoeffCzTotalRow(row)) {
             return false;
         }
@@ -412,7 +458,11 @@
             base != null && !isNaN(y) && y >= base - 9 && y <= base;
         var resCombinedMediumExempt =
             isMedium &&
-            (pk === "combined_on_oes" || pk === "combined_on_ees") &&
+            (pk === "combined_on_oes" ||
+                pk === "combined_on_ees" ||
+                pk === "combined_on_fo" ||
+                pk === "combined_on_cz" ||
+                pk === "combined_on_ez") &&
             row.demand_model_name === "RegionalEnergySystemDemandParameter";
         var uesCalcPlanUncollapse =
             row.demand_model_name === "UnionEnergySystemDemandParameter" &&
@@ -423,10 +473,32 @@
             isMedium &&
             row.demand_model_name === "UnionEnergySystemDemandParameter" &&
             pk === "combined_on_ees";
+        var fdCalcPlanUncollapse =
+            row.demand_model_name === "FederalDistrictDemandParameter" &&
+            (pk === "calculated_max_power_mw" ||
+                pk === "calculated_combined_on_cz_mw") &&
+            (inReport || isMedium);
+        var fdCombinedCzMediumOnly =
+            isMedium &&
+            row.demand_model_name === "FederalDistrictDemandParameter" &&
+            pk === "combined_on_cz";
+        var ezCalcPlanUncollapse =
+            row.demand_model_name === "EnergyZoneDemandParameter" &&
+            (pk === "calculated_max_power_mw" ||
+                pk === "calculated_combined_on_ees_mw") &&
+            (inReport || isMedium);
+        var ezCombinedEesMediumOnly =
+            isMedium &&
+            row.demand_model_name === "EnergyZoneDemandParameter" &&
+            pk === "combined_on_ees";
         if (
             resCombinedMediumExempt ||
             uesCalcPlanUncollapse ||
-            uesCombinedEesMediumOnly
+            uesCombinedEesMediumOnly ||
+            fdCalcPlanUncollapse ||
+            fdCombinedCzMediumOnly ||
+            ezCalcPlanUncollapse ||
+            ezCombinedEesMediumOnly
         ) {
             return false;
         }
@@ -616,11 +688,97 @@
         return isHistParameterAllowed(row, cfg);
     }
 
+    function isCoeffResSumCalcMaxRow(row) {
+        var dm = row.demand_model_name || "";
+        var pk = row.parameter_key || "";
+        if (dm === "UnionEnergySystemDemandParameter") {
+            return pk === "calculated_max_power_mw" || pk === "calculated_combined_on_ees_mw";
+        }
+        if (dm === "FederalDistrictDemandParameter") {
+            return pk === "calculated_max_power_mw" || pk === "calculated_combined_on_cz_mw";
+        }
+        if (dm === "EnergyZoneDemandParameter") {
+            return pk === "calculated_max_power_mw" || pk === "calculated_combined_on_ees_mw";
+        }
+        return false;
+    }
+
+    var CALCULATED_MAX_MW_KEYS = {
+        calculated_max_power_mw: true,
+        calculated_max_fo_mw: true,
+        calculated_max_sa_mw: true,
+        calculated_combined_on_cz_mw: true,
+        calculated_combined_on_ees_mw: true,
+        calculated_max_ees_russia_mw: true,
+        calculated_max_ees_via_oes_mw: true,
+        calculated_max_ees_via_es_mw: true,
+        calculated_max_ees_via_ez_mw: true,
+        calculated_max_power_consumption_mw: true
+    };
+    var CALCULATED_MAX_ROUNDING_DIGITS = 3;
+
+    function applyThousandGroupingToDisplay(s) {
+        if (!s) {
+            return s;
+        }
+        var sign = "";
+        if (s.charAt(0) === "-") {
+            sign = "-";
+            s = s.slice(1);
+        }
+        var comma = s.indexOf(",");
+        var intPart = comma === -1 ? s : s.slice(0, comma);
+        var frac = comma === -1 ? null : s.slice(comma + 1);
+        intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        return sign + (frac !== null ? intPart + "," + frac : intPart);
+    }
+
+    /** Как «Максимальное потребление мощности, МВт»: пробел между разрядами. */
+    function formatCalculatedMaxMwDisplay(raw) {
+        if (raw == null) {
+            return "—";
+        }
+        var t = String(raw).trim();
+        if (!t || t === "—") {
+            return t || "—";
+        }
+        var n = parseFloat(
+            t.replace(/\u00a0/g, "").replace(/\s/g, "").replace(",", ".")
+        );
+        if (!Number.isFinite(n)) {
+            return t;
+        }
+        var mult = Math.pow(10, CALCULATED_MAX_ROUNDING_DIGITS);
+        var rounded = Math.round(n * mult) / mult;
+        var s = String(rounded);
+        if (s.indexOf("e") !== -1 || s.indexOf("E") !== -1) {
+            s = rounded.toFixed(CALCULATED_MAX_ROUNDING_DIGITS);
+        }
+        var parts = s.split(".");
+        var intPart = applyThousandGroupingToDisplay(parts[0]);
+        if (parts.length === 1) {
+            return intPart;
+        }
+        var frac = parts[1].replace(/0+$/, "");
+        return frac.length ? intPart + "," + frac : intPart;
+    }
+
+    function displayMwValueForRow(row, value) {
+        var pk = row.parameter_key || "";
+        if (CALCULATED_MAX_MW_KEYS[pk]) {
+            return formatCalculatedMaxMwDisplay(value);
+        }
+        return value;
+    }
+
     function planHideYearCell(row, year, yearIsPlan, cfg) {
+        var pk = row.parameter_key || "";
+        if (row.pd_pd_verify_for_row || String(pk).indexOf("verify_for_") === 0) {
+            return false;
+        }
         if (isCoeffRoute(cfg)) {
             return coeffPlanHideYear(row, year, yearIsPlan, cfg || {});
         }
-        var pk = row.parameter_key || "";
         return !!yearIsPlan[String(year)] && pk !== "max_power";
     }
 
@@ -719,6 +877,7 @@
         var tooltips = row.year_numeric_tooltips || [];
         var value =
             ix < values.length && values[ix] != null ? String(values[ix]) : "—";
+        value = displayMwValueForRow(row, value);
         var yrid = ix < rowIds.length ? rowIds[ix] : null;
         var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
         var pvYearOutOfRange = summaryYearOutOfRange(row, year);
@@ -764,10 +923,7 @@
         }
 
         var uesReadonlyCoeffDisplay =
-            coeff &&
-            row.demand_model_name === "UnionEnergySystemDemandParameter" &&
-            (pk === "calculated_max_power_mw" ||
-                pk === "calculated_combined_on_ees_mw");
+            coeff && isCoeffResSumCalcMaxRow(row);
 
         if (canEditCell(row, cfg) && !pvYearOutOfRange) {
             var yv = value !== "—" ? value : "";
@@ -944,6 +1100,22 @@
         if (row.id_regional_district != null) {
             setDataAttr(tr, "data-id-regional-district", row.id_regional_district);
         }
+        if (row.id_federal_district != null) {
+            setDataAttr(tr, "data-id-federal-district", row.id_federal_district);
+        } else if (
+            row.parent_fk_column === "id_federal_district" &&
+            row.parent_id != null
+        ) {
+            setDataAttr(tr, "data-id-federal-district", row.parent_id);
+        }
+        if (row.id_energy_zone != null) {
+            setDataAttr(tr, "data-id-energy-zone", row.id_energy_zone);
+        } else if (
+            row.parent_fk_column === "id_energy_zone" &&
+            row.parent_id != null
+        ) {
+            setDataAttr(tr, "data-id-energy-zone", row.parent_id);
+        }
         setDataAttr(tr, "data-id-synchronous-area", row.id_synchronous_area);
         setDataAttr(tr, "data-perimeter-variant-code", row.perimeter_variant_code);
         if (row.pd_pd_nt_extra_row) {
@@ -975,10 +1147,7 @@
 
         var labelTd = document.createElement("td");
         labelTd.className = "summary-parameter-cell summary-coeff-k-label-cell";
-        var kTip = row.pd_coeff_k_formula_tooltip || "";
-        if (!kTip && isFoCoeffCzTotalRow(row)) {
-            kTip = row.pd_fo_coeff_cz_total_tooltip || "";
-        }
+        var kTip = coeffKFormulaTooltip(row, cfg);
         labelTd.innerHTML =
             '<span class="pd-coeff-k-label-text">k</span>' +
             (kTip
@@ -1075,10 +1244,38 @@
                 );
             }
             applyCoeffManualYearHiddenClass(td, year);
-            if (kTt && !planHide) {
+            if (planHide) {
+                tr.appendChild(td);
+                return;
+            }
+            if (isCoeffResSumCalcMaxRow(row)) {
+                var kRo = document.createElement("input");
+                kRo.type = "text";
+                kRo.readOnly = true;
+                kRo.tabIndex = -1;
+                kRo.lang = "ru";
+                kRo.className =
+                    "form-control form-control-lg text-center pd-coeff-display-k";
+                kRo.value = kDisp;
+                kRo.setAttribute(
+                    "aria-label",
+                    (row.entity_label || "") +
+                        " — " +
+                        (row.parameter_label || "") +
+                        ", k, " +
+                        year +
+                        " год"
+                );
+                if (kTt) {
+                    kRo.setAttribute("title", kTt);
+                }
+                td.appendChild(kRo);
+            } else {
+                td.textContent = kDisp;
+            }
+            if (kTt) {
                 td.setAttribute("title", kTt);
             }
-            td.textContent = kDisp;
             tr.appendChild(td);
         });
         return tr;
@@ -1252,7 +1449,22 @@
         }
         setDataAttr(tr, "data-parent-fk-column", row.parent_fk_column);
         setDataAttr(tr, "data-parent-id", row.parent_id);
-        setDataAttr(tr, "data-id-energy-zone", row.id_energy_zone);
+        if (row.id_energy_zone != null) {
+            setDataAttr(tr, "data-id-energy-zone", row.id_energy_zone);
+        } else if (
+            row.parent_fk_column === "id_energy_zone" &&
+            row.parent_id != null
+        ) {
+            setDataAttr(tr, "data-id-energy-zone", row.parent_id);
+        }
+        if (row.id_federal_district != null) {
+            setDataAttr(tr, "data-id-federal-district", row.id_federal_district);
+        } else if (
+            row.parent_fk_column === "id_federal_district" &&
+            row.parent_id != null
+        ) {
+            setDataAttr(tr, "data-id-federal-district", row.parent_id);
+        }
         setDataAttr(tr, "data-id-synchronous-area", row.id_synchronous_area);
         setDataAttr(tr, "data-perimeter-variant-code", row.perimeter_variant_code);
         setDataAttr(
@@ -1303,11 +1515,17 @@
         if (row.pd_pd_south_ues_without_nt_manual_row) {
             tr.setAttribute("data-pd-pd-south-without-nt-manual", "1");
         }
+        if (row.pd_pd_ez_res_fully_in_zone === false) {
+            tr.setAttribute("data-pd-pd-ez-res-fully-in-zone", "0");
+        } else if (row.pd_pd_ez_res_fully_in_zone === true) {
+            tr.setAttribute("data-pd-pd-ez-res-fully-in-zone", "1");
+        }
         if (row.pd_pd_verify_a_parameter_key) {
             tr.setAttribute("data-pd-pd-verify-a", row.pd_pd_verify_a_parameter_key);
             tr.setAttribute("data-pd-pd-verify-b", row.pd_pd_verify_b_parameter_key);
         }
         tr.setAttribute("data-entity-block-size", String(row.entity_rowspan || 1));
+        tr.setAttribute("data-entity-depth", String(row.entity_depth || 0));
         if (row.show_entity_cell) {
             tr.setAttribute("data-is-block-start", "1");
         }
@@ -1527,17 +1745,35 @@
         ].join("|");
     }
 
+    function isNextEntityBlockStart(tr, startTr) {
+        return (
+            !!tr &&
+            tr !== startTr &&
+            tr.classList.contains("summary-row-param") &&
+            tr.getAttribute("data-is-block-start") === "1" &&
+            !tr.classList.contains("pd-pd-verify-for-row")
+        );
+    }
+
+    function detachSpuriousVerifyBlockStart(tr) {
+        if (
+            tr &&
+            tr.classList.contains("pd-pd-verify-for-row") &&
+            tr.getAttribute("data-is-block-start") === "1"
+        ) {
+            tr.removeAttribute("data-is-block-start");
+        }
+    }
+
     function collectBlockRows(startTr) {
         var blockRows = [];
         var tr = startTr;
         while (tr) {
             if (tr.classList.contains("summary-row-param")) {
-                if (
-                    blockRows.length > 0 &&
-                    tr.getAttribute("data-is-block-start") === "1"
-                ) {
+                if (isNextEntityBlockStart(tr, startTr)) {
                     break;
                 }
+                detachSpuriousVerifyBlockStart(tr);
                 blockRows.push(tr);
             }
             tr = tr.nextElementSibling;
@@ -1552,11 +1788,45 @@
         return blockRows;
     }
 
-    function rowCountsForBlockRowspan(tr) {
-        if (tr.classList.contains("summary-row-empty-block-hidden")) {
+    function rowIsLayoutVisible(tr) {
+        if (
+            tr.classList.contains("summary-row-empty-block-hidden") ||
+            tr.classList.contains("summary-row-hidden")
+        ) {
             return false;
         }
-        return !tr.classList.contains("summary-row-hidden");
+        var table = document.getElementById("powerDemandSummaryTable");
+        if (
+            tr.classList.contains("summary-row-coeff-k") &&
+            table &&
+            table.classList.contains("pd-coeff-hide-k-columns")
+        ) {
+            return false;
+        }
+        return true;
+    }
+
+    function collectBlockLayoutRows(startTr) {
+        var out = [];
+        var tr = startTr;
+        while (tr) {
+            if (isNextEntityBlockStart(tr, startTr)) {
+                break;
+            }
+            if (
+                tr.classList.contains("summary-row-param") ||
+                tr.classList.contains("summary-row-coeff-k")
+            ) {
+                detachSpuriousVerifyBlockStart(tr);
+                out.push(tr);
+            }
+            tr = tr.nextElementSibling;
+        }
+        return out;
+    }
+
+    function rowCountsForBlockRowspan(tr) {
+        return rowIsLayoutVisible(tr);
     }
 
     /** Строка k для показателя (на coeff может идти после «Проверка …»). */
@@ -1590,6 +1860,90 @@
             return nx;
         }
         return null;
+    }
+
+    /** Следующий узел после показателя, его «Проверка …» и строки k. */
+    function nodeAfterParamFamily(paramTr) {
+        if (!paramTr) {
+            return null;
+        }
+        var pk = paramTr.getAttribute("data-parameter-key") || "";
+        var nx = paramTr.nextElementSibling;
+        while (nx) {
+            if (
+                nx.classList.contains("summary-row-param") &&
+                nx.classList.contains("pd-pd-verify-for-row")
+            ) {
+                var aKey = nx.getAttribute("data-pd-pd-verify-a") || "";
+                var vPk = nx.getAttribute("data-parameter-key") || "";
+                if (aKey === pk || vPk === "verify_for_" + pk) {
+                    nx = nx.nextElementSibling;
+                    continue;
+                }
+            }
+            if (
+                nx.classList.contains("summary-row-coeff-k") &&
+                (nx.getAttribute("data-parameter-key") || "") === pk
+            ) {
+                nx = nx.nextElementSibling;
+                continue;
+            }
+            break;
+        }
+        return nx;
+    }
+
+    function coeffKExistsInBlock(startTr, pk) {
+        if (!startTr || !pk) {
+            return false;
+        }
+        var tr = startTr;
+        while (tr) {
+            if (isNextEntityBlockStart(tr, startTr)) {
+                break;
+            }
+            if (
+                tr.classList.contains("summary-row-coeff-k") &&
+                (tr.getAttribute("data-parameter-key") || "") === pk
+            ) {
+                return true;
+            }
+            tr = tr.nextElementSibling;
+        }
+        return false;
+    }
+
+    function dedupeAdjacentCoeffKRows(startTr) {
+        if (!startTr) {
+            return;
+        }
+        var tr = startTr;
+        while (tr) {
+            var nx = tr.nextElementSibling;
+            if (nx && isNextEntityBlockStart(nx, startTr)) {
+                break;
+            }
+            if (
+                tr.classList.contains("summary-row-coeff-k") &&
+                nx &&
+                nx.classList.contains("summary-row-coeff-k")
+            ) {
+                var prev = tr.previousElementSibling;
+                while (prev && prev.classList.contains("summary-row-coeff-k")) {
+                    prev = prev.previousElementSibling;
+                }
+                var prevPk = prev ? prev.getAttribute("data-parameter-key") || "" : "";
+                var drop =
+                    (tr.getAttribute("data-parameter-key") || "") === prevPk
+                        ? nx
+                        : tr;
+                var after = drop.nextElementSibling;
+                drop.remove();
+                tr = after || startTr;
+                continue;
+            }
+            tr = nx;
+        }
     }
 
     /** Куда вставлять строку сегмента относительно уже отрисованного блока. */
@@ -1678,8 +2032,9 @@
                         }
                         return null;
                     }
-                    if (ai + 1 < blockRows.length) {
-                        return blockRows[ai + 1];
+                    var afterFamily = nodeAfterParamFamily(blockRows[ai]);
+                    if (afterFamily) {
+                        return afterFamily;
                     }
                     return null;
                 }
@@ -1700,7 +2055,10 @@
         if (!startTr || !blockRows || !blockRows.length) {
             return;
         }
-        var visibleRows = blockRows.filter(rowCountsForBlockRowspan);
+        var layoutRows = collectBlockLayoutRows(startTr);
+        var visibleRows = (layoutRows.length ? layoutRows : blockRows).filter(
+            rowCountsForBlockRowspan
+        );
         if (!visibleRows.length) {
             return;
         }
@@ -2077,6 +2435,10 @@
         var starts = tbody.querySelectorAll('tr[data-is-block-start="1"]');
         for (var i = 0; i < starts.length; i++) {
             var st = starts[i];
+            if (st.classList.contains("pd-pd-verify-for-row")) {
+                detachSpuriousVerifyBlockStart(st);
+                continue;
+            }
             var startNt = st.getAttribute("data-pd-pd-nt-extra") === "1" ? "1" : "0";
             if (startNt !== targetNt) {
                 continue;
@@ -2146,8 +2508,11 @@
             }
             var value =
                 ix < values.length && values[ix] != null ? String(values[ix]) : "—";
+            value = displayMwValueForRow(row, value);
             var yrTt = ix < tooltips.length ? tooltips[ix] || "" : "";
-            var inp = td.querySelector("input.fuel-param-input, textarea.fuel-param-input");
+            var inp = td.querySelector(
+                "input.fuel-param-input, input.pd-coeff-display-mw, textarea.fuel-param-input"
+            );
             if (inp) {
                 var initial = inp.getAttribute("data-initial") || "";
                 var current = inp.value || "";
@@ -2273,6 +2638,7 @@
                 if (!anchorTr) {
                     continue;
                 }
+                detachSpuriousVerifyBlockStart(verifyTr);
                 var anchorIdx = blockRows.indexOf(anchorTr);
                 var verifyIdx = blockRows.indexOf(verifyTr);
                 var domOk = anchorTr.nextElementSibling === verifyTr;
@@ -2311,6 +2677,10 @@
         }
         tbody.querySelectorAll('tr.summary-row-param[data-is-block-start="1"]').forEach(
             function (startTr) {
+                if (startTr.classList.contains("pd-pd-verify-for-row")) {
+                    detachSpuriousVerifyBlockStart(startTr);
+                    return;
+                }
                 repositionVerifyRowsInBlock(tbody, collectBlockRows(startTr));
             }
         );
@@ -2349,6 +2719,25 @@
                     yearIsPlan,
                     showHistCol
                 );
+                return;
+            }
+            var insertBefore = findInsertBeforeForMergedRow(blockRows, pk, order);
+            if (
+                insertBefore &&
+                insertBefore.classList.contains("summary-row-param") &&
+                (insertBefore.getAttribute("data-parameter-key") || "") === pk
+            ) {
+                updateExistingRowTrFromSegmentData(
+                    insertBefore,
+                    row,
+                    cfg,
+                    years,
+                    yearIsPlan,
+                    showHistCol
+                );
+                if (blockRows.indexOf(insertBefore) < 0) {
+                    blockRows.push(insertBefore);
+                }
                 return;
             }
             var mergeRow = Object.assign({}, row, {
@@ -2405,7 +2794,17 @@
                 showHistCol
             );
             var newTr = newNodes[0];
-            var insertBefore = findInsertBeforeForMergedRow(blockRows, pk, order);
+            if (
+                isVerifyParameterKey(pk) ||
+                (newTr && newTr.classList.contains("pd-pd-verify-for-row"))
+            ) {
+                newTr.removeAttribute("data-is-block-start");
+            }
+            if (newNodes.length > 1 && coeffKExistsInBlock(startTr, pk)) {
+                newNodes = newNodes.filter(function (node) {
+                    return !node.classList.contains("summary-row-coeff-k");
+                });
+            }
             var isEeBeforeBlockStart =
                 pk === "energy_consumption_mln_kvt_ch" &&
                 insertBefore &&
@@ -2497,6 +2896,7 @@
         });
         repositionVerifyRowsInBlock(tbody, blockRows);
         blockRows = collectBlockRows(startTr);
+        dedupeAdjacentCoeffKRows(startTr);
         syncBlockRowspans(startTr, blockRows);
         if (typeof window.__pdPdSummaryRefreshLayoutAfterVisibility === "function") {
             window.__pdPdSummaryRefreshLayoutAfterVisibility();
@@ -2617,6 +3017,10 @@
 
         var blockMap = {};
         tbody.querySelectorAll('tr[data-is-block-start="1"]').forEach(function (startTr) {
+            if (startTr.classList.contains("pd-pd-verify-for-row")) {
+                detachSpuriousVerifyBlockStart(startTr);
+                return;
+            }
             blockMap[trBlockFingerprint(startTr, true)] = {
                 start: startTr,
                 rows: collectBlockRows(startTr),
@@ -3023,6 +3427,7 @@
     }
 
     function effectiveEntityPaginationPageSize() {
+        // «Сводная таблица» (compact): список короткий — всё на одной странице.
         if (window.__pdPdSummaryTerritoryCompactMode === true) {
             return entityPaginationAllPageSize();
         }
@@ -3071,7 +3476,13 @@
         ) {
             syncEntityPaginationUrl(1, entityPaginationAllPageSize());
         }
-        if (!meta || !meta.enabled || (meta.total_pages || 1) <= 1) {
+        // Compact shows the whole short table — no pager.
+        if (
+            window.__pdPdSummaryTerritoryCompactMode === true ||
+            !meta ||
+            !meta.enabled ||
+            (meta.total_pages || 1) <= 1
+        ) {
             nav.hidden = true;
             nav.setAttribute("hidden", "hidden");
             nav.replaceChildren();

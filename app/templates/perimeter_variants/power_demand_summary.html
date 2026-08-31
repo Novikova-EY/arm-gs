@@ -22,14 +22,6 @@
                    class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
                     Коэффициенты и совмещенные максимумы по энергосистемам
                 </a>
-                {% if active_summary == 'oes' %}
-                <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
-                    Коэффициенты и совмещенные максимумы по ФО
-                </span>
-                <span class="btn btn-outline-secondary disabled fs-5 text-wrap text-start" style="max-width:100%; pointer-events: none;" tabindex="-1" aria-disabled="true">
-                    Коэффициенты и совмещенные максимумы по энергозонам
-                </span>
-                {% else %}
                 <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts_coeff') }}"
                    class="btn {% if active_summary == 'fo' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
                     Коэффициенты и совмещенные максимумы по ФО
@@ -38,7 +30,6 @@
                    class="btn {% if active_summary == 'ez' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-wrap text-start" style="max-width:100%;">
                     Коэффициенты и совмещенные максимумы по энергозонам
                 </a>
-                {% endif %}
             {% else %}
                 <a href="{{ url_for('power_demand_bp.demand_summary_oes') }}"
                    class="btn {% if active_summary == 'oes' %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5">
@@ -716,12 +707,17 @@
             </colgroup>
             {% set _pd_coeff_res_oes_k_formula = "k = Совмещенный на ОЭС / Максимальное потребление мощности" %}
             {% set _pd_coeff_res_ees_k_formula = "k = Совмещенный на ЕЭС / Максимальное потребление мощности" %}
+            {% set _pd_coeff_res_cz_k_formula = "k = Совмещенное потребление мощности на час максимума ЦЗ России / Максимальное потребление мощности" %}
+            {% set _pd_coeff_res_fo_k_formula = "k = Совмещенное потребление мощности на час прохождения максимума ФО / Максимальное потребление мощности" %}
+            {% set _pd_coeff_res_ez_k_formula = "k = Совмещенное потребление мощности на час прохождения максимума ЭЗ / Максимальное потребление мощности" %}
             {% set _pd_oes_ues_calc_max_oes_mw_formula = "Расчетный максимум ОЭС, МВт = сумма значений «Совмещенный на ОЭС, МВт» всех РЭС данной ОЭС" %}
             {% set _pd_oes_ues_calc_combined_ees_mw_formula = "Расчетный совмещенный на ЕЭС, МВт = сумма значений «Совмещенный на ЕЭС, МВт» всех РЭС данной ОЭС" %}
             {% set _pd_oes_ees_russia_calc_max_via_oes_formula = "Расчетный максимум ЕЭС (через ОЭС), МВт = сумма значений «Совмещенный на ЕЭС, МВт» по всем ОЭС" %}
             {% set _pd_oes_ees_russia_calc_max_via_es_formula = "Расчетный максимум ЕЭС (через ЭС), МВт = сумма значений «Совмещенный на ЕЭС, МВт» всех РЭС данной ОЭС" %}
             {% set _pd_fo_calc_max_mw_formula = "Расчетный максимум ФО, МВт = сумма значений «Совмещенное потребление мощности на час прохождения максимума ФО, МВт» всех РЭС, входящих в данный ФО" %}
             {% set _pd_coeff_k_ues_calc_max_oes = "k = Расчетный максимум ОЭС / Максимальное потребление мощности ОЭС" %}
+            {% set _pd_coeff_k_fo_calc_max = "k = Расчетное максимальное потребление мощности / Максимальное потребление мощности ФО (без НТ)" %}
+            {% set _pd_coeff_k_ez_calc_max = "k = Расчетное максимальное потребление мощности / Максимальное потребление мощности энергозоны" %}
             {% set _pd_coeff_k_ues_calc_combined_ees = "k = Расчетный совмещенный на ЕЭС / Максимальное потребление мощности ОЭС" %}
             {% set _pd_coeff_k_calculated_max_ees_via_oes = "k = Расчетный максимум ЕЭС (через ОЭС) / Максимальное потребление мощности" %}
             {% set _pd_coeff_k_calculated_max_ees_via_es = "k = Расчетный максимум ЕЭС (через ЭС) / Максимальное потребление мощности" %}
@@ -1039,10 +1035,14 @@
                     {% set _plan_col = year_is_plan.get(_yr, false) %}
                     {% set _is_medium_year = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
                     {% set _yr_in_coef_report = coeff_base_year is defined and _yr >= coeff_base_year - 9 and _yr <= coeff_base_year %}
-                    {% set _res_combined_medium_exempt = summary_route_variant == 'coeff' and _is_medium_year and row.parameter_key in ('combined_on_oes', 'combined_on_ees') and row.demand_model_name == 'RegionalEnergySystemDemandParameter' %}
+                    {% set _res_combined_medium_exempt = summary_route_variant == 'coeff' and _is_medium_year and row.parameter_key in ('combined_on_oes', 'combined_on_ees', 'combined_on_fo', 'combined_on_cz', 'combined_on_ez') and row.demand_model_name == 'RegionalEnergySystemDemandParameter' %}
                     {% set _ues_calc_plan_uncollapse = summary_route_variant == 'coeff' and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') and (_yr_in_coef_report or _is_medium_year) %}
                     {% set _ues_combined_ees_medium_only = summary_route_variant == 'coeff' and _is_medium_year and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'combined_on_ees' %}
-                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not _cz_fo_tot %}
+                    {% set _fd_calc_plan_uncollapse = summary_route_variant == 'coeff' and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_cz_mw') and (_yr_in_coef_report or _is_medium_year) %}
+                    {% set _fd_combined_cz_medium_only = summary_route_variant == 'coeff' and _is_medium_year and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'combined_on_cz' %}
+                    {% set _ez_calc_plan_uncollapse = summary_route_variant == 'coeff' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') and (_yr_in_coef_report or _is_medium_year) %}
+                    {% set _ez_combined_ees_medium_only = summary_route_variant == 'coeff' and _is_medium_year and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'combined_on_ees' %}
+                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
                     {% set _yr_tt = (row.year_numeric_tooltips|default([]))[ix] if (row.year_numeric_tooltips|default([]))|length > ix else '' %}
                     <td class="text-center summary-year-cell{% if summary_route_variant == 'coeff' %} summary-year-mw-cell{% endif %}{% if _plan_hide %} summary-plan-empty{% endif %}"
                         {% if pd_pd_max_year_segments and summary_route_variant != 'coeff' %}data-ec-summary-col-year="{{ _yr }}"{% endif %}
@@ -1136,7 +1136,7 @@
                     </td>
                     {% endif %}
                 </tr>
-                {% if summary_route_variant == 'coeff' and row.parameter_key != 'max_power' %}
+                {% if summary_route_variant == 'coeff' and row.parameter_key != 'max_power' and not row.get('pd_pd_skip_coeff_k_row') and not (row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key not in ('calculated_max_power_mw', 'combined_on_cz')) and not (row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key not in ('calculated_max_power_mw', 'combined_on_ees')) %}
                 <tr class="summary-kind-{{ row.entity_kind }} summary-row-coeff-k {{ _pd_row_stripe }}{% if row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
                     data-parameter-key="{{ row.parameter_key }}"
                     {% if row.demand_model_name %}data-demand-model-name="{{ row.demand_model_name|e }}"{% endif %}
@@ -1153,6 +1153,16 @@
                             {% set _pd_coeff_k_tooltip = _pd_coeff_res_oes_k_formula %}
                         {% elif row.parameter_key == 'combined_on_ees' %}
                             {% set _pd_coeff_k_tooltip = _pd_coeff_res_ees_k_formula %}
+                        {% elif row.parameter_key == 'combined_on_cz' %}
+                            {% set _pd_coeff_k_tooltip = _pd_coeff_res_cz_k_formula %}
+                        {% elif row.parameter_key == 'combined_on_fo' %}
+                            {% set _pd_coeff_k_tooltip = _pd_coeff_res_fo_k_formula %}
+                        {% elif row.parameter_key == 'combined_on_ez' %}
+                            {% set _pd_coeff_k_tooltip = _pd_coeff_res_ez_k_formula %}
+                        {% elif row.parameter_key == 'calculated_max_power_mw' and row.demand_model_name == 'FederalDistrictDemandParameter' %}
+                            {% set _pd_coeff_k_tooltip = _pd_coeff_k_fo_calc_max %}
+                        {% elif row.parameter_key == 'calculated_max_power_mw' and row.demand_model_name == 'EnergyZoneDemandParameter' %}
+                            {% set _pd_coeff_k_tooltip = _pd_coeff_k_ez_calc_max %}
                         {% elif row.parameter_key == 'calculated_max_power_mw' %}
                             {% set _pd_coeff_k_tooltip = _pd_coeff_k_ues_calc_max_oes %}
                         {% elif row.parameter_key == 'calculated_combined_on_ees_mw' %}
@@ -1210,10 +1220,14 @@
                     {% set _plan_col = year_is_plan.get(_yr, false) %}
                     {% set _is_medium_year = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
                     {% set _yr_in_coef_report = coeff_base_year is defined and _yr >= coeff_base_year - 9 and _yr <= coeff_base_year %}
-                    {% set _res_combined_medium_exempt = _is_medium_year and row.parameter_key in ('combined_on_oes', 'combined_on_ees') and row.demand_model_name == 'RegionalEnergySystemDemandParameter' %}
+                    {% set _res_combined_medium_exempt = _is_medium_year and row.parameter_key in ('combined_on_oes', 'combined_on_ees', 'combined_on_fo', 'combined_on_cz', 'combined_on_ez') and row.demand_model_name == 'RegionalEnergySystemDemandParameter' %}
                     {% set _ues_calc_plan_uncollapse = row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') and (_yr_in_coef_report or _is_medium_year) %}
                     {% set _ues_combined_ees_medium_only = _is_medium_year and row.demand_model_name == 'UnionEnergySystemDemandParameter' and row.parameter_key == 'combined_on_ees' %}
-                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not _cz_fo_tot %}
+                    {% set _fd_calc_plan_uncollapse = row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_cz_mw') and (_yr_in_coef_report or _is_medium_year) %}
+                    {% set _fd_combined_cz_medium_only = _is_medium_year and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'combined_on_cz' %}
+                    {% set _ez_calc_plan_uncollapse = row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') and (_yr_in_coef_report or _is_medium_year) %}
+                    {% set _ez_combined_ees_medium_only = _is_medium_year and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'combined_on_ees' %}
+                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
                     {% set _is_medium_k = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
                     {% set _medium_k_input = _is_medium_k and _can_edit_cell and row.parameter_key not in ('peak_datetime', 'avg_temp', 'max_power') and not _cz_fo_tot %}
                     {% set yrid = row.year_row_ids[ix] if row.year_row_ids is defined and (row.year_row_ids|length) > ix else none %}

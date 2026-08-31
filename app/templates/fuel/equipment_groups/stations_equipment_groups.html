@@ -254,9 +254,9 @@ data-col-0="{{ _v1 }}" data-col-1="{{ _v0 }}" data-col-2="{{ _v2 }}" data-col-3=
                     {% endif %}
                     {% if show_merged_group_cells and not group_cell.fields %}
                         {% set eg = group_entity %}
-                        {% set eg_fuel_mismatch = station and eg and station.id_regional_district and eg.regional_district_id and station.id_regional_district != eg.regional_district_id %}
+                        {% set eg_fuel_mismatch = station_entry.fuel_fields_mismatch if station_entry.fuel_fields_mismatch is defined else false %}
                         {% set _fuel_bad = '<span class="text-muted" title="Данные группы «Топливо» в БД относятся к другой электростанции (одна запись на несколько регионов). Нужна отдельная группа для этой электростанции: повторный импорт или разделение в БД.">—</span>' %}
-                        <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.numb if eg and eg.numb else '—' }}{% endif %}</td>
+                        <td rowspan="{{ group_rowspan }}">{{ eg.numb if eg and eg.numb else '—' }}</td>
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ 'да' if eg and eg.d and eg.d|string == '1' else (eg.d if eg and eg.d else '—') }}{% endif %}</td>
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ 'да' if eg and eg.r and eg.r|string == '1' else ('новая часть действующей электростанции' if eg and eg.r and eg.r|string == '2' else (eg.r if eg and eg.r else '—')) }}{% endif %}</td>
                         <td rowspan="{{ group_rowspan }}">{% if eg_fuel_mismatch %}{{ _fuel_bad|safe }}{% else %}{{ eg.name_ext if eg and eg.name_ext else '—' }}{% endif %}</td>

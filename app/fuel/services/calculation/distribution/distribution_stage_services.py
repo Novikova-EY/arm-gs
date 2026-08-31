@@ -9,12 +9,16 @@
   чтобы сумма `e` приблизилась к целевому Ераспред.
 
 Опционально (флаг apply_restrictions — аналог открытого окна «Анализ_по_областям»):
+- берёт kobl из таблицы (как Access при открытой форме; 0/overflow → 1);
 - умножает часы на kobl по субъекту (obl) из gs_fue_restrictions;
 - после сходимости K пересчитывает kobl по emin/emax (Ограничения_Click)
-  и повторяет внешний цикл до 14 раз (Access: irestr < 15).
+  и повторяет BDis, пока субъекты вне emin/emax, максимум 14 раз (Access irestr<15).
 
 Access MsgBox «нет NR → HFIX»: в вебе — двухшаговый сценарий на /fuel/calculation
 (список кандидатов → фиксация H=0/hfix=1 по выбранным → продолжение Распред).
+
+Как Кнопка27: «Коэфф» не вызывается. Берётся уже сохранённая сводка и EWTP
+на станциях (после ручной правки). Нет сводки — ошибка: сначала «Коэфф».
 """
 from __future__ import annotations
 
@@ -37,10 +41,6 @@ from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import 
     EquipmentGroupSpecificFuelConsumption,
 )
 from app.fuel.models.fue_restriction_model import FuelRestriction
-from app.fuel.services.calculation.coefficient.fuel_coefficient_calculation_services import (
-    CoeffStageRunResult,
-    FuelCoefficientCalculationService,
-)
 from app.fuel.services.calculation.access_bdis_cursor import (
     AccessBdisCursorState,
     fuel_param_access_n1,
@@ -51,10 +51,8 @@ from app.fuel.services.calculation.equipment_group_selection import (
     access_ved_filter_year_row_participates,
     select_equipment_group_ids_for_calculation,
 )
-from app.fuel.services.calculation.station_ewtp import fill_ewtp_if_empty
 from app.fuel.services.calculation.specific_consumption_lookup import (
     query_specific_consumption_access_seek,
-    query_specific_consumption_for_fuel,
 )
 from app.fuel.services.equipment_groups.composite_station_semantics import (
     fuel_param_row_participates,
@@ -212,8 +210,6 @@ class DistributionStageRunResult:
     total_distributed_e: Decimal = D0
     final_k: Decimal | None = None
     final_kn: Decimal | None = None
-    # Автозапуск «Коэфф» перед Распред (для блока «Результат последнего этапа «Коэфф»»).
-    coeff_run: CoeffStageRunResult | None = None
 
 
 @dataclass
@@ -269,6 +265,7 @@ class DistributionStageService:
         group_ids: list[int],
         cyear: int,
         effective_db_version: int | None,
+        byear: int | None = None,
     ) -> tuple[Decimal, int]:
         """ΣE и число строк расчётного года, которые «Распред» реально пишет."""
         by_key = self._fuel_param_by_group_year(
@@ -283,6 +280,7 @@ class DistributionStageService:
                 equipment_group_id=int(gid),
                 target_year=int(cyear),
                 effective_db_version=effective_db_version,
+                byear=byear,
             )
             if spec is not None:
                 with_specific.add(int(gid))
@@ -349,6 +347,7 @@ class DistributionStageService:
                 equipment_group_id=equipment_group_id,
                 target_year=cyear,
                 effective_db_version=effective_db_version,
+                byear=byear,
             ) is None:
                 continue
             if d0(cur_row.nust) <= 0:
@@ -503,13 +502,13 @@ class DistributionStageService:
         equipment_group_id: int,
         target_year: int,
         effective_db_version: int | None,
+        byear: int | None = None,
     ) -> EquipmentGroupSpecificFuelConsumption | None:
-        # Access U.NoMatch — только если строк нет. Пустой y=0/Bk Null (1330) — Match.
-        return query_specific_consumption_for_fuel(
-            self.session,
+        return self._bdis_specific_row(
             equipment_group_id=equipment_group_id,
-            target_year=target_year,
-            database_version_id=effective_db_version,
+            byear=byear,
+            cyear=target_year,
+            effective_db_version=effective_db_version,
         )
 
     def _bdis_specific_row(
@@ -565,6 +564,20 @@ class DistributionStageService:
         if k <= 0 or k < Decimal("0.8") or k > Decimal("1.2"):
             return D1
         return k
+
+    @staticmethod
+    def _seed_restriction_kobl(kobl) -> Decimal:
+        """Access при открытой форме берёт kobl из таблицы. 0 / overflow → 1."""
+        k = d0(kobl)
+        if k <= 0 or abs(k) > Decimal("10"):
+            return D1
+        return k
+
+    @staticmethod
+    def _reset_closed_form_restriction_kobl(rows: list) -> None:
+        """Access без формы: UPDATE Ограничения SET kobl=1."""
+        for restr in rows:
+            restr.kobl = D1
 
     @staticmethod
     def _distribution_bounds_from_ph(ph: Decimal, doptim: Decimal) -> tuple[Decimal, Decimal]:
@@ -902,19 +915,18 @@ class DistributionStageService:
         cyear = row.year.number
         byear = row.base_year.number if row.base_year is not None else None
 
-        coeff_run = FuelCoefficientCalculationService(
-            session=self.session
-        ).run_for_distribution_parameter(
-            distribution_parameter_id,
-            commit=False,
-        )
+        # Access Кнопка27 не вызывает Кнопка5: сводка и EWTP уже на форме/в строках.
         coeff_summary = self._load_coeff_summary(
             distribution_parameter_id=row.id,
             cyear=cyear,
             effective_db_version=effective_db_version,
         )
         if coeff_summary is None:
-            raise ValueError("Не удалось получить сводку этапа «Коэфф» для выполнения «Распред».")
+            raise ValueError(
+                "Нет сводки этапа «Коэфф» для этого параметра. "
+                "Сначала нажмите «Коэфф» (как в Access: Кнопка5, затем Кнопка27). "
+                "После Коэфф можно править EWTP на станциях — Распред их не пересчитает."
+            )
 
         by_key = self._fuel_param_by_group_year(
             group_ids=group_ids,
@@ -963,13 +975,24 @@ class DistributionStageService:
                     f"Нет строк ограничений для oes={oes_code}, year={cyear}. "
                     "Откройте «Ограничения» и проверьте данные."
                 )
-            # Access без открытой формы: UPDATE kobl=1. В АРМ галочка = «форма открыта»,
-            # но в БД часто лежат чужие/сорванные kobl (86000) — первый проход с ними
-            # не сходится, k уезжает к 0, kobl ещё растёт. Стартуем с 1 и подбираем.
+            # Галочка = форма открыта: kobl из таблицы, как Access RecordsetClone.
+            # Не сбрасываем в 1 — иначе 14 проходов с (k эталона, kobl=1)
+            # сходятся в другую точку, чем Access. Overflow/0 → 1.
             for restr in restriction_rows:
-                restr.kobl = D1
+                restr.kobl = self._seed_restriction_kobl(restr.kobl)
                 self.session.add(restr)
             kobl_by_obl = self._kobl_map_from_rows(restriction_rows)
+        elif oes_code is not None:
+            # Access: форма закрыта → один раз UPDATE kobl=1 WHERE oes=…
+            # Срез АРМ: ОЭС + год параметра + версия БД (как при открытой форме).
+            closed_rows = self._load_restriction_rows(
+                oes_code=oes_code,
+                cyear=cyear,
+                effective_db_version=effective_db_version,
+            )
+            self._reset_closed_form_restriction_kobl(closed_rows)
+            for restr in closed_rows:
+                self.session.add(restr)
 
         e_target = d0(row.e)
         doptim = d0(row.doptim)
@@ -996,7 +1019,6 @@ class DistributionStageService:
         restriction_outer_iterations = 0
         # VBA: Dim hb на уровне Кнопка27_Click — живёт через again: и GoTo BDis.
         cursor_state = AccessBdisCursorState()
-        last_spec = None
 
         for outer in range(1, outer_max + 1):
             restriction_outer_iterations = outer
@@ -1032,17 +1054,12 @@ class DistributionStageService:
                         effective_db_version=effective_db_version,
                     )
                     if spec is None:
-                        spec = last_spec
-                    if spec is None:
                         skipped_group_ids.append(equipment_group_id)
                         continue
-                    last_spec = spec
 
                     # Access: hb/nustb с курсора filter1 (не Seek по numb этой станции).
                     hb = cursor.hb
                     nustb = cursor.nustb
-
-                    fill_ewtp_if_empty(cur_row, spec.y)
 
                     hfix = _is_hfix(cur_row)
                     if hfix:
@@ -1137,7 +1154,9 @@ class DistributionStageService:
                 k_value = D1
                 continue
 
-            # Access enddis + Ограничения_Click + повтор BDis
+            # Access enddis + Ограничения_Click + повтор BDis (irestr<15).
+            # Если emin/emax уже выполнены — стоп: лишние проходы с ecur
+            # чуть ниже emin домножают kobl и уводят k от эталона Access.
             row.lim = 1
             self._recalculate_restriction_kobl(
                 restriction_rows=restriction_rows,
@@ -1184,5 +1203,4 @@ class DistributionStageService:
             total_distributed_e=total_distributed_e,
             final_k=k_value,
             final_kn=kn_value,
-            coeff_run=coeff_run,
         )

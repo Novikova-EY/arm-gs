@@ -50,6 +50,7 @@ def export_ee_balance_to_excel(
     sheets: list[dict[str, Any]] | None = None,
     years: list[int] | None = None,
     year_features: dict[int, str] | None = None,
+    hydro_year: Any = None,
 ) -> BytesIO:
     """Файл со вкладкой на каждый лист баланса электрической энергии."""
     digits = resolve_ee_balance_rounding_digits(rounding_digits)
@@ -58,7 +59,9 @@ def export_ee_balance_to_excel(
     if sheets is None:
         sheets = get_ee_balance_sheets()
     if tables is None:
-        tables = build_ee_balance_tables(years, rounding_digits=digits)
+        tables = build_ee_balance_tables(
+            years, rounding_digits=digits, hydro_year=hydro_year
+        )
     if year_features is None:
         year_features = get_ee_balance_year_features()
 
@@ -66,6 +69,8 @@ def export_ee_balance_to_excel(
     used_titles: set[str] = set()
     first = True
     for sheet in sheets:
+        if sheet.get("skip_table"):
+            continue
         slug = sheet.get("slug")
         payload = (tables or {}).get(slug) or {}
         rows = payload.get("rows") or []

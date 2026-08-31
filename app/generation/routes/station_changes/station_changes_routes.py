@@ -32,7 +32,7 @@ from app.common.services.get_services.years.years_get_services import (
 
 # Версия структуры/смысла данных, которые кладем в export_cache для station_changes.
 # При изменениях логики группировок/агрегаций — увеличивать, чтобы не использовать устаревший кэш.
-STATION_CHANGES_EXPORT_PAYLOAD_VERSION = 9
+STATION_CHANGES_EXPORT_PAYLOAD_VERSION = 11
 
 @station_changes_bp.route('/station_changes_list', methods=['GET', 'POST'])
 @login_required
@@ -181,6 +181,20 @@ def station_changes_list():
     return render_template("generation/station_changes/station_changes.html", has_active_filters=has_active_filters, **context)
 
 
+def _resolve_changes_mode_from_request() -> str:
+    changes_mode = (request.args.get("changes_mode") or "plan").strip().lower()
+    if changes_mode not in ("fact", "plan"):
+        return "plan"
+    return changes_mode
+
+
+def _clamp_export_start_year(start_year) -> int:
+    try:
+        return max(int(start_year), 2022)
+    except (TypeError, ValueError):
+        return max(int(get_filter_start_year() or 2022), 2022)
+
+
 @station_changes_bp.route('/report_sipr_pril_2/export', methods=['GET'])
 @login_required
 def report_sipr_pril_2_export():
@@ -205,8 +219,9 @@ def station_changes_list_export():
             # Если параметр некорректен — просто игнорируем и используем версию из middleware/сессии
             pass
 
-    # Параметры из запроса
+    # Параметры из запроса — как на странице (включая факт/план)
     filters = extract_filters_from_args(request.args)
+    filters["changes_mode"] = _resolve_changes_mode_from_request()
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
     except (ValueError, TypeError):
@@ -214,7 +229,7 @@ def station_changes_list_export():
     if rounding_digits is None:
         rounding_digits = 1
 
-    start_year = int(request.args.get('start_year', get_filter_start_year()))
+    start_year = _clamp_export_start_year(request.args.get('start_year', get_filter_start_year()))
     end_year = int(request.args.get('end_year', get_filter_end_year()))
     # Для экспорта «Приложение Б» итоги/агрегации должны выводиться независимо от переключателей на странице
     show_totals = True
@@ -295,6 +310,7 @@ def station_changes_list_export_appendix_b():
             pass
 
     filters = extract_filters_from_args(request.args)
+    filters["changes_mode"] = _resolve_changes_mode_from_request()
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
     except (ValueError, TypeError):
@@ -302,7 +318,7 @@ def station_changes_list_export_appendix_b():
     if rounding_digits is None:
         rounding_digits = 1
 
-    start_year = int(request.args.get('start_year', get_filter_start_year()))
+    start_year = _clamp_export_start_year(request.args.get('start_year', get_filter_start_year()))
     end_year = int(request.args.get('end_year', get_filter_end_year()))
     show_totals = request.args.get("show_totals", "0") == "1"
 
@@ -383,9 +399,8 @@ def station_changes_list_export_pril_2_russia():
             pass
 
     # Для «Приложение 2 (Россия)» выгрузка должна быть независимой от фильтров на странице:
-    # всегда выгружаем по всей РФ.
-    _filters_from_args = extract_filters_from_args(request.args)
-    filters = {}
+    # всегда выгружаем по всей РФ. Режим факт/план берём с текущей страницы.
+    filters = {"changes_mode": _resolve_changes_mode_from_request()}
     try:
         rounding_digits = int(request.args.get('rounding_digits'))
     except (ValueError, TypeError):
@@ -393,15 +408,16 @@ def station_changes_list_export_pril_2_russia():
     if rounding_digits is None:
         rounding_digits = 1
 
-    start_year = int(request.args.get('start_year', get_filter_start_year()))
+    start_year = _clamp_export_start_year(request.args.get('start_year', get_filter_start_year()))
     end_year = int(request.args.get('end_year', get_filter_end_year()))
-    show_totals = request.args.get("show_totals", "0") == "1"
+    # Форма «Приложение 2» всегда с итогами, как утверждённый файл.
+    show_totals = True
 
     from app.common.services.database_version_filter import get_current_db_version_id
     current_db_version_id = get_current_db_version_id()
 
     cache_key = build_export_key(
-        {"_export_kind": "pril_2_russia"},
+        {"_export_kind": "pril_2_russia", "changes_mode": filters.get("changes_mode")},
         rounding_digits,
         start_year,
         end_year,

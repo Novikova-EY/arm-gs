@@ -22,8 +22,14 @@ from app.energy_balance.services.power_balance_installed_capacity_services impor
     _match_named_object,
     resolve_sheet_territory,
 )
+from app.power_demand.models.energy_systems.energy_unit_demand_parameter_model import (
+    EnergyUnitDemandParameter,
+)
 from app.power_demand.models.energy_systems.energy_system_type_demand_parameter_model import (
     EnergySystemTypeDemandParameter,
+)
+from app.power_demand.models.energy_systems.regional_energy_system_demand_parameter_model import (
+    RegionalEnergySystemDemandParameter,
 )
 from app.power_demand.models.energy_systems.synchronous_area_demand_parameter_model import (
     SynchronousAreaDemandParameter,
@@ -41,7 +47,20 @@ _KIND_DEMAND = {
     "est": (EnergySystemTypeDemandParameter, "id_energy_system_type"),
     "ues": (UnionEnergySystemDemandParameter, "id_union_energy_system"),
     "sa": (SynchronousAreaDemandParameter, "id_synchronous_area"),
+    "res": (RegionalEnergySystemDemandParameter, "id_regional_energy_system"),
+    "eu": (EnergyUnitDemandParameter, "id_energy_unit"),
 }
+
+_FIRST_SA_EXTRA_CODES = (
+    "without_nt_without_gaes_kaliningrad",
+    "without_nt_with_gaes_kaliningrad",
+    "without_nt_without_gaes_with_kaliningrad_es",
+    "without_nt_with_gaes_with_kaliningrad_es",
+    "without_nt_without_gaes_without_kaliningrad",
+    "without_nt_with_gaes_without_kaliningrad",
+    "without_nt_without_gaes_without_kaliningrad_es",
+    "without_nt_with_gaes_without_kaliningrad_es",
+)
 
 
 def _norm_label(text: str | None) -> str:
@@ -53,6 +72,22 @@ def _norm_label(text: str | None) -> str:
         .replace("  ", " ")
         .strip()
     )
+
+
+def _is_first_sz_name(name: str | None) -> bool:
+    n = _norm_label(name)
+    if "калининг" in n:
+        return False
+    return ("1" in n or "перв" in n) and "сз" in n
+
+
+def _rows_have_max_power(rows: list[Any]) -> bool:
+    for row in rows or []:
+        if getattr(row, "is_historical_maximum", False):
+            continue
+        if getattr(row, "max_power_consumption_mw", None) is not None:
+            return True
+    return False
 
 
 def _is_unspecified(name: str | None) -> bool:
@@ -109,7 +144,8 @@ def _sa_by_slug(wanted_slug: str) -> dict[str, Any] | None:
             number=getattr(obj, "number", None),
         )
         if slug == wanted_slug:
-            return {"kind": "sa", "id": int(obj_id), "name": name}
+            full = str(getattr(obj, "name_full", None) or "").strip()
+            return {"kind": "sa", "id": int(obj_id), "name": full or name}
     return None
 
 
@@ -174,12 +210,41 @@ def _demand_rows_without_nt(
             parent_id,
             perimeter_variant_code=stored,
         )
-    return get_demand_rows_for_summary_block(
+    rows = get_demand_rows_for_summary_block(
         model,
         fk_column,
         parent_id,
         display_perimeter_variant_code=CODE_WITHOUT_NT,
     )
+    if _rows_have_max_power(rows):
+        return rows
+    if kind == "sa" and _is_first_sz_name(name):
+        by_year: dict[int, Any] = {}
+        codes: list[str | None] = list(_FIRST_SA_EXTRA_CODES)
+        stored = peek_stored_perimeter_variant_code_for_parent(model, fk_column, parent_id)
+        if stored:
+            codes.insert(0, stored)
+        for code in codes:
+            for row in get_demand_rows(
+                model,
+                fk_column,
+                parent_id,
+                perimeter_variant_code=code,
+            ):
+                if getattr(row, "is_historical_maximum", False):
+                    continue
+                year = getattr(row, "year_number", None)
+                if year is None:
+                    continue
+                y = int(year)
+                if y not in by_year or (
+                    getattr(by_year[y], "max_power_consumption_mw", None) is None
+                    and getattr(row, "max_power_consumption_mw", None) is not None
+                ):
+                    by_year[y] = row
+        if by_year:
+            return list(by_year.values())
+    return rows
 
 
 def load_power_balance_demand_max_inputs(
@@ -192,7 +257,7 @@ def load_power_balance_demand_max_inputs(
     inputs: dict[str, dict[str, dict[int, Decimal]]] = {}
     for sheet in sheets:
         slug = str(sheet.get("slug") or "")
-        if not slug:
+        if not slug or sheet.get("skip_table"):
             continue
         territory = resolve_demand_max_territory(sheet)
         if territory is None:

@@ -82,7 +82,7 @@
             return false;
         }
         var col = td.getAttribute("data-column") || "";
-        if (col === "numb1120" || col === "numb") {
+        if (col === "numb1120" || col === "numb" || col === "ved") {
             return false;
         }
         var inputs = td.querySelectorAll("input, select, textarea");
@@ -346,6 +346,10 @@
             var forceShowEmpty = params.get("show_empty_rows") === "1";
             if (defOn) {
                 forceShowEmpty = forceShowEmpty || params.has("equipment_group_ids");
+            }
+            /* «Проверка» на ТЭП: все отобранные годы пустые — не прячем их. */
+            if (params.get("check_empty_specific") === "1") {
+                forceShowEmpty = true;
             }
             if (forceShowEmpty) {
                 window.__fuelEditShowEmptyMode = true;

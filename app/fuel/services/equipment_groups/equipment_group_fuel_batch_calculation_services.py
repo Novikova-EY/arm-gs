@@ -40,7 +40,7 @@ def fuel_calculation_snapshot_for_api(
     Снимок строк параметров после calculate_group_year — для ответа пакетного API.
     Числа — строки, как в Decimal.__str__, чтобы не терять точность.
     specific_fuel_consumption_row_year_number / fuel_formula_row_year_number — годы исходных строк
-    (max year_number при year_number <= году расчёта), как в EquipmentGroupFuelCalculationService.
+    Seek-окна [base_year, year], как в EquipmentGroupFuelCalculationService.
     """
     energy_keys = ("ewtp", "eotp", "eust", "eurt", "tust", "b")
     balance_keys = ("e", "q", "qotr", "turt")
@@ -111,6 +111,7 @@ class EquipmentGroupFuelBatchCalculationService:
         final_commit: bool = True,
         stop_on_error: bool = False,
         chunk_size: int = 200,
+        base_year_number: int | None = None,
     ) -> BatchCalculationResult:
         result = BatchCalculationResult(total=len(equipment_group_ids))
 
@@ -124,6 +125,7 @@ class EquipmentGroupFuelBatchCalculationService:
                         variant_number=variant_number,
                         strict_formula_validation=strict_formula_validation,
                         commit=True,
+                        base_year_number=base_year_number,
                     )
                 else:
                     with self.session.begin_nested():
@@ -134,6 +136,7 @@ class EquipmentGroupFuelBatchCalculationService:
                             variant_number=variant_number,
                             strict_formula_validation=strict_formula_validation,
                             commit=False,
+                            base_year_number=base_year_number,
                         )
 
                 extra_row = (
@@ -148,12 +151,14 @@ class EquipmentGroupFuelBatchCalculationService:
                     equipment_group_id=equipment_group_id,
                     target_year=year_number,
                     database_version_id=database_version_id,
+                    byear=base_year_number,
                 )
                 frm = self.single_service._select_actual_formula_row(
                     equipment_group_id=equipment_group_id,
                     target_year=year_number,
                     variant_number=variant_number,
                     database_version_id=database_version_id,
+                    byear=base_year_number,
                 )
                 calculated = fuel_calculation_snapshot_for_api(
                     fuel_param=fuel_param,
@@ -210,6 +215,7 @@ class EquipmentGroupFuelBatchCalculationService:
         final_commit: bool = True,
         stop_on_error: bool = False,
         chunk_size: int = 200,
+        base_year_number: int | None = None,
     ) -> BatchCalculationResult:
         equipment_group_ids = [group.id for group in groups]
         return self.calculate_for_many_groups(
@@ -222,4 +228,5 @@ class EquipmentGroupFuelBatchCalculationService:
             final_commit=final_commit,
             stop_on_error=stop_on_error,
             chunk_size=chunk_size,
+            base_year_number=base_year_number,
         )

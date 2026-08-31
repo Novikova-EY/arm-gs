@@ -1,0 +1,932 @@
+/* Строки «Проверка …»: курсив. */
+#powerDemandSummaryTable tbody tr.pd-pd-verification-row > td,
+#powerDemandSummaryTable tbody tr.pd-pd-verify-for-row > td {
+    font-style: italic;
+}
+/* Строки «Проверка для …»: спокойный синий фон (как на energy_consumption). */
+#powerDemandSummaryTable tbody tr.pd-pd-verify-for-row > td {
+    background-color: #e2ecf7 !important;
+}
+#powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-verify-for-row:hover > td,
+#powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-verify-for-row:hover > td {
+    background-color: #d5e3f2 !important;
+}
+/* Строки «Расчетный максимум …» на /summary/oes/, /summary/federal_districts/ и /summary/energy_zones/: зеленоватый фон. */
+#powerDemandSummaryTable tbody tr.pd-pd-calc-max-row > td {
+    background-color: #e3efe8 !important;
+}
+#powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-calc-max-row:hover > td,
+#powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-calc-max-row:hover > td {
+    background-color: #d8e8df !important;
+}
+/* Строки ЧЧИ на /summary/oes/, /summary/federal_districts/ и /summary/energy_zones/: оранжевый фон. */
+#powerDemandSummaryTable tbody tr.pd-pd-chi-row > td {
+    background-color: #f5e8dc !important;
+}
+#powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-chi-row:hover > td,
+#powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-chi-row:hover > td {
+    background-color: #ecdece !important;
+}
+/* Строки «Потребление ЭЭ»: мягкий светло-красный фон (без «Варианты периметра», «Энергосистема» и «Примечание»). */
+#powerDemandSummaryTable tbody tr.pd-pd-ee-row > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
+    background-color: #f8e9e9 !important;
+}
+#powerDemandSummaryTable.table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell),
+#powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
+    background-color: #f0dede !important;
+}
+.power-demand-summary-loader-shell {
+        position: relative;
+    }
+    .power-demand-summary-loader-overlay {
+        transition: opacity 0.12s ease;
+    }
+    .power-demand-summary-segment-loader-overlay {
+        /* fixed + высокий z-index: спиннер в центре экрана, не в середине 40k+ px таблицы */
+        position: fixed;
+        inset: 0;
+        z-index: 1053;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.78);
+        cursor: wait;
+    }
+    .power-demand-summary-loader-shell[aria-busy="true"] .power-demand-summary-scroll {
+        cursor: wait;
+    }
+    .power-demand-summary-scroll {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .power-demand-summary-table {
+        width: 100%;
+        max-width: 100%;
+        table-layout: fixed;
+        font-size: 1.15rem;
+    }
+    .power-demand-summary-table col.summary-col-entity {
+        width: var(--pd-summary-entity-col-w);
+        min-width: var(--pd-summary-entity-col-w);
+        max-width: var(--pd-summary-entity-col-w);
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table col.summary-col-parameter {
+        width: var(--pd-summary-parameter-col-w);
+        min-width: var(--pd-summary-parameter-col-w);
+        max-width: var(--pd-summary-parameter-col-w);
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table col.summary-col-hist {
+        width: var(--pd-summary-hist-col-w);
+        min-width: var(--pd-summary-hist-col-w);
+        max-width: var(--pd-summary-hist-col-w);
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table:not(.pd-coeff-year-seg-table) col.summary-col-year {
+        width: auto;
+        min-width: 2.75rem;
+        max-width: none;
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-year {
+        width: 5.7rem;
+        min-width: 5.7rem;
+        max-width: 5.7rem;
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table thead th {
+        font-size: 1.28rem;
+        min-width: 0;
+    }
+    .summary-entity-col {
+        width: var(--pd-summary-entity-col-w);
+        min-width: var(--pd-summary-entity-col-w);
+        max-width: var(--pd-summary-entity-col-w);
+        box-sizing: border-box;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .summary-parameter-col {
+        width: var(--pd-summary-parameter-col-w);
+        min-width: var(--pd-summary-parameter-col-w);
+        max-width: var(--pd-summary-parameter-col-w);
+        box-sizing: border-box;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .power-demand-summary-table thead th.summary-entity-col,
+    .power-demand-summary-table thead th.summary-parameter-col {
+        text-align: center !important;
+        vertical-align: middle;
+        overflow-wrap: break-word;
+        word-break: normal;
+    }
+    .pd-coeff-year-seg-table th.summary-entity-col,
+    .pd-coeff-year-seg-table td.summary-entity-cell {
+        width: var(--pd-summary-entity-col-w);
+        min-width: var(--pd-summary-entity-col-w);
+        max-width: var(--pd-summary-entity-col-w);
+        box-sizing: border-box;
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: break-word;
+    }
+    .pd-coeff-year-seg-table th.summary-parameter-col {
+        width: var(--pd-summary-parameter-col-w);
+        min-width: var(--pd-summary-parameter-col-w);
+        max-width: var(--pd-summary-parameter-col-w);
+        box-sizing: border-box;
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: break-word;
+    }
+    .pd-coeff-year-seg-table td.summary-parameter-cell {
+        width: var(--pd-summary-parameter-col-w);
+        min-width: var(--pd-summary-parameter-col-w);
+        max-width: var(--pd-summary-parameter-col-w);
+        box-sizing: border-box;
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+    .pd-coeff-year-seg-table .summary-parameter-header-inner,
+    .summary-parameter-header-inner {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+        position: relative;
+        padding-left: 1.75rem;
+        padding-right: 1.75rem;
+    }
+    .power-demand-summary-table thead .summary-parameter-header-inner > span {
+        text-align: center;
+        min-width: 0;
+    }
+    .power-demand-summary-table thead .summary-parameter-header-inner .power-demand-oes-rows-filter-btn {
+        position: absolute;
+        right: 0.15rem;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    .power-demand-oes-rows-filter-btn {
+        flex-shrink: 0;
+        line-height: 1;
+        padding: 0.15rem 0.4rem;
+        font-size: 0.95rem;
+        border-radius: 2px;
+        color: #495057;
+        border-color: #adb5bd;
+        background: #fff;
+        box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.06);
+    }
+    .power-demand-oes-rows-filter-btn:hover,
+    .power-demand-oes-rows-filter-btn:focus {
+        color: #212529;
+        border-color: #6c757d;
+        background: #f8f9fa;
+    }
+    .power-demand-rows-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    .power-demand-rows-modal-footer .power-demand-rows-modal-btn {
+        min-width: 9.5rem;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+    }
+    .summary-hist-col {
+        width: var(--pd-summary-hist-col-w);
+        min-width: var(--pd-summary-hist-col-w);
+        max-width: var(--pd-summary-hist-col-w);
+        box-sizing: border-box;
+        white-space: normal;
+    }
+    .summary-year-col {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .power-demand-year-feature-caption {
+        font-size: 0.95em;
+        line-height: 1.25;
+        margin-top: 0.2rem;
+    }
+    .summary-entity-cell {
+        font-weight: 700;
+        font-size: 1.15rem;
+        white-space: normal;
+        background-color: #f8f9fa;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .pd-pd-dz-mark {
+        font-size: 1.25em;
+        font-style: italic;
+        font-weight: 700;
+        color: #dc3545;
+        cursor: help;
+        vertical-align: baseline;
+    }
+    .summary-parameter-cell {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-entity {
+        width: var(--pd-summary-entity-col-w);
+        min-width: var(--pd-summary-entity-col-w);
+        max-width: var(--pd-summary-entity-col-w);
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-parameter {
+        width: var(--pd-summary-parameter-col-w);
+        min-width: var(--pd-summary-parameter-col-w);
+        max-width: var(--pd-summary-parameter-col-w);
+        box-sizing: border-box;
+    }
+    /* «Расчетный коэффициент совмещения»: компактные столбцы (6 знаков после запятой, напр. 0,123456) */
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-coeff-mixin-num,
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-coeff-mixin-manual {
+        width: var(--pd-coeff-mixin-num-col-w);
+        min-width: var(--pd-coeff-mixin-num-col-w);
+        max-width: var(--pd-coeff-mixin-num-col-w);
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-coeff-mixin-sample {
+        width: var(--pd-coeff-mixin-sample-col-w);
+        min-width: var(--pd-coeff-mixin-sample-col-w);
+        max-width: var(--pd-coeff-mixin-sample-col-w);
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-coeff-mixin-source {
+        width: var(--pd-coeff-mixin-source-col-w);
+        min-width: var(--pd-coeff-mixin-source-col-w);
+        max-width: var(--pd-coeff-mixin-source-col-w);
+        box-sizing: border-box;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table col.summary-col-year-mw {
+        width: auto;
+        min-width: 6.25rem;
+        max-width: none;
+        box-sizing: border-box;
+    }
+    .pd-coeff-year-seg-table .summary-entity-col {
+        width: var(--pd-summary-entity-col-w);
+        min-width: var(--pd-summary-entity-col-w);
+        max-width: var(--pd-summary-entity-col-w);
+        box-sizing: border-box;
+    }
+    /* Горизонтальный скролл — только здесь (см. style.css .has-x-scroll); панель над шапкой не скроллится */
+    .pd-coeff-summary-scroll-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+    .pd-coeff-year-seg-table th.summary-entity-col,
+    .pd-coeff-year-seg-table td.summary-entity-cell {
+        position: sticky;
+        left: 0;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+        background-clip: padding-box;
+    }
+    .pd-coeff-year-seg-table td.summary-entity-cell {
+        /* Bootstrap table-hover/striped: inset box-shadow и rgba-фон ломают липкие ячейки. */
+        --bs-table-bg-state: transparent;
+    }
+    .pd-coeff-year-seg-table th.summary-parameter-col,
+    .pd-coeff-year-seg-table td.summary-parameter-cell {
+        position: sticky;
+        left: var(--pd-summary-entity-col-w);
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+        background-clip: padding-box;
+    }
+    .pd-coeff-year-seg-table td.summary-parameter-cell {
+        --bs-table-bg-state: transparent;
+    }
+    /*
+     * Шапка: липкие «Энергосистема»/«Наименование» выше period/year th.
+     * Важно: не ставить transform на thead th — ломает порядок отрисовки sticky.
+     * Специфичность с tr:nth-child — чтобы перебить style.css (z-index 50/49).
+     * Подписи без rowspan + пустые cont-ячейки во 2-й строке (иначе Chrome рисует period поверх).
+     * z-index ≤ 1051: ниже .pd-ec-summary-sticky-stack (1052) и Select2/фильтров (1054),
+     * иначе при раскрытии «Фильтры» шапка таблицы наезжает на панель (как на /coeff/federal_districts/).
+     */
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.summary-entity-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-entity-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-entity-col {
+        z-index: 1050 !important;
+        background-color: #d1e7dd !important;
+        background-image: none !important;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18), 0 1px 0 0 #d1e7dd !important;
+    }
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.summary-parameter-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-parameter-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-parameter-col {
+        z-index: 1051 !important;
+        background-color: #d1e7dd !important;
+        background-image: none !important;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18), 0 1px 0 0 #d1e7dd !important;
+    }
+    /* Визуально одна ячейка на две строки шапки (вместо rowspan). */
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top th.pd-coeff-sticky-head-label.summary-entity-col,
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top th.pd-coeff-sticky-head-label.summary-parameter-col,
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top th.pd-coeff-sticky-head-label.summary-perimeter-variant-col,
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top th.pd-coeff-sticky-head-label.summary-col-note-header {
+        border-bottom-color: #d1e7dd !important;
+        vertical-align: middle;
+    }
+    .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-years th.pd-coeff-sticky-head-cont {
+        border-top-color: #d1e7dd !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        overflow: hidden;
+        background-color: #d1e7dd !important;
+        /* Не схлопывать sticky-box (line-height:0 + overflow:hidden) — иначе тело просвечивает во 2-й строке. */
+        vertical-align: top;
+        font-size: 0;
+        line-height: normal;
+    }
+    /*
+     * Вся шапка непрозрачная: Bootstrap inset box-shadow (transparent --bs-table-bg-state)
+     * иначе при вертикальном скролле тело видно сквозь «Отчетный период» / годы.
+     * Тень вверх на 2-й строке закрывает стык двух sticky-рядов.
+     */
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th {
+        background-color: #d1e7dd !important;
+        background-image: none !important;
+        --bs-table-bg: #d1e7dd;
+        --bs-table-accent-bg: #d1e7dd;
+        --bs-table-bg-state: #d1e7dd;
+        --bs-table-bg-type: #d1e7dd;
+    }
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-top > th {
+        box-shadow: 0 2px 0 0 #d1e7dd;
+    }
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr.power-demand-coeff-thead-years > th {
+        z-index: 400 !important;
+        background-color: #d1e7dd !important;
+        box-shadow: 0 -3px 0 0 #d1e7dd, 0 1px 0 0 #d1e7dd;
+    }
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.power-demand-coeff-period-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.power-demand-coeff-mixin-group-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(1) th.summary-col-note-header,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.summary-year-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead tr:nth-child(2) th.power-demand-coeff-mixin-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.power-demand-coeff-period-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.power-demand-coeff-mixin-group-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-year-col,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.power-demand-coeff-mixin-th,
+    .pd-coeff-summary-scroll-wrap .pd-coeff-year-seg-table thead th.summary-col-note-header {
+        z-index: 400 !important;
+        background-color: #d1e7dd !important;
+        background-image: none !important;
+    }
+    .pd-coeff-year-seg-table tbody td.summary-entity-cell {
+        /* cap 50: не выше шапки годов (400), но выше ячеек годов той же/соседних строк */
+        z-index: calc(100 + min(var(--pd-row-stack, 0), 50)) !important;
+        min-width: var(--pd-summary-entity-col-w);
+        max-width: var(--pd-summary-entity-col-w);
+        background-color: #f8f9fa;
+        /* Не transform: в одном scroll-wrap (X+Y) left-sticky ещё и липнет вверх и рисуется поверх шапки. */
+        top: auto;
+        bottom: auto;
+    }
+    /* Непрозрачный фон: иначе при горизонтальном скролле «просвечивают» ячейки справа и текст выглядит наложенным. */
+    .pd-coeff-year-seg-table tbody td.summary-parameter-cell {
+        z-index: calc(300 + min(var(--pd-row-stack, 0), 50)) !important;
+        background-color: var(--bs-body-bg, #fff);
+        top: auto;
+        bottom: auto;
+    }
+    /* Ячейки справа всегда ниже липких левых (иначе Chrome рисует текст годов поверх sticky). */
+    .pd-coeff-year-seg-table tbody td.summary-year-cell,
+    .pd-coeff-year-seg-table tbody td.summary-coeff-mixin-cell {
+        position: relative;
+        z-index: 0 !important;
+    }
+    .pd-coeff-year-seg-table.table-hover > tbody > tr:hover > td.summary-year-cell,
+    .pd-coeff-year-seg-table.table-hover > tbody > tr:hover > td.summary-coeff-mixin-cell {
+        z-index: 0 !important;
+    }
+    /* Строки k (не «всегда видимые» показатели): серый фон по блоку entity */
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]) tbody tr.pd-entity-block-stripe-base > td {
+        background-color: #fff;
+    }
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]) tbody tr.pd-entity-block-stripe-alt > td {
+        background-color: #eef5ff;
+    }
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]).table-hover > tbody > tr.pd-entity-block-stripe-base:hover > td {
+        background-color: #e9ecef;
+    }
+    .pd-coeff-year-seg-table:not([data-ec-unify-block-bg]).table-hover > tbody > tr.pd-entity-block-stripe-alt:hover > td {
+        background-color: #dde8fc;
+    }
+    /* Видимые строки показателя на coeff: непрозрачный фон (rgba от Bootstrap просвечивает под sticky). */
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param[data-ec-block-stripe="0"] > td {
+        background-color: #f2f2f2 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param[data-ec-block-stripe="1"] > td {
+        background-color: #ffffff !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param:hover > td {
+        background-color: #e7ecf1 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-verify-for-row > td {
+        background-color: #e2ecf7 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-verify-for-row:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-verify-for-row:hover > td {
+        background-color: #d5e3f2 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-calc-max-row > td {
+        background-color: #e3efe8 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-calc-max-row:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-calc-max-row:hover > td {
+        background-color: #d8e8df !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-chi-row > td {
+        background-color: #f5e8dc !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-chi-row:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-chi-row:hover > td {
+        background-color: #ecdece !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"] tbody tr.summary-row-param.pd-pd-ee-row > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
+        background-color: #f8e9e9 !important;
+    }
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell),
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-param.pd-pd-ee-row:hover > td:not(.summary-perimeter-variant-cell):not(.summary-entity-cell):not(.summary-entity-note-cell) {
+        background-color: #f0dede !important;
+    }
+    /* Строки k: единый светло-голубой фон на всех coeff-страницах (ОЭС / ФО / ЭЗ) */
+    .pd-coeff-year-seg-table tbody tr.summary-row-coeff-k > td {
+        background-color: #e9edf5 !important;
+    }
+    .pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-coeff-k:hover > td,
+    #powerDemandSummaryTable[data-ec-unify-block-bg="1"].pd-coeff-year-seg-table.table-hover > tbody > tr.summary-row-coeff-k:hover > td {
+        background-color: #dde4f0 !important;
+    }
+    .power-demand-summary-table.pd-coeff-year-seg-table {
+        /* separate: иначе sticky-столбцы в collapse плохо перекрывают ячейки справа (Chrome). */
+        border-collapse: separate;
+        border-spacing: 0;
+        /* auto — столбцы годов по содержимому; min-width — горизонтальный скролл при широкой таблице */
+        table-layout: auto;
+        width: max-content;
+        min-width: 100%;
+        max-width: none;
+    }
+    /* Как /summary/oes/: в теле без вертикальных линий столбцов (separate даёт «двойные» L+R).
+       Горизонтальные границы строк и сетка шапки сохраняются. */
+    .power-demand-summary-table.pd-coeff-year-seg-table.table-bordered > tbody > tr > td {
+        border-left-width: 0;
+        border-right-width: 0;
+        border-top-width: var(--bs-border-width);
+        border-bottom-width: var(--bs-border-width);
+    }
+    /* Внутри блока сущности — без горизонтальных линий (только стык блоков). */
+    #powerDemandSummaryTable.power-demand-summary-table > tbody > tr > td {
+        border-top-width: 0 !important;
+        border-bottom-width: 0 !important;
+    }
+    /*
+     * Граница между блоками: border-top на первой строке следующего блока.
+     * Специфичность = правилу обнуления выше. Так линия идёт через все столбцы,
+     * включая rowspan «Энергосистема»/«Примечание», и не прячется под sticky.
+     */
+    #powerDemandSummaryTable.power-demand-summary-table > tbody > tr.pd-summary-entity-block-first > td {
+        border-top-width: 2px !important;
+        border-top-style: solid !important;
+        border-top-color: #6c757d !important;
+    }
+    .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th,
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell {
+        box-sizing: border-box;
+        vertical-align: middle;
+    }
+    .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th-num,
+    .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th-manual,
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell.summary-coeff-gs10-cell,
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell.summary-coeff-gs10-minmax-trim-cell,
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell.summary-coeff-gs5-cell,
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell.summary-coeff-manual-cell {
+        width: var(--pd-coeff-mixin-num-col-w);
+        min-width: var(--pd-coeff-mixin-num-col-w);
+        max-width: var(--pd-coeff-mixin-num-col-w);
+        white-space: nowrap;
+    }
+    .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th-sample,
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell.summary-coeff-sample-cell {
+        width: var(--pd-coeff-mixin-sample-col-w);
+        min-width: var(--pd-coeff-mixin-sample-col-w);
+        max-width: var(--pd-coeff-mixin-sample-col-w);
+        white-space: nowrap;
+    }
+    .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th-source,
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell.summary-coeff-source-cell {
+        width: var(--pd-coeff-mixin-source-col-w);
+        min-width: var(--pd-coeff-mixin-source-col-w);
+        max-width: var(--pd-coeff-mixin-source-col-w);
+    }
+    .pd-coeff-year-seg-table th.summary-year-col,
+    .pd-coeff-year-seg-table th.summary-year-unit-col,
+    .pd-coeff-year-seg-table .pd-coeff-k-inline-stack.summary-year-k-cell,
+    .pd-coeff-year-seg-table td.summary-year-cell {
+        box-sizing: border-box;
+        width: 5.7rem;
+        min-width: 5.7rem;
+        max-width: 5.7rem;
+        white-space: nowrap;
+        word-break: normal;
+        overflow-wrap: normal;
+        vertical-align: middle;
+    }
+    .pd-coeff-year-seg-table th.summary-year-col {
+        white-space: normal;
+    }
+    .pd-coeff-year-seg-table th.summary-year-col .power-demand-year-feature-caption {
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+    }
+    .pd-coeff-year-seg-table td.summary-year-cell .pd-coeff-display-k,
+    .pd-coeff-year-seg-table td.summary-year-cell .pd-coeff-display-mw,
+    .pd-coeff-year-seg-table td.summary-year-cell .pd-coeff-medium-k-input {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pd-coeff-year-seg-table > thead th {
+        font-size: 1.1rem;
+        line-height: 1.25;
+    }
+    .pd-coeff-year-seg-table > thead .power-demand-year-feature-caption {
+        font-size: 1em;
+        line-height: 1.2;
+        margin-top: 0.15rem;
+    }
+    .pd-coeff-year-seg-table .power-demand-coeff-mixin-th .power-demand-coeff-mixin-th-paren {
+        display: block;
+        font-size: 1em;
+        margin-top: 0.15rem;
+    }
+    .pd-coeff-year-seg-table .summary-parameter-header-inner .power-demand-oes-rows-filter-btn {
+        font-size: 0.95em;
+    }
+    .power-demand-coeff-mixin-group-th {
+        line-height: 1.2;
+        white-space: normal;
+        min-width: 0;
+    }
+    .pd-coeff-year-seg-table th.power-demand-coeff-mixin-th {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+    }
+    .pd-coeff-year-seg-table tbody td {
+        font-size: 1.1rem;
+        line-height: 1.3;
+    }
+    .pd-coeff-year-seg-table tbody tr.summary-row-param > td {
+        font-size: inherit;
+        line-height: inherit;
+    }
+    .pd-coeff-year-seg-table td.summary-entity-cell,
+    .pd-coeff-year-seg-table td.summary-entity-note-cell {
+        vertical-align: middle;
+    }
+    .pd-coeff-year-seg-table tr.summary-row-coeff-k > td {
+        vertical-align: middle;
+    }
+    .pd-coeff-year-seg-table tr.summary-row-coeff-k > td.summary-coeff-k-label-cell {
+        text-align: left;
+        font-size: inherit;
+        font-weight: inherit;
+        color: inherit;
+    }
+    .pd-coeff-year-seg-table tr.summary-row-coeff-k .pd-coeff-k-label-text {
+        color: inherit;
+    }
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-empty {
+        padding: 0.25rem;
+    }
+    .pd-coeff-year-seg-table .pd-coeff-manual-input,
+    .pd-coeff-year-seg-table .pd-coeff-source-select {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+    }
+    .pd-coeff-year-seg-table td.summary-coeff-mixin-cell .pd-coeff-manual-input {
+        white-space: nowrap;
+    }
+    .pd-coeff-year-seg-table .summary-coeff-source-cell {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+    .summary-hist-cell {
+        white-space: normal;
+    }
+    .summary-hist-cell.summary-hist-cell-disabled {
+        background-color: #f1f3f5;
+        pointer-events: none;
+        user-select: none;
+        cursor: default;
+    }
+    .summary-hist-cell,
+    .summary-year-cell {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+    .pd-coeff-year-seg-table .summary-year-cell {
+        width: 5.7rem;
+        min-width: 5.7rem;
+        max-width: 5.7rem;
+        overflow-wrap: normal;
+        word-break: normal;
+        white-space: nowrap;
+    }
+    .summary-year-cell.summary-plan-empty {
+        min-height: 2.5rem;
+        background-color: #f1f3f5;
+    }
+    .power-demand-summary-table .fuel-param-input {
+        width: 100%;
+        min-width: 0;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table td.summary-entity-note-cell:has(> .summary-entity-note-wrap),
+    #powerDemandSummaryTable td.summary-entity-note-cell:has(> .summary-entity-note-wrap) {
+        padding: 0 !important;
+        height: 1px;
+        vertical-align: middle;
+    }
+    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap {
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        box-sizing: border-box;
+        margin: 0;
+    }
+    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap:has(> .text-break) {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        text-align: left;
+    }
+    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap:has(> textarea.power-demand-summary-note-field) {
+        display: block;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .summary-entity-note-wrap textarea.fuel-param-input.power-demand-summary-note-field {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        margin: 0;
+        text-align: left;
+        white-space: pre-wrap;
+        resize: none;
+        overflow: auto;
+    }
+    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap > .text-break {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        margin: 0;
+        height: auto;
+        min-height: 0;
+        padding: 0.2rem 0.35rem;
+        overflow: auto;
+        flex: 0 1 auto;
+        align-self: center;
+    }
+    /* Как #fuelParamsTable: поле на всю ячейку; k — в отдельной строке таблицы */
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(input.fuel-param-input),
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(textarea.fuel-param-input),
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(> .pd-coeff-manual-input),
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(.pd-coeff-medium-k-input),
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(.pd-coeff-display-k),
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(.pd-coeff-display-mw),
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(> .pd-coeff-source-select) {
+        padding: 0 !important;
+        vertical-align: middle;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-manual-input,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-medium-k-input,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-display-k,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-display-mw {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: 2.5rem;
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.2rem 0.35rem;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        background-color: transparent;
+        background-clip: padding-box;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .form-select.pd-coeff-source-select {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: 2.5rem;
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        /* место для chevron справа, как в стандартном .form-select */
+        padding: 0.2rem 2.25rem 0.2rem 0.4rem;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        background-color: transparent;
+        background-clip: padding-box;
+    }
+    /* Те же размеры ячеек k/МВт для строк УЭС с только чтением, если таблица без fuel-params-edit-table */
+    #powerDemandSummaryTable:not(.fuel-params-edit-table) tbody td.summary-year-k-cell:has(.pd-coeff-display-k),
+    #powerDemandSummaryTable:not(.fuel-params-edit-table) tbody td.summary-year-mw-cell:has(.pd-coeff-display-mw) {
+        padding: 0 !important;
+        vertical-align: middle;
+    }
+    #powerDemandSummaryTable:not(.fuel-params-edit-table) input.pd-coeff-display-k,
+    #powerDemandSummaryTable:not(.fuel-params-edit-table) input.pd-coeff-display-mw {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        min-height: 2.5rem;
+        box-sizing: border-box;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 0.2rem 0.35rem;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        background-color: transparent;
+        background-clip: padding-box;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input:focus,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-manual-input:focus,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-medium-k-input:focus,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-display-k:focus,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-source-select:focus {
+        box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+        outline: 0;
+        z-index: 1;
+        position: relative;
+    }
+    #powerDemandSummaryTable tr[data-parameter-key="peak_datetime"] td.summary-hist-cell,
+    #powerDemandSummaryTable tr[data-parameter-key="peak_datetime"] td.summary-year-cell:not(.summary-year-k-cell) {
+        white-space: normal;
+        vertical-align: middle;
+    }
+    #powerDemandSummaryTable textarea.power-demand-summary-datetime-field {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        resize: vertical;
+        min-height: 2.75rem;
+        line-height: 1.25;
+        max-width: 100%;
+        field-sizing: content;
+    }
+    #powerDemandSummaryTable.fuel-params-edit-table textarea.power-demand-summary-datetime-field {
+        text-align: center;
+    }
+    .power-demand-coeff-period-th {
+        vertical-align: middle;
+        min-width: 0;
+    }
+    .power-demand-coeff-sample-filter-btn {
+        font-size: inherit;
+        white-space: normal;
+        max-width: 11rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        row-gap: 0.15rem;
+    }
+    .power-demand-coeff-sample-filter-btn.dropdown-toggle::after {
+        display: none;
+    }
+    .power-demand-coeff-sample-filter-caret {
+        font-size: 0.55rem;
+        line-height: 1;
+        opacity: 0.75;
+    }
+    .power-demand-coeff-sample-filter-label {
+        white-space: nowrap;
+    }
+    .pd-coeff-sample-years-menu {
+        min-width: 12rem;
+    }
+    /* Скрытие сегментов колонок (кнопки над таблицей на «Коэффициенты…») */
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-reporting th[data-coeff-group="reporting"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-reporting col[data-coeff-year-segment="reporting"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-reporting th[data-coeff-year-segment="reporting"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-reporting td[data-coeff-year-segment="reporting"] {
+        display: none !important;
+    }
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-medium th[data-coeff-group="medium"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-medium col[data-coeff-year-segment="medium"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-medium th[data-coeff-year-segment="medium"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-medium td[data-coeff-year-segment="medium"] {
+        display: none !important;
+    }
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-long th[data-coeff-group="long"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-long col[data-coeff-year-segment="long"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-long th[data-coeff-year-segment="long"],
+    .pd-coeff-year-seg-table.pd-coeff-seg-hide-long td[data-coeff-year-segment="long"] {
+        display: none !important;
+    }
+    .pd-coeff-year-seg-table .pd-coeff-year-col-hidden {
+        display: none !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        max-width: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        overflow: hidden !important;
+    }
+    .pd-ec-max-year-visibility-table col[data-ec-summary-col-year].pd-ec-year-col-hidden,
+    .pd-ec-max-year-visibility-table th[data-ec-summary-col-year].pd-ec-year-col-hidden,
+    .pd-ec-max-year-visibility-table td[data-ec-summary-col-year].pd-ec-year-col-hidden {
+        display: none !important;
+    }
+    .power-demand-summary-table.pd-summary-hist-col-hidden col.summary-col-hist,
+    .power-demand-summary-table.pd-summary-hist-col-hidden th.summary-hist-col,
+    .power-demand-summary-table.pd-summary-hist-col-hidden td.summary-hist-cell {
+        display: none !important;
+    }
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden col.summary-col-perimeter-variant,
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden th.summary-perimeter-variant-col,
+    .power-demand-summary-table.pd-summary-perimeter-variant-col-hidden td.summary-perimeter-variant-cell {
+        display: none !important;
+    }
+    /* Режим «без столбцов расчетных коэффициентов совмещения» (кнопка над таблицей) */
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-num,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-sample,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-manual,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns col.summary-col-coeff-mixin-source,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns th.power-demand-coeff-mixin-group-th,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns th.power-demand-coeff-mixin-th,
+    .pd-coeff-year-seg-table.pd-coeff-hide-mixin-columns td.summary-coeff-mixin-cell {
+        display: none !important;
+    }
+    /* Режим «без строк k» (кнопка над таблицей): скрыты отдельные строки коэффициентов */
+    .pd-coeff-year-seg-table.pd-coeff-hide-k-columns tr.summary-row-coeff-k {
+        display: none !important;
+    }
+    /* Фикс ширины таблицы при скрытых k */
+    .pd-coeff-year-seg-table.pd-coeff-hide-k-columns {
+        width: 100%;
+        min-width: 100%;
+        max-width: none;
+    }
+    .pd-coeff-year-seg-table.pd-coeff-hide-k-columns col.summary-col-year-mw {
+        width: auto;
+        min-width: 5.5rem;
+        max-width: none;
+    }
+    /* Неактивные переключатели периодов: чёрный текст (outline-warning по умолчанию слабо читается) */
+    #powerDemandCoeffSegToggles .btn-outline-warning {
+        color: #000;
+    }
+    #powerDemandCoeffSegToggles .btn-outline-warning:hover,
+    #powerDemandCoeffSegToggles .btn-outline-warning:focus-visible {
+        color: #000;
+    }
+    #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-hidden,
+    #powerDemandSummaryTable tbody tr.summary-row-coeff-k.summary-row-hidden,
+    #powerDemandSummaryTable tbody tr.summary-row-param.summary-row-empty-block-hidden,
+    #powerDemandSummaryTable tbody tr.summary-row-coeff-k.summary-row-empty-block-hidden {
+        display: none !important;
+    }
+    .tooltip.power-demand-datetime-format-tooltip .tooltip-inner {
+        max-width: min(320px, 90vw);
+        text-align: center;
+        font-size: 1.2rem;
+        line-height: 1.35;
+        padding: 0.55rem 0.75rem;
+    }

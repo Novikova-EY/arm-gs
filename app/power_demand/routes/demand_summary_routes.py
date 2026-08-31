@@ -48,6 +48,7 @@ from app.power_demand.services.pd_summary_entity_pagination import (
 )
 from app.power_demand.services.pd_summary_page_cache import (
     cached_load_pd_summary_data,
+    cached_load_pd_summary_full_build,
     invalidate_power_demand_display_caches,
 )
 from app.power_demand.services.demand_summary_services import (
@@ -114,16 +115,18 @@ def _attach_pd_summary_client_render(context: dict, *, scope: str, data_path: st
 def _build_summary_data_json_response(
     *, scope: str, context_builder, cache_scope: str | None = None
 ) -> Any:
+    import copy
+
     data_segments = parse_pd_data_segments(scope)
     entity_pagination = parse_pd_entity_pagination(scope)
+    resolved_cache_scope = cache_scope or scope
 
-    def loader() -> dict:
+    def full_build_loader() -> dict:
+        """Полное дерево без пагинации — общее для всех pd_page / pd_page_size."""
         context = context_builder(for_shell=False, data_segments=data_segments)
         boundary_rows = None
         if (
-            entity_pagination is not None
-            and entity_pagination[1] > 0
-            and not needs_full_summary_build(data_segments)
+            not needs_full_summary_build(data_segments)
             # core пагинируется целиком (prefix + секции + суффикс ТИТЭС);
             # boundary нужен только для ленивых сегментов (chi, ee, nt_extra, …).
             and data_segments != frozenset({PD_SUMMARY_SEGMENT_CORE})
@@ -133,15 +136,28 @@ def _build_summary_data_json_response(
                 data_segments=frozenset({PD_SUMMARY_SEGMENT_CORE}),
             )
             boundary_rows = core_context.get("summary_rows")
+        return {
+            "context": context,
+            "boundary_rows": boundary_rows,
+            "loaded_segments": sorted(data_segments),
+        }
+
+    def page_loader() -> dict:
+        bundle = cached_load_pd_summary_full_build(
+            resolved_cache_scope, full_build_loader
+        )
+        # Копия: prepare/overrides мутируют dict строк; кэш должен остаться чистым.
+        context = copy.deepcopy(bundle["context"])
+        boundary_rows = copy.deepcopy(bundle.get("boundary_rows"))
         payload = build_summary_data_json_response(
             context,
             entity_pagination=entity_pagination,
             pagination_boundary_rows=boundary_rows,
         ).get_json()
-        payload["loaded_segments"] = sorted(data_segments)
+        payload["loaded_segments"] = list(bundle.get("loaded_segments") or [])
         return payload
 
-    return jsonify(cached_load_pd_summary_data(cache_scope or scope, loader))
+    return jsonify(cached_load_pd_summary_data(resolved_cache_scope, page_loader))
 
 
 def _parse_oes_max_summary_args() -> dict:
@@ -320,6 +336,7 @@ def _finalize_coeff_summary_context(
     data_segments: frozenset[str] | None,
     coeff_n: int,
     coeff_include_long: bool,
+    include_medium: bool = False,
 ) -> dict:
     context["rounding_digits_k"] = _parse_rounding_digits_k(
         fallback=DEFAULT_SUMMARY_COEFF_K_ROUNDING_DIGITS
@@ -327,8 +344,10 @@ def _finalize_coeff_summary_context(
     context["can_edit_summary_cells"] = can_edit_power_demand(current_user)
     context["summary_route_variant"] = "coeff"
     context["coeff_base_year"] = coeff_n
+    context["summary_include_medium_years"] = bool(include_medium or coeff_include_long)
     context["coeff_period_header_groups"] = _coeff_period_header_groups_html(
-        include_long=coeff_include_long
+        include_medium=include_medium or coeff_include_long,
+        include_long=coeff_include_long,
     )
     if not for_shell:
         _apply_coeff_year_k_columns(context)
@@ -344,12 +363,18 @@ def _finalize_coeff_summary_context(
                 scope=scope,
             )
         slice_coeff_summary_for_lazy_long_segment(
-            context, coeff_n, include_long=coeff_include_long
+            context,
+            coeff_n,
+            include_long=coeff_include_long,
+            include_medium=include_medium,
         )
     else:
-        # Shell: только метаданные/годы (без строк); срез долгосрочных колонок для thead.
+        # Shell: только метаданные/годы (без строк); срез неподгруженных периодов для thead.
         slice_coeff_summary_for_lazy_long_segment(
-            context, coeff_n, include_long=coeff_include_long
+            context,
+            coeff_n,
+            include_long=coeff_include_long,
+            include_medium=include_medium,
         )
         context["summary_rows"] = []
     _apply_coeff_ui_year_form_context(context, coeff_n)
@@ -362,8 +387,9 @@ def _finalize_coeff_summary_context(
 
 
 def _build_oes_coeff_summary_context(*, for_shell: bool, data_segments=None) -> dict:
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
+    coeff_n, start_year, end_year, include_medium, coeff_include_long = (
+        _parse_coeff_page_data_year_range()
+    )
     oes_ordered = _parse_oes_territory_ordered()
     ues_l, res_l, rd_l, eu_l = oes_ordered
     build_segs = (
@@ -391,12 +417,14 @@ def _build_oes_coeff_summary_context(*, for_shell: bool, data_segments=None) -> 
         data_segments=data_segments,
         coeff_n=coeff_n,
         coeff_include_long=coeff_include_long,
+        include_medium=include_medium,
     )
 
 
 def _build_fo_coeff_summary_context(*, for_shell: bool, data_segments=None) -> dict:
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
+    coeff_n, start_year, end_year, include_medium, coeff_include_long = (
+        _parse_coeff_page_data_year_range()
+    )
     fo_sets = _parse_fo_filter_sets()
     f_fd, f_res = fo_sets
     build_segs = (
@@ -424,12 +452,14 @@ def _build_fo_coeff_summary_context(*, for_shell: bool, data_segments=None) -> d
         data_segments=data_segments,
         coeff_n=coeff_n,
         coeff_include_long=coeff_include_long,
+        include_medium=include_medium,
     )
 
 
 def _build_ez_coeff_summary_context(*, for_shell: bool, data_segments=None) -> dict:
-    coeff_n, start_year, end_year = _parse_coeff_summary_year_range()
-    coeff_include_long = _parse_coeff_include_long()
+    coeff_n, start_year, end_year, include_medium, coeff_include_long = (
+        _parse_coeff_page_data_year_range()
+    )
     ez_ordered = _parse_ez_territory_ordered()
     ez_l, res_l = ez_ordered
     build_segs = (
@@ -457,6 +487,7 @@ def _build_ez_coeff_summary_context(*, for_shell: bool, data_segments=None) -> d
         data_segments=data_segments,
         coeff_n=coeff_n,
         coeff_include_long=coeff_include_long,
+        include_medium=include_medium,
     )
 
 
@@ -575,16 +606,47 @@ def _parse_summary_year_range() -> tuple[int, int]:
 
 
 def _parse_coeff_summary_year_range() -> tuple[int, int, int]:
-    """(N, start_year, end_year) для «Коэффициенты…»: N−9…N+18 (28 лет)."""
+    """(N, start_year, end_year) для выгрузки «Коэффициенты…»: полный ряд N−9…N+18."""
     n = _coeff_base_year_n()
     return n, n - 9, n + 18
+
+
+def _clamp_coeff_data_years(sy: int, ey: int) -> tuple[int, int]:
+    bounds = _filter_year_list_for_summary()
+    if not bounds:
+        return sy, ey
+    lo, hi = bounds[0], bounds[-1]
+    sy = max(lo, min(sy, hi))
+    ey = max(lo, min(ey, hi))
+    if sy > ey:
+        sy, ey = ey, sy
+    return sy, ey
+
+
+def _parse_coeff_page_data_year_range() -> tuple[int, int, int, bool, bool]:
+    """
+    (N, start_year, end_year, include_medium, include_long) для HTML/JSON «Коэффициенты…».
+
+    Как «Максимумы…»: первая отрисовка — только отчётное окно N−9…N.
+    Среднесрок (N+1…N+6) — при pd_medium=1 или если форма годов заходит за N.
+    Долгосрок (N+7…N+18) — только coeff_include_long=1.
+    """
+    n = _coeff_base_year_n()
+    include_long = _parse_coeff_include_long()
+    include_medium = include_long or _parse_summary_include_medium_years()
+    _sy, ui_ey, applied = _parse_coeff_ui_year_form_range(n)
+    if applied and int(ui_ey) > int(n):
+        include_medium = True
+    end_year = n + 18 if include_long else (n + 6 if include_medium else n)
+    sy, ey = _clamp_coeff_data_years(n - 9, end_year)
+    return n, sy, ey, include_medium, include_long
 
 
 def _parse_coeff_ui_year_form_range(coeff_n: int) -> tuple[int, int, bool]:
     """
     Диапазон для формы «Год начала/конца» на страницах «Коэффициенты…».
 
-    Данные таблицы по-прежнему N−9…N+18 (со срезом долгосрочного сегмента).
+    Колонки таблицы — отдельно: сначала N−9…N, среднесрок/долгосрок подгружаются лениво.
     Если в URL есть start_year/end_year — считаем диапазон применённым (ручной режим отображения).
     Без параметров в URL — по умолчанию отчётное окно N−9…N (как на «Максимумы…»).
     """
@@ -636,12 +698,15 @@ def _coeff_period_header_groups(n: int) -> list[dict[str, str | int]]:
     ]
 
 
-def _coeff_period_header_groups_html(*, include_long: bool) -> list[dict[str, str | int]]:
-    """Шапка «Коэффициенты…»: без догрузки долгосрочного сегмента третья группа не выводится."""
+def _coeff_period_header_groups_html(
+    *, include_medium: bool = True, include_long: bool = False
+) -> list[dict[str, str | int]]:
+    """Шапка «Коэффициенты…»: группы только для фактически загруженных периодов."""
     groups: list[dict[str, str | int]] = [
         {"label": "Отчетный период", "colspan": 20, "key": "reporting"},
-        {"label": "Среднесрочный период", "colspan": 12, "key": "medium"},
     ]
+    if include_medium or include_long:
+        groups.append({"label": "Среднесрочный период", "colspan": 12, "key": "medium"})
     if include_long:
         groups.append({"label": "Долгосрочный период", "colspan": 24, "key": "long"})
     return groups

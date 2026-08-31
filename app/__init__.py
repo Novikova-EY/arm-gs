@@ -1,4 +1,4 @@
-﻿import importlib
+import importlib
 import os
 import json
 import datetime as dt
@@ -786,8 +786,11 @@ def create_app():
     from app.territories.routes import territories_bp
     from app.energy_balance.routes import energy_balance_bp
     from app.common.perimeter_variant.admin_routes import perimeter_variant_bp
+    from app.api import database_versions_api_bp, exchange_api_bp
 
     app.register_blueprint(start_bp, url_prefix="/")
+    app.register_blueprint(database_versions_api_bp, url_prefix="/api")
+    app.register_blueprint(exchange_api_bp, url_prefix="/api")
     app.register_blueprint(perimeter_variant_bp)
     app.register_blueprint(users_bp, url_prefix="/users")
     app.register_blueprint(refdata_bp, url_prefix="/refdata")
@@ -925,6 +928,32 @@ def create_app():
             return f"<pre>{traceback.format_exc()}</pre>", 500
         else:
             return render_template("errors/500.html"), 500
+
+    # Прогрев JSON-сводок «Нагрузки» — только после user_loader (context builders
+    # читают current_user через flask-login).
+    import sys
+
+    skip_pd_summary_warmup = (
+        'db' in sys.argv
+        or 'migrate' in sys.argv
+        or 'alembic' in sys.argv
+        or os.getenv('SKIP_CACHE_WARMUP', 'false').lower() == 'true'
+    )
+    if not skip_pd_summary_warmup:
+        try:
+            import threading
+            from app.power_demand.services.pd_summary_warmup import (
+                warmup_pd_summary_page_cache,
+            )
+
+            def _warmup_pd_summary():
+                with app.app_context():
+                    warmup_pd_summary_page_cache()
+
+            threading.Thread(target=_warmup_pd_summary, daemon=True).start()
+            app.logger.info("[PD SUMMARY WARMUP] Запущен фоновый прогрев кэша сводок")
+        except Exception as e:
+            app.logger.warning("[PD SUMMARY WARMUP] Не удалось запустить прогрев: %s", e)
 
     return app
 

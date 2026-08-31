@@ -484,6 +484,7 @@ def extract_filters_from_args(args):
         "energy_system_type_filter": args.getlist("energy_system_type_filter", type=int),
         "union_energy_system_filter": args.getlist("union_energy_system_filter", type=int),
         "regional_energy_system_filter": args.getlist("regional_energy_system_filter", type=int),
+        "energy_unit_filter": args.getlist("energy_unit_filter", type=int),
         "federal_district_filter": args.getlist("federal_district_filter", type=int),
         "regional_district_filter": args.getlist("regional_district_filter", type=int),
         "gen_company_filter": args.get("gen_company_filter", "").strip(),

@@ -57,10 +57,19 @@
           {% endif %}
         </td>
         <td class="col-sc-machine-type" title="{{ _row_name or '—' }}">
-          {% if _row_name %}
-            <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
-              {{ _row_name }}
-            </a>
+          {# Имя до/после — разными строками; если название не менялось — только на «до модернизации» #}
+          {% if _split_tes_name and not _has_part_name %}
+            {% if _row_name %}
+              <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
+                {{ _row_name }}
+              </a>
+            {% endif %}
+          {% elif power_row.event == 'before_modernization' or power_row.event not in ['after_modernization', 'change_power'] %}
+            {% if _row_name %}
+              <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=machine.id, **request.args) }}">
+                {{ _row_name }}
+              </a>
+            {% endif %}
           {% endif %}
         </td>
       {% elif power_row == first_power %}
@@ -81,27 +90,12 @@
         <td rowspan="{{ machine.total_rows }}">{{ machine.tes_types or '—' }}</td>
       {% endif %}
 
-      {# Тип агрегата ТЭС: при «изменении» и смене названия до/после года — без merge #}
-      {% if _split_tes_name %}
-        <td>
-          {% if power_row.event == 'before_modernization' %}
-            <span style="white-space: pre-line;">{{ machine.display_name_before }}</span>
-          {% elif power_row.event == 'after_modernization' %}
-            <span style="white-space: pre-line;">{{ machine.display_name_after }}</span>
-          {% elif power_row.event == 'change_power' %}
-          {% elif machine.display_name %}
-            <span style="white-space: pre-line;">{{ machine.display_name }}</span>
-          {% elif machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
-            {{ machine.tes_machine_type.name }}
-          {% else %}
-            &mdash;
-          {% endif %}
-        </td>
-      {% elif power_row == first_power %}
+      {# Тип агрегата ТЭС — справочник ПСУ/ПГУ/ГТУ/…, не дублировать название из «Тип агрегата» #}
+      {% if power_row == first_power %}
         <td rowspan="{{ machine.total_rows }}">
-          {% if machine.display_name %}
-            <span style="white-space: pre-line;">{{ machine.display_name }}</span>
-          {% elif machine.tes_machine_type and machine.tes_machine_type.id != 0 %}
+          {% if machine.tes_machine_type and machine.tes_machine_type.id != 0
+              and machine.tes_machine_type.name
+              and machine.tes_machine_type.name|lower != 'не указано' %}
             {{ machine.tes_machine_type.name }}
           {% else %}
             &mdash;

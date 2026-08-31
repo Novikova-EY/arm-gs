@@ -72,6 +72,8 @@ def _row_included(
     show_empty_rows: bool,
     show_flow_rows: bool = True,
 ) -> bool:
+    if row.get("hide_zero_capacity"):
+        return False
     if row.get("kind") == KIND_CHILD and not include_type_breakdown:
         return False
     if not show_empty_rows and row.get("hide_when_empty"):
@@ -112,7 +114,8 @@ def _write_sheet(
     show_empty_rows: bool,
     show_flow_rows: bool = True,
 ) -> None:
-    num_cols = 1 + len(years)
+    note_col = 2 + len(years)
+    num_cols = note_col
     title = power_balance_excel_table_title(sheet)
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=max(num_cols, 1))
     title_cell = ws.cell(row=1, column=1, value=title)
@@ -137,6 +140,11 @@ def _write_sheet(
         cell.fill = HEADER_FILL
         cell.alignment = header_alignment
         cell.border = THIN
+    note_header = ws.cell(row=2, column=note_col, value="Примечание")
+    note_header.font = header_font
+    note_header.fill = HEADER_FILL
+    note_header.alignment = header_alignment
+    note_header.border = THIN
     ws.row_dimensions[2].height = 32 if any((year_features or {}).values()) else 20
 
     excel_row = 3
@@ -176,7 +184,21 @@ def _write_sheet(
             if fill is not None:
                 cell.fill = fill
             if is_numeric:
-                cell.number_format = _excel_number_format(rounding_digits)
+                row_digits = row.get("rounding_digits")
+                cell.number_format = _excel_number_format(
+                    rounding_digits if row_digits is None else row_digits
+                )
+        note_text = str(row.get("note") or "").strip() or None
+        note_cell = ws.cell(row=excel_row, column=note_col, value=note_text)
+        note_cell.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+        note_cell.font = Font(italic=italic, size=11)
+        note_cell.border = THIN
+        if fill is not None:
+            note_cell.fill = fill
+        if note_text and "\n" in note_text:
+            ws.row_dimensions[excel_row].height = min(
+                15 + 12 * (note_text.count("\n") + 1), 90
+            )
         if (
             show_flow_rows
             and is_power_balance_flow_block_row(row)
@@ -191,8 +213,9 @@ def _write_sheet(
     outline.summaryBelow = False
 
     ws.column_dimensions["A"].width = 72
-    for col_idx in range(2, num_cols + 1):
+    for col_idx in range(2, note_col):
         ws.column_dimensions[get_column_letter(col_idx)].width = 14
+    ws.column_dimensions[get_column_letter(note_col)].width = 28
     ws.freeze_panes = "B3"
     ws.page_setup.orientation = "landscape"
     ws.page_setup.fitToPage = True
@@ -230,6 +253,8 @@ def export_power_balance_to_excel(
     used_titles: set[str] = set()
     first = True
     for sheet in sheets:
+        if sheet.get("skip_table"):
+            continue
         slug = sheet.get("slug")
         payload = (tables or {}).get(slug) or {}
         rows = payload.get("rows") or []

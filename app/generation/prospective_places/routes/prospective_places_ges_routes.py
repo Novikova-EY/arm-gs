@@ -2,6 +2,7 @@
 """Маршруты для перспективных площадок ГЭС (дубликат логики АЭС)."""
 from . import prospective_places_bp
 from .prospective_places_routes import (
+    _annotate_places_with_linked_station_flag,
     _assign_prospective_place_station,
     _get_station_link_context,
     _navigation_redirect_to_station,
@@ -185,6 +186,7 @@ def _log_prospective_ges_page_view(action_title: str) -> None:
 def prospective_places_ges():
     """Характеристика актуальных площадок размещения новых ГЭС (список)."""
     stations, filters, filter_context = _load_prospective_places_ges_stations_and_filters()
+    _annotate_places_with_linked_station_flag(stations)
     ges_place_type_groups = build_ges_stations_grouped_by_place_type(stations)
     _log_prospective_ges_page_view("Открыта страница: перспективные площадки ГЭС (список)")
 
@@ -536,15 +538,37 @@ def prospective_place_ges_details(id):
                         _apply_ges_tep_form_to_row(tep_new, tform, place)
                         db.session.add(tep_new)
 
+                from app.generation.prospective_places.models.prospective_place_hydro_energy_forecast_model import (
+                    PLACE_KIND_GES,
+                )
+                from app.generation.prospective_places.services.hydro_energy_forecast_services import (
+                    save_hydro_forecast_from_form,
+                )
+
+                hydro_changes = save_hydro_forecast_from_form(
+                    current_user,
+                    place_kind=PLACE_KIND_GES,
+                    place_id=place.id,
+                    form_data=request.form,
+                    entity_type="prospective_place_ges",
+                    commit=False,
+                )
+
                 db.session.commit()
+                details = f"id={place.id}; site_name={place.site_name!r}"
+                if hydro_changes:
+                    details = f"{details}; прогноз выработки: {'; '.join(hydro_changes)}"
                 log_to_db(
                     current_user,
-                    "Изменена перспективная площадка ГЭС (карточка и перечень ТЭП)",
-                    details=f"id={place.id}; site_name={place.site_name!r}",
+                    "Изменена перспективная площадка ГЭС (карточка, перечень ТЭП и прогноз выработки)",
+                    details=details,
                     entity_type="prospective_place_ges",
                     entity_id=place.id,
                 )
-                flash("Перспективная площадка и перечень ТЭП успешно сохранены.", "success")
+                flash(
+                    "Перспективная площадка, перечень ТЭП и прогноз выработки успешно сохранены.",
+                    "success",
+                )
                 return redirect(url_for("prospective_places_bp.prospective_place_ges_details", id=place.id))
             except Exception as e:
                 db.session.rollback()
@@ -554,13 +578,22 @@ def prospective_place_ges_details(id):
 
     ctx = _ges_tep_derive_template_context()
     station_link_ctx = _get_station_link_context(place)
+    from app.generation.prospective_places.models.prospective_place_hydro_energy_forecast_model import (
+        PLACE_KIND_GES,
+    )
+    from app.generation.prospective_places.services.hydro_energy_forecast_services import (
+        build_hydro_forecast_view,
+    )
+
     return render_template(
         "generation/prospective_places/ges/prospective_place_ges_details.html",
         place=place,
         form=form,
         can_edit=can_edit,
+        can_edit_hydro_forecast=can_edit,
         res_auto_map=res_auto_map,
         tep_form_entries=tep_form_entries,
+        hydro_forecast=build_hydro_forecast_view(PLACE_KIND_GES, place.id),
         **station_link_ctx,
         **ctx,
     )

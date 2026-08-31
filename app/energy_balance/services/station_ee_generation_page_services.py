@@ -355,6 +355,27 @@ def _add_period_sum(target: dict[int, Decimal], period_key: int, value) -> None:
     target[period_key] = target.get(period_key, Decimal(0)) + Decimal(str(value))
 
 
+# Подсказки «i» для строк итогов, контроля и проверки на странице ee_generation.
+TOTAL_TOOLTIP_ENERGY_UNIT = "Сумма выработки по станциям энергоузла"
+TOTAL_TOOLTIP_REGIONAL_DISTRICT = "Сумма выработки по станциям района"
+CONTROL_TOOLTIP = (
+    "Контрольное значение из загруженного свода РЭС; при необходимости "
+    "можно заполнить или изменить вручную"
+)
+TOTAL_TOOLTIP_UES = (
+    "Сумма выработки по станциям ОЭС (до 2018 включительно — без станций ЭСПП, "
+    "плюс своды ЭСПП по РЭС)"
+)
+TOTAL_TOOLTIP_RUSSIA = (
+    "Сумма выработки по станциям (до 2018 включительно — без станций ЭСПП, "
+    "плюс своды ЭСПП по РЭС)"
+)
+VERIFICATION_TOOLTIP = (
+    "Сумма выработки по станциям (до 2018 включительно — без станций ЭСПП, "
+    "плюс свод ЭСПП по РЭС) минус контрольный итог"
+)
+
+
 def build_generation_aggregates(
     stations: list[Station],
     values_by_station: dict[int, dict[int, Decimal | None]],
@@ -367,6 +388,8 @@ def build_generation_aggregates(
 
     До ESPP_SVOD_THROUGH_YEAR включительно станции ЭСПП в сумму не входят —
     вместо них добавляется свод ЭСПП по РЭС (espp_by_res).
+    Контрольные значения сводов РЭС отображаются отдельной редактируемой
+    строкой «…, всего» по РЭС и в эти агрегаты не входят.
     """
     aggregates: dict[str, Any] = {
         "energy_units": defaultdict(dict),
@@ -401,7 +424,7 @@ def build_generation_aggregates(
 
     if espp_by_res and period_columns:
         for res_id, periods in espp_by_res.items():
-            est_id, ues_id = res_placement.get(res_id, (-1, -1))
+            _est_id, ues_id = res_placement.get(res_id, (-1, -1))
             for period_key, _label in period_columns:
                 if not _period_uses_espp_svod(
                     period_key, months_calendar_year=months_calendar_year
@@ -426,6 +449,38 @@ def build_generation_aggregates(
         "union_energy_systems": dict(aggregates["union_energy_systems"]),
         "total": aggregates["total"],
     }
+
+
+def build_res_verification_left_by_res(
+    stations_by_res: dict[int, dict[int, Decimal | None]],
+    period_columns: list[tuple[int, str]],
+    espp_by_res: dict[int, dict[int, Decimal | None]] | None = None,
+    *,
+    months_calendar_year: int | None = None,
+) -> dict[int, dict[int, Decimal | None]]:
+    """Левая часть проверки: сумма станций [+ свод ЭСПП до 2018]."""
+    espp_by_res = espp_by_res or {}
+    result: dict[int, dict[int, Decimal | None]] = {}
+    res_ids = set(stations_by_res) | set(espp_by_res)
+    for res_id in res_ids:
+        period_values: dict[int, Decimal | None] = {}
+        for period_key, _label in period_columns:
+            stations_sum = (stations_by_res.get(res_id) or {}).get(period_key)
+            use_svod = _period_uses_espp_svod(
+                period_key, months_calendar_year=months_calendar_year
+            )
+            espp_svod = (
+                (espp_by_res.get(res_id) or {}).get(period_key) if use_svod else None
+            )
+            if stations_sum is None and espp_svod is None:
+                period_values[period_key] = None
+                continue
+            left = Decimal(str(stations_sum or 0))
+            if use_svod:
+                left += Decimal(str(espp_svod or 0))
+            period_values[period_key] = left
+        result[res_id] = period_values
+    return result
 
 
 def build_stations_sum_by_res(
@@ -924,6 +979,110 @@ def format_generation_cell(value, rounding_digits: int, *, show_zero: bool = Fal
     return format_decimal_for_display(value, digits=rounding_digits)
 
 
+def format_generation_input_value(value, rounding_digits: int) -> str:
+    """Значение для input: пустая строка вместо «—»."""
+    if value is None:
+        return ""
+    return format_decimal_for_display(value, digits=rounding_digits)
+
+
+def resolve_control_period(
+    period_key: int,
+    *,
+    period_mode: str,
+    selected_year: int | None = None,
+) -> tuple[int, int]:
+    """Возвращает (year_number, month_number) для сохранения контроля."""
+    period_key = int(period_key)
+    if period_mode == EE_PERIOD_MODE_MONTHS:
+        if selected_year is None:
+            raise ValueError("Не указан год для помесячного режима")
+        if period_key < 1 or period_key > 12:
+            raise ValueError("Неверный номер месяца")
+        return int(selected_year), period_key
+    return period_key, RES_ENERGY_GENERATION_PERIOD_YEAR
+
+
+def update_res_control_generation_value(
+    res_id: int,
+    period_key: int,
+    raw_value,
+    *,
+    period_mode: str = EE_PERIOD_MODE_YEARS,
+    selected_year: int | None = None,
+) -> dict[str, Any]:
+    """Upsert контрольной выработки РЭС; пустое значение удаляет запись."""
+    from decimal import InvalidOperation
+
+    from app.common.services.database_version_filter import (
+        filter_by_db_version,
+        set_db_version_on_create,
+    )
+    from app.common.services.help_services import parse_decimal_from_display
+    from app.common.services.tranzaction_services import _commit_with_retry
+    from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache
+    from app.extensions import db
+
+    try:
+        res_id_int = int(res_id)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Неверный идентификатор РЭС") from exc
+
+    year_number, month_number = resolve_control_period(
+        period_key,
+        period_mode=period_mode,
+        selected_year=selected_year,
+    )
+    try:
+        parsed = parse_decimal_from_display(raw_value)
+    except InvalidOperation as exc:
+        raise ValueError("Неверное число") from exc
+
+    q = RegionalEnergySystemEnergyGeneration.query.filter(
+        RegionalEnergySystemEnergyGeneration.id_regional_energy_system == res_id_int,
+        RegionalEnergySystemEnergyGeneration.year_number == year_number,
+        RegionalEnergySystemEnergyGeneration.month_number == month_number,
+    )
+    q = filter_by_db_version(q, RegionalEnergySystemEnergyGeneration)
+    existing = q.one_or_none()
+
+    if parsed is None:
+        if existing is not None:
+            db.session.delete(existing)
+            _commit_with_retry()
+            clear_energy_balance_cache()
+        return {
+            "res_id": res_id_int,
+            "period_key": int(period_key),
+            "year_number": year_number,
+            "month_number": month_number,
+            "value": None,
+        }
+
+    if existing is None:
+        existing = RegionalEnergySystemEnergyGeneration(
+            id_regional_energy_system=res_id_int,
+            year_number=year_number,
+            month_number=month_number,
+            electricity_generation=parsed,
+        )
+        set_db_version_on_create(existing)
+        db.session.add(existing)
+    else:
+        existing.electricity_generation = parsed
+        db.session.add(existing)
+
+    _commit_with_retry()
+    clear_energy_balance_cache()
+    return {
+        "res_id": res_id_int,
+        "period_key": int(period_key),
+        "year_number": year_number,
+        "month_number": month_number,
+        "value": parsed,
+    }
+
+
 def get_station_ee_generation_page_data(
     filters: dict,
     page: int,
@@ -1059,6 +1218,7 @@ def get_station_ee_generation_page_data(
     }
     generation_aggregates: dict[str, dict] = {}
     res_verification_by_res: dict[int, dict[int, Decimal | None]] = {}
+    res_stations_left_by_res: dict[int, dict[int, Decimal | None]] = {}
 
     if show_totals or show_all:
         per_page_for_totals = None if show_all else per_page_int
@@ -1135,6 +1295,12 @@ def get_station_ee_generation_page_data(
                 agg_values_by_station,
                 months_calendar_year=months_calendar_year,
             )
+            res_stations_left_by_res = build_res_verification_left_by_res(
+                stations_sum_by_res,
+                period_columns,
+                agg_espp_by_res,
+                months_calendar_year=months_calendar_year,
+            )
             res_verification_by_res = build_res_verification_by_res(
                 agg_res_control,
                 stations_sum_by_res,
@@ -1162,5 +1328,6 @@ def get_station_ee_generation_page_data(
         "generation_aggregates": generation_aggregates,
         "res_show_rd_level_map": build_res_show_rd_level_map(list_filters),
         "res_control_by_res": res_control_by_res,
+        "res_stations_left_by_res": res_stations_left_by_res,
         "res_verification_by_res": res_verification_by_res,
     }

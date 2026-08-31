@@ -72,12 +72,12 @@ class EquipmentGroupFuelParam(db.Model):
     # Признак фиксации ЧЧИУМ (Access HFIX): 1 — не пересчитывать H формулой распределения
     hfix = db.Column(db.Integer, nullable=True)
 
-    # Электроэнергия в тыс.кВтч:
-    # Выработка ЭЭ, тыс.кВтч
+    # Электроэнергия:
+    # Выработка ЭЭ, млн кВтч
     e = db.Column(db.Numeric(36, 16), nullable=True)
     # Теплофикационная выработка ЭЭ, тыс.кВтч
     ewtp = db.Column(db.Numeric(36, 16), nullable=True)
-    # Отпуск ЭЭ, тыс.кВтч
+    # Отпуск ЭЭ, млн кВтч
     eotp = db.Column(db.Numeric(36, 16), nullable=True)
     # УРУТ на отпуск ЭЭ, г у.т./кВтч
     eurt = db.Column(db.Numeric(36, 16), nullable=True)
@@ -315,10 +315,12 @@ class EquipmentGroupFuelParam(db.Model):
     H_COLUMN_LABEL = "ЧЧИУМ, ч"
     # Подпись hfix для шапок (код Access HFIX — через fuel_header_access_codes).
     HFIX_COLUMN_LABEL = "Признак фиксации ЧЧИУМ"
+    # Подпись e для шапок (неразрывный пробел между «Выработка» и «ЭЭ»).
+    E_COLUMN_LABEL = "Выработка ЭЭ, млн кВтч"
     # Подпись eust для шапок («топлива на ЭЭ» непереносимо).
     EUST_COLUMN_LABEL = "Расход топлива на ЭЭ, тут/⁠тыс.кВтч"
     # Подпись eotp для шапок (неразрывный пробел между «Отпуск» и «ЭЭ»).
-    EOTP_COLUMN_LABEL = "Отпуск ЭЭ, тыс.кВтч"
+    EOTP_COLUMN_LABEL = "Отпуск ЭЭ, млн кВтч"
     # Подпись eurt для шапок (неразрывный пробел между «отпуск» и «ЭЭ»,
     # между «г» и «у.т.»).
     EURT_COLUMN_LABEL = "УРУТ на отпуск ЭЭ, г у.т./кВтч"

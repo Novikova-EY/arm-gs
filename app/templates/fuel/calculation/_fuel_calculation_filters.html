@@ -379,7 +379,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
                 id="e_eraspred"
                 value="{% if row.e is not none %}{{ row.e|format_decimal_trim(0)|replace(' ', '') }}{% endif %}"
                 autocomplete="off"
-                aria-label="Выработка ЭЭ, тыс.кВтч (e)"
+                aria-label="Выработка ЭЭ, млн кВтч (e)"
               />
               {% else %} {{ render_numeric_or_dash(row.e) }} {% endif %}
             </td>
@@ -607,6 +607,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
           <button
             type="submit"
             class="btn btn-outline-primary btn-lg fs-5 px-4 py-2 text-nowrap"
+            title="Как в Access: не пересчитывает «Коэфф». Сначала «Коэфф», затем правки EWTP, затем «Распред»."
             {%
             if
             not

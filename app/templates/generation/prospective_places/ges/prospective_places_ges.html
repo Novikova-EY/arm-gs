@@ -152,7 +152,7 @@
                         <tr>
                             {% if loop.first %}
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station_index }}</td>
-                            <td class="text-center align-middle" rowspan="{{ tep_count }}"><a href="{{ url_for('prospective_places_bp.prospective_place_ges_details', id=station.id) }}">{{ station.site_name or '—' }}</a></td>
+                            <td class="text-center align-middle" rowspan="{{ tep_count }}">{% set details_endpoint = 'prospective_places_bp.prospective_place_ges_details' %}{% include 'generation/prospective_places/_place_name_with_station_link.html' %}</td>
                             <td class="text-center align-middle" rowspan="{{ tep_count }}">{{ station.project_initiator or '—' }}</td>
                             <td class="text-center align-middle col-capacity" rowspan="{{ tep_count }}">{{ station.planned_capacity_mw or '—' }}</td>
                             {% endif %}
@@ -173,7 +173,7 @@
                     {% else %}
                         <tr>
                             <td class="text-center">{{ station_index }}</td>
-                            <td class="text-center"><a href="{{ url_for('prospective_places_bp.prospective_place_ges_details', id=station.id) }}">{{ station.site_name or '—' }}</a></td>
+                            <td class="text-center">{% set details_endpoint = 'prospective_places_bp.prospective_place_ges_details' %}{% include 'generation/prospective_places/_place_name_with_station_link.html' %}</td>
                             <td class="text-center align-middle">{{ station.project_initiator or '—' }}</td>
                             <td class="text-center align-middle col-capacity">{{ station.planned_capacity_mw or '—' }}</td>
                             <td class="text-center text-muted">—</td>

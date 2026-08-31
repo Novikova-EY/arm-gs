@@ -38,20 +38,6 @@ content %} {% if current_user.is_authenticated %}
   data-ee-reporting-end="{{ ee_reporting_end_year }}"
 >
   <div class="page-table-scroll">
-    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-      <a
-        href="{{ url_for('energy_balance_bp.hub') }}"
-        class="btn btn-secondary fs-5"
-        >Модуль «Балансы ЭЭ и ЭМ»</a
-      >
-
-      <a
-        href="{{ url_for('station_bp.station_list') }}"
-        class="btn btn-secondary fs-5"
-        >Электростанции РФ</a
-      >
-    </div>
-
     <div class="col-12 mb-2 text-center">
       <h2 class="mb-4">Перетоки электрической энергии</h2>
     </div>

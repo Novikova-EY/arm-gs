@@ -121,7 +121,7 @@
 
 <div class="container-fluid mt-4 equipment-group-edit-page">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
-        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Группы оборудования</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups', **request.args) }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Словарь станций и групп оборудования</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
 
@@ -1585,6 +1585,86 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sel && hid) sel.addEventListener('change', sync);
         fuelForm.addEventListener('submit', sync);
     }
+
+    // Автозаполнение «Название»: Станция (тип) при ровно одной привязанной станции.
+    // Поле остаётся редактируемым; после ручного ввода автообновление не затирает имя,
+    // пока снова не изменятся станция/тип и имя всё ещё совпадает с последним авто.
+    (function setupAutoEquipmentGroupName() {
+        const nameInput = headerForm
+            ? headerForm.querySelector('input[name="name"]')
+            : document.querySelector('#equipmentGroupHeaderForm input[name="name"]');
+        const typeSelect = headerForm
+            ? headerForm.querySelector('select[name="equipment_group_type_id"]')
+            : null;
+        if (!nameInput || !typeSelect) return;
+
+        let lastAutoName = '';
+        let nameDirty = false;
+
+        function currentStationName() {
+            const chips = bindingsEl.querySelectorAll('[data-station-id]');
+            if (chips.length !== 1) return null;
+            const link = chips[0].querySelector('a');
+            const text = ((link && link.textContent) || '').trim();
+            return text || null;
+        }
+
+        function currentTypeLabel() {
+            const opt = typeSelect.options[typeSelect.selectedIndex];
+            if (!opt || !opt.value) return null;
+            const label = (opt.textContent || '').trim();
+            return label && label !== '—' ? label : null;
+        }
+
+        function composeAutoName() {
+            const stationName = currentStationName();
+            const typeLabel = currentTypeLabel();
+            if (!stationName || !typeLabel) return null;
+            return stationName + ' (' + typeLabel + ')';
+        }
+
+        function maybeAutofillName() {
+            const auto = composeAutoName();
+            if (!auto) {
+                lastAutoName = '';
+                return;
+            }
+            const cur = (nameInput.value || '').trim();
+            if (!nameDirty || !cur || cur === lastAutoName) {
+                nameInput.value = auto;
+                lastAutoName = auto;
+                nameDirty = false;
+            }
+        }
+
+        nameInput.addEventListener('input', function() {
+            const cur = (nameInput.value || '').trim();
+            nameDirty = cur !== lastAutoName;
+        });
+
+        const origAddChip = addChip;
+        addChip = function(stationId, stationName) {
+            origAddChip(stationId, stationName);
+            maybeAutofillName();
+        };
+        const origRemoveChip = removeChip;
+        removeChip = function(chip) {
+            origRemoveChip(chip);
+            maybeAutofillName();
+        };
+        typeSelect.addEventListener('change', maybeAutofillName);
+
+        const initial = (nameInput.value || '').trim();
+        const autoNow = composeAutoName();
+        if (autoNow && (!initial || initial === autoNow)) {
+            lastAutoName = autoNow;
+            if (!initial) nameInput.value = autoNow;
+            nameDirty = false;
+        } else if (autoNow) {
+            lastAutoName = autoNow;
+            nameDirty = initial !== autoNow;
+        }
+    })();
 })();
 </script>
 {% endif %}

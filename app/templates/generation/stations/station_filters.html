@@ -78,13 +78,13 @@
 
 
 
-<!-- Блок фильтров -->
-{% include 'generation/stations/station_filters_first_row.html' %}
-
 {% if not external_code_check_mode %}
 <!-- Блок импорта/экспорта -->
 {% include 'generation/stations/station_filters_second_row.html' %}
 {% endif %}
+
+<!-- Блок фильтров -->
+{% include 'generation/stations/station_filters_first_row.html' %}
 
 <!-- Третья строка фильтров -->
 {% include 'generation/stations/station_filters_third_row.html' %}

@@ -155,6 +155,7 @@ class DistributionParameterCalculationService:
             commit_each=commit_each,
             final_commit=final_commit,
             stop_on_error=stop_on_error,
+            base_year_number=int(row.base_year.number) if row.base_year is not None else None,
         )
 
         ues = row.union_energy_system

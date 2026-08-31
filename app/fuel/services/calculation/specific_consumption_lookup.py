@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Отбор удельных как Access U.Seek: последняя запись year ≤ расчётный.
+"""Отбор удельных как Access U.Seek (Коэфф / Распред / Топливо — одна логика).
 
-Пустой год (все NULL/0) пропускаем — это ARM-строка, которой в Access нет.
-NULL в выбранной строке добираем из более ранних лет (Access без этой строки
-взял бы 2025/2024 как есть: 3121 snk=13% не теряется из‑за пустого 2026).
-Явный 0 не подменяем (Access z(0)=0).
+U.Index = numb2; Seek \">=\", numb1120, v, byear; последняя year ≤ cyear.
+Годы раньше byear не входят. Пустая строка в окне — Match (как в таблице Access).
+Нет строк в окне → None (Skip). Чужой Bookmark соседней станции не берём.
 """
 from __future__ import annotations
 
@@ -52,18 +51,10 @@ def specific_consumption_has_payload(row) -> bool:
 
 
 def pick_specific_consumption_access_seek(rows, *, byear: int | None, cyear: int):
-    """
-    Access Распред/Коэфф: U.Seek \">=\", numb1120, v, byear; затем последняя
-    строка того же numb с year ≤ cyear (Bookmark).
+    """Последняя строка этой станции с byear ≤ year ≤ cyear.
 
-    Годы раньше byear в окно не входят (в отличие от шага назад Топлива).
-    Пустая ARM-строка поверх года с данными (Липецк 268: пустой 2026, в Access
-    строки нет) — Skip как шаг назад по payload, иначе Seek берёт y=0 и
-    затирает EWTP. Явный 0 при bk≠0 (КЭС) остаётся строкой таблицы.
-
-    Если в [byear, cyear] есть только пустая строка — это всё равно Match
-    (УТЭЦ 1330: y=0, Bk Null → ветка Else koptim). None только когда строк
-    в окне нет совсем (тогда цикл подставляет Bookmark предыдущей станции).
+    Как VBA: не шаг назад «пока не найдём данные», не удельник соседней станции.
+    Пустой год в окне остаётся выбранным (Access Match).
     """
     window: list = []
     for row in rows:
@@ -79,9 +70,6 @@ def pick_specific_consumption_access_seek(rows, *, byear: int | None, cyear: int
     if not window:
         return None
     window.sort(key=lambda r: int(r.year_number))
-    with_payload = [row for row in window if specific_consumption_has_payload(row)]
-    if with_payload:
-        return with_payload[-1]
     return window[-1]
 
 
@@ -205,10 +193,7 @@ def query_specific_consumption_access_seek(
     cyear: int,
     database_version_id: int | None = None,
 ) -> EquipmentGroupSpecificFuelConsumption | None:
-    """Коэфф/Распред: U.Seek от byear, последняя строка year ≤ cyear.
-
-    Пустой ARM-год поверх payload skip; только пустая строка в окне — Match.
-    """
+    """Коэфф / Распред / Топливо: U.Seek от byear, последняя year ≤ cyear этой станции."""
 
     def _rows(vid: int | None):
         q = session.query(EquipmentGroupSpecificFuelConsumption).filter(
@@ -264,16 +249,13 @@ def query_specific_consumption_for_fuel(
     equipment_group_id: int,
     target_year: int,
     database_version_id: int | None = None,
+    byear: int | None = None,
 ) -> EquipmentGroupSpecificFuelConsumption | None:
-    """Топливо: шаг назад по пустым годам; нет payload — берём пустую строку.
-
-    NULL-поля добираем из более ранних лет. None только если записей
-    year ≤ target нет (Access U.NoMatch → skip2).
-    """
-    return _query_specific_consumption_with_picker(
+    """Топливо: тот же Seek, что Коэфф/Распред. byear с параметра распределения."""
+    return query_specific_consumption_access_seek(
         session,
-        pick_specific_consumption_for_fuel,
         equipment_group_id=equipment_group_id,
-        target_year=target_year,
+        byear=byear,
+        cyear=int(target_year),
         database_version_id=database_version_id,
     )

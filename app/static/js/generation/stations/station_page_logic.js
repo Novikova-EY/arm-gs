@@ -368,7 +368,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         }
 
-        // Обработчик фильтра «Станции с УМ > 100 МВт»
+        // Обработчик фильтра «Станции > 100 МВт»
         if (umGt100Checkbox) {
             umGt100Checkbox.addEventListener("change", () => {
                 const params = new URLSearchParams(window.location.search);

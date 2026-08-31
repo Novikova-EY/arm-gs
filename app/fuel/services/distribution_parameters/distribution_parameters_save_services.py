@@ -7,7 +7,10 @@ import re
 from typing import Any
 
 from app.common.services.database_version_filter import get_current_db_version_id
-from app.common.services.help_services import values_equal_by_display_precision
+from app.common.services.help_services import (
+    coalesce_posted_numeric_with_stored,
+    values_equal_by_display_precision,
+)
 from app.extensions import db
 from app.fuel.models.fue_distribution_parameter_model import DistributionParameter
 from app.fuel.services.distribution_parameters.import_distribution_parameters_services import _parse_decimal, _parse_int
@@ -484,6 +487,12 @@ def apply_distribution_parameters_save_from_form(
         data["lim"] = parsed["lim_v"]
         # filter_text / wname и пр. с формы сейчас не редактируются — сохраняем с якоря
         if existing is not None:
+            for attr in _NUMERIC_ATTRS:
+                data[attr] = coalesce_posted_numeric_with_stored(
+                    getattr(existing, attr, None),
+                    data[attr],
+                    display_rd,
+                )
             for attr in DP_SYNC_DATA_ATTRS:
                 if attr in data:
                     continue

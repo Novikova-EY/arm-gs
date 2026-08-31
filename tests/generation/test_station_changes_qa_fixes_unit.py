@@ -215,6 +215,7 @@ def test_station_changes_rows_template_modernization_no_merge_number():
     assert "_split_tes_name" in text
     assert "display_name_before" in text
     assert "display_name_after" in text
+    assert "если название не менялось" in text
 
 
 # --- L: Taimyr dative ---

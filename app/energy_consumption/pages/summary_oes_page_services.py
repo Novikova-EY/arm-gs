@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from app.energy_consumption.pages._summary_page_common import attach_ec_summary_logs
 from app.energy_consumption.pages._summary_page_transforms import (
     apply_max_summary_page_variant_behaviour,
     finalize_oes_max_summary_tites_formula,
@@ -44,6 +43,7 @@ def build_summary_oes_page_context(
     coeff_base_year: int,
     include_medium_years: bool,
     can_edit_summary_cells: bool,
+    for_shell: bool = False,
 ) -> dict:
     ues_l, res_l, rd_l, eu_l = oes_territory_ordered
     context = build_oes_summary_context(
@@ -64,7 +64,19 @@ def build_summary_oes_page_context(
         summary_table_top_order=True,
         ees_unified_use_ees_russia_gaes_variants=True,
         russia_federation_first=True,
+        for_client_render_shell=for_shell,
     )
+    if for_shell:
+        context["page_title"] = "Потребление ЭЭ по энергосистемам"
+        context["summary_variant_toggle_default_off"] = True
+        context.update(get_demand_summary_filter_refdata())
+        context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
+        context["can_edit_summary_cells"] = can_edit_summary_cells
+        context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
+        context["summary_route_variant"] = "max"
+        context["coeff_base_year"] = coeff_base_year
+        context["summary_include_medium_years"] = include_medium_years
+        return context
     # Значения ЦЗ/ЕЭС в режиме «Сводная таблица» — как на /summary_table/.
     context["skip_oes_ees_unified_consumption_formula"] = True
     context = apply_max_summary_page_variant_behaviour(context)
@@ -119,8 +131,6 @@ def build_summary_oes_page_context(
     tag_energy_consumption_summary_rows_before_oes_blocks(context["summary_rows"])
     tag_summary_table_energy_zone_footer_rows(context["summary_rows"])
     context["summary_variant_toggle_default_off"] = True
-    context.update(get_demand_summary_filter_refdata())
-    context["pd_oes_filters_cascade"] = get_energy_consumption_oes_filter_cascade_data()
     context["can_edit_summary_cells"] = can_edit_summary_cells
     context["has_active_summary_filters"] = bool(ues_l or res_l or rd_l or eu_l)
     context["summary_route_variant"] = "max"
@@ -129,5 +139,4 @@ def build_summary_oes_page_context(
     context["summary_rows"] = filter_oes_max_summary_page_hidden_rows(
         list(context.get("summary_rows") or [])
     )
-    attach_ec_summary_logs(context)
     return context

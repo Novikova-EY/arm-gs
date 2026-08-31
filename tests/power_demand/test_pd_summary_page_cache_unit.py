@@ -121,6 +121,71 @@ def test_query_string_combinations_produce_distinct_keys(app):
             assert len(scope_keys) == len(scopes)
 
 
+def test_strip_pagination_makes_shared_build_key(app):
+    with app.app_context():
+        with patch.object(cache, "get_current_db_version_id", return_value=7):
+            q1 = "pd_data_segments=core&pd_page=1&pd_page_size=2"
+            q2 = "pd_data_segments=core&pd_page=2&pd_page_size=2"
+            q3 = "pd_data_segments=core&pd_page_size=0"
+            assert cache.strip_pd_pagination_from_query_string(q1) == (
+                cache.strip_pd_pagination_from_query_string(q2)
+            )
+            assert cache.make_pd_summary_build_cache_key("oes", q1) == (
+                cache.make_pd_summary_build_cache_key("oes", q2)
+            )
+            assert cache.make_pd_summary_build_cache_key("oes", q1) == (
+                cache.make_pd_summary_build_cache_key("oes", q3)
+            )
+            # Page-level keys remain distinct.
+            assert cache.make_pd_summary_data_cache_key("oes", q1) != (
+                cache.make_pd_summary_data_cache_key("oes", q2)
+            )
+
+
+def test_full_build_cache_shared_across_pages(app):
+    with app.app_context():
+        cache._memory_cache = {}
+        cache._cache_generation = 0
+        calls = {"n": 0}
+
+        def build_loader():
+            calls["n"] += 1
+            return {"context": {"summary_rows": [{"id": calls["n"]}]}, "boundary_rows": None}
+
+        with patch.object(cache, "get_redis_client", return_value=None):
+            with patch.object(cache, "get_current_db_version_id", return_value=3):
+                with app.test_request_context(
+                    "/power_demand/summary/oes/data.json?pd_data_segments=core&pd_page=1&pd_page_size=2"
+                ):
+                    b1 = cache.cached_load_pd_summary_full_build("oes", build_loader)
+                with app.test_request_context(
+                    "/power_demand/summary/oes/data.json?pd_data_segments=core&pd_page=2&pd_page_size=2"
+                ):
+                    b2 = cache.cached_load_pd_summary_full_build("oes", build_loader)
+                assert calls["n"] == 1
+                assert b1 is b2
+                assert b1["context"]["summary_rows"][0]["id"] == 1
+
+
+def test_oes_national_prefix_sources_cache_roundtrip(app):
+    with app.app_context():
+        cache._memory_cache = {}
+        cache._cache_generation = 0
+        rows = [{"demand_model_name": "UnionEnergySystemDemandParameter", "v": 1}]
+        with patch.object(cache, "get_redis_client", return_value=None):
+            with patch.object(cache, "get_current_db_version_id", return_value=9):
+                assert (
+                    cache.get_cached_oes_national_prefix_sources([2024, 2025], 1) is None
+                )
+                cache.set_cached_oes_national_prefix_sources([2024, 2025], 1, rows)
+                got = cache.get_cached_oes_national_prefix_sources([2024, 2025], 1)
+                assert got == rows
+                assert got is not rows
+                got[0]["v"] = 99
+                again = cache.get_cached_oes_national_prefix_sources([2024, 2025], 1)
+                assert again[0]["v"] == 1
+
+
 def test_invalidate_power_demand_display_caches_bumps_and_clears_memory(app):
     with app.app_context():
         cache._memory_cache = {}

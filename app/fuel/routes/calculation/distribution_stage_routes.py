@@ -17,7 +17,6 @@ from app.fuel.services.equipment_groups.composite_calc_consistency_check_service
     find_composite_energy_level_issues,
     flash_text_for_composite_energy_level_issues,
 )
-from app.fuel.routes.coefficient_stage_routes import _store_coeff_last_run_in_session
 from app.fuel.routes.equipment_group_fuel_batch_ui_routes import _csrf_ok
 from app.fuel.routes.fuel_calculation_common import (
     FUEL_DISTRIBUTION_LAST_RUN_SESSION_KEY,
@@ -139,11 +138,6 @@ def run_distribution_stage():
             apply_restrictions=apply_restrictions,
             commit=True,
         )
-        if run.coeff_run is not None:
-            # «Распред» всегда пересчитывает «Коэфф» — показываем тот же блок результата.
-            _store_coeff_last_run_in_session(
-                row, run.coeff_run, trigger="run_distribution"
-            )
         session[FUEL_DISTRIBUTION_LAST_RUN_SESSION_KEY] = {
             "distribution_parameter_id": run.distribution_parameter_id,
             "distribution_name": run.distribution_name or "",

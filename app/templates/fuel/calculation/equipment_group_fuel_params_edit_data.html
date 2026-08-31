@@ -169,7 +169,7 @@
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 py-1">
         <a href="{{ calculation_back_url }}" class="btn btn-outline-secondary fs-5"><i class="bi bi-arrow-left-circle me-1"></i>Назад к расчёту</a>
         <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5"><i class="bi bi-gear-wide-connected"></i> Модуль "Топливо"</a>
-        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Группы оборудования</a>
+        <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Словарь станций и групп оборудования</a>
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
     </div><!-- /.fuel-calc-edit-sticky-nav -->
@@ -303,7 +303,7 @@
     ('numb1120', 'Код группы оборудования', false),
     ('nust', 'Суммарная установленная мощность, МВт', true), ('nr', 'Суммарная располагаемая мощность, МВт', true),
     ('h', 'ЧЧИУМ, ч', true), ('hfix', 'Признак фиксации ЧЧИУМ', false), ('ved', 'Тип ТЭС', false),
-    ('e', 'Выработка ЭЭ, тыс.кВтч', true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true), ('eotp', 'Отпуск ЭЭ, тыс.кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true), ('sn_ee', 'СН на производство электроэнергии, тыс. кВт·ч', true), ('snk', 'СН на выработку ЭЭ, %', true),
+    ('e', 'Выработка ЭЭ, млн кВтч', true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true), ('eotp', 'Отпуск ЭЭ, млн кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true), ('sn_ee', 'СН на производство электроэнергии, тыс. кВт·ч', true), ('snk', 'СН на выработку ЭЭ, %', true),
     ('nt', 'Тепловая мощность отборов, Гкал/ч', true), ('nt_sum', 'Сумма тепловых мощностей, Гкал/ч', true), ('q', 'Отпуск ТЭ, тыс.Гкал', true), ('qotr', 'Тепловое потребление (отборов турбин), тыс.Гкал', true), ('turt', 'УРУТ на отпуск ТЭ, кг у.т./⁠Гкал', true), ('tust', 'Расход усл. топлива на ТЭ, тыс. т у.т.', true), ('sn_te', 'СН на отпуск тепловой энергии, тыс. кВт·ч', true), ('sn_t', 'СН на отпуск тепла, кВт·ч/Гкал', true),
     ('b', 'Всего', true),
     ('gaz', 'Газ', true), ('isk_gaz', 'Иск. газ', true), ('mazut', 'Мазут', true), ('torf', 'Торф', true), ('slan', 'Сланцы', true),
@@ -604,12 +604,17 @@
                         <tr class="text-center align-middle">
                             {% set hdr = consumption_column_labels|default({}) %}
                             {% set cf = consumption_formulas|default({}) %}
+                            {% set spec_detail_cols = [
+                                ('y', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал'),
+                                ('btp', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч'),
+                                ('sntp', 'Коэффициент отпуска ЭЭ в теплофикационном режиме'),
+                                ('bk', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч'),
+                                ('snk', 'СН на выработку ЭЭ, %'),
+                            ] %}
                             <th class="text-center" title="Год (year)"><div class="fuel-calc-bottom-th-inner">Год<br><span class="text-muted small">(year)</span></div></th>
-                            <th class="text-center" title="{{ (hdr.get('y_calc', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал') ~ ' (' ~ ('y_calc'|fuel_header_code) ~ ')')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('y_calc', 'Удельная выработка ЭЭ на тепловом потреблении, кВтч/⁠Гкал') }}{% if cf.get('y_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('y_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ 'y_calc'|fuel_header_code }})</span></div></th>
-                            <th class="text-center" title="{{ (hdr.get('btp_calc', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч') ~ ' (' ~ ('btp_calc'|fuel_header_code) ~ ')')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('btp_calc', 'УРУТ на отпуск ЭЭ в теплофикационном режиме, г у.т./кВтч') }}{% if cf.get('btp_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('btp_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ 'btp_calc'|fuel_header_code }})</span></div></th>
-                            <th class="text-center" title="{{ (hdr.get('sntp_calc', 'Коэффициент отпуска ЭЭ в теплофикационном режиме') ~ ' (' ~ ('sntp_calc'|fuel_header_code) ~ ')')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('sntp_calc', 'Коэффициент отпуска ЭЭ в теплофикационном режиме') }}{% if cf.get('sntp_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('sntp_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ 'sntp_calc'|fuel_header_code }})</span></div></th>
-                            <th class="text-center" title="{{ (hdr.get('bk_calc', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч') ~ ' (' ~ ('bk_calc'|fuel_header_code) ~ ')')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('bk_calc', 'УРУТ на отпуск ЭЭ в конденсационном режиме, г у.т./кВтч') }}{% if cf.get('bk_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('bk_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ 'bk_calc'|fuel_header_code }})</span></div></th>
-                            <th class="text-center" title="{{ (hdr.get('snk_calc', 'СН на выработку ЭЭ, %') ~ ' (' ~ ('snk_calc'|fuel_header_code) ~ ')')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get('snk_calc', 'СН на выработку ЭЭ, %') }}{% if cf.get('snk_calc') %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get('snk_calc')|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ 'snk_calc'|fuel_header_code }})</span></div></th>
+                            {% for attr, fallback in spec_detail_cols %}
+                            <th class="text-center" title="{{ (hdr.get(attr, fallback) ~ ' (' ~ (attr|fuel_header_code) ~ ')')|e }}"><div class="fuel-calc-bottom-th-inner">{{ hdr.get(attr, fallback) }}{% if cf.get(attr) %} <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ cf.get(attr)|e }}" style="cursor: help; font-size: 0.9em;"></i>{% endif %}<br><span class="text-muted small">({{ attr|fuel_header_code }})</span></div></th>
+                            {% endfor %}
                         </tr>
                     </thead>
                     <tbody id="fuelDetailSpecificBody" class="text-center">
@@ -697,9 +702,9 @@ document.addEventListener('DOMContentLoaded', function () {
     var extraColumnSources = {};
     var detailFetchAbort = null;
     var detailFetchSeq = 0;
-    /** Число столбцов в «Удельные показатели» (нижняя панель): год + только расчётные *_calc */
+    /** Число столбцов в «Удельные показатели» (нижняя панель): год + вводимые y/btp/sntp/bk/snk */
     var FUEL_DETAIL_SPEC_COLSPAN = 6;
-    var FUEL_DETAIL_SPEC_CALC_ATTRS = ['y_calc', 'btp_calc', 'sntp_calc', 'bk_calc', 'snk_calc'];
+    var FUEL_DETAIL_SPEC_ATTRS = ['y', 'btp', 'sntp', 'bk', 'snk'];
 
     /** Обёртка шапки; полный текст — в title на <th> */
     function wrapBottomThInner(html) {
@@ -885,7 +890,7 @@ document.addEventListener('DOMContentLoaded', function () {
             tr.appendChild(td);
         }
         addCell(String(row.year), null);
-        FUEL_DETAIL_SPEC_CALC_ATTRS.forEach(function (attr) {
+        FUEL_DETAIL_SPEC_ATTRS.forEach(function (attr) {
             addCell(row[attr], attr);
         });
         specBody.appendChild(tr);
@@ -1091,7 +1096,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!gid) {
             return null;
         }
-        /* Удельные в нижней панели только просмотр (*_calc); ввод — в основной таблице страницы */
+        /* Удельные в нижней панели только просмотр (y/btp/sntp/bk/snk); ввод — на странице удельных */
         var specific = [];
         var formulas = [];
         formBody.querySelectorAll('tr').forEach(function (tr) {

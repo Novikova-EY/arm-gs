@@ -10,13 +10,18 @@ import pytest
 
 from app.energy_balance.services import station_ee_generation_page_services as page_services
 from app.energy_balance.services.station_ee_generation_page_services import (
+    EE_PERIOD_MODE_MONTHS,
+    EE_PERIOD_MODE_YEARS,
+    RES_ENERGY_GENERATION_PERIOD_YEAR,
     _build_sign_groups_for_stations,
     _format_station_sign_display,
     _is_espp_station_sign,
     _resolve_station_sign,
     build_generation_aggregates,
     build_res_verification_by_res,
+    build_res_verification_left_by_res,
     build_stations_sum_by_res,
+    resolve_control_period,
 )
 from app.generation.models.station.station_constants import (
     STATION_SIGN_ESPP,
@@ -150,6 +155,30 @@ def test_build_res_verification_is_stations_sum_minus_control():
     )
 
     assert verification[5][2024] == Decimal("0")
+
+
+def test_build_res_verification_left_includes_espp_svod_through_2018():
+    period_columns = [(2018, "2018")]
+    stations_by_res = {5: {2018: Decimal("100")}}
+    espp_by_res = {5: {2018: Decimal("55")}}
+
+    left = build_res_verification_left_by_res(
+        stations_by_res,
+        period_columns,
+        espp_by_res,
+    )
+
+    assert left[5][2018] == Decimal("155")
+
+
+def test_resolve_control_period_years_and_months():
+    assert resolve_control_period(2024, period_mode=EE_PERIOD_MODE_YEARS) == (
+        2024,
+        RES_ENERGY_GENERATION_PERIOD_YEAR,
+    )
+    assert resolve_control_period(
+        3, period_mode=EE_PERIOD_MODE_MONTHS, selected_year=2019
+    ) == (2019, 3)
 
 
 def test_build_res_verification_through_2018_adds_espp_svod():

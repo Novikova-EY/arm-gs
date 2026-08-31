@@ -10,19 +10,9 @@
       <div class="col-12 mb-2">
         <div class="d-flex flex-wrap align-items-start gap-2 w-100">
           <div class="d-flex flex-column gap-2 flex-grow-1" style="min-width:0;">
-            {% set nav_variant = 'nav' %}
             {% set current_slug = sheet.slug %}
             {% include 'energy_balance/ee_balance/_sheet_nav.html' %}
           </div>
-          <a href="{{ station_list_url }}" class="btn btn-secondary fs-5 flex-shrink-0">
-            Электростанции РФ
-          </a>
-          <a href="{{ url_for('energy_balance_bp.ee_balance_hub') }}" class="btn btn-secondary fs-5 flex-shrink-0">
-            Расчет балансов электрической энергии
-          </a>
-          <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5 flex-shrink-0">
-            Модуль «Балансы ЭЭ и ЭМ»
-          </a>
         </div>
       </div>
 
@@ -43,6 +33,9 @@
                 {% endfor %}
               {% endif %}
             {% endfor %}
+            {% if show_hydro_year_nav and hydro_year and 'hydro_year' not in request.args %}
+            <input type="hidden" name="hydro_year" value="{{ hydro_year }}">
+            {% endif %}
             <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
             <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
               {% for year in filter_year_list %}
@@ -71,6 +64,9 @@
               <input type="hidden" name="end_year" value="{{ end_year }}">
               {% endif %}
               <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+              {% if hydro_year %}
+              <input type="hidden" name="hydro_year" value="{{ hydro_year }}">
+              {% endif %}
               <button type="button"
                       id="eeBalanceExcelExportBtn"
                       class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
@@ -118,6 +114,7 @@
         min-width: 100%;
         table-layout: auto;
         font-size: 1.15rem;
+        --pb-year-col-w: 5.5rem;
       }
       .page-table-scroll #eeBalanceTable thead th {
         position: sticky;
@@ -133,8 +130,12 @@
         width: 1%;
       }
       #eeBalanceTable col.pb-col-year {
-        width: auto;
-        min-width: 5.5rem;
+        width: var(--pb-year-col-w);
+        min-width: var(--pb-year-col-w);
+      }
+      #eeBalanceTable col.pb-col-note {
+        width: calc(var(--pb-year-col-w) * 1.5);
+        min-width: calc(var(--pb-year-col-w) * 1.5);
       }
       #eeBalanceTable th.pb-label-col,
       #eeBalanceTable td.pb-row-label {
@@ -180,33 +181,68 @@
         z-index: 3;
         background-color: var(--bs-body-bg, #fff);
       }
+      #eeBalanceTable textarea.pb-row-note {
+        min-height: 2rem;
+        width: 100%;
+        resize: vertical;
+        font-size: 0.9rem;
+        line-height: 1.25;
+      }
+      #eeBalanceTable th.pb-note-col,
+      #eeBalanceTable td.pb-note-cell {
+        width: calc(var(--pb-year-col-w) * 1.5);
+        min-width: calc(var(--pb-year-col-w) * 1.5);
+        max-width: calc(var(--pb-year-col-w) * 1.5);
+        position: sticky;
+        right: 0;
+        --bs-table-bg-state: transparent;
+        background-clip: padding-box;
+        box-shadow: -4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #eeBalanceTable thead th.pb-note-col {
+        z-index: 52;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+          -4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #eeBalanceTable tbody td.pb-note-cell {
+        z-index: 4;
+        background-color: var(--bs-body-bg, #fff);
+      }
       #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-row-label,
-      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-unit-cell {
+      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-unit-cell,
+      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-note-cell {
         background-color: var(--bs-table-striped-bg, #f8f9fa);
       }
       #eeBalanceTable.table-hover > tbody > tr:hover > td.pb-row-label,
-      #eeBalanceTable.table-hover > tbody > tr:hover > td.pb-unit-cell {
+      #eeBalanceTable.table-hover > tbody > tr:hover > td.pb-unit-cell,
+      #eeBalanceTable.table-hover > tbody > tr:hover > td.pb-note-cell {
         background-color: var(--bs-table-hover-bg, #ececec);
       }
       #eeBalanceTable tbody tr.table-info > td.pb-row-label,
-      #eeBalanceTable tbody tr.table-info > td.pb-unit-cell {
+      #eeBalanceTable tbody tr.table-info > td.pb-unit-cell,
+      #eeBalanceTable tbody tr.table-info > td.pb-note-cell {
         background-color: var(--bs-table-info-bg, #cff4fc);
       }
       #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-row-label,
-      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-unit-cell {
+      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-unit-cell,
+      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-note-cell {
         background-color: #b6effb;
       }
       #eeBalanceTable tbody tr.table-warning > td.pb-row-label,
-      #eeBalanceTable tbody tr.table-warning > td.pb-unit-cell {
+      #eeBalanceTable tbody tr.table-warning > td.pb-unit-cell,
+      #eeBalanceTable tbody tr.table-warning > td.pb-note-cell {
         background-color: var(--bs-table-warning-bg, #fff3cd);
       }
       #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-row-label,
-      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-unit-cell {
+      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-unit-cell,
+      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-note-cell {
         background-color: #ffe69c;
       }
       #eeBalanceTable th.pb-year-col,
       #eeBalanceTable td.pb-year-cell {
-        min-width: 5.5rem;
+        width: var(--pb-year-col-w);
+        min-width: var(--pb-year-col-w);
         white-space: normal;
       }
       #eeBalanceTable .power-demand-year-feature-caption {
@@ -273,6 +309,7 @@
       <table
         class="table table-hover table-striped table-bordered align-middle power-demand-summary-table"
         id="eeBalanceTable"
+        {% if hydro_year %}data-hydro-year="{{ hydro_year }}"{% endif %}
       >
         <colgroup>
           <col class="pb-col-label">
@@ -280,6 +317,7 @@
           {% for year in years %}
           <col class="pb-col-year">
           {% endfor %}
+          <col class="pb-col-note">
         </colgroup>
         <thead class="table-success">
           <tr class="text-center align-middle">
@@ -295,6 +333,7 @@
               </div>
             </th>
             {% endfor %}
+            <th class="text-center align-middle pb-note-col">Примечание</th>
           </tr>
         </thead>
         <tbody>
@@ -303,7 +342,9 @@
               data-row-key="{{ row.key }}"
               data-row-kind="{{ row.kind }}"
               data-indent="{{ row.indent or 0 }}"
+              {% if row.rounding_digits is defined and row.rounding_digits is not none %}data-rounding-digits="{{ row.rounding_digits }}"{% endif %}
               {% if row.editable_values %}data-editable="1"{% endif %}
+              {% if row.is_custom %}{% elif row.key == 'export' %}data-save-kind="export"{% elif row.value_save_kind %}data-save-kind="{{ row.value_save_kind }}"{% endif %}
               {% if row.is_custom %}data-custom-id="{{ row.custom_id }}" data-direction="{{ row.custom_direction }}" data-parent-key="{{ row.custom_parent_key or row.flow_section or '' }}"{% if row.custom_origin_slug %} data-origin-slug="{{ row.custom_origin_slug }}" data-origin-key="{{ row.custom_origin_key }}"{% endif %}{% endif %}
               {% if row.flow_section %}data-flow-section="{{ row.flow_section }}"{% endif %}
               data-formula='{{ row.formula_client|tojson }}'
@@ -372,10 +413,11 @@
               {{ row.unit if row.unit is defined else '' }}
             </td>
             {% for year in years %}
+            {% set year_editable = row.editable_values and (row.editable_years is not defined or not row.editable_years or year in row.editable_years) %}
             <td class="text-center pb-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
                 data-year="{{ year }}"
                 data-raw="{% if row.year_values_raw is defined and year in row.year_values_raw %}{{ row.year_values_raw[year] }}{% endif %}">
-              {% if row.editable_values %}
+              {% if year_editable %}
               <input type="text"
                      class="form-control form-control-sm pb-custom-value"
                      data-year="{{ year }}"
@@ -387,6 +429,7 @@
               {% endif %}
             </td>
             {% endfor %}
+            {% include 'energy_balance/_row_note_cell.html' %}
           </tr>
           {% endfor %}
         </tbody>
@@ -424,6 +467,8 @@
     const ITEM_URL_TMPL = {{ url_for('energy_balance_bp.ee_balance_custom_flow_item', slug=sheet.slug, row_id=0)|tojson }};
     const CURRENT_SLUG = {{ sheet.slug|tojson }};
     const EXPORT_VALUE_URL = {{ url_for('energy_balance_bp.ee_balance_export_value', slug=sheet.slug)|tojson }};
+    const NOTE_SAVE_URL = {{ url_for('energy_balance_bp.ee_balance_note', slug=sheet.slug)|tojson }};
+    const GENERATION_VALUE_URL = {{ url_for('energy_balance_bp.ee_balance_generation_value', slug=sheet.slug)|tojson }};
     const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
     const headers = {
       'Content-Type': 'application/json',
@@ -461,9 +506,9 @@
       return Number.isFinite(n) ? n : 0;
     }
 
-    function formatNumber(n) {
+    function formatNumber(n, digitsOverride) {
       if (n == null || !Number.isFinite(n)) return '';
-      let digits = DIGITS;
+      let digits = digitsOverride == null ? DIGITS : digitsOverride;
       let value = n;
       if (digits === -1) {
         value = Math.round(n);
@@ -497,12 +542,21 @@
       return out;
     }
 
+    function rowRoundingDigits(tr) {
+      const raw = tr && tr.dataset ? tr.dataset.roundingDigits : '';
+      if (raw === '' || raw == null) return DIGITS;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : DIGITS;
+    }
+
     function parseFormula(tr) {
       try {
         const raw = tr.getAttribute('data-formula');
         if (!raw || raw === 'null' || raw === 'None') return null;
         const formula = JSON.parse(raw);
-        if (!formula || !Array.isArray(formula.terms) || !formula.terms.length) return null;
+        if (!formula) return null;
+        if (formula.op === 'ratio' && formula.numerator && formula.denominator) return formula;
+        if (!Array.isArray(formula.terms) || !formula.terms.length) return null;
         return formula;
       } catch (err) {
         return null;
@@ -620,9 +674,12 @@
     function setFormulaCell(tr, year, rawValue) {
       const td = tr.querySelector('td.pb-year-cell[data-year="' + year + '"]');
       if (!td) return;
-      td.dataset.raw = String(rawValue);
+      const digits = rowRoundingDigits(tr);
+      let stored = rawValue;
+      if (digits === -1 && Number.isFinite(rawValue)) stored = Math.round(rawValue);
+      td.dataset.raw = String(stored);
       if (td.querySelector('input.pb-custom-value')) return;
-      td.textContent = formatNumber(rawValue);
+      td.textContent = formatNumber(stored, digits);
     }
 
     function setFormula(tr, formula) {
@@ -683,12 +740,26 @@
             progressed = true;
             return;
           }
-          const deps = formula.terms
-            .filter(function (term) { return term.row_key && !term.slug && !('const' in term); })
-            .map(function (term) { return term.row_key; });
+          const deps = formula.op === 'ratio'
+            ? [formula.numerator, formula.denominator].filter(Boolean)
+            : formula.terms
+              .filter(function (term) { return term.row_key && !term.slug && !('const' in term); })
+              .map(function (term) { return term.row_key; });
           if (deps.some(function (dep) { return remaining.has(dep); })) return;
           const ext = parseExt(tr);
           YEARS.forEach(function (year) {
+            if (formula.op === 'ratio') {
+              const den = getCellRaw(byKey[formula.denominator], year);
+              if (!den) {
+                setFormulaCell(tr, year, 0);
+                const td = tr.querySelector('td.pb-year-cell[data-year="' + year + '"]');
+                if (td && !td.querySelector('input.pb-custom-value')) td.textContent = '';
+                return;
+              }
+              const scale = formula.scale == null ? 1 : Number(formula.scale);
+              setFormulaCell(tr, year, getCellRaw(byKey[formula.numerator], year) * scale / den);
+              return;
+            }
             let total = parseRaw(ext[year] != null ? ext[year] : ext[String(year)]);
             formula.terms.forEach(function (term) {
               if (term.slug || ('const' in term)) return;
@@ -812,7 +883,21 @@
           '">';
         tr.appendChild(td);
       });
+      appendNoteCell(tr, italicClass, row.note);
       return tr;
+    }
+
+    function appendNoteCell(tr, italicClass, value) {
+      const td = document.createElement('td');
+      td.className = 'align-middle pb-note-cell' + (italicClass || '');
+      const ta = document.createElement('textarea');
+      ta.className = 'form-control form-control-sm pb-row-note';
+      ta.rows = 1;
+      ta.maxLength = 4000;
+      ta.setAttribute('aria-label', 'Примечание');
+      ta.value = value || '';
+      td.appendChild(ta);
+      tr.appendChild(td);
     }
 
     async function api(url, method, body) {
@@ -836,6 +921,24 @@
 
     const labelTimers = {};
     const valueTimers = {};
+    const noteTimers = {};
+    table.addEventListener('input', function (event) {
+      const ta = event.target.closest('textarea.pb-row-note');
+      if (!ta || !table.contains(ta)) return;
+      const tr = ta.closest('tr');
+      if (!tr) return;
+      const rowKey = tr.dataset.originKey || tr.dataset.rowKey;
+      if (!rowKey) return;
+      const timerKey = (tr.dataset.originSlug || CURRENT_SLUG) + '::' + rowKey;
+      clearTimeout(noteTimers[timerKey]);
+      noteTimers[timerKey] = setTimeout(function () {
+        const url = withSlug(NOTE_SAVE_URL, tr.dataset.originSlug);
+        api(url, 'PATCH', { row_key: rowKey, note: ta.value }).catch(function (err) {
+          console.error(err);
+          window.alert(err.message || 'Ошибка сохранения примечания');
+        });
+      }, 400);
+    });
 
     table.addEventListener('click', function (event) {
       const addBtn = event.target.closest('.pb-custom-add');
@@ -949,9 +1052,13 @@
             value: valueInput.value,
             rounding_digits: DIGITS
           };
+          const saveKind = tr && tr.dataset.saveKind;
+          if (saveKind === 'generation' && rowKey) payload.row_key = rowKey;
           const url = rowId
             ? itemUrl(rowId, tr && tr.dataset.originSlug)
-            : (rowKey === 'export' ? EXPORT_VALUE_URL : null);
+            : (saveKind === 'export' || rowKey === 'export'
+                ? EXPORT_VALUE_URL
+                : (saveKind === 'generation' ? GENERATION_VALUE_URL : null));
           if (!url) return;
           api(url, 'PATCH', payload).catch(function (err) {
             console.error(err);

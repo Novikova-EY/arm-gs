@@ -500,6 +500,10 @@ class SummaryEntity:
 
 
 def _synchronous_area_display_label(sa: SynchronousArea) -> str:
+    """Подпись СЗ на сводке: полное наименование, иначе краткое."""
+    full = (getattr(sa, "name_full", None) or "").strip()
+    if full:
+        return full
     return (getattr(sa, "name", None) or "").strip()
 
 
@@ -582,7 +586,9 @@ def _resolve_kaliningrad_synchronous_area_id() -> int | None:
     for sa in query.all():
         if not _is_valid_named_item(sa):
             continue
-        if _is_kaliningrad_synchronous_area_name(sa.name):
+        if _is_kaliningrad_synchronous_area_name(sa.name) or _is_kaliningrad_synchronous_area_name(
+            getattr(sa, "name_full", None)
+        ):
             return int(sa.id)
     return None
 
@@ -1283,9 +1289,25 @@ def _build_oes_national_prefix_source_rows(
 
     Не попадает в ``summary_rows`` страницы: только временный хвост при обогащении,
     чтобы цифры совпадали с /summary/oes/.
+
+    Результат кэшируется (Redis / memory): ФО и ЭЗ / сегменты chi не пересобирают
+    одно и то же дерево на каждый запрос.
     """
     if not years:
         return []
+    from app.power_demand.services.pd_summary_page_cache import (
+        get_cached_oes_national_prefix_sources,
+        set_cached_oes_national_prefix_sources,
+    )
+
+    cached = get_cached_oes_national_prefix_sources(
+        years,
+        rounding_digits,
+        avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
+    )
+    if cached is not None:
+        return cached
+
     entities: list[SummaryEntity] = list(_build_oes_union_energy_system_entities())
     tites_entity = _build_tites_entity()
     if tites_entity is not None:
@@ -1303,6 +1325,12 @@ def _build_oes_national_prefix_source_rows(
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
     mask_sakha_yakutia_tites_oes_east_year_membership(flat, years)
+    set_cached_oes_national_prefix_sources(
+        years,
+        rounding_digits,
+        flat,
+        avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
+    )
     return flat
 
 
@@ -2010,6 +2038,74 @@ def _attach_oes_summary_live_calc_context(ctx: dict[str, Any]) -> None:
     )
 
 
+def _verify_diff_year_values(
+    a_row: dict[str, Any] | None,
+    b_row: dict[str, Any] | None,
+    years: list[int],
+    *,
+    bounds_row: dict[str, Any] | None = None,
+) -> tuple[list[str], list[str]]:
+    """«Проверка …» = a − b по годам (целое в ячейке; title — до 3 знаков)."""
+    n_y = len(years)
+    if a_row is None or b_row is None:
+        return (["—"] * n_y, [""] * n_y)
+    out_vals: list[str] = []
+    out_tt: list[str] = []
+    for j in range(n_y):
+        if bounds_row is not None and not _formula_year_applies_to_row_perimeter_variant(
+            bounds_row, int(years[j])
+        ):
+            out_vals.append("—")
+            out_tt.append("")
+            continue
+        av = _summary_row_year_float(a_row, j)
+        bv = _summary_row_year_float(b_row, j)
+        if av is None or bv is None:
+            out_vals.append("—")
+            out_tt.append("")
+            continue
+        d = float(av) - float(bv)
+        out_vals.append(_format_numeric(d, -1))
+        out_tt.append(_format_calculated_max_mw(d))
+    return out_vals, out_tt
+
+
+def _refresh_oes_summary_verification_row_values(
+    summary_rows: list[dict[str, Any]],
+    years: list[int],
+) -> None:
+    """Пересчитать уже вставленные строки «Проверка …» по актуальным a/b (в т.ч. плановые годы)."""
+    if not summary_rows or not years:
+        return
+    n = len(summary_rows)
+    i = 0
+    while i < n:
+        row0 = summary_rows[i]
+        if not row0.get("show_entity_cell"):
+            i += 1
+            continue
+        span = max(int(row0.get("entity_rowspan") or 1), 1)
+        end = min(i + span, n)
+        block = summary_rows[i:end]
+        by_pk = {str(r.get("parameter_key") or ""): r for r in block}
+        for r in block:
+            if not r.get("pd_pd_verify_for_row"):
+                continue
+            a_key = r.get("pd_pd_verify_a_parameter_key")
+            b_key = r.get("pd_pd_verify_b_parameter_key")
+            if not a_key or not b_key:
+                continue
+            yv, yt = _verify_diff_year_values(
+                by_pk.get(str(a_key)),
+                by_pk.get(str(b_key)),
+                years,
+                bounds_row=row0,
+            )
+            r["year_values"] = list(yv)
+            r["year_numeric_tooltips"] = list(yt)
+        i += span
+
+
 def _inject_oes_summary_verification_rows(
     summary_rows: list[dict[str, Any]],
     years: list[int],
@@ -2039,27 +2135,7 @@ def _inject_oes_summary_verification_rows(
         bounds_row: dict[str, Any] | None = None,
     ) -> tuple[list[str], list[str]]:
         """a - b (строки могут быть None или пустыми)."""
-        if a_row is None or b_row is None:
-            return (["—"] * n_y, [""] * n_y)
-        out_vals: list[str] = []
-        out_tt: list[str] = []
-        for j in range(n_y):
-            if bounds_row is not None and not _formula_year_applies_to_row_perimeter_variant(
-                bounds_row, int(years[j])
-            ):
-                out_vals.append("—")
-                out_tt.append("")
-                continue
-            av = _summary_row_year_float(a_row, j)
-            bv = _summary_row_year_float(b_row, j)
-            if av is None or bv is None:
-                out_vals.append("—")
-                out_tt.append("")
-                continue
-            d = float(av) - float(bv)
-            out_vals.append(_format_numeric(d, -1))
-            out_tt.append(_format_calculated_max_mw(d))
-        return out_vals, out_tt
+        return _verify_diff_year_values(a_row, b_row, years, bounds_row=bounds_row)
 
     def _inject_one(
         *,
@@ -3035,6 +3111,27 @@ FO_COEFF_CZ_TOTAL_PARAMETER_KEYS: frozenset[str] = frozenset(
         "cz_total_sum_fo_max_power",
         "cz_total_sum_res_combined_cz",
         "cz_total_imbalance_mw",
+    }
+)
+# Coeff: без k у расчётного совмещённого — иначе вторая строка k под «Совмещенное потребление…»
+# (ФО/ЭЗ — whitelist ниже; ОЭС/UES — тот же skip в summary_row_allows_coeff_k_row).
+_COEFF_SKIP_K_CALCULATED_COMBINED_KEYS: frozenset[str] = frozenset(
+    {
+        "calculated_combined_on_ees_mw",
+        "calculated_combined_on_cz_mw",
+    }
+)
+# Coeff ФО/ЭЗ: на уровне округа/зоны только k расчётного максимума и основного совмещённого.
+_FO_LEVEL_COEFF_K_PARAMETER_KEYS: frozenset[str] = frozenset(
+    {
+        "calculated_max_power_mw",
+        "combined_on_cz",
+    }
+)
+_EZ_LEVEL_COEFF_K_PARAMETER_KEYS: frozenset[str] = frozenset(
+    {
+        "calculated_max_power_mw",
+        "combined_on_ees",
     }
 )
 EZ_EXPORT_PARAMETER_KEYS: frozenset[str] = frozenset(
@@ -4955,18 +5052,21 @@ def slice_coeff_summary_for_lazy_long_segment(
     coeff_n: int,
     *,
     include_long: bool,
+    include_medium: bool = True,
 ) -> None:
     """
-    Без coeff_include_long в URL на «Коэффициенты…» не отдаём долгосрочные годы (N+7…N+18) в разметке.
+    На экране «Коэффициенты…» не отдаём годы за пределами запрошенных периодов:
+    без include_medium — только до N; без include_long — не отдаём N+7…N+18.
     Полный диапазон остаётся в экспорте и при coeff_include_long=1.
     """
     context["coeff_include_long"] = include_long
+    context["summary_include_medium_years"] = bool(include_medium or include_long)
     if include_long:
         return
     years_full: list[int] = list(context.get("years") or [])
     if not years_full:
         return
-    cutoff = int(coeff_n) + 6
+    cutoff = int(coeff_n) + (6 if include_medium else 0)
     keep_idx = [i for i, y in enumerate(years_full) if int(y) <= cutoff]
     if len(keep_idx) == len(years_full):
         return
@@ -8255,6 +8355,62 @@ def _aggregate_res_combined_on_ees_mw_sum_by_union_for_medium_years(
     )
 
 
+def summary_row_allows_coeff_k_row(row: dict[str, Any]) -> bool:
+    """Нужна ли отдельная строка k на coeff-сводке для этой строки показателя."""
+    pk = str(row.get("parameter_key") or "")
+    if pk in ("max_power", "peak_datetime", "avg_temp"):
+        return False
+    if pk in _COEFF_SKIP_K_CALCULATED_COMBINED_KEYS:
+        return False
+    if row.get("pd_pd_verify_for_row") or pk.startswith("verify_for_"):
+        return False
+    if pk in FO_COEFF_CZ_TOTAL_PARAMETER_KEYS:
+        return False
+    if row.get("pd_pd_aggregation_level_full_row") or row.get(
+        "pd_pd_aggregation_level_row"
+    ):
+        return False
+    if row.get("pd_pd_chi_row") or row.get("pd_pd_ee_row"):
+        return False
+    dm = str(row.get("demand_model_name") or "")
+    if dm == FederalDistrictDemandParameter.__name__:
+        return pk in _FO_LEVEL_COEFF_K_PARAMETER_KEYS
+    if dm == EnergyZoneDemandParameter.__name__:
+        return pk in _EZ_LEVEL_COEFF_K_PARAMETER_KEYS
+    return True
+
+
+def tag_summary_rows_coeff_k_row_visibility(
+    summary_rows: list[dict[str, Any]] | None,
+) -> None:
+    """pd_pd_skip_coeff_k_row — не рисовать строку k (ФО/ЭЗ: без k расчётного совмещённого)."""
+    if not summary_rows:
+        return
+    for row in summary_rows:
+        row["pd_pd_skip_coeff_k_row"] = not summary_row_allows_coeff_k_row(row)
+
+
+def _coeff_gs5_k_from_reporting_n4_to_n(
+    k_list: list[str],
+    years: list[int],
+    coeff_base_year: int,
+) -> float | None:
+    """Среднее k по годам N−4…N (столбец «СиПР (5 лет)» на coeff-сводке)."""
+    year_to_idx = {int(years[j]): j for j in range(len(years))}
+    nums: list[float] = []
+    for y in range(int(coeff_base_year) - 4, int(coeff_base_year) + 1):
+        j = year_to_idx.get(y)
+        if j is None:
+            continue
+        parsed = _parse_summary_cell_float(k_list[j] if j < len(k_list) else None)
+        if parsed is None:
+            continue
+        nums.append(_round_coeff_k_calc(parsed))
+    if not nums:
+        return None
+    return _round_coeff_k_calc(sum(nums) / len(nums))
+
+
 def enrich_summary_rows_coeff_k_columns(
     summary_rows: list[dict[str, Any]],
     years: list[int],
@@ -8265,6 +8421,7 @@ def enrich_summary_rows_coeff_k_columns(
     coeff_base_year: int | None = None,
 ) -> None:
     """k = значение показателя / макс. мощность того же года (строка max_power в блоке — знаменатель; для самой строки max_power k не считается)."""
+    tag_summary_rows_coeff_k_row_visibility(summary_rows)
     rd_k = (
         rounding_digits_k
         if rounding_digits_k is not None
@@ -8347,20 +8504,38 @@ def enrich_summary_rows_coeff_k_columns(
                 res_oes_or_ees_medium = (
                     coeff_base_year is not None
                     and (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
-                    and pk in ("combined_on_oes", "combined_on_ees")
+                    and pk in (
+                        "combined_on_oes",
+                        "combined_on_ees",
+                        "combined_on_fo",
+                        "combined_on_cz",
+                        "combined_on_ez",
+                    )
                     and dm_n == "RegionalEnergySystemDemandParameter"
                 )
                 ues_plan_k_exempt = False
-                if (
-                    coeff_base_year is not None
-                    and dm_n == UnionEnergySystemDemandParameter.__name__
-                ):
-                    if pk in ("calculated_max_power_mw", "calculated_combined_on_ees_mw"):
-                        ues_plan_k_exempt = _coeff_union_res_sum_year(y, coeff_base_year)
-                    elif pk == "combined_on_ees":
-                        ues_plan_k_exempt = (
-                            (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
-                        )
+                if coeff_base_year is not None:
+                    if dm_n == UnionEnergySystemDemandParameter.__name__:
+                        if pk in ("calculated_max_power_mw", "calculated_combined_on_ees_mw"):
+                            ues_plan_k_exempt = _coeff_union_res_sum_year(y, coeff_base_year)
+                        elif pk == "combined_on_ees":
+                            ues_plan_k_exempt = (
+                                (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
+                            )
+                    elif dm_n == FederalDistrictDemandParameter.__name__:
+                        if pk in ("calculated_max_power_mw", "calculated_combined_on_cz_mw"):
+                            ues_plan_k_exempt = _coeff_union_res_sum_year(y, coeff_base_year)
+                        elif pk == "combined_on_cz":
+                            ues_plan_k_exempt = (
+                                (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
+                            )
+                    elif dm_n == EnergyZoneDemandParameter.__name__:
+                        if pk in ("calculated_max_power_mw", "calculated_combined_on_ees_mw"):
+                            ues_plan_k_exempt = _coeff_union_res_sum_year(y, coeff_base_year)
+                        elif pk == "combined_on_ees":
+                            ues_plan_k_exempt = (
+                                (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
+                            )
                 yrsk = r.get("year_coeff_k_stored") or []
                 sk_val = yrsk[j] if j < len(yrsk) else None
                 sk_parsed = (
@@ -8430,6 +8605,40 @@ def enrich_summary_rows_coeff_k_columns(
                 else:
                     k_list.append("—")
                     k_tt.append("")
+            # ФО/ЭЗ: у combined_on_fo/ez нет сохранённого k (в отличие от combined_on_oes).
+            # Среднесрочные годы без k — как «используемый k» = СиПР (5 лет) на клиенте.
+            if (
+                coeff_base_year is not None
+                and r.get("demand_model_name") == "RegionalEnergySystemDemandParameter"
+                and pk
+                in (
+                    "combined_on_oes",
+                    "combined_on_ees",
+                    "combined_on_fo",
+                    "combined_on_cz",
+                    "combined_on_ez",
+                )
+            ):
+                gs5_k = _coeff_gs5_k_from_reporting_n4_to_n(
+                    k_list, years, coeff_base_year
+                )
+                if gs5_k is not None:
+                    gs5_disp = _format_coeff_k_numeric(gs5_k, rd_k)
+                    gs5_tt = _format_coeff_k_tooltip(gs5_k)
+                    for j_gs5 in range(n_y):
+                        y_gs5 = years[j_gs5]
+                        if not _formula_year_applies_to_row_perimeter_variant(r, y_gs5):
+                            continue
+                        if not (
+                            (coeff_base_year + 1) <= y_gs5 <= (coeff_base_year + 6)
+                        ):
+                            continue
+                        if _parse_summary_cell_float(
+                            k_list[j_gs5] if j_gs5 < len(k_list) else None
+                        ) is not None:
+                            continue
+                        k_list[j_gs5] = gs5_disp
+                        k_tt[j_gs5] = gs5_tt
             r["year_k_values"] = k_list
             r["year_k_full_tooltips"] = k_tt
             if (
@@ -8449,10 +8658,26 @@ def enrich_summary_rows_coeff_k_columns(
                         yc[j] = k_list[j] if j < len(k_list) else "—"
                 r["year_coeff_k_stored"] = yc
             dm_block = r.get("demand_model_name")
-            pk_medium_res = ("combined_on_oes", "combined_on_ees")
+            pk_medium_res = (
+                "combined_on_oes",
+                "combined_on_ees",
+                "combined_on_fo",
+                "combined_on_cz",
+                "combined_on_ez",
+            )
             pk_medium_ues_sync = (
                 "calculated_max_power_mw",
                 "combined_on_ees",
+            )
+            pk_medium_fd_sync = (
+                "calculated_max_power_mw",
+                "combined_on_cz",
+                "calculated_combined_on_cz_mw",
+            )
+            pk_medium_ez_sync = (
+                "calculated_max_power_mw",
+                "combined_on_ees",
+                "calculated_combined_on_ees_mw",
             )
             if coeff_base_year is not None and dm_block == "RegionalEnergySystemDemandParameter" and pk in pk_medium_res:
                 yv_mw = list(r.get("year_values") or [])
@@ -8476,7 +8701,19 @@ def enrich_summary_rows_coeff_k_columns(
                     ynt[j] = _format_full_numeric_tooltip(prod)
                 r["year_values"] = yv_mw
                 r["year_numeric_tooltips"] = ynt
-            elif coeff_base_year is not None and dm_block == "UnionEnergySystemDemandParameter" and pk in pk_medium_ues_sync:
+            elif coeff_base_year is not None and (
+                (
+                    dm_block == "UnionEnergySystemDemandParameter"
+                    and pk in pk_medium_ues_sync
+                )
+                or (
+                    dm_block == "FederalDistrictDemandParameter"
+                    and pk in pk_medium_fd_sync
+                )
+                or (
+                    dm_block == "EnergyZoneDemandParameter" and pk in pk_medium_ez_sync
+                )
+            ):
                 yv_mw = list(r.get("year_values") or [])
                 if len(yv_mw) < n_y:
                     yv_mw.extend(["—"] * (n_y - len(yv_mw)))
@@ -8494,7 +8731,7 @@ def enrich_summary_rows_coeff_k_columns(
                     if k_parsed is None or d is None or not (d > 0):
                         continue
                     prod = k_parsed * d
-                    if pk == "calculated_max_power_mw":
+                    if pk in CALCULATED_MAX_PARAMETER_KEYS:
                         yv_mw[j] = _format_calculated_max_mw(prod)
                     else:
                         yv_mw[j] = _format_numeric(prod, rounding_digits)
@@ -8502,25 +8739,73 @@ def enrich_summary_rows_coeff_k_columns(
                 r["year_values"] = yv_mw
                 r["year_numeric_tooltips"] = ynt
         i += block_size
-    if coeff_base_year is not None and _summary_rows_include_ues_blocks(summary_rows):
-        # После подстановки МВт среднесрочных лет по РЭС — пересчёт «через ОЭС/РЭС»
-        # только для N+1…N+6. Отчётные годы (и ФО/ЭЗ без строк ОЭС) не трогаем:
-        # значения префикса уже совпадают с max-сводками.
+    if coeff_base_year is not None:
+        # После подстановки МВт среднесрочных лет по РЭС — пересчёт агрегатов N+1…N+6.
         def _coeff_medium_years(y: int) -> bool:
             return (coeff_base_year + 1) <= y <= (coeff_base_year + 6)
 
-        enrich_oes_ees_russia_calculated_max_via_oes(
-            summary_rows,
-            years,
-            rounding_digits,
-            year_included=_coeff_medium_years,
+        if _summary_rows_include_ues_blocks(summary_rows):
+            enrich_oes_ees_russia_calculated_max_via_oes(
+                summary_rows,
+                years,
+                rounding_digits,
+                year_included=_coeff_medium_years,
+            )
+            enrich_oes_ees_russia_calculated_max_via_es(
+                summary_rows,
+                years,
+                rounding_digits,
+                year_included=_coeff_medium_years,
+            )
+        has_fd = any(
+            r.get("demand_model_name") == FederalDistrictDemandParameter.__name__
+            for r in summary_rows
         )
-        enrich_oes_ees_russia_calculated_max_via_es(
-            summary_rows,
-            years,
-            rounding_digits,
-            year_included=_coeff_medium_years,
+        has_ez = any(
+            r.get("demand_model_name") == EnergyZoneDemandParameter.__name__
+            for r in summary_rows
         )
+        if has_fd:
+            enrich_fo_summary_calculated_max_power_from_res_combined_on_fo(
+                summary_rows,
+                years,
+                rounding_digits,
+                year_included=_coeff_medium_years,
+            )
+            enrich_south_fd_with_nt_calculated_max_from_res_and_nt_subjects(
+                summary_rows,
+                years,
+                rounding_digits,
+                fd_parameter_key="calculated_max_power_mw",
+                year_included=_coeff_medium_years,
+            )
+            enrich_far_east_fd_calculated_max_from_res_and_tites_eus(
+                summary_rows,
+                years,
+                rounding_digits,
+                fd_parameter_key="calculated_max_power_mw",
+                year_included=_coeff_medium_years,
+            )
+            enrich_fo_summary_calculated_combined_on_cz_from_res_combined(
+                summary_rows,
+                years,
+                rounding_digits,
+                year_included=_coeff_medium_years,
+            )
+        if has_ez:
+            enrich_ez_summary_calculated_max_power_from_res_combined_on_ez(
+                summary_rows,
+                years,
+                rounding_digits,
+                year_included=_coeff_medium_years,
+            )
+            enrich_ez_summary_calculated_combined_on_ees_from_res(
+                summary_rows,
+                years,
+                rounding_digits,
+                year_included=_coeff_medium_years,
+            )
+    _refresh_oes_summary_verification_row_values(summary_rows, years)
 
 
 def _flatten_entities(
@@ -10208,8 +10493,12 @@ def _build_synchronous_area_entities(*, depth: int = 0) -> list[SummaryEntity]:
     mn = SynchronousAreaDemandParameter.__name__
     for sa in sa_list:
         base_label = _synchronous_area_display_label(sa)
-        if _is_first_synchronous_area_name(sa.name):
-            binding = resolve_entity_perimeter_variants("synchronous_area", sa.name)
+        if _is_first_synchronous_area_name(sa.name) or _is_first_synchronous_area_name(
+            getattr(sa, "name_full", None)
+        ):
+            binding = resolve_entity_perimeter_variants(
+                "synchronous_area", base_label
+            ) or resolve_entity_perimeter_variants("synchronous_area", sa.name)
             variants = _demand_row_groups_for_all_binding_variants(
                 SynchronousAreaDemandParameter,
                 "id_synchronous_area",

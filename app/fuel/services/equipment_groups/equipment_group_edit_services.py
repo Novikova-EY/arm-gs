@@ -1252,6 +1252,16 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
     if not group:
         return False, "Группа оборудования не найдена", [], None
 
+    from app.fuel.services.equipment_groups.equipment_group_set_services import (
+        apply_auto_equipment_group_name,
+        suggested_equipment_group_name,
+    )
+
+    old_name_before = (group.name or "").strip()
+    old_suggested_before = suggested_equipment_group_name(
+        equipment_group_id, current_name=old_name_before
+    )
+
     new_name = (form_data.get("name") or "").strip()
     current_version_id = get_current_db_version_id()
     station_id = _get_station_id_for_equipment_group(equipment_group_id)
@@ -1516,6 +1526,26 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
                 ", ".join(_format_fk_for_log(Station, sid) for sid in old_ids) or "не указано",
                 ", ".join(_format_fk_for_log(Station, sid) for sid in new_ids) or "не указано",
             ))
+
+    # Автоназвание: «Станция (тип)» при ровно одной привязанной станции.
+    # Ручное имя из формы сохраняется; поле остаётся редактируемым.
+    auto_name = apply_auto_equipment_group_name(
+        target_group,
+        old_name=old_name_before,
+        submitted_name=new_name,
+        old_suggested=old_suggested_before,
+    )
+    if auto_name is not None:
+        # Убираем прежнюю запись об изменении name из формы, если она есть
+        change_details = [
+            c for c in change_details
+            if c[0] != _EQUIPMENT_GROUP_FIELD_LABELS.get("name", "name")
+        ]
+        change_details.append((
+            _EQUIPMENT_GROUP_FIELD_LABELS.get("name", "Наименование"),
+            _format_val_for_log(old_name_before or None),
+            _format_val_for_log(auto_name),
+        ))
 
     try:
         db.session.commit()

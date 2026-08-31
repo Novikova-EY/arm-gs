@@ -175,7 +175,7 @@ GROUPS = {
     "chit": ["har", "urt", "tataur", "tarbag", "zab_kam"],
     "yakut": ["neru", "pyak", "zyryan"],
     "amur": ["rai", "erk", "svo", "ogodj"],
-    # gaz не в GROUPS: свод Станции.GAZ = gaz + dop.gaz_prir + dop.gazpp
+    "gaz": ["gaz_prir", "gazpp"],
     "tung": ["jer", "karab"],
     "prim": ["bikin", "razdol", "hankai"],
     "chukot": ["bering", "anad"],
@@ -360,6 +360,7 @@ class EquipmentGroupFuelCalculationService:
         variant_number: int = 0,
         strict_formula_validation: bool = False,
         commit: bool = False,
+        base_year_number: int | None = None,
     ) -> EquipmentGroupFuelParam:
         """
         Рассчитывает топливную и энергетическую часть для одной группы оборудования на один год.
@@ -367,8 +368,8 @@ class EquipmentGroupFuelCalculationService:
         ВАЖНО:
         - не копирует payload из прошлых лет;
         - использует только текущую строку fuel_param на год расчёта;
-        - для удельных и формулы берет последнюю доступную запись
-          с year_number <= target_year.
+        - удельник и формула топлива — тот же Seek, что Access:
+          окно [base_year, year], без шага раньше базового года.
         """
         fuel_param = self._get_or_create_fuel_param(
             equipment_group_id=equipment_group_id,
@@ -387,19 +388,21 @@ class EquipmentGroupFuelCalculationService:
             equipment_group_id=equipment_group_id,
             target_year=year_number,
             database_version_id=effective_db_version,
+            byear=base_year_number,
         )
         formula = self._select_actual_formula_row(
             equipment_group_id=equipment_group_id,
             target_year=year_number,
             variant_number=variant_number,
             database_version_id=effective_db_version,
+            byear=base_year_number,
         )
 
         # Access: If U.NoMatch Then GoTo skip2. Пустая строка U — это Match (y=0).
         if consumption is None:
             return fuel_param
 
-        # Access: If topl.NoMatch Then GoTo skip2 — энергия в Edit-буфере тоже не сохраняется.
+        # Access: If topl.NoMatch Then GoTo skip2 — нет формулы в [byear, cyear].
         if not (formula and formula.formtxt):
             return fuel_param
 
@@ -620,18 +623,20 @@ class EquipmentGroupFuelCalculationService:
         equipment_group_id: int,
         target_year: int,
         database_version_id: int | None = None,
+        byear: int | None = None,
     ) -> EquipmentGroupSpecificFuelConsumption | None:
         from app.fuel.services.calculation.specific_consumption_lookup import (
-            query_specific_consumption_for_fuel,
+            query_specific_consumption_access_seek,
         )
 
         vid = database_version_id
         if vid is None:
             vid = get_current_db_version_id()
-        return query_specific_consumption_for_fuel(
+        return query_specific_consumption_access_seek(
             self.session,
             equipment_group_id=equipment_group_id,
-            target_year=target_year,
+            byear=byear,
+            cyear=target_year,
             database_version_id=vid,
         )
 
@@ -642,27 +647,23 @@ class EquipmentGroupFuelCalculationService:
         target_year: int,
         variant_number: int,
         database_version_id: int | None = None,
+        byear: int | None = None,
     ) -> EquipmentGroupFuelFormula | None:
-        q = self.session.query(EquipmentGroupFuelFormula).filter(
-            EquipmentGroupFuelFormula.equipment_group_id == equipment_group_id,
-            EquipmentGroupFuelFormula.year_number <= target_year,
-            EquipmentGroupFuelFormula.variant_number == variant_number,
+        from app.fuel.services.calculation.fuel_formula_lookup import (
+            query_fuel_formula_access_seek,
         )
 
-        if database_version_id is not None:
-            q = q.filter(
-                (EquipmentGroupFuelFormula.database_version_id == database_version_id)
-                | (EquipmentGroupFuelFormula.database_version_id.is_(None))
-            )
-        else:
-            current_vid = get_current_db_version_id()
-            if current_vid is not None:
-                q = q.filter(
-                    (EquipmentGroupFuelFormula.database_version_id == current_vid)
-                    | (EquipmentGroupFuelFormula.database_version_id.is_(None))
-                )
-
-        return q.order_by(EquipmentGroupFuelFormula.year_number.desc()).first()
+        vid = database_version_id
+        if vid is None:
+            vid = get_current_db_version_id()
+        return query_fuel_formula_access_seek(
+            self.session,
+            equipment_group_id=equipment_group_id,
+            byear=byear,
+            cyear=target_year,
+            variant_number=variant_number,
+            database_version_id=vid,
+        )
 
     def _calculate_energy_part(
         self,
@@ -854,7 +855,7 @@ class EquipmentGroupFuelCalculationService:
     ) -> None:
         """
         Укрупнение бассейнов из extra_param, если лист встретился в formtxt (used_names).
-        gaz: Access Станции.GAZ = gaz + gaz_prir + gazpp.
+        gaz как в /refdata/fuel: родитель = gaz_prir + gazpp (не gaz += gazpp).
         proch: с 2018 Access-корзина tvproch+szh_gaz+inoe при триггере в formtxt.
         """
         used = {str(n).lower() for n in (used_names or set())}
@@ -868,19 +869,6 @@ class EquipmentGroupFuelCalculationService:
             )
             if hasattr(fuel_param, group_name):
                 setattr(fuel_param, group_name, total)
-
-        # Access Станции.GAZ = gaz (из formtxt) + dop.gaz_prir + dop.gazpp.
-        # VBA явно пишет только gaz += gazpp; gaz_prir лежит в Доп_угли и тоже
-        # входит в сводный GAZ (иначе крупные ТЭС с formtxt «gaz_prir» получают GAZ=0).
-        if hasattr(fuel_param, "gaz"):
-            if "gazpp" in used:
-                fuel_param.gaz = d0(fuel_param.gaz) + d0(
-                    getattr(extra_param, "gazpp", None)
-                )
-            if "gaz_prir" in used:
-                fuel_param.gaz = d0(fuel_param.gaz) + d0(
-                    getattr(extra_param, "gaz_prir", None)
-                )
 
         # Access YEAR>=2018: PROCH = tvproch + szh_gaz + inoe
         # (старая VBA «Расчет» koksdom+prochgaz+tvproch — только year < 2018)

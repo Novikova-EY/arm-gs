@@ -7,7 +7,10 @@ import re
 from decimal import Decimal
 from typing import Any
 
-from app.common.services.help_services import values_equal_by_display_precision
+from app.common.services.help_services import (
+    coalesce_posted_numeric_with_stored,
+    values_equal_by_display_precision,
+)
 from app.extensions import db
 from app.fuel.models.fue_restriction_model import FuelRestriction
 from app.fuel.services.restrictions.fuel_restrictions_all_versions_services import (
@@ -147,6 +150,7 @@ def _sync_data_from_parsed(
     parsed: dict[str, Any],
     *,
     existing: FuelRestriction | None = None,
+    rounding_digits: int = 0,
 ) -> dict[str, Any]:
     """Данные для upsert: редактируемые с формы + прочие поля с якоря (если есть)."""
     data: dict[str, Any] = {}
@@ -155,7 +159,13 @@ def _sync_data_from_parsed(
     data["restriction_name"] = parsed["restriction_name"]
     data["kcur"] = parsed["kcur"]
     for attr in ("emin", "emax", "kobl"):
-        data[attr] = parsed["numeric"][attr]
+        posted = parsed["numeric"][attr]
+        stored = data.get(attr) if existing is not None else posted
+        data[attr] = (
+            coalesce_posted_numeric_with_stored(stored, posted, rounding_digits)
+            if existing is not None
+            else posted
+        )
     # Стартовый kobl как при сбросе в Access, если не задан (новые строки).
     if data.get("kobl") is None and existing is None:
         data["kobl"] = Decimal("1")
@@ -205,7 +215,9 @@ def apply_fuel_restrictions_save_from_form(form, *, user=None) -> tuple[int, lis
                 year=parsed["numeric"]["year"],
                 oes=parsed["numeric"]["oes"],
                 obl=parsed["numeric"]["obl"],
-                data=_sync_data_from_parsed(parsed, existing=row),
+                data=_sync_data_from_parsed(
+                    parsed, existing=row, rounding_digits=rounding_digits
+                ),
                 match_year=row.year,
                 match_oes=row.oes,
                 match_obl=row.obl,

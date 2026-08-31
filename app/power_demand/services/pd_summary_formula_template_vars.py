@@ -9,6 +9,9 @@ from typing import Any
 PD_FORMULA_TEMPLATE_VAR_KEYS: dict[str, str] = {
     "_pd_coeff_res_oes_k_formula": "coeff_res_oes_k",
     "_pd_coeff_res_ees_k_formula": "coeff_res_ees_k",
+    "_pd_coeff_res_cz_k_formula": "coeff_res_cz_k",
+    "_pd_coeff_res_fo_k_formula": "coeff_res_fo_k",
+    "_pd_coeff_res_ez_k_formula": "coeff_res_ez_k",
     "_pd_oes_ues_calc_max_oes_mw_formula": "oes_ues_calc_max_oes_mw_without_nt",
     "_pd_oes_ues_calc_combined_ees_mw_formula": "oes_ues_calc_combined_ees_mw_without_nt",
     "_pd_oes_ees_russia_calc_max_via_oes_formula": "oes_ees_russia_calc_max_via_oes_without_nt",
@@ -49,6 +52,8 @@ PD_FORMULA_TEMPLATE_VAR_KEYS: dict[str, str] = {
     "_pd_chukotka_rd_territorial_calc_max_mw_formula": "chukotka_rd_territorial_calc_max_mw",
     "_pd_oes_peak_max_power_usage_hours_formula": "oes_peak_max_power_usage_hours",
     "_pd_coeff_k_ues_calc_max_oes": "coeff_k_ues_calc_max_oes_without_nt",
+    "_pd_coeff_k_fo_calc_max": "coeff_k_fo_calc_max_without_nt",
+    "_pd_coeff_k_ez_calc_max": "coeff_k_ez_calc_max",
     "_pd_coeff_k_ues_combined_ees": "coeff_k_ues_combined_ees_without_nt",
     "_pd_coeff_k_ues_calc_combined_ees": "coeff_k_ues_calc_combined_ees_without_nt",
     "_pd_coeff_k_calculated_max_ees_via_oes": "coeff_k_calculated_max_ees_via_oes_without_nt",

@@ -457,6 +457,8 @@
     </div>
     </div><!-- /.pd-ec-summary-sticky-stack -->
 
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/energy_consumption_summary_entity_borders.css') }}">
+    <script src="{{ url_for('static', filename='js/energy_consumption/demand_summary_entity_borders.js') }}"></script>
     <style>
     /* «Сохранить», «Применить» (годы), «СиПР» — одна базовая ширина кнопки .btn */
     #demandSummarySaveBtn,
@@ -2085,6 +2087,9 @@ if (summaryTable) {
     }
 
     function applyEcBlockRowBackgrounds() {
+        if (typeof window.__pdEcSummaryApplyEntityLevelBorders === "function") {
+            window.__pdEcSummaryApplyEntityLevelBorders();
+        }
         if (summaryTable.getAttribute("data-ec-unify-block-bg") !== "1") {
             return;
         }

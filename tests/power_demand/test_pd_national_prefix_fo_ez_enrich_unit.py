@@ -184,3 +184,29 @@ def test_finalize_fo_summary_context_applies_national_prefix_formulas() -> None:
 
     apply_prefix.assert_called_once()
     assert apply_prefix.call_args.kwargs.get("enrich_calculated") is True
+
+
+def test_build_oes_national_prefix_source_rows_uses_page_cache(app) -> None:
+    """Second call must reuse cached OES prefix sources (no flatten rebuild)."""
+    years = [2024]
+    fake_flat = [{"demand_model_name": "UnionEnergySystemDemandParameter", "x": 1}]
+    with app.app_context():
+        from app.power_demand.services import pd_summary_page_cache as page_cache
+
+        page_cache._memory_cache = {}
+        page_cache._cache_generation = 0
+        with (
+            patch.object(page_cache, "get_redis_client", return_value=None),
+            patch.object(page_cache, "get_current_db_version_id", return_value=1),
+            patch.object(dss, "_build_oes_union_energy_system_entities", return_value=[]),
+            patch.object(dss, "_build_tites_entity", return_value=None),
+            patch.object(dss, "_flatten_entities", return_value=fake_flat) as flatten,
+            patch.object(dss, "_inject_south_ues_nt_rows_after_res"),
+            patch.object(dss, "mask_sakha_yakutia_tites_oes_east_year_membership"),
+        ):
+            first = dss._build_oes_national_prefix_source_rows(years, 0)
+            second = dss._build_oes_national_prefix_source_rows(years, 0)
+        assert first == fake_flat
+        assert second == fake_flat
+        assert first is not second  # deepcopy from cache
+        assert flatten.call_count == 1

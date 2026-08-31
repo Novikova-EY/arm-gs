@@ -15,27 +15,32 @@ from app.energy_balance.services.ee_balance_excel_services import export_ee_bala
 from app.energy_balance.services.ee_balance_export_services import (
     update_ee_balance_export_value,
 )
+from app.energy_balance.services.balance_sheet_note_services import (
+    BALANCE_KIND_EE,
+    update_balance_sheet_note,
+)
+from app.energy_balance.services.ee_balance_manual_generation_services import (
+    update_ee_balance_manual_generation_value,
+)
 from app.energy_balance.services.ee_balance_page_services import (
     build_ee_balance_table_context,
     format_ee_balance_cell,
     get_ee_balance_sheet,
-    get_ee_balance_sheets,
-    group_ee_balance_sheets,
     is_persistable_ee_balance_slug,
     resolve_ee_balance_rounding_digits,
 )
+from app.energy_balance.services.power_balance_page_services import (
+    tites_east_hub_redirect_slug,
+)
+
+DEFAULT_EE_BALANCE_SLUG = "ees-rossii"
 
 
 @energy_balance_bp.route("/ee_balance/")
 @login_required
 def ee_balance_hub():
-    """Хабы листов расчета балансов электрической энергии (по макету БЭ_ЕЭС)."""
-    sheets = get_ee_balance_sheets()
-    return render_template(
-        "energy_balance/ee_balance/ee_balance_hub.html",
-        sheets=sheets,
-        sheet_groups=group_ee_balance_sheets(sheets),
-    )
+    """Промежуточный хаб убран: сразу открываем лист ЕЭС России."""
+    return redirect(url_for("energy_balance_bp.ee_balance_table", slug=DEFAULT_EE_BALANCE_SLUG))
 
 
 @energy_balance_bp.route("/ee_balance/export/")
@@ -50,11 +55,15 @@ def export_ee_balance():
             include_type_breakdown=request.args.get("include_type_breakdown") == "1",
             show_empty_rows=request.args.get("show_empty_rows", "1") != "0",
             show_flow_rows=request.args.get("show_flow_rows", "1") != "0",
+            hydro_year=request.args.get("hydro_year"),
         )
     except Exception as exc:
         current_app.logger.error("Ошибка экспорта баланса электрической энергии: %s", exc, exc_info=True)
         flash(f"Ошибка экспорта данных: {exc}", "danger")
-        return redirect(request.referrer or url_for("energy_balance_bp.ee_balance_hub"))
+        return redirect(
+            request.referrer
+            or url_for("energy_balance_bp.ee_balance_table", slug=DEFAULT_EE_BALANCE_SLUG)
+        )
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return send_file(
         excel_file,
@@ -68,11 +77,18 @@ def export_ee_balance():
 @login_required
 def ee_balance_table(slug: str):
     """Таблица баланса электрической энергии выбранного листа макета."""
+    hub_sheet = get_ee_balance_sheet(slug)
+    child_slug = tites_east_hub_redirect_slug(hub_sheet)
+    if child_slug:
+        target = url_for("energy_balance_bp.ee_balance_table", slug=child_slug)
+        query = request.query_string.decode() if request.query_string else ""
+        return redirect(f"{target}?{query}" if query else target)
     context = build_ee_balance_table_context(
         slug,
         start_year=request.args.get("start_year"),
         end_year=request.args.get("end_year"),
         rounding_digits=request.args.get("rounding_digits"),
+        hydro_year=request.args.get("hydro_year"),
     )
     if context is None:
         abort(404)
@@ -187,3 +203,55 @@ def ee_balance_export_value(slug: str):
         else format_ee_balance_cell(saved["value"], digits=digits)
     )
     return jsonify(ok=True, year=saved["year"], display=display)
+
+
+@energy_balance_bp.route("/ee_balance/<slug>/generation_value/", methods=["PATCH"])
+@login_required
+def ee_balance_generation_value(slug: str):
+    _require_sheet(slug)
+    data = request.get_json(silent=True) or {}
+    if "year" not in data:
+        return jsonify(ok=False, error="Неверный запрос"), 400
+    digits = resolve_ee_balance_rounding_digits(
+        data.get("rounding_digits", request.args.get("rounding_digits"))
+    )
+    try:
+        saved = update_ee_balance_manual_generation_value(
+            slug,
+            data.get("row_key"),
+            data.get("year"),
+            data.get("value"),
+        )
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception(
+            "Не удалось сохранить выработку СНЭЭ/СЭС/ВЭС баланса электрической энергии"
+        )
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+    display = (
+        ""
+        if saved.get("value") is None
+        else format_ee_balance_cell(saved["value"], digits=digits)
+    )
+    return jsonify(
+        ok=True, year=saved["year"], row_key=saved.get("row_key"), display=display
+    )
+
+
+@energy_balance_bp.route("/ee_balance/<slug>/note/", methods=["PATCH"])
+@login_required
+def ee_balance_note(slug: str):
+    _require_sheet(slug)
+    data = request.get_json(silent=True) or {}
+    try:
+        saved = update_balance_sheet_note(
+            BALANCE_KIND_EE, slug, data.get("row_key"), data.get("note")
+        )
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception("Не удалось сохранить примечание баланса электрической энергии")
+        return jsonify(ok=False, error="Не удалось сохранить примечание"), 500
+    return jsonify(ok=True, note=saved.get("note") or "", row_key=saved.get("row_key") or "")
+

@@ -109,6 +109,60 @@ PD_SUMMARY_FORMULA_REGISTRY: tuple[PdSummaryFormulaDef, ...] = (
         cell_name="k (совмещённый на ЕЭС)",
         default_text="k = Совмещенный максимум потребления мощности ЕЭС / Максимум потребления мощности",
     ),
+    _def(
+        "coeff_res_cz_k",
+        pages=ALL_COEFF_PAGES,
+        aggregation_level="ФО / РЭС",
+        cell_name="k (совмещённый на ЦЗ России)",
+        default_text=(
+            "k = Совмещенное потребление мощности на час максимума ЦЗ России "
+            "/ Максимальное потребление мощности"
+        ),
+    ),
+    _def(
+        "coeff_res_fo_k",
+        pages=ALL_COEFF_PAGES,
+        aggregation_level="РЭС / субъект",
+        cell_name="k (совмещённый на ФО)",
+        default_text=(
+            "k = Совмещенное потребление мощности на час прохождения максимума ФО "
+            "/ Максимальное потребление мощности"
+        ),
+    ),
+    _def(
+        "coeff_res_ez_k",
+        pages=ALL_COEFF_PAGES,
+        aggregation_level="РЭС",
+        cell_name="k (совмещённый на ЭЗ)",
+        default_text=(
+            "k = Совмещенное потребление мощности на час прохождения максимума ЭЗ "
+            "/ Максимальное потребление мощности"
+        ),
+    ),
+    *_def_nt_pair(
+        "coeff_k_fo_calc_max",
+        pages=frozenset({PAGE_COEFF_FO}),
+        aggregation_level="Федеральный округ",
+        cell_name="k (расчётный максимум ФО)",
+        default_with_nt=(
+            "k = Расчетное максимальное потребление мощности "
+            "/ Максимальное потребление мощности ФО (с НТ)"
+        ),
+        default_without_nt=(
+            "k = Расчетное максимальное потребление мощности "
+            "/ Максимальное потребление мощности ФО (без НТ)"
+        ),
+    ),
+    _def(
+        "coeff_k_ez_calc_max",
+        pages=frozenset({PAGE_COEFF_EZ}),
+        aggregation_level="Энергозона",
+        cell_name="k (расчётный максимум энергозоны)",
+        default_text=(
+            "k = Расчетное максимальное потребление мощности "
+            "/ Максимальное потребление мощности энергозоны"
+        ),
+    ),
     *_def_nt_pair(
         "oes_ues_calc_max_oes_mw",
         pages=frozenset({PAGE_OES, PAGE_COEFF_OES}),

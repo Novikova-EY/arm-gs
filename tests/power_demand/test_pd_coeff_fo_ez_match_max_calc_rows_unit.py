@@ -152,6 +152,69 @@ def test_strip_new_territories_block_for_coeff_ez_removes_header_and_subjects() 
     assert all(r.get("entity_label") != "Новые территории" for r in out)
 
 
+def test_fo_ez_level_skip_second_coeff_k_row() -> None:
+    """На уровне ФО/ЭЗ/ОЭС нет строки k у расчётного совмещённого (вторая k под совмещённым)."""
+    fo_keep = {
+        "demand_model_name": FederalDistrictDemandParameter.__name__,
+        "parameter_key": "combined_on_cz",
+    }
+    fo_skip = {
+        "demand_model_name": FederalDistrictDemandParameter.__name__,
+        "parameter_key": "calculated_combined_on_cz_mw",
+    }
+    ez_keep = {
+        "demand_model_name": "EnergyZoneDemandParameter",
+        "parameter_key": "combined_on_ees",
+    }
+    ez_skip = {
+        "demand_model_name": "EnergyZoneDemandParameter",
+        "parameter_key": "calculated_combined_on_ees_mw",
+    }
+    res_keep = {
+        "demand_model_name": "RegionalEnergySystemDemandParameter",
+        "parameter_key": "combined_on_ees",
+    }
+    assert dss.summary_row_allows_coeff_k_row(fo_keep) is True
+    assert dss.summary_row_allows_coeff_k_row(fo_skip) is False
+    assert dss.summary_row_allows_coeff_k_row(
+        {
+            "demand_model_name": FederalDistrictDemandParameter.__name__,
+            "parameter_key": "calculated_max_power_mw",
+        }
+    )
+    assert dss.summary_row_allows_coeff_k_row(ez_keep) is True
+    assert dss.summary_row_allows_coeff_k_row(ez_skip) is False
+    assert dss.summary_row_allows_coeff_k_row(res_keep) is True
+    assert dss.summary_row_allows_coeff_k_row(
+        {
+            "demand_model_name": "UnionEnergySystemDemandParameter",
+            "parameter_key": "combined_on_ees",
+        }
+    )
+    assert (
+        dss.summary_row_allows_coeff_k_row(
+            {
+                "demand_model_name": "UnionEnergySystemDemandParameter",
+                "parameter_key": "calculated_combined_on_ees_mw",
+            }
+        )
+        is False
+    )
+    assert dss.summary_row_allows_coeff_k_row(
+        {
+            "demand_model_name": "UnionEnergySystemDemandParameter",
+            "parameter_key": "calculated_max_power_mw",
+        }
+    )
+
+    tagged = [dict(fo_keep), dict(fo_skip), dict(ez_keep), dict(ez_skip)]
+    dss.tag_summary_rows_coeff_k_row_visibility(tagged)
+    assert tagged[0]["pd_pd_skip_coeff_k_row"] is False
+    assert tagged[1]["pd_pd_skip_coeff_k_row"] is True
+    assert tagged[2]["pd_pd_skip_coeff_k_row"] is False
+    assert tagged[3]["pd_pd_skip_coeff_k_row"] is True
+
+
 def test_fo_coeff_cz_total_rows_are_verify_without_k() -> None:
     rows = [
         {

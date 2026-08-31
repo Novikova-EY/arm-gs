@@ -12,30 +12,33 @@ from app.energy_balance.services.power_balance_custom_flow_services import (
     update_custom_flow_value,
 )
 from app.energy_balance.services.power_balance_excel_services import export_power_balance_to_excel
+from app.energy_balance.services.power_balance_demand_cold_services import (
+    update_power_balance_demand_cold_value,
+)
 from app.energy_balance.services.power_balance_export_services import (
     update_power_balance_export_value,
+)
+from app.energy_balance.services.balance_sheet_note_services import (
+    BALANCE_KIND_POWER,
+    update_balance_sheet_note,
 )
 from app.energy_balance.services.power_balance_page_services import (
     build_power_balance_table_context,
     format_power_balance_cell,
     get_power_balance_sheet,
-    get_power_balance_sheets,
-    group_power_balance_sheets,
     is_persistable_power_balance_slug,
     resolve_power_balance_rounding_digits,
+    tites_east_hub_redirect_slug,
 )
+
+DEFAULT_POWER_BALANCE_SLUG = "ees-rossii"
 
 
 @energy_balance_bp.route("/power_balance/")
 @login_required
 def power_balance_hub():
-    """Хабы листов расчета балансов мощности (по макету БМ_ЕЭС)."""
-    sheets = get_power_balance_sheets()
-    return render_template(
-        "energy_balance/power_balance/power_balance_hub.html",
-        sheets=sheets,
-        sheet_groups=group_power_balance_sheets(sheets),
-    )
+    """Промежуточный хаб убран: сразу открываем лист ЕЭС России."""
+    return redirect(url_for("energy_balance_bp.power_balance_table", slug=DEFAULT_POWER_BALANCE_SLUG))
 
 
 @energy_balance_bp.route("/power_balance/export/")
@@ -54,7 +57,10 @@ def export_power_balance():
     except Exception as exc:
         current_app.logger.error("Ошибка экспорта баланса мощности: %s", exc, exc_info=True)
         flash(f"Ошибка экспорта данных: {exc}", "danger")
-        return redirect(request.referrer or url_for("energy_balance_bp.power_balance_hub"))
+        return redirect(
+            request.referrer
+            or url_for("energy_balance_bp.power_balance_table", slug=DEFAULT_POWER_BALANCE_SLUG)
+        )
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return send_file(
         excel_file,
@@ -68,6 +74,12 @@ def export_power_balance():
 @login_required
 def power_balance_table(slug: str):
     """Таблица баланса мощности выбранного листа макета."""
+    hub_sheet = get_power_balance_sheet(slug)
+    child_slug = tites_east_hub_redirect_slug(hub_sheet)
+    if child_slug:
+        target = url_for("energy_balance_bp.power_balance_table", slug=child_slug)
+        query = request.query_string.decode() if request.query_string else ""
+        return redirect(f"{target}?{query}" if query else target)
     context = build_power_balance_table_context(
         slug,
         start_year=request.args.get("start_year"),
@@ -189,3 +201,47 @@ def power_balance_export_value(slug: str):
         else format_power_balance_cell(saved["value"], digits=digits)
     )
     return jsonify(ok=True, year=saved["year"], display=display)
+
+
+@energy_balance_bp.route("/power_balance/<slug>/demand_cold_value/", methods=["PATCH"])
+@login_required
+def power_balance_demand_cold_value(slug: str):
+    _require_sheet(slug)
+    data = request.get_json(silent=True) or {}
+    if "year" not in data:
+        return jsonify(ok=False, error="Неверный запрос"), 400
+    digits = resolve_power_balance_rounding_digits(
+        data.get("rounding_digits", request.args.get("rounding_digits"))
+    )
+    try:
+        saved = update_power_balance_demand_cold_value(slug, data.get("year"), data.get("value"))
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception(
+            "Не удалось сохранить максимум потребления мощности для холодной пятидневки"
+        )
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+    display = (
+        ""
+        if saved.get("value") is None
+        else format_power_balance_cell(saved["value"], digits=digits)
+    )
+    return jsonify(ok=True, year=saved["year"], display=display)
+
+
+@energy_balance_bp.route("/power_balance/<slug>/note/", methods=["PATCH"])
+@login_required
+def power_balance_note(slug: str):
+    _require_sheet(slug)
+    data = request.get_json(silent=True) or {}
+    try:
+        saved = update_balance_sheet_note(
+            BALANCE_KIND_POWER, slug, data.get("row_key"), data.get("note")
+        )
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception("Не удалось сохранить примечание баланса мощности")
+        return jsonify(ok=False, error="Не удалось сохранить примечание"), 500
+    return jsonify(ok=True, note=saved.get("note") or "", row_key=saved.get("row_key") or "")

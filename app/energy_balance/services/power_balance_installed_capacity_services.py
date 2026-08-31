@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from typing import Any
 
@@ -313,6 +314,8 @@ def accumulate_q4_p_ust_by_territory(
 
     ues: dict[int, dict[int, Decimal]] = {}
     sa: dict[int, dict[int, Decimal]] = {}
+    res: dict[int, dict[int, Decimal]] = {}
+    eu: dict[int, dict[int, Decimal]] = {}
     for row in best_by_machine_year.values():
         year = int(getattr(row, "year", None) or getattr(row, "year_number"))
         p_ust = _decimal_or_zero(getattr(row, "p_ust", None))
@@ -327,13 +330,30 @@ def accumulate_q4_p_ust_by_territory(
             district_to_ues=district_to_ues,
             district_to_sa=district_to_sa,
         )
+        if res_id:
+            try:
+                res_int = int(res_id)
+            except (TypeError, ValueError):
+                res_int = None
+            if res_int:
+                res.setdefault(res_int, {})
+                res[res_int][year] = res[res_int].get(year, Decimal("0")) + p_ust
+        eu_id = getattr(row, "id_energy_unit", None)
+        if eu_id:
+            try:
+                eu_int = int(eu_id)
+            except (TypeError, ValueError):
+                eu_int = None
+            if eu_int:
+                eu.setdefault(eu_int, {})
+                eu[eu_int][year] = eu[eu_int].get(year, Decimal("0")) + p_ust
         if ues_id is not None:
             ues.setdefault(ues_id, {})
             ues[ues_id][year] = ues[ues_id].get(year, Decimal("0")) + p_ust
         if sa_id is not None:
             sa.setdefault(sa_id, {})
             sa[sa_id][year] = sa[sa_id].get(year, Decimal("0")) + p_ust
-    return {"ues": ues, "sa": sa}
+    return {"ues": ues, "sa": sa, "res": res, "eu": eu}
 
 
 def _q4_territory_lookups(
@@ -407,6 +427,7 @@ def _query_q4_commissioning_machine_powers(
             Machine.id.label("machine_id"),
             Station.id_regional_energy_system.label("id_regional_energy_system"),
             Station.id_regional_district.label("id_regional_district"),
+            Station.id_energy_unit.label("id_energy_unit"),
             MachinePower.year_number.label("year"),
             MachinePower.p_ust.label("p_ust"),
         )
@@ -432,7 +453,7 @@ def _load_q4_commissioning_p_ust_maps(
     station_ids: list[int],
 ) -> dict[str, dict[int, dict[int, Decimal]]]:
     """Руст агрегатов с «Ввод 4 квартала» в ожидаемом году ввода, по ОЭС и СЗ."""
-    empty: dict[str, dict[int, dict[int, Decimal]]] = {"ues": {}, "sa": {}}
+    empty: dict[str, dict[int, dict[int, Decimal]]] = {"ues": {}, "sa": {}, "res": {}, "eu": {}}
     if not years or not station_ids:
         return empty
     try:
@@ -490,8 +511,14 @@ def load_power_balance_installed_capacity_inputs(
     ues_by_type = _aggregated_metric(
         aggregated, "aggregate_union_energy_systems_by_station_types", "p_ust"
     )
+    ues_by_type_rasp = _aggregated_metric(
+        aggregated, "aggregate_union_energy_systems_by_station_types", "p_rasp"
+    )
     sa_by_type = _aggregated_metric(
         aggregated, "aggregate_synchronous_areas_by_station_types", "p_ust"
+    )
+    sa_by_type_rasp = _aggregated_metric(
+        aggregated, "aggregate_synchronous_areas_by_station_types", "p_rasp"
     )
     ues_p_ogr = _aggregated_metric(aggregated, "aggregate_power_by_union_energy_systems", "p_ogr")
     ues_p_ust = _aggregated_metric(aggregated, "aggregate_power_by_union_energy_systems", "p_ust")
@@ -499,12 +526,34 @@ def load_power_balance_installed_capacity_inputs(
     sa_p_ogr = _aggregated_metric(aggregated, "aggregate_power_by_synchronous_areas", "p_ogr")
     sa_p_ust = _aggregated_metric(aggregated, "aggregate_power_by_synchronous_areas", "p_ust")
     sa_p_rasp = _aggregated_metric(aggregated, "aggregate_power_by_synchronous_areas", "p_rasp")
+    res_by_type = _aggregated_metric(
+        aggregated, "aggregate_regional_energy_systems_by_station_types", "p_ust"
+    )
+    res_by_type_rasp = _aggregated_metric(
+        aggregated, "aggregate_regional_energy_systems_by_station_types", "p_rasp"
+    )
+    res_p_ogr = _aggregated_metric(aggregated, "aggregate_power_by_regional_energy_systems", "p_ogr")
+    res_p_ust = _aggregated_metric(aggregated, "aggregate_power_by_regional_energy_systems", "p_ust")
+    res_p_rasp = _aggregated_metric(aggregated, "aggregate_power_by_regional_energy_systems", "p_rasp")
+    eu_by_type = _aggregated_metric(
+        aggregated, "aggregate_energy_units_by_station_types", "p_ust"
+    )
+    eu_by_type_rasp = _aggregated_metric(
+        aggregated, "aggregate_energy_units_by_station_types", "p_rasp"
+    )
+    eu_p_ogr = _aggregated_metric(aggregated, "aggregate_power_by_energy_units", "p_ogr")
+    eu_p_ust = _aggregated_metric(aggregated, "aggregate_power_by_energy_units", "p_ust")
+    eu_p_rasp = _aggregated_metric(aggregated, "aggregate_power_by_energy_units", "p_rasp")
     q4_maps = _load_q4_commissioning_p_ust_maps(years, station_ids)
 
     if sheets:
         sheet_specs: list[tuple[str, dict[str, Any] | None]] = []
         for sheet in sheets:
-            if sheet.get("skip_direct_capacity") or sheet.get("layout") in {"ees_rossii", "sz1"}:
+            if (
+                sheet.get("skip_table")
+                or sheet.get("skip_direct_capacity")
+                or sheet.get("layout") in {"ees_rossii", "sz1"}
+            ):
                 continue
             sheet_specs.append((sheet["slug"], sheet.get("territory")))
     else:
@@ -515,32 +564,449 @@ def load_power_balance_installed_capacity_inputs(
         resolved = territory if territory and territory.get("id") is not None else resolve_sheet_territory(slug)
         if resolved is None:
             continue
-        entity_id = resolved["id"]
+        try:
+            entity_id = int(resolved["id"])
+        except (TypeError, ValueError, KeyError):
+            continue
         kind = resolved.get("kind") or (SHEET_TERRITORY.get(slug) or {}).get("kind")
         if kind == "ues":
             by_type = ues_by_type.get(entity_id) or {}
+            by_type_rasp = ues_by_type_rasp.get(entity_id) or {}
             ogr_map = _entity_year_map(ues_p_ogr, entity_id)
             ust_map = _entity_year_map(ues_p_ust, entity_id)
             rasp_map = _entity_year_map(ues_p_rasp, entity_id)
             q4_map = _entity_year_map(q4_maps.get("ues"), entity_id)
         elif kind == "sa":
             by_type = sa_by_type.get(entity_id) or {}
+            by_type_rasp = sa_by_type_rasp.get(entity_id) or {}
             ogr_map = _entity_year_map(sa_p_ogr, entity_id)
             ust_map = _entity_year_map(sa_p_ust, entity_id)
             rasp_map = _entity_year_map(sa_p_rasp, entity_id)
             q4_map = _entity_year_map(q4_maps.get("sa"), entity_id)
+        elif kind == "res":
+            by_type = res_by_type.get(entity_id) or {}
+            by_type_rasp = res_by_type_rasp.get(entity_id) or {}
+            ogr_map = _entity_year_map(res_p_ogr, entity_id)
+            ust_map = _entity_year_map(res_p_ust, entity_id)
+            rasp_map = _entity_year_map(res_p_rasp, entity_id)
+            q4_map = _entity_year_map(q4_maps.get("res"), entity_id)
+        elif kind == "eu":
+            by_type = eu_by_type.get(entity_id) or {}
+            by_type_rasp = eu_by_type_rasp.get(entity_id) or {}
+            ogr_map = _entity_year_map(eu_p_ogr, entity_id)
+            ust_map = _entity_year_map(eu_p_ust, entity_id)
+            rasp_map = _entity_year_map(eu_p_rasp, entity_id)
+            q4_map = _entity_year_map(q4_maps.get("eu"), entity_id)
         else:
             continue
         sheet_inputs: dict[str, dict[int, Decimal]] = {}
         for group in groups:
-            sheet_inputs[group["key"]] = _year_values_for_types(
-                by_type,
-                tuple(group.get("type_ids") or ()),
-                years,
+            type_ids = tuple(group.get("type_ids") or ())
+            sheet_inputs[group["key"]] = _year_values_for_types(by_type, type_ids, years)
+            sheet_inputs[available_row_key(group["key"])] = _year_values_for_types(
+                by_type_rasp, type_ids, years
             )
         sheet_inputs["constraints"] = _constraints_year_values(
             ogr_map, ust_map, rasp_map, years
         )
         sheet_inputs["commissioning_after_max"] = _year_values_filled(q4_map, years)
         inputs[slug] = sheet_inputs
+    return inputs
+
+
+def available_row_key(installed_key: str) -> str:
+    text = str(installed_key or "")
+    if text.startswith("installed_"):
+        return "available_" + text[len("installed_") :]
+    return f"available_{text}"
+
+
+def station_capacity_row_key(station_id: int) -> str:
+    return f"installed_station_{int(station_id)}"
+
+
+def machine_capacity_row_key(machine_id: int) -> str:
+    return f"installed_machine_{int(machine_id)}"
+
+
+def _name_already_shows_machine_number(name: str, number: str) -> bool:
+    if not name or not number:
+        return False
+    escaped = re.escape(number)
+    if re.match(rf"^{escaped}(?:\s|$)", name):
+        return True
+    return bool(re.search(rf"№\s*{escaped}(?:\D|$)", name))
+
+
+def _machine_capacity_label(machine_number: Any, machine_name: Any) -> str:
+    number = " ".join(str(machine_number or "").split())
+    name = " ".join(str(machine_name or "").split())
+    if number and name:
+        if _name_already_shows_machine_number(name, number):
+            return name
+        return f"{number} {name}"
+    return name or number or "Агрегат"
+
+
+def _machine_sort_tuple(machine_number: Any) -> tuple[int, str]:
+    text = str(machine_number or "").strip()
+    digits = ""
+    for char in text:
+        if char.isdigit():
+            digits += char
+        elif digits:
+            break
+    return (int(digits) if digits else 10**9, text)
+
+
+# Токены энергорайонов ТИТЭС Востока: при общей РЭС (Чукотка) режем станции по имени.
+_EU_SPLIT_SPECS: tuple[tuple[str, ...], ...] = (
+    ("чаун", "билибин"),
+    ("анад",),
+    ("камчат",),
+    ("магадан",),
+    ("сахалин",),
+)
+
+
+def _tokens_for_eu_name(name: str | None) -> tuple[str, ...]:
+    n = _norm(name)
+    if not n:
+        return ()
+    for spec in _EU_SPLIT_SPECS:
+        if all(token in n for token in spec):
+            return spec
+    return ()
+
+
+def _station_name_matches_tokens(station_name: str | None, tokens: tuple[str, ...]) -> bool:
+    if not tokens:
+        return False
+    n = _norm(station_name)
+    return any(token in n for token in tokens)
+
+
+def assign_station_ids_for_shared_res_eu(
+    stations: list[tuple[int, str]],
+    current_eu_id: int,
+    eu_id_to_name: dict[int, str],
+) -> list[int]:
+    """Станции общей РЭС: в энергорайон по токенам имени, без совпадений — в «остаток»."""
+    token_by_eu = {
+        int(eu_id): _tokens_for_eu_name(name) for eu_id, name in (eu_id_to_name or {}).items()
+    }
+    token_items = [(eu_id, tokens) for eu_id, tokens in token_by_eu.items() if tokens]
+    if len(token_items) <= 1:
+        return [int(station_id) for station_id, _name in stations]
+    remainder_id = max(token_items, key=lambda item: (len(item[1]), -item[0]))[0]
+    result: list[int] = []
+    for station_id, station_name in stations:
+        matched = [
+            eu_id
+            for eu_id, tokens in token_items
+            if _station_name_matches_tokens(station_name, tokens)
+        ]
+        if current_eu_id in matched:
+            result.append(int(station_id))
+        elif not matched and current_eu_id == remainder_id:
+            result.append(int(station_id))
+    return result
+
+
+def _station_ids_for_energy_unit_via_res(eu_id: int, eu_name: str) -> list[int]:
+    """Станции энергорайона: прямого id_energy_unit нет — берём РЭС, Чукотку режем по имени."""
+    from app.common.services.database_version_filter import filter_by_db_version
+    from app.extensions import db
+    from app.generation.models.station.station_model import Station
+    from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
+
+    eu = EnergyUnit.query.get(eu_id)
+    res_id = getattr(eu, "id_regional_energy_system", None) if eu is not None else None
+    if not res_id:
+        return []
+    res_id = int(res_id)
+    query = (
+        db.session.query(Station.id, Station.name)
+        .filter(Station.id_regional_energy_system == res_id)
+    )
+    query = filter_by_db_version(query, Station)
+    stations = [
+        (int(row[0]), str(row[1] or ""))
+        for row in query.all()
+        if row[0] is not None
+    ]
+    if not stations:
+        return []
+    sibling_names: dict[int, str] = {}
+    try:
+        siblings = EnergyUnit.query.filter(EnergyUnit.id_regional_energy_system == res_id).all()
+    except Exception:
+        siblings = []
+    for sibling in siblings:
+        sibling_id = getattr(sibling, "id", None)
+        if sibling_id is None:
+            continue
+        sibling_names[int(sibling_id)] = str(getattr(sibling, "name", None) or "")
+    sibling_names.setdefault(int(eu_id), eu_name)
+    if len(sibling_names) <= 1:
+        return [station_id for station_id, _name in stations]
+    return assign_station_ids_for_shared_res_eu(stations, int(eu_id), sibling_names)
+
+
+def _station_ids_for_capacity_territory(territory: dict[str, Any] | None) -> list[int]:
+    if not territory or territory.get("id") is None:
+        return []
+    kind = str(territory.get("kind") or "")
+    try:
+        entity_id = int(territory["id"])
+    except (TypeError, ValueError, KeyError):
+        return []
+    from app.common.services.database_version_filter import filter_by_db_version
+    from app.extensions import db
+    from app.generation.models.station.station_model import Station
+    from app.generation.services.station_services.station_services import (
+        _station_energy_unit_sql_filter,
+        _station_union_energy_system_sql_filter,
+    )
+
+    query = db.session.query(Station.id)
+    query = filter_by_db_version(query, Station)
+    if kind == "ues":
+        query = query.filter(_station_union_energy_system_sql_filter([entity_id]))
+        return [int(row[0]) for row in query.all() if row[0] is not None]
+    if kind == "eu":
+        cond = _station_energy_unit_sql_filter([entity_id])
+        ids: list[int] = []
+        if cond is not None:
+            ids = [int(row[0]) for row in query.filter(cond).all() if row[0] is not None]
+        if ids:
+            return ids
+        return _station_ids_for_energy_unit_via_res(entity_id, str(territory.get("name") or ""))
+    return []
+
+
+def _query_station_machine_powers(
+    start_year: int,
+    end_year: int,
+    station_ids: list[int],
+) -> list[Any]:
+    from sqlalchemy import and_, func, literal, or_
+
+    from app.common.services.database_version_filter import (
+        filter_by_db_version,
+        get_current_db_version_id,
+    )
+    from app.extensions import db
+    from app.generation.models.machine.machine_model import Machine
+    from app.generation.models.machine.machine_power_model import MachinePower
+    from app.generation.models.station.station_model import Station
+
+    current_version_id = get_current_db_version_id()
+
+    def _version_cond(model_cls: Any):
+        if not hasattr(model_cls, "database_version_id"):
+            return literal(True)
+        if current_version_id is None:
+            return model_cls.database_version_id.is_(None)
+        return model_cls.database_version_id == current_version_id
+
+    def _version_cond_power(model_cls: Any):
+        if not hasattr(model_cls, "database_version_id"):
+            return literal(True)
+        if current_version_id is None:
+            return model_cls.database_version_id.is_(None)
+        return or_(
+            model_cls.database_version_id == current_version_id,
+            model_cls.database_version_id.is_(None),
+        )
+
+    query = (
+        db.session.query(
+            Station.id.label("station_id"),
+            Station.name.label("station_name"),
+            Machine.id.label("machine_id"),
+            Machine.machine_number.label("machine_number"),
+            Machine.machine_name.label("machine_name"),
+            MachinePower.year_number.label("year"),
+            func.sum(MachinePower.p_ust).label("p_ust"),
+            func.sum(MachinePower.p_rasp).label("p_rasp"),
+        )
+        .select_from(Machine)
+        .join(Station, and_(Station.id == Machine.id_station, _version_cond(Station)))
+        .outerjoin(
+            MachinePower,
+            and_(
+                MachinePower.id_machine == Machine.id,
+                MachinePower.year_number.between(start_year, end_year),
+                _version_cond_power(MachinePower),
+            ),
+        )
+        .filter(
+            Station.id.in_(station_ids),
+            Machine.is_archived.isnot(True),
+            _version_cond(Machine),
+        )
+        .group_by(
+            Station.id,
+            Station.name,
+            Machine.id,
+            Machine.machine_number,
+            Machine.machine_name,
+            MachinePower.year_number,
+        )
+    )
+    query = filter_by_db_version(query, Station)
+    return list(query.all())
+
+
+def _build_station_capacity_items(
+    rows: list[Any],
+    years: list[int],
+) -> list[dict[str, Any]]:
+    stations: dict[int, dict[str, Any]] = {}
+    for row in rows or []:
+        station_id = getattr(row, "station_id", None)
+        machine_id = getattr(row, "machine_id", None)
+        if station_id is None or machine_id is None:
+            continue
+        station_id = int(station_id)
+        machine_id = int(machine_id)
+        station = stations.get(station_id)
+        if station is None:
+            station = {
+                "id": station_id,
+                "key": station_capacity_row_key(station_id),
+                "label": str(getattr(row, "station_name", None) or "").strip()
+                or f"Станция {station_id}",
+                "year_values": {int(year): Decimal("0") for year in years},
+                "rasp_year_values": {int(year): Decimal("0") for year in years},
+                "machines": {},
+            }
+            stations[station_id] = station
+        machines = station["machines"]
+        machine = machines.get(machine_id)
+        if machine is None:
+            machine = {
+                "id": machine_id,
+                "key": machine_capacity_row_key(machine_id),
+                "label": _machine_capacity_label(
+                    getattr(row, "machine_number", None),
+                    getattr(row, "machine_name", None),
+                ),
+                "number": str(getattr(row, "machine_number", None) or ""),
+                "year_values": {int(year): Decimal("0") for year in years},
+                "rasp_year_values": {int(year): Decimal("0") for year in years},
+            }
+            machines[machine_id] = machine
+        year = getattr(row, "year", None)
+        if year is None:
+            continue
+        year_int = int(year)
+        if year_int not in machine["year_values"]:
+            continue
+        amount = _decimal_or_zero(getattr(row, "p_ust", None))
+        machine["year_values"][year_int] += amount
+        station["year_values"][year_int] += amount
+        rasp = _decimal_or_zero(getattr(row, "p_rasp", None))
+        machine["rasp_year_values"][year_int] += rasp
+        station["rasp_year_values"][year_int] += rasp
+
+    items: list[dict[str, Any]] = []
+    for station in stations.values():
+        machine_items = list((station.get("machines") or {}).values())
+        machine_items.sort(
+            key=lambda item: (
+                _machine_sort_tuple(item.get("number")),
+                _norm(item.get("label")),
+                int(item.get("id") or 0),
+            )
+        )
+        station["machines"] = [{k: v for k, v in item.items() if k != "number"} for item in machine_items]
+        items.append(station)
+    items.sort(key=lambda item: (_norm(item.get("label")), int(item.get("id") or 0)))
+    return items
+
+
+def load_power_balance_station_capacity_breakdown(
+    years: list[int],
+    sheets: list[dict[str, Any]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Станции и агрегаты с p_ust для листов ТИТЭС (вместо разбивки по типам)."""
+    if not years or not sheets:
+        return {}
+    targets = [
+        sheet
+        for sheet in sheets
+        if sheet.get("station_capacity_breakdown")
+        and not sheet.get("skip_table")
+        and not sheet.get("skip_direct_capacity")
+    ]
+    if not targets:
+        return {}
+    start_year = min(years)
+    end_year = max(years)
+    result: dict[str, dict[str, Any]] = {}
+    for sheet in targets:
+        slug = str(sheet.get("slug") or "").strip()
+        if not slug:
+            continue
+        territory = sheet.get("territory") or {}
+        try:
+            station_ids = _station_ids_for_capacity_territory(territory)
+        except Exception:
+            station_ids = []
+        if not station_ids:
+            result[slug] = {"stations": []}
+            continue
+        try:
+            rows = _query_station_machine_powers(start_year, end_year, station_ids)
+        except Exception:
+            result[slug] = {"stations": []}
+            continue
+        result[slug] = {"stations": _build_station_capacity_items(rows, years)}
+    return result
+
+
+def _add_station_metric_inputs(
+    sheet_inputs: dict[str, dict[int, Decimal]],
+    station: dict[str, Any],
+    *,
+    year_field: str,
+    key_mapper=None,
+) -> None:
+    mapper = key_mapper or (lambda key: key)
+
+    def _put(item: dict[str, Any]) -> None:
+        year_map = item.get(year_field) or {}
+        if not year_map:
+            return
+        sheet_inputs[mapper(item["key"])] = {
+            int(year): _decimal_or_zero(value) for year, value in year_map.items()
+        }
+
+    machines = station.get("machines") or []
+    if machines:
+        for machine in machines:
+            _put(machine)
+    else:
+        _put(station)
+
+
+def station_capacity_breakdown_to_inputs(
+    breakdown: dict[str, dict[str, Any]] | None,
+) -> dict[str, dict[str, dict[int, Decimal]]]:
+    """Значения агрегатов (и станций без агрегатов) для подстановки в таблицу."""
+    inputs: dict[str, dict[str, dict[int, Decimal]]] = {}
+    for slug, payload in (breakdown or {}).items():
+        sheet_inputs: dict[str, dict[int, Decimal]] = {}
+        for station in payload.get("stations") or []:
+            _add_station_metric_inputs(sheet_inputs, station, year_field="year_values")
+            _add_station_metric_inputs(
+                sheet_inputs,
+                station,
+                year_field="rasp_year_values",
+                key_mapper=available_row_key,
+            )
+        if sheet_inputs:
+            inputs[slug] = sheet_inputs
     return inputs

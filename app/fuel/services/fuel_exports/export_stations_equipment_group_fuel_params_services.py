@@ -35,10 +35,10 @@ FUEL_PARAM_COLUMNS = [
     ("numb1120", "Код группы оборудования", False),
     ("nust", EquipmentGroupFuelParam.NUST_COLUMN_LABEL, True),
     ("nr", EquipmentGroupFuelParam.NR_COLUMN_LABEL, True),
-    ("e", "Выработка ЭЭ, тыс.кВтч", True),
+    ("e", EquipmentGroupFuelParam.E_COLUMN_LABEL, True),
     ("ewtp", "Теплофикационная выработка ЭЭ, тыс.кВтч", True),
     ("eotp", EquipmentGroupFuelParam.EOTP_COLUMN_LABEL, True),
-    ("eust", "Расх топ ээ", True),
+    ("eust", EquipmentGroupFuelParam.EUST_COLUMN_LABEL, True),
     ("eurt", EquipmentGroupFuelParam.EURT_COLUMN_LABEL, True),
     ("sn_ee", EquipmentGroupFuelParam.SN_EE_COLUMN_LABEL, True),
     ("snk", EquipmentGroupSpecificFuelConsumption.SNK_COLUMN_LABEL, True),
@@ -179,7 +179,7 @@ def export_stations_equipment_group_fuel_params_to_excel(
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Топливные параметры"
+    ws.title = "Сведения о работе ТЭС"
 
     columns = [EQUIPMENT_GROUP_ID_HEADER, "Группа оборудования"] + [
         label for _, label, _ in FUEL_PARAM_COLUMNS

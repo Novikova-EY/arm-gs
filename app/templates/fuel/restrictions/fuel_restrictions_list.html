@@ -350,7 +350,7 @@ content %} {% if current_user.is_authenticated %}
   inputmode="decimal"
   class="form-control form-control-lg text-center fuel-param-input"
   name="fr_{{ suffix }}_{{ attr }}"
-  value="{% if v is not none %}{{ v|format_decimal_trim(rounding_digits) }}{% endif %}"
+  value="{% if v is not none %}{{ v|format_decimal_trim(0) }}{% endif %}"
   autocomplete="off"
   {%
   if
@@ -578,6 +578,7 @@ content %} {% if current_user.is_authenticated %}
           name="rounding_digits"
           class="form-select"
           style="min-width: 140px"
+          title="Только таблица просмотра. В полях ввода и при сохранении — все знаки из БД."
         >
           <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>
             Не округлять

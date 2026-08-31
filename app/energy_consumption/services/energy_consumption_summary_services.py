@@ -516,7 +516,22 @@ def _is_ees_russia_without_nt_tree_root(e: SummaryEntity) -> bool:
 
 
 def _synchronous_area_display_label(sa: SynchronousArea) -> str:
+    """Подпись СЗ на сводке: полное наименование, иначе краткое."""
+    full = (getattr(sa, "name_full", None) or "").strip()
+    if full:
+        return full
     return (getattr(sa, "name", None) or "").strip()
+
+
+def _synchronous_area_binding_name(sa: SynchronousArea) -> str:
+    """Имя СЗ для привязки периметра: полное, если по нему есть привязка, иначе краткое."""
+    full = (getattr(sa, "name_full", None) or "").strip()
+    short = (getattr(sa, "name", None) or "").strip()
+    if full and resolve_entity_perimeter_binding("synchronous_area", full):
+        return full
+    if short and resolve_entity_perimeter_binding("synchronous_area", short):
+        return short
+    return full or short
 
 
 def _shift_summary_entity_depth(e: SummaryEntity, delta: int) -> SummaryEntity:
@@ -1668,6 +1683,43 @@ def _effective_data_year_bounds(
     return start_year, end_year
 
 
+def _prepare_summary_demand_bulk_load() -> None:
+    """Пакетная загрузка строк потребления (один SELECT на модель) для сводок."""
+    from app.energy_consumption.services.ec_demand_rows_bulk_cache import (
+        activate_energy_consumption_rows_bulk,
+        preload_energy_consumption_rows_for_summary,
+    )
+
+    activate_energy_consumption_rows_bulk()
+    preload_energy_consumption_rows_for_summary()
+
+
+def _build_summary_shell_context(
+    *,
+    page_title: str,
+    active_summary: str,
+    rounding_digits: int,
+    start_year: int,
+    end_year: int,
+    filter_year_list: list[int],
+    data_start_year: int | None = None,
+    data_end_year: int | None = None,
+) -> dict[str, Any]:
+    ctx = _build_summary_context(
+        entities=[],
+        page_title=page_title,
+        active_summary=active_summary,
+        rounding_digits=rounding_digits,
+        start_year=start_year,
+        end_year=end_year,
+        data_start_year=data_start_year,
+        data_end_year=data_end_year,
+        filter_year_list=filter_year_list,
+    )
+    ctx["summary_rows"] = []
+    return ctx
+
+
 def build_oes_summary_context(
     rounding_digits: int,
     *,
@@ -1688,6 +1740,7 @@ def build_oes_summary_context(
     summary_table_top_order: bool = False,
     ees_unified_use_ees_russia_gaes_variants: bool = False,
     russia_federation_first: bool = False,
+    for_client_render_shell: bool = False,
 ) -> dict[str, Any]:
     """Сводка по ОЭС (GET ds_ues, ds_res, ds_rd, ds_eu).
 
@@ -1701,7 +1754,22 @@ def build_oes_summary_context(
 
     Ровно один id: для одной РЭС, одного субъекта или одного энергорайона — прежнее поднятие
     строки под «ЕЭС России (без НТ)»; для одной ОЭС — полное поддерево (РЭС и ниже).
+
+    ``for_client_render_shell=True`` — только метаданные страницы (годы, заголовок); строки
+    таблицы загружаются отдельным JSON-запросом.
     """
+    if for_client_render_shell:
+        return _build_summary_shell_context(
+            page_title="Потребление электрической энергии по энергосистемам",
+            active_summary="oes",
+            rounding_digits=rounding_digits,
+            start_year=start_year,
+            end_year=end_year,
+            data_start_year=data_start_year,
+            data_end_year=data_end_year,
+            filter_year_list=filter_year_list,
+        )
+    _prepare_summary_demand_bulk_load()
     dsy, dey = _effective_data_year_bounds(
         start_year, end_year, data_start_year, data_end_year
     )
@@ -1817,6 +1885,7 @@ def build_federal_district_summary_context(
     fo_filter_sets: tuple[frozenset[int], frozenset[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
     expand_entity_perimeter_variants: bool = False,
+    for_client_render_shell: bool = False,
 ) -> dict[str, Any]:
     """Сводка по ФО и РЭС (GET ds_fd, ds_res).
 
@@ -1833,6 +1902,18 @@ def build_federal_district_summary_context(
 
     Только ``ds_res`` (без ``ds_fd``) — плоский список строк по РЭС без уровня ФО (как в Excel).
     """
+    if for_client_render_shell:
+        return _build_summary_shell_context(
+            page_title="Потребление электрической энергии по ФО",
+            active_summary="fo",
+            rounding_digits=rounding_digits,
+            start_year=start_year,
+            end_year=end_year,
+            data_start_year=data_start_year,
+            data_end_year=data_end_year,
+            filter_year_list=filter_year_list,
+        )
+    _prepare_summary_demand_bulk_load()
     dsy, dey = _effective_data_year_bounds(
         start_year, end_year, data_start_year, data_end_year
     )
@@ -1930,6 +2011,7 @@ def build_energy_zones_summary_context(
     ez_territory_ordered: tuple[list[int], list[int]] | None = None,
     avg_temp_uses_global_rounding: bool = False,
     expand_entity_perimeter_variants: bool = False,
+    for_client_render_shell: bool = False,
 ) -> dict[str, Any]:
     """Сводка по энергозонам (GET ds_ez, ds_res).
 
@@ -1945,6 +2027,18 @@ def build_energy_zones_summary_context(
 
     Только ``ds_res`` (без ``ds_ez``) — плоский список по выбранным РЭС без строки энергозоны.
     """
+    if for_client_render_shell:
+        return _build_summary_shell_context(
+            page_title="Потребление электрической энергии по энергозонам",
+            active_summary="ez",
+            rounding_digits=rounding_digits,
+            start_year=start_year,
+            end_year=end_year,
+            data_start_year=data_start_year,
+            data_end_year=data_end_year,
+            filter_year_list=filter_year_list,
+        )
+    _prepare_summary_demand_bulk_load()
     dsy, dey = _effective_data_year_bounds(
         start_year, end_year, data_start_year, data_end_year
     )
@@ -8945,7 +9039,8 @@ def _resolve_synchronous_area_id_by_name_prefix_cf(prefix_cf: str) -> int | None
         if not _is_valid_named_item(sa):
             continue
         name_cf = (getattr(sa, "name", None) or "").strip().casefold()
-        if name_cf.startswith(target):
+        full_cf = (getattr(sa, "name_full", None) or "").strip().casefold()
+        if name_cf.startswith(target) or full_cf.startswith(target):
             return int(sa.id)
     return None
 
@@ -8957,7 +9052,11 @@ def _resolve_kaliningrad_synchronous_area_id() -> int | None:
         if not _is_valid_named_item(sa):
             continue
         name_cf = (getattr(sa, "name", None) or "").strip().casefold()
-        if _KALININGRAD_SYNC_AREA_LABEL_TOKEN_CF in name_cf:
+        full_cf = (getattr(sa, "name_full", None) or "").strip().casefold()
+        if (
+            _KALININGRAD_SYNC_AREA_LABEL_TOKEN_CF in name_cf
+            or _KALININGRAD_SYNC_AREA_LABEL_TOKEN_CF in full_cf
+        ):
             return int(sa.id)
     return None
 
@@ -16660,7 +16759,7 @@ def _build_synchronous_area_entities(
             _expand_summary_entity_perimeter_variants(
                 base,
                 binding_entity_kind="synchronous_area",
-                binding_entity_name=sa.name,
+                binding_entity_name=_synchronous_area_binding_name(sa),
                 expand=expand_entity_perimeter_variants,
                 tree_years=tree_years,
             )

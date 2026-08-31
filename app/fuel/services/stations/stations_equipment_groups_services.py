@@ -1849,9 +1849,15 @@ def _station_display_merge_key(station) -> tuple:
 def _equipment_group_display_merge_key(group) -> str:
     if not group:
         return "—"
-    return _normalize_display_merge_text(
+    name = _normalize_display_merge_text(
         getattr(group, "name", None) or getattr(group, "name_ext", None) or "—"
     )
+    numb = _as_int(getattr(group, "numb", None))
+    if numb is None:
+        # Пустой numb не склеиваем с соседней одноимённой группой — иначе её код
+        # пропадает за «—» первой строки (Первомайская ТЭЦ: 66 / 1083).
+        return f"id:{getattr(group, 'id', None)}::{name}"
+    return f"numb:{numb}::{name}"
 
 
 def _eg_station_regional_district_consistent(station, equipment_group) -> bool:
@@ -2669,6 +2675,10 @@ def prepare_equipment_group_blocks_for_display(blocks):
         eg = block.get("equipment_group")
         block["is_composite_parent"] = is_composite_parent_group(eg)
         block["is_composite_child"] = is_composite_child_group(eg)
+        for entry in block.get("station_entries") or []:
+            entry["fuel_fields_mismatch"] = not _eg_station_regional_district_consistent(
+                entry.get("station"), eg
+            )
         prepared_blocks.append(block)
 
     # До сортировки: иначе дети с station=None уезжают в бакет «—»
@@ -2946,6 +2956,31 @@ def filter_equipment_group_ids_missing_or_duplicate_numb(filtered_eg_ids, numb_r
     return allowed & (missing_ids | dup_ids)
 
 
+def filter_legacy_duplicate_equipment_group_ids(identity_rows, version_id):
+    """
+    Убирает legacy-копии (database_version_id IS NULL / другая версия), если в
+    выборке уже есть группа текущей версии с тем же external_code.
+
+    Иначе на stations_equipment_groups одна станция показывает две оболочки
+    «ТЭЦ-14 Первомайская» (версия + без версии), а numb первой строки — «—».
+    """
+    rows = list(identity_rows or [])
+    if version_id is None:
+        return {eid for eid, _code, _vid in rows}
+    current_codes = {
+        (code or "").strip()
+        for _eid, code, vid in rows
+        if vid == version_id and (code or "").strip()
+    }
+    keep = set()
+    for eid, code, vid in rows:
+        key = (code or "").strip()
+        if vid != version_id and key and key in current_codes:
+            continue
+        keep.add(eid)
+    return keep
+
+
 def build_equipment_group_hierarchy_eg_first(
     filters=None,
     start_year=None,
@@ -2985,11 +3020,21 @@ def build_equipment_group_hierarchy_eg_first(
 
     numb_rows = []
     if filtered_eg_ids:
-        numb_rows = (
-            db.session.query(EquipmentGroup.id, EquipmentGroup.numb)
+        identity_rows = (
+            db.session.query(
+                EquipmentGroup.id,
+                EquipmentGroup.external_code,
+                EquipmentGroup.database_version_id,
+                EquipmentGroup.numb,
+            )
             .filter(EquipmentGroup.id.in_(filtered_eg_ids))
             .all()
         )
+        filtered_eg_ids = filter_legacy_duplicate_equipment_group_ids(
+            [(row[0], row[1], row[2]) for row in identity_rows],
+            version_id,
+        )
+        numb_rows = [(row[0], row[3]) for row in identity_rows if row[0] in filtered_eg_ids]
     choices = sorted(
         {
             n
