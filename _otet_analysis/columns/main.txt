@@ -1,3 +1,0 @@
-TABLE: main
-1	Код	DBTYPE_I4
-2	name	DBTYPE_WVARCHAR

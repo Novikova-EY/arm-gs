@@ -1,3 +1,0 @@
-TABLE: sumvar
-1	v1	DBTYPE_R8
-2	v	DBTYPE_R8

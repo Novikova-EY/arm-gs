@@ -1,3 +1,0 @@
-SELECT Справка.NUMB1120
-FROM Справка
-GROUP BY Справка.NUMB1120;
