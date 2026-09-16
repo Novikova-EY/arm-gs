@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 """JSON-набор general_info: текущий год и период планирования версии.
 
-Источник — блок «Периоды планирования» на /refdata/:
+Источник лет — те же current_year / period_start / period_end, что в
+``GET /api/database_versions`` (блок «Периоды планирования» на /refdata/):
 - «Текущий год» — YearFeature «текущий (оценка)»;
 - «Начало периода» — year_sipr_start (как начало строки СиПР / ГС на странице);
 - «Конец периода» — для версии СиПР: year_sipr_end; для ГС: конец Генеральной схемы (2042).
 
 Не путать с границами фильтров страниц (там start = sipr_start − 2).
+
+Поля постановления Правительства РФ и external_code пока отсутствуют в АРМ —
+в строке пустые заглушки, пояснение в comment набора.
 """
 from __future__ import annotations
 
@@ -18,7 +22,7 @@ from app.common.services.get_services.years.years_get_services import (
     _planning_scheme_from_version_number,
 )
 from app.extensions import db
-from app.api.services.generation_objects_exchange_services import (
+from app.api.services.exchange_common_services import (
     dataset_envelope,
     resolve_database_version,
 )
@@ -29,9 +33,22 @@ DATASET_GENERAL_INFO = "general_info"
 KEY_CURRENT_YEAR = "Текущий год"
 KEY_PERIOD_START = "Начало периода"
 KEY_PERIOD_END = "Конец периода"
+# Поля пока отсутствуют в АРМ — в JSON пустые заглушки.
+KEY_DECREE_DATE = "Дата утверждения Постановления Правительства РФ"
+KEY_DECREE_NUMBER = "Номер Постановления Правительства РФ"
+KEY_DECREE_NAME = "Наименование Постановления Правительства РФ"
+KEY_EXTERNAL_CODE = "external_code"
+STUB_EMPTY = ""
+
+GENERAL_INFO_COMMENT = (
+    "Поля «Дата утверждения Постановления Правительства РФ», "
+    "«Номер Постановления Правительства РФ», "
+    "«Наименование Постановления Правительства РФ» и external_code "
+    "пока пустые: таких полей в АРМ нет."
+)
 
 
-def build_general_info_row(version_id: int | None) -> dict[str, int]:
+def build_general_info_row(version_id: int | None) -> dict[str, Any]:
     info = get_current_year_info(version_id) if version_id is not None else {}
     current = int(info.get("current_year") or 0)
     start = int(info.get("sipr_start") or 0)
@@ -49,6 +66,11 @@ def build_general_info_row(version_id: int | None) -> dict[str, int]:
         KEY_CURRENT_YEAR: current,
         KEY_PERIOD_START: start,
         KEY_PERIOD_END: end,
+        # Поля постановления и external_code пока отсутствуют в АРМ.
+        KEY_DECREE_DATE: STUB_EMPTY,
+        KEY_DECREE_NUMBER: STUB_EMPTY,
+        KEY_DECREE_NAME: STUB_EMPTY,
+        KEY_EXTERNAL_CODE: STUB_EMPTY,
     }
 
 
@@ -67,6 +89,7 @@ def load_general_info_dataset(
         database_version=resolved_id,
         version_number=version_number,
         rows=rows,
+        comment=GENERAL_INFO_COMMENT,
     )
 
 

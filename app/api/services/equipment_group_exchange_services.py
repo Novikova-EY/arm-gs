@@ -15,13 +15,15 @@ from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import 
     EquipmentGroupSpecificFuelConsumption,
 )
 from app.generation.models.station.station_model import Station
-from app.api.services.generation_objects_exchange_services import (
+from app.api.services.exchange_common_services import (
     clip_years,
     dataset_envelope,
-    json_number,
     load_exchange_years,
     resolve_database_version,
-    _version_filter,
+    version_filter as _version_filter,
+)
+from app.api.services.generation_objects_exchange_services import (
+    json_number,
 )
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
     EquipmentGroupType,
