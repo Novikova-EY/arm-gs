@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from io import BytesIO
 from datetime import datetime
 from config import Config
@@ -872,6 +873,635 @@ def _finalize_station_changes_export(
     return f"{filename_prefix}_{ts}.xlsx", output
 
 
+@dataclass(frozen=True)
+class _StationChangesHierarchyOptions:
+    skip_tites_es_types: bool = False
+    rd_station_types_map_key: str = "aggregate_changes_regional_districts_by_station_types"
+    skip_ues_totals_for_tites: bool = False
+    dedupe_ues_totals: bool = False
+    require_ues_data_for_write: bool = False
+    skip_sa_totals_for_tites: bool = False
+    accumulate_tites: bool = False
+    include_tites_combined_total: bool = False
+    include_russia_total: bool = False
+    use_pril2_row_format: bool = False
+
+
+HIERARCHY_EXPORT_DEFAULT = _StationChangesHierarchyOptions(
+    skip_ues_totals_for_tites=True,
+    dedupe_ues_totals=True,
+    require_ues_data_for_write=True,
+    skip_sa_totals_for_tites=True,
+    accumulate_tites=True,
+    include_tites_combined_total=True,
+    include_russia_total=True,
+)
+
+HIERARCHY_EXPORT_PRIL_B = _StationChangesHierarchyOptions(
+    skip_tites_es_types=True,
+    rd_station_types_map_key="aggregate_changes_regional_districts_by_station_types_with_events",
+)
+
+HIERARCHY_EXPORT_PRIL2 = _StationChangesHierarchyOptions(
+    skip_ues_totals_for_tites=True,
+    dedupe_ues_totals=True,
+    require_ues_data_for_write=True,
+    skip_sa_totals_for_tites=True,
+    accumulate_tites=True,
+    include_tites_combined_total=True,
+    include_russia_total=True,
+    use_pril2_row_format=True,
+)
+
+
+def _build_rd_station_plans(
+    stations,
+    export_years: list[int],
+    current_year_split: int | None,
+) -> list[tuple[object, int, list[tuple[object, list[dict]]]]]:
+    rd_station_plans: list[tuple[object, int, list[tuple[object, list[dict]]]]] = []
+    for station in stations:
+        machine_plans: list[tuple[object, list[dict]]] = []
+        for machine in getattr(station, "machines", []):
+            if not getattr(machine, "powers_by_year", None):
+                continue
+            filtered_power_rows: list[dict] = []
+            for _p in machine.powers_by_year:
+                if not isinstance(_p, dict):
+                    continue
+                y0 = _p.get("year")
+                if y0 not in export_years:
+                    continue
+                if (
+                    current_year_split is not None
+                    and y0 == int(current_year_split)
+                    and str(_p.get("current_year_bucket") or "").strip().lower() == "fact"
+                ):
+                    continue
+                filtered_power_rows.append(_p)
+            if filtered_power_rows:
+                machine_plans.append((machine, filtered_power_rows))
+        if machine_plans:
+            station_rows = sum(len(_rows) for _, _rows in machine_plans)
+            rd_station_plans.append((station, station_rows, machine_plans))
+    return rd_station_plans
+
+
+def _collect_sa_rd_ids(sa_group) -> list[int]:
+    sa_rd_ids: list[int] = []
+    for _ues_id, _ues_group in (sa_group or {}).items():
+        for _res_id, _res_group in (_ues_group or {}).items():
+            for _rd_id in (_res_group or {}).keys():
+                try:
+                    _rid = int(_rd_id)
+                except Exception:
+                    continue
+                if _rid != 0 and _rid not in sa_rd_ids:
+                    sa_rd_ids.append(_rid)
+    return sa_rd_ids
+
+
+def _write_machine_power_rows(
+    *,
+    worksheet,
+    text_center_format,
+    filtered_power_rows: list[dict],
+    current_row: int,
+    event_col: int,
+    years_start_col: int,
+    all_years_col: int,
+    export_years: list[int],
+    sum_years: list[int],
+    event_types,
+    use_pril2_row_format: bool,
+) -> int:
+    if use_pril2_row_format:
+        for power_row in filtered_power_rows:
+            worksheet.write(
+                current_row,
+                event_col,
+                _get_event_label(event_types, power_row["event"]),
+                text_center_format,
+            )
+            for i, y in enumerate(export_years):
+                val = power_row["p_ust"] if power_row["year"] == y else None
+                worksheet.write(current_row, years_start_col + i, _pril2_object_mw_cell(val), text_center_format)
+            worksheet.write(
+                current_row,
+                all_years_col,
+                _pril2_row_period_total(power_row.get("year"), power_row.get("p_ust"), sum_years),
+                text_center_format,
+            )
+            current_row += 1
+        return current_row
+
+    event_sum_map: dict = {}
+    for _p in filtered_power_rows:
+        _ev = _p.get("event")
+        _y = _p.get("year")
+        _v = _p.get("p_ust")
+        if _y in sum_years and _ev:
+            event_sum_map[_ev] = (event_sum_map.get(_ev) or 0) + (_v or 0)
+    seen_events: set = set()
+
+    for power_row in filtered_power_rows:
+        worksheet.write(
+            current_row,
+            event_col,
+            _get_event_label(event_types, power_row["event"]),
+            text_center_format,
+        )
+        for i, y in enumerate(export_years):
+            val = power_row["p_ust"] if power_row["year"] == y else None
+            worksheet.write(current_row, years_start_col + i, val, text_center_format)
+
+        ev_code = power_row.get("event")
+        if ev_code and ev_code not in seen_events:
+            seen_events.add(ev_code)
+            ev_sum = event_sum_map.get(ev_code)
+            worksheet.write(current_row, all_years_col, ev_sum if ev_sum and ev_sum != 0 else None, text_center_format)
+        else:
+            worksheet.write(current_row, all_years_col, None, text_center_format)
+
+        current_row += 1
+    return current_row
+
+
+def _write_rd_station_data_rows(
+    *,
+    worksheet,
+    merge_if_needed,
+    text_center_format,
+    rd_station_plans,
+    current_row: int,
+    rd_id,
+    ues_id,
+    union_energy_system_names,
+    energy_unit_names,
+    subject_col: int,
+    gen_company_col: int,
+    station_name_col: int,
+    event_col: int,
+    station_type_col: int,
+    machine_num_col: int,
+    machine_name_col: int,
+    fuel_col: int,
+    years_start_col: int,
+    all_years_col: int,
+    note_col: int,
+    export_years: list[int],
+    sum_years: list[int],
+    event_types,
+    station_type_names: dict,
+    use_pril2_row_format: bool,
+) -> int:
+    rd_total_rows = sum(_station_rows for _, _station_rows, _ in rd_station_plans)
+    rd_start_row = current_row
+    rd_end_row = rd_start_row + rd_total_rows - 1
+
+    first_station = rd_station_plans[0][0]
+    ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+    if "титэс сибири" in str(ues_label).lower():
+        value = energy_unit_names.get(
+            rd_id,
+            "Без энергоузла" if not rd_id else f"Энергоузел {rd_id}",
+        )
+    else:
+        value = (
+            first_station.regional_district.name_full
+            if getattr(first_station, "regional_district", None)
+            and getattr(first_station.regional_district, "name_full", None)
+            else (
+                first_station.regional_district.name
+                if getattr(first_station, "regional_district", None)
+                and getattr(first_station.regional_district, "name", None)
+                else "Без субъекта"
+            )
+        )
+    merge_if_needed(rd_start_row, subject_col, rd_end_row, subject_col, value, text_center_format)
+
+    flat_segments: list[tuple[str, int]] = []
+    for _station, _station_rows, _machine_plans in rd_station_plans:
+        for _machine, _rows in _machine_plans:
+            company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
+            flat_segments.append((company, len(_rows)))
+    row_cursor = rd_start_row
+    seg_i = 0
+    while seg_i < len(flat_segments):
+        company = flat_segments[seg_i][0]
+        block_rows = 0
+        while seg_i < len(flat_segments) and flat_segments[seg_i][0] == company:
+            block_rows += flat_segments[seg_i][1]
+            seg_i += 1
+        merge_if_needed(
+            row_cursor,
+            gen_company_col,
+            row_cursor + block_rows - 1,
+            gen_company_col,
+            company,
+            text_center_format,
+        )
+        row_cursor += block_rows
+
+    station_row_cursor = rd_start_row
+    for station, station_rows, machine_plans in rd_station_plans:
+        merge_if_needed(
+            station_row_cursor,
+            station_name_col,
+            station_row_cursor + station_rows - 1,
+            station_name_col,
+            getattr(station, "name", "—"),
+            text_center_format,
+        )
+
+        for machine, filtered_power_rows in machine_plans:
+            first_row_for_machine = current_row
+            machine_rows = len(filtered_power_rows)
+            last_row_for_machine = first_row_for_machine + machine_rows - 1
+
+            _write_machine_identity_cells(
+                worksheet=worksheet,
+                merge_if_needed=merge_if_needed,
+                cell_format=text_center_format,
+                machine=machine,
+                power_rows=filtered_power_rows,
+                first_row=first_row_for_machine,
+                last_row=last_row_for_machine,
+                machine_num_col=machine_num_col,
+                machine_name_col=machine_name_col,
+            )
+
+            station_type_obj = getattr(station, "station_type", None)
+            station_type_name = getattr(station_type_obj, "name", None)
+            if not station_type_name:
+                st_id = getattr(station, "id_station_type", None)
+                station_type_name = station_type_names.get(st_id) if st_id else None
+            if use_pril2_row_format:
+                station_type_name = _pril2_empty_text(station_type_name)
+                fuel_value = _pril2_empty_text(getattr(machine, "fuel_so", None))
+            else:
+                station_type_name = station_type_name or "—"
+                fuel_value = getattr(machine, "fuel_so", None) or "—"
+            merge_if_needed(
+                first_row_for_machine,
+                station_type_col,
+                last_row_for_machine,
+                station_type_col,
+                station_type_name,
+                text_center_format,
+            )
+            merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, fuel_value, text_center_format)
+
+            change_doc = getattr(machine, "change_document", None)
+            doc_text = _extract_document_names(change_doc) if change_doc else None
+            merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
+
+            current_row = _write_machine_power_rows(
+                worksheet=worksheet,
+                text_center_format=text_center_format,
+                filtered_power_rows=filtered_power_rows,
+                current_row=current_row,
+                event_col=event_col,
+                years_start_col=years_start_col,
+                all_years_col=all_years_col,
+                export_years=export_years,
+                sum_years=sum_years,
+                event_types=event_types,
+                use_pril2_row_format=use_pril2_row_format,
+            )
+
+        station_row_cursor += station_rows
+
+    return current_row
+
+
+def _run_station_changes_hierarchy_export(
+    *,
+    stations_grouped,
+    data: dict,
+    show_totals: bool,
+    options: _StationChangesHierarchyOptions,
+    worksheet,
+    merge_if_needed,
+    text_center_format,
+    event_types,
+    station_type_names: dict,
+    export_years: list[int],
+    current_year_split: int | None,
+    sum_years: list[int],
+    subject_col: int,
+    gen_company_col: int,
+    station_name_col: int,
+    event_col: int,
+    station_type_col: int,
+    machine_num_col: int,
+    machine_name_col: int,
+    fuel_col: int,
+    years_start_col: int,
+    all_years_col: int,
+    note_col: int,
+    max_merged_row_by_col: dict[int, int],
+    current_row: int,
+    union_energy_system_names: dict,
+    energy_unit_names: dict,
+    energy_unit_names_dat: dict,
+    regional_district_names: dict,
+    regional_district_names_rp: dict,
+    regional_district_names_dp: dict,
+    energy_system_type_names: dict,
+    synchronous_areas_yearly_p_ust: dict,
+    synchronous_areas_by_station_types_yearly_p_ust: dict,
+    pril2_totals: bool = False,
+) -> int:
+    def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
+        nonlocal current_row
+        totals_kwargs = {
+            "worksheet": worksheet,
+            "merge_if_needed": merge_if_needed,
+            "text_center_format": text_center_format,
+            "label": label,
+            "events_years_map": events_years_map,
+            "station_type_events_map": station_type_events_map,
+            "event_types": event_types,
+            "station_type_names": station_type_names,
+            "export_years": export_years,
+            "sum_years": sum_years,
+            "subject_col": subject_col,
+            "gen_company_col": gen_company_col,
+            "station_name_col": station_name_col,
+            "event_col": event_col,
+            "station_type_col": station_type_col,
+            "machine_num_col": machine_num_col,
+            "machine_name_col": machine_name_col,
+            "fuel_col": fuel_col,
+            "years_start_col": years_start_col,
+            "all_years_col": all_years_col,
+            "note_col": note_col,
+            "max_merged_row_by_col": max_merged_row_by_col,
+            "current_row": current_row,
+        }
+        if pril2_totals:
+            totals_kwargs["empty_cell_dash"] = PRIL2_DASH
+            totals_kwargs["mw_display_fn"] = _pril2_mw_value
+        current_row = _write_combined_totals_block(**totals_kwargs)
+
+    tites_ids = [
+        est_id for est_id, name in energy_system_type_names.items()
+        if name and "титэс" in str(name).lower().replace(" ", "")
+    ] if options.accumulate_tites else []
+    tites_events_map: dict = {}
+    tites_by_station_map: dict = {}
+    written_ues_total_ids: set[int] = set()
+    written_sa_total_ids: set[int] = set()
+
+    for es_type_id, es_group in stations_grouped.items():
+        es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
+        is_tites_es = "титэс" in str(es_name).lower().replace(" ", "")
+        if options.skip_tites_es_types and is_tites_es:
+            continue
+
+        for sa_id, sa_group in es_group.items():
+            sa_names = data.get("synchronous_area_names", {}) or {}
+            sa_name = sa_names.get(sa_id, "")
+            is_kaliningrad_sa = "калининград" in str(sa_name).lower()
+            sa_rd_ids = _collect_sa_rd_ids(sa_group)
+
+            for ues_id, rd_group in sa_group.items():
+                for res_id, res_group in rd_group.items():
+                    for rd_id, stations in res_group.items():
+                        rd_station_plans = _build_rd_station_plans(stations, export_years, current_year_split)
+                        if not rd_station_plans:
+                            continue
+
+                        current_row = _write_rd_station_data_rows(
+                            worksheet=worksheet,
+                            merge_if_needed=merge_if_needed,
+                            text_center_format=text_center_format,
+                            rd_station_plans=rd_station_plans,
+                            current_row=current_row,
+                            rd_id=rd_id,
+                            ues_id=ues_id,
+                            union_energy_system_names=union_energy_system_names,
+                            energy_unit_names=energy_unit_names,
+                            subject_col=subject_col,
+                            gen_company_col=gen_company_col,
+                            station_name_col=station_name_col,
+                            event_col=event_col,
+                            station_type_col=station_type_col,
+                            machine_num_col=machine_num_col,
+                            machine_name_col=machine_name_col,
+                            fuel_col=fuel_col,
+                            years_start_col=years_start_col,
+                            all_years_col=all_years_col,
+                            note_col=note_col,
+                            export_years=export_years,
+                            sum_years=sum_years,
+                            event_types=event_types,
+                            station_type_names=station_type_names,
+                            use_pril2_row_format=options.use_pril2_row_format,
+                        )
+
+                        if show_totals and (not is_kaliningrad_sa):
+                            ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                            is_tites_siberia = "титэс сибири" in str(ues_label).lower()
+                            if is_tites_siberia:
+                                eu_events_map = (
+                                    data.get("aggregate_changes_by_energy_units_events", {})
+                                    .get("aggregated", {})
+                                    .get("p_ust", {})
+                                    .get(rd_id, {})
+                                )
+                                eu_by_station_map = (
+                                    data.get("aggregate_changes_energy_units_by_station_types_with_events", {})
+                                    .get("aggregated", {})
+                                    .get("p_ust", {})
+                                    .get(rd_id, {})
+                                )
+                                has_data = bool(eu_events_map) or bool(eu_by_station_map)
+                                if has_data:
+                                    eu_name = energy_unit_names.get(rd_id, f"Энергоузел {rd_id}")
+                                    eu_dat = energy_unit_names_dat.get(rd_id)
+                                    eu_label = energy_unit_dative_for_totals(eu_name, eu_dat)
+                                    write_combined_totals_block(f"Итого по {eu_label}", eu_events_map, eu_by_station_map)
+                            else:
+                                rd_events_map = (
+                                    data.get("aggregate_changes_by_regional_districts", {})
+                                    .get("aggregated", {})
+                                    .get("p_ust", {})
+                                    .get(rd_id, {})
+                                )
+                                rd_by_station_map = (
+                                    data.get(options.rd_station_types_map_key, {})
+                                    .get("aggregated", {})
+                                    .get("p_ust", {})
+                                    .get(rd_id, {})
+                                )
+                                has_data = bool(rd_events_map) or bool(rd_by_station_map)
+                                if has_data:
+                                    rd_name = regional_district_names.get(rd_id, f"Субъект {rd_id}")
+                                    rd_rp = regional_district_names_rp.get(rd_id)
+                                    rd_dp = regional_district_names_dp.get(rd_id)
+                                    label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
+                                    write_combined_totals_block(label, rd_events_map, rd_by_station_map)
+
+                if show_totals and (not is_kaliningrad_sa):
+                    if options.skip_ues_totals_for_tites and is_tites_es:
+                        pass
+                    elif options.dedupe_ues_totals:
+                        try:
+                            _ues_key = int(ues_id)
+                        except Exception:
+                            _ues_key = ues_id
+                        if _ues_key not in written_ues_total_ids:
+                            written_ues_total_ids.add(_ues_key)
+                            ues_events_map = (
+                                data.get("aggregate_changes_by_union_energy_systems", {})
+                                .get("aggregated", {})
+                                .get("p_ust", {})
+                                .get(ues_id, {})
+                            )
+                            ues_by_station_map = (
+                                data.get("aggregate_changes_union_energy_systems_by_station_types", {})
+                                .get("aggregated", {})
+                                .get("p_ust", {})
+                                .get(ues_id, {})
+                            )
+                            ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                            if (not options.require_ues_data_for_write) or ues_events_map or ues_by_station_map:
+                                write_combined_totals_block(f"{ues_label}", ues_events_map, ues_by_station_map)
+                    else:
+                        ues_events_map = (
+                            data.get("aggregate_changes_by_union_energy_systems", {})
+                            .get("aggregated", {})
+                            .get("p_ust", {})
+                            .get(ues_id, {})
+                        )
+                        ues_by_station_map = (
+                            data.get("aggregate_changes_union_energy_systems_by_station_types", {})
+                            .get("aggregated", {})
+                            .get("p_ust", {})
+                            .get(ues_id, {})
+                        )
+                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
+                        write_combined_totals_block(f"{ues_label}", ues_events_map, ues_by_station_map)
+
+            if show_totals and (not options.skip_sa_totals_for_tites or not is_tites_es):
+                if is_kaliningrad_sa and sa_rd_ids:
+                    kal_rd_id: int | None = None
+                    for _rd_id in sa_rd_ids:
+                        rd_name = regional_district_names.get(_rd_id, "") or ""
+                        if "калининград" in str(rd_name).lower():
+                            kal_rd_id = _rd_id
+                            break
+                    if kal_rd_id is None:
+                        kal_rd_id = sa_rd_ids[0]
+
+                    rd_events_map = (
+                        data.get("aggregate_changes_by_regional_districts", {})
+                        .get("aggregated", {})
+                        .get("p_ust", {})
+                        .get(kal_rd_id, {})
+                    )
+                    rd_by_station_map = (
+                        data.get(options.rd_station_types_map_key, {})
+                        .get("aggregated", {})
+                        .get("p_ust", {})
+                        .get(kal_rd_id, {})
+                    )
+                    if rd_events_map or rd_by_station_map:
+                        rd_name = regional_district_names.get(kal_rd_id, f"Субъект {kal_rd_id}")
+                        rd_rp = regional_district_names_rp.get(kal_rd_id)
+                        rd_dp = regional_district_names_dp.get(kal_rd_id)
+                        label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
+                        write_combined_totals_block(label, rd_events_map, rd_by_station_map)
+
+                try:
+                    _sa_key = int(sa_id)
+                except Exception:
+                    _sa_key = sa_id
+                if _sa_key not in written_sa_total_ids:
+                    sa_events_map = (synchronous_areas_yearly_p_ust.get(sa_id, {}) or {})
+                    sa_by_station_map = (synchronous_areas_by_station_types_yearly_p_ust.get(sa_id, {}) or {})
+                    if sa_events_map or sa_by_station_map:
+                        written_sa_total_ids.add(_sa_key)
+                        sa_label = _synchronous_area_total_label(sa_name)
+                        write_combined_totals_block(sa_label, sa_events_map, sa_by_station_map)
+
+        if show_totals:
+            es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
+            is_tites = "титэс" in str(es_name).lower().replace(" ", "")
+            if not is_tites:
+                es_events_map = (
+                    data.get("aggregate_changes_by_energy_system_types", {})
+                    .get("aggregated", {})
+                    .get("p_ust", {})
+                    .get(es_type_id, {})
+                )
+                es_by_station_map = (
+                    data.get("aggregate_changes_energy_system_types_by_station_types", {})
+                    .get("aggregated", {})
+                    .get("p_ust", {})
+                    .get(es_type_id, {})
+                ) or {}
+                if "еэс" in str(es_name).lower():
+                    es_label = "Итого по ЕЭС России"
+                else:
+                    es_label = f"{es_name}, всего"
+                write_combined_totals_block(es_label, es_events_map, es_by_station_map)
+
+        if show_totals and options.accumulate_tites and es_type_id in tites_ids:
+            es_events_map = (
+                data.get("aggregate_changes_by_energy_system_types", {})
+                .get("aggregated", {})
+                .get("p_ust", {})
+                .get(es_type_id, {})
+            ) or {}
+            es_by_station_map = (
+                data.get("aggregate_changes_energy_system_types_by_station_types", {})
+                .get("aggregated", {})
+                .get("p_ust", {})
+                .get(es_type_id, {})
+            ) or {}
+            for ev_code, year_map in es_events_map.items():
+                tites_events_map.setdefault(ev_code, {})
+                for y, v in (year_map or {}).items():
+                    tites_events_map[ev_code][y] = (tites_events_map[ev_code].get(y) or 0) + (v or 0)
+            for st_id, ev_map in es_by_station_map.items():
+                tites_by_station_map.setdefault(st_id, {})
+                for ev_code, year_map in (ev_map or {}).items():
+                    tites_by_station_map[st_id].setdefault(ev_code, {})
+                    for y, v in (year_map or {}).items():
+                        tites_by_station_map[st_id][ev_code][y] = (
+                            tites_by_station_map[st_id][ev_code].get(y) or 0
+                        ) + (v or 0)
+
+    if show_totals and options.include_tites_combined_total and tites_ids:
+        write_combined_totals_block(
+            "Итого по технологически изолированным территориальным электроэнергетическим системам",
+            tites_events_map,
+            tites_by_station_map,
+        )
+
+    if show_totals and options.include_russia_total:
+        total_events_map = (
+            data.get("aggregate_changes_by_total_energy_system_types", {})
+            .get("aggregated", {})
+            .get("p_ust", {})
+        )
+        total_by_station_map = (
+            data.get("aggregate_changes_total_energy_system_types_by_station_types", {})
+            .get("aggregated", {})
+            .get("p_ust", {})
+        ) or {}
+        write_combined_totals_block(
+            "Итого\nпо электроэнергетическим системам России",
+            total_events_map,
+            total_by_station_map,
+        )
+
+    return current_row
+
+
 def export_station_changes_to_excel(
     user: str,
     filters: dict,
@@ -954,425 +1584,42 @@ def export_station_changes_to_excel(
     synchronous_areas_yearly_p_ust = refs["synchronous_areas_yearly_p_ust"]
     synchronous_areas_by_station_types_yearly_p_ust = refs["synchronous_areas_by_station_types_yearly_p_ust"]
 
-    def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
-        nonlocal current_row
-        current_row = _write_combined_totals_block(
-            worksheet=worksheet,
-            merge_if_needed=merge_if_needed,
-            text_center_format=text_center_format,
-            label=label,
-            events_years_map=events_years_map,
-            station_type_events_map=station_type_events_map,
-            event_types=event_types,
-            station_type_names=station_type_names,
-            export_years=export_years,
-            sum_years=sum_years,
-            subject_col=subject_col,
-            gen_company_col=gen_company_col,
-            station_name_col=station_name_col,
-            event_col=event_col,
-            station_type_col=station_type_col,
-            machine_num_col=machine_num_col,
-            machine_name_col=machine_name_col,
-            fuel_col=fuel_col,
-            years_start_col=years_start_col,
-            all_years_col=all_years_col,
-            note_col=note_col,
-            max_merged_row_by_col=max_merged_row_by_col,
-            current_row=current_row,
-        )
-
-    # Обход иерархии как в шаблоне (тип энергосистемы -> (синхронная зона|энергозона) -> ОЭС -> РЭС -> субъект)
-    # Для объединенного итога по всем ТИТЭС
-    tites_ids = [
-        est_id for est_id, name in energy_system_type_names.items()
-        if name and "титэс" in str(name).lower().replace(" ", "")
-    ]
-    tites_events_map = {}
-    tites_by_station_map = {}
-    # Защита от повторной печати полных агрегатов ОЭС/СЗ, если ветка встретилась дважды.
-    written_ues_total_ids: set[int] = set()
-    written_sa_total_ids: set[int] = set()
-
-    for es_type_id, es_group in stations_grouped.items():
-        # Для ТИТЭС второй уровень (синхронные зоны) на вебе не используется:
-        # для ветки ТИТЭС нет итогов по ОЭС и по синхронным зонам, только по субъектам.
-        es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
-        is_tites_es = "титэс" in str(es_name).lower().replace(" ", "")
-        for sa_id, sa_group in es_group.items():
-            # Спец-логика как на веб: для Калининградской синхронной зоны
-            # - не выводим итоги по ОЭС (в т.ч. ОЭС Северо-Запада)
-            # - после станций выводим "Итого по Санкт-Петербургу/Ленобласти..." как обычно,
-            #   но для Калининграда выводим "Итого по Калининградской области" отдельно внизу,
-            #   затем "Итого по синхронной зоне Калининградской области"
-            sa_names = data.get("synchronous_area_names", {}) or {}
-            sa_name = sa_names.get(sa_id, "")
-            is_kaliningrad_sa = "калининград" in str(sa_name).lower()
-
-            # Собираем список субъектов (rd_id) внутри текущей синхронной зоны (для калининградской спец-логики)
-            sa_rd_ids: list[int] = []
-            for _ues_id, _ues_group in (sa_group or {}).items():
-                for _res_id, _res_group in (_ues_group or {}).items():
-                    for _rd_id in (_res_group or {}).keys():
-                        try:
-                            _rid = int(_rd_id)
-                        except Exception:
-                            continue
-                        if _rid != 0 and _rid not in sa_rd_ids:
-                            sa_rd_ids.append(_rid)
-
-            for ues_id, rd_group in sa_group.items():
-                for res_id, res_group in rd_group.items():
-                    for rd_id, stations in res_group.items():
-                        # В export мы фильтруем строки по годам/факт-плану, поэтому rowspan'ы,
-                        # заранее рассчитанные для веб-таблицы, могут "растягиваться" и давать OverlappingRange.
-                        # Здесь строим план выгрузки и делаем merge строго по реально записываемым строкам.
-                        rd_station_plans: list[tuple[object, int, list[tuple[object, list[dict]]]]] = []
-                        for station in stations:
-                            machine_plans: list[tuple[object, list[dict]]] = []
-                            for machine in getattr(station, "machines", []):
-                                if not getattr(machine, "powers_by_year", None):
-                                    continue
-                                filtered_power_rows: list[dict] = []
-                                for _p in machine.powers_by_year:
-                                    if not isinstance(_p, dict):
-                                        continue
-                                    y0 = _p.get("year")
-                                    if y0 not in export_years:
-                                        continue
-                                    if (
-                                        current_year_split is not None
-                                        and y0 == int(current_year_split)
-                                        and str(_p.get("current_year_bucket") or "").strip().lower() == "fact"
-                                    ):
-                                        continue
-                                    filtered_power_rows.append(_p)
-                                if filtered_power_rows:
-                                    machine_plans.append((machine, filtered_power_rows))
-                            if machine_plans:
-                                station_rows = sum(len(_rows) for _, _rows in machine_plans)
-                                rd_station_plans.append((station, station_rows, machine_plans))
-
-                        if not rd_station_plans:
-                            continue
-
-                        rd_total_rows = sum(_station_rows for _, _station_rows, _ in rd_station_plans)
-                        rd_start_row = current_row
-                        rd_end_row = rd_start_row + rd_total_rows - 1
-
-                        # Субъект РФ / энергоузел (как на веб)
-                        first_station = rd_station_plans[0][0]
-                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                        if "титэс сибири" in str(ues_label).lower():
-                            value = energy_unit_names.get(
-                                rd_id,
-                                "Без энергоузла" if not rd_id else f"Энергоузел {rd_id}",
-                            )
-                        else:
-                            value = (
-                                first_station.regional_district.name_full
-                                if getattr(first_station, "regional_district", None)
-                                and getattr(first_station.regional_district, "name_full", None)
-                                else (
-                                    first_station.regional_district.name
-                                    if getattr(first_station, "regional_district", None)
-                                    and getattr(first_station.regional_district, "name", None)
-                                    else "Без субъекта"
-                                )
-                            )
-                        merge_if_needed(rd_start_row, subject_col, rd_end_row, subject_col, value, text_center_format)
-
-                        # Генкомпания: объединяем блоками по фактическому порядку строк в выгрузке
-                        flat_segments: list[tuple[str, int]] = []
-                        for _station, _station_rows, _machine_plans in rd_station_plans:
-                            for _machine, _rows in _machine_plans:
-                                company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
-                                flat_segments.append((company, len(_rows)))
-                        row_cursor = rd_start_row
-                        i = 0
-                        while i < len(flat_segments):
-                            company = flat_segments[i][0]
-                            block_rows = 0
-                            while i < len(flat_segments) and flat_segments[i][0] == company:
-                                block_rows += flat_segments[i][1]
-                                i += 1
-                            merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
-                            row_cursor += block_rows
-
-                        # электростанции: объединение по фактической высоте электростанции в выгрузке
-                        station_row_cursor = rd_start_row
-                        for station, station_rows, machine_plans in rd_station_plans:
-                            merge_if_needed(
-                                station_row_cursor,
-                                station_name_col,
-                                station_row_cursor + station_rows - 1,
-                                station_name_col,
-                                getattr(station, "name", "—"),
-                                text_center_format,
-                            )
-
-                            # Данные по агрегатам
-                            for machine, filtered_power_rows in machine_plans:
-                                first_row_for_machine = current_row
-                                machine_rows = len(filtered_power_rows)
-                                last_row_for_machine = first_row_for_machine + machine_rows - 1
-
-                                # Ст. № и тип ГО — как на веб: без merge при модернизации / частях ПГУ
-                                _write_machine_identity_cells(
-                                    worksheet=worksheet,
-                                    merge_if_needed=merge_if_needed,
-                                    cell_format=text_center_format,
-                                    machine=machine,
-                                    power_rows=filtered_power_rows,
-                                    first_row=first_row_for_machine,
-                                    last_row=last_row_for_machine,
-                                    machine_num_col=machine_num_col,
-                                    machine_name_col=machine_name_col,
-                                )
-
-                                station_type_obj = getattr(station, "station_type", None)
-                                station_type_name = getattr(station_type_obj, "name", None)
-                                if not station_type_name:
-                                    st_id = getattr(station, "id_station_type", None)
-                                    station_type_name = station_type_names.get(st_id) if st_id else None
-                                station_type_name = station_type_name or "—"
-                                merge_if_needed(first_row_for_machine, station_type_col, last_row_for_machine, station_type_col, station_type_name, text_center_format)
-
-                                # Топливо (по СО ЕЭС) — на высоту агрегата
-                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
-
-                                # Основание — на высоту агрегата
-                                change_doc = getattr(machine, "change_document", None)
-                                doc_text = _extract_document_names(change_doc) if change_doc else None
-                                merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
-
-                                # Сумма "Итого" по отображаемым годам отдельно для каждого мероприятия
-                                event_sum_map: dict = {}
-                                for _p in filtered_power_rows:
-                                    _ev = _p.get("event")
-                                    _y = _p.get("year")
-                                    _v = _p.get("p_ust")
-                                    if _y in sum_years and _ev:
-                                        event_sum_map[_ev] = (event_sum_map.get(_ev) or 0) + (_v or 0)
-                                seen_events: set = set()
-
-                                for power_row in filtered_power_rows:
-                                    # Мероприятие — построчно
-                                    worksheet.write(current_row, event_col, _get_event_label(event_types, power_row["event"]), text_center_format)
-
-                                    # Годы — значение только в год power_row["year"], остальное пусто
-                                    for i, y in enumerate(export_years):
-                                        val = power_row["p_ust"] if power_row["year"] == y else None
-                                        worksheet.write(current_row, years_start_col + i, val, text_center_format)
-
-                                    # Столбец "Итого" — по каждому мероприятию, без объединений (пишем один раз на мероприятие)
-                                    ev_code = power_row.get("event")
-                                    if ev_code and ev_code not in seen_events:
-                                        seen_events.add(ev_code)
-                                        ev_sum = event_sum_map.get(ev_code)
-                                        worksheet.write(current_row, all_years_col, ev_sum if ev_sum and ev_sum != 0 else None, text_center_format)
-                                    else:
-                                        worksheet.write(current_row, all_years_col, None, text_center_format)
-
-                                    current_row += 1
-
-                            station_row_cursor += station_rows
-
-                        # Итоги по субъекту РФ (события + по типам станций) — должны выводиться ДЛЯ КАЖДОГО rd_id
-                        # (иначе при нескольких субъектах в одной РЭС "пропадает" один из итогов, напр. Санкт‑Петербург).
-                        # Как на веб: для Калининграда не выводим внутри списка станций (выводим отдельно ниже)
-                        if show_totals and (not is_kaliningrad_sa):
-                            ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                            is_tites_siberia = "титэс сибири" in str(ues_label).lower()
-                            if is_tites_siberia:
-                                eu_events_map = (
-                                    data.get("aggregate_changes_by_energy_units_events", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                eu_by_station_map = (
-                                    data.get("aggregate_changes_energy_units_by_station_types_with_events", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                has_data = bool(eu_events_map) or bool(eu_by_station_map)
-                                if has_data:
-                                    eu_name = energy_unit_names.get(rd_id, f"Энергоузел {rd_id}")
-                                    eu_dat = energy_unit_names_dat.get(rd_id) if "energy_unit_names_dat" in locals() else None
-                                    eu_label = energy_unit_dative_for_totals(eu_name, eu_dat)
-                                    write_combined_totals_block(f"Итого по {eu_label}", eu_events_map, eu_by_station_map)
-                            else:
-                                rd_events_map = (
-                                    data.get("aggregate_changes_by_regional_districts", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                rd_by_station_map = (
-                                    data.get("aggregate_changes_regional_districts_by_station_types", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                has_data = bool(rd_events_map) or bool(rd_by_station_map)
-                                if has_data:
-                                    rd_name = regional_district_names.get(rd_id, f"Субъект {rd_id}")
-                                    rd_rp = regional_district_names_rp.get(rd_id)
-                                    rd_dp = regional_district_names_dp.get(rd_id) if "regional_district_names_dp" in locals() else None
-                                    label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
-                                    write_combined_totals_block(label, rd_events_map, rd_by_station_map)
-
-                # Итоги по ОЭС: должны выводиться для КАЖДОЙ ОЭС внутри синхронной зоны
-                # Как на веб: для Калининграда не выводим итоги по ОЭС (в т.ч. ОЭС Северо-Запада),
-                # а для ТИТЭС итоги по ОЭС вообще не выводим (только по субъектам).
-                if show_totals and (not is_kaliningrad_sa) and (not is_tites_es):
-                    try:
-                        _ues_key = int(ues_id)
-                    except Exception:
-                        _ues_key = ues_id
-                    if _ues_key in written_ues_total_ids:
-                        pass
-                    else:
-                        written_ues_total_ids.add(_ues_key)
-                        ues_events_map = (
-                            data.get("aggregate_changes_by_union_energy_systems", {})
-                            .get("aggregated", {})
-                            .get("p_ust", {})
-                            .get(ues_id, {})
-                        )
-                        ues_by_station_map = (
-                            data.get("aggregate_changes_union_energy_systems_by_station_types", {})
-                            .get("aggregated", {})
-                            .get("p_ust", {})
-                            .get(ues_id, {})
-                        )
-                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                        if ues_events_map or ues_by_station_map:
-                            write_combined_totals_block(f"{ues_label}", ues_events_map, ues_by_station_map)
-
-            # Итоги по синхронной зоне (как на веб-странице): выводим ОДИН раз после завершения синхронной зоны
-            # Для ТИТЭС второй уровень отсутствует — итоги по синхронной зоне не выводим.
-            if show_totals and (not is_tites_es):
-                # 1) Для Калининграда: отдельный итог по области (субъекту)
-                if is_kaliningrad_sa and sa_rd_ids:
-                    kal_rd_id: int | None = None
-                    for _rd_id in sa_rd_ids:
-                        rd_name = regional_district_names.get(_rd_id, "") or ""
-                        if "калининград" in str(rd_name).lower():
-                            kal_rd_id = _rd_id
-                            break
-                    if kal_rd_id is None:
-                        kal_rd_id = sa_rd_ids[0]
-
-                    rd_events_map = (
-                        data.get("aggregate_changes_by_regional_districts", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(kal_rd_id, {})
-                    )
-                    rd_by_station_map = (
-                        data.get("aggregate_changes_regional_districts_by_station_types", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(kal_rd_id, {})
-                    )
-                    if rd_events_map or rd_by_station_map:
-                        rd_name = regional_district_names.get(kal_rd_id, f"Субъект {kal_rd_id}")
-                        rd_rp = regional_district_names_rp.get(kal_rd_id)
-                        rd_dp = regional_district_names_dp.get(kal_rd_id) if "regional_district_names_dp" in locals() else None
-                        label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
-                        write_combined_totals_block(label, rd_events_map, rd_by_station_map)
-
-                # 2) Итог по синхронной зоне
-                try:
-                    _sa_key = int(sa_id)
-                except Exception:
-                    _sa_key = sa_id
-                if _sa_key in written_sa_total_ids:
-                    pass
-                else:
-                    sa_events_map = (synchronous_areas_yearly_p_ust.get(sa_id, {}) or {})
-                    sa_by_station_map = (synchronous_areas_by_station_types_yearly_p_ust.get(sa_id, {}) or {})
-                    if sa_events_map or sa_by_station_map:
-                        written_sa_total_ids.add(_sa_key)
-                        sa_label = _synchronous_area_total_label(sa_name)
-                        write_combined_totals_block(sa_label, sa_events_map, sa_by_station_map)
-
-        # Итоги по типу энергосистемы
-        if show_totals:
-            es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
-            is_tites = "титэс" in str(es_name).lower().replace(" ", "")
-            if not is_tites:
-                es_events_map = (
-                    data.get("aggregate_changes_by_energy_system_types", {})
-                    .get("aggregated", {})
-                    .get("p_ust", {})
-                    .get(es_type_id, {})
-                )
-                es_by_station_map = (
-                    data.get("aggregate_changes_energy_system_types_by_station_types", {})
-                    .get("aggregated", {})
-                    .get("p_ust", {})
-                    .get(es_type_id, {})
-                ) or {}
-                if "еэс" in str(es_name).lower():
-                    es_label = "Итого по ЕЭС России"
-                else:
-                    es_label = f"{es_name}, всего"
-                write_combined_totals_block(es_label, es_events_map, es_by_station_map)
-
-        # Собираем суммы для общего итога по ТИТЭС (для вывода один раз после всех типов)
-        if show_totals and es_type_id in tites_ids:
-            es_events_map = (
-                data.get("aggregate_changes_by_energy_system_types", {})
-                .get("aggregated", {})
-                .get("p_ust", {})
-                .get(es_type_id, {})
-            ) or {}
-            es_by_station_map = (
-                data.get("aggregate_changes_energy_system_types_by_station_types", {})
-                .get("aggregated", {})
-                .get("p_ust", {})
-                .get(es_type_id, {})
-            ) or {}
-            for ev_code, year_map in es_events_map.items():
-                tites_events_map.setdefault(ev_code, {})
-                for y, v in (year_map or {}).items():
-                    tites_events_map[ev_code][y] = (tites_events_map[ev_code].get(y) or 0) + (v or 0)
-            for st_id, ev_map in es_by_station_map.items():
-                tites_by_station_map.setdefault(st_id, {})
-                for ev_code, year_map in (ev_map or {}).items():
-                    tites_by_station_map[st_id].setdefault(ev_code, {})
-                    for y, v in (year_map or {}).items():
-                        tites_by_station_map[st_id][ev_code][y] = (tites_by_station_map[st_id][ev_code].get(y) or 0) + (v or 0)
-
-    # Итог по ТИТЭС (объединяет ТИТЭС Востока/Сибири и т.п.)
-    if show_totals and tites_ids:
-        write_combined_totals_block(
-            "Итого по технологически изолированным территориальным электроэнергетическим системам",
-            tites_events_map,
-            tites_by_station_map,
-        )
-
-    # Итоги по России — с разбивкой по типам станций
-    if show_totals:
-        total_events_map = (
-            data.get("aggregate_changes_by_total_energy_system_types", {})
-            .get("aggregated", {})
-            .get("p_ust", {})
-        )
-        total_by_station_map = (
-            data.get("aggregate_changes_total_energy_system_types_by_station_types", {})
-            .get("aggregated", {})
-            .get("p_ust", {})
-        ) or {}
-        write_combined_totals_block(
-            "Итого\nпо электроэнергетическим системам России",
-            total_events_map,
-            total_by_station_map,
-        )
+    current_row = _run_station_changes_hierarchy_export(
+        stations_grouped=stations_grouped,
+        data=data,
+        show_totals=show_totals,
+        options=HIERARCHY_EXPORT_DEFAULT,
+        worksheet=worksheet,
+        merge_if_needed=merge_if_needed,
+        text_center_format=text_center_format,
+        event_types=event_types,
+        station_type_names=station_type_names,
+        export_years=export_years,
+        current_year_split=current_year_split,
+        sum_years=sum_years,
+        subject_col=subject_col,
+        gen_company_col=gen_company_col,
+        station_name_col=station_name_col,
+        event_col=event_col,
+        station_type_col=station_type_col,
+        machine_num_col=machine_num_col,
+        machine_name_col=machine_name_col,
+        fuel_col=fuel_col,
+        years_start_col=years_start_col,
+        all_years_col=all_years_col,
+        note_col=note_col,
+        max_merged_row_by_col=max_merged_row_by_col,
+        current_row=current_row,
+        union_energy_system_names=union_energy_system_names,
+        energy_unit_names=energy_unit_names,
+        energy_unit_names_dat=energy_unit_names_dat,
+        regional_district_names=regional_district_names,
+        regional_district_names_rp=regional_district_names_rp,
+        regional_district_names_dp=regional_district_names_dp,
+        energy_system_type_names=energy_system_type_names,
+        synchronous_areas_yearly_p_ust=synchronous_areas_yearly_p_ust,
+        synchronous_areas_by_station_types_yearly_p_ust=synchronous_areas_by_station_types_yearly_p_ust,
+    )
 
     return _finalize_station_changes_export(
         worksheet,
@@ -1489,354 +1736,42 @@ def export_station_changes_pril_b_to_excel(
     synchronous_areas_yearly_p_ust = refs["synchronous_areas_yearly_p_ust"]
     synchronous_areas_by_station_types_yearly_p_ust = refs["synchronous_areas_by_station_types_yearly_p_ust"]
 
-    def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
-        nonlocal current_row
-        current_row = _write_combined_totals_block(
-            worksheet=worksheet,
-            merge_if_needed=merge_if_needed,
-            text_center_format=text_center_format,
-            label=label,
-            events_years_map=events_years_map,
-            station_type_events_map=station_type_events_map,
-            event_types=event_types,
-            station_type_names=station_type_names,
-            export_years=export_years,
-            sum_years=sum_years,
-            subject_col=subject_col,
-            gen_company_col=gen_company_col,
-            station_name_col=station_name_col,
-            event_col=event_col,
-            station_type_col=station_type_col,
-            machine_num_col=machine_num_col,
-            machine_name_col=machine_name_col,
-            fuel_col=fuel_col,
-            years_start_col=years_start_col,
-            all_years_col=all_years_col,
-            note_col=note_col,
-            max_merged_row_by_col=max_merged_row_by_col,
-            current_row=current_row,
-        )
-
-    # Обход иерархии как в шаблоне (тип энергосистемы -> (синхронная зона|энергозона) -> ОЭС -> РЭС -> субъект)
-    written_ues_total_ids: set[int] = set()
-    written_sa_total_ids: set[int] = set()
-    for es_type_id, es_group in stations_grouped.items():
-        # Для экспорта по форме «Приложение Б» исключаем ТИТЭС целиком
-        es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
-        is_tites_es = "титэс" in str(es_name).lower().replace(" ", "")
-        if is_tites_es:
-            continue
-
-        for sa_id, sa_group in es_group.items():
-            # Спец-логика как на веб: для Калининградской синхронной зоны
-            # - не выводим итоги по ОЭС (в т.ч. ОЭС Северо-Запада)
-            # - после станций выводим "Итого по Калининградской области", затем "Итого по синхронной зоне Калининградской области"
-            sa_names = data.get("synchronous_area_names", {}) or {}
-            sa_name = sa_names.get(sa_id, "")
-            is_kaliningrad_sa = "калининград" in str(sa_name).lower()
-
-            # Собираем список субъектов (rd_id) внутри текущей синхронной зоны (для калининградской спец-логики)
-            sa_rd_ids: list[int] = []
-            for _ues_id, _ues_group in (sa_group or {}).items():
-                for _res_id, _res_group in (_ues_group or {}).items():
-                    for _rd_id in (_res_group or {}).keys():
-                        try:
-                            _rid = int(_rd_id)
-                        except Exception:
-                            continue
-                        if _rid != 0 and _rid not in sa_rd_ids:
-                            sa_rd_ids.append(_rid)
-
-            for ues_id, rd_group in sa_group.items():
-                for res_id, res_group in rd_group.items():
-                    for rd_id, stations in res_group.items():
-                        # В export мы фильтруем строки по годам/факт-плану, поэтому rowspan'ы,
-                        # заранее рассчитанные для веб-таблицы, могут "растягиваться" и давать OverlappingRange.
-                        # Здесь строим план выгрузки и делаем merge строго по реально записываемым строкам.
-                        rd_station_plans: list[tuple[object, int, list[tuple[object, list[dict]]]]] = []
-                        for station in stations:
-                            machine_plans: list[tuple[object, list[dict]]] = []
-                            for machine in getattr(station, "machines", []):
-                                if not getattr(machine, "powers_by_year", None):
-                                    continue
-                                filtered_power_rows: list[dict] = []
-                                for _p in machine.powers_by_year:
-                                    if not isinstance(_p, dict):
-                                        continue
-                                    y0 = _p.get("year")
-                                    if y0 not in export_years:
-                                        continue
-                                    if (
-                                        current_year_split is not None
-                                        and y0 == int(current_year_split)
-                                        and str(_p.get("current_year_bucket") or "").strip().lower() == "fact"
-                                    ):
-                                        continue
-                                    filtered_power_rows.append(_p)
-                                if filtered_power_rows:
-                                    machine_plans.append((machine, filtered_power_rows))
-                            if machine_plans:
-                                station_rows = sum(len(_rows) for _, _rows in machine_plans)
-                                rd_station_plans.append((station, station_rows, machine_plans))
-
-                        if not rd_station_plans:
-                            continue
-
-                        rd_total_rows = sum(_station_rows for _, _station_rows, _ in rd_station_plans)
-                        rd_start_row = current_row
-                        rd_end_row = rd_start_row + rd_total_rows - 1
-
-                        # Субъект РФ / энергоузел (как на веб)
-                        first_station = rd_station_plans[0][0]
-                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                        if "титэс сибири" in str(ues_label).lower():
-                            value = energy_unit_names.get(
-                                rd_id,
-                                "Без энергоузла" if not rd_id else f"Энергоузел {rd_id}",
-                            )
-                        else:
-                            value = (
-                                first_station.regional_district.name_full
-                                if getattr(first_station, "regional_district", None)
-                                and getattr(first_station.regional_district, "name_full", None)
-                                else (
-                                    first_station.regional_district.name
-                                    if getattr(first_station, "regional_district", None)
-                                    and getattr(first_station.regional_district, "name", None)
-                                    else "Без субъекта"
-                                )
-                            )
-                        merge_if_needed(rd_start_row, subject_col, rd_end_row, subject_col, value, text_center_format)
-
-                        # Генкомпания: объединяем блоками по фактическому порядку строк в выгрузке
-                        flat_segments: list[tuple[str, int]] = []
-                        for _station, _station_rows, _machine_plans in rd_station_plans:
-                            for _machine, _rows in _machine_plans:
-                                company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
-                                flat_segments.append((company, len(_rows)))
-                        row_cursor = rd_start_row
-                        i = 0
-                        while i < len(flat_segments):
-                            company = flat_segments[i][0]
-                            block_rows = 0
-                            while i < len(flat_segments) and flat_segments[i][0] == company:
-                                block_rows += flat_segments[i][1]
-                                i += 1
-                            merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
-                            row_cursor += block_rows
-
-                        # электростанции: объединение по фактической высоте электростанции в выгрузке
-                        station_row_cursor = rd_start_row
-                        for station, station_rows, machine_plans in rd_station_plans:
-                            merge_if_needed(
-                                station_row_cursor,
-                                station_name_col,
-                                station_row_cursor + station_rows - 1,
-                                station_name_col,
-                                getattr(station, "name", "—"),
-                                text_center_format,
-                            )
-
-                            # Данные по агрегатам
-                            for machine, filtered_power_rows in machine_plans:
-                                first_row_for_machine = current_row
-                                machine_rows = len(filtered_power_rows)
-                                last_row_for_machine = first_row_for_machine + machine_rows - 1
-
-                                # Ст. № и тип ГО — как на веб: без merge при модернизации / частях ПГУ
-                                _write_machine_identity_cells(
-                                    worksheet=worksheet,
-                                    merge_if_needed=merge_if_needed,
-                                    cell_format=text_center_format,
-                                    machine=machine,
-                                    power_rows=filtered_power_rows,
-                                    first_row=first_row_for_machine,
-                                    last_row=last_row_for_machine,
-                                    machine_num_col=machine_num_col,
-                                    machine_name_col=machine_name_col,
-                                )
-
-                                station_type_obj = getattr(station, "station_type", None)
-                                station_type_name = getattr(station_type_obj, "name", None)
-                                if not station_type_name:
-                                    st_id = getattr(station, "id_station_type", None)
-                                    station_type_name = station_type_names.get(st_id) if st_id else None
-                                station_type_name = station_type_name or "—"
-                                merge_if_needed(first_row_for_machine, station_type_col, last_row_for_machine, station_type_col, station_type_name, text_center_format)
-
-                                # Топливо (по СО ЕЭС) — на высоту агрегата
-                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, getattr(machine, "fuel_so", None) or "—", text_center_format)
-
-                                # Основание — на высоту агрегата
-                                change_doc = getattr(machine, "change_document", None)
-                                doc_text = _extract_document_names(change_doc) if change_doc else None
-                                merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
-
-                                # Сумма "Итого" по отображаемым годам отдельно для каждого мероприятия
-                                event_sum_map: dict = {}
-                                for _p in filtered_power_rows:
-                                    _ev = _p.get("event")
-                                    _y = _p.get("year")
-                                    _v = _p.get("p_ust")
-                                    if _y in sum_years and _ev:
-                                        event_sum_map[_ev] = (event_sum_map.get(_ev) or 0) + (_v or 0)
-                                seen_events: set = set()
-
-                                for power_row in filtered_power_rows:
-                                    # Мероприятие — построчно
-                                    worksheet.write(current_row, event_col, _get_event_label(event_types, power_row["event"]), text_center_format)
-
-                                    # Годы — значение только в год power_row["year"], остальное пусто
-                                    for i, y in enumerate(export_years):
-                                        val = power_row["p_ust"] if power_row["year"] == y else None
-                                        worksheet.write(current_row, years_start_col + i, val, text_center_format)
-
-                                    # Столбец "Итого" — по каждому мероприятию, без объединений (пишем один раз на мероприятие)
-                                    ev_code = power_row.get("event")
-                                    if ev_code and ev_code not in seen_events:
-                                        seen_events.add(ev_code)
-                                        ev_sum = event_sum_map.get(ev_code)
-                                        worksheet.write(current_row, all_years_col, ev_sum if ev_sum and ev_sum != 0 else None, text_center_format)
-                                    else:
-                                        worksheet.write(current_row, all_years_col, None, text_center_format)
-
-                                    current_row += 1
-
-                            station_row_cursor += station_rows
-
-                        # Итоги по субъекту РФ (события + по типам станций) — должны выводиться ДЛЯ КАЖДОГО rd_id
-                        # Как на веб: для Калининграда не выводим внутри списка станций (выводим отдельно ниже)
-                        if show_totals and (not is_kaliningrad_sa):
-                            ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                            is_tites_siberia = "титэс сибири" in str(ues_label).lower()
-                            if is_tites_siberia:
-                                eu_events_map = (
-                                    data.get("aggregate_changes_by_energy_units_events", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                eu_by_station_map = (
-                                    data.get("aggregate_changes_energy_units_by_station_types_with_events", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                has_data = bool(eu_events_map) or bool(eu_by_station_map)
-                                if has_data:
-                                    eu_name = energy_unit_names.get(rd_id, f"Энергоузел {rd_id}")
-                                    eu_dat = energy_unit_names_dat.get(rd_id) if "energy_unit_names_dat" in locals() else None
-                                    eu_label = energy_unit_dative_for_totals(eu_name, eu_dat)
-                                    write_combined_totals_block(f"Итого по {eu_label}", eu_events_map, eu_by_station_map)
-                            else:
-                                rd_events_map = (
-                                    data.get("aggregate_changes_by_regional_districts", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                rd_by_station_map = (
-                                    data.get("aggregate_changes_regional_districts_by_station_types_with_events", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                has_data = bool(rd_events_map) or bool(rd_by_station_map)
-                                if has_data:
-                                    rd_name = regional_district_names.get(rd_id, f"Субъект {rd_id}")
-                                    rd_rp = regional_district_names_rp.get(rd_id)
-                                    rd_dp = regional_district_names_dp.get(rd_id) if "regional_district_names_dp" in locals() else None
-                                    label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
-                                    write_combined_totals_block(label, rd_events_map, rd_by_station_map)
-
-                # Итоги по ОЭС (внутри синхронной зоны должны выводиться для КАЖДОЙ ОЭС, а не только для последней)
-                # Как на веб: для Калининграда не выводим итоги по ОЭС (в т.ч. ОЭС Северо-Запада)
-                if show_totals and (not is_kaliningrad_sa):
-                    ues_events_map = (
-                        data.get("aggregate_changes_by_union_energy_systems", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(ues_id, {})
-                    )
-                    # По типам станций и мероприятиям (для ОЭС)
-                    ues_by_station_map = (
-                        data.get("aggregate_changes_union_energy_systems_by_station_types", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(ues_id, {})
-                    )
-                    ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                    write_combined_totals_block(f"{ues_label}", ues_events_map, ues_by_station_map)
-
-            # Итоги по синхронной зоне (как на веб-странице): выводим ОДИН раз после завершения синхронной зоны
-            if show_totals:
-                # 1) Для Калининграда: отдельный итог по области (субъекту)
-                if is_kaliningrad_sa and sa_rd_ids:
-                    kal_rd_id: int | None = None
-                    for _rd_id in sa_rd_ids:
-                        rd_name = regional_district_names.get(_rd_id, "") or ""
-                        if "калининград" in str(rd_name).lower():
-                            kal_rd_id = _rd_id
-                            break
-                    if kal_rd_id is None:
-                        kal_rd_id = sa_rd_ids[0]
-
-                    rd_events_map = (
-                        data.get("aggregate_changes_by_regional_districts", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(kal_rd_id, {})
-                    )
-                    rd_by_station_map = (
-                        data.get("aggregate_changes_regional_districts_by_station_types_with_events", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(kal_rd_id, {})
-                    )
-                    if rd_events_map or rd_by_station_map:
-                        rd_name = regional_district_names.get(kal_rd_id, f"Субъект {kal_rd_id}")
-                        rd_rp = regional_district_names_rp.get(kal_rd_id)
-                        rd_dp = regional_district_names_dp.get(kal_rd_id) if "regional_district_names_dp" in locals() else None
-                        label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
-                        write_combined_totals_block(label, rd_events_map, rd_by_station_map)
-
-                # 2) Итог по синхронной зоне
-                try:
-                    _sa_key = int(sa_id)
-                except Exception:
-                    _sa_key = sa_id
-                if _sa_key in written_sa_total_ids:
-                    pass
-                else:
-                    sa_events_map = (synchronous_areas_yearly_p_ust.get(sa_id, {}) or {})
-                    sa_by_station_map = (synchronous_areas_by_station_types_yearly_p_ust.get(sa_id, {}) or {})
-                    if sa_events_map or sa_by_station_map:
-                        written_sa_total_ids.add(_sa_key)
-                        sa_label = _synchronous_area_total_label(sa_name)
-                        write_combined_totals_block(sa_label, sa_events_map, sa_by_station_map)
-
-        # Итоги по типу энергосистемы
-        if show_totals:
-            es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
-            is_tites = "титэс" in str(es_name).lower().replace(" ", "")
-            if not is_tites:
-                es_events_map = (
-                    data.get("aggregate_changes_by_energy_system_types", {})
-                    .get("aggregated", {})
-                    .get("p_ust", {})
-                    .get(es_type_id, {})
-                )
-                es_by_station_map = (
-                    data.get("aggregate_changes_energy_system_types_by_station_types", {})
-                    .get("aggregated", {})
-                    .get("p_ust", {})
-                    .get(es_type_id, {})
-                ) or {}
-                if "еэс" in str(es_name).lower():
-                    es_label = "Итого по ЕЭС России"
-                else:
-                    es_label = f"{es_name}, всего"
-                write_combined_totals_block(es_label, es_events_map, es_by_station_map)
+    current_row = _run_station_changes_hierarchy_export(
+        stations_grouped=stations_grouped,
+        data=data,
+        show_totals=show_totals,
+        options=HIERARCHY_EXPORT_PRIL_B,
+        worksheet=worksheet,
+        merge_if_needed=merge_if_needed,
+        text_center_format=text_center_format,
+        event_types=event_types,
+        station_type_names=station_type_names,
+        export_years=export_years,
+        current_year_split=current_year_split,
+        sum_years=sum_years,
+        subject_col=subject_col,
+        gen_company_col=gen_company_col,
+        station_name_col=station_name_col,
+        event_col=event_col,
+        station_type_col=station_type_col,
+        machine_num_col=machine_num_col,
+        machine_name_col=machine_name_col,
+        fuel_col=fuel_col,
+        years_start_col=years_start_col,
+        all_years_col=all_years_col,
+        note_col=note_col,
+        max_merged_row_by_col=max_merged_row_by_col,
+        current_row=current_row,
+        union_energy_system_names=union_energy_system_names,
+        energy_unit_names=energy_unit_names,
+        energy_unit_names_dat=energy_unit_names_dat,
+        regional_district_names=regional_district_names,
+        regional_district_names_rp=regional_district_names_rp,
+        regional_district_names_dp=regional_district_names_dp,
+        energy_system_type_names=energy_system_type_names,
+        synchronous_areas_yearly_p_ust=synchronous_areas_yearly_p_ust,
+        synchronous_areas_by_station_types_yearly_p_ust=synchronous_areas_by_station_types_yearly_p_ust,
+    )
 
     return _finalize_station_changes_export(
         worksheet,
@@ -2007,416 +1942,43 @@ def export_station_changes_pril_2_russia_to_excel(
     synchronous_areas_yearly_p_ust = refs["synchronous_areas_yearly_p_ust"]
     synchronous_areas_by_station_types_yearly_p_ust = refs["synchronous_areas_by_station_types_yearly_p_ust"]
 
-    def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
-        nonlocal current_row
-        current_row = _write_combined_totals_block(
-            worksheet=worksheet,
-            merge_if_needed=merge_if_needed,
-            text_center_format=text_center_format,
-            label=label,
-            events_years_map=events_years_map,
-            station_type_events_map=station_type_events_map,
-            event_types=event_types,
-            station_type_names=station_type_names,
-            export_years=export_years,
-            sum_years=sum_years,
-            subject_col=subject_col,
-            gen_company_col=gen_company_col,
-            station_name_col=station_name_col,
-            event_col=event_col,
-            station_type_col=station_type_col,
-            machine_num_col=machine_num_col,
-            machine_name_col=machine_name_col,
-            fuel_col=fuel_col,
-            years_start_col=years_start_col,
-            all_years_col=all_years_col,
-            note_col=note_col,
-            max_merged_row_by_col=max_merged_row_by_col,
-            current_row=current_row,
-            empty_cell_dash=PRIL2_DASH,
-            mw_display_fn=_pril2_mw_value,
-        )
-
-    # Обход иерархии как в шаблоне (тип энергосистемы -> (синхронная зона|энергозона) -> ОЭС -> РЭС -> субъект)
-    # Для объединенного итога по всем ТИТЭС
-    tites_ids = [
-        est_id for est_id, name in energy_system_type_names.items()
-        if name and "титэс" in str(name).lower().replace(" ", "")
-    ]
-    tites_events_map = {}
-    tites_by_station_map = {}
-    # Защита от повторной печати полных агрегатов ОЭС/СЗ, если ветка встретилась дважды.
-    written_ues_total_ids: set[int] = set()
-    written_sa_total_ids: set[int] = set()
-
-    for es_type_id, es_group in stations_grouped.items():
-        # Для ТИТЭС второй уровень (синхронные зоны) на вебе не используется:
-        # для ветки ТИТЭС нет итогов по ОЭС и по синхронным зонам, только по субъектам.
-        es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
-        is_tites_es = "титэс" in str(es_name).lower().replace(" ", "")
-        for sa_id, sa_group in es_group.items():
-            # Спец-логика как на веб: для Калининградской синхронной зоны
-            # - не выводим итоги по ОЭС (в т.ч. ОЭС Северо-Запада)
-            # - после станций выводим "Итого по Санкт-Петербургу/Ленобласти..." как обычно,
-            #   но для Калининграда выводим "Итого по Калининградской области" отдельно внизу,
-            #   затем "Итого по синхронной зоне Калининградской области"
-            sa_names = data.get("synchronous_area_names", {}) or {}
-            sa_name = sa_names.get(sa_id, "")
-            is_kaliningrad_sa = "калининград" in str(sa_name).lower()
-
-            # Собираем список субъектов (rd_id) внутри текущей синхронной зоны (для калининградской спец-логики)
-            sa_rd_ids: list[int] = []
-            for _ues_id, _ues_group in (sa_group or {}).items():
-                for _res_id, _res_group in (_ues_group or {}).items():
-                    for _rd_id in (_res_group or {}).keys():
-                        try:
-                            _rid = int(_rd_id)
-                        except Exception:
-                            continue
-                        if _rid != 0 and _rid not in sa_rd_ids:
-                            sa_rd_ids.append(_rid)
-
-            for ues_id, rd_group in sa_group.items():
-                for res_id, res_group in rd_group.items():
-                    for rd_id, stations in res_group.items():
-                        # В export мы фильтруем строки по годам/факт-плану, поэтому rowspan'ы,
-                        # заранее рассчитанные для веб-таблицы, могут "растягиваться" и давать OverlappingRange.
-                        # Здесь строим план выгрузки и делаем merge строго по реально записываемым строкам.
-                        rd_station_plans: list[tuple[object, int, list[tuple[object, list[dict]]]]] = []
-                        for station in stations:
-                            machine_plans: list[tuple[object, list[dict]]] = []
-                            for machine in getattr(station, "machines", []):
-                                if not getattr(machine, "powers_by_year", None):
-                                    continue
-                                filtered_power_rows: list[dict] = []
-                                for _p in machine.powers_by_year:
-                                    if not isinstance(_p, dict):
-                                        continue
-                                    y0 = _p.get("year")
-                                    if y0 not in export_years:
-                                        continue
-                                    if (
-                                        current_year_split is not None
-                                        and y0 == int(current_year_split)
-                                        and str(_p.get("current_year_bucket") or "").strip().lower() == "fact"
-                                    ):
-                                        continue
-                                    filtered_power_rows.append(_p)
-                                if filtered_power_rows:
-                                    machine_plans.append((machine, filtered_power_rows))
-                            if machine_plans:
-                                station_rows = sum(len(_rows) for _, _rows in machine_plans)
-                                rd_station_plans.append((station, station_rows, machine_plans))
-
-                        if not rd_station_plans:
-                            continue
-
-                        rd_total_rows = sum(_station_rows for _, _station_rows, _ in rd_station_plans)
-                        rd_start_row = current_row
-                        rd_end_row = rd_start_row + rd_total_rows - 1
-
-                        # Субъект РФ / энергоузел (как на веб)
-                        first_station = rd_station_plans[0][0]
-                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                        if "титэс сибири" in str(ues_label).lower():
-                            value = energy_unit_names.get(
-                                rd_id,
-                                "Без энергоузла" if not rd_id else f"Энергоузел {rd_id}",
-                            )
-                        else:
-                            value = (
-                                first_station.regional_district.name_full
-                                if getattr(first_station, "regional_district", None)
-                                and getattr(first_station.regional_district, "name_full", None)
-                                else (
-                                    first_station.regional_district.name
-                                    if getattr(first_station, "regional_district", None)
-                                    and getattr(first_station.regional_district, "name", None)
-                                    else "Без субъекта"
-                                )
-                            )
-                        merge_if_needed(rd_start_row, subject_col, rd_end_row, subject_col, value, text_center_format)
-
-                        # Генкомпания: объединяем блоками по фактическому порядку строк в выгрузке
-                        flat_segments: list[tuple[str, int]] = []
-                        for _station, _station_rows, _machine_plans in rd_station_plans:
-                            for _machine, _rows in _machine_plans:
-                                company = _machine.gen_company.name if getattr(_machine, "gen_company", None) else "—"
-                                flat_segments.append((company, len(_rows)))
-                        row_cursor = rd_start_row
-                        i = 0
-                        while i < len(flat_segments):
-                            company = flat_segments[i][0]
-                            block_rows = 0
-                            while i < len(flat_segments) and flat_segments[i][0] == company:
-                                block_rows += flat_segments[i][1]
-                                i += 1
-                            merge_if_needed(row_cursor, gen_company_col, row_cursor + block_rows - 1, gen_company_col, company, text_center_format)
-                            row_cursor += block_rows
-
-                        # электростанции: объединение по фактической высоте электростанции в выгрузке
-                        station_row_cursor = rd_start_row
-                        for station, station_rows, machine_plans in rd_station_plans:
-                            merge_if_needed(
-                                station_row_cursor,
-                                station_name_col,
-                                station_row_cursor + station_rows - 1,
-                                station_name_col,
-                                getattr(station, "name", "—"),
-                                text_center_format,
-                            )
-
-                            # Данные по агрегатам
-                            for machine, filtered_power_rows in machine_plans:
-                                first_row_for_machine = current_row
-                                machine_rows = len(filtered_power_rows)
-                                last_row_for_machine = first_row_for_machine + machine_rows - 1
-
-                                # Ст. № и тип ГО — как на веб: без merge при модернизации / частях ПГУ
-                                _write_machine_identity_cells(
-                                    worksheet=worksheet,
-                                    merge_if_needed=merge_if_needed,
-                                    cell_format=text_center_format,
-                                    machine=machine,
-                                    power_rows=filtered_power_rows,
-                                    first_row=first_row_for_machine,
-                                    last_row=last_row_for_machine,
-                                    machine_num_col=machine_num_col,
-                                    machine_name_col=machine_name_col,
-                                )
-
-                                station_type_obj = getattr(station, "station_type", None)
-                                station_type_name = getattr(station_type_obj, "name", None)
-                                if not station_type_name:
-                                    st_id = getattr(station, "id_station_type", None)
-                                    station_type_name = station_type_names.get(st_id) if st_id else None
-                                station_type_name = _pril2_empty_text(station_type_name)
-                                merge_if_needed(first_row_for_machine, station_type_col, last_row_for_machine, station_type_col, station_type_name, text_center_format)
-
-                                # Топливо (по СО ЕЭС) — короткое тире, как в утверждённой форме
-                                merge_if_needed(first_row_for_machine, fuel_col, last_row_for_machine, fuel_col, _pril2_empty_text(getattr(machine, "fuel_so", None)), text_center_format)
-
-                                # Основание — на высоту агрегата
-                                change_doc = getattr(machine, "change_document", None)
-                                doc_text = _extract_document_names(change_doc) if change_doc else None
-                                merge_if_needed(first_row_for_machine, note_col, last_row_for_machine, note_col, doc_text or "", text_center_format)
-
-                                for power_row in filtered_power_rows:
-                                    # Мероприятие — построчно
-                                    worksheet.write(current_row, event_col, _get_event_label(event_types, power_row["event"]), text_center_format)
-
-                                    # Годы: значение только в год строки; нули не пишем
-                                    for i, y in enumerate(export_years):
-                                        val = power_row["p_ust"] if power_row["year"] == y else None
-                                        worksheet.write(current_row, years_start_col + i, _pril2_object_mw_cell(val), text_center_format)
-
-                                    # «Итого» 2026–2031 — сумма лет этой строки, не всех блоков станции
-                                    worksheet.write(
-                                        current_row,
-                                        all_years_col,
-                                        _pril2_row_period_total(power_row.get("year"), power_row.get("p_ust"), sum_years),
-                                        text_center_format,
-                                    )
-
-                                    current_row += 1
-
-                            station_row_cursor += station_rows
-
-                        # Итоги по субъекту РФ (события + по типам станций) — должны выводиться ДЛЯ КАЖДОГО rd_id
-                        # (иначе при нескольких субъектах в одной РЭС "пропадает" один из итогов, напр. Санкт‑Петербург).
-                        # Как на веб: для Калининграда не выводим внутри списка станций (выводим отдельно ниже)
-                        if show_totals and (not is_kaliningrad_sa):
-                            ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                            is_tites_siberia = "титэс сибири" in str(ues_label).lower()
-                            if is_tites_siberia:
-                                eu_events_map = (
-                                    data.get("aggregate_changes_by_energy_units_events", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                eu_by_station_map = (
-                                    data.get("aggregate_changes_energy_units_by_station_types_with_events", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                has_data = bool(eu_events_map) or bool(eu_by_station_map)
-                                if has_data:
-                                    eu_name = energy_unit_names.get(rd_id, f"Энергоузел {rd_id}")
-                                    eu_dat = energy_unit_names_dat.get(rd_id) if "energy_unit_names_dat" in locals() else None
-                                    eu_label = energy_unit_dative_for_totals(eu_name, eu_dat)
-                                    write_combined_totals_block(f"Итого по {eu_label}", eu_events_map, eu_by_station_map)
-                            else:
-                                rd_events_map = (
-                                    data.get("aggregate_changes_by_regional_districts", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                rd_by_station_map = (
-                                    data.get("aggregate_changes_regional_districts_by_station_types", {})
-                                    .get("aggregated", {})
-                                    .get("p_ust", {})
-                                    .get(rd_id, {})
-                                )
-                                has_data = bool(rd_events_map) or bool(rd_by_station_map)
-                                if has_data:
-                                    rd_name = regional_district_names.get(rd_id, f"Субъект {rd_id}")
-                                    rd_rp = regional_district_names_rp.get(rd_id)
-                                    rd_dp = regional_district_names_dp.get(rd_id) if "regional_district_names_dp" in locals() else None
-                                    label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
-                                    write_combined_totals_block(label, rd_events_map, rd_by_station_map)
-
-                # Итоги по ОЭС: должны выводиться для КАЖДОЙ ОЭС внутри синхронной зоны
-                # Как на веб: для Калининграда не выводим итоги по ОЭС (в т.ч. ОЭС Северо-Запада),
-                # а для ТИТЭС итоги по ОЭС вообще не выводим (только по субъектам).
-                if show_totals and (not is_kaliningrad_sa) and (not is_tites_es):
-                    try:
-                        _ues_key = int(ues_id)
-                    except Exception:
-                        _ues_key = ues_id
-                    if _ues_key in written_ues_total_ids:
-                        pass
-                    else:
-                        written_ues_total_ids.add(_ues_key)
-                        ues_events_map = (
-                            data.get("aggregate_changes_by_union_energy_systems", {})
-                            .get("aggregated", {})
-                            .get("p_ust", {})
-                            .get(ues_id, {})
-                        )
-                        ues_by_station_map = (
-                            data.get("aggregate_changes_union_energy_systems_by_station_types", {})
-                            .get("aggregated", {})
-                            .get("p_ust", {})
-                            .get(ues_id, {})
-                        )
-                        ues_label = union_energy_system_names.get(ues_id, f"ОЭС {ues_id}")
-                        if ues_events_map or ues_by_station_map:
-                            write_combined_totals_block(f"{ues_label}", ues_events_map, ues_by_station_map)
-
-            # Итоги по синхронной зоне (как на веб-странице): выводим ОДИН раз после завершения синхронной зоны
-            # Для ТИТЭС второй уровень отсутствует — итоги по синхронной зоне не выводим.
-            if show_totals and (not is_tites_es):
-                # 1) Для Калининграда: отдельный итог по области (субъекту)
-                if is_kaliningrad_sa and sa_rd_ids:
-                    kal_rd_id: int | None = None
-                    for _rd_id in sa_rd_ids:
-                        rd_name = regional_district_names.get(_rd_id, "") or ""
-                        if "калининград" in str(rd_name).lower():
-                            kal_rd_id = _rd_id
-                            break
-                    if kal_rd_id is None:
-                        kal_rd_id = sa_rd_ids[0]
-
-                    rd_events_map = (
-                        data.get("aggregate_changes_by_regional_districts", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(kal_rd_id, {})
-                    )
-                    rd_by_station_map = (
-                        data.get("aggregate_changes_regional_districts_by_station_types", {})
-                        .get("aggregated", {})
-                        .get("p_ust", {})
-                        .get(kal_rd_id, {})
-                    )
-                    if rd_events_map or rd_by_station_map:
-                        rd_name = regional_district_names.get(kal_rd_id, f"Субъект {kal_rd_id}")
-                        rd_rp = regional_district_names_rp.get(kal_rd_id)
-                        rd_dp = regional_district_names_dp.get(kal_rd_id) if "regional_district_names_dp" in locals() else None
-                        label = f"Итого по {rd_dp}" if rd_dp else f"Итого по {rd_rp or rd_name}"
-                        write_combined_totals_block(label, rd_events_map, rd_by_station_map)
-
-                # 2) Итог по синхронной зоне
-                try:
-                    _sa_key = int(sa_id)
-                except Exception:
-                    _sa_key = sa_id
-                if _sa_key in written_sa_total_ids:
-                    pass
-                else:
-                    sa_events_map = (synchronous_areas_yearly_p_ust.get(sa_id, {}) or {})
-                    sa_by_station_map = (synchronous_areas_by_station_types_yearly_p_ust.get(sa_id, {}) or {})
-                    if sa_events_map or sa_by_station_map:
-                        written_sa_total_ids.add(_sa_key)
-                        sa_label = _synchronous_area_total_label(sa_name)
-                        write_combined_totals_block(sa_label, sa_events_map, sa_by_station_map)
-
-        # Итоги по типу энергосистемы
-        if show_totals:
-            es_name = energy_system_type_names.get(es_type_id, f"Тип энергосистемы {es_type_id}")
-            is_tites = "титэс" in str(es_name).lower().replace(" ", "")
-            if not is_tites:
-                es_events_map = (
-                    data.get("aggregate_changes_by_energy_system_types", {})
-                    .get("aggregated", {})
-                    .get("p_ust", {})
-                    .get(es_type_id, {})
-                )
-                es_by_station_map = (
-                    data.get("aggregate_changes_energy_system_types_by_station_types", {})
-                    .get("aggregated", {})
-                    .get("p_ust", {})
-                    .get(es_type_id, {})
-                ) or {}
-                if "еэс" in str(es_name).lower():
-                    es_label = "Итого по ЕЭС России"
-                else:
-                    es_label = f"{es_name}, всего"
-                write_combined_totals_block(es_label, es_events_map, es_by_station_map)
-
-        # Собираем суммы для общего итога по ТИТЭС (для вывода один раз после всех типов)
-        if show_totals and es_type_id in tites_ids:
-            es_events_map = (
-                data.get("aggregate_changes_by_energy_system_types", {})
-                .get("aggregated", {})
-                .get("p_ust", {})
-                .get(es_type_id, {})
-            ) or {}
-            es_by_station_map = (
-                data.get("aggregate_changes_energy_system_types_by_station_types", {})
-                .get("aggregated", {})
-                .get("p_ust", {})
-                .get(es_type_id, {})
-            ) or {}
-            for ev_code, year_map in es_events_map.items():
-                tites_events_map.setdefault(ev_code, {})
-                for y, v in (year_map or {}).items():
-                    tites_events_map[ev_code][y] = (tites_events_map[ev_code].get(y) or 0) + (v or 0)
-            for st_id, ev_map in es_by_station_map.items():
-                tites_by_station_map.setdefault(st_id, {})
-                for ev_code, year_map in (ev_map or {}).items():
-                    tites_by_station_map[st_id].setdefault(ev_code, {})
-                    for y, v in (year_map or {}).items():
-                        tites_by_station_map[st_id][ev_code][y] = (tites_by_station_map[st_id][ev_code].get(y) or 0) + (v or 0)
-
-    # Итог по ТИТЭС (объединяет ТИТЭС Востока/Сибири и т.п.)
-    if show_totals and tites_ids:
-        write_combined_totals_block(
-            "Итого по технологически изолированным территориальным электроэнергетическим системам",
-            tites_events_map,
-            tites_by_station_map,
-        )
-
-    # Итоги по России — с разбивкой по типам станций
-    if show_totals:
-        total_events_map = (
-            data.get("aggregate_changes_by_total_energy_system_types", {})
-            .get("aggregated", {})
-            .get("p_ust", {})
-        )
-        total_by_station_map = (
-            data.get("aggregate_changes_total_energy_system_types_by_station_types", {})
-            .get("aggregated", {})
-            .get("p_ust", {})
-        ) or {}
-        write_combined_totals_block(
-            "Итого\nпо электроэнергетическим системам России",
-            total_events_map,
-            total_by_station_map,
-        )
+    current_row = _run_station_changes_hierarchy_export(
+        stations_grouped=stations_grouped,
+        data=data,
+        show_totals=show_totals,
+        options=HIERARCHY_EXPORT_PRIL2,
+        worksheet=worksheet,
+        merge_if_needed=merge_if_needed,
+        text_center_format=text_center_format,
+        event_types=event_types,
+        station_type_names=station_type_names,
+        export_years=export_years,
+        current_year_split=current_year_split,
+        sum_years=sum_years,
+        subject_col=subject_col,
+        gen_company_col=gen_company_col,
+        station_name_col=station_name_col,
+        event_col=event_col,
+        station_type_col=station_type_col,
+        machine_num_col=machine_num_col,
+        machine_name_col=machine_name_col,
+        fuel_col=fuel_col,
+        years_start_col=years_start_col,
+        all_years_col=all_years_col,
+        note_col=note_col,
+        max_merged_row_by_col=max_merged_row_by_col,
+        current_row=current_row,
+        union_energy_system_names=union_energy_system_names,
+        energy_unit_names=energy_unit_names,
+        energy_unit_names_dat=energy_unit_names_dat,
+        regional_district_names=regional_district_names,
+        regional_district_names_rp=regional_district_names_rp,
+        regional_district_names_dp=regional_district_names_dp,
+        energy_system_type_names=energy_system_type_names,
+        synchronous_areas_yearly_p_ust=synchronous_areas_yearly_p_ust,
+        synchronous_areas_by_station_types_yearly_p_ust=synchronous_areas_by_station_types_yearly_p_ust,
+        pril2_totals=True,
+    )
 
     return _finalize_station_changes_export(
         worksheet,

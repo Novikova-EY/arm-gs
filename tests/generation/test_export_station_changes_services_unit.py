@@ -51,7 +51,8 @@ def test_export_russia_ees_totals_pass_station_type_maps():
     assert "total_by_station_map" in text
     assert 'write_combined_totals_block("Итого\\nпо электроэнергетическим системам России", total_events_map, {})' not in text
     assert "_write_machine_identity_cells(" in text
-    assert text.count("_write_machine_identity_cells(") >= 3
+    assert "_write_rd_station_data_rows(" in text
+    assert text.count("_run_station_changes_hierarchy_export(") >= 3
 
 
 def _mod_machine(**kwargs):
