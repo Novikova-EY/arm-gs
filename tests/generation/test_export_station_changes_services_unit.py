@@ -192,12 +192,14 @@ def test_pril2_form_source_matches_etalon_layout():
         "app/generation/services/station_changes_services/export_station_changes_services.py"
     ).read_text(encoding="utf-8")
     assert '"Тип электростанции1)"' in text
-    assert 'note_header = "Документ-основание1)"' in text
+    assert '"Документ-основание1)"' in text
+    assert "STATION_CHANGES_STATIC_HEADERS_PRIL2" in text
     assert 'f"A5:{last_col_name}5"' in text
-    assert "worksheet.repeat_rows(6, 7)" in text
+    assert "repeat_rows=(6, 7)" in text
     assert "worksheet.hide_zero()" in text
     assert "_pril2_object_mw_cell(val)" in text
-    assert "_write_pril2_footnotes(worksheet, current_row, last_col_name, workbook)" in text
+    assert "_write_pril2_footnotes(" in text
+    assert "last_col_name, workbook" in text
     assert len(PRIL2_FOOTNOTES) == 7
     assert PRIL2_FOOTNOTES[0][0] == "Примечания"
     assert PRIL2_FOOTNOTES[1][0].startswith("1)")

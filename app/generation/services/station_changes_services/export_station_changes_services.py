@@ -442,21 +442,32 @@ def _write_machine_identity_cells(
         worksheet.write(row, machine_name_col, _power_row_machine_name(machine, power_row), cell_format)
 
 
-def export_station_changes_to_excel(
-    user: str,
-    filters: dict,
-    rounding_digits: int,
-    start_year: int,
-    end_year: int,
-    show_totals: bool,
-    data: dict | None = None,
-):
-    """Формирует Excel-файл со списком изменений мощности на странице station_changes_list
-    с учетом текущих фильтров, округления и объединений ячеек как на экране.
-    """
-    current_db_version_id = get_current_db_version_id()
+STATION_CHANGES_STATIC_HEADERS = [
+    "Субъект Российской Федерации",
+    "Генерирующая компания",
+    "Электростанция",
+    "Вид мероприятия",
+    "Тип  электростанции",
+    "Станционный номер",
+    "Тип генерирующего оборудования",
+    "Вид топлива",
+]
 
-    # Сбрасываем кэши справочников, чтобы загрузить актуальные данные для текущей версии БД
+STATION_CHANGES_STATIC_HEADERS_PRIL2 = [
+    "Субъект Российской Федерации",
+    "Генерирующая компания",
+    "Электростанция",
+    "Вид мероприятия",
+    "Тип электростанции1)",
+    "Станционный номер",
+    "Тип генерирующего оборудования",
+    "Вид топлива",
+]
+
+STATION_CHANGES_TABLE_COLUMN_WIDTHS = [29, 25.86, 29.43, 23.43, 19.86, 17, 35.29, 15.71]
+
+
+def _clear_station_changes_export_reference_caches() -> None:
     from app.common.services.get_services.stations.station_type_get_services import (
         get_station_type_list_full,
     )
@@ -466,21 +477,28 @@ def export_station_changes_to_excel(
     from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
         get_energy_system_type_list_full,
     )
-    
-    cache_functions = [
+
+    for func in (
         get_station_type_list_full,
         get_union_energy_system_list_full,
         get_energy_system_type_list_full,
-    ]
-    for func in cache_functions:
+    ):
         if hasattr(func, "cache_clear"):
             func.cache_clear()
 
-    # Загружаем все данные без пагинации, чтобы экспортировать все отображаемое
-    if (
-        data is None
-        or data.get("database_version_id") != current_db_version_id
-    ):
+
+def _prepare_station_changes_export_data(
+    *,
+    filters: dict,
+    rounding_digits: int,
+    start_year: int,
+    end_year: int,
+    data: dict | None,
+) -> dict:
+    current_db_version_id = get_current_db_version_id()
+    _clear_station_changes_export_reference_caches()
+
+    if data is None or data.get("database_version_id") != current_db_version_id:
         data = get_station_changes_list_data(
             filters=filters,
             per_page="all",
@@ -492,16 +510,18 @@ def export_station_changes_to_excel(
         )
     if isinstance(data, dict):
         data.setdefault("database_version_id", current_db_version_id)
+    return data
 
-    stations_grouped = data.get("stations_grouped", {})
-    event_types = data.get("event_types", [])
+
+def _get_station_type_names_for_export() -> dict:
     try:
         _st_list = get_station_type_list_full()
-        station_type_names = {st.id: st.name for st in _st_list}
+        return {st.id: st.name for st in _st_list}
     except Exception:
-        station_type_names = {}
+        return {}
 
-    # Готовим книгу Excel (XlsxWriter удобен для объединений)
+
+def _open_in_memory_xlsx_workbook():
     output = BytesIO()
     try:
         import xlsxwriter  # type: ignore
@@ -510,53 +530,45 @@ def export_station_changes_to_excel(
         raise
 
     workbook = xlsxwriter.Workbook(output, {"in_memory": True})
-    worksheet = workbook.add_worksheet("Приложение")
+    return output, workbook
 
-    # Стили
 
-    title_format =  workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 24,                 # Размер шрифта 13pt
+def _create_station_changes_common_formats(workbook):
+    title_format = workbook.add_format({
+        'font_name': 'Times New Roman',
+        'font_size': 24,
         'bold': True,
-        'align': 'center',               # Выравнивание текста по левому краю
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос строк и поддержка \n
+        'align': 'center',
+        'valign': 'vcenter',
+        'text_wrap': True,
     })
-
     subtitle_format = workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 24,                 # Размер шрифта 13pt
-        'align': 'left',                 # Выравнивание текста по левому краю
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос слов (разрыв строк)
+        'font_name': 'Times New Roman',
+        'font_size': 24,
+        'align': 'left',
+        'valign': 'vcenter',
+        'text_wrap': True,
     })
-
     text_center_format = workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 10,                 # Размер шрифта 10pt
-        'align': 'center',               # Выравнивание текста по центру
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос слов (разрыв строк)
-        'border': 1                      # Границы ячейки
+        'font_name': 'Times New Roman',
+        'font_size': 10,
+        'align': 'center',
+        'valign': 'vcenter',
+        'text_wrap': True,
+        'border': 1,
     })
+    return title_format, subtitle_format, text_center_format
 
-    # Колонки (как на экране)
-    static_headers = [
-        "Субъект Российской Федерации",
-        "Генерирующая компания",
-        "Электростанция",
-        "Вид мероприятия",
-        "Тип  электростанции",
-        "Станционный номер",
-        "Тип генерирующего оборудования",
-        "Вид топлива",
-    ]
+
+def _compute_station_changes_column_layout(
+    start_year: int,
+    end_year: int,
+    static_headers: list[str],
+    note_header: str,
+) -> dict:
     export_years, current_year_split = _get_expected_export_years(start_year, end_year)
-    # Для шапок: "текущий год" = первый отображаемый год (как на экране),
-    # значит начало периода = (первый год + 1).
     current_year_for_header = int(export_years[0]) if export_years else int(start_year)
 
-    # Формируем заголовки годов (только ожидаемые)
     year_headers: list[str] = []
     for y in export_years:
         if current_year_split is not None and y == int(current_year_split):
@@ -564,8 +576,6 @@ def export_station_changes_to_excel(
         else:
             year_headers.append(f"{y} г.")
 
-    # "Итого" — для шапки: период начинается со следующего года (текущий+1).
-    # Суммирование — по тем же годам, что указаны в шапке "Итого".
     if export_years:
         header_start_year = _get_export_header_period_start(current_year_for_header, export_years[0])
         header_end_year = int(export_years[-1])
@@ -574,68 +584,82 @@ def export_station_changes_to_excel(
         sum_years = [y for y in export_years if header_start_year <= int(y) <= header_end_year]
         all_years_header = f"{header_start_year}–{header_end_year} гг.\n"
     else:
+        header_start_year = _get_export_header_period_start(current_year_for_header, start_year)
+        header_end_year = end_year
         sum_years = []
         all_years_header = ""
-    note_header = "Документ-основание"
 
-    # Индексы колонок согласно static_headers
-    subject_col = 0
-    gen_company_col = 1
-    station_name_col = 2
-    event_col = 3
-    station_type_col = 4
-    machine_num_col = 5
-    machine_name_col = 6
-    fuel_col = 7
-
-    # Вычисляем позиции колонок для заголовков
     years_start_col = len(static_headers)
     years_end_col = years_start_col + len(year_headers) - 1
-    # Столбец с суммой всех годов
     all_years_col = years_end_col + 1
-    # "Основание" — после столбца с суммой
     note_col = all_years_col + 1
 
-    # Для "обычной" выгрузки (кнопка «Экспорт изменений в Excel») выводим только таблицу,
-    # без строк заголовков сверху.
-    sub_row = 0
+    return {
+        "static_headers": static_headers,
+        "export_years": export_years,
+        "current_year_split": current_year_split,
+        "current_year_for_header": current_year_for_header,
+        "year_headers": year_headers,
+        "header_start_year": header_start_year,
+        "header_end_year": header_end_year,
+        "sum_years": sum_years,
+        "all_years_header": all_years_header,
+        "note_header": note_header,
+        "subject_col": 0,
+        "gen_company_col": 1,
+        "station_name_col": 2,
+        "event_col": 3,
+        "station_type_col": 4,
+        "machine_num_col": 5,
+        "machine_name_col": 6,
+        "fuel_col": 7,
+        "years_start_col": years_start_col,
+        "years_end_col": years_end_col,
+        "all_years_col": all_years_col,
+        "note_col": note_col,
+    }
 
-    # Шапка таблицы: конкретные заголовки
+
+def _write_station_changes_table_headers(
+    worksheet,
+    *,
+    static_headers: list[str],
+    year_headers: list[str],
+    all_years_header: str,
+    note_header: str,
+    years_start_col: int,
+    all_years_col: int,
+    note_col: int,
+    sub_row: int,
+    text_center_format,
+    freeze_panes: bool = True,
+    repeat_rows: tuple[int, int] | None = None,
+) -> None:
     for idx, name in enumerate(static_headers):
         worksheet.write(sub_row, idx, name, text_center_format)
     for i, y in enumerate(year_headers):
         worksheet.write(sub_row, years_start_col + i, y, text_center_format)
-    # Добавляем столбец с суммой всех годов
     worksheet.write(sub_row, all_years_col, all_years_header, text_center_format)
     worksheet.write(sub_row, note_col, note_header, text_center_format)
 
-    # Высота строки заголовков таблицы и фиксация панели (как в примере)
     worksheet.set_row(sub_row, 60)
-    worksheet.freeze_panes(sub_row + 1, 0)
+    if repeat_rows is not None:
+        worksheet.repeat_rows(repeat_rows[0], repeat_rows[1])
+    elif freeze_panes:
+        worksheet.freeze_panes(sub_row + 1, 0)
 
-    # Ширины колонок приблизительно как на экране
-    widths = [29, 25.86, 29.43, 23.43, 19.86, 17, 35.29, 15.71]
-    for i, w in enumerate(widths):
+    for i, w in enumerate(STATION_CHANGES_TABLE_COLUMN_WIDTHS):
         worksheet.set_column(i, i, w)
-    # Годы
     for i in range(len(year_headers)):
         worksheet.set_column(years_start_col + i, years_start_col + i, 18)
-    # Столбец с суммой всех годов
     worksheet.set_column(all_years_col, all_years_col, 15)
-    # Столбец с основанием — скрываем в форме «Приложение 2 (Россия)»
     worksheet.set_column(note_col, note_col, 28, None, {"hidden": True})
 
-    # Текущая строка для данных (сразу после шапки таблицы)
-    current_row = sub_row + 1
-    # Отслеживаем последнюю объединенную строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
-    # чтобы не "сдвигать" данные вниз из-за merge в других столбцах.
-    max_merged_row_by_col: dict[int, int] = {}
 
-    # Вспомогательная функция для объединения ячеек (без падения при rowspan<=1)
+def _make_station_changes_merge_if_needed(worksheet, max_merged_row_by_col: dict[int, int]):
     def merge_if_needed(r1: int, c1: int, r2: int, c2: int, value, text_center_format):
         if r2 > r1 or c2 > c1:
             worksheet.merge_range(r1, c1, r2, c2, value, text_center_format)
-            # Запоминаем последнюю объединенную строку для каждого затронутого столбца
             for c in range(c1, c2 + 1):
                 prev = max_merged_row_by_col.get(c, -1)
                 if r2 > prev:
@@ -643,13 +667,15 @@ def export_station_changes_to_excel(
         else:
             worksheet.write(r1, c1, value, text_center_format)
 
-    #  Справочники имен и хелпер вывода итогов по событиям
+    return merge_if_needed
+
+
+def _load_station_changes_export_reference_maps(data: dict) -> dict:
     try:
         union_energy_system_names = get_union_energy_systems_map()
     except Exception:
         union_energy_system_names = {}
 
-    # Энергоузлы (для спец-логики ОЭС "ТИТЭС Сибири")
     try:
         from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list_full
         energy_unit_list = get_energy_unit_list_full() or []
@@ -668,17 +694,23 @@ def export_station_changes_to_excel(
     except Exception:
         regional_district_names = {}
 
-    # Родительный падеж субъектов РФ (для "Итого по ...")
     try:
         rd_objs = get_regional_districts_list() or []
-        regional_district_names_rp = {rd.id: getattr(rd, "name_rp", None) for rd in rd_objs if getattr(rd, "id", None) is not None}
+        regional_district_names_rp = {
+            rd.id: getattr(rd, "name_rp", None)
+            for rd in rd_objs
+            if getattr(rd, "id", None) is not None
+        }
     except Exception:
         regional_district_names_rp = {}
-    
-    # Наименование субъекта (name_dp) для итоговых строк вида "Итого по субъекту ..."
+
     try:
         rd_objs = get_regional_districts_list() or []
-        regional_district_names_dp = {rd.id: getattr(rd, "name_dp", None) for rd in rd_objs if getattr(rd, "id", None) is not None}
+        regional_district_names_dp = {
+            rd.id: getattr(rd, "name_dp", None)
+            for rd in rd_objs
+            if getattr(rd, "id", None) is not None
+        }
     except Exception:
         regional_district_names_dp = {}
 
@@ -687,130 +719,268 @@ def export_station_changes_to_excel(
     except Exception:
         energy_system_type_names = {}
 
-    # Агрегаты по синхронным зонам на веб-странице формируются на этапе сборки template-context,
-    # а в export у нас "сырые" data из get_station_changes_list_data. Поэтому считаем агрегаты здесь.
     try:
         from app.generation.services.station_changes_services.station_changes_services import (
             build_synchronous_area_aggregates,
         )
         sa_aggregates = build_synchronous_area_aggregates(data) or {}
         synchronous_areas_yearly_p_ust = sa_aggregates.get("synchronous_areas_yearly_p_ust", {}) or {}
-        synchronous_areas_by_station_types_yearly_p_ust = sa_aggregates.get("synchronous_areas_by_station_types_yearly_p_ust", {}) or {}
+        synchronous_areas_by_station_types_yearly_p_ust = (
+            sa_aggregates.get("synchronous_areas_by_station_types_yearly_p_ust", {}) or {}
+        )
     except Exception:
         synchronous_areas_yearly_p_ust = {}
         synchronous_areas_by_station_types_yearly_p_ust = {}
 
-    def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
-        """Пишет комбинированный блок итогов: для каждого мероприятия сначала 'Всего', 
-        затем разбивка по типам станций"""
-        nonlocal current_row
+    return {
+        "union_energy_system_names": union_energy_system_names,
+        "energy_unit_names": energy_unit_names,
+        "energy_unit_names_dat": energy_unit_names_dat,
+        "regional_district_names": regional_district_names,
+        "regional_district_names_rp": regional_district_names_rp,
+        "regional_district_names_dp": regional_district_names_dp,
+        "energy_system_type_names": energy_system_type_names,
+        "synchronous_areas_yearly_p_ust": synchronous_areas_yearly_p_ust,
+        "synchronous_areas_by_station_types_yearly_p_ust": synchronous_areas_by_station_types_yearly_p_ust,
+    }
 
-        # Технические «не указано» из справочников не выводим в форму.
-        if _is_unspecified_ref_name(label):
-            return
-        
-        # Начинаем новый итоговый блок так, чтобы он не попадал внутрь merge_range
-        # в СВОИХ столбцах (B/C/F/G/H/A). Это предотвращает OverlappingRange и не ломает разметку.
-        block_cols = [subject_col, gen_company_col, station_name_col, machine_num_col, machine_name_col, fuel_col]
-        safe_start = current_row
-        for c in block_cols:
-            safe_start = max(safe_start, max_merged_row_by_col.get(c, -1) + 1)
-        current_row = safe_start
-        
-        # Определяем порядок типов станций: АЭС, ГЭС, ГАЭС, ТЭС, ВЭС, СЭС
-        # Сначала создаем обратный маппинг: название -> id
-        name_to_id = {}
-        for st_id, st_name in station_type_names.items():
-            name_to_id[st_name] = st_id
-        
-        # Порядок отображения типов станций
-        station_order = list(STATION_TYPE_ORDER_FOR_TOTALS)
-        
-        # Берем ВСЕ типы станций из порядка, даже если нет данных
-        st_ids = []
-        for st_name in station_order:
-            st_id = name_to_id.get(st_name)
-            if st_id:
-                st_ids.append(st_id)
-        
-        # Для каждого мероприятия вычисляем количество строк (1 "Всего" + количество типов станций)
-        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа электростанции
-        
-        # Общее количество строк в блоке
-        total_block_height = len(event_types) * rows_per_event
-        block_start_row = current_row
-        
-        # Столбец 0: уже сформированная подпись блока (без автодобавления ", всего")
-        merge_if_needed(block_start_row, subject_col, block_start_row + total_block_height - 1, subject_col, label, text_center_format)
-        
-        # Столбец 1 (Генкомпания): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, gen_company_col, block_start_row + total_block_height - 1, gen_company_col, "—", text_center_format)
-        
-        # Столбец 2 (Наименование): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, station_name_col, block_start_row + total_block_height - 1, station_name_col, "—", text_center_format)
-        
-        # Столбец 5 (Станционный номер): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_num_col, block_start_row + total_block_height - 1, machine_num_col, "—", text_center_format)
-        
-        # Столбец 6 (Тип генерирующего оборудования): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_name_col, block_start_row + total_block_height - 1, machine_name_col, "—", text_center_format)
-        
-        # Столбец 7 (Вид топлива): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, fuel_col, block_start_row + total_block_height - 1, fuel_col, "—", text_center_format)
-        
-        # Обрабатываем каждое мероприятие
-        for ev_code, ev_title in event_types:
-            event_start_row = current_row
-            event_label = _get_event_label(event_types, ev_code)
-            
-            # Первая строка: "Всего" для этого мероприятия
-            # Столбец 3 (Мероприятие): пишем название мероприятия только в строке "Всего"
-            worksheet.write(current_row, event_col, event_label, text_center_format)
-            worksheet.write(current_row, station_type_col, "Всего", text_center_format)
-            
-            # Данные из events_years_map
-            years_map_total = (events_years_map or {}).get(ev_code) or {}
+
+def _write_combined_totals_block(
+    *,
+    worksheet,
+    merge_if_needed,
+    text_center_format,
+    label: str,
+    events_years_map: dict,
+    station_type_events_map: dict,
+    event_types,
+    station_type_names: dict,
+    export_years: list[int],
+    sum_years: list[int],
+    subject_col: int,
+    gen_company_col: int,
+    station_name_col: int,
+    event_col: int,
+    station_type_col: int,
+    machine_num_col: int,
+    machine_name_col: int,
+    fuel_col: int,
+    years_start_col: int,
+    all_years_col: int,
+    note_col: int,
+    max_merged_row_by_col: dict[int, int],
+    current_row: int,
+    empty_cell_dash: str = "—",
+    mw_display_fn=None,
+) -> int:
+    """Пишет комбинированный блок итогов: для каждого мероприятия сначала 'Всего',
+    затем разбивка по типам станций."""
+    if _is_unspecified_ref_name(label):
+        return current_row
+
+    block_cols = [subject_col, gen_company_col, station_name_col, machine_num_col, machine_name_col, fuel_col]
+    safe_start = current_row
+    for c in block_cols:
+        safe_start = max(safe_start, max_merged_row_by_col.get(c, -1) + 1)
+    current_row = safe_start
+
+    name_to_id = {st_name: st_id for st_id, st_name in station_type_names.items()}
+    st_ids = []
+    for st_name in STATION_TYPE_ORDER_FOR_TOTALS:
+        st_id = name_to_id.get(st_name)
+        if st_id:
+            st_ids.append(st_id)
+
+    rows_per_event = 1 + len(st_ids)
+    total_block_height = len(event_types) * rows_per_event
+    block_start_row = current_row
+
+    def _display_mw(val):
+        if mw_display_fn is not None:
+            return mw_display_fn(val)
+        return val if val and val != 0 else None
+
+    merge_if_needed(block_start_row, subject_col, block_start_row + total_block_height - 1, subject_col, label, text_center_format)
+    merge_if_needed(block_start_row, gen_company_col, block_start_row + total_block_height - 1, gen_company_col, empty_cell_dash, text_center_format)
+    merge_if_needed(block_start_row, station_name_col, block_start_row + total_block_height - 1, station_name_col, empty_cell_dash, text_center_format)
+    merge_if_needed(block_start_row, machine_num_col, block_start_row + total_block_height - 1, machine_num_col, empty_cell_dash, text_center_format)
+    merge_if_needed(block_start_row, machine_name_col, block_start_row + total_block_height - 1, machine_name_col, empty_cell_dash, text_center_format)
+    merge_if_needed(block_start_row, fuel_col, block_start_row + total_block_height - 1, fuel_col, empty_cell_dash, text_center_format)
+
+    for ev_code, _ev_title in event_types:
+        event_label = _get_event_label(event_types, ev_code)
+
+        worksheet.write(current_row, event_col, event_label, text_center_format)
+        worksheet.write(current_row, station_type_col, "Всего", text_center_format)
+
+        years_map_total = (events_years_map or {}).get(ev_code) or {}
+        row_sum = 0
+        for i, y in enumerate(export_years):
+            val = years_map_total.get(y)
+            worksheet.write(current_row, years_start_col + i, _display_mw(val), text_center_format)
+            if val is not None and y in sum_years:
+                row_sum += val
+        worksheet.write(current_row, all_years_col, _display_mw(row_sum), text_center_format)
+        worksheet.write(current_row, note_col, "", text_center_format)
+        current_row += 1
+
+        for st_id in st_ids:
+            st_name = station_type_names.get(st_id, f"Тип электростанции {st_id}")
+            worksheet.write(current_row, event_col, "", text_center_format)
+            worksheet.write(current_row, station_type_col, st_name, text_center_format)
+
+            years_map_st = (station_type_events_map or {}).get(st_id, {}).get(ev_code) or {}
             row_sum = 0
-            # Важно: колонки годов = export_years (как в шапке и строках станций),
-            # а не range(start_year, end_year) — иначе суммы съезжают на +1 год.
             for i, y in enumerate(export_years):
-                val = years_map_total.get(y)
-                display_val = val if val and val != 0 else None
-                worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
+                val = years_map_st.get(y)
+                worksheet.write(current_row, years_start_col + i, _display_mw(val), text_center_format)
                 if val is not None and y in sum_years:
                     row_sum += val
-            worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
+            worksheet.write(current_row, all_years_col, _display_mw(row_sum), text_center_format)
             worksheet.write(current_row, note_col, "", text_center_format)
             current_row += 1
-            
-            # Следующие строки: по каждому типу электростанции
-            for st_id in st_ids:
-                st_name = station_type_names.get(st_id, f"Тип электростанции {st_id}")
-                
-                # Столбец 3 (Мероприятие): пустая ячейка (название только в строке "Всего")
-                worksheet.write(current_row, event_col, "", text_center_format)
-                worksheet.write(current_row, station_type_col, st_name, text_center_format)
-                
-                # Данные из station_type_events_map
-                years_map_st = (station_type_events_map or {}).get(st_id, {}).get(ev_code) or {}
-                row_sum = 0
-                for i, y in enumerate(export_years):
-                    val = years_map_st.get(y)
-                    display_val = val if val and val != 0 else None
-                    worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
-                    if val is not None and y in sum_years:
-                        row_sum += val
-                worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
-                worksheet.write(current_row, note_col, "", text_center_format)
-                current_row += 1
 
-        # Важно: объединения ячеек для блока рассчитаны на total_block_height строк.
-        # Даже если по каким-то причинам фактически было записано меньше строк,
-        # нужно сдвинуть current_row до конца блока, иначе следующий merge_range может пересечься
-        # с текущим (xlsxwriter.exceptions.OverlappingRange).
-        expected_end = block_start_row + total_block_height
-        if current_row < expected_end:
-            current_row = expected_end
+    expected_end = block_start_row + total_block_height
+    if current_row < expected_end:
+        current_row = expected_end
+    return current_row
+
+
+def _finalize_station_changes_export(
+    worksheet,
+    workbook,
+    output,
+    *,
+    sub_row: int,
+    current_row: int,
+    note_col: int,
+    filename_prefix: str,
+    after_autofilter=None,
+):
+    try:
+        worksheet.autofilter(sub_row, 0, max(current_row - 1, sub_row), note_col)
+    except Exception:
+        pass
+
+    if after_autofilter is not None:
+        after_autofilter()
+
+    workbook.close()
+    output.seek(0)
+
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+    return f"{filename_prefix}_{ts}.xlsx", output
+
+
+def export_station_changes_to_excel(
+    user: str,
+    filters: dict,
+    rounding_digits: int,
+    start_year: int,
+    end_year: int,
+    show_totals: bool,
+    data: dict | None = None,
+):
+    """Формирует Excel-файл со списком изменений мощности на странице station_changes_list
+    с учетом текущих фильтров, округления и объединений ячеек как на экране.
+    """
+    data = _prepare_station_changes_export_data(
+        filters=filters,
+        rounding_digits=rounding_digits,
+        start_year=start_year,
+        end_year=end_year,
+        data=data,
+    )
+    stations_grouped = data.get("stations_grouped", {})
+    event_types = data.get("event_types", [])
+    station_type_names = _get_station_type_names_for_export()
+
+    output, workbook = _open_in_memory_xlsx_workbook()
+    worksheet = workbook.add_worksheet("Приложение")
+    title_format, subtitle_format, text_center_format = _create_station_changes_common_formats(workbook)
+
+    layout = _compute_station_changes_column_layout(
+        start_year, end_year, STATION_CHANGES_STATIC_HEADERS, "Документ-основание"
+    )
+    static_headers = layout["static_headers"]
+    export_years = layout["export_years"]
+    current_year_split = layout["current_year_split"]
+    current_year_for_header = layout["current_year_for_header"]
+    year_headers = layout["year_headers"]
+    header_start_year = layout["header_start_year"]
+    header_end_year = layout["header_end_year"]
+    sum_years = layout["sum_years"]
+    all_years_header = layout["all_years_header"]
+    note_header = layout["note_header"]
+    subject_col = layout["subject_col"]
+    gen_company_col = layout["gen_company_col"]
+    station_name_col = layout["station_name_col"]
+    event_col = layout["event_col"]
+    station_type_col = layout["station_type_col"]
+    machine_num_col = layout["machine_num_col"]
+    machine_name_col = layout["machine_name_col"]
+    fuel_col = layout["fuel_col"]
+    years_start_col = layout["years_start_col"]
+    years_end_col = layout["years_end_col"]
+    all_years_col = layout["all_years_col"]
+    note_col = layout["note_col"]
+
+    sub_row = 0
+    _write_station_changes_table_headers(
+        worksheet,
+        static_headers=static_headers,
+        year_headers=year_headers,
+        all_years_header=all_years_header,
+        note_header=note_header,
+        years_start_col=years_start_col,
+        all_years_col=all_years_col,
+        note_col=note_col,
+        sub_row=sub_row,
+        text_center_format=text_center_format,
+    )
+
+    current_row = sub_row + 1
+    max_merged_row_by_col: dict[int, int] = {}
+    merge_if_needed = _make_station_changes_merge_if_needed(worksheet, max_merged_row_by_col)
+
+    refs = _load_station_changes_export_reference_maps(data)
+    union_energy_system_names = refs["union_energy_system_names"]
+    energy_unit_names = refs["energy_unit_names"]
+    energy_unit_names_dat = refs["energy_unit_names_dat"]
+    regional_district_names = refs["regional_district_names"]
+    regional_district_names_rp = refs["regional_district_names_rp"]
+    regional_district_names_dp = refs["regional_district_names_dp"]
+    energy_system_type_names = refs["energy_system_type_names"]
+    synchronous_areas_yearly_p_ust = refs["synchronous_areas_yearly_p_ust"]
+    synchronous_areas_by_station_types_yearly_p_ust = refs["synchronous_areas_by_station_types_yearly_p_ust"]
+
+    def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
+        nonlocal current_row
+        current_row = _write_combined_totals_block(
+            worksheet=worksheet,
+            merge_if_needed=merge_if_needed,
+            text_center_format=text_center_format,
+            label=label,
+            events_years_map=events_years_map,
+            station_type_events_map=station_type_events_map,
+            event_types=event_types,
+            station_type_names=station_type_names,
+            export_years=export_years,
+            sum_years=sum_years,
+            subject_col=subject_col,
+            gen_company_col=gen_company_col,
+            station_name_col=station_name_col,
+            event_col=event_col,
+            station_type_col=station_type_col,
+            machine_num_col=machine_num_col,
+            machine_name_col=machine_name_col,
+            fuel_col=fuel_col,
+            years_start_col=years_start_col,
+            all_years_col=all_years_col,
+            note_col=note_col,
+            max_merged_row_by_col=max_merged_row_by_col,
+            current_row=current_row,
+        )
 
     # Обход иерархии как в шаблоне (тип энергосистемы -> (синхронная зона|энергозона) -> ОЭС -> РЭС -> субъект)
     # Для объединенного итога по всем ТИТЭС
@@ -1204,19 +1374,15 @@ def export_station_changes_to_excel(
             total_by_station_map,
         )
 
-    # Включаем автофильтры на строке заголовков по всей области таблицы
-    try:
-        worksheet.autofilter(sub_row, 0, max(current_row - 1, sub_row), note_col)
-    except Exception:
-        pass
-
-    workbook.close()
-    output.seek(0)
-
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    # Для обычной кнопки экспорта возвращаем "классическое" имя файла
-    filename = f"station_changes_{ts}.xlsx"
-    return filename, output
+    return _finalize_station_changes_export(
+        worksheet,
+        workbook,
+        output,
+        sub_row=sub_row,
+        current_row=current_row,
+        note_col=note_col,
+        filename_prefix="station_changes",
+    )
 
 
 def export_station_changes_pril_b_to_excel(
@@ -1233,384 +1399,123 @@ def export_station_changes_pril_b_to_excel(
     """
     # Для экспорта «Приложение Б» вывод итогов должен не зависеть от переключателей на странице
     show_totals = True
-    current_db_version_id = get_current_db_version_id()
-
-    # Сбрасываем кэши справочников, чтобы загрузить актуальные данные для текущей версии БД
-    from app.common.services.get_services.stations.station_type_get_services import (
-        get_station_type_list_full,
+    data = _prepare_station_changes_export_data(
+        filters=filters,
+        rounding_digits=rounding_digits,
+        start_year=start_year,
+        end_year=end_year,
+        data=data,
     )
-    from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
-        get_union_energy_system_list_full,
-    )
-    from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
-        get_energy_system_type_list_full,
-    )
-
-    cache_functions = [
-        get_station_type_list_full,
-        get_union_energy_system_list_full,
-        get_energy_system_type_list_full,
-    ]
-    for func in cache_functions:
-        if hasattr(func, "cache_clear"):
-            func.cache_clear()
-
-    # Загружаем все данные без пагинации, чтобы экспортировать все отображаемое
-    if (
-        data is None
-        or data.get("database_version_id") != current_db_version_id
-    ):
-        data = get_station_changes_list_data(
-            filters=filters,
-            per_page="all",
-            page=1,
-            rounding_digits=rounding_digits,
-            start_year=start_year,
-            end_year=end_year,
-            show_all=True,
-        )
-    if isinstance(data, dict):
-        data.setdefault("database_version_id", current_db_version_id)
-
     stations_grouped = data.get("stations_grouped", {})
     event_types = data.get("event_types", [])
-    try:
-        _st_list = get_station_type_list_full()
-        station_type_names = {st.id: st.name for st in _st_list}
-    except Exception:
-        station_type_names = {}
+    station_type_names = _get_station_type_names_for_export()
 
-    # Готовим книгу Excel (XlsxWriter удобен для объединений)
-    output = BytesIO()
-    try:
-        import xlsxwriter  # type: ignore
-    except Exception as e:  # pragma: no cover
-        current_app.logger.error(f"xlsxwriter not available: {e}")
-        raise
-
-    workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+    output, workbook = _open_in_memory_xlsx_workbook()
     worksheet = workbook.add_worksheet("Приложение")
+    title_format, subtitle_format, text_center_format = _create_station_changes_common_formats(workbook)
 
-    # Стили
+    layout = _compute_station_changes_column_layout(
+        start_year, end_year, STATION_CHANGES_STATIC_HEADERS, "Документ-основание"
+    )
+    static_headers = layout["static_headers"]
+    export_years = layout["export_years"]
+    current_year_split = layout["current_year_split"]
+    current_year_for_header = layout["current_year_for_header"]
+    year_headers = layout["year_headers"]
+    header_start_year = layout["header_start_year"]
+    header_end_year = layout["header_end_year"]
+    sum_years = layout["sum_years"]
+    all_years_header = layout["all_years_header"]
+    note_header = layout["note_header"]
+    subject_col = layout["subject_col"]
+    gen_company_col = layout["gen_company_col"]
+    station_name_col = layout["station_name_col"]
+    event_col = layout["event_col"]
+    station_type_col = layout["station_type_col"]
+    machine_num_col = layout["machine_num_col"]
+    machine_name_col = layout["machine_name_col"]
+    fuel_col = layout["fuel_col"]
+    years_start_col = layout["years_start_col"]
+    years_end_col = layout["years_end_col"]
+    all_years_col = layout["all_years_col"]
+    note_col = layout["note_col"]
 
-    title_format =  workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 24,                 # Размер шрифта 13pt
-        'bold': True,
-        'align': 'center',               # Выравнивание текста по левому краю
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос строк и поддержка \n
-    })
-
-    subtitle_format = workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 24,                 # Размер шрифта 13pt
-        'align': 'left',                 # Выравнивание текста по левому краю
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос слов (разрыв строк)
-    })
-
-    text_center_format = workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 10,                 # Размер шрифта 10pt
-        'align': 'center',               # Выравнивание текста по центру
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос слов (разрыв строк)
-        'border': 1                      # Границы ячейки
-    })
-
-    # Колонки (как на экране)
-    static_headers = [
-        "Субъект Российской Федерации",
-        "Генерирующая компания",
-        "Электростанция",
-        "Вид мероприятия",
-        "Тип  электростанции",
-        "Станционный номер",
-        "Тип генерирующего оборудования",
-        "Вид топлива",
-    ]
-    export_years, current_year_split = _get_expected_export_years(start_year, end_year)
-    # Для шапок: "текущий год" = первый отображаемый год (как на экране),
-    # значит начало периода = (первый год + 1).
-    current_year_for_header = int(export_years[0]) if export_years else int(start_year)
-
-    year_headers: list[str] = []
-    for y in export_years:
-        if current_year_split is not None and y == int(current_year_split):
-            year_headers.append(f"{y} г.\n(план)")
-        else:
-            year_headers.append(f"{y} г.")
-
-    if export_years:
-        header_start_year = _get_export_header_period_start(current_year_for_header, export_years[0])
-        header_end_year = int(export_years[-1])
-        if header_start_year > header_end_year:
-            header_start_year = header_end_year
-        sum_years = [y for y in export_years if header_start_year <= int(y) <= header_end_year]
-        all_years_header = f"{header_start_year}–{header_end_year} гг.\n"
-    else:
-        sum_years = []
-        all_years_header = ""
-    note_header = "Документ-основание"
-
-    # Индексы колонок согласно static_headers
-    subject_col = 0
-    gen_company_col = 1
-    station_name_col = 2
-    event_col = 3
-    station_type_col = 4
-    machine_num_col = 5
-    machine_name_col = 6
-    fuel_col = 7
-
-    # Вычисляем позиции колонок для заголовков
-    years_start_col = len(static_headers)
-    years_end_col = years_start_col + len(year_headers) - 1
-    # Столбец с суммой всех годов
-    all_years_col = years_end_col + 1
-    # "Основание" — после столбца с суммой
-    note_col = all_years_col + 1
-
-    # Двухстрочная шапка таблицы после ваших заголовков
-    # Табличная шапка начинается с 4-й строки Excel: sub_row=4
     sub_row = 4
-
-    # Заголовки - динамическое определение последней колонки
     last_col_name = xl_col_to_name(all_years_col)
+    period_start = header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)
+    period_end = header_end_year if export_years else end_year
 
-    worksheet.merge_range(
-        f"A1:{last_col_name}1",
-        "ПРИЛОЖЕНИЕ Б",
-        title_format)
+    worksheet.merge_range(f"A1:{last_col_name}1", "ПРИЛОЖЕНИЕ Б", title_format)
     worksheet.merge_range(
         f"A2:{last_col_name}2",
-        f"Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России\nна период {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годов",
-        title_format)
+        f"Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России\nна период {period_start}–{period_end} годов",
+        title_format,
+    )
     worksheet.set_row(1, 62.25)
-    worksheet.merge_range(
-        f"A3:{last_col_name}3",
-        "",
-        title_format)
+    worksheet.merge_range(f"A3:{last_col_name}3", "", title_format)
     worksheet.set_row(2, 30.75)
     worksheet.merge_range(
         f"A4:{last_col_name}4",
-        f"Таблица Б.1 – Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России на период {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годов, МВт",
-        subtitle_format
+        f"Таблица Б.1 – Перечень планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России на период {period_start}–{period_end} годов, МВт",
+        subtitle_format,
     )
     worksheet.set_row(3, 47.25)
 
-    # Шапка таблицы: конкретные заголовки
-    for idx, name in enumerate(static_headers):
-        worksheet.write(sub_row, idx, name, text_center_format)
-    for i, y in enumerate(year_headers):
-        worksheet.write(sub_row, years_start_col + i, y, text_center_format)
-    # Добавляем столбец с суммой всех годов
-    worksheet.write(sub_row, all_years_col, all_years_header, text_center_format)
-    worksheet.write(sub_row, note_col, note_header, text_center_format)
+    _write_station_changes_table_headers(
+        worksheet,
+        static_headers=static_headers,
+        year_headers=year_headers,
+        all_years_header=all_years_header,
+        note_header=note_header,
+        years_start_col=years_start_col,
+        all_years_col=all_years_col,
+        note_col=note_col,
+        sub_row=sub_row,
+        text_center_format=text_center_format,
+    )
 
-    # Высота строки заголовков таблицы и фиксация панели (как в примере)
-    worksheet.set_row(sub_row, 60)
-    worksheet.freeze_panes(sub_row + 1, 0)
-
-    # Ширины колонок приблизительно как на экране
-    widths = [29, 25.86, 29.43, 23.43, 19.86, 17, 35.29, 15.71]
-    for i, w in enumerate(widths):
-        worksheet.set_column(i, i, w)
-    # Годы
-    for i in range(len(year_headers)):
-        worksheet.set_column(years_start_col + i, years_start_col + i, 18)
-    # Столбец с суммой всех годов
-    worksheet.set_column(all_years_col, all_years_col, 15)
-    # Столбец с основанием
-    worksheet.set_column(note_col, note_col, 28, None, {"hidden": True})
-
-    # Текущая строка для данных (начинаем с 7-й строки Excel)
     current_row = sub_row + 1
-    # Отслеживаем последнюю объединенную строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
-    # чтобы не "сдвигать" данные вниз из-за merge в других столбцах.
     max_merged_row_by_col: dict[int, int] = {}
+    merge_if_needed = _make_station_changes_merge_if_needed(worksheet, max_merged_row_by_col)
 
-    # Вспомогательная функция для объединения ячеек (без падения при rowspan<=1)
-    def merge_if_needed(r1: int, c1: int, r2: int, c2: int, value, text_center_format):
-        if r2 > r1 or c2 > c1:
-            worksheet.merge_range(r1, c1, r2, c2, value, text_center_format)
-            # Запоминаем последнюю объединенную строку для каждого затронутого столбца
-            for c in range(c1, c2 + 1):
-                prev = max_merged_row_by_col.get(c, -1)
-                if r2 > prev:
-                    max_merged_row_by_col[c] = r2
-        else:
-            worksheet.write(r1, c1, value, text_center_format)
-
-    #  Справочники имен и хелпер вывода итогов по событиям
-    try:
-        union_energy_system_names = get_union_energy_systems_map()
-    except Exception:
-        union_energy_system_names = {}
-
-    # Энергоузлы (для спец-логики ОЭС "ТИТЭС Сибири")
-    try:
-        from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list_full
-        energy_unit_list = get_energy_unit_list_full() or []
-        energy_unit_names = {eu.id: eu.name for eu in energy_unit_list if getattr(eu, "id", None) is not None}
-        energy_unit_names_dat = {
-            eu.id: getattr(eu, "name_dat", None)
-            for eu in energy_unit_list
-            if getattr(eu, "id", None) is not None
-        }
-    except Exception:
-        energy_unit_names = {}
-        energy_unit_names_dat = {}
-
-    try:
-        regional_district_names = get_regional_districts_map()
-    except Exception:
-        regional_district_names = {}
-
-    # Родительный падеж субъектов РФ (для "Итого по ...")
-    try:
-        rd_objs = get_regional_districts_list() or []
-        regional_district_names_rp = {rd.id: getattr(rd, "name_rp", None) for rd in rd_objs if getattr(rd, "id", None) is not None}
-    except Exception:
-        regional_district_names_rp = {}
-
-    # Наименование субъекта (name_dp) для итоговых строк вида "Итого по субъекту ..."
-    try:
-        rd_objs = get_regional_districts_list() or []
-        regional_district_names_dp = {rd.id: getattr(rd, "name_dp", None) for rd in rd_objs if getattr(rd, "id", None) is not None}
-    except Exception:
-        regional_district_names_dp = {}
-
-    try:
-        energy_system_type_names = get_energy_system_type_map()
-    except Exception:
-        energy_system_type_names = {}
-
-    # Агрегаты по синхронным зонам на веб-странице формируются на этапе сборки template-context,
-    # а в export у нас "сырые" data из get_station_changes_list_data. Поэтому считаем агрегаты здесь.
-    try:
-        from app.generation.services.station_changes_services.station_changes_services import (
-            build_synchronous_area_aggregates,
-        )
-        sa_aggregates = build_synchronous_area_aggregates(data) or {}
-        synchronous_areas_yearly_p_ust = sa_aggregates.get("synchronous_areas_yearly_p_ust", {}) or {}
-        synchronous_areas_by_station_types_yearly_p_ust = sa_aggregates.get("synchronous_areas_by_station_types_yearly_p_ust", {}) or {}
-    except Exception:
-        synchronous_areas_yearly_p_ust = {}
-        synchronous_areas_by_station_types_yearly_p_ust = {}
+    refs = _load_station_changes_export_reference_maps(data)
+    union_energy_system_names = refs["union_energy_system_names"]
+    energy_unit_names = refs["energy_unit_names"]
+    energy_unit_names_dat = refs["energy_unit_names_dat"]
+    regional_district_names = refs["regional_district_names"]
+    regional_district_names_rp = refs["regional_district_names_rp"]
+    regional_district_names_dp = refs["regional_district_names_dp"]
+    energy_system_type_names = refs["energy_system_type_names"]
+    synchronous_areas_yearly_p_ust = refs["synchronous_areas_yearly_p_ust"]
+    synchronous_areas_by_station_types_yearly_p_ust = refs["synchronous_areas_by_station_types_yearly_p_ust"]
 
     def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
-        """Пишет комбинированный блок итогов: для каждого мероприятия сначала 'Всего',
-        затем разбивка по типам станций"""
         nonlocal current_row
-
-        # Технические «не указано» из справочников не выводим в форму.
-        if _is_unspecified_ref_name(label):
-            return
-
-        # Начинаем новый итоговый блок так, чтобы он не попадал внутрь merge_range
-        # в СВОИХ столбцах (B/C/F/G/H/A). Это предотвращает OverlappingRange и не ломает разметку.
-        block_cols = [subject_col, gen_company_col, station_name_col, machine_num_col, machine_name_col, fuel_col]
-        safe_start = current_row
-        for c in block_cols:
-            safe_start = max(safe_start, max_merged_row_by_col.get(c, -1) + 1)
-        current_row = safe_start
-
-        # Определяем порядок типов станций: АЭС, ГЭС, ГАЭС, ТЭС, ВЭС, СЭС
-        # Сначала создаем обратный маппинг: название -> id
-        name_to_id = {}
-        for st_id, st_name in station_type_names.items():
-            name_to_id[st_name] = st_id
-
-        # Порядок отображения типов станций
-        station_order = list(STATION_TYPE_ORDER_FOR_TOTALS)
-
-        # Берем ВСЕ типы станций из порядка, даже если нет данных
-        st_ids = []
-        for st_name in station_order:
-            st_id = name_to_id.get(st_name)
-            if st_id:
-                st_ids.append(st_id)
-
-        # Для каждого мероприятия вычисляем количество строк (1 "Всего" + количество типов станций)
-        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа электростанции
-
-        # Общее количество строк в блоке
-        total_block_height = len(event_types) * rows_per_event
-        block_start_row = current_row
-
-        # Столбец 0: уже сформированная подпись блока (без автодобавления ", всего")
-        merge_if_needed(block_start_row, subject_col, block_start_row + total_block_height - 1, subject_col, label, text_center_format)
-
-        # Столбец 1 (Генкомпания): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, gen_company_col, block_start_row + total_block_height - 1, gen_company_col, "—", text_center_format)
-
-        # Столбец 2 (Наименование): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, station_name_col, block_start_row + total_block_height - 1, station_name_col, "—", text_center_format)
-
-        # Столбец 5 (Станционный номер): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_num_col, block_start_row + total_block_height - 1, machine_num_col, "—", text_center_format)
-
-        # Столбец 6 (Тип генерирующего оборудования): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_name_col, block_start_row + total_block_height - 1, machine_name_col, "—", text_center_format)
-
-        # Столбец 7 (Вид топлива): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, fuel_col, block_start_row + total_block_height - 1, fuel_col, "—", text_center_format)
-
-        # Обрабатываем каждое мероприятие
-        for ev_code, ev_title in event_types:
-            event_start_row = current_row
-            event_label = _get_event_label(event_types, ev_code)
-
-            # Первая строка: "Всего" для этого мероприятия
-            # Столбец 3 (Мероприятие): пишем название мероприятия только в строке "Всего"
-            worksheet.write(current_row, event_col, event_label, text_center_format)
-            worksheet.write(current_row, station_type_col, "Всего", text_center_format)
-
-            # Данные из events_years_map
-            years_map_total = (events_years_map or {}).get(ev_code) or {}
-            row_sum = 0
-            # Важно: колонки годов = export_years (как в шапке и строках станций),
-            # а не range(start_year, end_year) — иначе суммы съезжают на +1 год.
-            for i, y in enumerate(export_years):
-                val = years_map_total.get(y)
-                display_val = val if val and val != 0 else None
-                worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
-                if val is not None and y in sum_years:
-                    row_sum += val
-            worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
-            worksheet.write(current_row, note_col, "", text_center_format)
-            current_row += 1
-
-            # Следующие строки: по каждому типу электростанции
-            for st_id in st_ids:
-                st_name = station_type_names.get(st_id, f"Тип электростанции {st_id}")
-
-                # Столбец 3 (Мероприятие): пустая ячейка (название только в строке "Всего")
-                worksheet.write(current_row, event_col, "", text_center_format)
-                worksheet.write(current_row, station_type_col, st_name, text_center_format)
-
-                # Данные из station_type_events_map
-                years_map_st = (station_type_events_map or {}).get(st_id, {}).get(ev_code) or {}
-                row_sum = 0
-                for i, y in enumerate(export_years):
-                    val = years_map_st.get(y)
-                    display_val = val if val and val != 0 else None
-                    worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
-                    if val is not None and y in sum_years:
-                        row_sum += val
-                worksheet.write(current_row, all_years_col, row_sum if row_sum != 0 else None, text_center_format)
-                worksheet.write(current_row, note_col, "", text_center_format)
-                current_row += 1
-
-        # Важно: объединения ячеек для блока рассчитаны на total_block_height строк.
-        # Даже если по каким-то причинам фактически было записано меньше строк,
-        # нужно сдвинуть current_row до конца блока, иначе следующий merge_range может пересечься
-        # с текущим (xlsxwriter.exceptions.OverlappingRange).
-        expected_end = block_start_row + total_block_height
-        if current_row < expected_end:
-            current_row = expected_end
+        current_row = _write_combined_totals_block(
+            worksheet=worksheet,
+            merge_if_needed=merge_if_needed,
+            text_center_format=text_center_format,
+            label=label,
+            events_years_map=events_years_map,
+            station_type_events_map=station_type_events_map,
+            event_types=event_types,
+            station_type_names=station_type_names,
+            export_years=export_years,
+            sum_years=sum_years,
+            subject_col=subject_col,
+            gen_company_col=gen_company_col,
+            station_name_col=station_name_col,
+            event_col=event_col,
+            station_type_col=station_type_col,
+            machine_num_col=machine_num_col,
+            machine_name_col=machine_name_col,
+            fuel_col=fuel_col,
+            years_start_col=years_start_col,
+            all_years_col=all_years_col,
+            note_col=note_col,
+            max_merged_row_by_col=max_merged_row_by_col,
+            current_row=current_row,
+        )
 
     # Обход иерархии как в шаблоне (тип энергосистемы -> (синхронная зона|энергозона) -> ОЭС -> РЭС -> субъект)
     written_ues_total_ids: set[int] = set()
@@ -1933,18 +1838,15 @@ def export_station_changes_pril_b_to_excel(
                     es_label = f"{es_name}, всего"
                 write_combined_totals_block(es_label, es_events_map, es_by_station_map)
 
-    # Включаем автофильтры на строке заголовков по всей области таблицы
-    try:
-        worksheet.autofilter(sub_row, 0, max(current_row - 1, sub_row), note_col)
-    except Exception:
-        pass
-
-    workbook.close()
-    output.seek(0)
-
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = f"Приложение Б_Перечень изменений уст мощности_{ts}.xlsx"
-    return filename, output
+    return _finalize_station_changes_export(
+        worksheet,
+        workbook,
+        output,
+        sub_row=sub_row,
+        current_row=current_row,
+        note_col=note_col,
+        filename_prefix="Приложение Б_Перечень изменений уст мощности",
+    )
 
 
 def export_station_changes_pril_2_russia_to_excel(
@@ -1962,148 +1864,51 @@ def export_station_changes_pril_2_russia_to_excel(
     """
     # Как у «Приложение Б»: итоги всегда, независимо от show_totals на странице.
     show_totals = True
-    current_db_version_id = get_current_db_version_id()
-
-    # Сбрасываем кэши справочников, чтобы загрузить актуальные данные для текущей версии БД
-    from app.common.services.get_services.stations.station_type_get_services import (
-        get_station_type_list_full,
+    data = _prepare_station_changes_export_data(
+        filters=filters,
+        rounding_digits=rounding_digits,
+        start_year=start_year,
+        end_year=end_year,
+        data=data,
     )
-    from app.common.services.get_services.energy_systems.union_energy_system_get_services import (
-        get_union_energy_system_list_full,
-    )
-    from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
-        get_energy_system_type_list_full,
-    )
-    
-    cache_functions = [
-        get_station_type_list_full,
-        get_union_energy_system_list_full,
-        get_energy_system_type_list_full,
-    ]
-    for func in cache_functions:
-        if hasattr(func, "cache_clear"):
-            func.cache_clear()
-
-    # Загружаем все данные без пагинации, чтобы экспортировать все отображаемое
-    if (
-        data is None
-        or data.get("database_version_id") != current_db_version_id
-    ):
-        data = get_station_changes_list_data(
-            filters=filters,
-            per_page="all",
-            page=1,
-            rounding_digits=rounding_digits,
-            start_year=start_year,
-            end_year=end_year,
-            show_all=True,
-        )
-    if isinstance(data, dict):
-        data.setdefault("database_version_id", current_db_version_id)
-
     stations_grouped = data.get("stations_grouped", {})
     event_types = data.get("event_types", [])
-    try:
-        _st_list = get_station_type_list_full()
-        station_type_names = {st.id: st.name for st in _st_list}
-    except Exception:
-        station_type_names = {}
+    station_type_names = _get_station_type_names_for_export()
 
-    # Готовим книгу Excel (XlsxWriter удобен для объединений)
-    output = BytesIO()
-    try:
-        import xlsxwriter  # type: ignore
-    except Exception as e:  # pragma: no cover
-        current_app.logger.error(f"xlsxwriter not available: {e}")
-        raise
-
-    workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+    output, workbook = _open_in_memory_xlsx_workbook()
     worksheet = workbook.add_worksheet("Приложение")
     worksheet.hide_zero()
+    title_format, subtitle_format, text_center_format = _create_station_changes_common_formats(workbook)
 
-    # Стили
+    layout = _compute_station_changes_column_layout(
+        start_year, end_year, STATION_CHANGES_STATIC_HEADERS_PRIL2, "Документ-основание1)"
+    )
+    static_headers = layout["static_headers"]
+    export_years = layout["export_years"]
+    current_year_split = layout["current_year_split"]
+    current_year_for_header = layout["current_year_for_header"]
+    year_headers = layout["year_headers"]
+    header_start_year = layout["header_start_year"]
+    header_end_year = layout["header_end_year"]
+    sum_years = layout["sum_years"]
+    all_years_header = layout["all_years_header"]
+    note_header = layout["note_header"]
+    subject_col = layout["subject_col"]
+    gen_company_col = layout["gen_company_col"]
+    station_name_col = layout["station_name_col"]
+    event_col = layout["event_col"]
+    station_type_col = layout["station_type_col"]
+    machine_num_col = layout["machine_num_col"]
+    machine_name_col = layout["machine_name_col"]
+    fuel_col = layout["fuel_col"]
+    years_start_col = layout["years_start_col"]
+    years_end_col = layout["years_end_col"]
+    all_years_col = layout["all_years_col"]
+    note_col = layout["note_col"]
 
-    title_format =  workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 24,                 # Размер шрифта 13pt
-        'bold': True,
-        'align': 'center',               # Выравнивание текста по левому краю
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос строк и поддержка \n
-    })
-
-    subtitle_format = workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 24,                 # Размер шрифта 13pt
-        'align': 'left',                 # Выравнивание текста по левому краю
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос слов (разрыв строк)
-    })
-
-    text_center_format = workbook.add_format({
-        'font_name': 'Times New Roman',  # Устанавливаем шрифт
-        'font_size': 10,                 # Размер шрифта 10pt
-        'align': 'center',               # Выравнивание текста по центру
-        'valign': 'vcenter',             # Выравнивание по центру по вертикали
-        'text_wrap': True,               # Перенос слов (разрыв строк)
-        'border': 1                      # Границы ячейки
-    })
-
-    # Колонки (как на экране)
-    static_headers = [
-        "Субъект Российской Федерации",
-        "Генерирующая компания",
-        "Электростанция",
-        "Вид мероприятия",
-        "Тип электростанции1)",
-        "Станционный номер",
-        "Тип генерирующего оборудования",
-        "Вид топлива",
-    ]
-    export_years, current_year_split = _get_expected_export_years(start_year, end_year)
-    # Для шапок: "текущий год" = первый отображаемый год (как на экране),
-    # значит начало периода = (первый год + 1).
-    current_year_for_header = int(export_years[0]) if export_years else int(start_year)
-
-    year_headers: list[str] = []
-    for y in export_years:
-        if current_year_split is not None and y == int(current_year_split):
-            year_headers.append(f"{y} г.\n(план)")
-        else:
-            year_headers.append(f"{y} г.")
-
-    if export_years:
-        header_start_year = _get_export_header_period_start(current_year_for_header, export_years[0])
-        header_end_year = int(export_years[-1])
-        if header_start_year > header_end_year:
-            header_start_year = header_end_year
-        sum_years = [y for y in export_years if header_start_year <= int(y) <= header_end_year]
-        all_years_header = f"{header_start_year}–{header_end_year} гг.\n"
-    else:
-        sum_years = []
-        all_years_header = ""
-    note_header = "Документ-основание1)"
-
-    # Индексы колонок согласно static_headers
-    subject_col = 0
-    gen_company_col = 1
-    station_name_col = 2
-    event_col = 3
-    station_type_col = 4
-    machine_num_col = 5
-    machine_name_col = 6
-    fuel_col = 7
-
-    # Вычисляем позиции колонок для заголовков
-    years_start_col = len(static_headers)
-    years_end_col = years_start_col + len(year_headers) - 1
-    # Столбец с суммой всех годов
-    all_years_col = years_end_col + 1
-    # "Основание" — после столбца с суммой
-    note_col = all_years_col + 1
-
-    # Преамбула формы «Приложение 2 (Россия)» (как на утвержденном шаблоне)
     last_col_name = xl_col_to_name(all_years_col)
+    period_start = header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)
+    period_end = header_end_year if export_years else end_year
     header_right_format = workbook.add_format({
         'font_name': 'Times New Roman',
         'font_size': 24,
@@ -2146,7 +1951,7 @@ def export_station_changes_pril_2_russia_to_excel(
     # 3-я строка Excel: правый верхний блок (в одной строке)
     worksheet.merge_range(
         f"{right_start_name}3:{last_col_name}3",
-        f"к схеме и программе развития электроэнергетических систем России на {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годы",
+        f"к схеме и программе развития электроэнергетических систем России на {period_start}–{period_end} годы",
         header_center_format,
     )
     worksheet.set_row(2, 89.25)
@@ -2155,7 +1960,7 @@ def export_station_changes_pril_2_russia_to_excel(
         "ПЕРЕЧЕНЬ\n"
         "планируемых изменений установленной генерирующей мощности объектов по производству электрической энергии в ЕЭС России и технологически\n"
         "изолированных территориальных электроэнергетических системах\n"
-        f"на период {header_start_year if export_years else _get_export_header_period_start(current_year_for_header, start_year)}–{header_end_year if export_years else end_year} годов"
+        f"на период {period_start}–{period_end} годов"
     )
     # Строка 4 Excel — отступ перед «ПЕРЕЧЕНЬ...» (как в утверждённом файле)
     worksheet.set_row(3, 33.75)
@@ -2171,220 +1976,66 @@ def export_station_changes_pril_2_russia_to_excel(
     worksheet.write(6, all_years_col, "(МВт)", preamble_unit_format)
     worksheet.set_row(6, 24.0)
 
-    # Шапка таблицы — 8-я строка Excel
     sub_row = 7
+    _write_station_changes_table_headers(
+        worksheet,
+        static_headers=static_headers,
+        year_headers=year_headers,
+        all_years_header=all_years_header,
+        note_header=note_header,
+        years_start_col=years_start_col,
+        all_years_col=all_years_col,
+        note_col=note_col,
+        sub_row=sub_row,
+        text_center_format=text_center_format,
+        freeze_panes=False,
+        repeat_rows=(6, 7),
+    )
 
-    # Шапка таблицы: конкретные заголовки
-    for idx, name in enumerate(static_headers):
-        worksheet.write(sub_row, idx, name, text_center_format)
-    for i, y in enumerate(year_headers):
-        worksheet.write(sub_row, years_start_col + i, y, text_center_format)
-    # Добавляем столбец с суммой всех годов
-    worksheet.write(sub_row, all_years_col, all_years_header, text_center_format)
-    worksheet.write(sub_row, note_col, note_header, text_center_format)
-
-    # Высота шапки; при печати повторять «(МВт)» + шапку (строки 7–8)
-    worksheet.set_row(sub_row, 60)
-    worksheet.repeat_rows(6, 7)
-
-    # Ширины колонок приблизительно как на экране
-    widths = [29, 25.86, 29.43, 23.43, 19.86, 17, 35.29, 15.71]
-    for i, w in enumerate(widths):
-        worksheet.set_column(i, i, w)
-    # Годы
-    for i in range(len(year_headers)):
-        worksheet.set_column(years_start_col + i, years_start_col + i, 18)
-    # Столбец с суммой всех годов
-    worksheet.set_column(all_years_col, all_years_col, 15)
-    # Столбец с основанием
-    worksheet.set_column(note_col, note_col, 28, None, {"hidden": True})
-
-    # Текущая строка для данных (сразу после шапки таблицы)
     current_row = sub_row + 1
-    # Отслеживаем последнюю объединенную строку ПО КАЖДОМУ СТОЛБЦУ (а не глобально),
-    # чтобы не "сдвигать" данные вниз из-за merge в других столбцах.
     max_merged_row_by_col: dict[int, int] = {}
+    merge_if_needed = _make_station_changes_merge_if_needed(worksheet, max_merged_row_by_col)
 
-    # Вспомогательная функция для объединения ячеек (без падения при rowspan<=1)
-    def merge_if_needed(r1: int, c1: int, r2: int, c2: int, value, text_center_format):
-        if r2 > r1 or c2 > c1:
-            worksheet.merge_range(r1, c1, r2, c2, value, text_center_format)
-            # Запоминаем последнюю объединенную строку для каждого затронутого столбца
-            for c in range(c1, c2 + 1):
-                prev = max_merged_row_by_col.get(c, -1)
-                if r2 > prev:
-                    max_merged_row_by_col[c] = r2
-        else:
-            worksheet.write(r1, c1, value, text_center_format)
-
-    #  Справочники имен и хелпер вывода итогов по событиям
-    try:
-        union_energy_system_names = get_union_energy_systems_map()
-    except Exception:
-        union_energy_system_names = {}
-
-    # Энергоузлы (для спец-логики ОЭС "ТИТЭС Сибири")
-    try:
-        from app.common.services.get_services.energy_systems.energy_unit_get_services import get_energy_unit_list_full
-        energy_unit_list = get_energy_unit_list_full() or []
-        energy_unit_names = {eu.id: eu.name for eu in energy_unit_list if getattr(eu, "id", None) is not None}
-        energy_unit_names_dat = {
-            eu.id: getattr(eu, "name_dat", None)
-            for eu in energy_unit_list
-            if getattr(eu, "id", None) is not None
-        }
-    except Exception:
-        energy_unit_names = {}
-        energy_unit_names_dat = {}
-
-    try:
-        regional_district_names = get_regional_districts_map()
-    except Exception:
-        regional_district_names = {}
-
-    # Родительный падеж субъектов РФ (для "Итого по ...")
-    try:
-        rd_objs = get_regional_districts_list() or []
-        regional_district_names_rp = {rd.id: getattr(rd, "name_rp", None) for rd in rd_objs if getattr(rd, "id", None) is not None}
-    except Exception:
-        regional_district_names_rp = {}
-    
-    # Наименование субъекта (name_dp) для итоговых строк вида "Итого по субъекту ..."
-    try:
-        rd_objs = get_regional_districts_list() or []
-        regional_district_names_dp = {rd.id: getattr(rd, "name_dp", None) for rd in rd_objs if getattr(rd, "id", None) is not None}
-    except Exception:
-        regional_district_names_dp = {}
-
-    try:
-        energy_system_type_names = get_energy_system_type_map()
-    except Exception:
-        energy_system_type_names = {}
-
-    # Агрегаты по синхронным зонам на веб-странице формируются на этапе сборки template-context,
-    # а в export у нас "сырые" data из get_station_changes_list_data. Поэтому считаем агрегаты здесь.
-    try:
-        from app.generation.services.station_changes_services.station_changes_services import (
-            build_synchronous_area_aggregates,
-        )
-        sa_aggregates = build_synchronous_area_aggregates(data) or {}
-        synchronous_areas_yearly_p_ust = sa_aggregates.get("synchronous_areas_yearly_p_ust", {}) or {}
-        synchronous_areas_by_station_types_yearly_p_ust = sa_aggregates.get("synchronous_areas_by_station_types_yearly_p_ust", {}) or {}
-    except Exception:
-        synchronous_areas_yearly_p_ust = {}
-        synchronous_areas_by_station_types_yearly_p_ust = {}
+    refs = _load_station_changes_export_reference_maps(data)
+    union_energy_system_names = refs["union_energy_system_names"]
+    energy_unit_names = refs["energy_unit_names"]
+    energy_unit_names_dat = refs["energy_unit_names_dat"]
+    regional_district_names = refs["regional_district_names"]
+    regional_district_names_rp = refs["regional_district_names_rp"]
+    regional_district_names_dp = refs["regional_district_names_dp"]
+    energy_system_type_names = refs["energy_system_type_names"]
+    synchronous_areas_yearly_p_ust = refs["synchronous_areas_yearly_p_ust"]
+    synchronous_areas_by_station_types_yearly_p_ust = refs["synchronous_areas_by_station_types_yearly_p_ust"]
 
     def write_combined_totals_block(label: str, events_years_map: dict, station_type_events_map: dict):
-        """Пишет комбинированный блок итогов: для каждого мероприятия сначала 'Всего', 
-        затем разбивка по типам станций"""
         nonlocal current_row
-
-        # Технические «не указано» из справочников не выводим в форму.
-        if _is_unspecified_ref_name(label):
-            return
-        
-        # Начинаем новый итоговый блок так, чтобы он не попадал внутрь merge_range
-        # в СВОИХ столбцах (B/C/F/G/H/A). Это предотвращает OverlappingRange и не ломает разметку.
-        block_cols = [subject_col, gen_company_col, station_name_col, machine_num_col, machine_name_col, fuel_col]
-        safe_start = current_row
-        for c in block_cols:
-            safe_start = max(safe_start, max_merged_row_by_col.get(c, -1) + 1)
-        current_row = safe_start
-        
-        # Определяем порядок типов станций: АЭС, ГЭС, ГАЭС, ТЭС, ВЭС, СЭС
-        # Сначала создаем обратный маппинг: название -> id
-        name_to_id = {}
-        for st_id, st_name in station_type_names.items():
-            name_to_id[st_name] = st_id
-        
-        # Порядок отображения типов станций
-        station_order = list(STATION_TYPE_ORDER_FOR_TOTALS)
-        
-        # Берем ВСЕ типы станций из порядка, даже если нет данных
-        st_ids = []
-        for st_name in station_order:
-            st_id = name_to_id.get(st_name)
-            if st_id:
-                st_ids.append(st_id)
-        
-        # Для каждого мероприятия вычисляем количество строк (1 "Всего" + количество типов станций)
-        rows_per_event = 1 + len(st_ids)  # 1 строка "Всего" + строки для каждого типа электростанции
-        
-        # Общее количество строк в блоке
-        total_block_height = len(event_types) * rows_per_event
-        block_start_row = current_row
-        
-        # Столбец 0: уже сформированная подпись блока (без автодобавления ", всего")
-        merge_if_needed(block_start_row, subject_col, block_start_row + total_block_height - 1, subject_col, label, text_center_format)
-        
-        # Столбец 1 (Генкомпания): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, gen_company_col, block_start_row + total_block_height - 1, gen_company_col, PRIL2_DASH, text_center_format)
-        
-        # Столбец 2 (Наименование): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, station_name_col, block_start_row + total_block_height - 1, station_name_col, PRIL2_DASH, text_center_format)
-        
-        # Столбец 5 (Станционный номер): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_num_col, block_start_row + total_block_height - 1, machine_num_col, PRIL2_DASH, text_center_format)
-        
-        # Столбец 6 (Тип генерирующего оборудования): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, machine_name_col, block_start_row + total_block_height - 1, machine_name_col, PRIL2_DASH, text_center_format)
-        
-        # Столбец 7 (Вид топлива): объединить в пределах столбца на высоту ВСЕГО блока, прочерк
-        merge_if_needed(block_start_row, fuel_col, block_start_row + total_block_height - 1, fuel_col, PRIL2_DASH, text_center_format)
-        
-        # Обрабатываем каждое мероприятие
-        for ev_code, ev_title in event_types:
-            event_start_row = current_row
-            event_label = _get_event_label(event_types, ev_code)
-            
-            # Первая строка: "Всего" для этого мероприятия
-            # Столбец 3 (Мероприятие): пишем название мероприятия только в строке "Всего"
-            worksheet.write(current_row, event_col, event_label, text_center_format)
-            worksheet.write(current_row, station_type_col, "Всего", text_center_format)
-            
-            # Данные из events_years_map
-            years_map_total = (events_years_map or {}).get(ev_code) or {}
-            row_sum = 0
-            # Важно: колонки годов = export_years (как в шапке и строках станций),
-            # а не range(start_year, end_year) — иначе суммы съезжают на +1 год.
-            for i, y in enumerate(export_years):
-                val = years_map_total.get(y)
-                display_val = _pril2_mw_value(val)
-                worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
-                if val is not None and y in sum_years:
-                    row_sum += val
-            worksheet.write(current_row, all_years_col, _pril2_mw_value(row_sum), text_center_format)
-            worksheet.write(current_row, note_col, "", text_center_format)
-            current_row += 1
-            
-            # Следующие строки: по каждому типу электростанции
-            for st_id in st_ids:
-                st_name = station_type_names.get(st_id, f"Тип электростанции {st_id}")
-                
-                # Столбец 3 (Мероприятие): пустая ячейка (название только в строке "Всего")
-                worksheet.write(current_row, event_col, "", text_center_format)
-                worksheet.write(current_row, station_type_col, st_name, text_center_format)
-                
-                # Данные из station_type_events_map
-                years_map_st = (station_type_events_map or {}).get(st_id, {}).get(ev_code) or {}
-                row_sum = 0
-                for i, y in enumerate(export_years):
-                    val = years_map_st.get(y)
-                    display_val = _pril2_mw_value(val)
-                    worksheet.write(current_row, years_start_col + i, display_val, text_center_format)
-                    if val is not None and y in sum_years:
-                        row_sum += val
-                worksheet.write(current_row, all_years_col, _pril2_mw_value(row_sum), text_center_format)
-                worksheet.write(current_row, note_col, "", text_center_format)
-                current_row += 1
-
-        # Важно: объединения ячеек для блока рассчитаны на total_block_height строк.
-        # Даже если по каким-то причинам фактически было записано меньше строк,
-        # нужно сдвинуть current_row до конца блока, иначе следующий merge_range может пересечься
-        # с текущим (xlsxwriter.exceptions.OverlappingRange).
-        expected_end = block_start_row + total_block_height
-        if current_row < expected_end:
-            current_row = expected_end
+        current_row = _write_combined_totals_block(
+            worksheet=worksheet,
+            merge_if_needed=merge_if_needed,
+            text_center_format=text_center_format,
+            label=label,
+            events_years_map=events_years_map,
+            station_type_events_map=station_type_events_map,
+            event_types=event_types,
+            station_type_names=station_type_names,
+            export_years=export_years,
+            sum_years=sum_years,
+            subject_col=subject_col,
+            gen_company_col=gen_company_col,
+            station_name_col=station_name_col,
+            event_col=event_col,
+            station_type_col=station_type_col,
+            machine_num_col=machine_num_col,
+            machine_name_col=machine_name_col,
+            fuel_col=fuel_col,
+            years_start_col=years_start_col,
+            all_years_col=all_years_col,
+            note_col=note_col,
+            max_merged_row_by_col=max_merged_row_by_col,
+            current_row=current_row,
+            empty_cell_dash=PRIL2_DASH,
+            mw_display_fn=_pril2_mw_value,
+        )
 
     # Обход иерархии как в шаблоне (тип энергосистемы -> (синхронная зона|энергозона) -> ОЭС -> РЭС -> субъект)
     # Для объединенного итога по всем ТИТЭС
@@ -2767,19 +2418,17 @@ def export_station_changes_pril_2_russia_to_excel(
             total_by_station_map,
         )
 
-    # Автофильтр только по таблице, без блока примечаний
-    try:
-        worksheet.autofilter(sub_row, 0, max(current_row - 1, sub_row), note_col)
-    except Exception:
-        pass
-
-    _write_pril2_footnotes(worksheet, current_row, last_col_name, workbook)
-
-    workbook.close()
-    output.seek(0)
-
-    ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
-    filename = f"Приложение 2_{ts}.xlsx"
-    return filename, output
+    return _finalize_station_changes_export(
+        worksheet,
+        workbook,
+        output,
+        sub_row=sub_row,
+        current_row=current_row,
+        note_col=note_col,
+        filename_prefix="Приложение 2",
+        after_autofilter=lambda: _write_pril2_footnotes(
+            worksheet, current_row, last_col_name, workbook
+        ),
+    )
 
 
