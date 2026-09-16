@@ -18,6 +18,16 @@ from app.common.services.get_services.years.year_feature_services import (
 from config import Config
 
 
+def normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
+    """
+    Если «год начала» больше «года конца», range(start_year, end_year + 1) пуст —
+    приводим к допустимому интервалу [min, max].
+    """
+    if start_year > end_year:
+        return end_year, start_year
+    return start_year, end_year
+
+
 def get_year_list_full():
     """
     Полный список годов текущей версии БД.

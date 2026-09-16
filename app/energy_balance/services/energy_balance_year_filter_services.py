@@ -12,16 +12,11 @@ from app.common.services.get_services.years.years_get_services import (
     get_filter_start_year,
     get_ges_tep_current_price_year_number,
     get_year_list_full,
+    normalize_start_end_years,
 )
 from app.generation.services.station_services.generation_year_filter_services import (
     sync_generation_years_session_on_version_change,
 )
-
-
-def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
-    if start_year > end_year:
-        return end_year, start_year
-    return start_year, end_year
 
 
 def get_ee_period_base_year() -> int:
@@ -83,7 +78,7 @@ def resolve_ee_year_filters_for_request():
 
     start_year = request.args.get("start_year", default_start, type=int)
     end_year = request.args.get("end_year", default_end, type=int)
-    start_year, end_year = _normalize_start_end_years(start_year, end_year)
+    start_year, end_year = normalize_start_end_years(start_year, end_year)
     return start_year, end_year, None
 
 
@@ -130,4 +125,4 @@ def resolve_ee_transfers_year_range() -> tuple[int, int]:
     end_year = url_end if url_end is not None else default_end
     if _is_generation_planning_year_range(start_year, end_year):
         return default_start, default_end
-    return _normalize_start_end_years(start_year, end_year)
+    return normalize_start_end_years(start_year, end_year)

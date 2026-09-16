@@ -27,6 +27,7 @@ from app.common.services.get_services.years.years_get_services import (
     get_year_feature_dict,
     get_filter_start_year,
     get_filter_end_year,
+    normalize_start_end_years,
 )
 from app.logs.models.log_model import Log
 from app.logs.services.log_display_utils import format_logs_for_display as _format_logs_for_display
@@ -37,17 +38,6 @@ from app.logs.services.logging_service import log_to_db
 from app.generation.services.station_services.generation_year_filter_services import (
     resolve_generation_year_filters_for_request,
 )
-
-
-def _normalize_start_end_years(start_year: int, end_year: int) -> tuple[int, int]:
-    """
-    Если «год начала» больше «года конца», в шаблоне и в handle_machine_get
-    получается пустой range(start_year, end_year + 1) — таблицы без столбцов данных.
-    Приводим к допустимому интервалу [min, max].
-    """
-    if start_year > end_year:
-        return end_year, start_year
-    return start_year, end_year
 
 
 def _machine_log_entity_ids(machine_id: int) -> list[int]:
@@ -214,7 +204,7 @@ def machine_details(station_id, machine_id):
                 start_year, end_year, _year_redirect = (
                     resolve_generation_year_filters_for_request()
                 )
-                start_year, end_year = _normalize_start_end_years(start_year, end_year)
+                start_year, end_year = normalize_start_end_years(start_year, end_year)
                 flash(
                     "Агрегат отсутствует в выбранной версии БД. "
                     "Открыта карточка электростанции в текущей версии.",
@@ -240,7 +230,7 @@ def machine_details(station_id, machine_id):
         end_year = request.values.get("end_year", get_filter_end_year(), type=int)
         year_redirect = None
 
-    nsy, ney = _normalize_start_end_years(start_year, end_year)
+    nsy, ney = normalize_start_end_years(start_year, end_year)
     id_mismatch = (
         resolved_station_id != station_id or resolved_machine_id != machine_id
     )
@@ -349,7 +339,7 @@ def pgu_machine_details(station_id, machine_id, pgu_machine_id):
     end_year = request.values.get("end_year", get_filter_end_year(), type=int)
     rounding_digits = request.values.get("rounding_digits", 1, type=int)
 
-    nsy, ney = _normalize_start_end_years(start_year, end_year)
+    nsy, ney = normalize_start_end_years(start_year, end_year)
     if request.method == "GET" and (nsy, ney) != (start_year, end_year):
         q = request.args.to_dict(flat=True)
         q["start_year"] = nsy
