@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import logging
 import re
 import uuid
 from collections import defaultdict
@@ -36,27 +35,10 @@ from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumption_recalc_services import (
     recalculate_all_specific_fuel_consumption_calc,
 )
-
-
-def _get_logger():
-    try:
-        from flask import current_app, has_app_context
-        if has_app_context():
-            return current_app.logger
-    except Exception:
-        pass
-    return logging.getLogger(__name__)
-
-
-def _normalize_column_name(col) -> str:
-    s = "" if col is None else str(col)
-    s = s.replace("\r", " ").replace("\n", " ").replace("\u00a0", " ").replace("\xa0", " ").strip().lower()
-    s = s.replace("е", "е")
-    s = " ".join(s.split())
-    s = s.replace(" ", "_")
-    s = "".join(ch for ch in s if ch.isalnum() or ch == "_")
-    s = "_".join(filter(None, s.split("_")))
-    return s
+from app.fuel.services.fuel_imports.excel_import_helpers import (
+    get_fuel_import_logger,
+    normalize_import_column_name_with_nbsp as _normalize_column_name,
+)
 
 
 # Нормализованные заголовки столбцов, из которых берётся EquipmentGroup.numb (как в экспорте со страницы).
@@ -1569,7 +1551,7 @@ def import_fuel_db_equipment_groups_from_excel(file, user: str, *, build_report:
         обновление EquipmentGroup (v2) по полям из Excel
       - строки с id_machine: заполнение MachineFuelParam по полям из Excel
     """
-    logger = _get_logger()
+    logger = get_fuel_import_logger(__name__)
     t0 = time.perf_counter()
     filename = getattr(file, "filename", None)
 

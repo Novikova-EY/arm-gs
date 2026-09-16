@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import logging
 import time
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
@@ -18,27 +17,10 @@ from app.fuel.models.fue_equipment_group_specific_fuel_price_model import (
     EquipmentGroupSpecificFuelPrice,
 )
 from app.refdata.models.years.year_model import Year
-
-
-def _get_logger():
-    try:
-        from flask import has_app_context, current_app
-        if has_app_context():
-            return current_app.logger
-    except Exception:
-        pass
-    return logging.getLogger(__name__)
-
-
-def _normalize_column_name(col) -> str:
-    s = "" if col is None else str(col)
-    s = s.replace("\r", " ").replace("\n", " ").strip().lower()
-    s = s.replace("е", "е")
-    s = " ".join(s.split())
-    s = s.replace(" ", "_")
-    s = "".join(ch for ch in s if ch.isalnum() or ch == "_")
-    s = "_".join(filter(None, s.split("_")))
-    return s
+from app.fuel.services.fuel_imports.excel_import_helpers import (
+    get_fuel_import_logger,
+    normalize_import_column_name as _normalize_column_name,
+)
 
 
 SPECIFIC_FUEL_PRICE_FIELDS = [
@@ -221,7 +203,7 @@ def import_equipment_group_specific_fuel_price_from_excel(
     Связь по столбцу numb1120 = EquipmentGroup.numb.
     Год из формы используется, если year_number не указан в строке Excel.
     """
-    logger = _get_logger()
+    logger = get_fuel_import_logger(__name__)
     t0 = time.perf_counter()
     filename = getattr(file, "filename", None)
 

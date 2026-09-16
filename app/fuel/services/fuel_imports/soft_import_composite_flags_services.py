@@ -35,6 +35,9 @@ from sqlalchemy.orm import Session
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.logs.services.logging_service import log_to_db
+from app.fuel.services.fuel_imports.excel_import_helpers import (
+    normalize_composite_flags_column_name as _normalize_column_name,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,19 +93,6 @@ _DICT_TEXT_MAXLEN = {"note": 1000}
 _META_TEXT_FIELDS = frozenset(
     {"name", "name_ext", "tm", "addr", "note", "ordnumb", "n1", "n2", "p1", "p2"}
 )
-
-
-def _normalize_column_name(name: object) -> str:
-    if name is None:
-        return ""
-    text = str(name).strip().lower().replace("ё", "е")
-    out = []
-    for ch in text:
-        if ch.isalnum() or ch in ("_",):
-            out.append(ch)
-        elif ch.isspace() or ch in ("-", ".", "/", "\\"):
-            out.append("_")
-    return "_".join(p for p in "".join(out).split("_") if p)
 
 
 def _safe_int(value: Any) -> int | None:

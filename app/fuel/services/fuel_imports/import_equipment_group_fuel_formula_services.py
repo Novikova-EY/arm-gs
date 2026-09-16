@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import logging
 import time
 from decimal import Decimal, InvalidOperation
 
@@ -24,28 +23,10 @@ from app.fuel.models.fue_equipment_group_fuel_formula_model import EquipmentGrou
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.logs.services.logging_service import log_to_db
 from app.refdata.models.years.year_model import Year
-
-
-def _get_logger():
-    try:
-        from flask import current_app, has_app_context
-
-        if has_app_context():
-            return current_app.logger
-    except Exception:
-        pass
-    return logging.getLogger(__name__)
-
-
-def _normalize_column_name(col) -> str:
-    s = "" if col is None else str(col)
-    s = s.replace("\r", " ").replace("\n", " ").strip().lower()
-    s = s.replace("е", "е")
-    s = " ".join(s.split())
-    s = s.replace(" ", "_")
-    s = "".join(ch for ch in s if ch.isalnum() or ch == "_")
-    s = "_".join(filter(None, s.split("_")))
-    return s
+from app.fuel.services.fuel_imports.excel_import_helpers import (
+    get_fuel_import_logger,
+    normalize_import_column_name as _normalize_column_name,
+)
 
 
 FORMULA_IMPORT_FIELDS = ["name", "year_number", "formtxt", "numb1120", "numb1", "variant_number"]
@@ -267,7 +248,7 @@ def import_equipment_group_fuel_formula_from_excel(file, user: str) -> dict:
     Загружает строки в EquipmentGroupFuelFormula во все версии БД.
     По numb1120 ищутся все EquipmentGroup с таким numb и копии с тем же external_code.
     """
-    logger = _get_logger()
+    logger = get_fuel_import_logger(__name__)
     t0 = time.perf_counter()
     filename = getattr(file, "filename", None)
     logger.info("[IMPORT_FUEL_FORMULA] start user=%s filename=%s", user, filename)

@@ -53,6 +53,9 @@ from app.refdata.models.gen_companies.gen_company_model import GenCompany
 from app.refdata.models.refdata_for_stations.technologies.equipment_group_model import (
     EquipmentGroupType,
 )
+from app.fuel.services.fuel_imports.excel_import_helpers import (
+    normalize_refdata_column_name as _normalize_column_name,
+)
 
 
 def _clean_text(value: object) -> str:
@@ -109,16 +112,6 @@ def _normalize_integer_only(value: object) -> tuple[str, bool]:
             return int_part, True
         return "", False
     return "", False
-
-def _normalize_column_name(value: object) -> str:
-    return (
-        str(value or "")
-        .strip()
-        .lower()
-        .replace(" ", "")
-        .replace("-", "")
-        .replace("_", "")
-    )
 
 
 def _normalize_decimal(value: object) -> tuple[object | None, bool]:
