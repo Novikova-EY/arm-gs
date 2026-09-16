@@ -5,9 +5,13 @@ from __future__ import annotations
 
 from typing import Any
 
+import logging
+
 from flask import g
 
 from app.extensions import db
+
+_logger = logging.getLogger(__name__)
 
 
 def normalize_formula_text(text: str) -> str:
@@ -50,6 +54,9 @@ class FormulaTextOverrideStore:
         try:
             overrides = self.load_from_db()
         except Exception:
+            _logger.exception(
+                "formula text overrides load failed (cache_key=%s)", self._cache_key
+            )
             overrides = {}
         try:
             setattr(g, self._cache_key, overrides)

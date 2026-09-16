@@ -2,6 +2,7 @@
 """Параметры анализа ПГ: копия и правка отчетных данных ГИС ТЭК."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from app.ecology.services.ecology_decimal_helpers import decimal_from_loose_text as _as_decimal
@@ -9,6 +10,8 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     PG_ANALYSIS_SHEET_SLUGS,
     PG_ECOLOGY_VALUE_FIELDS,
 )
+
+_logger = logging.getLogger(__name__)
 
 
 def report_values_payload(report: Any) -> dict[str, Any]:
@@ -84,6 +87,9 @@ def seed_missing_analysis_pg_params_from_reports(
             db.session.commit()
         return created
     except Exception:
+        _logger.exception(
+            "ecology analysis PG seed failed (sheet=%s)", sheet_slug
+        )
         try:
             from app.extensions import db
 

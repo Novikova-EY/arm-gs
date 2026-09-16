@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import logging
 import math
 from collections import defaultdict
 from decimal import Decimal
@@ -80,11 +81,14 @@ from app.ecology.services.operating_tes_page_services import (
     resolve_rounding_digits,
 )
 
+_logger = logging.getLogger(__name__)
+
 
 def _year_features() -> dict[Any, Any]:
     try:
         return get_year_feature_dict() or {}
     except Exception:
+        _logger.exception("ecology comparison: year features unavailable")
         return {}
 
 
@@ -1141,6 +1145,9 @@ def load_pg_ecology_overlay_by_numb_year(
             )
         return result
     except Exception:
+        _logger.exception(
+            "ecology comparison: PG overlay load failed (sheet=%s)", sheet_slug
+        )
         return {}
 
 
@@ -1191,6 +1198,9 @@ def load_zv_ecology_overlay_by_numb_year(
             )
         return result
     except Exception:
+        _logger.exception(
+            "ecology comparison: ZV overlay load failed (sheet=%s)", sheet_slug
+        )
         return {}
 
 
@@ -1453,6 +1463,7 @@ def load_fuel_indicators_by_numb_year(
                 out[key] = _prefer_fuel_payload(out.get(key), payload)
         return out
     except Exception:
+        _logger.exception("ecology comparison: fuel indicators load failed")
         return {}
 
 
@@ -2039,7 +2050,7 @@ def load_territorial_filter_context(filters: dict[str, Any] | None = None) -> di
 
             data.update(get_territorial_filter_reference_data())
     except Exception:
-        pass
+        _logger.exception("ecology comparison: territorial filter context unavailable")
     for key in TERRITORY_FILTER_KEYS[:5]:
         data[key] = list(selected.get(key) or [])
     data["station_name_filter"] = selected.get("station_name_filter") or ""
