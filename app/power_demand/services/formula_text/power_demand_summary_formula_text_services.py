@@ -6,9 +6,10 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-from flask import g
-
-from app.extensions import db
+from app.common.services.formula_text_override_services import (
+    FormulaTextOverrideStore,
+    normalize_formula_text,
+)
 from app.power_demand.models.formula_text.power_demand_summary_formula_text_model import (
     PowerDemandSummaryFormulaText,
 )
@@ -26,7 +27,10 @@ from app.power_demand.services.power_demand_summary_formula_registry import (
     iter_formula_defs,
 )
 
-_OVERRIDE_CACHE_KEY = "pd_summary_formula_text_overrides"
+_OVERRIDE_STORE = FormulaTextOverrideStore(
+    PowerDemandSummaryFormulaText,
+    "pd_summary_formula_text_overrides",
+)
 
 # Переименованные ключи формул (сохранённые переопределения в БД).
 # Значение — старый ключ в БД, откуда читать переопределение для нового ключа.
@@ -67,30 +71,12 @@ _LEGACY_FORMULA_KEY_FALLBACKS: dict[str, str] = {
 }
 
 
-def _load_overrides_from_db() -> dict[str, str]:
-    rows = PowerDemandSummaryFormulaText.query.all()
-    return {str(r.formula_key): str(r.formula_text or "") for r in rows}
-
-
 def clear_formula_text_override_cache() -> None:
-    if hasattr(g, _OVERRIDE_CACHE_KEY):
-        delattr(g, _OVERRIDE_CACHE_KEY)
+    _OVERRIDE_STORE.clear_cache()
 
 
 def get_formula_text_overrides() -> dict[str, str]:
-    cached = getattr(g, _OVERRIDE_CACHE_KEY, None)
-    if cached is not None:
-        return cached
-    try:
-        overrides = _load_overrides_from_db()
-    except Exception:
-        overrides = {}
-    setattr(g, _OVERRIDE_CACHE_KEY, overrides)
-    return overrides
-
-
-def _normalize_formula_text(text: str) -> str:
-    return " ".join(str(text or "").split())
+    return _OVERRIDE_STORE.get_overrides()
 
 
 @lru_cache(maxsize=1)
@@ -98,11 +84,11 @@ def get_default_text_to_formula_key() -> dict[str, str]:
     exact = default_text_to_formula_key()
     normalized: dict[str, str] = {}
     for item in PD_SUMMARY_FORMULA_REGISTRY:
-        for candidate in (item.default_text, _normalize_formula_text(item.default_text)):
+        for candidate in (item.default_text, normalize_formula_text(item.default_text)):
             if candidate:
                 normalized.setdefault(candidate, item.key)
     for raw_text, key in exact.items():
-        normalized.setdefault(_normalize_formula_text(raw_text), key)
+        normalized.setdefault(normalize_formula_text(raw_text), key)
     return {**exact, **normalized}
 
 
@@ -117,7 +103,7 @@ def resolve_formula_text_key(
     if not raw:
         return None
     mapping = get_default_text_to_formula_key()
-    return mapping.get(raw) or mapping.get(_normalize_formula_text(raw))
+    return mapping.get(raw) or mapping.get(normalize_formula_text(raw))
 
 
 def pd_formula_text(formula_key: str, default: str | None = None) -> str:
@@ -200,16 +186,7 @@ def save_formula_text_override(*, formula_key: str, formula_text: str) -> PdSumm
     key = str(formula_key or "").strip()
     if not get_formula_def(key):
         raise ValueError(f"Неизвестный ключ формулы: {key}")
-    text = str(formula_text or "").strip()
-    if not text:
-        raise ValueError("Текст формулы не может быть пустым.")
-    row = PowerDemandSummaryFormulaText.query.filter_by(formula_key=key).first()
-    if row is None:
-        row = PowerDemandSummaryFormulaText(formula_key=key, formula_text=text)
-        db.session.add(row)
-    else:
-        row.formula_text = text
-    clear_formula_text_override_cache()
+    _OVERRIDE_STORE.save_override(formula_key=key, formula_text=formula_text)
     from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
 
     clear_pd_summary_page_cache()
@@ -218,10 +195,7 @@ def save_formula_text_override(*, formula_key: str, formula_text: str) -> PdSumm
 
 def reset_formula_text_override(formula_key: str) -> None:
     key = str(formula_key or "").strip()
-    row = PowerDemandSummaryFormulaText.query.filter_by(formula_key=key).first()
-    if row is not None:
-        db.session.delete(row)
-    clear_formula_text_override_cache()
+    _OVERRIDE_STORE.reset_override(key)
     from app.power_demand.services.pd_summary_page_cache import clear_pd_summary_page_cache
 
     clear_pd_summary_page_cache()

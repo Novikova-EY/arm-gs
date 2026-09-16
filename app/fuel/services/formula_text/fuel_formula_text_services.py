@@ -5,9 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from flask import g
-
-from app.extensions import db
+from app.common.services.formula_text_override_services import FormulaTextOverrideStore
 from app.fuel.models.formula_text.fuel_formula_text_model import FuelFormulaText
 from app.fuel.services.formula_text.fuel_formula_text_registry import (
     FUEL_FORMULA_REGISTRY,
@@ -16,29 +14,18 @@ from app.fuel.services.formula_text.fuel_formula_text_registry import (
     iter_formula_defs,
 )
 
-_OVERRIDE_CACHE_KEY = "fue_formula_text_overrides"
-
-
-def _load_overrides_from_db() -> dict[str, str]:
-    rows = FuelFormulaText.query.all()
-    return {str(r.formula_key): str(r.formula_text or "") for r in rows}
+_OVERRIDE_STORE = FormulaTextOverrideStore(
+    FuelFormulaText,
+    "fue_formula_text_overrides",
+)
 
 
 def clear_formula_text_override_cache() -> None:
-    if hasattr(g, _OVERRIDE_CACHE_KEY):
-        delattr(g, _OVERRIDE_CACHE_KEY)
+    _OVERRIDE_STORE.clear_cache()
 
 
 def get_formula_text_overrides() -> dict[str, str]:
-    cached = getattr(g, _OVERRIDE_CACHE_KEY, None)
-    if cached is not None:
-        return cached
-    try:
-        overrides = _load_overrides_from_db()
-    except Exception:
-        overrides = {}
-    setattr(g, _OVERRIDE_CACHE_KEY, overrides)
-    return overrides
+    return _OVERRIDE_STORE.get_overrides()
 
 
 def fuel_formula_text(formula_key: str, default: str | None = None) -> str:
@@ -98,22 +85,10 @@ def save_formula_text_override(*, formula_key: str, formula_text: str) -> FuelFo
     item = get_formula_def(key)
     if item is None:
         raise ValueError(f"Неизвестный ключ формулы: {key!r}")
-    text = str(formula_text or "").strip()
-    if not text:
-        raise ValueError("Текст формулы не может быть пустым.")
-    row = FuelFormulaText.query.filter_by(formula_key=key).first()
-    if row is None:
-        row = FuelFormulaText(formula_key=key, formula_text=text)
-        db.session.add(row)
-    else:
-        row.formula_text = text
-    clear_formula_text_override_cache()
+    _OVERRIDE_STORE.save_override(formula_key=key, formula_text=formula_text)
     return item
 
 
 def reset_formula_text_override(formula_key: str) -> None:
     key = str(formula_key or "").strip()
-    if not key:
-        return
-    FuelFormulaText.query.filter_by(formula_key=key).delete(synchronize_session=False)
-    clear_formula_text_override_cache()
+    _OVERRIDE_STORE.reset_override(key, skip_empty_key=True, bulk_delete=True)

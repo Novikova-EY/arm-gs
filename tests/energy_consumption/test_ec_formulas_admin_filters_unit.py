@@ -14,9 +14,7 @@ from app.energy_consumption.services.energy_consumption_summary_formula_registry
     get_formula_def,
     iter_formula_defs,
 )
-from app.energy_consumption.services.formula_text.energy_consumption_summary_formula_text_services import (
-    _normalize_formula_text,
-)
+from app.common.services.formula_text_override_services import normalize_formula_text
 
 
 def test_ec_admin_filter_page_values_are_unique() -> None:
@@ -89,7 +87,7 @@ def test_ec_page_tooltips_match_registry_defaults() -> None:
         page_text = getattr(svc, attr)
         defn = get_formula_def(key)
         assert defn is not None, key
-        assert _normalize_formula_text(page_text) == _normalize_formula_text(
+        assert normalize_formula_text(page_text) == normalize_formula_text(
             defn.default_text
         ), (attr, key)
 
