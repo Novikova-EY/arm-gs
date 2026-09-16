@@ -277,9 +277,8 @@ def _as_fixed(value: Any, places: int) -> float:
         return 0.0
 
 
-def _consumption_mlrd(value: Any, *, is_ees: bool = False) -> int:
+def _consumption_mlrd(value: Any) -> int:
     """Потребление в JSON: млн → млрд (/1000), целое."""
-    del is_ees
     raw = _num(value)
     if raw == 0:
         return 0
@@ -1005,7 +1004,7 @@ def build_gentypes_info_rows(
                 build_gentypes_year_row(
                     year=year,
                     zone=zone,
-                    consumption=_consumption_mlrd(cons, is_ees=is_ees),
+                    consumption=_consumption_mlrd(cons),
                     installed=_as_int(installed),
                     demand_max=_as_int(dem),
                     power_export=_as_int(p_exp),

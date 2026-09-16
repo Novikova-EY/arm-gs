@@ -252,10 +252,6 @@ def station_is_planned(condition_name: str | None) -> bool:
     return (condition_name or "").strip().casefold().startswith("планир")
 
 
-def _commission_fact_empty(raw: Any) -> bool:
-    return raw is None or str(raw).strip() == ""
-
-
 def json_date_or_dash(raw: Any) -> str:
     """Дата как в макете: строка дд.мм.гггг или «-»."""
     if raw is None:
@@ -306,40 +302,6 @@ def machine_modernization_date(machine: Any) -> str:
     return MISSING_DATE
 
 
-def machine_matches_planned_rules(machine: Any, *, current_year: int) -> bool:
-    """Ожидаемый год ввода ≥ текущего и фактическая дата ввода в работу пуста."""
-    expected = getattr(machine, "date_exploitation_expected", None)
-    if expected is None:
-        return False
-    try:
-        expected_year = int(expected)
-    except (TypeError, ValueError):
-        return False
-    if expected_year < int(current_year):
-        return False
-    return _commission_fact_empty(getattr(machine, "date_commission_fact", None))
-
-
-def station_is_planned_by_machines(
-    machines: Iterable[Any],
-    *,
-    current_year: int,
-) -> bool:
-    """
-    True, если у станции есть неархивные агрегаты и у каждого из них:
-    date_exploitation_expected ≥ текущий год и date_commission_fact пуста.
-    Архивные не учитываем. Без активных агрегатов → False.
-    """
-    if current_year is None or int(current_year) <= 0:
-        return False
-    active = [m for m in (machines or []) if not is_machine_archived(m)]
-    if not active:
-        return False
-    return all(
-        machine_matches_planned_rules(m, current_year=int(current_year)) for m in active
-    )
-
-
 def year_from_fact_date(raw: Any) -> int | None:
     """Год из фактической даты; 01.01.YYYY → YYYY-1, как на карточке агрегата."""
     if raw is None:
@@ -362,17 +324,6 @@ def year_from_fact_date(raw: Any) -> int | None:
             return int(token)
     except (TypeError, ValueError):
         return None
-    return None
-
-
-def commission_year(
-    date_exploitation: int | None,
-    date_exploitation_expected: int | None,
-) -> int | None:
-    if date_exploitation is not None:
-        return int(date_exploitation)
-    if date_exploitation_expected is not None:
-        return int(date_exploitation_expected)
     return None
 
 
@@ -564,7 +515,6 @@ def build_generation_objects_rows(
     years: list[int],
     capacity_map: dict[tuple[int, int], Decimal],
     generation_map: dict[tuple[int, int], Decimal],
-    planned_by_station: dict[int, bool] | None = None,
 ) -> list[dict[str, Any]]:
     """Станция × год. Планируемая: Руст года = 0, а в будущем году Руст > 0.
 
@@ -572,7 +522,6 @@ def build_generation_objects_rows(
     зона и номер энергозоны — по субъекту РФ карточки. Станции без названия
     на карточке в набор не входят.
     """
-    del planned_by_station  # признак считается по мощности по годам
     caps_by_station = _capacity_by_station(capacity_map)
     rows: list[dict[str, Any]] = []
     for station in stations:
