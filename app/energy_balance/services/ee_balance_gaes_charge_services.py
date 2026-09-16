@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
+
+_logger = logging.getLogger(__name__)
 from typing import Any
 
 from app.common.services.database_version_services import get_current_version
@@ -101,6 +104,7 @@ def load_ee_balance_gaes_charge_inputs(
                 years_tuple,
             )
         except Exception:
+            _logger.exception("ee balance gaes charge: station rows load failed")
             continue
         year_map = year_values_from_gaes_charge_station_rows(station_rows, years)
         if year_map:

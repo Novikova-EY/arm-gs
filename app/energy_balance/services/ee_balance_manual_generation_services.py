@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Ручной ввод выработки СНЭЭ, СЭС и ВЭС в плановых годах баланса ЭЭ."""
+"""Ручной ввод выработки СНЭЭ в плановых годах баланса ЭЭ.
+
+СЭС и ВЭС считаются со страницы «Выработка ВИЭ» / карточки станции
+и ручным вводом не подменяются.
+"""
 from __future__ import annotations
 
+import logging
 from decimal import Decimal, InvalidOperation
+
+_logger = logging.getLogger(__name__)
 from typing import Any
 
 from sqlalchemy.exc import ProgrammingError, OperationalError
@@ -33,6 +40,10 @@ __all__ = [
 MANUAL_PLAN_GENERATION_KEYS = frozenset(
     {
         "generation_snee",
+    }
+)
+_AUTO_SES_VES_GENERATION_KEYS = frozenset(
+    {
         "generation_ses_ves",
         "generation_ses",
         "generation_ves",
@@ -48,12 +59,16 @@ def _norm_label(raw: Any) -> str:
 
 def is_manual_plan_generation_row_key(key: Any, label: Any = None) -> bool:
     raw = str(key or "").strip()
+    if raw in _AUTO_SES_VES_GENERATION_KEYS:
+        return False
     if raw in MANUAL_PLAN_GENERATION_KEYS:
         return True
+    if raw.startswith(("installed_", "available_", "chiim_")):
+        return False
     label_n = _norm_label(label)
-    if "снээ" in label_n:
-        return True
     if "сэс" in label_n or "вэс" in label_n:
+        return False
+    if "снээ" in label_n:
         return True
     return False
 
@@ -67,6 +82,8 @@ def overlay_manual_generation_inputs(
     for slug, rows in (manual_inputs or {}).items():
         dest_sheet = result.setdefault(slug, {})
         for row_key, year_map in (rows or {}).items():
+            if str(row_key) in _AUTO_SES_VES_GENERATION_KEYS:
+                continue
             dest_row = dest_sheet.setdefault(row_key, {})
             for year, amount in (year_map or {}).items():
                 dest_row[int(year)] = amount
@@ -82,6 +99,7 @@ def _ensure_tables() -> None:
         EeBalanceManualGenerationValue.__table__.create(bind, checkfirst=True)
         _tables_ready = True
     except Exception:
+        _logger.exception("ee balance manual generation: table ensure failed")
         pass
 
 
@@ -89,6 +107,7 @@ def _version_id() -> int | None:
     try:
         raw = get_current_db_version_id()
     except Exception:
+        _logger.exception("ee balance manual generation: db version id lookup failed")
         return None
     if raw is None:
         return None
@@ -108,7 +127,7 @@ def load_ee_balance_manual_generation_inputs(
     years: list[int],
     sheets: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, dict[int, Decimal]]]:
-    """{sheet_slug: {row_key: {year: value}}} для ручной выработки СНЭЭ / СЭС / ВЭС."""
+    """{sheet_slug: {row_key: {year: value}}} для ручной выработки СНЭЭ."""
     if not years:
         return {}
     _ensure_tables()
@@ -119,6 +138,7 @@ def load_ee_balance_manual_generation_inputs(
         db.session.rollback()
         return {}
     except Exception:
+        _logger.exception("ee balance manual generation: manual values query failed")
         return {}
 
     allowed = None
@@ -151,12 +171,13 @@ def mark_manual_plan_generation_rows(
     tables: dict[str, dict[str, Any]],
     years: list[int] | None,
 ) -> None:
-    """Поля ввода в плановых годах для СНЭЭ / СЭС / ВЭС на листах без формулы строки."""
+    """Поля ввода в плановых годах для СНЭЭ на листах без формулы строки."""
     if not tables or not years:
         return
     try:
         _fact_current, plan_years = classify_ee_balance_generation_years(list(years))
     except Exception:
+        _logger.exception("ee balance manual generation: generation year classification failed")
         plan_years = []
     if not plan_years:
         return
@@ -183,7 +204,7 @@ def update_ee_balance_manual_generation_value(
         raise ValueError("Не указан лист баланса")
     key = str(row_key or "").strip()
     if not is_manual_plan_generation_row_key(key):
-        raise ValueError("Ручной ввод доступен только для СНЭЭ, СЭС и ВЭС")
+        raise ValueError("Ручной ввод доступен только для СНЭЭ")
     try:
         year_int = int(year)
     except (TypeError, ValueError) as exc:

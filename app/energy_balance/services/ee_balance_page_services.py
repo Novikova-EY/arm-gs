@@ -8,7 +8,10 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 from app.energy_balance.services.ee_balance_consumption_services import (
     load_ee_balance_consumption_inputs,
@@ -28,6 +31,7 @@ from app.energy_balance.services.balance_sheet_note_services import (
 from app.energy_balance.services.ee_balance_generation_services import (
     generation_type_groups,
     generation_type_keys,
+    hydro_year_for_balance_sheet,
     load_ee_balance_generation_inputs,
 )
 from app.energy_balance.services.ee_balance_manual_generation_services import (
@@ -63,7 +67,9 @@ from app.energy_balance.services.power_balance_page_services import (
     tites_east_child_nav_sheets,
     _attach_formula_tooltips,
     _diff_formula,
+    _append_station_type_group_rows,
     _installed_capacity_rows,
+    _mark_ses_ves_collapsible,
     _merge_power_balance_inputs,
     _raw_cell,
     _row,
@@ -164,24 +170,9 @@ def sheet_has_ges_or_gaes_capacity(
                 if _raw_cell(row, year) > 0:
                     return True
             except Exception:
+                _logger.exception("ee balance page: hydro installed cell parse failed")
                 continue
     return False
-
-
-def _hydro_year_buttons(sheet_name: str) -> list[dict[str, str]]:
-    name = str(sheet_name or "").strip()
-    suffix_average = HYDRO_YEAR_AVERAGE_LABEL
-    suffix_low = HYDRO_YEAR_LOW_LABEL
-    return [
-        {
-            "key": HYDRO_YEAR_AVERAGE,
-            "label": f"{name} ({suffix_average})" if name else suffix_average,
-        },
-        {
-            "key": HYDRO_YEAR_LOW,
-            "label": f"{name} ({suffix_low})" if name else suffix_low,
-        },
-    ]
 
 
 def _ee_sheets_including_slug(slug: str) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
@@ -204,6 +195,7 @@ def load_ee_balance_custom_flows(
 
         return _load(sheets=sheets)
     except Exception:
+        _logger.exception("ee balance page: custom flows load failed")
         return {}
 
 
@@ -218,17 +210,12 @@ def _generation_rows(*, type_formula_builder=None) -> list[dict[str, Any]]:
             formula=_sum_formula(*type_keys) if type_keys else None,
         ),
     ]
-    for group in type_groups:
-        formula = type_formula_builder(group["key"]) if type_formula_builder is not None else None
-        rows.append(
-            _ee_row(
-                group["key"],
-                group["label"],
-                indent=1,
-                kind=KIND_CHILD,
-                formula=formula,
-            )
-        )
+    _append_station_type_group_rows(
+        rows,
+        type_groups,
+        make_row=_ee_row,
+        type_formula_builder=type_formula_builder,
+    )
     return rows
 
 
@@ -342,22 +329,52 @@ def _chiim_block() -> list[dict[str, Any]]:
         gen_key = str(group.get("key") or "")
         suffix = gen_key[len("generation_") :] if gen_key.startswith("generation_") else gen_key
         label = str(group.get("label") or "").strip() or suffix
-        rows.append(
-            _chiim_row(
-                f"chiim_{suffix}",
-                label,
-                indent=1,
+        parent = _chiim_row(
+            f"chiim_{suffix}",
+            label,
+            indent=1,
+            kind=KIND_CHILD,
+            formula=_ratio_formula(
+                gen_key,
+                f"installed_{suffix}",
+                tooltip=(
+                    f"{label} = Выработка электрической энергии {label} (млн.кВт·ч) × 1000 "
+                    f"/ Установленная мощность {label} (МВт)"
+                ),
+            ),
+        )
+        children = list(group.get("children") or [])
+        if children:
+            _mark_ses_ves_collapsible(parent)
+        rows.append(parent)
+        for child in children:
+            child_gen = str(child.get("key") or "")
+            if not child_gen:
+                continue
+            child_suffix = (
+                child_gen[len("generation_") :]
+                if child_gen.startswith("generation_")
+                else child_gen
+            )
+            child_label = str(child.get("label") or "").strip() or child_suffix
+            child_row = _chiim_row(
+                f"chiim_{child_suffix}",
+                child_label,
+                indent=2,
                 kind=KIND_CHILD,
                 formula=_ratio_formula(
-                    gen_key,
-                    f"installed_{suffix}",
+                    child_gen,
+                    f"installed_{child_suffix}",
                     tooltip=(
-                        f"{label} = Выработка электрической энергии {label} (млн.кВт·ч) × 1000 "
-                        f"/ Установленная мощность {label} (МВт)"
+                        f"{child_label} = Выработка электрической энергии {child_label} (млн.кВт·ч) × 1000 "
+                        f"/ Установленная мощность {child_label} (МВт)"
                     ),
                 ),
             )
-        )
+            child_row["italic"] = True
+            child_row["is_group_child"] = True
+            child_row["parent_group_key"] = f"chiim_{suffix}"
+            rows.append(child_row)
     return rows
 
 
@@ -443,6 +460,7 @@ def build_ee_balance_tables(
     sheets: list[dict[str, Any]] | None = None,
     hydro_year: Any = None,
 ) -> dict[str, dict[str, Any]]:
+    del hydro_year
     if years is None:
         years = get_ee_balance_year_columns()
     digits = resolve_ee_balance_rounding_digits(rounding_digits)
@@ -467,6 +485,7 @@ def build_ee_balance_tables(
         try:
             custom_flows = load_ee_balance_custom_flows(sheets=sheets)
         except Exception:
+            _logger.exception("ee balance page: custom flows load failed")
             custom_flows = {}
     custom_inputs = apply_custom_flows_to_tables(tables, custom_flows)
     if inputs is None:
@@ -479,9 +498,9 @@ def build_ee_balance_tables(
             generation_inputs = load_ee_balance_generation_inputs(
                 years,
                 sheets=sheets,
-                hydro_year=resolve_ee_balance_hydro_year(hydro_year),
             )
         except Exception:
+            _logger.exception("ee balance page: generation inputs load failed")
             generation_inputs = {}
         try:
             generation_inputs = overlay_manual_generation_inputs(
@@ -489,24 +508,29 @@ def build_ee_balance_tables(
                 load_ee_balance_manual_generation_inputs(years, sheets=sheets),
             )
         except Exception:
+            _logger.exception("ee balance page: manual generation overlay failed")
             pass
         try:
             consumption_inputs = load_ee_balance_consumption_inputs(years, sheets=sheets)
         except Exception:
+            _logger.exception("ee balance page: consumption inputs load failed")
             consumption_inputs = {}
         try:
             gaes_charge_inputs = load_ee_balance_gaes_charge_inputs(years, sheets=sheets)
         except Exception:
+            _logger.exception("ee balance page: gaes charge inputs load failed")
             gaes_charge_inputs = {}
         try:
             export_inputs = load_ee_balance_export_inputs(years, sheets=sheets)
         except Exception:
+            _logger.exception("ee balance page: export inputs load failed")
             export_inputs = {}
         try:
             capacity_inputs = load_power_balance_installed_capacity_inputs(
                 years, sheets=sheets
             )
         except Exception:
+            _logger.exception("ee balance page: capacity inputs load failed")
             capacity_inputs = {}
         inputs = _merge_power_balance_inputs(
             generation_inputs,
@@ -535,17 +559,16 @@ def build_ee_balance_table_context(
     rounding_digits: Any = None,
     hydro_year: Any = None,
 ) -> dict[str, Any] | None:
+    del hydro_year
     sheets, sheet = _ee_sheets_including_slug(slug)
     if sheet is None:
         return None
     years = get_ee_balance_year_columns(start_year, end_year)
     digits = resolve_ee_balance_rounding_digits(rounding_digits)
-    resolved_hydro_year = resolve_ee_balance_hydro_year(hydro_year)
     tables = build_ee_balance_tables(
         years,
         rounding_digits=digits,
         sheets=sheets,
-        hydro_year=resolved_hydro_year,
     )
     payload = tables.get(sheet["slug"])
     if payload is None:
@@ -553,7 +576,11 @@ def build_ee_balance_table_context(
     start = years[0] if years else None
     end = years[-1] if years else None
     station_query = power_balance_station_list_query(sheet, sheets, start, end)
-    show_hydro_year_nav = sheet_has_ges_or_gaes_capacity(payload["rows"], years)
+    sheet_hydro_year = hydro_year_for_balance_sheet(sheet, sheets)
+    show_hydro_in_title = (
+        sheet_hydro_year is not None
+        and sheet_has_ges_or_gaes_capacity(payload["rows"], years)
+    )
     return {
         "sheet": payload["sheet"],
         "sheets": sheets,
@@ -562,7 +589,7 @@ def build_ee_balance_table_context(
         "first_row_active_slug": first_row_active_slug(sheet, sheet["slug"]),
         "page_title": format_ee_balance_page_title(
             sheet["title"],
-            hydro_year=resolved_hydro_year if show_hydro_year_nav else None,
+            hydro_year=sheet_hydro_year if show_hydro_in_title else None,
         ),
         "years": years,
         "year_features": get_ee_balance_year_features(),
@@ -572,9 +599,7 @@ def build_ee_balance_table_context(
         "rounding_digits": digits,
         "station_list_url": build_power_balance_station_list_url(station_query),
         "rows": payload["rows"],
-        "show_hydro_year_nav": show_hydro_year_nav,
-        "hydro_year": resolved_hydro_year if show_hydro_year_nav else None,
-        "hydro_year_buttons": (
-            _hydro_year_buttons(sheet["sheet_name"]) if show_hydro_year_nav else []
-        ),
+        "show_hydro_year_nav": False,
+        "hydro_year": sheet_hydro_year if show_hydro_in_title else None,
+        "hydro_year_buttons": [],
     }
