@@ -206,6 +206,27 @@ def test_fo_ez_level_skip_second_coeff_k_row() -> None:
             "parameter_key": "calculated_max_power_mw",
         }
     )
+    assert dss.summary_row_allows_coeff_k_row(
+        {
+            "demand_model_name": "SynchronousAreaDemandParameter",
+            "parameter_key": "combined_on_ees",
+        }
+    )
+    assert (
+        dss.summary_row_allows_coeff_k_row(
+            {
+                "demand_model_name": "SynchronousAreaDemandParameter",
+                "parameter_key": "max_power",
+            }
+        )
+        is False
+    )
+    assert dss.summary_row_allows_coeff_k_row(
+        {
+            "demand_model_name": "EnergySystemTypeDemandParameter",
+            "parameter_key": "combined_on_ees",
+        }
+    )
 
     tagged = [dict(fo_keep), dict(fo_skip), dict(ez_keep), dict(ez_skip)]
     dss.tag_summary_rows_coeff_k_row_visibility(tagged)

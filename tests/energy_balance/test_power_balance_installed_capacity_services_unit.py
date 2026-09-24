@@ -20,6 +20,7 @@ from app.energy_balance.services.power_balance_installed_capacity_services impor
     resolve_station_balance_territory,
     station_capacity_breakdown_to_inputs,
     station_capacity_row_key,
+    _sheet_needs_station_machine_powers,
 )
 from app.energy_balance.services.power_balance_page_services import build_power_balance_tables
 
@@ -48,11 +49,36 @@ def test_groups_skip_unspecified_merge_ves_ses_keep_display_order():
     ses_ves = next(group for group in groups if group["key"] == "installed_ses_ves")
     assert ses_ves["label"] == "СЭС, ВЭС"
     assert ses_ves["type_ids"] == (2, 4)
+    assert [child["key"] for child in ses_ves["children"]] == ["installed_ses", "installed_ves"]
+    assert ses_ves["children"][0]["label"] == "СЭС"
+    assert ses_ves["children"][0]["type_ids"] == (4,)
+    assert ses_ves["children"][1]["label"] == "ВЭС"
+    assert ses_ves["children"][1]["type_ids"] == (2,)
 
 
 def test_groups_gaes_not_confused_with_ges():
     groups = _groups_from_station_types([_st(10, "ГАЭС", 1), _st(11, "ГЭС", 2)])
     assert [group["key"] for group in groups] == ["installed_gaes", "installed_ges"]
+
+
+class _ExpiredLike:
+    """Как expired ORM: id/name есть в __dict__, getattr дергает refresh и падает."""
+
+    def __init__(self, type_id: int, name: str):
+        self.__dict__["id"] = type_id
+        self.__dict__["name"] = name
+
+    def __getattribute__(self, name: str):
+        if name in {"id", "name"}:
+            raise AttributeError("Instance is not bound to a Session")
+        return super().__getattribute__(name)
+
+
+def test_groups_from_station_types_use_dict_when_getattr_refresh_fails():
+    groups = _groups_from_station_types([_ExpiredLike(1, "АЭС"), _ExpiredLike(2, "ТЭС")])
+    assert [group["key"] for group in groups] == ["installed_aes", "installed_tes"]
+    assert groups[0]["type_ids"] == (1,)
+    assert groups[1]["type_ids"] == (2,)
 
 
 def test_default_groups_when_refdata_empty():
@@ -69,6 +95,9 @@ def test_default_groups_when_refdata_empty():
         "installed_snee",
         "installed_ses_ves",
     ]
+    groups = get_power_balance_station_type_groups()
+    ses_ves = next(group for group in groups if group["key"] == "installed_ses_ves")
+    assert [child["key"] for child in ses_ves["children"]] == ["installed_ses", "installed_ves"]
 
 
 def test_match_ues_center_excludes_northwest():
@@ -157,11 +186,16 @@ def test_load_inputs_from_ues_and_sync_area_aggregates():
     assert inputs["centr"]["installed_aes"][2026] == Decimal("40")
     assert inputs["centr"]["installed_tes"][2026] == Decimal("30")
     assert inputs["centr"]["installed_ses_ves"][2026] == Decimal("12")
+    assert inputs["centr"]["installed_ses"][2026] == Decimal("7")
+    assert inputs["centr"]["installed_ves"][2026] == Decimal("5")
     assert inputs["centr"]["available_aes"][2026] == Decimal("35")
     assert inputs["centr"]["available_tes"][2026] == Decimal("25")
     assert inputs["centr"]["available_ses_ves"][2026] == Decimal("10")
+    assert inputs["centr"]["available_ses"][2026] == Decimal("6")
+    assert inputs["centr"]["available_ves"][2026] == Decimal("4")
     assert inputs["centr"]["constraints"][2026] == Decimal("15")
     assert inputs["centr"]["commissioning_after_max"][2026] == Decimal("4")
+    assert inputs["centr"]["installed_total"][2026] == Decimal("82")
     assert inputs["kaliningradskaya-sz-ees"]["installed_tes"][2026] == Decimal("500")
     assert inputs["kaliningradskaya-sz-ees"]["available_tes"][2026] == Decimal("475")
     assert inputs["kaliningradskaya-sz-ees"]["constraints"][2026] == Decimal("25")
@@ -448,6 +482,73 @@ def test_machine_labels_keep_number_even_if_it_appears_inside_model_name():
         "2 Т-55/60-130",
         "3 Т-110/120-130",
         "6 LM6000 PF Sprint",
+    ]
+
+
+def test_sheet_needs_station_machine_powers_for_tites_and_kaliningrad():
+    assert _sheet_needs_station_machine_powers(
+        {"station_capacity_breakdown": True, "layout": "oes_standard"}
+    )
+    assert _sheet_needs_station_machine_powers({"layout": "kaliningrad"})
+    assert not _sheet_needs_station_machine_powers({"layout": "oes_standard"})
+    assert not _sheet_needs_station_machine_powers(
+        {"layout": "kaliningrad", "skip_table": True}
+    )
+
+
+def test_build_station_capacity_items_sorts_by_type_display_order_then_name():
+    rows = [
+        SimpleNamespace(
+            station_id=1,
+            station_name="Ясная ТЭС",
+            station_type_id=5,
+            station_type_display_order=5,
+            machine_id=1,
+            machine_number="1",
+            machine_name="Г-1",
+            year=2026,
+            p_ust=Decimal("1"),
+        ),
+        SimpleNamespace(
+            station_id=2,
+            station_name="Альфа ТЭС",
+            station_type_id=5,
+            station_type_display_order=5,
+            machine_id=2,
+            machine_number="1",
+            machine_name="Г-1",
+            year=2026,
+            p_ust=Decimal("1"),
+        ),
+        SimpleNamespace(
+            station_id=3,
+            station_name="Ясная ГЭС",
+            station_type_id=3,
+            station_type_display_order=1,
+            machine_id=3,
+            machine_number="1",
+            machine_name="Г-1",
+            year=2026,
+            p_ust=Decimal("1"),
+        ),
+        SimpleNamespace(
+            station_id=4,
+            station_name="Без типа",
+            station_type_id=None,
+            station_type_display_order=None,
+            machine_id=4,
+            machine_number="1",
+            machine_name="Г-1",
+            year=2026,
+            p_ust=Decimal("1"),
+        ),
+    ]
+    items = _build_station_capacity_items(rows, [2026])
+    assert [item["label"] for item in items] == [
+        "Ясная ГЭС",
+        "Альфа ТЭС",
+        "Ясная ТЭС",
+        "Без типа",
     ]
 
 

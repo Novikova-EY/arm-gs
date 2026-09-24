@@ -1,109 +1,58 @@
-{% extends 'base.html' %}
+{% extends 'hub_base.html' %}
+{% from 'includes/hub_macros.html' import hub_tile %}
 
 {% block title %}Нагрузки{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container-fluid mt-2">
-
-<div class="container content-start-container">
-    <div class="container-fluid">
-        <h2 class="text-center align-middle mb-4">Модуль «Нагрузки»</h2>
-
-        <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                                <a href="{{ url_for('power_demand_bp.demand_summary_oes') }}" class="btn btn-primary fs-4 w-100 py-4">
-                                    Максимумы потребления мощности<br>по энергосистемам
-                                </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Максимумы потребления мощности<br>по федеральным округам
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Максимумы потребления мощности<br>по энергозонам
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4 border-secondary border-2 opacity-50">
-
-        <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.demand_summary_oes_coeff') }}" class="btn btn-success fs-4 w-100 py-4">
-                            Коэффициенты и совмещенные максимумы<br>по энергосистемам
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.demand_summary_federal_districts_coeff') }}" class="btn btn-success fs-4 w-100 py-4">
-                            Коэффициенты и совмещенные максимумы<br>по федеральным округам
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.demand_summary_energy_zones_coeff') }}" class="btn btn-success fs-4 w-100 py-4">
-                            Коэффициенты и совмещенные максимумы<br>по энергозонам
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4 border-secondary border-2 opacity-50">
-
-        <div class="row g-4 justify-content-center{% if not can_edit_power_demand %} pb-4{% endif %}">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.ozp_maxima') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Максимумы потребления мощности ОЗП
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {% if can_edit_power_demand %}
-        <hr class="my-4 border-secondary border-2 opacity-50">
-        <div class="row g-4 justify-content-center pb-4">
-            <div class="col-12 col-md-8 col-lg-6">
-                <div class="card shadow-sm w-100 border-secondary">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.power_demand_formulas') }}"
-                           class="btn btn-outline-secondary fs-5 w-100 py-3">
-                            Текстовое описание для подсказок «i» формул
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+<div class="home-outline">
+    <div class="home-outline__title-row">
+        <h1 class="home-outline__title">Модуль «Нагрузки»</h1>
     </div>
-</div>
 
+    <section class="home-outline__section">
+        <h2 class="home-outline__section-title">Отчетные данные</h2>
+        <div class="home-outline__tiles">
+            {% call hub_tile(url_for('power_demand_bp.demand_summary_oes')) %}
+                Максимумы потребления мощности<br>по энергосистемам
+            {% endcall %}
+            {% call hub_tile(url_for('power_demand_bp.demand_summary_federal_districts')) %}
+                Максимумы потребления мощности<br>по федеральным округам
+            {% endcall %}
+            {% call hub_tile(url_for('power_demand_bp.demand_summary_energy_zones')) %}
+                Максимумы потребления мощности<br>по энергозонам
+            {% endcall %}
+        </div>
+    </section>
+
+    <section class="home-outline__section">
+        <h2 class="home-outline__section-title">Расчетный блок</h2>
+        <div class="home-outline__tiles">
+            {% call hub_tile(url_for('power_demand_bp.demand_summary_oes_coeff'), extra_class='is-accent') %}
+                Коэффициенты и совмещенные максимумы<br>по энергосистемам
+            {% endcall %}
+            {% call hub_tile(url_for('power_demand_bp.demand_summary_federal_districts_coeff'), extra_class='is-accent') %}
+                Коэффициенты и совмещенные максимумы<br>по федеральным округам
+            {% endcall %}
+            {% call hub_tile(url_for('power_demand_bp.demand_summary_energy_zones_coeff'), extra_class='is-accent') %}
+                Коэффициенты и совмещенные максимумы<br>по энергозонам
+            {% endcall %}
+        </div>
+    </section>
+
+    <section class="home-outline__section">
+        <div class="home-outline__tiles">
+            {{ hub_tile(url_for('power_demand_bp.ozp_maxima'), 'Максимумы потребления мощности ОЗП') }}
+        </div>
+    </section>
+
+    {% if can_edit_power_demand %}
+    <section class="home-outline__section">
+        <div class="home-outline__tiles">
+            {{ hub_tile(url_for('power_demand_bp.power_demand_formulas'), 'Текстовое описание для подсказок «i» формул', 'is-ghost') }}
+        </div>
+    </section>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

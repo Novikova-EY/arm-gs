@@ -1,0 +1,62 @@
+{% extends 'hub_base.html' %} {% from 'includes/hub_macros.html' import hub_tile
+%} {% block title %}Экология{% endblock %} {% block content %} {% if
+current_user.is_authenticated %}
+<div class="home-outline">
+  <div class="home-outline__title-row">
+    <h1 class="home-outline__title">Модуль «Экология»</h1>
+  </div>
+
+  <section class="home-outline__section">
+    <h2 class="home-outline__section-title">Отчетные данные</h2>
+    <div class="home-outline__tiles">
+      {{ hub_tile(url_for('ecology_bp.gis_tek_pg'), 'Парниковые
+      газы (ПГ)') }} {{ hub_tile(url_for('ecology_bp.gis_tek_pollutants'),
+      'Загрязняющие вещества (ЗВ)') }}
+    </div>
+  </section>
+
+  <section class="home-outline__section">
+    <h2 class="home-outline__section-title">Анализ данных</h2>
+    <div class="home-outline__tiles">
+      {% for group in comparison_groups %} {% call
+      hub_tile(url_for('ecology_bp.gis_tes_fuel_comparison',
+      sheet_slug=group.default_sheet_slug)) %} {% if group.slug == 'pg' %}
+      Парниковые газы (ПГ)<br />анализ отчетных данных {% elif group.slug ==
+      'zv' %} Загрязняющие вещества (ЗВ)<br />анализ отчетных данных {% else %}
+      {{ group.title }} {% endif %} {% endcall %} {% endfor %}
+    </div>
+  </section>
+
+  <section class="home-outline__section">
+    <h2 class="home-outline__section-title">Расчетные значения</h2>
+    <div class="home-outline__tiles">
+      {{ hub_tile(url_for('ecology_bp.operating_tes_table',
+      territory_slug='vsego', sheet_slug='obemy'), 'Расчет по действующим ТЭС',
+      'is-accent') }} {{ hub_tile(url_for('ecology_bp.new_tes_table',
+      territory_slug='vsego', sheet_slug='obemy'), 'Расчет по новым ТЭС',
+      'is-accent') }}
+    </div>
+  </section>
+
+  <section class="home-outline__section">
+    <h2 class="home-outline__section-title">Агрегированные значения</h2>
+    <div class="home-outline__tiles">
+      {% call hub_tile(url_for('ecology_bp.totals_summary', sheet_slug='pg-vse')) %}
+        Парниковые газы (ПГ)<br />агрегационные суммы
+      {% endcall %}
+      {% call hub_tile(url_for('ecology_bp.totals_summary', sheet_slug='zv-vse')) %}
+        Загрязняющие вещества (ЗВ)<br />агрегационные суммы
+      {% endcall %}
+    </div>
+  </section>
+
+  {% if can_edit_ecology %}
+  <section class="home-outline__section">
+    <div class="home-outline__tiles">
+      {{ hub_tile(url_for('ecology_bp.operating_tes_formulas'), 'Текстовое
+      описание для подсказок «i» формул', 'is-ghost') }}
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endif %} {% endblock %}

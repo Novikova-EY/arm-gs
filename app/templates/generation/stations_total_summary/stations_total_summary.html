@@ -55,9 +55,11 @@
                     <button type="submit" class="btn btn-outline-success">Применить</button>
 
                     <a href="{{ url_for('generation_bp.totals_summary') }}" class="btn btn-outline-danger">Сбросить</a>
-                    
-                    <div class="filter-item">
-                        <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-primary w-100" style="white-space: nowrap;">Выгрузить</button>
+
+                    <div class="filter-item ms-3">
+                        <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" style="white-space: nowrap;">
+                            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                        </button>
                     </div>
                 </form>
             </div>

@@ -365,11 +365,12 @@
         return true;
     }
 
-    var COEFF_K_VISIBLE_STORAGE_KEY = "powerDemandCoeffKColumnsVisibleV2";
+    var COEFF_K_VISIBLE_STORAGE_KEY = "powerDemandCoeffKColumnsVisibleV3";
 
     /**
      * Предпочтительная видимость строк k (sessionStorage + дефолт).
-     * При pd_page_size=0 (все секции) по умолчанию скрываем — иначе DOM ~×2.
+     * Полное дерево при pd_page_size=0: по умолчанию скрываем k — иначе DOM ~×2.
+     * «Сводная таблица» тоже ставит page_size=0, но таблица короткая — k показываем.
      */
     function preferCoeffKColumnsVisible() {
         try {
@@ -383,6 +384,9 @@
         } catch (eStor) {
             /* ignore */
         }
+        if (window.__pdPdSummaryTerritoryCompactMode === true) {
+            return true;
+        }
         try {
             var raw = new URLSearchParams(window.location.search || "").get(
                 "pd_page_size"
@@ -395,6 +399,7 @@
         }
         return true;
     }
+    window.__pdPdSummaryPreferCoeffKColumnsVisible = preferCoeffKColumnsVisible;
 
     /** Синхронизировать класс таблицы до первого рендера tbody. */
     function applyInitialCoeffKVisibilityClass() {
@@ -408,6 +413,8 @@
             table.classList.add("pd-coeff-hide-k-columns");
         }
     }
+    window.__pdPdSummaryApplyInitialCoeffKVisibilityClass =
+        applyInitialCoeffKVisibilityClass;
     applyInitialCoeffKVisibilityClass();
 
     /** Строки k в DOM нужны только когда блоки k видимы (иначе — лишний объём). */

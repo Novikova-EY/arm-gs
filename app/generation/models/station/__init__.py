@@ -1,3 +1,4 @@
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.station.station_gaes_charge_consumption_model import StationGaesChargeConsumption
+from app.generation.models.station.station_owner_energy_generation_model import StationOwnerEnergyGeneration

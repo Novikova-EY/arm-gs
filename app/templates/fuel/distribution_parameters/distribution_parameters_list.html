@@ -112,8 +112,18 @@
     /* Сохраняет mb-2 последней строки кнопок внутри панели (как на edit_data) */
     display: flow-root;
 }
-.distribution-sticky-controls .power-demand-import-export-collapse,
-.distribution-sticky-controls #distributionImportExportCollapse {
+/* Свёрнутая строка не занимает место в потоке (как на station_list) */
+.distribution-sticky-controls > .col-12:has(> #distributionImportExportCollapse:not(.show):not(.collapsing)) {
+    display: none;
+}
+/* Без анимации высоты: иначе .collapsing { height:0 } + overflow:visible рисует
+   «Экспорт» поверх «Сбросить», а пересчёт липкой шапки растягивает это на секунды */
+#distributionImportExportCollapse.collapsing {
+    height: auto !important;
+    transition: none !important;
+    overflow: visible !important;
+}
+.distribution-sticky-controls #distributionImportExportCollapse.show {
     overflow: visible !important;
 }
 /* overflow на .table-responsive ломает sticky у thead относительно .page-table-scroll */
@@ -442,8 +452,8 @@
 
     {% if current_user.is_authenticated and current_user.has_admin %}
     <div class="col-12 mb-2">
-        <div class="collapse" id="distributionImportExportCollapse">
-            <div class="d-flex justify-content-between align-items-start w-100 flex-nowrap mt-2">
+        <div class="collapse power-demand-import-export-collapse" id="distributionImportExportCollapse">
+            <div class="d-flex justify-content-between align-items-start w-100 flex-wrap gap-2">
                 <div class="d-flex gap-2">
                     <form method="GET" action="{{ url_for('fuel_bp.distribution_parameters_export') }}" id="distributionParametersExportForm">
                         {% for key, value in request.args.items() %}
@@ -1338,13 +1348,17 @@ document.addEventListener("DOMContentLoaded", function() {
             ? Math.ceil(controls.getBoundingClientRect().height || controls.offsetHeight || 0)
             : 0;
         document.documentElement.style.setProperty("--distribution-controls-sticky-height", h + "px");
+    }
+
+    function updateDistributionStickyLayout() {
+        updateDistributionStickyHeights();
         if (typeof window.armGsApplyStickyTheadOffsets === "function") {
             window.armGsApplyStickyTheadOffsets();
         }
     }
 
     function bind() {
-        updateDistributionStickyHeights();
+        updateDistributionStickyLayout();
         var controls = document.getElementById("distributionStickyControls");
         if (controls && typeof ResizeObserver !== "undefined") {
             var ro = new ResizeObserver(function () {
@@ -1352,10 +1366,10 @@ document.addEventListener("DOMContentLoaded", function() {
             });
             ro.observe(controls);
         }
-        document.addEventListener("shown.bs.collapse", updateDistributionStickyHeights);
-        document.addEventListener("hidden.bs.collapse", updateDistributionStickyHeights);
-        window.addEventListener("resize", updateDistributionStickyHeights);
-        window.addEventListener("load", updateDistributionStickyHeights);
+        document.addEventListener("shown.bs.collapse", updateDistributionStickyLayout);
+        document.addEventListener("hidden.bs.collapse", updateDistributionStickyLayout);
+        window.addEventListener("resize", updateDistributionStickyLayout);
+        window.addEventListener("load", updateDistributionStickyLayout);
     }
 
     if (document.readyState === "loading") {

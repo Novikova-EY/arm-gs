@@ -1,0 +1,449 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+  <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-2">
+    <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5">Модуль «Балансы ЭЭ и ЭМ»</a>
+    <a href="{{ url_for('energy_balance_bp.ee_generation') }}" class="btn btn-secondary fs-5">Выработка ЭЭ</a>
+  </div>
+
+  <div class="col-12 mb-2">
+    <h2 class="text-center mb-3">{{ page_title }}</h2>
+  </div>
+
+  <div class="col-12 mb-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <form method="GET" action="{{ url_for('energy_balance_bp.ee_generation_totals_summary') }}" class="d-flex align-items-center gap-2" id="yearForm">
+          {% for key, values in request.args.lists() %}
+            {% if key not in ['start_year', 'end_year', 'aggregation_type', 'show_res'] %}
+              {% for value in values %}
+              <input type="hidden" name="{{ key }}" value="{{ value }}">
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          <input type="hidden" name="show_res" value="{{ 1 if show_res else 0 }}">
+          <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+          <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 4.5rem;">
+            {% for year in filter_year_list %}
+            <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+          <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+          <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 4.5rem;">
+            {% for year in filter_year_list %}
+            <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-success">Применить</button>
+          <a href="{{ url_for('energy_balance_bp.ee_generation_totals_summary') }}" class="btn btn-outline-danger">Сбросить</a>
+          <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2 ms-3" style="white-space: nowrap;">
+            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+          </button>
+        </form>
+      </div>
+
+      <form method="get" action="{{ url_for('energy_balance_bp.ee_generation_totals_summary') }}" id="totalsFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+        <input type="hidden" name="start_year" value="{{ start_year }}">
+        <input type="hidden" name="end_year" value="{{ end_year }}">
+        <input type="hidden" name="show_res" value="0">
+
+        <input type="checkbox" class="btn-check" id="showResSwitch" name="show_res" value="1" {% if show_res %}checked{% endif %}>
+        <label for="showResSwitch" class="btn {% if show_res %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center text-nowrap">
+          + Региональные энергосистемы
+        </label>
+
+        <button type="button"
+                id="eeTotalsVerificationToggle"
+                class="btn btn-outline-info px-3 text-center text-nowrap me-3"
+                aria-pressed="false"
+                title="Показать строки проверки (синий фон)">
+          Проверка
+        </button>
+
+        <div class="d-flex align-items-center gap-1">
+          <label for="rounding_digits" class="mb-0" style="white-space: nowrap;">Округл:</label>
+          <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
+            <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+            <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+            <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+            <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+            <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+          </select>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    .ee-totals-wrap {
+      max-height: calc(100vh - 280px);
+      overflow: auto;
+    }
+    .ee-totals-wrap thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #d1e7dd;
+      box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    .ee-totals-wrap th.ee-totals-label,
+    .ee-totals-wrap td.ee-totals-label {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      min-width: 18rem;
+      background-color: inherit;
+    }
+    .ee-totals-wrap thead th.ee-totals-label {
+      z-index: 6;
+      background: #d1e7dd;
+    }
+    .ee-totals-wrap td.ee-totals-res {
+      padding-left: 2rem;
+      font-weight: 400;
+    }
+    /* table-striped затемняет чётные/нечётные цветные строки по-разному —
+       у итогов ОЭС/ЕЭС/СЗ цвет должен быть одинаковым. */
+    #eeGenerationTotalsTable tbody tr.table-info > *,
+    #eeGenerationTotalsTable tbody tr.table-primary > *,
+    #eeGenerationTotalsTable tbody tr.table-warning > *,
+    #eeGenerationTotalsTable tbody tr.table-danger > *,
+    #eeGenerationTotalsTable tbody tr.table-secondary:not(.ee-totals-res-row) > * {
+      --bs-table-accent-bg: transparent;
+      box-shadow: none;
+      font-weight: 600;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-res-row > * {
+      --bs-table-accent-bg: transparent;
+      box-shadow: none;
+      font-weight: 400;
+    }
+    #eeGenerationTotalsTable tbody tr.table-info > td {
+      background-color: #cff4fc;
+    }
+    #eeGenerationTotalsTable tbody tr.table-primary > td {
+      background-color: #cfe2ff;
+    }
+    #eeGenerationTotalsTable tbody tr.table-warning > td {
+      background-color: #fff3cd;
+    }
+    #eeGenerationTotalsTable tbody tr.table-danger > td {
+      background-color: #f8d7da;
+    }
+    #eeGenerationTotalsTable tbody tr.table-secondary > td {
+      background-color: #e2e3e5;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-res-row > td {
+      font-weight: 400;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-res-row:nth-child(odd) > td {
+      background-color: #fff;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-res-row:nth-child(even) > td {
+      background-color: #f8f9fa;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-verify-row {
+      display: none;
+    }
+    #eeGenerationTotalsTable.ee-totals-verification-on tbody tr.ee-totals-verify-row {
+      display: table-row;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-verify-row > * {
+      --bs-table-accent-bg: transparent;
+      box-shadow: none;
+      font-weight: 600;
+      font-style: italic;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-verify-row > td {
+      background-color: #e2ecf7;
+    }
+    #eeGenerationTotalsTable tbody tr.ee-totals-verify-row span.text-danger {
+      color: var(--bs-danger) !important;
+    }
+    #eeGenerationTotalsTable tbody td:not(.ee-totals-label) {
+      font-size: 1.15rem;
+    }
+    #eeGenerationTotalsTable input.ee-control-value {
+      min-width: 5.25rem;
+      max-width: 8.5rem;
+      margin: 0 auto;
+      font-size: 1.15rem;
+      line-height: 1.3;
+      font-weight: inherit;
+      background-color: #fff;
+    }
+    #eeGenerationTotalsTable td.ee-control-cell {
+      vertical-align: middle;
+    }
+  </style>
+
+  <div class="ee-totals-wrap table-responsive">
+    <table id="eeGenerationTotalsTable" class="table table-hover table-striped table-bordered mb-0">
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th class="ee-totals-label"></th>
+          {% for period_num, period_label in period_columns %}
+          {% set year_feature_label = year_features.get(period_num) %}
+          <th class="text-center align-middle">
+            {{ period_label }}
+            {% if year_feature_label %}
+            <div class="small text-muted">{{ year_feature_label }}</div>
+            {% endif %}
+            <span class="text-muted small fw-normal d-block">млн кВтч</span>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% if rows %}
+          {% for row in rows %}
+          <tr class="{{ row.row_class }} text-center align-middle{% if row.level == 'res' %} ee-totals-res-row{% endif %}{% if row.is_verification %} ee-totals-verify-row{% endif %}"
+              data-level="{{ row.level }}"
+              {% if row.entity_id %}data-entity-id="{{ row.entity_id }}"{% endif %}>
+            <td class="ee-totals-label text-start {% if row.level == 'res' %}ee-totals-res{% endif %} {{ row.row_class }}">
+              {{ row.label }}{% if row.info_tooltip %}
+              <i class="bi bi-info-circle text-primary ms-1 ee-totals-tip"
+                 data-bs-toggle="tooltip"
+                 data-bs-placement="top"
+                 title="{{ row.info_tooltip|e }}"
+                 style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;"
+                 aria-label="Формула проверки"></i>{% endif %}
+            </td>
+            {% for period_num, period_label in period_columns %}
+            {% if row.is_verification %}
+            <td>
+              <span class="{% if row.cell_nonzero[loop.index0] %}text-danger{% endif %}">{{ row.cells[loop.index0] }}</span>
+            </td>
+            {% else %}
+            <td class="ee-control-cell p-1">
+              <input type="text"
+                     class="form-control form-control-sm text-center ee-control-value"
+                     data-level="{{ row.level }}"
+                     data-period="{{ period_num }}"
+                     {% if row.entity_id %}data-entity-id="{{ row.entity_id }}"{% endif %}
+                     {% if row.level == 'res' %}data-res-id="{{ row.entity_id }}"{% endif %}
+                     {% if row.ues_id %}data-ues-id="{{ row.ues_id }}"{% endif %}
+                     {% if row.est_id %}data-est-id="{{ row.est_id }}"{% endif %}
+                     {% if row.sa_ids %}data-sa-ids="{{ row.sa_ids|join(',') }}"{% endif %}
+                     value="{{ row.input_values.get(period_num, '') }}"
+                     inputmode="decimal"
+                     aria-label="{{ row.label }} за {{ period_label }}">
+            </td>
+            {% endif %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{{ period_columns|length + 1 }}" class="text-center text-muted py-4">
+              Нет данных для выбранных параметров
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const totalsForm = document.getElementById("totalsFilterForm");
+  if (totalsForm) {
+    totalsForm.querySelectorAll('input[type="checkbox"], #rounding_digits').forEach(function (el) {
+      el.addEventListener("change", function () {
+        totalsForm.submit();
+      });
+    });
+  }
+
+  document.querySelectorAll("[data-bs-toggle='tooltip']").forEach(function (el) {
+    if (window.bootstrap && bootstrap.Tooltip) {
+      new bootstrap.Tooltip(el);
+    }
+  });
+
+  (function initEeTotalsVerificationToggle() {
+    const toggleBtn = document.getElementById("eeTotalsVerificationToggle");
+    const table = document.getElementById("eeGenerationTotalsTable");
+    if (!toggleBtn || !table) return;
+
+    const storageKey = "eeGenerationTotalsVerificationMode";
+    try {
+      window.__eeTotalsVerificationMode = sessionStorage.getItem(storageKey) === "1";
+    } catch (e) {
+      window.__eeTotalsVerificationMode = false;
+    }
+
+    function syncUi() {
+      const on = window.__eeTotalsVerificationMode === true;
+      toggleBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      toggleBtn.classList.toggle("btn-info", on);
+      toggleBtn.classList.toggle("btn-outline-info", !on);
+      table.classList.toggle("ee-totals-verification-on", on);
+    }
+
+    syncUi();
+    toggleBtn.addEventListener("click", function () {
+      window.__eeTotalsVerificationMode = !window.__eeTotalsVerificationMode;
+      try {
+        sessionStorage.setItem(
+          storageKey,
+          window.__eeTotalsVerificationMode ? "1" : "0"
+        );
+      } catch (e) { /* */ }
+      syncUi();
+    });
+  })();
+
+  (function initEeGenerationTotalsControlSave() {
+    const table = document.getElementById("eeGenerationTotalsTable");
+    if (!table) return;
+
+    const SAVE_URL = {{ ee_control_save_url|default('')|tojson }};
+    if (!SAVE_URL) return;
+
+    const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
+    const DIGITS = {{ rounding_digits|default(1)|tojson }};
+    const timers = new WeakMap();
+
+    function parseRaw(text) {
+      if (text == null) return null;
+      const s = String(text)
+        .trim()
+        .replace(/\u2212/g, "-")
+        .replace(/\u00a0/g, "")
+        .replace(/\u202f/g, "")
+        .replace(/\s/g, "")
+        .replace(",", ".");
+      if (!s || s === "—" || s === "-" || s === "–") return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function saveControlInput(input) {
+      const level = input.getAttribute("data-level") || "res";
+      const resId = input.getAttribute("data-res-id");
+      const entityId = input.getAttribute("data-entity-id");
+      const period = input.getAttribute("data-period");
+      if (period == null) return;
+      if (level === "res" && !resId) return;
+      if (level !== "res" && level !== "russia" && !entityId) return;
+
+      const parsed = parseRaw(input.value);
+      if (Number.isNaN(parsed)) {
+        input.classList.add("is-invalid");
+        return;
+      }
+      input.classList.remove("is-invalid");
+
+      const payload = {
+        level: level,
+        period: Number(period),
+        value: parsed == null ? "" : input.value,
+        ee_period_mode: "years",
+        rounding_digits: DIGITS,
+      };
+      if (resId) payload.res_id = Number(resId);
+      if (entityId) payload.entity_id = Number(entityId);
+
+      fetch(SAVE_URL, {
+        method: "PATCH",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          "X-CSRFToken": CSRF || "",
+        },
+        body: JSON.stringify(payload),
+      })
+        .then(function (response) {
+          return response.json().then(function (body) {
+            if (!response.ok || !body || !body.ok) {
+              throw new Error(
+                (body && body.error) ||
+                  "Не удалось сохранить контрольное значение"
+              );
+            }
+            return body;
+          });
+        })
+        .then(function (body) {
+          input.value = body.display || "";
+        })
+        .catch(function (error) {
+          input.classList.add("is-invalid");
+          console.error(error);
+        });
+    }
+
+    table.addEventListener("input", function (event) {
+      const input = event.target.closest("input.ee-control-value");
+      if (!input || !table.contains(input)) return;
+      input.classList.remove("is-invalid");
+      const prev = timers.get(input);
+      if (prev) clearTimeout(prev);
+      timers.set(
+        input,
+        setTimeout(function () {
+          saveControlInput(input);
+        }, 400)
+      );
+    });
+
+    table.addEventListener("change", function (event) {
+      const input = event.target.closest("input.ee-control-value");
+      if (!input || !table.contains(input)) return;
+      const prev = timers.get(input);
+      if (prev) clearTimeout(prev);
+      saveControlInput(input);
+    });
+  })();
+
+  const exportButton = document.getElementById("exportTotalsSummaryExcel");
+  if (!exportButton) return;
+  exportButton.addEventListener("click", function (e) {
+    e.preventDefault();
+    const originalText = this.innerHTML;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+    this.disabled = true;
+
+    const params = new URLSearchParams();
+    const yearForm = document.getElementById("yearForm");
+    if (yearForm) {
+      const startYearSelect = yearForm.querySelector("#start_year");
+      const endYearSelect = yearForm.querySelector("#end_year");
+      if (startYearSelect) params.set("start_year", startYearSelect.value);
+      if (endYearSelect) params.set("end_year", endYearSelect.value);
+    }
+    if (totalsForm) {
+      const roundingSelect = totalsForm.querySelector("#rounding_digits");
+      if (roundingSelect) params.set("rounding_digits", roundingSelect.value);
+      const showResCheckbox = totalsForm.querySelector("#showResSwitch");
+      params.set("show_res", showResCheckbox && showResCheckbox.checked ? "1" : "0");
+    }
+    params.set(
+      "show_verification",
+      window.__eeTotalsVerificationMode === true ? "1" : "0"
+    );
+    if (!params.has("start_year")) params.set("start_year", "{{ start_year }}");
+    if (!params.has("end_year")) params.set("end_year", "{{ end_year }}");
+    if (!params.has("rounding_digits")) params.set("rounding_digits", "{{ rounding_digits }}");
+    if (!params.has("show_res")) params.set("show_res", "{{ 1 if show_res else 0 }}");
+
+    const exportUrl = '{{ url_for("energy_balance_bp.ee_generation_totals_summary_export") }}?' + params.toString();
+    window.open(exportUrl, "_blank", "noopener");
+    setTimeout(() => {
+      this.innerHTML = originalText;
+      this.disabled = false;
+    }, 1000);
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

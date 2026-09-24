@@ -46,9 +46,11 @@ def import_all_models():
         "app.generation.models.station_group_model",
         "app.generation.models.station_model",
         "app.generation.models.station.station_gaes_charge_consumption_model",
+        "app.generation.models.station.station_owner_energy_generation_model",
         "app.energy_balance.models.station_energy_generation_model",
         "app.energy_balance.models.espp_energy_generation_model",
         "app.energy_balance.models.regional_energy_system_energy_generation_model",
+        "app.energy_balance.models.energy_system_energy_generation_control_model",
         "app.energy_balance.models.ee_balance_manual_generation_value_model",
         "app.generation.prospective_places.models.prospective_place_hydro_energy_forecast_model",
         "app.generation.models.boiler_model",
@@ -118,6 +120,14 @@ def import_all_models():
         "app.power_demand.models.territories.regional_district_demand_parameter_model",
         "app.power_demand.models.territories.russia_federation_demand_parameter_model",
         "app.power_demand.models.ozp_max_power_parameter_model",
+        # ecology (gs_eco)
+        "app.ecology.models.pg_report_gis_tek_model",
+        "app.ecology.models.zv_report_gis_tek_model",
+        "app.ecology.models.pg_param_calc_model",
+        "app.ecology.models.operating_tes_fuel_characteristic_model",
+        "app.ecology.models.operating_tes_coefficient_model",
+        "app.ecology.models.operating_tes_input_model",
+        "app.ecology.models.new_tes_norm_model",
     ]
     for m in modules:
         try:

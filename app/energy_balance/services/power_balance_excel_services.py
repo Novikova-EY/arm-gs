@@ -25,6 +25,7 @@ from app.energy_balance.services.power_balance_page_services import (
     get_power_balance_year_columns,
     get_power_balance_year_features,
     is_power_balance_flow_block_row,
+    resolve_power_balance_demand_mode,
     resolve_power_balance_rounding_digits,
 )
 
@@ -148,7 +149,7 @@ def _write_sheet(
     ws.row_dimensions[2].height = 32 if any((year_features or {}).values()) else 20
 
     excel_row = 3
-    flow_group_child_rows: list[int] = []
+    outline_child_rows: list[int] = []
     FLOW_GROUP_PARENT_KEY = "flow_total"
     FLOW_GROUP_SKIP_KEYS = {FLOW_GROUP_PARENT_KEY, "surplus_deficit_with_flow"}
     for row in rows:
@@ -199,15 +200,17 @@ def _write_sheet(
             ws.row_dimensions[excel_row].height = min(
                 15 + 12 * (note_text.count("\n") + 1), 90
             )
-        if (
+        if row.get("is_group_child"):
+            outline_child_rows.append(excel_row)
+        elif (
             show_flow_rows
             and is_power_balance_flow_block_row(row)
             and str(row.get("key") or "") not in FLOW_GROUP_SKIP_KEYS
         ):
-            flow_group_child_rows.append(excel_row)
+            outline_child_rows.append(excel_row)
         excel_row += 1
 
-    for row_idx in flow_group_child_rows:
+    for row_idx in outline_child_rows:
         ws.row_dimensions[row_idx].outline_level = 1
     outline = ws.sheet_properties.outlinePr
     outline.summaryBelow = False
@@ -230,6 +233,7 @@ def export_power_balance_to_excel(
     start_year: Any = None,
     end_year: Any = None,
     rounding_digits: Any = None,
+    demand_mode: Any = None,
     include_type_breakdown: bool = False,
     show_empty_rows: bool = True,
     show_flow_rows: bool = True,
@@ -240,12 +244,15 @@ def export_power_balance_to_excel(
 ) -> BytesIO:
     """Файл со вкладкой на каждый лист баланса мощности."""
     digits = resolve_power_balance_rounding_digits(rounding_digits)
+    mode = resolve_power_balance_demand_mode(demand_mode)
     if years is None:
         years = get_power_balance_year_columns(start_year, end_year)
     if sheets is None:
         sheets = get_power_balance_sheets()
     if tables is None:
-        tables = build_power_balance_tables(years, rounding_digits=digits)
+        tables = build_power_balance_tables(
+            years, rounding_digits=digits, demand_mode=mode
+        )
     if year_features is None:
         year_features = get_power_balance_year_features()
 

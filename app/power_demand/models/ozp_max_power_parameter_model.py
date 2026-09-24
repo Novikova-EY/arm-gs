@@ -22,6 +22,9 @@ class OzpMaxPowerParameter(db.Model, AuditMixin):
     # Максимум потребления мощности ОЗП, МВт
     max_power_mw = db.Column(Numeric(25, 3), nullable=True)
 
+    # Дата и время прохождения максимума потребления мощности, дд.мм чч:мм
+    peak_datetime = db.Column(db.String(64), nullable=True)
+
     # Прирост к прошлому ОЗП, %
     growth_pct = db.Column(Numeric(12, 6), nullable=True)
 

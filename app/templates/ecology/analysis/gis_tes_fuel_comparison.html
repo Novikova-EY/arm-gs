@@ -1,0 +1,903 @@
+{% extends 'base.html' %}
+{% from 'fuel/_shared/equipment_group_name_macros.html' import fuel_hierarchy_level_header, eg_name_cell_class, eg_name_label %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
+
+{% macro cmp_summary_rows(summary, columns, rowspan_column_keys) -%}
+{% if summary and summary.rows %}
+{% for row in summary.rows %}
+<tr class="table-info cmp-summary-row{% if row.is_empty %} ot-row-empty-hidden{% endif %}{% if loop.last %} fuel-param-group-last{% endif %}"
+    data-row-key="{{ row.key }}"
+    data-cmp-group-id="sum-{{ row.key }}">
+  {% for cell in row.cells %}
+  {% set col = columns[loop.index0] %}
+  {% set is_span_col = col.key in rowspan_column_keys %}
+  {% set is_station = col.key in ['NAME', 'Stancia'] %}
+  {% if is_span_col and not row.is_group_first %}
+  {% else %}
+  <td class="text-center{% if col.sticky %} cmp-sticky{% if is_station %} cmp-station-name{% endif %} text-start{% else %} cmp-data{% endif %}{% if col.diff_highlight %} cmp-diff-col{% endif %}{% if col.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}{% if is_span_col %} fuel-param-group-span{% endif %}"
+      data-col-key="{{ col.key }}"
+      {% if is_span_col %}rowspan="{{ summary.rowspan }}"{% endif %}
+      {% if col.sticky %}data-cmp-col="{{ col.sticky_index }}" style="left: var(--cmp-sticky-{{ col.sticky_index }}, 0px);"{% endif %}>
+    {% if col.diff_highlight and row.cell_nonzero[loop.index0] %}
+    <span class="cmp-diff-nonzero">{{ cell }}</span>
+    {% else %}
+    {{ cell }}
+    {% endif %}
+  </td>
+  {% endif %}
+  {% endfor %}
+</tr>
+{% endfor %}
+{% endif %}
+{%- endmacro %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+{% set _pagination_endpoint = 'ecology_bp.gis_tes_fuel_comparison' %}
+{% set pagination_path_kwargs = {'sheet_slug': sheet.slug} %}
+{% set station_filters_hidden_skip_keys = ['page'] %}
+{% set show_ved_filter = true %}
+{% set column_count = columns|length %}
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; align-items: center; justify-content: center; {% if show_all|default(false) %}display: flex;{% else %}display: none;{% endif %}">
+  <div class="text-center">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+      <span class="visually-hidden">Загрузка...</span>
+    </div>
+    <p class="mt-3 h4">Загрузка данных...</p>
+  </div>
+</div>
+
+<div class="fuel-calc-edit-shell">
+  <div class="fuel-calc-edit-top">
+    <div class="fuel-calc-edit-pane-content w-100 mt-2 px-0">
+      <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-nav bg-body">
+        {% include 'ecology/analysis/_sheet_nav.html' %}
+      </div>
+
+      <div class="col-12 mb-2 fuel-calc-edit-page-title">
+        <h2 class="text-center mb-2">{{ page_title }}</h2>
+      </div>
+
+      <div class="fuel-calc-edit-sticky-stack fuel-calc-edit-sticky-filters bg-body">
+        {% set filters_collapse_open = has_active_filters|default(false) %}
+        <div class="col-12 mb-2">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex gap-2 align-items-center">
+              <button id="filtersToggleBtn"
+                      class="btn {% if has_active_filters %}btn-warning{% else %}btn-primary{% endif %} text-white"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#filtersCollapse"
+                      aria-expanded="{{ 'true' if has_active_filters else 'false' }}"
+                      aria-controls="filtersCollapse">
+                🔍 Фильтры / Поиск
+              </button>
+            </div>
+            <div class="flex-grow-1 d-flex justify-content-center align-items-center">
+              <p class="mb-0 fw-bold">Найдено групп оборудования: {{ total_count }}</p>
+            </div>
+          </div>
+        </div>
+
+        {% include 'generation/stations/station_filters_first_row.html' %}
+
+        <div class="col-12 mb-2">
+          <div class="d-flex align-items-center w-100 flex-wrap gap-3">
+            <form method="GET"
+                  action="{{ url_for('ecology_bp.gis_tes_fuel_comparison', sheet_slug=sheet.slug) }}"
+                  class="d-flex align-items-center gap-2 flex-nowrap"
+                  id="gisTesFuelYearForm">
+              {% for key, values in request.args.lists() %}
+                {% if key not in ['start_year', 'end_year', 'view_year', 'page'] %}
+                  {% for value in values %}
+                  <input type="hidden" name="{{ key }}" value="{{ value }}">
+                  {% endfor %}
+                {% endif %}
+              {% endfor %}
+              <label for="start_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год начала:</label>
+              <select name="start_year" id="start_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;">
+                {% for year in filter_year_list %}
+                <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+              </select>
+              <label for="end_year" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Год конца:</label>
+              <select name="end_year" id="end_year" class="form-select flex-shrink-0" style="width: auto; min-width: 4.5rem;">
+                {% for year in filter_year_list %}
+                <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="btn btn-outline-success flex-shrink-0">Применить</button>
+              <a href="{{ url_for('ecology_bp.gis_tes_fuel_comparison', sheet_slug=sheet.slug, **(year_reset_query|default({}))) }}"
+                 class="btn btn-outline-danger flex-shrink-0">Сбросить</a>
+            </form>
+
+            <div class="flex-grow-1 d-flex justify-content-center align-items-center" style="min-width: 200px;">
+              {% if per_page is not none %}
+                {% set pagination_endpoint = 'ecology_bp.gis_tes_fuel_comparison' %}
+                {% include 'generation/includes/pagination_station.html' %}
+              {% endif %}
+            </div>
+
+            <div class="d-flex align-items-center flex-wrap justify-content-end gap-2 ms-auto">
+              <input type="checkbox" class="btn-check" id="show_totals_switch" autocomplete="off"
+                     {% if show_totals|default(false) %}checked{% endif %}>
+              <label for="show_totals_switch"
+                     class="btn {% if show_totals|default(false) %}btn-success{% else %}btn-outline-success{% endif %} text-wrap flex-shrink-0">
+                Показать суммы по регионам
+              </label>
+              {% if has_reported_columns|default(false) %}
+              <input type="checkbox" class="btn-check" id="show_reported_switch" autocomplete="off"
+                     {% if show_reported|default(false) %}checked{% endif %}>
+              <label for="show_reported_switch"
+                     class="btn {% if show_reported|default(false) %}btn-secondary{% else %}btn-outline-secondary{% endif %} text-wrap flex-shrink-0">
+                Отчитавшиеся
+              </label>
+              {% endif %}
+              <button type="button"
+                      id="otShowEmptyRowsToggle"
+                      class="btn {% if show_empty_rows|default(false) %}btn-primary{% else %}btn-outline-primary{% endif %} text-nowrap flex-shrink-0"
+                      aria-pressed="{{ 'true' if show_empty_rows|default(false) else 'false' }}"
+                      title="Скрыть строки, у которых все значения пусты или равны нулю">
+                Пустые строки
+              </button>
+              <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
+                <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
+                <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
+                  <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                  <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                  <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                  <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                  <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+              </div>
+              <form id="perPageForm" method="GET" action="{{ url_for('ecology_bp.gis_tes_fuel_comparison', sheet_slug=sheet.slug) }}">
+                {% for key, values in request.args.lists() %}
+                  {% if key not in ['per_page', 'page'] %}
+                    {% for value in values %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endfor %}
+                  {% endif %}
+                {% endfor %}
+                <div class="d-flex align-items-center gap-2">
+                  <label for="per_page_select" class="mb-0" style="white-space: nowrap;">Показать:</label>
+                  <select id="per_page_select" name="per_page" class="form-select" style="min-width: 150px;" onchange="this.form.submit()">
+                    {% set selected_per_page = request.args.get('per_page', default_per_page|default('25')) %}
+                    <option value="10" {% if selected_per_page == '10' %}selected{% endif %}>10 групп оборудования</option>
+                    <option value="25" {% if selected_per_page == '25' %}selected{% endif %}>25 групп оборудования</option>
+                    <option value="50" {% if selected_per_page == '50' %}selected{% endif %}>50 групп оборудования</option>
+                    <option value="100" {% if selected_per_page == '100' %}selected{% endif %}>100 групп оборудования</option>
+                    <option value="all" {% if selected_per_page == 'all' %}selected{% endif %}>Все группы оборудования</option>
+                  </select>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .fuel-calc-edit-shell {
+          height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+          min-height: 560px;
+          max-height: calc(100dvh - var(--app-topbar-height, 64px) - 0.5rem - 0.5rem);
+          box-sizing: border-box;
+          width: 100%;
+          max-width: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+        .fuel-calc-edit-top {
+          flex: 1 1 0;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .fuel-calc-edit-pane-content {
+          flex: 1 1 0;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .fuel-calc-edit-sticky-stack {
+          flex-shrink: 0;
+        }
+        .fuel-calc-edit-page-title {
+          flex-shrink: 0;
+        }
+        .fuel-calc-edit-sticky-stack.fuel-calc-edit-sticky-nav {
+          z-index: 42;
+        }
+        .fuel-calc-edit-sticky-stack.fuel-calc-edit-sticky-filters {
+          z-index: 41;
+        }
+        .fuel-calc-edit-sticky-stack.fuel-calc-edit-sticky-filters .power-demand-filters-collapse {
+          overflow: visible !important;
+        }
+        .fuel-calc-edit-sticky-stack.fuel-calc-edit-sticky-filters > .col-12.mb-2:last-child {
+          margin-bottom: 0.5rem !important;
+        }
+        #stationsTableContainer {
+          flex: 1 1 0;
+          min-height: 0;
+          overflow-y: auto;
+          overflow-x: auto;
+        }
+        #gisTesFuelTable.power-demand-summary-table {
+          width: max-content;
+          min-width: 100%;
+          max-width: none;
+          table-layout: fixed;
+          font-size: 1.15rem;
+          --cmp-sticky-w: 12rem;
+          margin-bottom: 0;
+        }
+        /* Вся шапка липнет целиком: строки не расходятся при прокрутке. */
+        #gisTesFuelTable > thead {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+        }
+        #gisTesFuelTable > thead th {
+          position: static;
+          background-color: var(--bs-success-bg-subtle, #d1e7dd);
+          box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+          font-size: 1.05rem;
+          line-height: 1.2;
+          vertical-align: middle;
+          padding-left: 0.2rem;
+          padding-right: 0.2rem;
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: break-word;
+          hyphens: none;
+          overflow: visible;
+        }
+        #gisTesFuelTable thead tr.cmp-key-row th {
+          font-size: 0.8rem;
+          font-weight: 600;
+          line-height: 1.15;
+          white-space: nowrap;
+          max-width: none;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        #gisTesFuelTable th.cmp-sticky,
+        #gisTesFuelTable td.cmp-sticky {
+          position: sticky;
+          left: var(--cmp-sticky-left, 0px);
+          background-clip: padding-box;
+          /* непрозрачный фон: Bootstrap striped даёт rgba(~5%) — через него «просвечивают» соседние столбцы */
+          background-color: #fff !important;
+          --bs-table-bg: #fff;
+          --bs-table-bg-type: #fff;
+          --bs-table-bg-state: #fff;
+          --bs-table-accent-bg: #fff;
+          box-shadow:
+            inset 0 0 0 9999px #fff,
+            4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
+        }
+        #gisTesFuelTable thead th.cmp-sticky {
+          z-index: 55;
+          background-color: var(--bs-success-bg-subtle, #d1e7dd) !important;
+          --bs-table-bg: var(--bs-success-bg-subtle, #d1e7dd);
+          --bs-table-bg-type: var(--bs-success-bg-subtle, #d1e7dd);
+          --bs-table-bg-state: var(--bs-success-bg-subtle, #d1e7dd);
+          --bs-table-accent-bg: var(--bs-success-bg-subtle, #d1e7dd);
+          box-shadow:
+            inset 0 0 0 9999px var(--bs-success-bg-subtle, #d1e7dd),
+            inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+            4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
+        }
+        #gisTesFuelTable tbody td.cmp-sticky {
+          z-index: 6;
+        }
+        #gisTesFuelTable tbody td.cmp-data {
+          z-index: 0;
+          position: relative;
+        }
+        #gisTesFuelTable th.cmp-data {
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: break-word;
+          min-width: 6.5rem;
+          max-width: 8.5rem;
+          overflow: visible;
+          padding-left: 0.2rem;
+          padding-right: 0.2rem;
+        }
+        #gisTesFuelTable td.cmp-data {
+          white-space: nowrap;
+          min-width: 6.5rem;
+          max-width: 8.5rem;
+          overflow: hidden;
+          padding-left: 0.2rem;
+          padding-right: 0.2rem;
+        }
+        #gisTesFuelTable td.cmp-sticky:not(.cmp-station-name) {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 18rem;
+        }
+        #gisTesFuelTable th.cmp-station-name,
+        #gisTesFuelTable td.cmp-station-name {
+          white-space: normal !important;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          line-height: 1.25;
+          text-align: left;
+          max-width: 16rem;
+        }
+        #gisTesFuelTable th.fuel-param-col-numb1120 {
+          width: 1%;
+          min-width: min-content;
+          white-space: normal;
+          word-break: normal;
+          overflow-wrap: normal;
+          overflow: visible;
+          vertical-align: middle !important;
+        }
+        #gisTesFuelTable th.fuel-param-col-numb1120 .numb1120-filter-wrap {
+          width: 0;
+          min-width: 100%;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        #gisTesFuelTable.ot-hide-empty tbody tr.ot-row-empty-hidden { display: none !important; }
+        #gisTesFuelTable.table-striped > tbody > tr:nth-of-type(odd) > td.cmp-sticky {
+          background-color: #f2f2f2 !important;
+          --bs-table-bg: #f2f2f2;
+          --bs-table-bg-type: #f2f2f2;
+          --bs-table-bg-state: #f2f2f2;
+          --bs-table-accent-bg: #f2f2f2;
+          box-shadow:
+            inset 0 0 0 9999px #f2f2f2,
+            4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
+        }
+        #gisTesFuelTable.table-hover > tbody > tr:hover > td.cmp-sticky {
+          background-color: #e9ecef !important;
+          --bs-table-bg: #e9ecef;
+          --bs-table-bg-type: #e9ecef;
+          --bs-table-bg-state: #e9ecef;
+          --bs-table-accent-bg: #e9ecef;
+          box-shadow:
+            inset 0 0 0 9999px #e9ecef,
+            4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
+        }
+        #gisTesFuelTable tbody tr.cmp-summary-row > td.cmp-sticky {
+          background-color: var(--bs-table-info-bg, #cff4fc) !important;
+          --bs-table-bg: var(--bs-table-info-bg, #cff4fc);
+          --bs-table-bg-type: var(--bs-table-info-bg, #cff4fc);
+          --bs-table-bg-state: var(--bs-table-info-bg, #cff4fc);
+          --bs-table-accent-bg: var(--bs-table-info-bg, #cff4fc);
+          box-shadow:
+            inset 0 0 0 9999px var(--bs-table-info-bg, #cff4fc),
+            4px 0 6px -4px rgba(0, 0, 0, 0.18) !important;
+        }
+        #gisTesFuelTable > thead th.cmp-diff-col {
+          background-color: #e2ecf7 !important;
+        }
+        #gisTesFuelTable tbody td.cmp-diff-col {
+          background-color: #e2ecf7 !important;
+        }
+        #gisTesFuelTable.table-hover > tbody > tr:hover > td.cmp-diff-col {
+          background-color: #d5e3f2 !important;
+        }
+        #gisTesFuelTable tbody td.cmp-diff-col .cmp-diff-nonzero {
+          color: var(--bs-danger, #dc3545) !important;
+          font-weight: 600;
+        }
+        /* Nust / E / Q / расходы топлива — данные из ТЭП (stations_equipment_group_fuel_params). */
+        #gisTesFuelTable > thead th.cmp-fuel-tep-col {
+          background-color: #dee2e6 !important;
+        }
+        #gisTesFuelTable tbody td.cmp-fuel-tep-col {
+          background-color: #dee2e6 !important;
+        }
+        #gisTesFuelTable.table-striped > tbody > tr:nth-of-type(odd) > td.cmp-fuel-tep-col {
+          background-color: #d3d9df !important;
+        }
+        #gisTesFuelTable.table-hover > tbody > tr:hover > td.cmp-fuel-tep-col {
+          background-color: #c8ced4 !important;
+        }
+        #gisTesFuelTable input.ot-edit-value {
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          box-sizing: border-box;
+          text-align: center;
+          font-size: inherit;
+          line-height: inherit;
+          height: auto;
+          padding-top: 0.1rem;
+          padding-bottom: 0.1rem;
+          padding-left: 0.15rem;
+          padding-right: 0.15rem;
+        }
+        #gisTesFuelTable td.cmp-data:has(input.ot-edit-value) {
+          /* не даём input раздувать столбец шире остальных */
+          width: 6.5rem;
+        }
+        /* Разделительные полосы между группами оборудования — как на stations_equipment_group_fuel_params. */
+        #gisTesFuelTable tbody tr.fuel-param-group-last > td,
+        #gisTesFuelTable tbody td.fuel-param-group-span {
+          border-bottom: 2px solid #6c757d !important;
+        }
+        #gisTesFuelTable tbody tr.cmp-summary-row > td {
+          font-weight: bold;
+        }
+        #gisTesFuelTable.table-striped > tbody > tr.cmp-summary-row > * {
+          --bs-table-accent-bg: transparent;
+        }
+      </style>
+
+      <div id="stationsTableContainer">
+        <table
+          class="table table-hover table-striped table-bordered align-middle power-demand-summary-table{% if not show_empty_rows|default(false) %} ot-hide-empty{% endif %}"
+          id="gisTesFuelTable"
+          data-can-edit="{{ '1' if can_edit|default(false) else '0' }}"
+          data-update-url="{% if can_edit|default(false) %}{{ url_for('ecology_bp.gis_tes_fuel_comparison_update_value', sheet_slug=sheet.slug) }}{% endif %}"
+          data-rounding-digits="{{ rounding_digits }}"
+        >
+          <thead class="table-success">
+            {% for header_row in header_rows %}
+            {% set row_is_key = header_row and header_row[0].is_key %}
+            <tr class="text-center align-middle{% if row_is_key %} cmp-key-row{% endif %}">
+            {% for cell in header_row %}
+            {% if cell.column_key == 'numb1120' and not cell.is_key %}
+            {{ fuel_param_numb1120_header_th(
+                 cell.rowspan if cell.rowspan else 1,
+                 'Код группы оборудования',
+                 numb1120_filter|default([]),
+                 numb1120_filter_choices|default([]),
+                 extra_class='cmp-sticky text-center align-middle',
+                 sticky_col=cell.col_index
+               ) }}
+            {% else %}
+            <th class="text-center align-middle{% if cell.sticky %} cmp-sticky{% else %} cmp-data{% endif %}{% if cell.column_key in ['NAME', 'Stancia'] %} cmp-station-name{% endif %}{% if cell.diff_highlight %} cmp-diff-col{% endif %}{% if cell.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}"
+                {% if cell.rowspan > 1 %}rowspan="{{ cell.rowspan }}"{% endif %}
+                {% if cell.colspan > 1 %}colspan="{{ cell.colspan }}"{% endif %}
+                {% if cell.sticky %}data-cmp-col="{{ cell.col_index }}" style="left: var(--cmp-sticky-{{ cell.col_index }}, 0px);"{% endif %}
+                title="{{ cell.text }}{% if cell.access_code %} ({{ cell.access_code }}){% endif %}">{{ cell.text }}{% if cell.access_code %}<br /><span class="text-muted small">({{ cell.access_code }})</span>{% endif %}{% if cell.formula_tooltip %}
+              <i class="bi bi-info-circle text-primary ms-1"
+                 data-bs-toggle="tooltip"
+                 data-bs-placement="top"
+                 title="{{ cell.formula_tooltip|e }}"
+                 style="cursor: help; font-size: 0.9em;"
+                 aria-label="Формула"></i>
+              {% endif %}</th>
+            {% endif %}
+            {% endfor %}
+            </tr>
+            {% endfor %}
+          </thead>
+          <tbody>
+            {% if hierarchy %}
+            {% for est_block in hierarchy %}
+              {{ fuel_hierarchy_level_header(est_block.est_id, est_block.est_name, column_count, 'table-light text-center', 'vertical-align: middle; font-weight: bold;') }}
+              {% for ues_block in est_block.ues_list %}
+                {{ fuel_hierarchy_level_header(ues_block.ues_id, ues_block.ues_name, column_count, 'table-primary text-center', 'vertical-align: middle; font-weight: bold;') }}
+                {% for res_block in ues_block.res_list %}
+                  {{ fuel_hierarchy_level_header(res_block.res_id, res_block.res_name, column_count, 'table-secondary text-center', 'vertical-align: middle; font-weight: bold;') }}
+                  {% for group in res_block.groups %}
+                    {% for row in group.rows %}
+                    <tr class="{% if row.is_empty %} ot-row-empty-hidden{% endif %}{% if loop.last %} fuel-param-group-last{% endif %}"
+                        data-row-key="{{ row.key }}"
+                        data-cmp-group-id="{{ group.id }}">
+                      {% for cell in row.cells %}
+                      {% set col = columns[loop.index0] %}
+                      {% set is_span_col = col.key in rowspan_column_keys %}
+                      {% set is_station = col.key in ['NAME', 'Stancia'] %}
+                      {% if is_span_col and not row.is_group_first %}
+                      {% else %}
+                      <td class="text-center{% if col.sticky %} cmp-sticky{% if is_station %} cmp-station-name{% endif %} text-start{% else %} cmp-data{% endif %}{% if col.diff_highlight %} cmp-diff-col{% endif %}{% if col.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}{% if is_span_col %} fuel-param-group-span{% endif %}{% if is_station and group.equipment_group is defined and group.equipment_group %} {{ eg_name_cell_class({'is_composite_parent': group.is_composite_parent|default(false), 'is_composite_child': group.is_composite_child|default(false), 'show_composite_cluster': group.show_composite_cluster|default(false)}) }}{% endif %}"
+                          data-col-key="{{ col.key }}"
+                          {% if col.key in ('d_gaz','d_mazut','d_tv','K_gaz_ek','K_mazut_ek','K_ugol_ek','CO2','UD_CO2_ek','UD_CO2_ener') %}data-pg-derived="1"{% endif %}
+                          {% if is_span_col %}rowspan="{{ group.rowspan }}"{% endif %}
+                          {% if col.sticky %}data-cmp-col="{{ col.sticky_index }}" style="left: var(--cmp-sticky-{{ col.sticky_index }}, 0px);"{% endif %}>
+                        {% if is_station and group.equipment_group is defined and group.equipment_group %}
+                        {{ eg_name_label(
+                             group.equipment_group,
+                             cell,
+                             {
+                               'is_composite_parent': group.is_composite_parent|default(false),
+                               'is_composite_child': group.is_composite_child|default(false),
+                               'show_composite_cluster': group.show_composite_cluster|default(false)
+                             },
+                             link_endpoint='fuel_bp.equipment_group_details'
+                           ) }}
+                        {% elif can_edit|default(false) and col.editable|default(false) and group.numb is not none and row.year is not none %}
+                        <input type="text"
+                               class="form-control form-control-sm ot-edit-value"
+                               data-field="{{ col.key }}"
+                               data-year="{{ row.year }}"
+                               data-numb="{{ group.numb }}"
+                               value="{{ cell }}"
+                               size="1"
+                               inputmode="decimal"
+                               aria-label="{{ col.key }}">
+                        {% elif col.diff_highlight and row.cell_nonzero[loop.index0] %}
+                        <span class="cmp-diff-nonzero">{{ cell }}</span>
+                        {% else %}
+                        {{ cell }}
+                        {% endif %}
+                      </td>
+                      {% endif %}
+                      {% endfor %}
+                    </tr>
+                    {% endfor %}
+                  {% endfor %}
+                  {{ cmp_summary_rows(res_block.summary|default(none), columns, rowspan_column_keys) }}
+                {% endfor %}
+                {{ cmp_summary_rows(ues_block.summary|default(none), columns, rowspan_column_keys) }}
+              {% endfor %}
+              {{ cmp_summary_rows(est_block.summary|default(none), columns, rowspan_column_keys) }}
+            {% endfor %}
+            {% else %}
+            <tr>
+              <td colspan="{{ column_count }}" class="text-center">Нет данных для отображения</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+
+        <div class="mt-2">
+          {% if per_page is not none %}
+            {% set pagination_endpoint = 'ecology_bp.gis_tes_fuel_comparison' %}
+            {% include 'generation/includes/pagination_station.html' %}
+          {% endif %}
+        </div>
+        <div class="ot-table-scroll-end-spacer" aria-hidden="true" style="height: 2.5rem;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#gisTesFuelTable [data-bs-toggle="tooltip"]').forEach(function (el) {
+      new bootstrap.Tooltip(el);
+    });
+    document.getElementById('rounding_digits')?.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      url.searchParams.set('rounding_digits', this.value);
+      url.searchParams.delete('page');
+      window.location.href = url.toString();
+    });
+    const table = document.getElementById('gisTesFuelTable');
+    const stickyCount = {{ sticky_col_count|int }};
+    const measureNowrapWidth = function (sourceEl, html) {
+      const cs = getComputedStyle(sourceEl);
+      const probe = document.createElement('div');
+      probe.style.cssText = [
+        'position:absolute',
+        'left:-99999px',
+        'top:0',
+        'white-space:nowrap',
+        'width:max-content',
+        'visibility:hidden',
+        'pointer-events:none',
+        'box-sizing:border-box'
+      ].join(';');
+      probe.style.fontFamily = cs.fontFamily;
+      probe.style.fontSize = cs.fontSize;
+      probe.style.fontWeight = cs.fontWeight;
+      probe.style.letterSpacing = cs.letterSpacing;
+      probe.style.paddingLeft = cs.paddingLeft;
+      probe.style.paddingRight = cs.paddingRight;
+      probe.innerHTML = html;
+      document.body.appendChild(probe);
+      const width = probe.getBoundingClientRect().width;
+      probe.remove();
+      return width;
+    };
+    const measureFitColumns = function () {
+      if (!table) return;
+      let left = 0;
+      for (let i = 0; i < stickyCount; i += 1) {
+        const colCells = table.querySelectorAll('[data-cmp-col="' + i + '"]');
+        let colW;
+        if (i === 0) {
+          colW = 240;
+        } else {
+          let width = 0;
+          colCells.forEach(function (el) {
+            if (el.tagName === 'TH' && el.classList.contains('fuel-param-col-numb1120')) {
+              return;
+            }
+            width = Math.max(width, measureNowrapWidth(el, (el.textContent || '').trim()));
+          });
+          colW = Math.min(Math.max(Math.ceil(width + 8), 72), 180);
+        }
+        table.style.setProperty('--cmp-sticky-' + i, left + 'px');
+        table.style.setProperty('--cmp-sticky-w-' + i, colW + 'px');
+        colCells.forEach(function (el) {
+          el.style.width = colW + 'px';
+          el.style.minWidth = colW + 'px';
+          el.style.maxWidth = colW + 'px';
+        });
+        left += colW;
+      }
+      if (typeof window.armGsUpdateHorizontalScrollFlags === 'function') {
+        window.armGsUpdateHorizontalScrollFlags();
+      }
+    };
+    measureFitColumns();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(measureFitColumns);
+    }
+    window.addEventListener('resize', measureFitColumns);
+    const markGroupLastRows = function () {
+      if (!table) return;
+      const byGroup = {};
+      table.querySelectorAll('tbody tr[data-cmp-group-id]').forEach(function (tr) {
+        const gid = tr.getAttribute('data-cmp-group-id');
+        if (!gid) return;
+        if (!byGroup[gid]) byGroup[gid] = [];
+        byGroup[gid].push(tr);
+      });
+      Object.keys(byGroup).forEach(function (gid) {
+        const rows = byGroup[gid];
+        rows.forEach(function (tr) {
+          tr.classList.remove('fuel-param-group-last');
+        });
+        const hideEmpty = table.classList.contains('ot-hide-empty');
+        const visible = hideEmpty
+          ? rows.filter(function (tr) {
+              return !tr.classList.contains('ot-row-empty-hidden');
+            })
+          : rows;
+        const last = visible.length ? visible[visible.length - 1] : rows[rows.length - 1];
+        if (last) last.classList.add('fuel-param-group-last');
+      });
+    };
+    markGroupLastRows();
+    const emptyBtn = document.getElementById('otShowEmptyRowsToggle');
+    emptyBtn?.addEventListener('click', function () {
+      const params = new URLSearchParams(window.location.search);
+      const currentlyShown = emptyBtn.getAttribute('aria-pressed') !== 'false';
+      params.set('show_empty_rows', currentlyShown ? '0' : '1');
+      const qs = params.toString();
+      window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+    });
+    const showTotalsSwitch = document.getElementById('show_totals_switch');
+    showTotalsSwitch?.addEventListener('change', function () {
+      const params = new URLSearchParams(window.location.search);
+      params.set('show_totals', showTotalsSwitch.checked ? '1' : '0');
+      params.set('page', '1');
+      const qs = params.toString();
+      window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+    });
+    const showReportedSwitch = document.getElementById('show_reported_switch');
+    showReportedSwitch?.addEventListener('change', function () {
+      const params = new URLSearchParams(window.location.search);
+      params.set('show_reported', showReportedSwitch.checked ? '1' : '0');
+      const qs = params.toString();
+      window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+    });
+
+    const updateUrl = table?.dataset.updateUrl;
+    const canEdit = table?.dataset.canEdit === '1';
+    const roundingDigits = table?.dataset.roundingDigits || '';
+    const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
+    const KCAL_PER_KWH = 859.8;
+    const DIFF_KEYS = {d_gaz: 1, d_mazut: 1, d_tv: 1};
+    const parseNum = function (raw) {
+      if (raw == null) return null;
+      let s = String(raw).trim();
+      if (!s || s === '—' || s === '-' || s === '–') return null;
+      s = s.replace(/[\u2212\u2013\u2014]/g, '-')
+           .replace(/[\u00a0\u202f\s]/g, '')
+           .replace(',', '.');
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    };
+    const formatNum = function (value, digitsRaw) {
+      if (value == null || !Number.isFinite(value)) return '';
+      let digits = parseInt(digitsRaw, 10);
+      if (!Number.isFinite(digits)) digits = 1;
+      let n = value;
+      if (digits >= 0) {
+        const f = Math.pow(10, digits);
+        n = Math.round(n * f) / f;
+      }
+      let fixed = digits >= 0 ? n.toFixed(digits) : String(n);
+      if (digits > 0) fixed = fixed.replace(/\.?0+$/, '');
+      const parts = fixed.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      return parts.length > 1 ? parts[0] + ',' + parts[1] : parts[0];
+    };
+    const readCellNum = function (tr, key) {
+      const td = tr.querySelector('td[data-col-key="' + key + '"]');
+      if (!td) return null;
+      const input = td.querySelector('input.ot-edit-value');
+      if (input) return parseNum(input.value);
+      const span = td.querySelector('.cmp-diff-nonzero');
+      return parseNum(span ? span.textContent : td.textContent);
+    };
+    const writeDerivedCell = function (tr, key, value, digits) {
+      const td = tr.querySelector('td[data-col-key="' + key + '"]');
+      if (!td || td.querySelector('input.ot-edit-value')) return;
+      const text = formatNum(value, digits);
+      const nonzero = DIFF_KEYS[key] && parseNum(text) != null && parseNum(text) !== 0;
+      if (nonzero) {
+        td.innerHTML = '';
+        const span = document.createElement('span');
+        span.className = 'cmp-diff-nonzero';
+        span.textContent = text;
+        td.appendChild(span);
+      } else {
+        td.textContent = text;
+      }
+    };
+    const safeSub = function (a, b) {
+      if (a == null || b == null) return null;
+      return a - b;
+    };
+    const safeDiv = function (a, b) {
+      if (a == null || b == null || b === 0) return null;
+      return a / b;
+    };
+    const safeSum = function () {
+      let total = 0;
+      let has = false;
+      for (let i = 0; i < arguments.length; i++) {
+        const v = arguments[i];
+        if (v == null) continue;
+        total += v;
+        has = true;
+      }
+      return has ? total : null;
+    };
+    const recalcDerivedRow = function (tr) {
+      if (!tr || tr.classList.contains('cmp-summary-row')) return;
+      const gazEst = readCellNum(tr, 'GAZ_ESTEST');
+      const gazEk = readCellNum(tr, 'GAZ_ek');
+      const mazut6 = readCellNum(tr, 'MAZUT_6tp');
+      const mazutEk = readCellNum(tr, 'MAZUT_ek');
+      const tv6 = readCellNum(tr, 'TvTopl_6tp');
+      const tvEk = readCellNum(tr, 'TvTopl_ek');
+      const co2Gaz = readCellNum(tr, 'CO2_gaz');
+      const co2Mazut = readCellNum(tr, 'CO2_mazut');
+      const co2Ugol = readCellNum(tr, 'CO2_ugol');
+      const wEn = readCellNum(tr, 'W_en');
+      const teplo = readCellNum(tr, 'Teplo');
+      const dGaz = safeSub(gazEst, gazEk);
+      const dMazut = safeSub(mazut6, mazutEk);
+      const dTv = safeSub(tv6, tvEk);
+      const kGaz = safeDiv(co2Gaz, gazEk);
+      const kMazut = safeDiv(co2Mazut, mazutEk);
+      const kUgol = safeDiv(co2Ugol, tvEk);
+      const co2 = safeSum(co2Gaz, co2Mazut, co2Ugol);
+      const fuelEk = safeSum(gazEk, mazutEk, tvEk);
+      const udEk = (co2 == null || fuelEk == null || fuelEk === 0) ? null : (co2 * 1000) / fuelEk;
+      let energy = null;
+      if (wEn != null || teplo != null) {
+        energy = (wEn == null ? 0 : wEn) + (teplo == null ? 0 : teplo) / KCAL_PER_KWH * 1000;
+      }
+      const udEn = safeDiv(co2, energy);
+      const digits = roundingDigits;
+      writeDerivedCell(tr, 'd_gaz', dGaz, digits);
+      writeDerivedCell(tr, 'd_mazut', dMazut, digits);
+      writeDerivedCell(tr, 'd_tv', dTv, digits);
+      writeDerivedCell(tr, 'K_gaz_ek', kGaz, digits);
+      writeDerivedCell(tr, 'K_mazut_ek', kMazut, digits);
+      writeDerivedCell(tr, 'K_ugol_ek', kUgol, digits);
+      writeDerivedCell(tr, 'CO2', co2, digits);
+      writeDerivedCell(tr, 'UD_CO2_ek', udEk, digits);
+      writeDerivedCell(tr, 'UD_CO2_ener', udEn, digits);
+    };
+    const applyRelatedValues = function (tr, values) {
+      if (!tr || !values) return;
+      Object.keys(values).forEach(function (key) {
+        const info = values[key] || {};
+        const text = info.text == null ? '' : String(info.text);
+        const td = tr.querySelector('td[data-col-key="' + key + '"]');
+        if (!td) return;
+        const cellInput = td.querySelector('input.ot-edit-value');
+        if (cellInput) {
+          cellInput.value = text;
+          return;
+        }
+        if (info.nonzero) {
+          td.innerHTML = '';
+          const span = document.createElement('span');
+          span.className = 'cmp-diff-nonzero';
+          span.textContent = text;
+          td.appendChild(span);
+        } else {
+          td.textContent = text;
+        }
+      });
+    };
+    if (table) {
+      table.querySelectorAll('tbody tr[data-row-key]').forEach(recalcDerivedRow);
+    }
+    if (canEdit && updateUrl) {
+      table.querySelectorAll('input.ot-edit-value').forEach(function (input) {
+        input.addEventListener('input', function () {
+          recalcDerivedRow(input.closest('tr'));
+        });
+        input.addEventListener('change', function () {
+          const tr = input.closest('tr');
+          recalcDerivedRow(tr);
+          fetch(updateUrl, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF || ''},
+            body: JSON.stringify({
+              year: input.dataset.year,
+              numb: input.dataset.numb,
+              field: input.dataset.field,
+              value: input.value,
+              rounding_digits: roundingDigits
+            })
+          }).then(function (resp) {
+            if (!resp.ok) throw new Error('save failed');
+            return resp.json();
+          }).then(function (data) {
+            if (!data.ok) throw new Error(data.error || 'save failed');
+            input.classList.remove('is-invalid');
+            applyRelatedValues(tr, data.values);
+          }).catch(function () {
+            input.classList.add('is-invalid');
+          });
+        });
+      });
+    }
+
+    if (document.getElementById('loading-overlay') && {{ 'true' if show_all|default(false) else 'false' }}) {
+      window.addEventListener('load', function () {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) overlay.style.display = 'none';
+      });
+    }
+  });
+</script>
+<script id="filters-data" type="application/json">
+  {{ {
+      'energy_system_type_list': energy_system_type_list|default([], true),
+      'union_energy_system_list': union_energy_system_list|default([], true),
+      'regional_energy_system_list': regional_energy_system_list|default([], true),
+      'federal_district_list': federal_district_list|default([], true),
+      'regional_district_list': regional_district_list|default([], true),
+      'energy_system_type_filter': energy_system_type_filter|default([], true),
+      'union_energy_system_filter': union_energy_system_filter|default([], true),
+      'regional_energy_system_filter': regional_energy_system_filter|default([], true),
+      'federal_district_filter': federal_district_filter|default([], true),
+      'regional_district_filter': regional_district_filter|default([], true),
+      'regional_energy_system_mapping': regional_energy_system_mapping|default({}, true),
+      'regional_district_mapping': regional_district_mapping|default({}, true),
+      'est_to_ues_mapping': est_to_ues_mapping|default({}, true),
+      'est_to_res_mapping': est_to_res_mapping|default({}, true),
+      'est_to_rd_mapping': est_to_rd_mapping|default({}, true),
+      'est_to_fd_mapping': est_to_fd_mapping|default({}, true),
+      'ues_to_est_mapping': ues_to_est_mapping|default({}, true),
+      'ues_to_res_mapping': ues_to_res_mapping|default({}, true),
+      'ues_to_rd_mapping': ues_to_rd_mapping|default({}, true),
+      'ues_to_fd_mapping': ues_to_fd_mapping|default({}, true),
+      'res_to_est_mapping': res_to_est_mapping|default({}, true),
+      'res_to_ues_mapping_one': res_to_ues_mapping_one|default({}, true),
+      'res_to_rd_mapping': res_to_rd_mapping|default({}, true),
+      'res_to_fd_mapping': res_to_fd_mapping|default({}, true),
+      'rd_to_fd_mapping_one': rd_to_fd_mapping_one|default({}, true),
+      'rd_to_res_mapping': rd_to_res_mapping|default({}, true),
+      'rd_to_ues_mapping': rd_to_ues_mapping|default({}, true),
+      'rd_to_est_mapping': rd_to_est_mapping|default({}, true),
+      'fd_to_rd_mapping': fd_to_rd_mapping|default({}, true),
+      'fd_to_res_mapping': fd_to_res_mapping|default({}, true),
+      'fd_to_ues_mapping': fd_to_ues_mapping|default({}, true),
+      'fd_to_est_mapping': fd_to_est_mapping|default({}, true)
+  } | tojson | safe }}
+</script>
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+{% include 'ecology/_station_filters_toggle_script.html' %}
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+{% endif %}
+{% endblock %}

@@ -51,7 +51,8 @@ class DistributionParameterCalculationService:
     """
     Запуск пересчёта по «Параметры-распределения».
 
-    Строка filter_text не парсится здесь — только через AccessFilterAdapter.build_expression(...).
+    Строка filter_text не парсится здесь — только через AccessFilterAdapter
+    (справочник + oes/obl/ved рабочей строки топлива).
 
     Логика:
     строка DistributionParameter

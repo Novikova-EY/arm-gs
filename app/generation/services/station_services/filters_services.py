@@ -489,6 +489,7 @@ def extract_filters_from_args(args):
         "regional_district_filter": args.getlist("regional_district_filter", type=int),
         "gen_company_filter": args.get("gen_company_filter", "").strip(),
         "station_name_filter": args.get("station_name_filter", "").strip(),
+        "external_code_filter": args.get("external_code_filter", "").strip(),
         "note_filter": args.get("note_filter", "").strip(),
         "equipment_group_name_filter": args.get("equipment_group_name_filter", "").strip(),
         "numb1120_filter": _parse_int_list_filter(_args_getlist_raw(args, "numb1120_filter")),
@@ -793,6 +794,36 @@ def build_station_sign_sql_filter(filters):
 
 def apply_station_sign_sql_filter(query, filters):
     condition = build_station_sign_sql_filter(filters)
+    if condition is not None:
+        return query.filter(condition)
+    return query
+
+
+def _ilike_contains_pattern(raw: str) -> str:
+    """LIKE-шаблон подстроки: экранирует %, _ и \\."""
+    escaped = (
+        (raw or "")
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+    return f"%{escaped}%"
+
+
+def build_external_code_sql_filter(filters):
+    """Ищет станцию по Station.external_code или UUID любого её агрегата."""
+    raw = (filters.get("external_code_filter") or "").strip()
+    if not raw:
+        return None
+    pattern = _ilike_contains_pattern(raw)
+    return or_(
+        Station.external_code.ilike(pattern, escape="\\"),
+        Station.machines.any(Machine.external_code.ilike(pattern, escape="\\")),
+    )
+
+
+def apply_external_code_sql_filter(query, filters):
+    condition = build_external_code_sql_filter(filters)
     if condition is not None:
         return query.filter(condition)
     return query
@@ -1190,6 +1221,7 @@ def get_filtered_station_ids(
     regional_district_filter=None,
     date_commission_filter=None,
     date_exploitation_filter=None,
+    external_code_filter=None,
 ):
 
     # 1) Начинаем с запроса Station
@@ -1232,6 +1264,8 @@ def get_filtered_station_ids(
     # Фильтрация по названию  электростанции
     if station_name_filter:
         query = query.filter(Station.name.ilike(f"%{station_name_filter}%"))
+
+    query = apply_external_code_sql_filter(query, {"external_code_filter": external_code_filter})
     
     # Фильтрация по типу энергосистемы
     if energy_system_type_filter:
@@ -1439,6 +1473,7 @@ def has_any_filters(args):
         args.getlist('regional_district_filter'),
         # Фильтры по названиям
         args.get('station_name_filter'),
+        args.get('external_code_filter'),
         args.get('gen_company_filter'),
         args.get('note_filter'),
         args.get('equipment_group_name_filter'),

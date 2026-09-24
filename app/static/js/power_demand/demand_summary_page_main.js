@@ -2109,7 +2109,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!table || !table.classList.contains("pd-coeff-year-seg-table")) {
             return;
         }
-        var STORAGE_KEY = "powerDemandCoeffKColumnsVisibleV2";
+        var STORAGE_KEY = "powerDemandCoeffKColumnsVisibleV3";
         var btnToggle = document.getElementById("pdCoeffKColsToggle");
         var kRoundingWrap = document.getElementById("pdCoeffKRoundingWrap");
 
@@ -2159,12 +2159,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        function applyCoeffKColumnsVisible(show) {
+        function setCoeffKVisibleClass(show) {
             if (show) {
                 table.classList.remove("pd-coeff-hide-k-columns");
             } else {
                 table.classList.add("pd-coeff-hide-k-columns");
             }
+        }
+
+        function applyCoeffKColumnsVisible(show) {
+            setCoeffKVisibleClass(show);
             try {
                 sessionStorage.setItem(STORAGE_KEY, show ? "1" : "0");
             } catch (e) { /* */ }
@@ -2191,6 +2195,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function readStoredShowK() {
+            if (typeof window.__pdPdSummaryPreferCoeffKColumnsVisible === "function") {
+                return window.__pdPdSummaryPreferCoeffKColumnsVisible();
+            }
             try {
                 var v = sessionStorage.getItem(STORAGE_KEY);
                 if (v === "1") {
@@ -2200,7 +2207,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     return false;
                 }
             } catch (e2) { /* */ }
-            /* pd_page_size=0 (все секции): по умолчанию без строк k — быстрее первый показ */
+            if (window.__pdPdSummaryTerritoryCompactMode === true) {
+                return true;
+            }
+            /* pd_page_size=0 (все секции полного дерева): без строк k — быстрее первый показ */
             try {
                 var ps = new URLSearchParams(window.location.search || "").get(
                     "pd_page_size"
@@ -2212,12 +2222,11 @@ document.addEventListener("DOMContentLoaded", function () {
             return true;
         }
 
-        var wantShowK = readStoredShowK();
-        if (wantShowK) {
-            applyCoeffKColumnsVisible(true);
-        } else {
-            applyCoeffKColumnsVisible(false);
-        }
+        /* Дефолт не пишем в sessionStorage — иначе «все ОЭС» запоминает скрытие k
+           и «Сводная таблица» больше не показывает строки k. */
+        setCoeffKVisibleClass(readStoredShowK());
+        syncCoeffKToggleButton();
+        window.__pdPdSummarySyncCoeffKToggleUi = syncCoeffKToggleButton;
 
         if (btnToggle) {
             btnToggle.addEventListener("click", function () {

@@ -20,8 +20,8 @@ from app.generation.prospective_places.models.prospective_place_hydro_energy_for
 )
 
 
-def test_hydro_month_order_is_may_to_april():
-    assert HYDRO_MONTH_ORDER == (5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4)
+def test_hydro_month_order_is_calendar_year():
+    assert HYDRO_MONTH_ORDER == tuple(range(1, 13))
 
 
 def test_sum_months_ignores_empty():
@@ -44,7 +44,8 @@ def test_build_hydro_forecast_view_year_total(mock_load):
     view = build_hydro_forecast_view(PLACE_KIND_GES, 10, rounding_digits=1)
     assert view["scenarios"][0]["title"].startswith("Маловодные")
     assert view["scenarios"][0]["year_total"] == Decimal("1")
-    assert view["month_romans"][5] == "V"
+    assert view["month_names"][1] == "Январь"
+    assert view["month_order"][0] == 1
 
 
 @patch(
@@ -112,3 +113,52 @@ def test_empty_hydro_forecast_by_scenario_has_both():
     data = empty_hydro_forecast_by_scenario()
     assert set(data) == {SCENARIO_LOW_95, SCENARIO_MEDIUM_50}
     assert set(data[SCENARIO_LOW_95]) == set(HYDRO_MONTH_ORDER)
+
+
+def test_hydro_forecast_owner_none_for_other_types():
+    from app.generation.prospective_places.services.hydro_energy_forecast_services import (
+        hydro_forecast_owner_for_station,
+    )
+    from app.generation.prospective_places.models.prospective_place_hydro_energy_forecast_model import (
+        PLACE_KIND_STATION,
+    )
+
+    tes = SimpleNamespace(
+        id=3,
+        external_code="abc",
+        station_type=SimpleNamespace(name="ТЭС"),
+    )
+    assert hydro_forecast_owner_for_station(tes) is None
+
+    ges = SimpleNamespace(
+        id=9,
+        external_code="",
+        station_type=SimpleNamespace(name="ГЭС"),
+    )
+    assert hydro_forecast_owner_for_station(ges) == (PLACE_KIND_STATION, 9)
+
+    gaes = SimpleNamespace(
+        id=4,
+        external_code=None,
+        station_type=SimpleNamespace(name="ГАЭС"),
+    )
+    assert hydro_forecast_owner_for_station(gaes) == (PLACE_KIND_STATION, 4)
+
+
+@patch(
+    "app.generation.prospective_places.services.hydro_energy_forecast_services.StationProspectivePlaceGES"
+)
+def test_hydro_forecast_owner_uses_linked_ges_place(mock_model):
+    from app.generation.prospective_places.services.hydro_energy_forecast_services import (
+        hydro_forecast_owner_for_station,
+    )
+
+    place = SimpleNamespace(id=22, database_version_id=7)
+    mock_model.query.filter.return_value.order_by.return_value.all.return_value = [place]
+    station = SimpleNamespace(
+        id=9,
+        external_code="uuid-1",
+        database_version_id=7,
+        station_type=SimpleNamespace(name="ГЭС"),
+    )
+    assert hydro_forecast_owner_for_station(station) == (PLACE_KIND_GES, 22)

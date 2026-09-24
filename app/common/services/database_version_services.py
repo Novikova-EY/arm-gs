@@ -679,6 +679,9 @@ def extend_version_period_by_copying_last_year(
     Продлевает период в целевой версии на N лет и заполняет новые годы
     копией данных последнего года исходной версии (мощности/топливо/тип ТЭС).
 
+    Группы оборудования копируются вместе с версией (сами группы и связи),
+    без годовых топливных параметров и без размножения параметров на новые годы.
+
     Примечание: функция рассчитана на сценарий "создать версию на основе существующей".
     Предполагается, что исходные данные уже скопированы в target_version_id.
     """
@@ -740,7 +743,7 @@ def extend_version_period_by_copying_last_year(
         )
     db.session.flush()
 
-    # 3) Копируем данные последнего года (base_end_year) на каждый новый год
+    # 3) Копируем данные последнего года (base_end_year) на каждый новый год (только Генерация)
     copy_specs = [
         # machine_powers: мощности агрегатов
         {
@@ -996,7 +999,7 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
     log_to_db(
         user,
         "Выбран режим копирования данных версии",
-        "только справочники refdata" if refdata_only else "полное копирование generation+refdata",
+        "только справочники refdata" if refdata_only else "полное копирование всех модулей",
         entity_type="database_version",
         entity_id=target_version_id
     )
@@ -1730,6 +1733,17 @@ def _copy_version_data_staged(source_version_id, target_version_id, user, do_com
                 )
     except Exception as e:
         current_app.logger.error(f"  ❌ [STAGED] Ошибка доп. перепривязки FK в справочниках: {e}")
+
+    from app.common.services.database_version_module_sync import copy_remaining_module_tables
+
+    remaining_copied = copy_remaining_module_tables(
+        source_version_id,
+        target_version_id,
+        user,
+        id_mappings,
+        copy_mode=copy_mode,
+    )
+    total_copied += remaining_copied
     
     # Коммитим только если do_commit=True
     if do_commit:
@@ -3456,300 +3470,25 @@ def _update_version_relationships_lightning_fast(id_mappings, target_version_id,
 
 def _delete_version_data_staged(version_id, user):
     """
-    Удаляет все данные, связанные с указанной версией, используя ПОЭТАПНУЮ логику в ОБРАТНОМ порядке.
-    
-    Логика удаления:
-    1. Сначала удаляем таблицы GENERATION с максимальными зависимостями (ЭТАП 8-5)
-    2. Затем удаляем таблицы REFDATA с зависимостями (ЭТАП 4-2)
-    3. В конце удаляем полностью независимые таблицы (ЭТАП 1)
-    
-    Порядок: GENERATION -> REFDATA (так как generation зависит от refdata)
-    Это предотвращает ошибки нарушения внешних ключей.
-    
+    Удаляет все данные всех модулей, связанные с указанной версией.
+
+    Порядок: сначала спутниковые таблицы (FK на версионные строки), затем
+    версионные таблицы в обратном порядке зависимостей. Список таблиц
+    берётся из information_schema, чтобы новые модули не выпадали из очистки.
+
     Args:
         version_id: ID версии для удаления данных
         user: Пользователь для логирования
     """
-    log_to_db(
-        user,
-        f"Начало ПОЭТАПНОГО удаления данных версии БД ID={version_id}",
-        "Применяется обратная логика: сначала GENERATION, затем REFDATA",
-        entity_type="database_version",
-        entity_id=version_id
+    from app.common.services.database_version_module_sync import (
+        delete_all_module_data_for_version,
     )
-    
-    # ЭТАП 8: Таблицы с максимальными зависимостями (удаляем первыми)
-    stage8_tables = [
-        (SCHEMA_GENERATION, 'gs_gen_pgu_machine_powers')
-    ]
-    
-    # ЭТАП 7: Таблицы, зависящие от machines
-    stage7_tables = [
-        (SCHEMA_GENERATION, 'gs_gen_machine_powers'),
-        (SCHEMA_GENERATION, 'gs_gen_machine_fuels'),
-        (SCHEMA_GENERATION, 'gs_gen_machine_tes_types'),
-        (SCHEMA_GENERATION, 'gs_gen_machine_names'),
-        (SCHEMA_GENERATION, 'gs_gen_pgu_machines'),
-        (SCHEMA_FUEL, 'gs_fue_machine_fuel_param'),  # Топливные параметры агрегатов
-    ]
-    
-    # ЭТАП 6: Таблицы, зависящие от stations
-    stage6_tables = [
-        (SCHEMA_GENERATION, 'gs_gen_machines'),
-        (SCHEMA_FUEL, 'gs_fue_equipment_group_fuel_param'),  # Параметры топлива групп оборудования
-        (SCHEMA_GENERATION, 'gs_gen_boilers')
-    ]
-    
-    # ЭТАП 5: Таблицы generation с зависимостями
-    stage5_tables = [
-        (SCHEMA_GENERATION, 'gs_gen_stations')
-    ]
-    
-    # ЭТАП 4: Таблицы с зависимостями от ЭТАПОВ 1-3
-    # Таблицы refdata после миграции ff9f0f8940c8 имеют префикс gs_
-    stage4_tables = [
-        (SCHEMA_REFDATA, 'gs_sys_energy_areas'),
-        (SCHEMA_REFDATA, 'gs_sys_energy_units')
-    ]
-    
-    # ЭТАП 3: Таблицы с зависимостями от ЭТАПОВ 1-2
-    stage3_tables = [
-        (SCHEMA_REFDATA, 'gs_sys_regional_districts'),
-        (SCHEMA_REFDATA, 'gs_sys_regional_energy_systems')
-    ]
-    
-    # ЭТАП 2: Таблицы с зависимостями от ЭТАПА 1
-    stage2_tables = [
-        (SCHEMA_REFDATA, 'gs_sys_union_energy_systems'),
-        (SCHEMA_REFDATA, 'gs_sys_synchronous_areas'),
-        (SCHEMA_REFDATA, 'gs_sys_energy_zones'),
-        (SCHEMA_REFDATA, 'gs_sys_federal_districts')
-    ]
-    
-    # ЭТАП 1: Полностью независимые таблицы (удаляем последними)
-    stage1_tables = [
-        (SCHEMA_REFDATA, 'gs_sys_station_types'),
-        (SCHEMA_REFDATA, 'gs_sys_machine_types'),
-        (SCHEMA_REFDATA, 'gs_sys_tes_types'),
-        (SCHEMA_REFDATA, 'gs_sys_tes_machine_types'),
-        (SCHEMA_REFDATA, 'gs_sys_pgu_tes_machine_types'),
-        (SCHEMA_REFDATA, 'gs_sys_condition_types'),
-        (SCHEMA_REFDATA, 'gs_sys_technology_types'),
-        (SCHEMA_REFDATA, 'gs_sys_electricity_production_cost_types'),
-        (SCHEMA_REFDATA, 'gs_sys_economic_activity_types'),
-        (SCHEMA_REFDATA, 'gs_sys_technology_availabilities'),
-        (SCHEMA_REFDATA, 'gs_sys_equipment_groups'),
-        (SCHEMA_REFDATA, 'gs_sys_energy_system_types'),
-        (SCHEMA_REFDATA, 'gs_sys_fuel_types'),
-        (SCHEMA_REFDATA, 'gs_sys_fuels'),
-        (SCHEMA_REFDATA, 'gs_sys_companies'),
-        (SCHEMA_REFDATA, 'gs_sys_year_features'),
-        (SCHEMA_REFDATA, 'gs_sys_years'),
-        (SCHEMA_REFDATA, 'gs_sys_year_service'),  # Сервис управления годами СиПР
-        (SCHEMA_REFDATA, 'gs_sys_refdata_entity_years'),  # История справочников — годы
-        (SCHEMA_REFDATA, 'gs_sys_refdata_entities'),  # История справочников — сущности
-        (SCHEMA_REFDATA, 'gs_sys_departments'),  # Подразделения
-        (SCHEMA_REFDATA, 'gs_sys_business_units'),  # Бизнес-единицы
-        (SCHEMA_GENERATION, 'gs_gen_station_groups'),
-        (SCHEMA_GENERATION, 'gs_gen_documents_kommod')
-    ]
-    
-    # Объединяем все этапы в обратном порядке (от 8 к 1)
-    # Сначала удаляем generation, затем refdata
-    all_stages = [
-        ("ЭТАП 8", stage8_tables),  # gs_gen.gs_gen_pgu_machine_powers
-        ("ЭТАП 7", stage7_tables),  # gs_gen.gs_gen_machine_powers, machine_fuels, machine_tes_types, pgu_machines
-        ("ЭТАП 6", stage6_tables),  # gs_gen.gs_gen_machines, boilers
-        ("ЭТАП 5", stage5_tables),  # gs_gen.gs_gen_stations
-        ("ЭТАП 4", stage4_tables),  # refdata.energy_areas, energy_units
-        ("ЭТАП 3", stage3_tables),  # refdata.regional_districts, regional_energy_systems
-        ("ЭТАП 2", stage2_tables),  # refdata.union_energy_systems, synchronous_areas, energy_zones, federal_districts
-        ("ЭТАП 1", stage1_tables)   # refdata.station_types, machine_types, etc. + gs_gen.gs_gen_station_groups, documents_kommod
-    ]
-    
-    total_deleted = 0
 
-    # Удаляем таблицы поэтапно
-    for stage_name, tables in all_stages:
-        current_app.logger.info(f"🔄 {stage_name}: Удаление таблиц с зависимостями")
-        
-        for schema, table in tables:
-            # Каждая таблица обрабатывается в отдельной транзакции
-            try:
-                current_app.logger.info(f"🗑️ Удаление данных из таблицы {schema}.{table} для версии {version_id}")
-                
-                # Проверяем, существует ли таблица и есть ли в ней поле database_version_id
-                check_table_query = text("""
-                    SELECT COUNT(*) 
-                    FROM information_schema.columns 
-                    WHERE table_schema = :schema_name 
-                      AND table_name = :table_name
-                      AND column_name = 'database_version_id'
-                """)
-                
-                result = db.session.execute(check_table_query, {"schema_name": schema, "table_name": table})
-                has_version_column = result.scalar() > 0
-                
-                if not has_version_column:
-                    current_app.logger.info(f"⚠️ Таблица {schema}.{table} не имеет поля database_version_id, пропускаем")
-                    continue
-                
-                # Подсчитываем количество записей для удаления
-                count_query = text(f"""
-                    SELECT COUNT(*) FROM {schema}.{table} 
-                    WHERE database_version_id = :version_id
-                """)
-                
-                count_result = db.session.execute(count_query, {"version_id": version_id})
-                records_count = count_result.scalar()
-                
-                if records_count == 0:
-                    current_app.logger.info(f"📋 Таблица {schema}.{table}: нет данных для удаления")
-                    continue
-                
-                # Удаляем записи в отдельной транзакции
-                try:
-                    delete_query = text(f"""
-                        DELETE FROM {schema}.{table} 
-                        WHERE database_version_id = :version_id
-                    """)
-                    
-                    result = db.session.execute(delete_query, {"version_id": version_id})
-                    deleted_count = result.rowcount
-                    total_deleted += deleted_count
-                    
-                    # Коммитим изменения для этой таблицы
-                    db.session.commit()
-                    current_app.logger.info(f"✅ Удалено {deleted_count} записей из таблицы {schema}.{table}")
-                    
-                except Exception as delete_error:
-                    # Откатываем транзакцию для этой таблицы
-                    try:
-                        db.session.rollback()
-                        current_app.logger.warning(f"🔄 Rollback выполнен для таблицы {schema}.{table} из-за ошибки: {delete_error}")
-                    except Exception as rollback_error:
-                        current_app.logger.error(f"❌ Ошибка при rollback для таблицы {schema}.{table}: {rollback_error}")
-                    
-                    # Логируем ошибку, но продолжаем с другими таблицами
-                    log_to_db(
-                        user,
-                        f"Ошибка удаления данных из таблицы {schema}.{table}",
-                        f"Версия {version_id}: {str(delete_error)}",
-                        entity_type="database_version",
-                        entity_id=version_id
-                    )
-                    continue
-                
-            except Exception as e:
-                # Ошибка на уровне проверки таблицы
-                current_app.logger.error(f"❌ Ошибка при проверке таблицы {schema}.{table}: {e}")
-                log_to_db(
-                    user,
-                    f"Ошибка проверки таблицы {schema}.{table}",
-                    f"Версия {version_id}: {str(e)}",
-                    entity_type="database_version",
-                    entity_id=version_id
-                )
-                continue
-        
-        current_app.logger.info(f"✅ {stage_name} завершен")
-    
-    # Удаляем ассоциативные таблицы (если есть)
-    current_app.logger.info("🔄 Удаление ассоциативных таблиц")
-    
-    try:
-        # Таблица many-to-many (миграция b8c9d0e1f2a3): gs_sys_regional_district_regional_energy_system
-        assoc_table = 'gs_sys_regional_district_regional_energy_system'
-        check_assoc_query = text("""
-            SELECT COUNT(*) 
-            FROM information_schema.tables 
-            WHERE table_schema = :schema_name
-              AND table_name = :table_name
-        """)
-        
-        result = db.session.execute(check_assoc_query, {"schema_name": SCHEMA_REFDATA, "table_name": assoc_table})
-        if result.scalar() > 0:
-            # Проверяем наличие поля database_version_id
-            check_column_query = text("""
-                SELECT COUNT(*) 
-                FROM information_schema.columns 
-                WHERE table_schema = :schema_name
-                  AND table_name = :table_name
-                  AND column_name = 'database_version_id'
-            """)
-            
-            result = db.session.execute(check_column_query, {"schema_name": SCHEMA_REFDATA, "table_name": assoc_table})
-            if result.scalar() > 0:
-                # Подсчитываем записи
-                count_query = text(f"""
-                    SELECT COUNT(*) FROM {SCHEMA_REFDATA}.{assoc_table} 
-                    WHERE database_version_id = :version_id
-                """)
-                
-                count_result = db.session.execute(count_query, {"version_id": version_id})
-                records_count = count_result.scalar()
-                
-                if records_count > 0:
-                    # Удаляем записи в отдельной транзакции
-                    try:
-                        delete_query = text(f"""
-                            DELETE FROM {SCHEMA_REFDATA}.{assoc_table} 
-                            WHERE database_version_id = :version_id
-                        """)
-                        
-                        result = db.session.execute(delete_query, {"version_id": version_id})
-                        deleted_count = result.rowcount
-                        total_deleted += deleted_count
-                        
-                        # Коммитим изменения
-                        db.session.commit()
-                        current_app.logger.info(
-                            f"✅ Удалено {deleted_count} записей из ассоциативной таблицы {SCHEMA_REFDATA}.{assoc_table}"
-                        )
-                        
-                    except Exception as delete_error:
-                        # Откатываем транзакцию
-                        try:
-                            db.session.rollback()
-                            current_app.logger.warning(f"🔄 Rollback выполнен для ассоциативной таблицы из-за ошибки: {delete_error}")
-                        except Exception as rollback_error:
-                            current_app.logger.error(f"❌ Ошибка при rollback для ассоциативной таблицы: {rollback_error}")
-                        
-                        # Логируем ошибку
-                        log_to_db(
-                            user,
-                            f"Ошибка удаления ассоциативной таблицы {assoc_table}",
-                            f"Версия {version_id}: {str(delete_error)}",
-                            entity_type="database_version",
-                            entity_id=version_id
-                        )
-                else:
-                    current_app.logger.info(f"📋 Ассоциативная таблица {SCHEMA_REFDATA}.{assoc_table}: нет данных для удаления")
-            else:
-                current_app.logger.info(f"⚠️ Ассоциативная таблица {assoc_table} не имеет поля database_version_id")
-        else:
-            current_app.logger.info(f"📋 Ассоциативная таблица {assoc_table} не существует")
-            
-    except Exception as e:
-        current_app.logger.error(f"❌ Ошибка при проверке ассоциативных таблиц: {e}")
-        log_to_db(
-            user,
-            f"Ошибка проверки ассоциативных таблиц",
-            f"Версия {version_id}: {str(e)}",
-            entity_type="database_version",
-            entity_id=version_id
-        )
-    
-    log_to_db(
-        user,
-        f"✅ ПОЭТАПНОЕ удаление данных версии БД ID={version_id} завершено",
-        f"Всего удалено записей: {total_deleted}",
-        entity_type="database_version",
-        entity_id=version_id
+    total_deleted = delete_all_module_data_for_version(version_id, user)
+    current_app.logger.info(
+        f"✅ Удаление данных всех модулей версии БД ID={version_id} завершено. "
+        f"Удалено записей: {total_deleted}"
     )
-    
-    current_app.logger.info(f"✅ ПОЭТАПНОЕ удаление данных версии БД ID={version_id} завершено. Удалено записей: {total_deleted}")
-    
     return total_deleted
 
 

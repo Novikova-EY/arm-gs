@@ -1,0 +1,11 @@
+{% macro hub_tile(href, title='', extra_class='') %}
+<a class="home-outline__tile {{ extra_class }}" href="{{ href }}">
+    <span>{% if caller is defined %}{{ caller() }}{% else %}{{ title }}{% endif %}</span>
+</a>
+{% endmacro %}
+
+{% macro hub_tile_disabled(title='', extra_class='') %}
+<span class="home-outline__tile is-disabled {{ extra_class }}" aria-disabled="true" tabindex="-1">
+    <span>{% if caller is defined %}{{ caller() }}{% else %}{{ title }}{% endif %}</span>
+</span>
+{% endmacro %}

@@ -361,6 +361,8 @@ class EquipmentGroupFuelCalculationService:
         strict_formula_validation: bool = False,
         commit: bool = False,
         base_year_number: int | None = None,
+        ud_bookmark=None,
+        formula_bookmark=None,
     ) -> EquipmentGroupFuelParam:
         """
         Рассчитывает топливную и энергетическую часть для одной группы оборудования на один год.
@@ -369,8 +371,18 @@ class EquipmentGroupFuelCalculationService:
         - не копирует payload из прошлых лет;
         - использует только текущую строку fuel_param на год расчёта;
         - удельник и формула топлива — тот же Seek, что Access:
-          окно [base_year, year], без шага раньше базового года.
+          окно [base_year, year]; пустое окно при не-NoMatch — Bookmark
+          предыдущей станции цикла (Кнопка49 ``bm`` / ``bm1``).
         """
+        from app.fuel.services.calculation.fuel_formula_lookup import (
+            resolve_access_formula_seek,
+        )
+        from app.fuel.services.calculation.specific_consumption_lookup import (
+            AccessSeekBookmark,
+            fuel_row_numb1120,
+            resolve_access_ud_seek,
+        )
+
         fuel_param = self._get_or_create_fuel_param(
             equipment_group_id=equipment_group_id,
             year_number=year_number,
@@ -384,27 +396,56 @@ class EquipmentGroupFuelCalculationService:
         if effective_db_version is None:
             effective_db_version = get_current_db_version_id()
 
-        consumption = self._select_actual_consumption_row(
+        if ud_bookmark is None:
+            ud_bookmark = AccessSeekBookmark()
+        if formula_bookmark is None:
+            formula_bookmark = AccessSeekBookmark()
+
+        this_consumption = self._select_actual_consumption_row(
             equipment_group_id=equipment_group_id,
             target_year=year_number,
             database_version_id=effective_db_version,
             byear=base_year_number,
         )
-        formula = self._select_actual_formula_row(
+        this_formula = self._select_actual_formula_row(
             equipment_group_id=equipment_group_id,
             target_year=year_number,
             variant_number=variant_number,
             database_version_id=effective_db_version,
             byear=base_year_number,
         )
+        numb1120 = fuel_row_numb1120(fuel_param)
+        if numb1120 is None:
+            eg = self.session.get(EquipmentGroup, equipment_group_id)
+            if eg is not None and eg.numb is not None:
+                try:
+                    numb1120 = int(eg.numb)
+                except (TypeError, ValueError):
+                    numb1120 = None
 
-        # Access: If U.NoMatch Then GoTo skip2. Пустая строка U — это Match (y=0).
-        if consumption is None:
+        consumption = resolve_access_ud_seek(
+            self.session,
+            this_consumption,
+            ud_bookmark,
+            numb1120=numb1120,
+            byear=base_year_number,
+            database_version_id=effective_db_version,
+        )
+        formula = resolve_access_formula_seek(
+            self.session,
+            this_formula,
+            formula_bookmark,
+            numb1120=numb1120,
+            byear=base_year_number,
+            database_version_id=effective_db_version,
+            variant_number=variant_number,
+        )
+
+        # Access: If U.NoMatch / topl.NoMatch Then GoTo skip2 — без Update.
+        if consumption is None or not (formula and formula.formtxt):
             return fuel_param
 
-        # Access: If topl.NoMatch Then GoTo skip2 — нет формулы в [byear, cyear].
-        if not (formula and formula.formtxt):
-            return fuel_param
+        # 1. Энергетический блок
 
         # 1. Энергетический блок
         self._calculate_energy_part(
@@ -675,28 +716,24 @@ class EquipmentGroupFuelCalculationService:
         Энергетический блок расчета.
         Порт логики Access-модуля: расчет EOTP, EUST, EURT, TUST и B
         по текущей строке параметров группы и актуальной строке удельных показателей.
-        EWTP со строки станции не затираем (импорт / ручная правка); формула
-        QOTR·y/1000 только если ewtp пустой.
+        EWTP = QOTR·y/1000 как Кнопка49 (всегда пересчёт, не «оставить импорт»).
         Ветвь VED∈{1,4}: snbas/Ksn для ekotp и bbas/Kh для EUST.
         """
-        if consumption is None:
-            return
-
         qotr = d0(fuel_param.qotr)
         e = d0(fuel_param.e)
         q = d0(fuel_param.q)
         turt = d0(fuel_param.turt)
         nust = d0(fuel_param.nust)
 
-        y = d0(consumption.y)
-        snk = d0(consumption.snk)
-        sntp = d0(consumption.sntp)
-        bk = d0(consumption.bk)
-        btp = d0(consumption.btp)
-        snbas = d0(getattr(consumption, "snbas", None))
-        ksn = d0(getattr(consumption, "ksn", None))
-        bbas = d0(getattr(consumption, "bbas", None))
-        kh = d0(getattr(consumption, "kh", None))
+        y = d0(getattr(consumption, "y", None) if consumption is not None else None)
+        snk = d0(getattr(consumption, "snk", None) if consumption is not None else None)
+        sntp = d0(getattr(consumption, "sntp", None) if consumption is not None else None)
+        bk = d0(getattr(consumption, "bk", None) if consumption is not None else None)
+        btp = d0(getattr(consumption, "btp", None) if consumption is not None else None)
+        snbas = d0(getattr(consumption, "snbas", None) if consumption is not None else None)
+        ksn = d0(getattr(consumption, "ksn", None) if consumption is not None else None)
+        bbas = d0(getattr(consumption, "bbas", None) if consumption is not None else None)
+        kh = d0(getattr(consumption, "kh", None) if consumption is not None else None)
 
         ved = fuel_param.ved
         if ved is None:
@@ -708,9 +745,9 @@ class EquipmentGroupFuelCalculationService:
         except (TypeError, ValueError):
             ved_i = None
 
-        from app.fuel.services.calculation.station_ewtp import resolve_station_ewtp
+        from app.fuel.services.calculation.station_ewtp import formula_ewtp
 
-        ewtp = resolve_station_ewtp(fuel_param, y)
+        ewtp = formula_ewtp(fuel_param.qotr, y)
         hours_util = (e / nust) / Decimal("8.76") if nust > 0 else Decimal("0")
 
         if ved_i in (1, 4) and ksn > 0 and nust > 0:

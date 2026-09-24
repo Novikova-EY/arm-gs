@@ -1,0 +1,1031 @@
+{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+block content %}
+{% set table_endpoint = table_endpoint|default('ecology_bp.operating_tes_table') %}
+{% set value_endpoint = value_endpoint|default('ecology_bp.operating_tes_update_value') %}
+ {% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+  <div class="page-table-scroll">
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+      <div class="col-12 mb-2">
+        <div class="d-flex flex-wrap align-items-start gap-2 w-100">
+          <div
+            class="d-flex flex-column gap-2 flex-grow-1"
+            style="min-width: 0"
+          >
+            {% include 'ecology/operating_tes/_sheet_nav.html' %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 mb-2 text-center">
+        <h2 class="mb-2">
+          {{ page_title }}{% if formula_text %}
+          <i
+            class="bi bi-info-circle text-primary ms-2"
+            data-bs-toggle="tooltip"
+            data-bs-placement="bottom"
+            title="{{ formula_text|e }}"
+            style="cursor: help; font-size: 0.7em; vertical-align: 0.15em"
+            aria-label="Расчетная формула"
+          ></i>
+          {% endif %}
+        </h2>
+        {% if sheet.layout == 'spravochnik' %}
+        <div
+          class="d-flex flex-wrap justify-content-center gap-2 ot-source-legend"
+          aria-label="Источники характеристик"
+        >
+          {% for opt in source_options %}
+          <span class="ot-source-legend-item" title="{{ opt.label }}">
+            <span
+              class="ot-source-swatch"
+              style="background-color: {{ opt.color }};"
+            ></span>
+            {{ opt.short }}
+          </span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="col-12 mb-2">
+        <div class="d-flex align-items-center flex-wrap gap-2 w-100">
+          <form
+            method="GET"
+            action="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug) }}"
+            class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
+            id="operatingTesYearForm"
+          >
+            {% for key, values in request.args.lists() %} {% if key !=
+            'start_year' and key != 'end_year' and key != 'view_year' %} {% for
+            value in values %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}" />
+            {% endfor %} {% endif %} {% endfor %} {% if view_year %}
+            <input type="hidden" name="view_year" value="{{ view_year }}" />
+            {% endif %}
+            <label for="start_year" class="mb-0" style="white-space: nowrap"
+              >Год начала:</label
+            >
+            <select
+              name="start_year"
+              id="start_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
+              {% for year in filter_year_list %}
+              {% if start_year == year %}
+              <option value="{{ year }}" selected>{{ year }}</option>
+              {% else %}
+              <option value="{{ year }}">{{ year }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            <label for="end_year" class="mb-0" style="white-space: nowrap"
+              >Год конца:</label
+            >
+            <select
+              name="end_year"
+              id="end_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
+              {% for year in filter_year_list %}
+              {% if end_year == year %}
+              <option value="{{ year }}" selected>{{ year }}</option>
+              {% else %}
+              <option value="{{ year }}">{{ year }}</option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-success">
+              Применить
+            </button>
+            <a
+              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug) }}"
+              class="btn btn-outline-danger"
+              >Сбросить</a
+            >
+          </form>
+          {% if range_years %}
+          <div
+            class="d-flex flex-wrap gap-1 align-items-center flex-grow-1"
+            style="min-width: 0"
+            role="group"
+            aria-label="Годы периода"
+          >
+            {% for year in range_years %} {% set year_feature =
+            year_features.get(year) if year_features is defined else none %} {%
+            set year_btn_label = (year ~ ' (' ~ year_feature ~ ')') if
+            year_feature else year %} {% if view_year == year %}
+            <span class="btn btn-success text-nowrap" aria-current="true"
+              >{{ year_btn_label }}</span
+            >
+            {% else %}
+            <a
+              href="{{ url_for(table_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, view_year=year) }}"
+              class="btn btn-outline-success text-nowrap"
+              title="Показать данные за {{ year }} год"
+              >{{ year_btn_label }}</a
+            >
+            {% endif %} {% endfor %}
+          </div>
+          {% endif %}
+          <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+            <button
+              type="button"
+              id="otShowEmptyRowsToggle"
+              class="btn btn-outline-primary text-nowrap flex-shrink-0"
+              aria-pressed="false"
+              title="Скрыть строки, у которых все значения пусты или равны нулю"
+            >
+              Пустые строки
+            </button>
+            <div
+              class="d-flex align-items-center gap-1 flex-shrink-0"
+              style="min-width: 11rem"
+            >
+              <label
+                for="rounding_digits"
+                class="mb-0 flex-shrink-0"
+                style="white-space: nowrap"
+                >Округл:</label
+              >
+              <select
+                id="rounding_digits"
+                name="rounding_digits_ui"
+                class="form-select"
+                style="min-width: 140px"
+              >
+                {% if rounding_digits == 0 %}
+                <option value="0" selected>Не округлять</option>
+                {% else %}
+                <option value="0">Не округлять</option>
+                {% endif %}
+                {% if rounding_digits == 1 %}
+                <option value="1" selected>1 знак</option>
+                {% else %}
+                <option value="1">1 знак</option>
+                {% endif %}
+                {% if rounding_digits == 2 %}
+                <option value="2" selected>2 знака</option>
+                {% else %}
+                <option value="2">2 знака</option>
+                {% endif %}
+                {% if rounding_digits == 3 %}
+                <option value="3" selected>3 знака</option>
+                {% else %}
+                <option value="3">3 знака</option>
+                {% endif %}
+                {% if rounding_digits == -1 %}
+                <option value="-1" selected>Целое число</option>
+                {% else %}
+                <option value="-1">Целое число</option>
+                {% endif %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .page-table-scroll > .pd-ec-summary-sticky-stack {
+        left: 0;
+      }
+      /* Горизонтальный скролл перекрывает последнюю строку; padding на wrapper
+         не схлопывается (в отличие от margin у table) и даёт доскроллить строку. */
+      .page-table-scroll:has(#operatingTesTable) {
+        --page-table-scroll-bottom-gap: 1.5rem;
+        padding-bottom: 2rem;
+      }
+      #operatingTesTable.power-demand-summary-table {
+        width: max-content;
+        min-width: 100%;
+        max-width: none;
+        table-layout: fixed;
+        font-size: 1.15rem;
+        --ot-label-col-w: 14rem;
+        --ot-unit-col-w: 5.2rem;
+        --ot-terr-col-min: 8.5rem;
+        margin-bottom: 0;
+      }
+      .page-table-scroll #operatingTesTable thead th {
+        position: sticky;
+        top: var(--pd-summary-controls-sticky-height, 0px);
+        z-index: 50;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0
+          var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+        font-size: 1.15rem;
+      }
+      #operatingTesTable col.ot-col-label {
+        width: var(--ot-label-col-w);
+      }
+      #operatingTesTable col.ot-col-unit {
+        width: var(--ot-unit-col-w);
+      }
+      #operatingTesTable col.ot-col-year,
+      #operatingTesTable col.ot-col-terr {
+        width: var(--ot-terr-col-min);
+      }
+      #operatingTesTable col.ot-col-terr-half {
+        width: calc(var(--ot-terr-col-min) / 2);
+      }
+      #operatingTesTable th.ot-label-col,
+      #operatingTesTable td.ot-row-label {
+        width: var(--ot-label-col-w);
+        min-width: var(--ot-label-col-w);
+        max-width: var(--ot-label-col-w);
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        position: sticky;
+        left: 0;
+        background-clip: padding-box;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #operatingTesTable thead th.ot-label-col {
+        z-index: 52;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+      }
+      #operatingTesTable tbody td.ot-row-label {
+        z-index: 4;
+        background-color: var(--bs-body-bg, #fff);
+      }
+      #operatingTesTable th.ot-unit-col,
+      #operatingTesTable td.ot-unit-cell {
+        width: var(--ot-unit-col-w);
+        min-width: var(--ot-unit-col-w);
+        max-width: var(--ot-unit-col-w);
+        position: sticky;
+        left: var(--ot-label-sticky-w, var(--ot-label-col-w, 0px));
+        background-clip: padding-box;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #operatingTesTable th.ot-unit-col {
+        white-space: nowrap;
+      }
+      #operatingTesTable td.ot-unit-cell {
+        white-space: nowrap;
+        overflow-wrap: normal;
+        overflow: hidden;
+      }
+      #operatingTesTable thead th.ot-unit-col {
+        z-index: 51;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+      }
+      #operatingTesTable tbody td.ot-unit-cell {
+        z-index: 3;
+        background-color: var(--bs-body-bg, #fff);
+      }
+      #operatingTesTable th.ot-year-col,
+      #operatingTesTable td.ot-year-cell {
+        white-space: nowrap;
+        width: var(--ot-terr-col-min);
+        min-width: var(--ot-terr-col-min);
+        overflow: hidden;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+      }
+      .page-table-scroll #operatingTesTable thead th.ot-terr-col {
+        white-space: normal;
+        width: var(--ot-terr-col-min);
+        min-width: var(--ot-terr-col-min);
+        overflow: hidden;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+        font-size: 1.15rem;
+        line-height: 1.15;
+        vertical-align: middle;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+      }
+      #operatingTesTable th.ot-year-col .power-demand-year-feature-caption {
+        white-space: nowrap;
+      }
+      #operatingTesTable td.ot-indent-1 {
+        padding-left: 1.1rem !important;
+      }
+      #operatingTesTable td.ot-indent-2 {
+        padding-left: 2rem !important;
+      }
+      #operatingTesTable.ot-hide-empty tbody tr.ot-row-empty-hidden {
+        display: none !important;
+      }
+      #operatingTesTable.table-striped
+        > tbody
+        > tr:nth-of-type(odd)
+        > td.ot-row-label,
+      #operatingTesTable.table-striped
+        > tbody
+        > tr:nth-of-type(odd)
+        > td.ot-unit-cell {
+        background-color: var(--bs-table-striped-bg, #f8f9fa);
+      }
+      #operatingTesTable tbody tr.table-info > td.ot-row-label,
+      #operatingTesTable tbody tr.table-info > td.ot-unit-cell {
+        background-color: var(--bs-table-info-bg, #cff4fc);
+      }
+      #operatingTesTable input.ot-edit-value {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+        font-size: inherit;
+        line-height: inherit;
+        padding-left: 0.15rem;
+        padding-right: 0.15rem;
+      }
+      .page-table-scroll .ot-table-scroll-end-spacer {
+        height: 2.5rem;
+      }
+      #operatingTesTable.ot-chars-table {
+        --ot-label-col-w: 14rem;
+      }
+      #operatingTesTable.ot-chars-table col.ot-col-note {
+        width: 16rem;
+      }
+      #operatingTesTable.ot-chars-table col.ot-col-source {
+        width: 18rem;
+      }
+      #operatingTesTable.ot-chars-table th.ot-note-col,
+      #operatingTesTable.ot-chars-table td.ot-note-cell {
+        min-width: 16rem;
+        max-width: 22rem;
+        white-space: normal;
+      }
+      #operatingTesTable.ot-chars-table th.ot-source-col,
+      #operatingTesTable.ot-chars-table td.ot-source-cell {
+        min-width: 18rem;
+        max-width: 28rem;
+        white-space: normal;
+      }
+      #operatingTesTable.ot-chars-table select.ot-edit-source {
+        width: 100%;
+        min-width: 0;
+        font-size: inherit;
+        background-color: var(--ot-source-bg, #fff);
+      }
+      #operatingTesTable.ot-chars-table td.ot-note-cell input.ot-edit-value {
+        text-align: left;
+        padding-left: 0.4rem;
+        padding-right: 0.4rem;
+      }
+      #operatingTesTable tbody td.ot-row-label.ot-fuel-colored {
+        background-color: var(--ot-fuel-bg) !important;
+      }
+      #operatingTesTable tbody td.ot-row-label.ot-fuel-adopted {
+        color: #c00000;
+      }
+      .ot-source-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.95rem;
+        color: var(--bs-body-color);
+        background: var(--bs-body-bg, #fff);
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 0.35rem;
+        padding: 0.15rem 0.55rem;
+      }
+      .ot-source-swatch {
+        display: inline-block;
+        width: 0.9rem;
+        height: 0.9rem;
+        border-radius: 0.15rem;
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        flex-shrink: 0;
+      }
+      .page-table-scroll #operatingTesTable.ot-chars-table thead th {
+        font-size: 1.15rem;
+      }
+      #operatingTesTable.ot-chars-table thead tr:first-child th {
+        top: var(--pd-summary-controls-sticky-height, 0px);
+        z-index: 50;
+      }
+      #operatingTesTable.ot-chars-table thead tr:nth-child(2) th {
+        top: calc(
+          var(--pd-summary-controls-sticky-height, 0px) +
+            var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px))
+        );
+        z-index: 49;
+      }
+      #operatingTesTable.ot-chars-table thead th.ot-label-col {
+        z-index: 53;
+      }
+      #operatingTesTable.ot-chars-table th.ot-char-title {
+        white-space: normal;
+        min-width: 0;
+        max-width: none;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+        font-size: 1.15rem;
+        line-height: 1.15;
+        vertical-align: middle;
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+      }
+      #operatingTesTable.ot-chars-table th.ot-char-title-span {
+        max-width: none;
+        min-width: 0;
+      }
+      #operatingTesTable.ot-chars-table th.ot-char-col,
+      #operatingTesTable.ot-chars-table td.ot-char-cell {
+        white-space: nowrap;
+        min-width: 0;
+        overflow: visible;
+        padding-left: 0.15rem;
+        padding-right: 0.15rem;
+      }
+      #operatingTesTable.ot-emission-pair-table,
+      #operatingTesTable.ot-emission-single-table {
+        --ot-label-col-w: 14rem;
+        table-layout: fixed;
+        width: max-content;
+        min-width: 100%;
+        max-width: none;
+      }
+      .page-table-scroll #operatingTesTable.ot-emission-pair-table thead th,
+      .page-table-scroll #operatingTesTable.ot-emission-single-table thead th {
+        font-size: 1.15rem;
+      }
+      #operatingTesTable.ot-emission-pair-table thead tr:first-child th {
+        top: var(--pd-summary-controls-sticky-height, 0px);
+        z-index: 50;
+      }
+      #operatingTesTable.ot-emission-pair-table thead tr:nth-child(2) th {
+        top: calc(
+          var(--pd-summary-controls-sticky-height, 0px) +
+            var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px))
+        );
+        z-index: 49;
+      }
+      #operatingTesTable.ot-emission-pair-table thead th.ot-label-col {
+        z-index: 53;
+      }
+      #operatingTesTable.ot-emission-pair-table th.ot-terr-col {
+        width: var(--ot-terr-col-min);
+        min-width: var(--ot-terr-col-min);
+      }
+      #operatingTesTable.ot-emission-pair-table th.ot-pair-sub {
+        white-space: normal;
+        width: calc(var(--ot-terr-col-min) / 2);
+        min-width: calc(var(--ot-terr-col-min) / 2);
+        overflow: hidden;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: none;
+        font-size: 1.15rem;
+        line-height: 1.15;
+        vertical-align: middle;
+        padding-left: 0.15rem;
+        padding-right: 0.15rem;
+      }
+      #operatingTesTable.ot-emission-pair-table td.ot-pair-cell {
+        white-space: nowrap;
+        width: calc(var(--ot-terr-col-min) / 2);
+        min-width: calc(var(--ot-terr-col-min) / 2);
+        overflow: hidden;
+        padding-left: 0.15rem;
+        padding-right: 0.15rem;
+      }
+    </style>
+
+    <table
+      class="table table-hover table-striped table-bordered align-middle power-demand-summary-table ot-hide-empty{% if sheet.layout in ('chars', 'spravochnik') %} ot-chars-table{% elif emission_view and emission_view.kind == 'pair' %} ot-emission-pair-table{% elif emission_view %} ot-emission-single-table{% endif %}"
+      id="operatingTesTable"
+      data-update-url="{{ url_for(value_endpoint, territory_slug=territory.slug, sheet_slug=sheet.slug) }}"
+      data-can-edit="{{ 1 if can_edit else 0 }}"
+    >
+      {% if sheet.layout in ('chars', 'spravochnik') %}
+      <colgroup>
+        <col class="ot-col-label" />
+        {% for col in char_columns %}
+        <col />
+        {% endfor %} {% if sheet.layout == 'spravochnik' %}
+        <col class="ot-col-note" />
+        <col class="ot-col-source" />
+        {% endif %}
+      </colgroup>
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th rowspan="2" class="text-center align-middle ot-label-col">
+            Вид топлива
+          </th>
+          {% for group in char_header_groups %}
+          <th
+            class="text-center align-middle ot-char-title{% if group.colspan > 1 %} ot-char-title-span{% endif %}"
+            colspan="{{ group.colspan }}"
+            rowspan="{{ group.rowspan }}"
+            title="{{ group.title }}"
+          >
+            {{ group.title }}
+          </th>
+          {% endfor %} {% if sheet.layout == 'spravochnik' %}
+          <th rowspan="2" class="text-center align-middle ot-note-col">
+            Примечание
+          </th>
+          <th rowspan="2" class="text-center align-middle ot-source-col">
+            Источник
+          </th>
+          {% endif %}
+        </tr>
+        <tr class="text-center align-middle">
+          {% for col in char_columns %} {% if not col.hide_short %}
+          <th class="text-center align-middle ot-char-col">{{ col.short }}</th>
+          {% endif %} {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr
+          class="{{ row.css_class }}{% if row.is_empty %} ot-row-empty-hidden{% endif %}"
+          data-row-key="{{ row.key }}"
+        >
+          <td
+            class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}{% if row.label_bg %} ot-fuel-colored{% endif %}{% if row.adopted %} ot-fuel-adopted{% endif %}"
+            {%
+            if
+            row.label_bg
+            %}style="--ot-fuel-bg: {{ row.label_bg }};"
+            {%
+            endif
+            %}
+            data-default-bg="{{ row.label_fallback_bg or '' }}"
+          >
+            {{ row.label }}
+          </td>
+          {% for col in char_columns %}
+          <td
+            class="text-center ot-char-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+          >
+            {% if row.editable_values and can_edit %}
+            <input
+              type="text"
+              class="form-control form-control-sm ot-edit-value"
+              data-year="{{ row.year }}"
+              data-field="{{ col.key }}"
+              value="{{ row.char_values[col.key] if row.char_values is defined and col.key in row.char_values else '' }}"
+              inputmode="decimal"
+              aria-label="{{ col.short }}"
+            />
+            {% else %} {{ row.char_values[col.key] if row.char_values is defined
+            and col.key in row.char_values else '' }} {% endif %}
+          </td>
+          {% endfor %} {% if sheet.layout == 'spravochnik' %}
+          <td class="text-start ot-note-cell">
+            {% if row.editable_values and can_edit %}
+            <input
+              type="text"
+              class="form-control form-control-sm ot-edit-value"
+              data-year="{{ row.year }}"
+              data-field="note"
+              value="{{ row.note or '' }}"
+              aria-label="Примечание"
+            />
+            {% else %} {{ row.note or '' }} {% endif %}
+          </td>
+          <td class="text-start ot-source-cell">
+            {% if row.editable_values and can_edit %}
+            <select
+              class="form-select form-select-sm ot-edit-source"
+              data-year="{{ row.year }}"
+              data-field="source_key"
+              aria-label="Источник"
+              {%
+              if
+              row.label_bg
+              %}style="--ot-source-bg: {{ row.label_bg }};"
+              {%
+              endif
+              %}
+            >
+              {% if not row.source_key %}
+              <option value="" selected></option>
+              {% else %}
+              <option value=""></option>
+              {% endif %}
+              {% for opt in source_options %}
+              {% if row.source_key == opt.key %}
+              <option
+                value="{{ opt.key }}"
+                data-color="{{ opt.color }}"
+                title="{{ opt.label }}"
+                selected
+              >
+                {{ opt.short }}
+              </option>
+              {% else %}
+              <option
+                value="{{ opt.key }}"
+                data-color="{{ opt.color }}"
+                title="{{ opt.label }}"
+              >
+                {{ opt.short }}
+              </option>
+              {% endif %}
+              {% endfor %}
+            </select>
+            {% else %} {% for opt in source_options %} {% if row.source_key ==
+            opt.key %}{{ opt.short }}{% endif %} {% endfor %} {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% elif emission_view and emission_view.kind == 'pair' %}
+      <colgroup>
+        <col class="ot-col-label" />
+        {% for col in territory_columns %}
+        <col class="ot-col-terr-half" />
+        <col class="ot-col-terr-half" />
+        {% endfor %}
+      </colgroup>
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th rowspan="2" class="text-center align-middle ot-label-col">
+            Вид топлива
+          </th>
+          {% for col in territory_columns %}
+          <th class="text-center align-middle ot-terr-col" colspan="2">
+            {{ col.sheet_name }}
+          </th>
+          {% endfor %}
+        </tr>
+        <tr class="text-center align-middle">
+          {% for col in territory_columns %}
+          <th class="text-center align-middle ot-pair-sub">
+            {{ emission_view.left_title }}{% if loop.first and emission_view.left_formula %}
+            <i
+              class="bi bi-info-circle text-primary ms-1"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="{{ emission_view.left_formula|e }}"
+              style="cursor: help; font-size: 0.85em"
+              aria-label="Формула"
+            ></i>
+            {% endif %}
+          </th>
+          <th class="text-center align-middle ot-pair-sub">
+            {{ emission_view.right_title }}{% if loop.first and emission_view.right_formula %}
+            <i
+              class="bi bi-info-circle text-primary ms-1"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="{{ emission_view.right_formula|e }}"
+              style="cursor: help; font-size: 0.85em"
+              aria-label="Формула"
+            ></i>
+            {% endif %}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr
+          class="{{ row.css_class }}{% if row.is_empty %} ot-row-empty-hidden{% endif %}"
+          data-row-key="{{ row.key }}"
+        >
+          <td
+            class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+          >
+            {{ row.label }} {% if row.formula_tooltip %}
+            <i
+              class="bi bi-info-circle text-primary ms-1"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="{{ row.formula_tooltip|e }}"
+              style="cursor: help; font-size: 0.9em"
+              aria-label="Формула"
+            ></i>
+            {% endif %}
+          </td>
+          {% for col in territory_columns %} {% set pair =
+          row.pair_values[col.slug] if row.pair_values is defined and col.slug
+          in row.pair_values else none %}
+          <td
+            class="text-center ot-pair-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+          >
+            {{ pair.left if pair else '' }}
+          </td>
+          <td
+            class="text-center ot-pair-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+          >
+            {{ pair.right if pair else '' }}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% elif emission_view %}
+      <colgroup>
+        <col class="ot-col-label" />
+        {% for col in territory_columns %}
+        <col class="ot-col-terr" />
+        {% endfor %}
+      </colgroup>
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th class="text-center align-middle ot-label-col">Вид топлива</th>
+          {% for col in territory_columns %}
+          <th class="text-center align-middle ot-terr-col">
+            {{ col.sheet_name }}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr
+          class="{{ row.css_class }}{% if row.is_empty %} ot-row-empty-hidden{% endif %}"
+          data-row-key="{{ row.key }}"
+        >
+          <td
+            class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+          >
+            {{ row.label }}
+          </td>
+          {% for col in territory_columns %}
+          <td
+            class="text-center ot-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+          >
+            {{ row.col_values[col.slug] if row.col_values is defined and
+            col.slug in row.col_values else '' }}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% else %}
+      <colgroup>
+        <col class="ot-col-label" />
+        <col class="ot-col-unit" />
+        {% for col in territory_columns %}
+        <col class="ot-col-terr" />
+        {% endfor %}
+      </colgroup>
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th class="text-center align-middle ot-label-col">Наименование</th>
+          <th class="text-center align-middle ot-unit-col">Ед.изм.</th>
+          {% for col in territory_columns %}
+          <th class="text-center align-middle ot-terr-col">
+            {{ col.sheet_name }}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr
+          class="{{ row.css_class }}{% if row.is_empty %} ot-row-empty-hidden{% endif %}"
+          data-row-key="{{ row.key }}"
+          data-editable-field="{{ row.editable_field or '' }}"
+        >
+          <td
+            class="text-start ot-row-label{% if row.indent %} ot-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+          >
+            {{ row.label }} {% if row.formula_tooltip %}
+            <i
+              class="bi bi-info-circle text-primary ms-1"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="{{ row.formula_tooltip|e }}"
+              style="cursor: help; font-size: 0.9em"
+              aria-label="Формула"
+            ></i>
+            {% endif %}
+          </td>
+          <td
+            class="text-center align-middle ot-unit-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+          >
+            {{ row.unit }}
+          </td>
+          {% for col in territory_columns %}
+          <td
+            class="text-center ot-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+          >
+            {% if row.editable_values and can_edit %}
+            <input
+              type="text"
+              class="form-control form-control-sm ot-edit-value"
+              data-year="{{ view_year }}"
+              data-territory="{{ col.slug }}"
+              value="{{ row.col_values[col.slug] if row.col_values is defined and col.slug in row.col_values else '' }}"
+              inputmode="decimal"
+              aria-label="{{ col.sheet_name }}"
+            />
+            {% else %} {{ row.col_values[col.slug] if row.col_values is defined
+            and col.slug in row.col_values else '' }} {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% endif %}
+    </table>
+    <div class="ot-table-scroll-end-spacer" aria-hidden="true"></div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.page-table-scroll [data-bs-toggle="tooltip"]').forEach(function (el) {
+      new bootstrap.Tooltip(el);
+    });
+    document.getElementById('rounding_digits')?.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      url.searchParams.set('rounding_digits', this.value);
+      window.location.href = url.toString();
+    });
+    const table = document.getElementById('operatingTesTable');
+    const labelTh = table?.querySelector('thead th.ot-label-col');
+    const measureNowrapWidth = function (sourceEl, html) {
+      const cs = getComputedStyle(sourceEl);
+      const probe = document.createElement('div');
+      probe.style.cssText = [
+        'position:absolute',
+        'left:-99999px',
+        'top:0',
+        'white-space:nowrap',
+        'width:max-content',
+        'visibility:hidden',
+        'pointer-events:none',
+        'box-sizing:border-box'
+      ].join(';');
+      probe.style.fontFamily = cs.fontFamily;
+      probe.style.fontSize = cs.fontSize;
+      probe.style.fontWeight = cs.fontWeight;
+      probe.style.fontStyle = cs.fontStyle;
+      probe.style.letterSpacing = cs.letterSpacing;
+      probe.style.paddingLeft = cs.paddingLeft;
+      probe.style.paddingRight = cs.paddingRight;
+      probe.style.borderLeftWidth = cs.borderLeftWidth;
+      probe.style.borderRightWidth = cs.borderRightWidth;
+      probe.style.borderLeftStyle = cs.borderLeftStyle;
+      probe.style.borderRightStyle = cs.borderRightStyle;
+      probe.innerHTML = html;
+      document.body.appendChild(probe);
+      const width = probe.getBoundingClientRect().width;
+      probe.remove();
+      return width;
+    };
+    const maxWordWidth = function (el) {
+      const text = (el.textContent || '').trim();
+      if (!text) return 0;
+      let width = 0;
+      text.split(/\s+/).forEach(function (word) {
+        width = Math.max(width, measureNowrapWidth(el, word));
+      });
+      return width;
+    };
+    const measureFitColumns = function () {
+      if (!table || !labelTh) return;
+      let labelW = 0;
+      table.querySelectorAll('th.ot-label-col, td.ot-row-label').forEach(function (el) {
+        labelW = Math.max(labelW, measureNowrapWidth(el, el.innerHTML));
+      });
+      const unitTh = table.querySelector('th.ot-unit-col');
+      let unitW = 0;
+      if (unitTh) {
+        unitW = measureNowrapWidth(unitTh, unitTh.textContent || '');
+        table.querySelectorAll('td.ot-unit-cell').forEach(function (el) {
+          unitW = Math.max(unitW, measureNowrapWidth(el, el.textContent || ''));
+        });
+      }
+      const labelPx = labelW > 0 ? Math.ceil(labelW + 4) : 0;
+      const unitPx = unitW > 0 ? Math.ceil(unitW + 2) : 0;
+      if (labelPx > 0) {
+        table.style.setProperty('--ot-label-col-w', labelPx + 'px');
+        table.style.setProperty('--ot-label-sticky-w', labelPx + 'px');
+      }
+      if (unitPx > 0) {
+        table.style.setProperty('--ot-unit-col-w', unitPx + 'px');
+      } else {
+        table.style.removeProperty('--ot-unit-col-w');
+      }
+      const isPair = table.classList.contains('ot-emission-pair-table');
+      const dataCols = table.querySelectorAll(
+        isPair ? 'col.ot-col-terr-half' : 'col.ot-col-terr, col.ot-col-year'
+      );
+      let minCol = 0;
+      if (isPair) {
+        table.querySelectorAll('th.ot-pair-sub').forEach(function (el) {
+          minCol = Math.max(minCol, maxWordWidth(el));
+        });
+        table.querySelectorAll('td.ot-pair-cell').forEach(function (el) {
+          minCol = Math.max(minCol, measureNowrapWidth(el, (el.textContent || '').trim()));
+        });
+        table.querySelectorAll('thead th.ot-terr-col').forEach(function (el) {
+          minCol = Math.max(minCol, maxWordWidth(el) / 2);
+        });
+      } else {
+        table.querySelectorAll('thead th.ot-terr-col, thead th.ot-year-col').forEach(function (el) {
+          minCol = Math.max(minCol, maxWordWidth(el));
+        });
+        table.querySelectorAll('td.ot-year-cell').forEach(function (el) {
+          minCol = Math.max(minCol, measureNowrapWidth(el, (el.textContent || '').trim()));
+        });
+      }
+      const n = dataCols.length;
+      if (n) {
+        const wrap = table.closest('.page-table-scroll');
+        const avail = wrap ? wrap.clientWidth : 0;
+        const remaining = Math.max(0, avail - labelPx - unitPx);
+        const colW = Math.ceil(Math.max(minCol + 8, remaining / n));
+        table.style.setProperty('--ot-terr-col-min', (isPair ? colW * 2 : colW) + 'px');
+        dataCols.forEach(function (col) {
+          col.style.width = colW + 'px';
+        });
+        const total = labelPx + unitPx + colW * n;
+        table.style.width = Math.max(avail, total) + 'px';
+        table.style.minWidth = table.style.width;
+        table.style.maxWidth = 'none';
+      } else {
+        table.style.width = '100%';
+        table.style.minWidth = '100%';
+      }
+      if (typeof window.armGsApplyStickyTheadOffsets === 'function') {
+        window.armGsApplyStickyTheadOffsets();
+      }
+      if (typeof window.armGsUpdateHorizontalScrollFlags === 'function') {
+        window.armGsUpdateHorizontalScrollFlags();
+      }
+    };
+    measureFitColumns();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(measureFitColumns);
+    }
+    window.addEventListener('resize', measureFitColumns);
+    const emptyBtn = document.getElementById('otShowEmptyRowsToggle');
+    emptyBtn?.addEventListener('click', function () {
+      const hide = table.classList.toggle('ot-hide-empty');
+      const shown = !hide;
+      emptyBtn.setAttribute('aria-pressed', shown ? 'true' : 'false');
+      emptyBtn.classList.toggle('btn-primary', shown);
+      emptyBtn.classList.toggle('btn-outline-primary', !shown);
+    });
+    const updateUrl = table?.dataset.updateUrl;
+    const canEdit = table?.dataset.canEdit === '1';
+    const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
+    if (canEdit && updateUrl) {
+      const saveField = function (el) {
+        const tr = el.closest('tr');
+        fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF || ''},
+          body: JSON.stringify({
+            year: el.dataset.year,
+            territory: el.dataset.territory,
+            row_key: tr?.dataset.rowKey,
+            field: el.dataset.field || tr?.dataset.editableField,
+            value: el.value
+          })
+        }).then(function (resp) {
+          if (!resp.ok) throw new Error('save failed');
+          return resp.json();
+        }).then(function (data) {
+          if (!data.ok) throw new Error(data.error || 'save failed');
+          el.classList.remove('is-invalid');
+        }).catch(function () {
+          el.classList.add('is-invalid');
+        });
+      };
+      table.querySelectorAll('input.ot-edit-value').forEach(function (input) {
+        input.addEventListener('change', function () { saveField(input); });
+      });
+      const applySourceColor = function (select) {
+        const tr = select.closest('tr');
+        const label = tr?.querySelector('td.ot-row-label');
+        const opt = select.options[select.selectedIndex];
+        const color = (opt && opt.dataset.color) || label?.dataset.defaultBg || '';
+        if (label) {
+          if (color) {
+            label.style.setProperty('--ot-fuel-bg', color);
+            label.classList.add('ot-fuel-colored');
+          } else {
+            label.style.removeProperty('--ot-fuel-bg');
+            label.classList.remove('ot-fuel-colored');
+          }
+        }
+        if (color) {
+          select.style.setProperty('--ot-source-bg', color);
+        } else {
+          select.style.removeProperty('--ot-source-bg');
+        }
+        select.title = (opt && opt.title) || '';
+      };
+      table.querySelectorAll('select.ot-edit-source').forEach(function (select) {
+        applySourceColor(select);
+        select.addEventListener('change', function () {
+          applySourceColor(select);
+          saveField(select);
+        });
+      });
+    }
+  });
+</script>
+{% endif %} {% endblock %}

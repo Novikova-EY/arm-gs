@@ -11,6 +11,10 @@ from sqlalchemy.schema import Index
 from sqlalchemy import event
 from sqlalchemy.sql import text as sql_text
 from app.extensions import db
+from app.common.services.unique_uuid_services import (
+    ensure_unique_identity_uuid,
+    extra_identity_uuid_sources,
+)
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
@@ -171,6 +175,9 @@ class Machine(db.Model, AuditMixin, VersionedModelMixin):
 
     # ожидаемый год ввода в эксплуатацию
     date_exploitation_expected = db.Column(db.Integer, nullable=True)
+
+    # ожидаемая дата ввода в эксплуатацию (ДД.ММ.ГГГГ / ГГГГ-ММ-ДД)
+    date_exploitation_date_expected = db.Column(db.String(10), nullable=True)
 
     # ввод в 4 квартале ожидаемого года ввода в эксплуатацию
     is_commissioning_q4 = db.Column(
@@ -812,13 +819,20 @@ def generate_external_code_before_insert(mapper, connection, target):
     это постоянный identity-key логического агрегата между версиями БД.
     Поэтому при вставке сначала пытаемся найти уже существующий код семейства,
     а если машины ещё нигде нет — выдаём новый UUID один раз.
+    В одной версии БД код не должен совпадать с уже существующим агрегатом.
     """
-    if target.external_code:
-        return
-
-    existing_external_code = _find_existing_machine_external_code(connection, target)
-    if existing_external_code:
-        target.external_code = existing_external_code
-        return
-
-    target.external_code = _make_new_machine_external_code()
+    preferred = (target.external_code or "").strip() or None
+    if not preferred:
+        preferred = _find_existing_machine_external_code(connection, target)
+    if not preferred:
+        preferred = _make_new_machine_external_code()
+    target.external_code = ensure_unique_identity_uuid(
+        connection,
+        schema=SCHEMA_GENERATION,
+        table="gs_gen_machines",
+        column="external_code",
+        preferred=preferred,
+        version_id=getattr(target, "database_version_id", None),
+        exclude_id=getattr(target, "id", None),
+        extra_sources=extra_identity_uuid_sources(SCHEMA_GENERATION, "gs_gen_machines"),
+    )

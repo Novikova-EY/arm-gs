@@ -93,6 +93,33 @@ def _choose_primary_group(groups: list[EquipmentGroup]) -> Optional[EquipmentGro
     return max(groups, key=_count_filled_fields)
 
 
+def equipment_groups_must_not_merge(left, right) -> bool:
+    """Разные Access-строки (numb) и пара родитель/ребёнок составной станции — не дубликаты."""
+    if left is None or right is None:
+        return False
+    from app.fuel.services.equipment_groups.composite_station_semantics import _as_int
+
+    left_numb = _as_int(getattr(left, "numb", None))
+    right_numb = _as_int(getattr(right, "numb", None))
+    if left_numb is not None and right_numb is not None and left_numb != right_numb:
+        return True
+    left_main = _as_int(getattr(left, "main", None))
+    right_main = _as_int(getattr(right, "main", None))
+    if left_numb is not None and right_main == left_numb:
+        return True
+    if right_numb is not None and left_main == right_numb:
+        return True
+    return False
+
+
+def mergeable_duplicate_groups(current, candidates: Iterable) -> list:
+    return [
+        group
+        for group in (candidates or [])
+        if group is not None and not equipment_groups_must_not_merge(current, group)
+    ]
+
+
 def _merge_group_fields(target: EquipmentGroup, source: EquipmentGroup) -> bool:
     changed = False
     for field in EQUIPMENT_GROUP_MERGE_FIELDS:
@@ -394,20 +421,21 @@ def merge_equipment_groups_by_name_for_station_type(
                 continue
             candidates.append(group)
             seen_ids.add(group.id)
+        merge_sources = mergeable_duplicate_groups(primary, candidates)
 
-        for group in candidates:
+        for group in merge_sources:
             if group.id == primary.id:
                 continue
             _merge_group_fields(primary, group)
 
-        candidate_ids = [g.id for g in candidates if g and g.id != primary.id]
+        candidate_ids = [g.id for g in merge_sources if g and g.id != primary.id]
         _reassign_group_detail_rows_to_primary(candidate_ids, primary.id)
         _reassign_sets_to_primary(candidate_ids, primary.id)
 
         for link in links_by_version.get(version_id, []):
             _ensure_set_link(link.id, primary.id)
 
-        removed_groups_total += _remove_orphan_groups(candidates, primary.id)
+        removed_groups_total += _remove_orphan_groups(merge_sources, primary.id)
         merged_groups_total += len(candidate_ids)
         versions_touched += 1
         merged_any = True
@@ -487,7 +515,7 @@ def rename_or_merge_equipment_group_for_station(
             EquipmentGroup.database_version_id == merge_version_id
         )
     # Выбираем primary: с наибольшим числом заполненных полей (как в merge_equipment_groups_by_name)
-    candidates = existing_same_name.all()
+    candidates = mergeable_duplicate_groups(current_group, existing_same_name.all())
     primary_group = _choose_primary_group(candidates) if candidates else None
 
     if primary_group is None:
@@ -916,14 +944,25 @@ def rename_or_merge_equipment_group_all_versions(
             continue
 
         primary.name = new_name
-        candidate_ids = [g.id for g in groups_with_new if g.id != primary.id]
-        for g in groups_with_new:
+        merge_sources = mergeable_duplicate_groups(primary, groups_with_new)
+        candidate_ids = [g.id for g in merge_sources if g.id != primary.id]
+        if not candidate_ids:
+            versions_touched += 1
+            results_by_version.append(
+                {
+                    "version_id": version_id,
+                    "action": "renamed",
+                    "count": len(groups_to_rename),
+                }
+            )
+            continue
+        for g in merge_sources:
             if g.id != primary.id:
                 _merge_group_fields_return_list(primary, g)
         _reassign_group_detail_rows_to_primary(candidate_ids, primary.id)
         # Кандидаты уже той же версии — переносим все их связи, включая вторую станцию.
         _reassign_sets_to_primary(candidate_ids, primary.id)
-        removed = _remove_orphan_groups(groups_with_new, primary.id)
+        removed = _remove_orphan_groups(merge_sources + [primary], primary.id)
         removed_count += removed
         merged_count += len(candidate_ids)
         versions_touched += 1

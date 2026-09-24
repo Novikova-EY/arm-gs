@@ -269,7 +269,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                   colspan="{{ fuel_type_col_count.n }}"
                   class="fuel-types-group-header"
                 >
-                  Расход топлива, тут
+                  Расход топлива, тыс. тут
                 </th>
                 {% endif %}
               </tr>
@@ -386,7 +386,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
               (fuel_param_prev_compare or {}).get(gid ~ ':' ~ ynum) if
               fuel_param_prev_compare is defined else none %}
               <tr
-                class="text-center align-middle fuel-param-detail-row{% if group_block.get('is_composite_total_row') %} fuel-param-summary-row fuel-param-composite-parent-row fw-bold{% elif _row_muted %} text-muted{% endif %}"
+                class="text-center align-middle fuel-param-detail-row{% if group_block.get('is_composite_total_row') %} fuel-param-summary-row fuel-param-composite-parent-row fw-bold{% elif _row_muted %} text-muted{% endif %}{% if loop.last %} fuel-param-group-last{% endif %}"
                 data-fuel-edit-data-row="1"
                 data-fuel-detail-year="{{ ynum }}"
                 {% if _row_detail %}data-params-detail-level="{{ _row_detail }}"{% endif %}
@@ -396,6 +396,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 gid
                 %}
                 data-fuel-detail-group-id="{{ gid }}"
+                data-fuel-group-id="{{ gid }}"
                 data-fuel-detail-group-name="{{ group_name|e }}"
                 {%
                 endif
@@ -1000,6 +1001,11 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
   }
   #fuelParamsTable tbody tr.fuel-param-detail-row {
     cursor: pointer;
+  }
+  /* Граница между группами оборудования (после последнего года группы) */
+  #fuelParamsTable tbody tr.fuel-param-group-last > td,
+  #fuelParamsTable tbody td.fuel-param-group-span {
+    border-bottom: 2px solid #6c757d !important;
   }
   #fuelParamsTable tbody tr.fuel-edit-empty-row-hidden {
     display: none !important;

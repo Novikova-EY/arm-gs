@@ -117,6 +117,11 @@ def integrity_retry_commit(do_writes, seq_table: str):
 
 
 def new_shared_ref_uuid() -> str:
+    """Общий ref_uuid для копий новой записи во всех версиях.
+
+    Уникальность в каждой версии дополнительно проверяется при INSERT
+    (RefdataUuidMixin.before_insert).
+    """
     return str(uuid_lib.uuid4())
 
 

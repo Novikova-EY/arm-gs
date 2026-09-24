@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Помесячный прогноз выработки ЭЭ для перспективных площадок ГЭС/ГАЭС
-(водохозяйственный год: май–апрель; сценарии маловодья 95% / средневодья 50%).
+и карточки станции тех же типов (календарный год январь-декабрь;
+сценарии маловодья 95% / средневодья 50%).
 """
 from sqlalchemy.sql import func, text
 from sqlalchemy import Numeric, CheckConstraint, Index
@@ -9,21 +10,20 @@ from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 
-# Водохозяйственный год: май → апрель
-HYDRO_MONTH_ORDER = (5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4)
-HYDRO_MONTH_ROMAN = {
-    5: "V",
-    6: "VI",
-    7: "VII",
-    8: "VIII",
-    9: "IX",
-    10: "X",
-    11: "XI",
-    12: "XII",
-    1: "I",
-    2: "II",
-    3: "III",
-    4: "IV",
+HYDRO_MONTH_ORDER = tuple(range(1, 13))
+HYDRO_MONTH_NAMES = {
+    1: "Январь",
+    2: "Февраль",
+    3: "Март",
+    4: "Апрель",
+    5: "Май",
+    6: "Июнь",
+    7: "Июль",
+    8: "Август",
+    9: "Сентябрь",
+    10: "Октябрь",
+    11: "Ноябрь",
+    12: "Декабрь",
 }
 
 SCENARIO_LOW_95 = "low_95"
@@ -35,6 +35,7 @@ HYDRO_SCENARIOS = (
 
 PLACE_KIND_GES = "ges"
 PLACE_KIND_GAES = "gaes"
+PLACE_KIND_STATION = "station"
 
 
 class ProspectivePlaceHydroEnergyForecast(db.Model, AuditMixin):
@@ -53,7 +54,7 @@ class ProspectivePlaceHydroEnergyForecast(db.Model, AuditMixin):
             unique=True,
         ),
         CheckConstraint(
-            "place_kind IN ('ges', 'gaes')",
+            "place_kind IN ('ges', 'gaes', 'station')",
             name="ck_pp_hydro_forecast_place_kind",
         ),
         CheckConstraint(

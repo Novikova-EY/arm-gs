@@ -3,20 +3,29 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from app.power_demand.services.demand_summary_services import (
+    _synchronous_area_matches_name_prefix,
     apply_second_sa_from_ues_east_formula,
 )
 
 
-def _ues_row(ues_id: int, parameter_key: str, year_values: list[str]) -> dict:
+def _ues_row(
+    ues_id: int,
+    parameter_key: str,
+    year_values: list[str],
+    *,
+    entity_label: str = "ОЭС Востока",
+) -> dict:
     return {
         "demand_model_name": "UnionEnergySystemDemandParameter",
         "parameter_key": parameter_key,
         "parent_fk_column": "id_union_energy_system",
         "parent_id": ues_id,
         "id_union_energy_system": ues_id,
+        "entity_label": entity_label,
         "year_values": list(year_values),
         "year_numeric_tooltips": list(year_values),
         "hist_value": "100",
@@ -86,3 +95,37 @@ def test_apply_second_sa_from_ues_east_copies_all_parameters(_sa_mock, _ues_mock
     assert by_pk["peak_max_power_usage_hours"]["pd_formula_text_key"] == (
         "sa_second_chi_from_ues_east"
     )
+
+
+def test_resolve_synchronous_area_id_matches_name_full() -> None:
+    """Краткое имя «2-ая СЗ», полное — «Вторая синхронная зона» (как в справочнике)."""
+    sa = SimpleNamespace(id=22, name="2-ая СЗ", name_full="Вторая синхронная зона")
+    assert _synchronous_area_matches_name_prefix(sa, "вторая синхронная зона")
+    assert not _synchronous_area_matches_name_prefix(
+        SimpleNamespace(name="2-ая СЗ", name_full=None),
+        "вторая синхронная зона",
+    )
+
+
+@patch(
+    "app.power_demand.services.demand_summary_services._resolve_union_energy_system_id_by_name_cf",
+    return_value=7,
+)
+@patch(
+    "app.power_demand.services.demand_summary_services._resolve_synchronous_area_id_by_name_prefix_cf",
+    return_value=2,
+)
+def test_apply_second_sa_prefers_labeled_ues_east_row(_sa_mock, _ues_mock) -> None:
+    """Не копировать пустой вариант периметра, если есть строка «ОЭС Востока»."""
+    years = [2024]
+    rows = [
+        _ues_row(7, "max_power", ["—", "—"], entity_label="ОЭС Востока с НТ"),
+        _ues_row(7, "max_power", ["500"], entity_label="ОЭС Востока"),
+        _sa_row(2, "max_power"),
+    ]
+
+    apply_second_sa_from_ues_east_formula(rows, years, 0)
+
+    sa_row = [r for r in rows if r["demand_model_name"] == "SynchronousAreaDemandParameter"][0]
+    assert sa_row["year_values"] == ["500"]
+    assert sa_row.get("pd_pd_formula_derived_row") is True

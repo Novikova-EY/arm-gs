@@ -1,17 +1,16 @@
-{% extends 'base.html' %}
-
-{% block title %}{{ page_title }}{% endblock %}
-
-{% block content %}
-{% if current_user.is_authenticated %}
+{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+block content %} {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
       <div class="col-12 mb-2">
         <div class="d-flex flex-wrap align-items-start gap-2 w-100">
-          <div class="d-flex flex-column gap-2 flex-grow-1" style="min-width:0;">
-            {% set current_slug = sheet.slug %}
-            {% include 'energy_balance/ee_balance/_sheet_nav.html' %}
+          <div
+            class="d-flex flex-column gap-2 flex-grow-1"
+            style="min-width: 0"
+          >
+            {% set current_slug = sheet.slug %} {% include
+            'energy_balance/ee_balance/_sheet_nav.html' %}
           </div>
         </div>
       </div>
@@ -22,10 +21,12 @@
 
       <div class="col-12 mb-2">
         <div class="d-flex align-items-center flex-wrap gap-2 w-100">
-          <form method="GET"
-                action="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
-                class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
-                id="eeBalanceYearForm">
+          <form
+            method="GET"
+            action="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
+            class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
+            id="eeBalanceYearForm"
+          >
             {% for key, values in request.args.lists() %}
               {% if key != 'start_year' and key != 'end_year' %}
                 {% for value in values %}
@@ -48,15 +49,31 @@
               <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
               {% endfor %}
             </select>
-            <button type="submit" class="btn btn-outline-success">Применить</button>
-            <a href="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
-               class="btn btn-outline-danger">Сбросить</a>
+            <button type="submit" class="btn btn-outline-success">
+              Применить
+            </button>
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
+              class="btn btn-outline-danger"
+              >Сбросить</a
+            >
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_ves_ses', rounding_digits=rounding_digits) }}"
+              class="btn btn-outline-primary ms-4"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ВИЭ"
+              >Выработка ВИЭ</a
+            >
           </form>
           <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
-            <form method="GET"
-                  action="{{ url_for('energy_balance_bp.export_ee_balance') }}"
-                  id="eeBalanceExcelExportForm"
-                  class="d-inline m-0 flex-shrink-0">
+            <form
+              method="GET"
+              action="{{ url_for('energy_balance_bp.export_ee_balance') }}"
+              id="eeBalanceExcelExportForm"
+              class="d-inline m-0 flex-shrink-0"
+            >
               {% if start_year is defined and start_year %}
               <input type="hidden" name="start_year" value="{{ start_year }}">
               {% endif %}
@@ -67,37 +84,52 @@
               {% if hydro_year %}
               <input type="hidden" name="hydro_year" value="{{ hydro_year }}">
               {% endif %}
-              <button type="button"
-                      id="eeBalanceExcelExportBtn"
-                      class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
-                      style="white-space: nowrap;"
-                      title="Выгрузить все листы баланса электрической энергии в Excel">
-                <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Выгрузить в Excel
+              <button
+                type="button"
+                id="eeBalanceExcelExportBtn"
+                class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+                style="white-space: nowrap"
+                title="Выгрузить все листы баланса электрической энергии в Excel"
+              >
+                <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                Выгрузить в Excel
               </button>
             </form>
-            <button type="button"
-                    id="pbShowFlowRowsToggle"
-                    class="btn btn-primary text-nowrap flex-shrink-0"
-                    aria-pressed="true"
-                    title="Скрыть строки перетока электрической энергии и дефицита с учётом перетока">
+            <button
+              type="button"
+              id="pbShowFlowRowsToggle"
+              class="btn btn-primary text-nowrap flex-shrink-0"
+              aria-pressed="true"
+              title="Скрыть строки перетока электрической энергии и дефицита с учётом перетока"
+            >
               +Перетоки
             </button>
-            <button type="button"
-                    id="pbShowEmptyRowsToggle"
-                    class="btn btn-primary text-nowrap flex-shrink-0"
-                    aria-pressed="true"
-                    title="Скрыть строки, у которых все значения пусты или равны нулю">
+            <button
+              type="button"
+              id="pbShowEmptyRowsToggle"
+              class="btn btn-primary text-nowrap flex-shrink-0"
+              aria-pressed="true"
+              title="Скрыть строки, у которых все значения пусты или равны нулю"
+            >
               Пустые строки
             </button>
-            <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
-            <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
-            <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
-              <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-              <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-              <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-              <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-              <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
-            </select>
+            <div
+              class="d-flex align-items-center gap-1 flex-shrink-0"
+              style="min-width: 11rem"
+            >
+              <label
+                for="rounding_digits"
+                class="mb-0 flex-shrink-0"
+                style="white-space: nowrap"
+                >Округл:</label
+              >
+              <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
+                <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+              </select>
             </div>
           </div>
         </div>
@@ -153,7 +185,9 @@
       #eeBalanceTable thead th.pb-label-col {
         z-index: 52;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
-        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+        box-shadow:
+          inset 0 -1px 0
+            var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
           4px 0 6px -4px rgba(0, 0, 0, 0.15);
       }
       #eeBalanceTable tbody td.pb-row-label {
@@ -174,7 +208,9 @@
       #eeBalanceTable thead th.pb-unit-col {
         z-index: 51;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
-        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+        box-shadow:
+          inset 0 -1px 0
+            var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
           4px 0 6px -4px rgba(0, 0, 0, 0.15);
       }
       #eeBalanceTable tbody td.pb-unit-cell {
@@ -202,16 +238,27 @@
       #eeBalanceTable thead th.pb-note-col {
         z-index: 52;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
-        box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+        box-shadow:
+          inset 0 -1px 0
+            var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
           -4px 0 6px -4px rgba(0, 0, 0, 0.15);
       }
       #eeBalanceTable tbody td.pb-note-cell {
         z-index: 4;
         background-color: var(--bs-body-bg, #fff);
       }
-      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-row-label,
-      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-unit-cell,
-      #eeBalanceTable.table-striped > tbody > tr:nth-of-type(odd) > td.pb-note-cell {
+      #eeBalanceTable.table-striped
+        > tbody
+        > tr:nth-of-type(odd)
+        > td.pb-row-label,
+      #eeBalanceTable.table-striped
+        > tbody
+        > tr:nth-of-type(odd)
+        > td.pb-unit-cell,
+      #eeBalanceTable.table-striped
+        > tbody
+        > tr:nth-of-type(odd)
+        > td.pb-note-cell {
         background-color: var(--bs-table-striped-bg, #f8f9fa);
       }
       #eeBalanceTable.table-hover > tbody > tr:hover > td.pb-row-label,
@@ -224,9 +271,18 @@
       #eeBalanceTable tbody tr.table-info > td.pb-note-cell {
         background-color: var(--bs-table-info-bg, #cff4fc);
       }
-      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-row-label,
-      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-unit-cell,
-      #eeBalanceTable.table-hover > tbody > tr.table-info:hover > td.pb-note-cell {
+      #eeBalanceTable.table-hover
+        > tbody
+        > tr.table-info:hover
+        > td.pb-row-label,
+      #eeBalanceTable.table-hover
+        > tbody
+        > tr.table-info:hover
+        > td.pb-unit-cell,
+      #eeBalanceTable.table-hover
+        > tbody
+        > tr.table-info:hover
+        > td.pb-note-cell {
         background-color: #b6effb;
       }
       #eeBalanceTable tbody tr.table-warning > td.pb-row-label,
@@ -234,9 +290,18 @@
       #eeBalanceTable tbody tr.table-warning > td.pb-note-cell {
         background-color: var(--bs-table-warning-bg, #fff3cd);
       }
-      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-row-label,
-      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-unit-cell,
-      #eeBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-note-cell {
+      #eeBalanceTable.table-hover
+        > tbody
+        > tr.table-warning:hover
+        > td.pb-row-label,
+      #eeBalanceTable.table-hover
+        > tbody
+        > tr.table-warning:hover
+        > td.pb-unit-cell,
+      #eeBalanceTable.table-hover
+        > tbody
+        > tr.table-warning:hover
+        > td.pb-note-cell {
         background-color: #ffe69c;
       }
       #eeBalanceTable th.pb-year-col,
@@ -252,9 +317,15 @@
         word-wrap: break-word;
         white-space: normal;
       }
-      #eeBalanceTable td.pb-indent-1 { padding-left: 1.75rem !important; }
-      #eeBalanceTable td.pb-indent-2 { padding-left: 3.25rem !important; }
-      #eeBalanceTable td.pb-indent-3 { padding-left: 4.75rem !important; }
+      #eeBalanceTable td.pb-indent-1 {
+        padding-left: 1.75rem !important;
+      }
+      #eeBalanceTable td.pb-indent-2 {
+        padding-left: 3.25rem !important;
+      }
+      #eeBalanceTable td.pb-indent-3 {
+        padding-left: 4.75rem !important;
+      }
       #eeBalanceTable .pb-row-actions {
         display: inline-flex;
         align-items: center;
@@ -289,10 +360,12 @@
       #eeBalanceTable.pb-hide-flows tbody tr.pb-custom-flow-row {
         display: none !important;
       }
-      #eeBalanceTable tbody tr.pb-flow-group-child-hidden {
+      #eeBalanceTable tbody tr.pb-flow-group-child-hidden,
+      #eeBalanceTable tbody tr.pb-station-child-hidden {
         display: none !important;
       }
-      #eeBalanceTable .pb-flow-group-toggle {
+      #eeBalanceTable .pb-flow-group-toggle,
+      #eeBalanceTable .pb-station-toggle {
         padding: 0;
         border: 0;
         background: transparent;
@@ -301,139 +374,253 @@
         vertical-align: -0.15em;
         margin-right: 0.35rem;
       }
-      #eeBalanceTable .pb-flow-group-toggle .bi {
+      #eeBalanceTable .pb-flow-group-toggle .bi,
+      #eeBalanceTable .pb-station-toggle .bi {
+        font-size: 1.05rem;
+      }
+      #eeBalanceTable a.pb-tes-forecast-calc {
+        color: #0d6efd;
+        text-decoration: none;
+        margin-left: 0.35rem;
+        vertical-align: -0.1em;
+        line-height: 1;
+      }
+      #eeBalanceTable a.pb-tes-forecast-calc .bi {
         font-size: 1.05rem;
       }
     </style>
 
-      <table
-        class="table table-hover table-striped table-bordered align-middle power-demand-summary-table"
-        id="eeBalanceTable"
-        {% if hydro_year %}data-hydro-year="{{ hydro_year }}"{% endif %}
-      >
-        <colgroup>
-          <col class="pb-col-label">
-          <col class="pb-col-unit">
+    <table
+      class="table table-hover table-striped table-bordered align-middle power-demand-summary-table"
+      id="eeBalanceTable"
+      {%
+      if
+      hydro_year
+      %}data-hydro-year="{{ hydro_year }}"
+      {%
+      endif
+      %}
+    >
+      <colgroup>
+        <col class="pb-col-label" />
+        <col class="pb-col-unit" />
+        {% for year in years %}
+        <col class="pb-col-year" />
+        {% endfor %}
+        <col class="pb-col-note" />
+      </colgroup>
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th class="text-center align-middle pb-label-col">Наименование</th>
+          <th class="text-center align-middle pb-unit-col">Ед.изм.</th>
           {% for year in years %}
-          <col class="pb-col-year">
+          <th class="text-center align-middle pb-year-col">
+            {{ year }}
+            <div class="text-wrap power-demand-year-feature-caption">
+              {% if year_features is defined and year in year_features %} {{
+              year_features[year] }} {% endif %}
+            </div>
+          </th>
           {% endfor %}
-          <col class="pb-col-note">
-        </colgroup>
-        <thead class="table-success">
-          <tr class="text-center align-middle">
-            <th class="text-center align-middle pb-label-col">Наименование</th>
-            <th class="text-center align-middle pb-unit-col">Ед.изм.</th>
-            {% for year in years %}
-            <th class="text-center align-middle pb-year-col">
-              {{ year }}
-              <div class="text-wrap power-demand-year-feature-caption">
-                {% if year_features is defined and year in year_features %}
-                {{ year_features[year] }}
-                {% endif %}
-              </div>
-            </th>
-            {% endfor %}
-            <th class="text-center align-middle pb-note-col">Примечание</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-          <tr class="{{ row.css_class }}{% if row.is_custom %} pb-custom-flow-row{% endif %}{% if row.is_flow_block %} pb-flow-block-row{% endif %}{% if row.hide_when_empty %} pb-row-empty-hidden{% endif %}"
-              data-row-key="{{ row.key }}"
-              data-row-kind="{{ row.kind }}"
-              data-indent="{{ row.indent or 0 }}"
-              {% if row.rounding_digits is defined and row.rounding_digits is not none %}data-rounding-digits="{{ row.rounding_digits }}"{% endif %}
-              {% if row.editable_values %}data-editable="1"{% endif %}
-              {% if row.is_custom %}{% elif row.key == 'export' %}data-save-kind="export"{% elif row.value_save_kind %}data-save-kind="{{ row.value_save_kind }}"{% endif %}
-              {% if row.is_custom %}data-custom-id="{{ row.custom_id }}" data-direction="{{ row.custom_direction }}" data-parent-key="{{ row.custom_parent_key or row.flow_section or '' }}"{% if row.custom_origin_slug %} data-origin-slug="{{ row.custom_origin_slug }}" data-origin-key="{{ row.custom_origin_key }}"{% endif %}{% endif %}
-              {% if row.flow_section %}data-flow-section="{{ row.flow_section }}"{% endif %}
-              data-formula='{{ row.formula_client|tojson }}'
-              data-ext-raw='{{ (row.formula_ext_raw or {})|tojson }}'>
-            <td class="text-start pb-row-label{% if row.indent %} pb-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">
-              {% if row.is_custom %}
-              <div class="d-flex align-items-center gap-1">
-                {% if row.origin_sheet_name %}
-                <span class="text-muted small text-nowrap">{{ row.origin_sheet_name }}:</span>
-                {% endif %}
-                <input type="text"
-                       class="form-control form-control-sm pb-custom-label"
-                       value="{{ row.label }}"
-                       placeholder="Введите наименование"
-                       aria-label="Наименование строки">
-                {% if row.can_add_custom_flow %}
-                <button type="button"
-                        class="btn btn-outline-success btn-sm pb-custom-add"
-                        data-parent-key="{{ row.key }}"
-                        data-direction="{{ row.flow_section or row.custom_direction }}"
-                        title="Добавить вложенную строку"
-                        aria-label="Добавить вложенную строку">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-                {% endif %}
-                <button type="button"
-                        class="btn btn-outline-danger btn-sm pb-custom-delete"
-                        title="Удалить строку"
-                        aria-label="Удалить строку">
-                  <i class="bi bi-trash"></i>
-                </button>
-              </div>
-              {% else %}
-              {% if row.key == 'flow_total' %}
-              <button type="button"
-                      class="pb-flow-group-toggle"
-                      id="pbFlowGroupToggle"
-                      aria-expanded="true"
-                      title="Свернуть группировку перетоков"
-                      aria-label="Свернуть группировку перетоков">
-                <i class="bi bi-dash-square" aria-hidden="true"></i>
+          <th class="text-center align-middle pb-note-col">Примечание</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr
+          class="{{ row.css_class }}{% if row.is_custom %} pb-custom-flow-row{% endif %}{% if row.is_flow_block %} pb-flow-block-row{% endif %}{% if row.hide_when_empty %} pb-row-empty-hidden{% endif %}{% if row.is_group_child %} pb-station-child-hidden{% endif %}"
+          data-row-key="{{ row.key }}"
+          data-row-kind="{{ row.kind }}"
+          data-indent="{{ row.indent or 0 }}"
+          {%
+          if
+          row.collapsible
+          %}data-collapsible="1"
+          {%
+          endif
+          %}
+          {%
+          if
+          row.parent_group_key
+          %}data-parent-group-key="{{ row.parent_group_key }}"
+          {%
+          endif
+          %}
+          {%
+          if
+          row.rounding_digits
+          is
+          defined
+          and
+          row.rounding_digits
+          is
+          not
+          none
+          %}data-rounding-digits="{{ row.rounding_digits }}"
+          {%
+          endif
+          %}
+          {%
+          if
+          row.editable_values
+          %}data-editable="1"
+          {%
+          endif
+          %}
+          {% if row.is_custom %}{% elif row.key == 'export' %}data-save-kind="export"{% elif row.value_save_kind %}data-save-kind="{{ row.value_save_kind }}"{% endif %}
+          {%
+          if
+          row.is_custom
+          %}data-custom-id="{{ row.custom_id }}"
+          data-direction="{{ row.custom_direction }}"
+          data-parent-key="{{ row.custom_parent_key or row.flow_section or '' }}"
+          {%
+          if
+          row.custom_origin_slug
+          %}
+          data-origin-slug="{{ row.custom_origin_slug }}"
+          data-origin-key="{{ row.custom_origin_key }}"
+          {%
+          endif
+          %}{%
+          endif
+          %}
+          {%
+          if
+          row.flow_section
+          %}data-flow-section="{{ row.flow_section }}"
+          {%
+          endif
+          %}
+          data-formula="{{ row.formula_client|tojson }}"
+          data-ext-raw="{{ (row.formula_ext_raw or {})|tojson }}"
+        >
+          <td
+            class="text-start pb-row-label{% if row.indent %} pb-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+          >
+            {% if row.is_custom %}
+            <div class="d-flex align-items-center gap-1">
+              {% if row.origin_sheet_name %}
+              <span class="text-muted small text-nowrap"
+                >{{ row.origin_sheet_name }}:</span
+              >
+              {% endif %}
+              <input
+                type="text"
+                class="form-control form-control-sm pb-custom-label"
+                value="{{ row.label }}"
+                placeholder="Введите наименование"
+                aria-label="Наименование строки"
+              />
+              {% if row.can_add_custom_flow %}
+              <button
+                type="button"
+                class="btn btn-outline-success btn-sm pb-custom-add"
+                data-parent-key="{{ row.key }}"
+                data-direction="{{ row.flow_section or row.custom_direction }}"
+                title="Добавить вложенную строку"
+                aria-label="Добавить вложенную строку"
+              >
+                <i class="bi bi-plus-lg"></i>
               </button>
               {% endif %}
-              {{ row.label }}{% if row.formula_tooltip and row.key not in ('flow_in', 'flow_out') %}
-              <i class="bi bi-info-circle text-primary ms-1 pb-formula-tip"
-                 data-bs-toggle="tooltip"
-                 data-bs-placement="top"
-                 title="{{ row.formula_tooltip|e }}"
-                 style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;"
-                 aria-label="Формула расчёта"></i>{% endif %}
-              {% if row.can_add_custom_flow %}
-              <span class="pb-row-actions">
-                <button type="button"
-                        class="btn btn-outline-success btn-sm pb-custom-add"
-                        data-parent-key="{{ row.key }}"
-                        data-direction="{{ row.flow_section or row.key }}"
-                        title="Добавить строку"
-                        aria-label="Добавить строку">
-                  <i class="bi bi-plus-lg"></i>
-                </button>
-              </span>
-              {% endif %}
-              {% endif %}
-            </td>
-            <td class="text-center align-middle pb-unit-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">
-              {{ row.unit if row.unit is defined else '' }}
-            </td>
-            {% for year in years %}
-            {% set year_editable = row.editable_values and (row.editable_years is not defined or not row.editable_years or year in row.editable_years) %}
-            <td class="text-center pb-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
-                data-year="{{ year }}"
-                data-raw="{% if row.year_values_raw is defined and year in row.year_values_raw %}{{ row.year_values_raw[year] }}{% endif %}">
-              {% if year_editable %}
-              <input type="text"
-                     class="form-control form-control-sm pb-custom-value"
-                     data-year="{{ year }}"
-                     value="{{ row.year_values[year] if row.year_values is defined and year in row.year_values else '' }}"
-                     inputmode="decimal"
-                     aria-label="Значение за {{ year }}">
-              {% else %}
-              {{ row.year_values[year] if row.year_values is defined and year in row.year_values else '' }}
-              {% endif %}
-            </td>
-            {% endfor %}
-            {% include 'energy_balance/_row_note_cell.html' %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              <button
+                type="button"
+                class="btn btn-outline-danger btn-sm pb-custom-delete"
+                title="Удалить строку"
+                aria-label="Удалить строку"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+            {% else %} {% if row.key == 'flow_total' %}
+            <button
+              type="button"
+              class="pb-flow-group-toggle"
+              id="pbFlowGroupToggle"
+              aria-expanded="true"
+              title="Свернуть группировку перетоков"
+              aria-label="Свернуть группировку перетоков"
+            >
+              <i class="bi bi-dash-square" aria-hidden="true"></i>
+            </button>
+            {% endif %} {% if row.collapsible %}
+            <button
+              type="button"
+              class="pb-station-toggle"
+              aria-expanded="false"
+              data-expand-title="{{ row.collapse_expand_title or 'Показать вложенные строки' }}"
+              data-collapse-title="{{ row.collapse_collapse_title or 'Скрыть вложенные строки' }}"
+              title="{{ row.collapse_expand_title or 'Показать вложенные строки' }}"
+              aria-label="{{ row.collapse_expand_title or 'Показать вложенные строки' }}"
+            >
+              <i class="bi bi-plus-square" aria-hidden="true"></i>
+            </button>
+            {% endif %} {{ row.label }}{% if row.key == 'generation_total' and tes_forecast_url is defined and tes_forecast_url %}
+            <a
+              href="{{ tes_forecast_url }}"
+              class="pb-tes-forecast-calc"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Помесячный расчёт прогнозной выработки ТЭС"
+              aria-label="Помесячный расчёт прогнозной выработки ТЭС"
+            ><i class="bi bi-calculator" aria-hidden="true"></i></a>
+            {% endif %}{% if row.formula_tooltip and row.key not
+            in ('flow_in', 'flow_out') %}
+            <i
+              class="bi bi-info-circle text-primary ms-1 pb-formula-tip"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="{{ row.formula_tooltip|e }}"
+              style="cursor: help; font-size: 0.9em; vertical-align: -0.1em"
+              aria-label="Формула расчёта"
+            ></i
+            >{% endif %} {% if row.can_add_custom_flow %}
+            <span class="pb-row-actions">
+              <button
+                type="button"
+                class="btn btn-outline-success btn-sm pb-custom-add"
+                data-parent-key="{{ row.key }}"
+                data-direction="{{ row.flow_section or row.key }}"
+                title="Добавить строку"
+                aria-label="Добавить строку"
+              >
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </span>
+            {% endif %} {% endif %}
+          </td>
+          <td
+            class="text-center align-middle pb-unit-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+          >
+            {{ row.unit if row.unit is defined else '' }}
+          </td>
+          {% for year in years %} {% set year_editable = row.editable_values and
+          (row.editable_years is not defined or not row.editable_years or year
+          in row.editable_years) %}
+          <td
+            class="text-center pb-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+            data-year="{{ year }}"
+            data-raw="{% if row.year_values_raw is defined and year in row.year_values_raw %}{{ row.year_values_raw[year] }}{% endif %}"
+          >
+            {% if year_editable %}
+            <input
+              type="text"
+              class="form-control form-control-sm pb-custom-value"
+              data-year="{{ year }}"
+              value="{{ row.year_values[year] if row.year_values is defined and year in row.year_values else '' }}"
+              inputmode="decimal"
+              aria-label="Значение за {{ year }}"
+            />
+            {% else %} {{ row.year_values[year] if row.year_values is defined
+            and year in row.year_values else '' }} {% endif %}
+          </td>
+          {% endfor %} {% include 'energy_balance/_row_note_cell.html' %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </div>
 <script>
@@ -625,6 +812,34 @@
         : 'Показать строки, у которых все значения пусты или равны нулю';
     }
 
+    function applyStationChildrenVisibility() {
+      table.querySelectorAll('tbody tr[data-collapsible="1"]').forEach(function (parent) {
+        const btn = parent.querySelector('.pb-station-toggle');
+        const expanded = btn ? btn.getAttribute('aria-expanded') === 'true' : false;
+        const expandTitle = (btn && btn.getAttribute('data-expand-title')) || 'Показать вложенные строки';
+        const collapseTitle = (btn && btn.getAttribute('data-collapse-title')) || 'Скрыть вложенные строки';
+        const parentKey = parent.getAttribute('data-row-key');
+        let el = parent.nextElementSibling;
+        const parentIndent = Number(parent.dataset.indent || 0);
+        while (el && Number(el.dataset.indent || 0) > parentIndent) {
+          if (el.getAttribute('data-parent-group-key') === parentKey) {
+            el.classList.toggle('pb-station-child-hidden', !expanded);
+          }
+          el = el.nextElementSibling;
+        }
+        if (btn) {
+          btn.title = expanded ? collapseTitle : expandTitle;
+          btn.setAttribute('aria-label', btn.title);
+          const icon = btn.querySelector('i');
+          if (icon) {
+            icon.classList.toggle('bi-dash-square', expanded);
+            icon.classList.toggle('bi-plus-square', !expanded);
+          }
+        }
+      });
+      syncLabelWidth();
+    }
+
     function applyFlowGroupVisibility() {
       const parent = table.querySelector('tbody tr[data-row-key="flow_total"]');
       const btn = document.getElementById('pbFlowGroupToggle');
@@ -775,6 +990,7 @@
       }
       applyEmptyRowsVisibility();
       applyFlowGroupVisibility();
+      applyStationChildrenVisibility();
     }
 
     function convertToComputedRow(tr) {
@@ -1176,6 +1392,7 @@
     applyEmptyRowsVisibility();
     applyFlowRowsVisibility();
     applyFlowGroupVisibility();
+    applyStationChildrenVisibility();
     document.getElementById('pbShowEmptyRowsToggle')?.addEventListener('click', function () {
       window.__pbShowEmptyRows = !window.__pbShowEmptyRows;
       syncEmptyRowsToggleUi();
@@ -1191,6 +1408,15 @@
       event.stopPropagation();
       window.__pbFlowGroupExpanded = !window.__pbFlowGroupExpanded;
       applyFlowGroupVisibility();
+    });
+    table.addEventListener('click', function (event) {
+      const btn = event.target.closest('.pb-station-toggle');
+      if (!btn || !table.contains(btn)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      applyStationChildrenVisibility();
     });
 
     (function () {
@@ -1280,5 +1506,4 @@
     })();
   });
 </script>
-{% endif %}
-{% endblock %}
+{% endif %} {% endblock %}

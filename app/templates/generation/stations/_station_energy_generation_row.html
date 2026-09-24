@@ -1,6 +1,9 @@
 {# Одна строка таблицы выработки электроэнергии (обновляется при смене
 округления). #} {% set can_edit_energy = can_edit_station_energy if
 can_edit_station_energy is defined else can_edit %}
+{% set plan_years = station.ves_ses_plan_years if station.ves_ses_plan_years is defined else [] %}
+{% set plan_calc = station.station_energy_plan_calc_by_year if station.station_energy_plan_calc_by_year is defined else {} %}
+{% set plan_rules = station.station_energy_plan_rule_by_year if station.station_energy_plan_rule_by_year is defined else {} %}
 <tr>
   <td
     class="text-start align-middle fw-semibold"
@@ -12,44 +15,33 @@ can_edit_station_energy is defined else can_edit %}
       >(год)</span
     >
   </td>
-  {% for year in range(start_year, end_year + 1) %} {% set v =
-  station.station_energy_by_year.get(year) %} {% set v_full = (v |
-  format_decimal(0)) if v is not none else '' %}
+  {% for year in range(start_year, end_year + 1) %}
+  {% set stored = station.station_energy_by_year.get(year) %}
+  {% set calc = plan_calc.get(year) %}
+  {% set is_calc_display = calc is not none and (stored is none or stored == calc) %}
+  {% set plan_rule = plan_rules.get(year) if is_calc_display else none %}
+  {% set v = stored if stored is not none else calc %}
+  {% set v_full = (v | format_decimal(0)) if v is not none else '' %}
   <td
-    class="text-center align-middle"
-    {%
-    if
-    v_full
-    %}
-    title="{{ v_full | e }}"
-    {%
-    endif
-    %}
+    class="text-center align-middle{% if is_calc_display %} ves-ses-plan-calc-cell{% endif %}"
+    {% if plan_rule %}title="{{ plan_rule | e }}"{% elif v_full %}title="{% if is_calc_display %}Расчётное значение (можно изменить). {% endif %}{{ v_full | e }}"{% elif is_calc_display %}title="Расчётное значение (можно изменить)"{% endif %}
   >
-    {% if can_edit_energy %} {% if v is none %}
-    <input type="hidden" name="st_gen_{{ year }}_orig" value="" />
-    <input
-      type="text"
-      class="form-control text-center forecast-paste-input"
-      name="st_gen_{{ year }}"
-      inputmode="decimal"
-      autocomplete="off"
-      value=""
-      style="min-width: 6rem"
-    />
-    {% else %} {% set disp = format_station_energy_gen_display(v) %}
-    <input type="hidden" name="st_gen_{{ year }}_orig" value="{{ disp }}" />
-    <input
-      type="text"
-      class="form-control text-center forecast-paste-input"
-      name="st_gen_{{ year }}"
-      inputmode="decimal"
-      autocomplete="off"
-      value="{{ disp }}"
-      style="min-width: 6rem"
-    />
-    {% endif %} {% else %} {% if v is not none %} {{
-    format_station_energy_gen_display(v) }} {% else %} — {% endif %} {% endif %}
+    {% if can_edit_energy %}
+      {% set disp = format_station_energy_gen_display(v) if v is not none else '' %}
+      <input type="hidden" name="st_gen_{{ year }}_orig" value="{% if stored is none %}{% else %}{{ disp }}{% endif %}" />
+      <input
+        type="text"
+        class="form-control text-center forecast-paste-input{% if is_calc_display %} ves-ses-plan-calc-input{% endif %}"
+        name="st_gen_{{ year }}"
+        inputmode="decimal"
+        autocomplete="off"
+        value="{{ disp }}"
+        {% if plan_rule %}title="{{ plan_rule | e }}"{% endif %}
+        style="min-width: 6rem"
+      />
+    {% else %}
+      {% if v is not none %}{{ format_station_energy_gen_display(v) }}{% else %}—{% endif %}
+    {% endif %}
   </td>
   {% endfor %}
 </tr>

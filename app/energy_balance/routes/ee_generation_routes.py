@@ -39,6 +39,9 @@ from app.energy_balance.services.ee_generation_export_services import export_ee_
 from app.energy_balance.services.ee_generation_import_services import (
     import_ee_generation_from_excel,
 )
+from app.energy_balance.services.ee_generation_totals_summary_services import (
+    resolve_rounding_digits,
+)
 
 
 def _parse_ee_period_mode() -> str:
@@ -46,6 +49,12 @@ def _parse_ee_period_mode() -> str:
     if mode not in (EE_PERIOD_MODE_YEARS, EE_PERIOD_MODE_MONTHS):
         return EE_PERIOD_MODE_YEARS
     return mode
+
+
+def _parse_rounding_digits(default: int = 1) -> int:
+    """Берёт последний rounding_digits (select после hidden-дубликата в форме)."""
+    values = request.args.getlist("rounding_digits")
+    return resolve_rounding_digits(values[-1] if values else None, default=default)
 
 
 @energy_balance_bp.route("/ee_generation/", methods=["GET", "POST"])
@@ -88,12 +97,7 @@ def ee_generation():
     per_page = "all" if show_all else int(per_page_param) if str(per_page_param).isdigit() else 50
     show_totals = request.args.get("show_totals", "0") == "1"
 
-    try:
-        rounding_digits = int(request.args.get("rounding_digits"))
-    except (ValueError, TypeError):
-        rounding_digits = 1
-    if rounding_digits is None or rounding_digits < 0:
-        rounding_digits = 1
+    rounding_digits = _parse_rounding_digits()
 
     page_data = get_station_ee_generation_page_data(
         filters=filters,
@@ -189,8 +193,13 @@ def ee_generation():
 def ee_generation_control_value():
     """Сохранение контрольного значения выработки ЭЭ по РЭС."""
     data = request.get_json(silent=True) or {}
-    if "res_id" not in data or "period" not in data:
+    level = (data.get("level") or "res").strip().lower()
+    if "period" not in data:
         return jsonify(ok=False, error="Неверный запрос"), 400
+    if level == "res" and "res_id" not in data:
+        return jsonify(ok=False, error="Неверный запрос"), 400
+    if level not in ("res", "russia", "est", "sa", "ues"):
+        return jsonify(ok=False, error="Неверный уровень"), 400
 
     ee_period_mode = data.get("ee_period_mode") or _parse_ee_period_mode()
     if ee_period_mode not in (EE_PERIOD_MODE_YEARS, EE_PERIOD_MODE_MONTHS):
@@ -204,21 +213,33 @@ def ee_generation_control_value():
     except (TypeError, ValueError):
         selected_year_int = None
 
-    try:
-        rounding_digits = int(
-            data.get("rounding_digits", request.args.get("rounding_digits", 1))
-        )
-    except (TypeError, ValueError):
-        rounding_digits = 1
+    rounding_digits = resolve_rounding_digits(
+        data.get("rounding_digits", _parse_rounding_digits()),
+        default=1,
+    )
 
     try:
-        saved = update_res_control_generation_value(
-            data.get("res_id"),
-            data.get("period"),
-            data.get("value"),
-            period_mode=ee_period_mode,
-            selected_year=selected_year_int,
-        )
+        if level == "res":
+            saved = update_res_control_generation_value(
+                data.get("res_id"),
+                data.get("period"),
+                data.get("value"),
+                period_mode=ee_period_mode,
+                selected_year=selected_year_int,
+            )
+        else:
+            from app.energy_balance.services.ee_generation_hierarchy_control_services import (
+                update_hierarchy_control_generation_value,
+            )
+
+            saved = update_hierarchy_control_generation_value(
+                level,
+                data.get("entity_id"),
+                data.get("period"),
+                data.get("value"),
+                period_mode=ee_period_mode,
+                selected_year=selected_year_int,
+            )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
@@ -229,7 +250,9 @@ def ee_generation_control_value():
     display = format_generation_input_value(value, rounding_digits)
     return jsonify(
         ok=True,
-        res_id=saved["res_id"],
+        level=level,
+        res_id=saved.get("res_id"),
+        entity_id=saved.get("entity_id"),
         period=saved["period_key"],
         value=None if value is None else str(value),
         display=display,
@@ -257,12 +280,7 @@ def export_ee_generation():
         for key in ("page", "start_year", "end_year", "year", "ee_period_mode", "show_totals", "export_verification"):
             filters.pop(key, None)
 
-        try:
-            rounding_digits = int(request.args.get("rounding_digits"))
-        except (ValueError, TypeError):
-            rounding_digits = 1
-        if rounding_digits is None or rounding_digits < 0:
-            rounding_digits = 1
+        rounding_digits = _parse_rounding_digits()
 
         show_totals = request.args.get("show_totals", "0") == "1"
         export_verification = request.args.get("export_verification", "0") == "1"

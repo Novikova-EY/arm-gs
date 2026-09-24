@@ -278,10 +278,9 @@ def _load_prospective_places_aes_stations_and_filters():
 
 
 @prospective_places_bp.route("/")
-@login_required
 def prospective_places_start():
-    """Главная страница модуля «Характеристика актуальных площадок размещения новых электростанций»."""
-    return render_template("generation/prospective_places/prospective_places_start.html")
+    """Бывшая витрина перенесена на страницу модуля «Генерация»."""
+    return redirect(url_for("generation_bp.generation_start"), code=301)
 
 
 @prospective_places_bp.route("/aes/")

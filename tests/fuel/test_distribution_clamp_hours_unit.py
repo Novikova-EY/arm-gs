@@ -68,6 +68,20 @@ def test_null_bk_uses_else_branch_not_kplus():
     assert null_k == kmin + (kplus - kmin) * Decimal("2.75")
 
 
+def test_missing_spec_still_uses_new_hours_when_hb_zero():
+    """Котельные без U: hb=0 → H=ch·knps, станцию не Skip."""
+    ch = Decimal("3923.5")
+    knps = Decimal("1.22254427415419")
+    h = DistributionStageService._new_capacity_hours(
+        obor=95,
+        ch=ch,
+        knps=knps,
+        kngt=Decimal("1.4"),
+        knpg=Decimal("1.55"),
+    )
+    assert h == ch * knps
+
+
 def test_null_hfix_skips_capacity_growth():
     from types import SimpleNamespace
     from app.fuel.services.calculation.distribution.distribution_stage_services import (

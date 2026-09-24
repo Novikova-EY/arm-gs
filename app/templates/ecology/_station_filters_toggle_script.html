@@ -1,0 +1,38 @@
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const collapseEl = document.getElementById("filtersCollapse");
+    const buttonEl = document.getElementById("filtersToggleBtn");
+
+    function highlightButton() {
+        if (!buttonEl) return;
+        buttonEl.classList.remove("btn-outline-secondary");
+        buttonEl.classList.add("btn-primary", "text-white");
+    }
+
+    function resetButton() {
+        if (!buttonEl) return;
+        buttonEl.classList.remove("btn-primary", "btn-warning", "text-white");
+        buttonEl.classList.add("btn-outline-secondary");
+    }
+
+    function initFilters() {
+        if (typeof initializeStationFilters === "function") {
+            initializeStationFilters();
+        }
+    }
+
+    if (collapseEl && collapseEl.classList.contains("show")) {
+        highlightButton();
+        initFilters();
+    } else {
+        resetButton();
+    }
+
+    if (!collapseEl) return;
+    collapseEl.addEventListener("shown.bs.collapse", function () {
+        highlightButton();
+        initFilters();
+    });
+    collapseEl.addEventListener("hide.bs.collapse", resetButton);
+});
+</script>

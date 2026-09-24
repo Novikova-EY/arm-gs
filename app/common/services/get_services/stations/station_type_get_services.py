@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 # Модели
 from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 
@@ -7,9 +5,13 @@ from app.refdata.models.refdata_for_stations.station.station_type_model import S
 from app.common.services.database_version_services import get_current_version
 
 
-@lru_cache(maxsize=1)
 def get_station_type_list_full():
-    """Получает полный список типов электростанций."""
+    """Полный список типов электростанций текущей версии БД.
+
+    Не кэшируем результат: список ORM-объектов нельзя безопасно хранить в lru_cache —
+    после завершения запроса сессия закрывается, и повторное обращение к атрибутам
+    даёт DetachedInstanceError.
+    """
     current_version = get_current_version()
     query = StationType.query
     
@@ -27,9 +29,10 @@ def get_station_type_list_full():
     )
 
 
-@lru_cache(maxsize=1)
 def get_station_type_list():
-    """Получает список типов электростанций (кроме "не указано")."""
+    """Список типов электростанций (кроме «не указано»). Без LRU-кэша: иначе ORM-объекты
+    после закрытия сессии отвязываются (DetachedInstanceError).
+    """
     current_version = get_current_version()
     query = StationType.query
     

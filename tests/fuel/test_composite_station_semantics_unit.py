@@ -22,19 +22,30 @@ from app.fuel.services.equipment_groups.composite_station_semantics import (
 )
 
 
-def test_access_filter_skips_ved_in_group_expression():
+def test_access_filter_skips_working_fields_in_group_expression():
     expr = AccessFilterAdapter.build_expression("(oes=3) and (ved>0)")
-    assert expr is not None
-    # В group-expression нет ved — иначе при компиляции тянули бы vedomstvo.
-    compiled = str(expr)
+    assert expr is None
+    numb_expr = AccessFilterAdapter.build_expression("(oes=3) and (numb=100)")
+    assert numb_expr is not None
+    compiled = str(numb_expr)
     assert "vedomstvo" not in compiled.lower()
 
 
-def test_access_filter_builds_ved_on_fuel_param():
+def test_access_filter_builds_oes_obl_ved_on_fuel_param():
+    param_expr = AccessFilterAdapter.build_param_expression(
+        "(oes=5) and (obl=53) and (ved>0)"
+    )
+    assert param_expr is not None
+    compiled = str(param_expr).lower()
+    assert "vedomstvo" not in compiled
     ved_expr = AccessFilterAdapter.build_ved_expression("(oes=3) and (ved>0)")
     assert ved_expr is not None
     assert AccessFilterAdapter.filter_has_ved_condition("(oes=3) and (ved>0)")
     assert not AccessFilterAdapter.filter_has_ved_condition("(oes=3)")
+    assert AccessFilterAdapter.filter_has_param_condition("(oes=3)")
+    assert AccessFilterAdapter.PARAM_FIELD_MAP.keys() == {"oes", "obl", "ved"}
+    assert "oes" not in AccessFilterAdapter.GROUP_FIELD_MAP
+    assert "obl" not in AccessFilterAdapter.GROUP_FIELD_MAP
 
 
 def test_composite_parent_child_flags():

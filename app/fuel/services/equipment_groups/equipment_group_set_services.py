@@ -650,12 +650,67 @@ def ensure_equipment_group_set_for_station(
     )
 
 
+def select_equipment_group_on_type_link(
+    groups: list[EquipmentGroup],
+    *,
+    station_id: int | None,
+    version_id: int | None,
+    is_new_group: bool,
+    preferred_equipment_group_id: int | None = None,
+) -> EquipmentGroup | None:
+    """
+    Группа на связи станция+тип для автопривязки агрегата.
+
+    Если на одной связи и оболочка составной станции, и дочерняя группа —
+    берём ребёнка (у головы тип должен быть прочерком, но исторически мог совпасть).
+    Уже выбранная fuel-группа агрегата сохраняется, если она всё ещё на этой связи.
+    """
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        is_composite_child_group,
+        is_composite_parent_group,
+    )
+    from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
+        station_is_primary_owner_of_equipment_group,
+    )
+
+    variant_groups = [
+        group
+        for group in groups or []
+        if group is not None
+        and _is_new_equipment_group_name(getattr(group, "name", None)) == is_new_group
+    ]
+    if not variant_groups:
+        return None
+    if preferred_equipment_group_id is not None:
+        for group in variant_groups:
+            if getattr(group, "id", None) == preferred_equipment_group_id:
+                return group
+
+    def _rank(group: EquipmentGroup) -> tuple:
+        if is_composite_child_group(group):
+            role = 0
+        elif is_composite_parent_group(group):
+            role = 2
+        else:
+            role = 1
+        owned = 1
+        if station_id is not None and getattr(group, "id", None) is not None:
+            if station_is_primary_owner_of_equipment_group(
+                station_id, group.id, version_id
+            ):
+                owned = 0
+        return (role, owned, int(getattr(group, "id", 0) or 0))
+
+    return min(variant_groups, key=_rank)
+
+
 def ensure_equipment_group_set_variant_for_station(
     station_id: int,
     equipment_group_type_id: int,
     version_id: int | None = None,
     *,
     is_new_group: bool = False,
+    preferred_equipment_group_id: int | None = None,
 ) -> EquipmentGroupSet | None:
     """
     Обеспечивает наличие связки EquipmentGroupSetStation и конкретной fuel-группы
@@ -704,28 +759,14 @@ def ensure_equipment_group_set_variant_for_station(
     )
     from app.fuel.services.equipment_groups.equipment_group_rebind_services import (
         linked_station_ids_for_equipment_group,
-        station_is_primary_owner_of_equipment_group,
     )
 
-    variant_groups = [
-        group
-        for group in linked_equipment_groups
-        if _is_new_equipment_group_name(getattr(group, "name", None)) == is_new_group
-    ]
-    # Общая группа двух станций — валидная цель автопривязки.
-    # Если на связи уже есть и «своя», и общая — берём «свою».
-    owned_target_on_link = next(
-        (
-            group
-            for group in variant_groups
-            if station_is_primary_owner_of_equipment_group(
-                station_id, group.id, version_id
-            )
-        ),
-        None,
-    )
-    target_group_on_link = owned_target_on_link or (
-        variant_groups[0] if variant_groups else None
+    target_group_on_link = select_equipment_group_on_type_link(
+        linked_equipment_groups,
+        station_id=station_id,
+        version_id=version_id,
+        is_new_group=is_new_group,
+        preferred_equipment_group_id=preferred_equipment_group_id,
     )
 
     if target_group_on_link is not None:
@@ -844,11 +885,15 @@ def sync_machine_fuel_equipment_group(machine: Machine | None, version_id: int |
         return None
 
     is_new_group = _machine_requires_new_equipment_group(machine, version_id)
+    preferred_group_id = (
+        machine_fuel_param.equipment_group_id if machine_fuel_param else None
+    )
     set_v2 = ensure_equipment_group_set_variant_for_station(
         station_id=machine.id_station,
         equipment_group_type_id=machine.id_equipment_group,
         version_id=version_id,
         is_new_group=is_new_group,
+        preferred_equipment_group_id=preferred_group_id,
     )
     if set_v2 is None:
         if machine_fuel_param is not None and machine_fuel_param.equipment_group_id is not None:

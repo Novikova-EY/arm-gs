@@ -39,7 +39,7 @@
 
             <!-- Скрытые фильтры -->
             {% for key, value in request.args.items(multi=True) %}
-                {% if key not in ['show_p_ogr', 'show_p_rasp'] and key not in _fuel_transient_query_keys %}
+                {% if key not in ['show_p_ogr', 'show_p_rasp', 'rounding_digits'] and key not in _fuel_transient_query_keys %}
                     {% if not (hide_year_range|default(false) and key in ['year', 'start_year', 'end_year']) %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                     {% endif %}

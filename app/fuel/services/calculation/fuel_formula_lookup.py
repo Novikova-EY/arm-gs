@@ -10,6 +10,8 @@ from __future__ import annotations
 from app.fuel.models.fue_equipment_group_fuel_formula_model import EquipmentGroupFuelFormula
 from app.fuel.services.calculation.specific_consumption_lookup import (
     pick_specific_consumption_access_seek,
+    query_access_numb2_seek_no_match,
+    apply_access_seek_bookmark,
 )
 
 
@@ -41,3 +43,46 @@ def query_fuel_formula_access_seek(
         )
     rows = q.all()
     return pick_fuel_formula_access_seek(rows, byear=byear, cyear=cyear)
+
+
+def query_formula_seek_no_match(
+    session,
+    *,
+    numb1120: int | None,
+    byear: int | None,
+    database_version_id: int | None = None,
+    variant_number: int = 0,
+) -> bool:
+    return query_access_numb2_seek_no_match(
+        session,
+        EquipmentGroupFuelFormula,
+        numb1120=numb1120,
+        byear=byear,
+        database_version_id=database_version_id,
+        extra_filters=(
+            EquipmentGroupFuelFormula.variant_number == int(variant_number),
+        ),
+    )
+
+
+def resolve_access_formula_seek(
+    session,
+    this_row,
+    bookmark: AccessSeekBookmark,
+    *,
+    numb1120: int | None,
+    byear: int | None,
+    database_version_id: int | None = None,
+    variant_number: int = 0,
+):
+    return apply_access_seek_bookmark(
+        this_row,
+        bookmark,
+        no_match=query_formula_seek_no_match(
+            session,
+            numb1120=numb1120,
+            byear=byear,
+            database_version_id=database_version_id,
+            variant_number=variant_number,
+        ),
+    )

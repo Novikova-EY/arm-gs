@@ -2,7 +2,8 @@
 """
 Синхронизация данных station_details во все версии БД:
 - агрегаты (Machine) по external_code;
-- код КТО, выработка (StationEnergyGeneration) и заряд ГАЭС (StationGaesChargeConsumption)
+- код КТО, выработка (StationEnergyGeneration), заряд ГАЭС (StationGaesChargeConsumption)
+  и выработка от собственника (StationOwnerEnergyGeneration, ВЭС/СЭС)
   по external_code станции.
 """
 from __future__ import annotations
@@ -33,6 +34,9 @@ from app.extensions import db
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.station.station_gaes_charge_consumption_model import (
     StationGaesChargeConsumption,
+)
+from app.generation.models.station.station_owner_energy_generation_model import (
+    StationOwnerEnergyGeneration,
 )
 from app.energy_balance.models.station_energy_generation_model import (
     STATION_ENERGY_GENERATION_PERIOD_YEAR,
@@ -592,6 +596,7 @@ def update_station_machines_all_versions_from_form(
     end_year: int,
     sync_station_energy: bool = False,
     sync_station_gaes_charge: bool = False,
+    sync_station_owner_energy: bool = False,
     sync_station_general_info: bool = False,
     sync_station_kto: bool = False,
     sync_machines: bool = True,
@@ -602,7 +607,8 @@ def update_station_machines_all_versions_from_form(
 
     Агрегаты — по external_code машины (fuel_so, note, id_gen_company).
     Общая информация / местоположение / код КТО — по external_code станции.
-    Выработка и заряд ГАЭС — по external_code станции (st_gen_*, st_gaes_charge_*).
+    Выработка, заряд ГАЭС и выработка от собственника — по external_code станции
+    (st_gen_*, st_gaes_charge_*, st_owner_gen_*).
     """
     request_meta = request_meta or {}
     if start_year > end_year:
@@ -613,6 +619,7 @@ def update_station_machines_all_versions_from_form(
     has_machine_form = bool(anchor_machine_ids)
     has_energy_form = bool(sync_station_energy)
     has_gaes_form = bool(sync_station_gaes_charge)
+    has_owner_energy_form = bool(sync_station_owner_energy)
     has_general_info_form = sync_station_general_info and _form_has_station_general_info(
         form_data
     )
@@ -622,6 +629,7 @@ def update_station_machines_all_versions_from_form(
         not has_machine_form
         and not has_energy_form
         and not has_gaes_form
+        and not has_owner_energy_form
         and not has_general_info_form
         and not has_kto_form
     ):
@@ -632,6 +640,7 @@ def update_station_machines_all_versions_from_form(
             "updated_kto_stations": 0,
             "updated_energy_rows": 0,
             "updated_gaes_rows": 0,
+            "updated_owner_energy_rows": 0,
             "no_changes": True,
             "warnings": ["В форме нет данных для синхронизации во всех версиях."],
         }
@@ -656,6 +665,7 @@ def update_station_machines_all_versions_from_form(
     aggregate_field_changes: list[tuple[str, str, str]] = []
     updated_energy_rows = 0
     updated_gaes_rows = 0
+    updated_owner_energy_rows = 0
     updated_stations = 0
     updated_kto_stations = 0
 
@@ -663,7 +673,7 @@ def update_station_machines_all_versions_from_form(
 
     logger.info(
         "[station_all_versions] START station_id=%s station_name=%r user=%r "
-        "machines=%s general=%s kto=%s energy=%s gaes=%s years=%s..%s meta=%s",
+        "machines=%s general=%s kto=%s energy=%s gaes=%s owner_energy=%s years=%s..%s meta=%s",
         station.id,
         station.name,
         user,
@@ -672,28 +682,35 @@ def update_station_machines_all_versions_from_form(
         has_kto_form,
         has_energy_form,
         has_gaes_form,
+        has_owner_energy_form,
         start_year,
         end_year,
         request_meta,
     )
 
     needs_station_code = (
-        has_energy_form or has_gaes_form or has_general_info_form or has_kto_form
+        has_energy_form
+        or has_gaes_form
+        or has_owner_energy_form
+        or has_general_info_form
+        or has_kto_form
     )
     if needs_station_code and not station_external_code:
         warnings.append(
             "У электростанции отсутствует external_code — общая информация, код КТО, "
-            "выработка и заряд ГАЭС не синхронизированы во всех версиях."
+            "выработка, заряд ГАЭС и выработка от собственника не синхронизированы во всех версиях."
         )
         has_energy_form = False
         has_gaes_form = False
+        has_owner_energy_form = False
         has_general_info_form = False
         has_kto_form = False
 
-    if has_energy_form or has_gaes_form:
+    if has_energy_form or has_gaes_form or has_owner_energy_form:
         for seq_schema, seq_table in (
             (SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations"),
             (SCHEMA_GENERATION, "gs_gen_station_gaes_charge_consumptions"),
+            (SCHEMA_GENERATION, "gs_gen_station_owner_energy_generations"),
         ):
             try:
                 quick_fix_seq(seq_schema, seq_table, "id")
@@ -755,6 +772,22 @@ def update_station_machines_all_versions_from_form(
                 model_cls=StationGaesChargeConsumption,
                 value_attr="charge_consumption",
                 table_label="Потребление ГАЭС на заряд",
+                versions_touched_set=versions_touched_set,
+                change_log=station_table_log,
+            )
+
+        if has_owner_energy_form and station_external_code:
+            year_values = _year_values_from_form(
+                form_data, "st_owner_gen", start_year, end_year
+            )
+            updated_owner_energy_rows = _sync_station_year_table_all_versions(
+                station_external_code=station_external_code,
+                version_ids=version_ids,
+                version_numbers=version_numbers,
+                year_values=year_values,
+                model_cls=StationOwnerEnergyGeneration,
+                value_attr="electricity_generation",
+                table_label="Выработка электроэнергии (от собственника)",
                 versions_touched_set=versions_touched_set,
                 change_log=station_table_log,
             )
@@ -855,6 +888,7 @@ def update_station_machines_all_versions_from_form(
         or updated_kto_stations > 0
         or updated_energy_rows > 0
         or updated_gaes_rows > 0
+        or updated_owner_energy_rows > 0
     )
     if not any_changes:
         logger.info(
@@ -869,6 +903,7 @@ def update_station_machines_all_versions_from_form(
             "updated_kto_stations": 0,
             "updated_energy_rows": 0,
             "updated_gaes_rows": 0,
+            "updated_owner_energy_rows": 0,
             "no_changes": True,
             "warnings": warnings,
             "per_machine_log": per_machine_log,
@@ -879,6 +914,7 @@ def update_station_machines_all_versions_from_form(
         for seq_schema, seq_table in (
             (SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations"),
             (SCHEMA_GENERATION, "gs_gen_station_gaes_charge_consumptions"),
+            (SCHEMA_GENERATION, "gs_gen_station_owner_energy_generations"),
         ):
             try:
                 quick_fix_seq(seq_schema, seq_table, "id")
@@ -915,6 +951,7 @@ def update_station_machines_all_versions_from_form(
         f"Обновлено станций (код КТО): {updated_kto_stations}",
         f"Обновлено строк выработки: {updated_energy_rows}",
         f"Обновлено строк заряда ГАЭС: {updated_gaes_rows}",
+        f"Обновлено строк выработки от собственника: {updated_owner_energy_rows}",
         f"Мета запроса: {request_meta}",
     ]
     if per_machine_log:
@@ -942,7 +979,7 @@ def update_station_machines_all_versions_from_form(
     if current_app:
         current_app.logger.info(
             "[station_all_versions] SUCCESS station_id=%s versions=%s machines=%s "
-            "stations=%s kto=%s energy_rows=%s gaes_rows=%s",
+            "stations=%s kto=%s energy_rows=%s gaes_rows=%s owner_energy_rows=%s",
             station.id,
             versions_touched,
             updated_count,
@@ -950,6 +987,7 @@ def update_station_machines_all_versions_from_form(
             updated_kto_stations,
             updated_energy_rows,
             updated_gaes_rows,
+            updated_owner_energy_rows,
         )
 
     return {
@@ -959,6 +997,7 @@ def update_station_machines_all_versions_from_form(
         "updated_kto_stations": updated_kto_stations,
         "updated_energy_rows": updated_energy_rows,
         "updated_gaes_rows": updated_gaes_rows,
+        "updated_owner_energy_rows": updated_owner_energy_rows,
         "warnings": warnings,
         "per_machine_log": per_machine_log,
         "station_table_log": station_table_log,

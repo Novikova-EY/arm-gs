@@ -152,6 +152,12 @@ class StationFilterForm(FlaskForm):
         render_kw={"placeholder": "Введите название генерирующей компании"}
     )
 
+    external_code_filter = StringField(
+        "Фильтр по UUID",
+        validators=[Optional(), Length(max=36)],
+        render_kw={"placeholder": "UUID", "spellcheck": "false", "autocomplete": "off"},
+    )
+
     note_filter = StringField(
         "Фильтр по примечанию",
         validators=[Optional(), Length(max=255)],

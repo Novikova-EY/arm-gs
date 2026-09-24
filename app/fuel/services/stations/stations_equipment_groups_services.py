@@ -2198,14 +2198,28 @@ def _refdata_by_mapping_uuid(model, ref_uuid, version_id, *load_options):
     """Строка справочника по ref_uuid: сначала выбранная версия БД, иначе legacy NULL."""
     if not ref_uuid:
         return None
+    cache = None
+    try:
+        from flask import g, has_app_context
+
+        if has_app_context():
+            cache = g.setdefault("_refdata_by_mapping_uuid", {})
+    except Exception:
+        cache = None
+    key = (getattr(model, "__name__", str(model)), str(ref_uuid), version_id)
+    if cache is not None and key in cache:
+        return cache[key]
     q = model.query.filter(model.ref_uuid == ref_uuid)
     if load_options:
         q = q.options(*load_options)
+    row = None
     if version_id is not None:
         row = q.filter(model.database_version_id == version_id).first()
-        if row:
-            return row
-    return q.filter(model.database_version_id.is_(None)).first()
+    if row is None:
+        row = q.filter(model.database_version_id.is_(None)).first()
+    if cache is not None:
+        cache[key] = row
+    return row
 
 
 def _rd_res_from_obl_mapping(equipment_group):

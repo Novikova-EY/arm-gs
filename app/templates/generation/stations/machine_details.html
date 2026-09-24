@@ -359,6 +359,16 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемая дата ввода в эксплуатацию:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit_generation_fields %}
+                                            {{ main_form.date_exploitation_date_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ main_form.date_exploitation_date_expected.data if main_form.date_exploitation_date_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit_generation_fields %}
@@ -404,6 +414,7 @@
                                 <input type="hidden" name="{{ main_form.date_exploitation.name }}" value="{{ main_form.date_exploitation.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_exploitation_expected.name }}" value="{{ main_form.date_exploitation_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.is_commissioning_q4.name }}" value="{{ 'true' if main_form.is_commissioning_q4.data else '' }}">
+                                <input type="hidden" name="{{ main_form.date_exploitation_date_expected.name }}" value="{{ main_form.date_exploitation_date_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_decompressing_expected.name }}" value="{{ main_form.date_decompressing_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_modernization_power_change_expected.name }}" value="{{ main_form.date_modernization_power_change_expected.data or '' }}">
                                 <input type="hidden" name="{{ main_form.date_modernization_no_power_change_expected.name }}" value="{{ main_form.date_modernization_no_power_change_expected.data or '' }}">
@@ -655,6 +666,16 @@
                 </div>
             {% endif %}
 
+            {# Год без мощности: Руст=Рогр=Ррасп=0 → прочерки по всему году #}
+            {% set zero_power_years = namespace(years=[]) %}
+            {% for p in advanced_form.powers %}
+                {% if (p.p_ust.data is none or p.p_ust.data == 0)
+                      and (p.p_ogr.data is none or p.p_ogr.data == 0)
+                      and (p.p_rasp.data is none or p.p_rasp.data == 0) %}
+                    {% if zero_power_years.years.append(p.year.data) %}{% endif %}
+                {% endif %}
+            {% endfor %}
+
             {# Таблица с названиями для ТЭС, ГЭС и ГАЭС #}
             {% if station.station_type and station.station_type.name and station.station_type.name|lower in ['тэс', 'гэс', 'гаэс'] %}
             <!-- Таблица «Название агрегата» -->
@@ -687,18 +708,20 @@
                         <tr class="text-center align-middle">
                             <td class="first-column fw-bold" style="width: 50px;">Название</td>
                             {% for nm in advanced_form.machine_names %}
+                                {% set year_all_zero = nm.year.data in zero_power_years.years %}
                                 {{ nm.year(type="hidden") }}
                                 <td class="align-middle text-center">
                                     {% if can_edit_generation_fields %}
                                         <input type="text"
                                             name="{{ nm.year_name.name }}"
-                                            value="{{ nm.year_name.data or '' }}"
+                                            value="{% if year_all_zero %}{% else %}{{ nm.year_name.data or '' }}{% endif %}"
+                                            placeholder="{% if year_all_zero %}—{% endif %}"
                                             data-year="{{ nm.year.data }}"
                                             data-feature="{{ year_features.get(nm.year.data) or '' }}"
                                             class="text-center form-control"
                                             maxlength="1024">
                                     {% else %}
-                                        <span>{{ nm.year_name.data if nm.year_name.data else '—' }}</span>
+                                        <span>{% if year_all_zero or not nm.year_name.data %}—{% else %}{{ nm.year_name.data }}{% endif %}</span>
                                     {% endif %}
                                 </td>
                             {% endfor %}
@@ -736,23 +759,25 @@
                             <!-- "p_ust" -->
                             <td class="first-column fw-bold" style="width: 50px;">Руст</td>
                             {% for p in advanced_form.powers %}
+                                {% set year_all_zero = p.year.data in zero_power_years.years %}
+                                {% set p_disp = '—' if year_all_zero else (p.p_ust.data | format_decimal) %}
                                 {{ p.year(type="hidden") }}
                                 <input type="hidden"
                                        class="year-feature"
                                        value="{{ year_features.get(p.year.data)|default('', true) }}">
-                                {% set p_ust_full = p.p_ust.data | format_decimal(0) if p.p_ust.data is not none else '' %}
+                                {% set p_ust_full = p.p_ust.data | format_decimal(0) if p.p_ust.data is not none and not year_all_zero else '' %}
                                 <td class="power-column align-middle text-center" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                     <input type="hidden"
                                         name="{{ p.p_ust.name }}_orig"
-                                        value="{{ p.p_ust.data | format_decimal }}">
+                                        value="{{ p_disp }}">
                             {% if can_edit_generation_fields %}
                                         <input type="text"
                                             name="{{ p.p_ust.name }}"
-                                            value="{{ p.p_ust.data | format_decimal }}"
-                                            data-original-value="{{ p.p_ust.data | format_decimal }}"
+                                            value="{{ p_disp }}"
+                                            data-original-value="{{ p_disp }}"
                                             class="form-control text-center" {% if p_ust_full %}title="{{ p_ust_full }}"{% endif %}>
                                     {% else %}
-                                        <span>{{ p.p_ust.data | format_decimal if p.p_ust.data else '—' }}</span>
+                                        <span>{{ p_disp }}</span>
                                     {% endif %}
                                 </td>
                             {% endfor %}
@@ -762,20 +787,22 @@
                             <!-- "p_ogr" -->
                             <td class="first-column fw-bold" style="width: 50px;">Рогр</td>
                             {% for p in advanced_form.powers %}
+                                {% set year_all_zero = p.year.data in zero_power_years.years %}
+                                {% set p_disp = '—' if year_all_zero else (p.p_ogr.data | format_decimal) %}
                                 {{ p.year(type="hidden") }}
-                                {% set p_ogr_full = p.p_ogr.data | format_decimal(0) if p.p_ogr.data is not none else '' %}
+                                {% set p_ogr_full = p.p_ogr.data | format_decimal(0) if p.p_ogr.data is not none and not year_all_zero else '' %}
                                 <td class="power-column align-middle text-center" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
                                     <input type="hidden"
                                         name="{{ p.p_ogr.name }}_orig"
-                                        value="{{ p.p_ogr.data | format_decimal }}">
+                                        value="{{ p_disp }}">
                             {% if can_edit_generation_fields %}
                                     <input type="text"
                                         name="{{ p.p_ogr.name }}"
-                                        value="{{ p.p_ogr.data | format_decimal }}"
-                                        data-original-value="{{ p.p_ogr.data | format_decimal }}"
+                                        value="{{ p_disp }}"
+                                        data-original-value="{{ p_disp }}"
                                         class="form-control text-center" {% if p_ogr_full %}title="{{ p_ogr_full }}"{% endif %}>
                                     {% else %}
-                                        <span>{{ p.p_ogr.data | format_decimal if p.p_ogr.data else '—' }}</span>
+                                        <span>{{ p_disp }}</span>
                                     {% endif %}
                                 </td>
                             {% endfor %}
@@ -785,20 +812,22 @@
                             <!-- "p_rasp" -->
                             <td class="first-column fw-bold" style="width: 50px;">Ррасп</td>
                             {% for p in advanced_form.powers %}
+                                {% set year_all_zero = p.year.data in zero_power_years.years %}
+                                {% set p_disp = '—' if year_all_zero else (p.p_rasp.data | format_decimal) %}
                                 {{ p.year(type="hidden") }}
-                                {% set p_rasp_full = p.p_rasp.data | format_decimal(0) if p.p_rasp.data is not none else '' %}
+                                {% set p_rasp_full = p.p_rasp.data | format_decimal(0) if p.p_rasp.data is not none and not year_all_zero else '' %}
                                 <td class="power-column align-middle text-center" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
                                     <input type="hidden"
                                         name="{{ p.p_rasp.name }}_orig"
-                                        value="{{ p.p_rasp.data | format_decimal }}">
+                                        value="{{ p_disp }}">
                             {% if can_edit_generation_fields %}
                                     <input type="text"
                                         name="{{ p.p_rasp.name }}"
-                                        value="{{ p.p_rasp.data | format_decimal }}"
-                                        data-original-value="{{ p.p_rasp.data | format_decimal }}"
+                                        value="{{ p_disp }}"
+                                        data-original-value="{{ p_disp }}"
                                         class="form-control text-center" {% if p_rasp_full %}title="{{ p_rasp_full }}"{% endif %}>
                                     {% else %}
-                                        <span>{{ p.p_rasp.data | format_decimal if p.p_rasp.data else '—' }}</span>
+                                        <span>{{ p_disp }}</span>
                                     {% endif %}
                                 </td>
                             {% endfor %}
@@ -836,6 +865,7 @@
                             <tr class="text-center align-middle">
                                 <td class="first-column fw-bold" style="width: 50px;">Тип ТЭС</td>
                                 {% for t in advanced_form.tes_types %}
+                                    {% set year_all_zero = t.year.data in zero_power_years.years %}
                                     {{ t.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
                             {% if can_edit_fuel %}
@@ -849,10 +879,10 @@
                                             ) }}
                                         {% else %}
                                             {% set selected_tes_type = t.tes_type.choices | selectattr('0', 'equalto', t.tes_type.data) | map(attribute='1') | first %}
-                                            {% if t.tes_type.data and t.tes_type.data != 0 and selected_tes_type and selected_tes_type|lower != 'не указано' %}
-                                                <span>{{ selected_tes_type }}</span>
+                                            {% if year_all_zero or not t.tes_type.data or t.tes_type.data == 0 or not selected_tes_type or selected_tes_type|lower == 'не указано' %}
+                                                <span>—</span>
                                             {% else %}
-                                                <span>не указано</span>
+                                                <span>{{ selected_tes_type }}</span>
                                             {% endif %}
                                         {% endif %}
                                     </td>
@@ -890,6 +920,7 @@
                             <tr class="text-center align-middle">
                                 <td class="first-column fw-bold" style="width: 50px;">Вид топлива</td>
                                 {% for f in advanced_form.fuels %}
+                                    {% set year_all_zero = f.year.data in zero_power_years.years %}
                                     {{ f.year(type="hidden") }}
                                     <td class="align-middle fuel-column text-center">
                             {% if can_edit_fuel %}
@@ -903,10 +934,10 @@
                                             ) }}
                                         {% else %}
                                             {% set selected_fuel_type = f.fuel_type.choices | selectattr('0', 'equalto', f.fuel_type.data) | map(attribute='1') | first %}
-                                            {% if f.fuel_type.data and f.fuel_type.data != 0 and selected_fuel_type and selected_fuel_type|lower != 'не указано' %}
-                                                <span>{{ selected_fuel_type }}</span>
+                                            {% if year_all_zero or not f.fuel_type.data or f.fuel_type.data == 0 or not selected_fuel_type or selected_fuel_type|lower == 'не указано' %}
+                                                <span>—</span>
                                             {% else %}
-                                                <span>не указано</span>
+                                                <span>{{ selected_fuel_type }}</span>
                                             {% endif %}
                                         {% endif %}
                                     </td>
@@ -1523,6 +1554,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 columnYears.length && columnYears.length === inputs.length;
 
             function extendPowerValue(inputEl, idx) {
+                if (window.__armGsTableRowPasteActive) {
+                    return;
+                }
                 const value = inputEl.value;
                 if (inputEl.dataset) {
                     inputEl.dataset.userSet = "1";
@@ -1552,6 +1586,12 @@ document.addEventListener("DOMContentLoaded", function () {
                             raspRowInputs[i].dataset.userSet = "1";
                         }
                     }
+                }
+                if (typeof syncZeroYearPowerDashes === "function") {
+                    syncZeroYearPowerDashes();
+                }
+                if (typeof autoSetTesAndFuelToEmpty === "function") {
+                    autoSetTesAndFuelToEmpty();
                 }
             }
 
@@ -1658,6 +1698,9 @@ document.addEventListener("DOMContentLoaded", function () {
         recomputeMachineNameFromYearNames(inputs);
 
         function extendNameValue(inputEl, idx) {
+            if (window.__armGsTableRowPasteActive) {
+                return;
+            }
             const value = inputEl.value;
             for (let i = idx + 1; i < inputs.length; i++) {
                 if (hasMaxVersionYear) {
@@ -1690,15 +1733,64 @@ document.addEventListener("DOMContentLoaded", function () {
     function parsePowerValue(raw) {
         if (raw === null || raw === undefined) return null;
         const cleaned = raw.toString().replace(/\s+/g, "").replace(",", ".");
-        if (cleaned === "") return null;
+        if (
+            cleaned === "" ||
+            cleaned === "—" ||
+            cleaned === "-" ||
+            cleaned === "–" ||
+            cleaned === "\u2014"
+        ) {
+            return null;
+        }
         const num = parseFloat(cleaned);
         return isNaN(num) ? null : num;
+    }
+
+    function isPowerZeroOrEmpty(value) {
+        return value === null || value === undefined || isNaN(value) || value === 0;
+    }
+
+    function syncZeroYearPowerDashes() {
+        const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
+        const ogrInputs = Array.from(document.querySelectorAll(".p-ogr-row .power-column input[type=\"text\"]"));
+        const raspInputs = Array.from(document.querySelectorAll(".p-rasp-row .power-column input[type=\"text\"]"));
+        if (!rustInputs.length) return;
+
+        rustInputs.forEach(function (rustInput, index) {
+            const ogrInput = ogrInputs[index];
+            const raspInput = raspInputs[index];
+            const rustVal = parsePowerValue(rustInput.value);
+            const ogrVal = ogrInput ? parsePowerValue(ogrInput.value) : null;
+            const raspVal = raspInput ? parsePowerValue(raspInput.value) : null;
+            const allZero =
+                isPowerZeroOrEmpty(rustVal) &&
+                isPowerZeroOrEmpty(ogrVal) &&
+                isPowerZeroOrEmpty(raspVal);
+
+            [rustInput, ogrInput, raspInput].forEach(function (input) {
+                if (!input) return;
+                if (allZero) {
+                    if (input.value !== "—") input.value = "—";
+                } else if (input.value === "—") {
+                    // После появления ненулевой мощности прочерк в соседней ячейке = 0
+                    input.value = "0";
+                }
+            });
+        });
     }
 
     function parseDecimalString(raw) {
         if (raw === null || raw === undefined) return null;
         const cleaned = raw.toString().trim().replace(/\s+/g, "").replace(",", ".");
-        if (cleaned === "") return null;
+        if (
+            cleaned === "" ||
+            cleaned === "—" ||
+            cleaned === "-" ||
+            cleaned === "–" ||
+            cleaned === "\u2014"
+        ) {
+            return null;
+        }
         const match = cleaned.match(/^([+-])?(\d*)(?:\.(\d*))?$/);
         if (!match) return null;
         let intPart = match[2] || "0";
@@ -1786,6 +1878,10 @@ document.addEventListener("DOMContentLoaded", function () {
             ogrInputs[i].value = formatPowerValue(rustRaw, ogr);
         }
 
+        if (typeof syncZeroYearPowerDashes === "function") {
+            syncZeroYearPowerDashes();
+        }
+
         if (showFlash) {
             showOgrCalcFlashMessage();
         }
@@ -1806,6 +1902,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 continue;
             }
             raspInputs[i].value = formatPowerValue(rustRaw, rasp);
+        }
+
+        if (typeof syncZeroYearPowerDashes === "function") {
+            syncZeroYearPowerDashes();
         }
 
         if (showFlash) {
@@ -2223,20 +2323,27 @@ document.addEventListener("DOMContentLoaded", function () {
         delete selectEl.dataset.autofilling;
     }
 
-    // --- Автоматическая установка типа ТЭС и топлива в "не указано" при Руст = 0 ---
+    // --- Автоматическая установка типа ТЭС и топлива в "не указано" при Руст=Рогр=Ррасп=0 ---
     function autoSetTesAndFuelToEmpty() {
         const rustInputs = Array.from(document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]"));
         if (!rustInputs.length) return;
 
+        const ogrInputs = Array.from(document.querySelectorAll(".p-ogr-row .power-column input[type=\"text\"]"));
+        const raspInputs = Array.from(document.querySelectorAll(".p-rasp-row .power-column input[type=\"text\"]"));
         const tesTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="tes_type"]'));
         const fuelTypeSelects = Array.from(document.querySelectorAll('.machines-table select[name*="fuel_type"]'));
         const nameInputs = Array.from(document.querySelectorAll('input[name*="machine_names-"][name*="year_name"]'));
         if (!tesTypeSelects.length && !fuelTypeSelects.length && !nameInputs.length) return;
 
         rustInputs.forEach(function (rustInput, index) {
-            const powerValue = parsePowerValue(rustInput.value);
-            const isZero = (powerValue === null || powerValue === undefined || isNaN(powerValue) || powerValue === 0);
-            if (!isZero) return;
+            const rustVal = parsePowerValue(rustInput.value);
+            const ogrVal = ogrInputs[index] ? parsePowerValue(ogrInputs[index].value) : null;
+            const raspVal = raspInputs[index] ? parsePowerValue(raspInputs[index].value) : null;
+            const allZero =
+                isPowerZeroOrEmpty(rustVal) &&
+                isPowerZeroOrEmpty(ogrVal) &&
+                isPowerZeroOrEmpty(raspVal);
+            if (!allZero) return;
 
             if (tesTypeSelects[index]) {
                 if (tesTypeSelects[index].dataset && tesTypeSelects[index].dataset.userSet === "1") {
@@ -2255,21 +2362,38 @@ document.addEventListener("DOMContentLoaded", function () {
             // Дополнительно: очищаем "Название по году" при нулевой мощности
             if (nameInputs[index] && !(nameInputs[index].dataset && nameInputs[index].dataset.userSet === "1")) {
                 nameInputs[index].value = "";
+                nameInputs[index].placeholder = "—";
             }
         });
     }
 
     function attachTesAndFuelAutoEmpty() {
-        const rustInputs = document.querySelectorAll(".total-power-row .power-column input[type=\"text\"]");
-        rustInputs.forEach(function (input) {
+        const powerInputs = document.querySelectorAll(
+            ".total-power-row .power-column input[type=\"text\"], " +
+            ".p-ogr-row .power-column input[type=\"text\"], " +
+            ".p-rasp-row .power-column input[type=\"text\"]"
+        );
+        powerInputs.forEach(function (input) {
             // Реагируем только на изменение мощности пользователем, не на загрузку страницы
             input.addEventListener("input", function () {
+                syncZeroYearPowerDashes();
                 autoSetTesAndFuelToEmpty();
             });
             input.addEventListener("change", function () {
+                syncZeroYearPowerDashes();
+                autoSetTesAndFuelToEmpty();
+            });
+            input.addEventListener("focus", function () {
+                if (this.value === "—") {
+                    this.value = "";
+                }
+            });
+            input.addEventListener("blur", function () {
+                syncZeroYearPowerDashes();
                 autoSetTesAndFuelToEmpty();
             });
         });
+        syncZeroYearPowerDashes();
     }
 
     // --- Продление значения select по строке (как Excel) ---
@@ -2785,70 +2909,133 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 <script>
-// Автозаполнение "Год ввода в работу" по "Фактической дате ввода в работу"
+// Автозаполнение годов по датам (как у «Фактическая дата ввода в работу»)
 document.addEventListener('DOMContentLoaded', function() {
-    // Учитываем WTForms prefix и возможные варианты ID/name
+    function parseYearMonthDayFromDateInput(raw) {
+        const value = (raw || '').trim();
+        if (!value) {
+            return { year: null, month: null, day: null };
+        }
+
+        let year = null;
+        let month = null;
+        let day = null;
+
+        const dotMatch = value.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+        if (dotMatch) {
+            day = parseInt(dotMatch[1], 10);
+            month = parseInt(dotMatch[2], 10);
+            year = parseInt(dotMatch[3], 10);
+        }
+
+        if (!year) {
+            const dashMatch = value.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+            if (dashMatch) {
+                year = parseInt(dashMatch[1], 10);
+                month = parseInt(dashMatch[2], 10);
+                day = parseInt(dashMatch[3], 10);
+            }
+        }
+
+        if (!year) {
+            const yearMatch = value.match(/(\d{4})/);
+            if (yearMatch) {
+                year = parseInt(yearMatch[1], 10);
+            }
+        }
+
+        // Правило 01.01.ГГГГ -> год - 1
+        if (year && day === 1 && month === 1) {
+            year = year - 1;
+        }
+
+        return { year, month, day };
+    }
+
+    function bindDateToYearAutofill(dateInput, yearInput) {
+        if (!dateInput || !yearInput) {
+            return;
+        }
+        const updateYear = () => {
+            const parsed = parseYearMonthDayFromDateInput(dateInput.value);
+            if (!parsed.year) {
+                return;
+            }
+            yearInput.value = String(parsed.year);
+            yearInput.dispatchEvent(new Event('input', { bubbles: true }));
+            yearInput.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        dateInput.addEventListener('input', updateYear);
+        dateInput.addEventListener('change', updateYear);
+        dateInput.addEventListener('blur', updateYear);
+    }
+
+    // Автоформат ввода дат: 01012025 → 01.01.2025 (как у полей дат)
+    function autoFormatDateDots(input) {
+        if (!input || input.dataset.dateAutoformatBound === '1') {
+            return;
+        }
+        input.dataset.dateAutoformatBound = '1';
+        input.addEventListener('input', function () {
+            const prev = input.value || '';
+            // Не трогаем ISO YYYY-MM-DD и уже готовые ДД.ММ.ГГГГ
+            if (/^\d{4}-\d{2}-\d{2}$/.test(prev.trim()) || /^\d{2}\.\d{2}\.\d{4}$/.test(prev.trim())) {
+                return;
+            }
+            // Форматируем только «сырой» набор цифр / частично набранную дату с точками
+            if (/[^\d.]/.test(prev)) {
+                return;
+            }
+            const digits = prev.replace(/\D/g, '').slice(0, 8);
+            if (!digits) {
+                return;
+            }
+            let formatted = digits;
+            if (digits.length > 4) {
+                formatted = digits.slice(0, 2) + '.' + digits.slice(2, 4) + '.' + digits.slice(4);
+            } else if (digits.length > 2) {
+                formatted = digits.slice(0, 2) + '.' + digits.slice(2);
+            }
+            if (formatted === prev) {
+                return;
+            }
+            input.value = formatted;
+            try {
+                const pos = formatted.length;
+                input.setSelectionRange(pos, pos);
+            } catch (e) {
+                /* ignore */
+            }
+        });
+    }
+
+    const dateFieldNameSuffixes = [
+        'date_commission_fact',
+        'date_decompressing_fact',
+        'date_joining_expected',
+        'date_joining_fact',
+        'date_detatchment_fact',
+        'date_exploitation_date_expected',
+    ];
+    dateFieldNameSuffixes.forEach(function (suffix) {
+        document.querySelectorAll('input[name$="' + suffix + '"]').forEach(autoFormatDateDots);
+    });
+
     const dateCommissionFactInput =
         document.getElementById('date_commission_fact') ||
         document.querySelector('[name$="date_commission_fact"]');
-
     const dateCommissionYearInput =
         document.getElementById('date_commission_year') ||
         document.querySelector('[name$="date_commission_year"]');
+    bindDateToYearAutofill(dateCommissionFactInput, dateCommissionYearInput);
 
-    if (dateCommissionFactInput && dateCommissionYearInput) {
-        const updateCommissionYear = () => {
-            const raw = (dateCommissionFactInput.value || '').trim();
-            if (!raw) {
-                return;
-            }
-
-            let year = null;
-            let month = null;
-            let day = null;
-
-            // 1. Пытаемся вытащить полный паттерн ДД.ММ.ГГГГ
-            const dotMatch = raw.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-            if (dotMatch) {
-                day = parseInt(dotMatch[1], 10);
-                month = parseInt(dotMatch[2], 10);
-                year = parseInt(dotMatch[3], 10);
-            }
-
-            // 2. Пытаемся вытащить паттерн ГГГГ-ММ-ДД
-            if (!year) {
-                const dashMatch = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-                if (dashMatch) {
-                    year = parseInt(dashMatch[1], 10);
-                    month = parseInt(dashMatch[2], 10);
-                    day = parseInt(dashMatch[3], 10);
-                }
-            }
-
-            // 3. Если не нашли полную дату, но есть 4‑значный год
-            if (!year) {
-                const yearMatch = raw.match(/(\d{4})/);
-                if (yearMatch) {
-                    year = parseInt(yearMatch[1], 10);
-                }
-            }
-
-            if (!year) {
-                return;
-            }
-
-            // Правило 01.01.ГГГГ -> год - 1
-            if (day === 1 && month === 1) {
-                year = year - 1;
-            }
-
-            dateCommissionYearInput.value = year.toString();
-        };
-
-        dateCommissionFactInput.addEventListener('input', updateCommissionYear);
-        dateCommissionFactInput.addEventListener('change', updateCommissionYear);
-        dateCommissionFactInput.addEventListener('blur', updateCommissionYear);
-    }
+    const dateExploitationDateExpectedInput =
+        document.getElementById('date_exploitation_date_expected') ||
+        document.querySelector('[name$="date_exploitation_date_expected"]');
+    const dateExploitationExpectedInput =
+        document.getElementById('main_date_exploitation_expected') ||
+        document.querySelector('[name$="date_exploitation_expected"]');
+    bindDateToYearAutofill(dateExploitationDateExpectedInput, dateExploitationExpectedInput);
 
     // При заполнении "Фактическая дата вывода из эксплуатации" очищаем "Ожидаемый год вывода из эксплуатации"
     const dateDecompressingFactInput =

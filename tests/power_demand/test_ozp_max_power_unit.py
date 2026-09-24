@@ -100,6 +100,60 @@ def test_save_ozp_cells_rejects_bad_year():
     assert result["ok"] is False
 
 
+def test_normalize_ozp_peak_datetime_canonical_and_excel():
+    assert ozp.normalize_ozp_peak_datetime("15.12 18:00") == "15.12 18:00"
+    assert ozp.normalize_ozp_peak_datetime("5.1 8-00") == "05.01 08:00"
+    assert ozp.normalize_ozp_peak_datetime("15.12.2024 18:00") == "15.12.2024 18:00"
+    assert ozp.normalize_ozp_peak_datetime("26.11.2019 17:00") == "26.11.2019 17:00"
+    assert ozp.normalize_ozp_peak_datetime("10.01.23 12-00") == "10.01.2023 12:00"
+    assert ozp.normalize_ozp_peak_datetime("  ") is None
+    assert ozp.normalize_ozp_peak_datetime("—") is None
+    assert ozp.normalize_ozp_peak_datetime("декабрь") == "декабрь"
+
+
+def test_save_ozp_cells_accepts_peak_datetime(monkeypatch):
+    captured = {}
+
+    def fake_upsert(year, **kwargs):
+        captured["year"] = year
+        captured["kwargs"] = kwargs
+        return object()
+
+    monkeypatch.setattr(ozp, "upsert_ozp_row", fake_upsert)
+    monkeypatch.setattr(ozp.db.session, "commit", lambda: None)
+    result = ozp.save_ozp_cells(
+        [{"ozp_end_year": 2024, "parameter_key": "peak_datetime", "value": "19.12.2024 11:00"}]
+    )
+    assert result["ok"] is True
+    assert captured["year"] == 2024
+    assert captured["kwargs"]["peak_datetime"] == "19.12.2024 11:00"
+    assert captured["kwargs"]["max_power_mw"] is ...
+
+
+def test_excel_includes_peak_datetime_row():
+    from types import SimpleNamespace
+
+    columns = ozp.build_ozp_columns(2023, 2024)
+    groups = ozp.build_year_header_groups(columns)
+    stored = {
+        2024: SimpleNamespace(max_power_mw=Decimal("100"), peak_datetime="19.12.2024 11:00"),
+    }
+    stream = ozp.build_ozp_excel_stream(
+        columns=columns,
+        year_groups=groups,
+        stored=stored,
+        rounding_digits=-1,
+    )
+    from openpyxl import load_workbook
+
+    wb = load_workbook(stream)
+    ws = wb.active
+    assert ws.cell(row=4, column=1).value == ozp.ROW_PEAK_DT_LABEL
+    assert ws.cell(row=5, column=1).value == ozp.ROW_GROWTH_LABEL
+    # 2023–2024 гг. — вторая колонка данных (C)
+    assert ws.cell(row=4, column=3).value == "19.12.2024 11:00"
+
+
 def test_ozp_maxima_routes_registered():
     from app.power_demand.routes import ozp_max_power_routes as routes
 

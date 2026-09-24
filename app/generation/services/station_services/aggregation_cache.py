@@ -90,7 +90,7 @@ def get_cache_key(start_year, end_year, station_ids, filters=None):
             k: tuple(sorted(v)) if isinstance(v, list) else v
             for k, v in filters.items()
             if k in [
-                "station_type_filter", "station_name_filter", "gen_company_filter",
+                "station_type_filter", "station_name_filter", "external_code_filter", "gen_company_filter",
                 "tes_type_filter", "tes_machine_type_filter",
                 "fuel_type_filter", "condition_type_filter",
                 "machines_without_equipment_group",
@@ -160,7 +160,7 @@ def clear_aggregation_cache():
                 for i in range(0, len(keys_to_delete), batch_size):
                     batch = keys_to_delete[i:i+batch_size]
                     redis_client.delete(*batch)
-                print(f"[🗑 CACHE CLEARED REDIS] Удалено {len(keys_to_delete)} ключей из Redis")
+                print(f"[CACHE CLEARED REDIS] Удалено {len(keys_to_delete)} ключей из Redis")
         except Exception as e:
             print(f"[CACHE CLEAR ERROR] Redis error: {e}")
     
@@ -168,7 +168,7 @@ def clear_aggregation_cache():
     _cache = {}
     _sorted_stations_cache = {}
     _page_positions_cache = {}
-    print("[🗑 CACHE CLEARED] Кэш агрегаций, отсортированных списков и позиций страниц очищен")
+    print("[CACHE CLEARED] Кэш агрегаций, отсортированных списков и позиций страниц очищен")
     
     # Очищаем LRU кэши для предотвращения DetachedInstanceError
     cache_functions = []
@@ -241,7 +241,7 @@ def clear_aggregation_cache():
             except Exception as e:
                 print(f"[LRU CACHE CLEAR ERROR] Ошибка при очистке кэша функции {func.__name__}: {e}")
         
-        print(f"[🗑 LRU CACHE CLEARED] Очищено LRU кэшей: {cleared_count}")
+        print(f"[LRU CACHE CLEARED] Очищено LRU кэшей: {cleared_count}")
 
 
 def clear_old_cache_entries():
@@ -258,7 +258,7 @@ def clear_old_cache_entries():
         del _cache[key]
     
     if keys_to_delete:
-        print(f"[🗑 CACHE CLEANUP] Удалено устаревших записей: {len(keys_to_delete)}")
+        print(f"[CACHE CLEANUP] Удалено устаревших записей: {len(keys_to_delete)}")
 
 
 def warmup_station_cache(force=False):
@@ -369,10 +369,10 @@ def warmup_station_cache(force=False):
         cache_sorted_stations({}, sorted_ids)
         
         elapsed = time.time() - start_time
-        print(f"[CACHE WARMUP] ✅ Прогрев кэша завершен за {elapsed:.2f} сек ({len(sorted_ids)} станций)")
+        print(f"[CACHE WARMUP] Прогрев кэша завершен за {elapsed:.2f} сек ({len(sorted_ids)} станций)")
         
     except Exception as e:
-        print(f"[CACHE WARMUP] ❌ Ошибка при прогреве кэша: {e}")
+        print(f"[CACHE WARMUP] Ошибка при прогреве кэша: {e}")
         import traceback
         traceback.print_exc()
 
@@ -410,7 +410,7 @@ def start_background_cache_refresh(app, interval_minutes=25):
                     warmup_station_cache(force=True)
                 
             except Exception as e:
-                print(f"[CACHE REFRESH] ❌ Ошибка при обновлении кэша: {e}")
+                print(f"[CACHE REFRESH] Ошибка при обновлении кэша: {e}")
                 import traceback
                 traceback.print_exc()
     
@@ -421,7 +421,7 @@ def start_background_cache_refresh(app, interval_minutes=25):
     _background_refresh_active = True
     refresh_thread = threading.Thread(target=refresh_task, daemon=True, name="CacheRefreshThread")
     refresh_thread.start()
-    print(f"[CACHE REFRESH] ✅ Запущено фоновое обновление кэша каждые {interval_minutes} минут")
+    print(f"[CACHE REFRESH] Запущено фоновое обновление кэша каждые {interval_minutes} минут")
 
 
 def stop_background_cache_refresh():

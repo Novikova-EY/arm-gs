@@ -1,0 +1,275 @@
+{% extends 'hub_base.html' %} {% block body_class %}home-outline-page
+output-docs-page{% endblock %} {% block title %}Передача данных для выходных
+документов{% endblock %} {% block extra_head %}
+<style>
+  .output-docs-page .output-docs-wrap {
+    max-width: 88rem;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .output-docs-page .output-docs-wrap .form-select {
+    width: 100%;
+  }
+  .output-docs-page .output-docs-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+  .output-docs-page .output-docs-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    min-width: 0;
+  }
+  .output-docs-page
+    .output-docs-stack
+    > .home-outline__section
+    + .home-outline__section {
+    margin-top: 0;
+  }
+  .output-docs-page .output-docs-wrap .home-outline__tiles {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.65rem;
+  }
+  .output-docs-page .output-doc-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 0.45rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .output-docs-page .output-docs-wrap .home-outline__tile {
+    justify-content: flex-start;
+    min-height: 3.6rem;
+    font-size: 1.05rem;
+    text-align: left;
+  }
+  /* config.json и одиночные плитки — на всю ширину */
+  .output-docs-page .output-docs-wrap > .mb-3 > .home-outline__tile {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100%;
+  }
+  /* в строке с Excel плитка занимает оставшееся место, кнопка справа */
+  .output-docs-page .output-doc-row > .home-outline__tile {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+  }
+  .output-docs-page .output-docs-wrap .home-outline__tile span {
+    overflow-wrap: anywhere;
+  }
+  .output-docs-page .output-doc-excel-btn {
+    flex: 0 0 3.6rem;
+    width: 3.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.6rem;
+    min-height: 3.6rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid #198754;
+    border-radius: 0.5rem;
+    color: #198754;
+    background: #fff;
+    text-decoration: none;
+    line-height: 1;
+    box-sizing: border-box;
+  }
+  .output-docs-page .output-doc-excel-btn:hover,
+  .output-docs-page .output-doc-excel-btn:focus {
+    color: #fff;
+    background: #198754;
+    border-color: #198754;
+  }
+  .output-docs-page .output-doc-excel-btn.is-disabled,
+  .output-docs-page .output-doc-excel-btn:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    color: #6c757d;
+    border-color: #ced4da;
+    background: #f8f9fa;
+  }
+  @media (max-width: 992px) {
+    .output-docs-page .output-docs-columns {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+{% endblock %} {% block content %} {% if current_user.is_authenticated %}
+{% set can_export_excel = current_user.is_admin %}
+<div class="home-outline">
+  <div class="home-outline__title-row">
+    <h1 class="home-outline__title">Передача данных для выходных документов</h1>
+  </div>
+
+  <div class="output-docs-wrap">
+    <div class="mb-3">
+      <a
+        class="home-outline__tile"
+        href="{{ url_for('exchange_api_bp.get_exchange_config') }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-no-preloader
+        title="GET /api/config"
+      >
+        <i class="bi bi-gear" aria-hidden="true"></i>
+        <span>config.json</span>
+      </a>
+    </div>
+
+    <div class="mb-4">
+      <label for="output-doc-version" class="form-label fw-bold"
+        >Версия базы данных</label
+      >
+      <select
+        id="output-doc-version"
+        class="form-select"
+        {% if not versions %}disabled{% endif %}
+      >
+        {% if not versions %}
+        <option value="">Нет доступных версий</option>
+        {% endif %} {% for row in versions %}
+        <option
+          value="{{ row.database_version }}"
+          {% if selected_version_id and row.database_version == selected_version_id %}selected{% endif %}
+        >
+          {{ row.database_version }}{% if row.version_number %} — {{
+          row.version_number }}{% endif %}{% if row.description %} — {{
+          row.description }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="output-docs-columns">
+      {% for column, groups in json_groups|groupby('column') %}
+      <div class="output-docs-stack">
+        {% for group in groups %}
+        <section class="home-outline__section">
+          <h2 class="home-outline__section-title">
+            <i class="bi bi-folder2-open" aria-hidden="true"></i>
+            {{ group.title }}
+          </h2>
+          <div class="home-outline__tiles">
+            {% for item in group.files %}
+            <div class="output-doc-row">
+              {% if item.enabled and item.kind == 'versions_list' %}
+              <a
+                class="home-outline__tile"
+                href="{{ url_for('database_versions_api_bp.api_list_database_versions') }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-no-preloader
+                title="GET /api/database_versions"
+              >
+                <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
+                <span>{{ item.filename }}</span>
+              </a>
+              {% elif item.enabled and selected_version_id %}
+              <a
+                class="home-outline__tile output-doc-dataset"
+                data-dataset="{{ item.dataset }}"
+                href="{{ url_for('exchange_api_bp.get_dataset_by_version', database_version=selected_version_id, dataset=item.dataset) }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-no-preloader
+                title="GET /api/datasets/{{ selected_version_id }}/{{ item.dataset }}"
+              >
+                <i class="bi bi-file-earmark-code" aria-hidden="true"></i>
+                <span>{{ item.filename }}</span>
+              </a>
+              {% else %}
+              <span
+                class="home-outline__tile is-disabled"
+                aria-disabled="true"
+                tabindex="-1"
+                title="{% if not item.enabled %}API ещё не реализован{% else %}Выберите версию базы данных{% endif %}"
+              >
+                <i class="bi bi-file-earmark" aria-hidden="true"></i>
+                <span>{{ item.filename }}</span>
+              </span>
+              {% endif %}
+              {% if can_export_excel %}
+                {% if item.enabled and item.kind == 'versions_list' %}
+                <a
+                  class="output-doc-excel-btn"
+                  href="{{ url_for('start.export_output_document_excel', dataset=item.dataset) }}"
+                  data-no-preloader
+                  title="Выгрузить {{ item.filename }} в Excel"
+                  aria-label="Выгрузить {{ item.filename }} в Excel"
+                >
+                  <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                </a>
+                {% elif item.enabled and selected_version_id %}
+                <a
+                  class="output-doc-excel-btn output-doc-excel"
+                  data-dataset="{{ item.dataset }}"
+                  href="{{ url_for('start.export_output_document_excel', dataset=item.dataset, database_version=selected_version_id) }}"
+                  data-no-preloader
+                  title="Выгрузить {{ item.filename }} в Excel"
+                  aria-label="Выгрузить {{ item.filename }} в Excel"
+                >
+                  <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                </a>
+                {% else %}
+                <span
+                  class="output-doc-excel-btn is-disabled"
+                  aria-disabled="true"
+                  title="{% if not item.enabled %}API ещё не реализован{% else %}Выберите версию базы данных{% endif %}"
+                >
+                  <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+                </span>
+                {% endif %}
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var select = document.getElementById("output-doc-version");
+    if (!select) return;
+    var links = document.querySelectorAll(".output-doc-dataset");
+    var excelLinks = document.querySelectorAll(".output-doc-excel");
+    function updateLinks() {
+      var versionId = select.value;
+      links.forEach(function (link) {
+        var dataset = link.getAttribute("data-dataset");
+        if (!versionId || !dataset) return;
+        link.href =
+          "/api/datasets/" +
+          encodeURIComponent(versionId) +
+          "/" +
+          encodeURIComponent(dataset);
+        link.title = "GET /api/datasets/" + versionId + "/" + dataset;
+      });
+      excelLinks.forEach(function (link) {
+        var dataset = link.getAttribute("data-dataset");
+        if (!versionId || !dataset) return;
+        link.href =
+          "/output_documents_transfer/export_excel/" +
+          encodeURIComponent(dataset) +
+          "?database_version=" +
+          encodeURIComponent(versionId);
+      });
+    }
+    select.addEventListener("change", updateLinks);
+  })();
+</script>
+{% endif %} {% endblock %}

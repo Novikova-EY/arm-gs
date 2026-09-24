@@ -15,8 +15,8 @@ from flask import request
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.aggregation_cache import get_redis_client
 
-# v39: coeff ФО/ЭЗ — плановый расчётный max = сумма РЭС (k СиПР 5 лет × max).
-PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 40
+# v42: ТИТЭС — combined_on_oes/ees для строк k на coeff.
+PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 42
 _CACHE_TIMEOUT = timedelta(minutes=30)
 _memory_cache: dict[str, tuple[int, Any, datetime]] = {}
 # Поколение кэша: отсекает «опоздавшие» записи после clear (threaded/gunicorn).

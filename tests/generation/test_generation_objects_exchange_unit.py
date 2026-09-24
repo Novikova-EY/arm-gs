@@ -101,7 +101,7 @@ def test_decommission_years():
     assert svc.decommission_year(2050, "01.01.2040") == 2039
 
 
-def test_exchange_years_from_current_minus_five_to_period_end(monkeypatch):
+def test_exchange_years_from_current_minus_six_to_period_end(monkeypatch):
     version = SimpleNamespace(id=37, version_number="СиПР 2026-2031 (РАБОЧАЯ)")
 
     class _Q:
@@ -128,8 +128,8 @@ def test_exchange_years_from_current_minus_five_to_period_end(monkeypatch):
             "period_end": 2031,
         },
     )
-    assert svc.exchange_years_bounds(37) == (2020, 2031)
-    assert svc.load_exchange_years(37) == list(range(2020, 2032))
+    assert svc.exchange_years_bounds(37) == (2019, 2031)
+    assert svc.load_exchange_years(37) == list(range(2019, 2032))
     assert svc.load_exchange_years(None) == []
 
 

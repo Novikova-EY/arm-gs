@@ -156,3 +156,67 @@ def test_filter_stations_by_company_compatibility():
         company_map,
     )
     assert [item.id for item in filtered] == [1, 2, 4]
+
+
+def test_codes_by_version_prefers_anchor_over_same_name_sibling():
+    """Одноимённая СЭС с другим UUID не должна перебивать код искомой записи."""
+    sibling = SimpleNamespace(
+        id=7377,
+        database_version_id=20,
+        external_code="0341687a-9483-59cc-ad2e-5e11af6f4f81",
+    )
+    anchor = SimpleNamespace(
+        id=7398,
+        database_version_id=20,
+        external_code="872e8d7e-cc4f-5e48-8229-ef2d923f86d1",
+    )
+    later = SimpleNamespace(
+        id=8886,
+        database_version_id=22,
+        external_code="0341687a-9483-59cc-ad2e-5e11af6f4f81",
+    )
+    codes, record_ids = svc._codes_and_ids_by_version(
+        [sibling, anchor, later],
+        [7, 20, 22],
+        anchor_id=7398,
+        anchor_code=anchor.external_code,
+    )
+    assert codes[20] == "872e8d7e-cc4f-5e48-8229-ef2d923f86d1"
+    assert record_ids[20] == 7398
+    assert codes[7] == ""
+    assert codes[22] == "0341687a-9483-59cc-ad2e-5e11af6f4f81"
+
+
+def test_codes_by_version_identity_only_family_hides_name_siblings():
+    anchor = SimpleNamespace(
+        id=7398,
+        database_version_id=20,
+        external_code="872e8d7e-cc4f-5e48-8229-ef2d923f86d1",
+    )
+    duplicate = SimpleNamespace(
+        id=7399,
+        database_version_id=20,
+        external_code="872e8d7e-cc4f-5e48-8229-ef2d923f86d1",
+    )
+    codes, record_ids = svc._codes_and_ids_by_version(
+        [anchor, duplicate],
+        [7, 20, 22],
+        anchor_id=7398,
+        anchor_code=anchor.external_code,
+    )
+    assert codes[20] == "872e8d7e-cc4f-5e48-8229-ef2d923f86d1"
+    assert record_ids[20] == 7398
+    assert codes[7] == ""
+    assert codes[22] == ""
+
+
+def test_uuid_filter_keeps_matching_machines_only():
+    assert svc._external_code_matches_filter(
+        "872e8d7e-cc4f-5e48-8229-ef2d923f86d1",
+        "872e8d7e-cc4f-5e48-8229-ef2d923f86d1",
+    )
+    assert not svc._external_code_matches_filter(
+        "48a975f2-3a26-5f45-acc0-a7ab843",
+        "872e8d7e-cc4f-5e48-8229-ef2d923f86d1",
+    )
+    assert svc._external_code_matches_filter("48a975f2-3a26-5f45-acc0-a7ab843", "")

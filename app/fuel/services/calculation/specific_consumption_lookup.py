@@ -7,9 +7,13 @@ U.Index = numb2; Seek \">=\", numb1120, v, byear; последняя year ≤ cy
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal
 from types import SimpleNamespace
 
+from sqlalchemy import and_, func, or_
+
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
 )
@@ -259,3 +263,137 @@ def query_specific_consumption_for_fuel(
         cyear=int(target_year),
         database_version_id=database_version_id,
     )
+
+
+def access_numb2_key_ge(
+    numb1120,
+    v,
+    year,
+    *,
+    seek_numb: int,
+    seek_v: int = 0,
+    seek_year: int,
+) -> bool:
+    """Индекс Access numb2: (numb1120, v, year) >= (seek_numb, seek_v, seek_year)."""
+    n = int(numb1120)
+    sv = int(v or 0)
+    y = int(year)
+    if n != int(seek_numb):
+        return n > int(seek_numb)
+    if sv != int(seek_v):
+        return sv > int(seek_v)
+    return y >= int(seek_year)
+
+
+@dataclass
+class AccessSeekBookmark:
+    """VBA ``bm`` / ``bm1``: последняя удачная строка Seek в цикле станций."""
+
+    row: object | None = None
+
+
+def apply_access_seek_bookmark(this_row, bookmark: AccessSeekBookmark, *, no_match: bool):
+    """Access: ``If U.NoMatch Then GoTo skip`` иначе ``Bookmark = bm``.
+
+    ``this_row`` — последняя year этой станции в ``[byear, cyear]`` (или None).
+    ``no_match`` — DAO Seek ``">=", numb, v, byear`` по *всей* таблице: нет ключа ≥.
+    Нет строк у себя, но Seek нашёл более позднюю станцию → оставляем bm
+    предыдущей станции цикла (как живая Кнопка5/27/49).
+    """
+    if this_row is not None:
+        bookmark.row = this_row
+        return this_row
+    if no_match:
+        return None
+    return bookmark.row
+
+
+def query_access_numb2_seek_no_match(
+    session,
+    model,
+    *,
+    numb1120: int | None,
+    byear: int | None,
+    database_version_id: int | None = None,
+    extra_filters=(),
+) -> bool:
+    """True, если ``Seek ">=", numb1120, 0, byear`` дал NoMatch (нет ключа ≥ в таблице)."""
+    if numb1120 is None or byear is None:
+        return True
+    numb_col = func.coalesce(model.numb1120, EquipmentGroup.numb)
+    q = session.query(model.id).join(
+        EquipmentGroup, model.equipment_group_id == EquipmentGroup.id
+    )
+    q = q.filter(
+        or_(
+            numb_col > int(numb1120),
+            and_(numb_col == int(numb1120), model.year_number >= int(byear)),
+        )
+    )
+    for clause in extra_filters:
+        q = q.filter(clause)
+    if database_version_id is not None:
+        q = q.filter(
+            (model.database_version_id == database_version_id)
+            | (model.database_version_id.is_(None))
+        )
+    return q.first() is None
+
+
+def query_ud_seek_no_match(
+    session,
+    *,
+    numb1120: int | None,
+    byear: int | None,
+    database_version_id: int | None = None,
+) -> bool:
+    return query_access_numb2_seek_no_match(
+        session,
+        EquipmentGroupSpecificFuelConsumption,
+        numb1120=numb1120,
+        byear=byear,
+        database_version_id=database_version_id,
+    )
+
+
+def resolve_access_ud_seek(
+    session,
+    this_row,
+    bookmark: AccessSeekBookmark,
+    *,
+    numb1120: int | None,
+    byear: int | None,
+    database_version_id: int | None = None,
+):
+    """Seek этой станции; пустое окно при не-NoMatch → bm предыдущей станции."""
+    return apply_access_seek_bookmark(
+        this_row,
+        bookmark,
+        no_match=query_ud_seek_no_match(
+            session,
+            numb1120=numb1120,
+            byear=byear,
+            database_version_id=database_version_id,
+        ),
+    )
+
+
+def fuel_row_numb1120(row, groups_by_id: dict | None = None) -> int | None:
+    """Access ``w("numb1120")`` для Seek."""
+    raw = getattr(row, "numb1120", None)
+    if raw is not None:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            pass
+    gid = getattr(row, "equipment_group_id", None)
+    eg = getattr(row, "equipment_group", None)
+    if groups_by_id is not None and gid is not None:
+        eg = groups_by_id.get(gid) or eg
+    numb = getattr(eg, "numb", None) if eg is not None else None
+    if numb is None:
+        return None
+    try:
+        return int(numb)
+    except (TypeError, ValueError):
+        return None

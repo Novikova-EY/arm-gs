@@ -133,7 +133,7 @@ def ee_transfers():
         rounding_digits = int(request.args.get("rounding_digits"))
     except (ValueError, TypeError):
         rounding_digits = 1
-    if rounding_digits is None or rounding_digits < 0:
+    if rounding_digits is None or rounding_digits < -1:
         rounding_digits = 1
 
     page_data = get_ee_transfers_page_data(
@@ -255,7 +255,7 @@ def export_ee_transfers():
             rounding_digits = int(request.args.get("rounding_digits"))
         except (ValueError, TypeError):
             rounding_digits = 1
-        if rounding_digits is None or rounding_digits < 0:
+        if rounding_digits is None or rounding_digits < -1:
             rounding_digits = 1
 
         show_totals = request.args.get("show_totals", "0") == "1"

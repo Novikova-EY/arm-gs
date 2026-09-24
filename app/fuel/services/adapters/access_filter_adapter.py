@@ -20,16 +20,16 @@ class AccessFilterAdapter:
     - (oes=3) and (ved>0)
     - obl=54 and oes=6
 
-    Поля справочника EquipmentGroup: oes, obl, dep, er, fo, main, numb.
-    Поле ved — из рабочей таблицы Access «Станции(Схема)» → EquipmentGroupFuelParam.ved
-    (год задаётся вызывающим кодом через join/exists), НЕ EquipmentGroup.vedomstvo.
+    Поля справочника EquipmentGroup: dep, er, fo, main, numb.
+    Поля рабочей таблицы Access «Станции(Схема)» → EquipmentGroupFuelParam
+    (год задаётся вызывающим кодом через join/exists): oes, obl, ved.
+    Не EquipmentGroup.oes / EquipmentGroup.obl / EquipmentGroup.vedomstvo:
+    у промстанций справочник часто пуст, а строка года заполнена.
 
     Не поддерживаются на этом этапе: OR, NOT, LIKE, IS NULL, IN, сложная вложенность.
     """
 
     GROUP_FIELD_MAP = {
-        "oes": EquipmentGroup.oes,
-        "obl": EquipmentGroup.obl,
         "dep": EquipmentGroup.dep,
         "er": EquipmentGroup.er,
         "fo": EquipmentGroup.fo,
@@ -37,7 +37,14 @@ class AccessFilterAdapter:
         "numb": EquipmentGroup.numb,
     }
 
-    # Обратная совместимость имени: только групповые поля (без ved).
+    # Рабочие OES/OBL/VED Access на строке параметров за год.
+    PARAM_FIELD_MAP = {
+        "oes": EquipmentGroupFuelParam.oes,
+        "obl": EquipmentGroupFuelParam.obl,
+        "ved": EquipmentGroupFuelParam.ved,
+    }
+
+    # Обратная совместимость имени: только групповые поля (без oes/obl/ved).
     FIELD_MAP = GROUP_FIELD_MAP
 
     # Рабочее VED Access на строке параметров за год.
@@ -98,12 +105,12 @@ class AccessFilterAdapter:
     def build_expression(cls, filter_text: object):
         """
         Преобразует Access-фильтр в SQLAlchemy expression только по полям EquipmentGroup.
-        Условия по ved пропускаются (их накладывает отбор через FuelParam.ved).
-        Возвращает None, если после пропуска ved условий не осталось / фильтр пуст.
+        Условия по oes/obl/ved пропускаются (их накладывает отбор через FuelParam).
+        Возвращает None, если после пропуска рабочих полей условий не осталось / фильтр пуст.
         """
         expressions = []
         for field_name, operator, value in cls.iter_conditions(filter_text):
-            if field_name == "ved":
+            if field_name in cls.PARAM_FIELD_MAP:
                 continue
             column = cls.GROUP_FIELD_MAP.get(field_name)
             if column is None:
@@ -112,6 +119,22 @@ class AccessFilterAdapter:
                 )
             expressions.append(cls._compare(column, operator, value))
 
+        if not expressions:
+            return None
+        return and_(*expressions)
+
+    @classmethod
+    def build_param_expression(cls, filter_text: object):
+        """
+        Условия фильтра по oes/obl/ved → выражение на колонках FuelParam.
+        None, если в фильтре нет этих полей.
+        """
+        expressions = []
+        for field_name, operator, value in cls.iter_conditions(filter_text):
+            column = cls.PARAM_FIELD_MAP.get(field_name)
+            if column is None:
+                continue
+            expressions.append(cls._compare(column, operator, value))
         if not expressions:
             return None
         return and_(*expressions)
@@ -136,6 +159,13 @@ class AccessFilterAdapter:
     def filter_has_ved_condition(cls, filter_text: object) -> bool:
         for field_name, _op, _val in cls.iter_conditions(filter_text):
             if field_name == "ved":
+                return True
+        return False
+
+    @classmethod
+    def filter_has_param_condition(cls, filter_text: object) -> bool:
+        for field_name, _op, _val in cls.iter_conditions(filter_text):
+            if field_name in cls.PARAM_FIELD_MAP:
                 return True
         return False
 

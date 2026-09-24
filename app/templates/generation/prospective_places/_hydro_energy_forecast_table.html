@@ -1,4 +1,4 @@
-{# Помесячный прогноз выработки (водохозяйственный год V–IV), ГЭС/ГАЭС.
+{# Помесячный прогноз выработки (календарный год январь-декабрь), ГЭС/ГАЭС.
    Поля входят в общую форму карточки (кнопки Сохранить / Отмена снаружи). #}
 {% set hydro = hydro_forecast %}
 {% set can_edit_hydro = can_edit_hydro_forecast if can_edit_hydro_forecast is defined else can_edit %}
@@ -12,7 +12,7 @@
                 <tr class="text-center align-middle">
                     <th class="align-middle" style="min-width: 14rem;">Показатель</th>
                     {% for month in hydro.month_order %}
-                    <th class="text-center align-middle" style="min-width: 4.25rem;">{{ hydro.month_romans[month] }}</th>
+                    <th class="text-center align-middle" style="min-width: 5.5rem; white-space: normal;">{{ hydro.month_names[month] }}</th>
                     {% endfor %}
                     <th class="text-center align-middle" style="min-width: 5rem;">Год</th>
                 </tr>

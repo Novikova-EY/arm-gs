@@ -2,6 +2,7 @@
 """Данные и выгрузка таблицы «Максимумы потребления мощности ОЗП»."""
 from __future__ import annotations
 
+import re
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from typing import Any
@@ -32,7 +33,15 @@ GROWTH_ROUNDING_DIGITS = 2
 DEFAULT_MW_ROUNDING_DIGITS = -1
 PAGE_TITLE = "Максимумы потребления мощности ОЗП"
 ROW_MAX_LABEL = "Максимум потребления мощности ОЗП, МВт"
+ROW_PEAK_DT_LABEL = (
+    "Дата и время прохождения максимума потребления мощности, дд.мм чч:мм"
+)
 ROW_GROWTH_LABEL = "Прирост к прошлому ОЗП, %"
+EDITABLE_PARAMETER_KEYS = frozenset({"max_power", "peak_datetime"})
+_PEAK_DT_RE = re.compile(
+    r"(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?\s+(\d{1,2})[:\-.](\d{2})"
+)
+PEAK_DATETIME_MAX_LEN = 64
 GROWTH_FORMULA_TEXT = (
     "Прирост к прошлому ОЗП, % = (максимум потребления мощности ОЗП текущего периода / "
     "максимум потребления мощности ОЗП предыдущего периода) × 100 − 100"
@@ -208,6 +217,35 @@ def _parse_optional_decimal(raw: Any) -> Decimal | None:
         raise ValueError("Некорректное число") from None
 
 
+def _parse_optional_text(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    s = " ".join(str(raw).replace("\u00a0", " ").replace("\u202f", " ").split())
+    if s in ("", "—", "-", "–"):
+        return None
+    return s
+
+
+def normalize_ozp_peak_datetime(raw: Any) -> str | None:
+    """Строка «дд.мм.гггг чч:мм» (год сохраняется, если он есть во вставке)."""
+    s = _parse_optional_text(raw)
+    if s is None:
+        return None
+    m = _PEAK_DT_RE.search(s)
+    if m:
+        day, month, year_raw, hour, minute = m.groups()
+        date_part = f"{int(day):02d}.{int(month):02d}"
+        if year_raw:
+            year = int(year_raw)
+            if len(year_raw) == 2:
+                year = 2000 + year if year <= 68 else 1900 + year
+            date_part = f"{date_part}.{year:04d}"
+        s = f"{date_part} {int(hour):02d}:{minute}"
+    if len(s) > PEAK_DATETIME_MAX_LEN:
+        raise ValueError("Слишком длинное значение даты и времени")
+    return s
+
+
 def load_ozp_rows_by_end_year(
     *, version_id: int | None = None
 ) -> dict[int, OzpMaxPowerParameter]:
@@ -237,12 +275,15 @@ def build_page_context(
     max_raw: list[Decimal | None] = []
     max_values: list[str] = []
     max_full: list[str] = []
+    peak_values: list[str] = []
     for col in columns:
         row = stored.get(int(col["ozp_end"]))
         mw = None if row is None else row.max_power_mw
         max_raw.append(mw)
         max_values.append(format_mw_display(mw, rounding_digits))
         max_full.append(format_mw_display(mw, 0) if mw is not None else "")
+        peak = "" if row is None else (getattr(row, "peak_datetime", None) or "")
+        peak_values.append(str(peak).strip())
 
     prev_end = int(columns[0]["ozp_end"]) - 1 if columns else None
     prev_row = stored.get(prev_end) if prev_end is not None else None
@@ -253,6 +294,7 @@ def build_page_context(
     return {
         "page_title": PAGE_TITLE,
         "row_max_label": ROW_MAX_LABEL,
+        "row_peak_dt_label": ROW_PEAK_DT_LABEL,
         "row_growth_label": ROW_GROWTH_LABEL,
         "growth_formula_text": GROWTH_FORMULA_TEXT,
         "start_year": start_year,
@@ -262,6 +304,7 @@ def build_page_context(
         "columns": columns,
         "year_groups": year_groups,
         "max_values": max_values,
+        "peak_values": peak_values,
         "growth_values": growth_values,
         "max_full": max_full,
         "prev_max_display": format_mw_display(prev_max, 0) if prev_max is not None else "",
@@ -274,6 +317,7 @@ def upsert_ozp_row(
     ozp_end_year: int,
     *,
     max_power_mw: Decimal | None | object = ...,
+    peak_datetime: str | None | object = ...,
     growth_pct: Decimal | None | object = ...,
 ) -> OzpMaxPowerParameter:
     vid = get_current_version()
@@ -293,6 +337,8 @@ def upsert_ozp_row(
         db.session.add(row)
     if max_power_mw is not ...:
         row.max_power_mw = max_power_mw
+    if peak_datetime is not ...:
+        row.peak_datetime = peak_datetime
     if growth_pct is not ...:
         row.growth_pct = growth_pct
     return row
@@ -309,10 +355,13 @@ def save_ozp_cells(cells: list[dict[str, Any]]) -> dict[str, Any]:
         if year < 1900 or year > 2200:
             return {"ok": False, "error": "Неверный период ОЗП"}
         key = str(item.get("parameter_key") or "").strip()
-        if key != "max_power":
+        if key not in EDITABLE_PARAMETER_KEYS:
             return {"ok": False, "error": "Неверный показатель"}
         try:
-            parsed = _parse_optional_decimal(item.get("value"))
+            if key == "max_power":
+                parsed: Any = _parse_optional_decimal(item.get("value"))
+            else:
+                parsed = normalize_ozp_peak_datetime(item.get("value"))
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
         grouped.setdefault(year, {})[key] = parsed
@@ -321,6 +370,9 @@ def save_ozp_cells(cells: list[dict[str, Any]]) -> dict[str, Any]:
         upsert_ozp_row(
             year,
             max_power_mw=payload["max_power"] if "max_power" in payload else ...,
+            peak_datetime=(
+                payload["peak_datetime"] if "peak_datetime" in payload else ...
+            ),
         )
     db.session.commit()
     return {"ok": True}
@@ -362,22 +414,31 @@ def build_ozp_excel_stream(
         col_idx += span
 
     max_row = [ROW_MAX_LABEL]
+    peak_row = [ROW_PEAK_DT_LABEL]
     growth_row = [ROW_GROWTH_LABEL]
     max_raw: list[Any] = []
+    peak_raw: list[Any] = []
     for col in columns:
         row = stored.get(int(col["ozp_end"]))
         mw = None if row is None else row.max_power_mw
+        peak = None if row is None else (getattr(row, "peak_datetime", None) or None)
+        if isinstance(peak, str):
+            peak = peak.strip() or None
         max_raw.append(mw)
+        peak_raw.append(peak)
         max_row.append(None)
+        peak_row.append(None)
         growth_row.append(None)
     prev_end = int(columns[0]["ozp_end"]) - 1 if columns else None
     prev_row = stored.get(prev_end) if prev_end is not None else None
     prev_max = None if prev_row is None else prev_row.max_power_mw
     growth_raw = compute_growth_series(max_raw, prev_max)
     ws.append(max_row)
+    ws.append(peak_row)
     ws.append(growth_row)
 
-    for r in range(1, 5):
+    last_data_row = 5
+    for r in range(1, last_data_row + 1):
         for c in range(1, len(columns) + 2):
             cell = ws.cell(row=r, column=c)
             cell.border = _CELL_BORDER
@@ -396,16 +457,21 @@ def build_ozp_excel_stream(
         cell.font = _BASE_FONT
         if numeric:
             cell.number_format = mw_format
+    for i, raw in enumerate(peak_raw, start=2):
+        cell = ws.cell(row=4, column=i, value=raw)
+        cell.alignment = _CENTER_ALIGN
+        cell.border = _CELL_BORDER
+        cell.font = _BASE_FONT
     for i, raw in enumerate(growth_raw, start=2):
         value, numeric = excel_numeric_cell_value(raw)
-        cell = ws.cell(row=4, column=i, value=value)
+        cell = ws.cell(row=5, column=i, value=value)
         cell.alignment = _CENTER_ALIGN
         cell.border = _CELL_BORDER
         cell.font = _BASE_FONT
         if numeric:
             cell.number_format = growth_format
 
-    ws.column_dimensions["A"].width = 48
+    ws.column_dimensions["A"].width = 62
     for i in range(2, len(columns) + 2):
         ws.column_dimensions[get_column_letter(i)].width = 16
     ws.row_dimensions[1].height = 22

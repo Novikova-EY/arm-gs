@@ -50,6 +50,7 @@ def export_power_balance():
             start_year=request.args.get("start_year"),
             end_year=request.args.get("end_year"),
             rounding_digits=request.args.get("rounding_digits"),
+            demand_mode=request.args.get("demand_mode"),
             include_type_breakdown=request.args.get("include_type_breakdown") == "1",
             show_empty_rows=request.args.get("show_empty_rows", "1") != "0",
             show_flow_rows=request.args.get("show_flow_rows", "1") != "0",
@@ -85,6 +86,7 @@ def power_balance_table(slug: str):
         start_year=request.args.get("start_year"),
         end_year=request.args.get("end_year"),
         rounding_digits=request.args.get("rounding_digits"),
+        demand_mode=request.args.get("demand_mode"),
     )
     if context is None:
         abort(404)

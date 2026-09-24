@@ -3,20 +3,25 @@
 {# Сохраняем ВСЕ текущие query-параметры фильтров при смене страницы #}
 {% set _pag_args = request.args.to_dict(flat=False) %}
 {% if _pag_args.pop('page', None) is not none %}{% endif %}
+{% set _pag_path = pagination_path_kwargs | default({}) %}
+{% set _pag_all = dict(_pag_args, **_pag_path) %}
+{% macro pag_url(p) -%}
+{{ url_for(_pagination_endpoint, page=p, **_pag_all) }}
+{%- endmacro %}
 <!-- Пагинация -->
 
     <nav aria-label="Навигация по страницам" class="mb-0">
         <ul class="pagination justify-content-center mb-0">
             <!-- Первая страница -->
             <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for(_pagination_endpoint, page=1, **_pag_args) }}" aria-label="Первая">
+                <a class="page-link" href="{{ pag_url(1) }}" aria-label="Первая">
                     <span aria-hidden="true">&laquo;&laquo;</span>
                 </a>
             </li>
 
             <!-- Предыдущая страница -->
             <li class="page-item {% if current_page == 1 %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for(_pagination_endpoint, page=current_page - 1, **_pag_args) }}" aria-label="Предыдущая">
+                <a class="page-link" href="{{ pag_url(current_page - 1) }}" aria-label="Предыдущая">
                     <span aria-hidden="true">&laquo;</span>
                 </a>
             </li>
@@ -24,7 +29,7 @@
             <!-- Номера страниц с разрывами -->
             {% if current_page > 3 %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for(_pagination_endpoint, page=1, **_pag_args) }}">1</a>
+                    <a class="page-link" href="{{ pag_url(1) }}">1</a>
                 </li>
                 {% if current_page > 4 %}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -34,7 +39,7 @@
             {% for page in range(current_page - 2, current_page + 3) %}
                 {% if page > 0 and page <= total_pages %}
                     <li class="page-item {% if page == current_page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for(_pagination_endpoint, page=page, **_pag_args) }}">{{ page }}</a>
+                        <a class="page-link" href="{{ pag_url(page) }}">{{ page }}</a>
                     </li>
                 {% endif %}
             {% endfor %}
@@ -44,20 +49,20 @@
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                 {% endif %}
                 <li class="page-item">
-                    <a class="page-link" href="{{ url_for(_pagination_endpoint, page=total_pages, **_pag_args) }}">{{ total_pages }}</a>
+                    <a class="page-link" href="{{ pag_url(total_pages) }}">{{ total_pages }}</a>
                 </li>
             {% endif %}
 
             <!-- Следующая страница -->
             <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for(_pagination_endpoint, page=current_page + 1, **_pag_args) }}" aria-label="Следующая">
+                <a class="page-link" href="{{ pag_url(current_page + 1) }}" aria-label="Следующая">
                     <span aria-hidden="true">&raquo;</span>
                 </a>
             </li>
 
             <!-- Последняя страница -->
             <li class="page-item {% if current_page == total_pages %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for(_pagination_endpoint, page=total_pages, **_pag_args) }}" aria-label="Последняя">
+                <a class="page-link" href="{{ pag_url(total_pages) }}" aria-label="Последняя">
                     <span aria-hidden="true">&raquo;&raquo;</span>
                 </a>
             </li>

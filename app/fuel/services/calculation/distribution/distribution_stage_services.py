@@ -10,9 +10,11 @@
 
 Опционально (флаг apply_restrictions — аналог открытого окна «Анализ_по_областям»):
 - берёт kobl из таблицы (как Access при открытой форме; 0/overflow → 1);
-- умножает часы на kobl по субъекту (obl) из gs_fue_restrictions;
-- после сходимости K пересчитывает kobl по emin/emax (Ограничения_Click)
-  и повторяет BDis, пока субъекты вне emin/emax, максимум 14 раз (Access irestr<15).
+- умножает часы на kobl по субъекту (obl) рабочей строки топлива (Станции.OBL);
+- Access enddis: Ограничения_Click и GoTo BDis, пока irestr<15 (14 проходов).
+  Если emin/emax уже выполнены — дальше kobl не меняется, повтор Dist
+  тождественен: стоп (как оставшиеся проходы Access с тем же kobl).
+  Ветки часов как Access: hfix=1 / hb=0 / NUST=0 — kobl в формулу H не входит.
 
 Access MsgBox «нет NR → HFIX»: в вебе — двухшаговый сценарий на /fuel/calculation
 (список кандидатов → фиксация H=0/hfix=1 по выбранным → продолжение Распред).
@@ -23,8 +25,10 @@ Access MsgBox «нет NR → HFIX»: в вебе — двухшаговый с�
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
@@ -52,7 +56,10 @@ from app.fuel.services.calculation.equipment_group_selection import (
     select_equipment_group_ids_for_calculation,
 )
 from app.fuel.services.calculation.specific_consumption_lookup import (
+    AccessSeekBookmark,
+    fuel_row_numb1120,
     query_specific_consumption_access_seek,
+    resolve_access_ud_seek,
 )
 from app.fuel.services.equipment_groups.composite_station_semantics import (
     fuel_param_row_participates,
@@ -76,9 +83,89 @@ D1000 = Decimal("1000")
 D6000 = Decimal("6000")
 D6500 = Decimal("6500")
 D7000 = Decimal("7000")
+
+RESTRICTION_LIVE_NUMERIC_FIELDS = (
+    "emin",
+    "emax",
+    "ecur",
+    "h",
+    "ecurdis",
+    "hdis",
+    "etp",
+    "kobl",
+)
+RESTRICTION_OES_TOTAL_FIELDS = ("ecur", "ecurdis", "etp")
+
+
+def restriction_energy_totals(rows) -> dict[str, Decimal | None]:
+    """Access footer «Итого ОЭС»: сумма тек / распр / Етп по всем строкам, включая «прочие»."""
+    acc = {field_name: Decimal("0") for field_name in RESTRICTION_OES_TOTAL_FIELDS}
+    seen = {field_name: False for field_name in RESTRICTION_OES_TOTAL_FIELDS}
+    for row in rows:
+        for field_name in RESTRICTION_OES_TOTAL_FIELDS:
+            value = getattr(row, field_name, None)
+            if value is None or value == "":
+                continue
+            acc[field_name] += Decimal(str(value))
+            seen[field_name] = True
+    return {
+        field_name: acc[field_name] if seen[field_name] else None
+        for field_name in RESTRICTION_OES_TOTAL_FIELDS
+    }
+
+
+def restriction_live_payload(
+    *,
+    event: str,
+    outer: int,
+    outer_max: int,
+    k,
+    kn,
+    sum_e,
+    e_target,
+    rows: list,
+    display_digits: int = 1,
+) -> dict[str, Any]:
+    """Снимок таблицы «Ограничения» для живого UI (как форма Access на каждом BDis)."""
+    from app.common.services.help_services import (
+        format_decimal_for_display,
+        format_decimal_trim_for_display,
+    )
+
+    def num(val, *, digits: int | None = None) -> dict[str, str | None]:
+        if val is None:
+            return {"raw": None, "text": "—"}
+        d = display_digits if digits is None else digits
+        fmt = format_decimal_for_display if d == 2 else format_decimal_trim_for_display
+        return {"raw": str(val), "text": fmt(val, digits=d)}
+
+    out_rows = []
+    for r in rows:
+        item: dict[str, Any] = {"id": getattr(r, "id", None)}
+        for field_name in RESTRICTION_LIVE_NUMERIC_FIELDS:
+            item[field_name] = num(getattr(r, field_name, None))
+        out_rows.append(item)
+    totals = restriction_energy_totals(rows)
+    return {
+        "type": event,
+        "outer": outer,
+        "outer_max": outer_max,
+        "k": num(k, digits=2),
+        "kn": num(kn, digits=2),
+        "sum_e": num(sum_e),
+        "e_target": num(e_target),
+        "rows": out_rows,
+        "totals": {
+            field_name: num(totals.get(field_name))
+            for field_name in RESTRICTION_OES_TOTAL_FIELDS
+        },
+    }
+
+
 # Живая Кнопка27 СиПР: новые ГТ — obor 20|90|24|89 → ch·kngt (не knps).
-# gs_fue_restrictions.kobl — numeric(36, 16). Access ~0.3–3; больше 100 — срыв цикла.
-KOBL_ABS_MAX = Decimal("100")
+# gs_fue_restrictions.kobl — numeric(36, 16). Access Востока (Якутия) даёт
+# kobl≈4e3…2e4, когда emin структурно недостижим; потолок 100 сбрасывал эталон.
+KOBL_ABS_MAX = Decimal("20000")
 
 
 def clamp_restriction_kobl(kobl: Decimal) -> Decimal:
@@ -95,14 +182,28 @@ def oes_ved_restriction_filter_text(oes_code: int) -> str:
     return f"(oes={int(oes_code)}) and (ved>0)"
 
 
-def restriction_subject_targets_unmet(
+def fuel_param_obl_code(row: EquipmentGroupFuelParam | None) -> int | None:
+    """Access Станции(Схема).OBL на строке года — не EquipmentGroup.obl справочника."""
+    if row is None:
+        return None
+    raw = getattr(row, "obl", None)
+    if raw is None or raw == "":
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def restriction_unmet_named_obl_codes(
     rows: list,
     oes_code: int,
     *,
     tolerance: Decimal = D03,
-) -> bool:
-    """True, если именованный субъект ещё вне emin/emax (не строка «прочие»)."""
+) -> list[int]:
+    """Коды именованных субъектов (не «прочие») вне emin/emax."""
     residual = 100 + int(oes_code)
+    unmet: list[int] = []
     for r in rows:
         if r.obl is None or int(r.obl) == residual:
             continue
@@ -110,10 +211,69 @@ def restriction_subject_targets_unmet(
         emax = d0(getattr(r, "emax", None))
         ecur = d0(getattr(r, "ecur", None))
         if emin > 0 and ecur + tolerance < emin:
-            return True
-        if emax > 0 and ecur > emax + tolerance:
-            return True
-    return False
+            unmet.append(int(r.obl))
+        elif emax > 0 and ecur > emax + tolerance:
+            unmet.append(int(r.obl))
+    return unmet
+
+
+def restriction_subject_targets_unmet(
+    rows: list,
+    oes_code: int,
+    *,
+    tolerance: Decimal = D03,
+) -> bool:
+    """True, если именованный субъект ещё вне emin/emax (не строка «прочие»)."""
+    return bool(
+        restriction_unmet_named_obl_codes(rows, oes_code, tolerance=tolerance)
+    )
+
+
+def restriction_unmet_subjects_hfix_locked(
+    rows: list,
+    oes_code: int,
+    *,
+    by_key: dict[tuple[int, int], EquipmentGroupFuelParam],
+    group_ids: list[int] | set[int],
+    cyear: int,
+    byear: int | None = None,
+    tolerance: Decimal = D03,
+) -> bool:
+    """
+    True, если есть субъекты вне emin/emax и Dist не может сдвинуть их E
+    через kobl: все станции Распреда с ved>0 либо hfix=1, либо Hбаз=0
+    (ветка «новая», часы = ch·kn*, kobl нет), либо NUST=0 (E=0).
+
+    Восток 2027: Якутская ГРЭС-2 (773) без hfix, но Hбаз 2024 = 0 — kobl
+    в формулу H не входит (ветка «новая»). Распред этот факт не использует
+    как ранний стоп внешнего BDis: в Access его нет (irestr<15 GoTo BDis).
+    """
+    unmet = restriction_unmet_named_obl_codes(
+        rows, oes_code, tolerance=tolerance
+    )
+    if not unmet:
+        return False
+    unmet_set = set(unmet)
+    year_key = int(cyear)
+    byear_key = int(byear) if byear is not None else None
+    for gid in group_ids:
+        row = by_key.get((int(gid), year_key))
+        if not access_ved_filter_year_row_participates(row):
+            continue
+        obl = fuel_param_obl_code(row)
+        if obl is None or obl not in unmet_set:
+            continue
+        if _is_hfix(row):
+            continue
+        if d0(getattr(row, "nust", None)) <= 0:
+            continue
+        if byear_key is not None:
+            base = by_key.get((int(gid), byear_key))
+            hb = d0(getattr(base, "h", None)) if base is not None else D0
+            if hb <= 0:
+                continue
+        return False
+    return True
 
 
 def d0(value) -> Decimal:
@@ -182,6 +342,11 @@ def _is_hfix(row: EquipmentGroupFuelParam | None) -> bool:
         return int(row.hfix) == 1
     except (TypeError, ValueError):
         return False
+
+
+def _access_bdis_skip_no_specific(spec) -> bool:
+    """Access Кнопка27: ``If U.NoMatch Then GoTo skip1`` — E/H не трогаем."""
+    return spec is None
 
 
 def _access_allows_capacity_growth(row: EquipmentGroupFuelParam | None) -> bool:
@@ -274,16 +439,12 @@ class DistributionStageService:
             cyear=int(cyear),
             effective_db_version=effective_db_version,
         )
-        with_specific: set[int] = set()
-        for gid in group_ids:
-            spec = self._latest_specific_row(
-                equipment_group_id=int(gid),
-                target_year=int(cyear),
-                effective_db_version=effective_db_version,
-                byear=byear,
-            )
-            if spec is not None:
-                with_specific.add(int(gid))
+        with_specific = self._access_ud_processed_group_ids(
+            group_ids=group_ids,
+            byear=byear,
+            cyear=int(cyear),
+            effective_db_version=effective_db_version,
+        )
         return sum_e_of_distribution_processed_rows(
             group_ids,
             cyear=int(cyear),
@@ -527,6 +688,60 @@ class DistributionStageService:
             database_version_id=effective_db_version,
         )
 
+    def _access_ud_processed_group_ids(
+        self,
+        *,
+        group_ids: list[int],
+        byear: int | None,
+        cyear: int,
+        effective_db_version: int | None,
+    ) -> set[int]:
+        """Группы, которые Распред пишет: свой Seek или bm предыдущей станции."""
+        cursor_by_key = self._fuel_param_by_group_year(
+            group_ids=group_ids,
+            byear=byear,
+            cyear=cyear,
+            effective_db_version=effective_db_version,
+            all_years=True,
+        )
+        groups_by_id: dict[int, EquipmentGroup] = {}
+        if group_ids:
+            for g in self.session.query(EquipmentGroup).filter(
+                EquipmentGroup.id.in_(group_ids)
+            ).all():
+                groups_by_id[g.id] = g
+        cursor_rows = sort_access_filter_rows(
+            [
+                fp
+                for fp in cursor_by_key.values()
+                if access_ved_filter_year_row_participates(fp)
+            ],
+            n1_of=lambda fp: fuel_param_access_n1(fp, groups_by_id),
+        )
+        bookmark = AccessSeekBookmark()
+        processed: set[int] = set()
+        for kind, cur_row, _cursor in walk_access_bdis_cursor(
+            cursor_rows, byear=byear, cyear=cyear
+        ):
+            if kind != "cyear":
+                continue
+            spec = resolve_access_ud_seek(
+                self.session,
+                self._bdis_specific_row(
+                    equipment_group_id=cur_row.equipment_group_id,
+                    byear=byear,
+                    cyear=cyear,
+                    effective_db_version=effective_db_version,
+                ),
+                bookmark,
+                numb1120=fuel_row_numb1120(cur_row, groups_by_id),
+                byear=byear,
+                database_version_id=effective_db_version,
+            )
+            if spec is not None:
+                processed.add(int(cur_row.equipment_group_id))
+        return processed
+
     @staticmethod
     def _hours_from_fuel_row(
         row: EquipmentGroupFuelParam | None,
@@ -557,19 +772,19 @@ class DistributionStageService:
     @staticmethod
     def _seed_bisection_k(k: Decimal) -> Decimal:
         """
-        Access берёт k с формы и ищет в [k−0.1, k+0.1]. После несошедших
-        прогонов k уезжает к краю окна (например 0.58) — следующее окно уже
-        не покрывает рабочую область ~1. Тогда стартуем с 1.
+        Access берёт k с формы и ищет в [k−0.1, k+0.1] без окна 0.8…1.2.
+        ОЭС Востока / Сибири после ограничений дают k≈1.85 / 0.59 — сброс
+        в 1 уводит раздачу на десятки процентов. 0 / overflow → 1, как kobl.
         """
-        if k <= 0 or k < Decimal("0.8") or k > Decimal("1.2"):
+        if k <= 0 or abs(k) > Decimal("10"):
             return D1
         return k
 
     @staticmethod
     def _seed_restriction_kobl(kobl) -> Decimal:
-        """Access при открытой форме берёт kobl из таблицы. 0 / overflow → 1."""
+        """Access при открытой форме берёт kobl из таблицы. 0 / пусто → 1."""
         k = d0(kobl)
-        if k <= 0 or abs(k) > Decimal("10"):
+        if k <= 0:
             return D1
         return k
 
@@ -744,7 +959,6 @@ class DistributionStageService:
         filter_group_ids: set[int],
         lim_reset: bool,
         by_key: dict[tuple[int, int], EquipmentGroupFuelParam],
-        groups_by_id: dict[int, EquipmentGroup],
         effective_db_version: int | None = None,
     ) -> None:
         """
@@ -753,6 +967,8 @@ class DistributionStageService:
         ecur — ΣE субъекта по ОЭС/ved>0/году текущей версии БД (Access: одна
         рабочая таблица). Без версии сюда попадали копии станций всех версий,
         ecur раздувался в ~8 раз, kobl за 14 проходов BDis переполнял numeric.
+
+        Субъект — FuelParam.obl (Станции.OBL), не EquipmentGroup.obl справочника.
         """
         all_oes_ids = select_equipment_group_ids_for_calculation(
             self.session,
@@ -760,20 +976,12 @@ class DistributionStageService:
             effective_db_version=effective_db_version,
             year_numbers=[int(cyear)],
         )
-        all_oes_groups = []
-        if all_oes_ids:
-            all_oes_groups = (
-                self.session.query(EquipmentGroup)
-                .filter(EquipmentGroup.id.in_(all_oes_ids))
-                .all()
-            )
         all_by_key = self._fuel_param_by_group_year(
             group_ids=all_oes_ids,
             byear=None,
             cyear=cyear,
             effective_db_version=effective_db_version,
         )
-        all_groups = {g.id: g for g in all_oes_groups}
 
         def _sum_for_obl(
             *,
@@ -785,16 +993,14 @@ class DistributionStageService:
             sum_etp = D0
             source_ids = filter_group_ids if only_filter else set(all_oes_ids)
             source_map = by_key if only_filter else all_by_key
-            source_groups = groups_by_id if only_filter else all_groups
             for gid in source_ids:
-                g = source_groups.get(gid)
-                if g is None or g.obl is None or int(g.obl) != obl_code:
-                    continue
                 row = source_map.get((gid, cyear))
                 if row is None:
                     continue
                 # Access: (ved>0) на рабочей строке года, не vedomstvo справочника.
                 if not fuel_param_row_participates(row):
+                    continue
+                if fuel_param_obl_code(row) != int(obl_code):
                     continue
                 sum_e += d0(row.e)
                 sum_n += d0(row.nust)
@@ -847,25 +1053,26 @@ class DistributionStageService:
             sum_edis = D0
             sum_etp = D0
             fltr_set = set(fltr_obls)
-            for gid, g in all_groups.items():
-                if g.obl is None or int(g.obl) in fltr_set:
-                    continue
+            for gid in all_oes_ids:
                 row = all_by_key.get((gid, cyear))
                 if row is None:
                     continue
                 if not fuel_param_row_participates(row):
                     continue
+                obl = fuel_param_obl_code(row)
+                if obl is None or obl in fltr_set:
+                    continue
                 sum_e += d0(row.e)
                 sum_n += d0(row.nust)
             for gid in filter_group_ids:
-                g = groups_by_id.get(gid)
-                if g is None or g.obl is None or int(g.obl) in fltr_set:
-                    continue
                 # Access sumprochdis: (ved>0) and filter1 — FuelParam.ved за год
                 row = by_key.get((gid, cyear))
                 if row is None:
                     continue
                 if not fuel_param_row_participates(row):
+                    continue
+                obl = fuel_param_obl_code(row)
+                if obl is None or obl in fltr_set:
                     continue
                 sum_edis += d0(row.e)
                 sum_etp += d0(row.ewtp)
@@ -883,6 +1090,34 @@ class DistributionStageService:
 
         self.session.flush()
 
+    def _emit_restriction_live(
+        self,
+        progress_callback: Callable[[dict[str, Any]], None] | None,
+        *,
+        event: str,
+        outer: int,
+        outer_max: int,
+        k,
+        kn,
+        sum_e,
+        e_target,
+        rows: list,
+    ) -> None:
+        if progress_callback is None:
+            return
+        progress_callback(
+            restriction_live_payload(
+                event=event,
+                outer=outer,
+                outer_max=outer_max,
+                k=k,
+                kn=kn,
+                sum_e=sum_e,
+                e_target=e_target,
+                rows=rows,
+            )
+        )
+
     def run_for_distribution_parameter(
         self,
         *,
@@ -890,6 +1125,7 @@ class DistributionStageService:
         database_version_id: int | None = None,
         apply_restrictions: bool = False,
         commit: bool = True,
+        progress_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> DistributionStageRunResult:
         row = self.session.get(
             DistributionParameter,
@@ -1017,8 +1253,22 @@ class DistributionStageService:
         # Access: irestr=1 … If irestr < 15 Then GoTo BDis → 14 внешних прохода.
         outer_max = 14 if apply_restrictions else 1
         restriction_outer_iterations = 0
-        # VBA: Dim hb на уровне Кнопка27_Click — живёт через again: и GoTo BDis.
+        # VBA: Dim hb / bm на уровне Кнопка27_Click — живёт через again: и GoTo BDis.
         cursor_state = AccessBdisCursorState()
+        ud_bookmark = AccessSeekBookmark()
+
+        if apply_restrictions:
+            self._emit_restriction_live(
+                progress_callback,
+                event="start",
+                outer=0,
+                outer_max=outer_max,
+                k=k_value,
+                kn=kn_value,
+                sum_e=total_distributed_e,
+                e_target=e_target,
+                rows=restriction_rows,
+            )
 
         for outer in range(1, outer_max + 1):
             restriction_outer_iterations = outer
@@ -1047,13 +1297,22 @@ class DistributionStageService:
                         continue
                     equipment_group_id = cur_row.equipment_group_id
 
-                    spec = self._bdis_specific_row(
-                        equipment_group_id=equipment_group_id,
+                    spec = resolve_access_ud_seek(
+                        self.session,
+                        self._bdis_specific_row(
+                            equipment_group_id=equipment_group_id,
+                            byear=byear,
+                            cyear=cyear,
+                            effective_db_version=effective_db_version,
+                        ),
+                        ud_bookmark,
+                        numb1120=fuel_row_numb1120(cur_row, groups_by_id),
                         byear=byear,
-                        cyear=cyear,
-                        effective_db_version=effective_db_version,
+                        database_version_id=effective_db_version,
                     )
-                    if spec is None:
+                    # Access: If U.NoMatch Then GoTo skip1. Пустое окно этой
+                    # станции при не-NoMatch — bm предыдущей (не 2021).
+                    if _access_bdis_skip_no_specific(spec):
                         skipped_group_ids.append(equipment_group_id)
                         continue
 
@@ -1075,16 +1334,15 @@ class DistributionStageService:
                         )
                     else:
                         koptim = self._koptim_from_bk(
-                            bk=spec.bk,
+                            bk=None if spec is None else spec.bk,
                             kmin=kmin_local,
                             kplus=kplus_local,
                         )
                         ke = self._nivh_factor(hb=hb, ph=ph)
                         kobl = D1
                         if apply_restrictions and oes_code is not None:
-                            g = groups_by_id.get(equipment_group_id)
                             kobl = self._kobl_for_group(
-                                obl=g.obl if g is not None else None,
+                                obl=fuel_param_obl_code(cur_row),
                                 oes_code=oes_code,
                                 kobl_by_obl=kobl_by_obl,
                             )
@@ -1147,16 +1405,9 @@ class DistributionStageService:
             if not apply_restrictions:
                 break
 
-            inner_ok = abs(e_target - total_distributed_e) < D03
-            if not inner_ok:
-                # Не пересчитывать kobl по несходящейся раздаче: emin/ecur →
-                # kobl→∞, k→0 за оставшиеся внешние проходы.
-                k_value = D1
-                continue
-
-            # Access enddis + Ограничения_Click + повтор BDis (irestr<15).
-            # Если emin/emax уже выполнены — стоп: лишние проходы с ecur
-            # чуть ниже emin домножают kobl и уводят k от эталона Access.
+            # Access enddis: lim=1, Ограничения_Click, irestr+1, If irestr<15 GoTo BDis.
+            # Раннего стопа по hfix/hb/NUST в VBA нет. Если emin/emax уже в коридоре,
+            # Ограничения не меняет kobl — оставшиеся Dist тождественны, можно выйти.
             row.lim = 1
             self._recalculate_restriction_kobl(
                 restriction_rows=restriction_rows,
@@ -1165,10 +1416,20 @@ class DistributionStageService:
                 filter_group_ids=set(group_ids),
                 lim_reset=False,
                 by_key=by_key,
-                groups_by_id=groups_by_id,
                 effective_db_version=effective_db_version,
             )
             kobl_by_obl = self._kobl_map_from_rows(restriction_rows)
+            self._emit_restriction_live(
+                progress_callback,
+                event="pass",
+                outer=outer,
+                outer_max=outer_max,
+                k=k_value,
+                kn=kn_value,
+                sum_e=total_distributed_e,
+                e_target=e_target,
+                rows=restriction_rows,
+            )
             if not restriction_subject_targets_unmet(restriction_rows, int(oes_code)):
                 break
 

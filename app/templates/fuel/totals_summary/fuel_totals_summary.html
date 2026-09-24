@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-2">
+        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-secondary fs-5">Модуль «Топливо»</a>
+    </div>
+
+    <div class="col-12 mb-2">
+        <h2 class="text-center mb-3">{{ page_title }}</h2>
+    </div>
+
+    <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-2">
+                <form method="GET" action="{{ url_for('fuel_bp.totals_summary') }}" class="d-flex align-items-center gap-2" id="yearForm">
+                    {% for key, values in request.args.lists() %}
+                        {% if key not in ['start_year', 'end_year'] %}
+                            {% for value in values %}
+                            <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+                    <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 4.5rem;">
+                        {% for year in filter_year_list %}
+                        <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+                    <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 4.5rem;">
+                        {% for year in filter_year_list %}
+                        <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-outline-success">Применить</button>
+                    <a href="{{ url_for('fuel_bp.totals_summary') }}" class="btn btn-outline-danger">Сбросить</a>
+                    <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2 ms-3" style="white-space: nowrap;">
+                        <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                    </button>
+                </form>
+            </div>
+
+            <form method="get" action="{{ url_for('fuel_bp.totals_summary') }}" id="totalsFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+                <input type="hidden" name="start_year" value="{{ start_year }}">
+                <input type="hidden" name="end_year" value="{{ end_year }}">
+
+                <input type="checkbox" class="btn-check" id="aggregationEES" name="aggregation_type" value="ees" {% if 'ees' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationEES" class="btn {% if 'ees' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">ЕЭС</label>
+
+                <input type="checkbox" class="btn-check" id="aggregationTITES" name="aggregation_type" value="tites" {% if 'tites' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationTITES" class="btn {% if 'tites' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">ТИТЭС</label>
+
+                <input type="checkbox" class="btn-check" id="aggregationRussia" name="aggregation_type" value="russia" {% if 'russia' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationRussia" class="btn {% if 'russia' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center me-3" style="min-width: 80px;">Россия</label>
+
+                <input type="checkbox" class="btn-check" id="aggregationFO" name="aggregation_type" value="fo" {% if 'fo' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationFO" class="btn {% if 'fo' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">ФО</label>
+
+                <input type="checkbox" class="btn-check" id="aggregationOES" name="aggregation_type" value="oes" {% if 'oes' in aggregation_types %}checked{% endif %}>
+                <label for="aggregationOES" class="btn {% if 'oes' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center me-3" style="min-width: 80px;">ОЭС</label>
+
+                {% if sorted_synchronous_area_ids %}
+                    {% for sa_id in sorted_synchronous_area_ids %}
+                        {% set sa_name = synchronous_area_names[sa_id] %}
+                        {% set sa_checkbox_id = 'aggregationSyncArea' + sa_id|string %}
+                        {% set sa_value = 'sync_area_' + sa_id|string %}
+                        {% set is_checked = sa_value in aggregation_types %}
+                        <input type="checkbox" class="btn-check sync-area-checkbox" id="{{ sa_checkbox_id }}" name="aggregation_type" value="{{ sa_value }}" {% if is_checked %}checked{% endif %}>
+                        <label for="{{ sa_checkbox_id }}" class="btn {% if is_checked %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center sync-area-label {% if loop.last %}me-3{% endif %}" style="min-width: auto; white-space: nowrap;">{{ sa_name }}</label>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="d-flex align-items-center gap-1">
+                    <label for="rounding_digits" class="mb-0" style="white-space: nowrap;">Округл:</label>
+                    <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
+                        <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                        <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                        <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                        <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                        <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% set _fuel_hier = fuel_param_column_hierarchy|default({}) %}
+    {% set fuel_group_parents = _fuel_hier.get('group_parents') if _fuel_hier.get('group_parents') is not none else [] %}
+    {% set fuel_collapse_under = _fuel_hier.get('collapse_under') if _fuel_hier.get('collapse_under') is not none else {} %}
+
+    <style>
+        .fuel-totals-table-wrap {
+            max-height: calc(100vh - 280px);
+            overflow: auto;
+        }
+        .fuel-totals-table-wrap table {
+            white-space: nowrap;
+        }
+        .fuel-totals-table-wrap thead th {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #d1e7dd;
+            box-shadow: 0 2px 2px -1px rgba(0,0,0,.1);
+            /* Подписи показателей — с переносом, чтобы ширины столбцов были ровнее */
+            white-space: normal;
+            word-break: normal;
+            overflow-wrap: break-word;
+            hyphens: none;
+            line-height: 1.2;
+            vertical-align: middle;
+            min-width: 5.5rem;
+            max-width: 7.5rem;
+            padding-left: 0.25rem;
+            padding-right: 0.25rem;
+        }
+        .fuel-totals-table-wrap th.fuel-totals-label,
+        .fuel-totals-table-wrap td.fuel-totals-label {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            min-width: 14rem;
+            max-width: none;
+            background: inherit;
+            white-space: nowrap;
+        }
+        .fuel-totals-table-wrap thead th.fuel-totals-label {
+            z-index: 3;
+            background: #d1e7dd;
+            white-space: nowrap;
+            max-width: none;
+        }
+        .fuel-totals-table-wrap th.fuel-totals-year,
+        .fuel-totals-table-wrap td.fuel-totals-year {
+            position: sticky;
+            left: 14rem;
+            z-index: 1;
+            min-width: 4.5rem;
+            max-width: none;
+            background: inherit;
+            white-space: nowrap;
+        }
+        .fuel-totals-table-wrap thead th.fuel-totals-year {
+            z-index: 3;
+            background: #d1e7dd;
+            white-space: nowrap;
+            max-width: none;
+        }
+        .fuel-totals-table-wrap td {
+            white-space: nowrap;
+        }
+        #fuelTotalsTable th[data-fuel-hier-under],
+        #fuelTotalsTable td[data-fuel-hier-under] {
+            display: none;
+        }
+        #fuelTotalsTable th[data-fuel-hier-under].fuel-hier-col-visible,
+        #fuelTotalsTable td[data-fuel-hier-under].fuel-hier-col-visible {
+            display: table-cell;
+        }
+        #fuelTotalsTable .fuel-hier-toggle {
+            cursor: pointer;
+        }
+    </style>
+
+    <div class="fuel-totals-table-wrap table-responsive">
+        <table id="fuelTotalsTable" class="table table-hover table-striped table-bordered mb-0">
+            <thead class="table-success">
+                <tr class="text-center align-middle">
+                    <th class="fuel-totals-label"></th>
+                    <th class="fuel-totals-year">Год</th>
+                    {% for attr, label, is_numeric in columns %}
+                    <th
+                        class="{% if attr in fuel_group_parents %}fuel-hier-parent-header{% else %}fuel-hier-leaf-header{% endif %}"
+                        data-column="{{ attr }}"
+                        {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}
+                    >
+                        {{ label }}
+                        {% if attr in fuel_group_parents %}
+                        <span
+                            class="ms-1 fuel-hier-toggle"
+                            data-fuel-hier-parent="{{ attr }}"
+                            title="Показать/скрыть дочерние виды топлива"
+                            aria-label="Группировка столбцов: {{ attr }}"
+                        >
+                            <i class="bi bi-plus-square fuel-hier-icon" data-state="collapsed"></i>
+                        </span>
+                        {% endif %}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if blocks %}
+                    {% for block in blocks %}
+                        {% for row in block.rows %}
+                        <tr class="{{ block.row_class }} text-center align-middle">
+                            {% if loop.first %}
+                            <td class="fuel-totals-label text-start fw-bold {{ block.row_class }}" rowspan="{{ block.rowspan }}">{{ block.label }}</td>
+                            {% endif %}
+                            <td class="fuel-totals-year {{ block.row_class }}">
+                                {{ row.year }}
+                                {% if year_features.get(row.year) %}
+                                <div class="small text-muted">{{ year_features[row.year] }}</div>
+                                {% endif %}
+                            </td>
+                            {% for attr, label, is_numeric in columns %}
+                            <td
+                                data-column="{{ attr }}"
+                                {% if fuel_collapse_under.get(attr) %}data-fuel-hier-under="{{ fuel_collapse_under.get(attr) }}"{% endif %}
+                            >{{ row.cells[loop.index0] }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="{{ columns|length + 2 }}" class="text-center">Нет данных для выбранных параметров</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const totalsForm = document.getElementById("totalsFilterForm");
+    if (totalsForm) {
+        totalsForm.querySelectorAll('input[type="checkbox"], #rounding_digits').forEach(function (el) {
+            el.addEventListener("change", function () {
+                totalsForm.submit();
+            });
+        });
+    }
+
+    function createFuelHierController(tables, storageKey) {
+        const tableList = (tables || []).filter(Boolean);
+        const expandedMap = {};
+        const toggles = tableList.flatMap(function (t) {
+            return Array.from(t.querySelectorAll(".fuel-hier-toggle[data-fuel-hier-parent]"));
+        });
+
+        function findColumnTh(attr) {
+            for (var i = 0; i < tableList.length; i++) {
+                var th = tableList[i].querySelector('thead th[data-column="' + attr + '"]');
+                if (th) return th;
+            }
+            return null;
+        }
+
+        function isAncestorChainExpanded(attr) {
+            let under = null;
+            const th = findColumnTh(attr);
+            if (th) under = th.getAttribute("data-fuel-hier-under");
+            const seen = {};
+            while (under) {
+                if (seen[under]) break;
+                seen[under] = true;
+                if (!expandedMap[under]) return false;
+                const parentTh = findColumnTh(under);
+                under = parentTh ? parentTh.getAttribute("data-fuel-hier-under") : null;
+            }
+            return true;
+        }
+
+        function load() {
+            try {
+                const raw = localStorage.getItem(storageKey);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && typeof parsed === "object") {
+                        Object.keys(parsed).forEach(function (k) {
+                            if (parsed[k]) expandedMap[k] = true;
+                        });
+                    }
+                }
+            } catch (_) {}
+        }
+
+        function save() {
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(expandedMap));
+            } catch (_) {}
+        }
+
+        function refresh() {
+            tableList.forEach(function (t) {
+                t.querySelectorAll("[data-fuel-hier-under]").forEach(function (el) {
+                    const parent = el.getAttribute("data-fuel-hier-under");
+                    const show = !!expandedMap[parent] && isAncestorChainExpanded(parent);
+                    el.classList.toggle("fuel-hier-col-visible", show);
+                });
+            });
+            toggles.forEach(function (btn) {
+                const parent = btn.getAttribute("data-fuel-hier-parent");
+                const icon = btn.querySelector(".fuel-hier-icon");
+                const expanded = !!expandedMap[parent];
+                if (icon) {
+                    icon.classList.toggle("bi-plus-square", !expanded);
+                    icon.classList.toggle("bi-dash-square", expanded);
+                    icon.setAttribute("data-state", expanded ? "expanded" : "collapsed");
+                }
+            });
+        }
+
+        function setParentExpanded(parent, expanded) {
+            if (expanded) {
+                expandedMap[parent] = true;
+            } else {
+                delete expandedMap[parent];
+                toggles.forEach(function (btn) {
+                    const p = btn.getAttribute("data-fuel-hier-parent");
+                    if (!p || p === parent) return;
+                    const th = findColumnTh(p);
+                    let under = th ? th.getAttribute("data-fuel-hier-under") : null;
+                    const seen = {};
+                    while (under) {
+                        if (under === parent) {
+                            delete expandedMap[p];
+                            break;
+                        }
+                        if (seen[under]) break;
+                        seen[under] = true;
+                        const pth = findColumnTh(under);
+                        under = pth ? pth.getAttribute("data-fuel-hier-under") : null;
+                    }
+                });
+            }
+            save();
+            refresh();
+        }
+
+        function bindToggles() {
+            if (!toggles.length) return;
+            load();
+            refresh();
+            toggles.forEach(function (btn) {
+                btn.addEventListener("click", function (ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const parent = btn.getAttribute("data-fuel-hier-parent");
+                    if (!parent) return;
+                    setParentExpanded(parent, !expandedMap[parent]);
+                });
+            });
+        }
+
+        return { bindToggles: bindToggles };
+    }
+
+    const fuelTotalsTable = document.getElementById("fuelTotalsTable");
+    if (fuelTotalsTable) {
+        createFuelHierController([fuelTotalsTable], "fuelTotals_fuelHierExpanded").bindToggles();
+    }
+
+    const exportButton = document.getElementById("exportTotalsSummaryExcel");
+    if (!exportButton) return;
+    exportButton.addEventListener("click", function (e) {
+        e.preventDefault();
+        const originalText = this.innerHTML;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+        this.disabled = true;
+
+        const params = new URLSearchParams();
+        const yearForm = document.getElementById("yearForm");
+        if (yearForm) {
+            const startYearSelect = yearForm.querySelector("#start_year");
+            const endYearSelect = yearForm.querySelector("#end_year");
+            if (startYearSelect) params.set("start_year", startYearSelect.value);
+            if (endYearSelect) params.set("end_year", endYearSelect.value);
+        }
+        if (totalsForm) {
+            const roundingSelect = totalsForm.querySelector("#rounding_digits");
+            if (roundingSelect) params.set("rounding_digits", roundingSelect.value);
+            params.delete("aggregation_type");
+            totalsForm.querySelectorAll('input[name="aggregation_type"]:checked').forEach(function (checkbox) {
+                params.append("aggregation_type", checkbox.value);
+            });
+        }
+        if (!params.has("start_year")) params.set("start_year", "{{ start_year }}");
+        if (!params.has("end_year")) params.set("end_year", "{{ end_year }}");
+        if (!params.has("rounding_digits")) params.set("rounding_digits", "{{ rounding_digits }}");
+
+        const exportUrl = '{{ url_for("fuel_bp.totals_summary_export") }}?' + params.toString();
+        window.open(exportUrl, "_blank", "noopener");
+        setTimeout(() => {
+            this.innerHTML = originalText;
+            this.disabled = false;
+        }, 1000);
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

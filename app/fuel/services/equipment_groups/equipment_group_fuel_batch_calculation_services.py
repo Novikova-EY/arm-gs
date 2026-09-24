@@ -12,6 +12,12 @@ from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (
 )
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+from app.fuel.services.calculation.access_bdis_cursor import (
+    fuel_param_access_n1,
+    sort_access_filter_rows,
+    sort_equipment_group_ids_access_findnext,
+)
+from app.fuel.services.calculation.specific_consumption_lookup import AccessSeekBookmark
 from app.fuel.services.equipment_groups.equipment_group_fuel_calculation_services import (
     TOPLS,
     UGLI,
@@ -113,7 +119,14 @@ class EquipmentGroupFuelBatchCalculationService:
         chunk_size: int = 200,
         base_year_number: int | None = None,
     ) -> BatchCalculationResult:
+        equipment_group_ids = sort_equipment_group_ids_access_findnext(
+            self.session,
+            equipment_group_ids,
+            year_number=year_number,
+        )
         result = BatchCalculationResult(total=len(equipment_group_ids))
+        ud_bookmark = AccessSeekBookmark()
+        formula_bookmark = AccessSeekBookmark()
 
         for index, equipment_group_id in enumerate(equipment_group_ids, start=1):
             try:
@@ -126,6 +139,8 @@ class EquipmentGroupFuelBatchCalculationService:
                         strict_formula_validation=strict_formula_validation,
                         commit=True,
                         base_year_number=base_year_number,
+                        ud_bookmark=ud_bookmark,
+                        formula_bookmark=formula_bookmark,
                     )
                 else:
                     with self.session.begin_nested():
@@ -137,6 +152,8 @@ class EquipmentGroupFuelBatchCalculationService:
                             strict_formula_validation=strict_formula_validation,
                             commit=False,
                             base_year_number=base_year_number,
+                            ud_bookmark=ud_bookmark,
+                            formula_bookmark=formula_bookmark,
                         )
 
                 extra_row = (

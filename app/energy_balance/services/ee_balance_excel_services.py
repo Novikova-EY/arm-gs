@@ -53,15 +53,14 @@ def export_ee_balance_to_excel(
     hydro_year: Any = None,
 ) -> BytesIO:
     """Файл со вкладкой на каждый лист баланса электрической энергии."""
+    del hydro_year
     digits = resolve_ee_balance_rounding_digits(rounding_digits)
     if years is None:
         years = get_ee_balance_year_columns(start_year, end_year)
     if sheets is None:
         sheets = get_ee_balance_sheets()
     if tables is None:
-        tables = build_ee_balance_tables(
-            years, rounding_digits=digits, hydro_year=hydro_year
-        )
+        tables = build_ee_balance_tables(years, rounding_digits=digits)
     if year_features is None:
         year_features = get_ee_balance_year_features()
 

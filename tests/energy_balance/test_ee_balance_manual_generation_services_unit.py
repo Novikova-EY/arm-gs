@@ -17,17 +17,20 @@ from app.energy_balance.services.ee_balance_manual_generation_services import (
 )
 
 
-def test_manual_plan_generation_keys_cover_snee_ses_ves():
+def test_manual_plan_generation_keys_cover_snee_not_ses_ves():
     assert "generation_snee" in MANUAL_PLAN_GENERATION_KEYS
-    assert "generation_ses_ves" in MANUAL_PLAN_GENERATION_KEYS
+    assert "generation_ses_ves" not in MANUAL_PLAN_GENERATION_KEYS
     assert is_manual_plan_generation_row_key("generation_snee")
-    assert is_manual_plan_generation_row_key("generation_ses_ves")
-    assert is_manual_plan_generation_row_key("generation_ses")
-    assert is_manual_plan_generation_row_key("generation_ves")
+    assert not is_manual_plan_generation_row_key("generation_ses_ves")
+    assert not is_manual_plan_generation_row_key("generation_ses")
+    assert not is_manual_plan_generation_row_key("generation_ves")
     assert is_manual_plan_generation_row_key("other", "СНЭЭ")
-    assert is_manual_plan_generation_row_key("other", "СЭС, ВЭС")
+    assert not is_manual_plan_generation_row_key("other", "СЭС, ВЭС")
     assert not is_manual_plan_generation_row_key("generation_ges")
     assert not is_manual_plan_generation_row_key("generation_tes")
+    assert not is_manual_plan_generation_row_key("installed_ses", "СЭС")
+    assert not is_manual_plan_generation_row_key("installed_ves", "ВЭС")
+    assert not is_manual_plan_generation_row_key("chiim_ses", "СЭС")
 
 
 def test_overlay_manual_generation_keeps_other_years_and_rows():
@@ -35,6 +38,7 @@ def test_overlay_manual_generation_keeps_other_years_and_rows():
         "centr": {
             "generation_snee": {2024: Decimal("3"), 2026: Decimal("4")},
             "generation_aes": {2026: Decimal("40")},
+            "generation_ses": {2026: Decimal("267.6")},
         }
     }
     manual = {
@@ -46,8 +50,11 @@ def test_overlay_manual_generation_keeps_other_years_and_rows():
     merged = overlay_manual_generation_inputs(auto, manual)
     assert merged["centr"]["generation_snee"][2024] == Decimal("3")
     assert merged["centr"]["generation_snee"][2026] == Decimal("11")
-    assert merged["centr"]["generation_ses_ves"][2026] == Decimal("8")
+    assert "generation_ses_ves" not in merged["centr"] or 2026 not in (
+        merged["centr"].get("generation_ses_ves") or {}
+    )
     assert merged["centr"]["generation_aes"][2026] == Decimal("40")
+    assert merged["centr"]["generation_ses"][2026] == Decimal("267.6")
 
 
 def test_update_manual_generation_rejects_empty_slug():
@@ -78,7 +85,7 @@ def test_update_manual_generation_rejects_bad_number():
     ):
         with pytest.raises(ValueError, match="число"):
             update_ee_balance_manual_generation_value(
-                "centr", "generation_ses_ves", 2026, "abc"
+                "centr", "generation_snee", 2026, "abc"
             )
 
 
@@ -116,7 +123,6 @@ def test_mark_manual_plan_generation_rows_only_plan_years_on_leaf_sheets():
     assert snee["editable_values"] is True
     assert snee["editable_years"] == [2026, 2027]
     assert snee["value_save_kind"] == "generation"
-    assert ses["editable_values"] is True
-    assert ses["editable_years"] == [2026, 2027]
+    assert ses.get("editable_values") is not True
     assert tes.get("editable_values") is not True
     assert ees.get("editable_values") is not True

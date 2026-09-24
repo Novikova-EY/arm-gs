@@ -1,0 +1,1361 @@
+{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+block content %} {% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+  <div class="page-table-scroll">
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+      <div class="col-12 mb-2 text-center">
+        <h2 class="mb-2">{{ page_title }}</h2>
+      </div>
+      <div class="col-12 mb-2">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex gap-2 align-items-center">
+            <button
+              id="filtersToggleBtn"
+              class="btn {% if has_active_filters %}btn-warning{% else %}btn-primary{% endif %} text-white"
+              type="button"
+              aria-expanded="true"
+              aria-controls="filtersCollapse"
+            >
+              🔍 Фильтры / Поиск
+            </button>
+            <button
+              id="importExportToggleBtn"
+              class="btn btn-outline-secondary text-dark"
+              type="button"
+              aria-expanded="false"
+              aria-controls="importExportCollapse"
+            >
+              📁 Импорт / Экспорт
+            </button>
+          </div>
+          <div class="flex-grow-1 d-flex justify-content-center align-items-center">
+            <p class="mb-0 fw-bold">Найдено станций: {{ total_stations|default(0) }}</p>
+          </div>
+          <a
+            href="{{ url_for('energy_balance_bp.ee_balance_table', slug='ees-rossii', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+            class="btn btn-secondary"
+            >Баланс ЭЭ</a
+          >
+        </div>
+      </div>
+      <div class="col-12 mb-2">
+        <div class="collapse power-demand-import-export-collapse" id="importExportCollapse">
+          {# Как power_demand summary: type="button" + fetch; страница не уходит с экрана #}
+          <form
+            method="GET"
+            action="{{ url_for('energy_balance_bp.export_ee_balance_ves_ses') }}"
+            id="vesSesExportForm"
+            class="d-flex gap-2 m-0"
+          >
+            {% for key, values in request.args.lists() %}
+              {% for value in values %}
+              <input type="hidden" name="{{ key }}" value="{{ value }}" />
+              {% endfor %}
+            {% endfor %}
+            <button
+              type="button"
+              id="vesSesExportBtn"
+              class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
+              style="white-space: nowrap"
+            >
+              <i class="bi bi-file-earmark-excel" aria-hidden="true"></i>
+              Экспорт в Excel
+            </button>
+          </form>
+        </div>
+      </div>
+      {% set filters_collapse_open = true %}
+      {% include 'generation/stations/station_filters_first_row.html' %}
+      {# Как station_filters_third_row: годы всегда видны. #}
+      <div class="col-12 mb-2">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <form
+            method="GET"
+            action="{{ url_for('energy_balance_bp.ee_balance_ves_ses') }}"
+            id="vesSesFilterForm"
+            class="d-flex align-items-center gap-2 flex-wrap"
+          >
+            {% for key, values in request.args.lists() %}
+              {% if key not in ['start_year', 'end_year', 'page'] %}
+                {% for value in values %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}" />
+                {% endfor %}
+              {% endif %}
+            {% endfor %}
+            <input type="hidden" name="page" id="vesSesPageHidden" value="1" />
+            <label for="start_year" class="mb-0" style="white-space: nowrap"
+              >Год начала:</label
+            >
+            <select
+              name="start_year"
+              id="start_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
+              {% for year in filter_year_list %}
+              <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>
+                {{ year }}
+              </option>
+              {% endfor %}
+            </select>
+            <label for="end_year" class="mb-0" style="white-space: nowrap"
+              >Год конца:</label
+            >
+            <select
+              name="end_year"
+              id="end_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
+              {% for year in filter_year_list %}
+              <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>
+                {{ year }}
+              </option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-success">
+              Применить
+            </button>
+            <a
+              href="{{ station_filters_reset_url or url_for('energy_balance_bp.ee_balance_ves_ses') }}"
+              class="btn btn-outline-danger"
+              >Сбросить</a
+            >
+          </form>
+          <div class="d-flex align-items-center gap-1 flex-shrink-0">
+            <label
+              for="rounding_digits"
+              class="mb-0"
+              style="white-space: nowrap; min-width: 100px"
+              >Округл:</label
+            >
+            <select
+              id="rounding_digits"
+              class="form-select"
+              style="min-width: 150px; width: auto"
+              aria-label="Округление значений"
+            >
+              <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>
+                Не округлять
+              </option>
+              <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>
+                1 знак
+              </option>
+              <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>
+                2 знака
+              </option>
+              <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>
+                3 знака
+              </option>
+              <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>
+                Целое число
+              </option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% set year_count = years|length %}
+    {% set owner_years = owner_years or [] %}
+    {% set owner_year_count = owner_years|length %}
+    {% set table_colspan = 3 + year_count + 2 + owner_year_count %}
+    {% set exploitation_date_label = exploitation_date_label or 'Ожидаемая дата ввода в эксплуатацию' %}
+    {% macro ves_raw_attrs(raw_text) -%}
+      {%- if raw_text -%} title="{{ raw_text|e }}" data-raw="{{ raw_text|e }}"{%- endif -%}
+    {%- endmacro %}
+    {% macro ves_energy_title_attrs(is_calc, plan_rule, energy_raw) -%}
+      {%- if is_calc and plan_rule -%}
+        title="{{ plan_rule|e }}"{% if energy_raw %} data-raw="{{ energy_raw|e }}"{% endif %}
+      {%- else -%}
+        {{ ves_raw_attrs(energy_raw) }}
+      {%- endif -%}
+    {%- endmacro %}
+    {% macro ves_year_header(year) -%}
+      {{ year }}
+      {% if year_features.get(year) %}
+      <div class="ves-ses-year-feature">{{ year_features.get(year) }}</div>
+      {% endif %}
+    {%- endmacro %}
+    {% macro ves_chiim_label(row) %}
+            {{ row.chiim_label }}
+            <i
+              class="bi bi-info-circle text-primary ms-1 ves-ses-formula-tip"
+              title="{{ chiim_formula|e }}"
+              aria-label="Формула расчёта ЧЧИУМ"
+            ></i>
+    {% endmacro %}
+    {% macro ves_blank_date_min_owner() %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="exploitation-date">—</td>
+            <td class="text-center ves-ses-equal-cell" data-ves-col="min">—</td>
+            {% for year in owner_years %}
+            <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}">—</td>
+            {% endfor %}
+    {% endmacro %}
+    {# Лёгкая ячейка вместо <input>: инпут создаётся при клике (см. JS). #}
+    {% macro ves_deferred_control(kind, display, orig='', raw='', title='', plan_rule='', year=none, is_calc=false, is_date=false) -%}
+      <span
+        class="ves-ses-deferred{% if is_date %} ves-ses-date-value{% else %} ves-ses-value{% endif %}{% if is_calc %} ves-ses-plan-calc-input{% endif %}"
+        tabindex="0"
+        role="textbox"
+        data-ves-deferred="1"
+        data-kind="{{ kind }}"
+        {% if year is not none %}data-year="{{ year }}"{% endif %}
+        data-orig="{{ orig|e }}"
+        {% if raw %}data-raw="{{ raw|e }}"{% endif %}
+        {% if plan_rule %}data-plan-rule="{{ plan_rule|e }}" title="{{ plan_rule|e }}"{% elif title %}title="{{ title|e }}"{% elif is_calc %}title="Расчётное значение (можно изменить)"{% elif raw %}title="{{ raw|e }}"{% endif %}
+      >{{ display }}</span>
+    {%- endmacro %}
+    <style>
+      .page-table-scroll > .pd-ec-summary-sticky-stack {
+        left: 0;
+      }
+      .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-filters-collapse,
+      .page-table-scroll .pd-ec-summary-sticky-stack .power-demand-import-export-collapse {
+        overflow: visible !important;
+      }
+      #vesSesTable.power-demand-summary-table {
+        width: max-content;
+        min-width: 100%;
+        table-layout: fixed;
+        font-size: 1.15rem;
+        --ves-ses-equal-col-w: 10.25rem;
+        --ves-ses-name-col-w: 18rem;
+        --ves-ses-type-col-w: 10.25rem;
+        --ves-ses-dtype-col-w: 20rem;
+        --ves-ses-sticky-name-w: var(--ves-ses-name-col-w);
+        --ves-ses-sticky-type-w: var(--ves-ses-type-col-w);
+      }
+      .page-table-scroll #vesSesTable thead th {
+        position: sticky;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0
+          var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+        font-size: 1.28rem;
+      }
+      .page-table-scroll #vesSesTable thead tr:nth-child(1) th {
+        top: var(--pd-summary-controls-sticky-height, 0px);
+        z-index: 50;
+      }
+      .page-table-scroll #vesSesTable thead tr:nth-child(2) th {
+        top: calc(
+          var(--pd-summary-controls-sticky-height, 0px) +
+            var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px))
+        );
+        z-index: 49;
+      }
+      /* Годы ниже левых колонок шапки. Не поднимать z-index у Наименование/Тип —
+         иначе Chrome с rowspan перестаёт держать шапку при вертикальном скролле. */
+      .page-table-scroll #vesSesTable thead tr:nth-child(1) th.ves-ses-equal-col,
+      .page-table-scroll #vesSesTable thead tr:nth-child(1) th.ves-ses-owner-title {
+        z-index: 40;
+      }
+      .page-table-scroll #vesSesTable thead tr:nth-child(2) th.ves-ses-equal-col {
+        z-index: 39;
+      }
+      .page-table-scroll #vesSesTable thead tr:nth-child(1) th.ves-ses-dtype-col {
+        box-shadow:
+          inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+          4px 0 6px -4px rgba(0, 0, 0, 0.18);
+      }
+      #vesSesTable col.ves-ses-col-name {
+        width: var(--ves-ses-name-col-w);
+      }
+      #vesSesTable col.ves-ses-col-type {
+        width: var(--ves-ses-type-col-w);
+      }
+      #vesSesTable col.ves-ses-col-dtype {
+        width: var(--ves-ses-dtype-col-w);
+      }
+      #vesSesTable col.ves-ses-col-equal {
+        width: var(--ves-ses-equal-col-w);
+      }
+      #vesSesTable th.ves-ses-name-col,
+      #vesSesTable td.ves-ses-name-cell,
+      #vesSesTable th.ves-ses-type-col,
+      #vesSesTable td.ves-ses-type-cell,
+      #vesSesTable th.ves-ses-dtype-col,
+      #vesSesTable td.ves-ses-dtype-cell {
+        position: sticky;
+        --bs-table-bg-state: transparent;
+        background-clip: padding-box;
+      }
+      #vesSesTable th.ves-ses-name-col,
+      #vesSesTable td.ves-ses-name-cell {
+        width: var(--ves-ses-name-col-w);
+        min-width: var(--ves-ses-name-col-w);
+        max-width: var(--ves-ses-name-col-w);
+        overflow-wrap: anywhere;
+        vertical-align: middle;
+        left: 0;
+        z-index: 8;
+      }
+      #vesSesTable th.ves-ses-type-col,
+      #vesSesTable td.ves-ses-type-cell {
+        width: var(--ves-ses-type-col-w);
+        min-width: var(--ves-ses-type-col-w);
+        max-width: var(--ves-ses-type-col-w);
+        left: var(--ves-ses-sticky-name-w);
+        z-index: 7;
+      }
+      #vesSesTable thead th.ves-ses-type-col {
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        line-height: 1.2;
+      }
+      #vesSesTable thead th.ves-ses-type-col .filter-button {
+        font: inherit;
+        font-size: inherit !important;
+        font-weight: inherit !important;
+        font-family: inherit;
+        line-height: inherit;
+        color: inherit;
+        letter-spacing: inherit;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        height: auto;
+        min-width: 0;
+        max-width: 100%;
+        padding: 0.15rem 0.4rem;
+      }
+      #vesSesTable .ves-ses-year-feature {
+        font-size: 0.95em;
+        line-height: 1.25;
+        margin-top: 0.15rem;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+      }
+      #vesSesTable th.ves-ses-dtype-col,
+      #vesSesTable td.ves-ses-dtype-cell {
+        width: var(--ves-ses-dtype-col-w);
+        min-width: var(--ves-ses-dtype-col-w);
+        max-width: var(--ves-ses-dtype-col-w);
+        white-space: normal;
+        overflow-wrap: break-word;
+        line-height: 1.2;
+        left: calc(var(--ves-ses-sticky-name-w) + var(--ves-ses-sticky-type-w));
+        z-index: 6;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.18);
+      }
+      #vesSesTable tbody td.ves-ses-name-cell,
+      #vesSesTable tbody td.ves-ses-type-cell,
+      #vesSesTable tbody td.ves-ses-dtype-cell {
+        background-color: var(--bs-body-bg, #fff);
+      }
+      #vesSesTable tbody tr.ves-ses-header > td.ves-ses-name-cell,
+      #vesSesTable tbody tr.ves-ses-header > td.ves-ses-type-cell,
+      #vesSesTable tbody tr.ves-ses-header > td.ves-ses-dtype-cell {
+        z-index: 9;
+      }
+      #vesSesTable.table-hover > tbody > tr:hover > td.ves-ses-name-cell,
+      #vesSesTable.table-hover > tbody > tr:hover > td.ves-ses-type-cell,
+      #vesSesTable.table-hover > tbody > tr:hover > td.ves-ses-dtype-cell {
+        background-color: var(--bs-table-hover-bg, #ececec);
+      }
+      #vesSesTable tr[data-station-id][data-ves-metric="energy"] > td.ves-ses-dtype-cell {
+        background-color: #e7f1ff;
+      }
+      #vesSesTable
+        tr[data-station-id][data-ves-metric="energy"][data-type-key="ses"]
+        > td.ves-ses-dtype-cell {
+        background-color: #fff1e0;
+      }
+      #vesSesTable.table-hover
+        > tbody
+        > tr[data-station-id][data-ves-metric="energy"]:hover
+        > td.ves-ses-dtype-cell {
+        background-color: #d6e6ff;
+      }
+      #vesSesTable.table-hover
+        > tbody
+        > tr[data-station-id][data-ves-metric="energy"][data-type-key="ses"]:hover
+        > td.ves-ses-dtype-cell {
+        background-color: #ffe0c2;
+      }
+      #vesSesTable th.ves-ses-equal-col,
+      #vesSesTable td.ves-ses-equal-cell {
+        width: var(--ves-ses-equal-col-w);
+        min-width: var(--ves-ses-equal-col-w);
+        max-width: var(--ves-ses-equal-col-w);
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        line-height: 1.2;
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+      }
+      #vesSesTable .ves-ses-plan-calc-input {
+        background-color: #fff8e1;
+      }
+      #vesSesTable input.ves-ses-value,
+      #vesSesTable .ves-ses-deferred {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        margin: 0 auto;
+        box-sizing: border-box;
+        padding: 0.2rem 0.15rem;
+        font-size: inherit;
+        line-height: inherit;
+        font-weight: inherit;
+      }
+      #vesSesTable .ves-ses-deferred {
+        display: block;
+        min-height: 1.75rem;
+        border: 1px solid transparent;
+        border-radius: 0.25rem;
+        cursor: text;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      #vesSesTable .ves-ses-deferred:hover,
+      #vesSesTable .ves-ses-deferred:focus {
+        border-color: var(--bs-border-color, #dee2e6);
+        outline: none;
+        background-color: #fff;
+      }
+      #vesSesTable .ves-ses-deferred.ves-ses-plan-calc-input:hover,
+      #vesSesTable .ves-ses-deferred.ves-ses-plan-calc-input:focus {
+        background-color: #fff8e1;
+      }
+      #vesSesTable tr.ves-ses-header > td {
+        font-weight: 700;
+      }
+      #vesSesTable tr.ves-ses-ues-header > td {
+        background-color: #cfe2ff !important;
+      }
+      #vesSesTable tr.ves-ses-res-header > td {
+        background-color: #e7f1ff !important;
+      }
+      #vesSesTable tr.ves-ses-rd-header > td {
+        background-color: #f8f9fa !important;
+      }
+      #vesSesTable tr.ves-ses-total > td {
+        font-weight: 700;
+        background-color: #d1e7dd !important;
+      }
+      #vesSesTable tr.ves-ses-ues-total > td {
+        background-color: #cfe2ff !important;
+      }
+      #vesSesTable tr.ves-ses-incl > td {
+        font-weight: 600;
+        background-color: #e7f1ff !important;
+      }
+      #vesSesTable tr.ves-ses-russia > td {
+        font-weight: 700;
+        background-color: #badbcc !important;
+      }
+      #vesSesTable tr[data-station-id][data-ves-metric="energy"] > td {
+        background-color: #e7f1ff;
+      }
+      #vesSesTable tr[data-ves-metric="energy"][data-type-key="ses"] > td {
+        background-color: #fff1e0;
+      }
+      #vesSesTable
+        tr.ves-ses-incl[data-ves-metric="energy"][data-type-key="ses"]
+        > td {
+        background-color: #fff1e0 !important;
+      }
+      #vesSesTable.table-hover
+        > tbody
+        > tr[data-station-id][data-ves-metric="energy"][data-type-key="ses"]:hover
+        > td {
+        background-color: #ffe0c2;
+      }
+      #vesSesTable tr[data-ves-metric="chiim"] > td {
+        border-bottom-width: 2px;
+      }
+      #vesSesTable th.ves-ses-date-col,
+      #vesSesTable td[data-ves-col="exploitation-date"],
+      #vesSesTable .ves-ses-owner-start {
+        border-left-width: 2px;
+      }
+      #vesSesTable thead th.ves-ses-owner-title {
+        white-space: normal;
+        font-size: 1.05rem;
+        line-height: 1.25;
+      }
+      #vesSesTable .ves-ses-formula-tip {
+        cursor: help;
+        font-size: 0.9em;
+        vertical-align: -0.1em;
+      }
+      #vesSesTable thead .dropdown-menu {
+        z-index: 1060;
+        max-height: 300px;
+        overflow-y: auto;
+        min-width: 12rem;
+      }
+    </style>
+
+    <div class="table-responsive">
+      <table
+        class="table table-hover table-bordered align-middle power-demand-summary-table"
+        id="vesSesTable"
+        data-auto-export-excel="off"
+        {% if page_size and page_size != 0 %}data-ves-paginated="1"{% endif %}
+      >
+        <colgroup>
+          <col class="ves-ses-col-name">
+          <col class="ves-ses-col-type">
+          <col class="ves-ses-col-dtype">
+          {% for year in years %}
+          <col class="ves-ses-col-equal">
+          {% endfor %}
+          <col class="ves-ses-col-equal">
+          <col class="ves-ses-col-equal">
+          {% for year in owner_years %}
+          <col class="ves-ses-col-equal">
+          {% endfor %}
+        </colgroup>
+        <thead class="table-success text-center">
+          <tr class="text-center align-middle">
+            <th class="text-center align-middle ves-ses-name-col"{% if owner_year_count %} rowspan="2"{% endif %}>Наименование</th>
+            <th class="text-center align-middle ves-ses-type-col"{% if owner_year_count %} rowspan="2"{% endif %}>
+              <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
+                <div class="dropdown">
+                  <button
+                    class="btn dropdown-toggle filter-button"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    data-bs-auto-close="outside"
+                    aria-expanded="false"
+                  >
+                    Тип станции
+                    {% if station_type_filter %}<i class="bi bi-funnel-fill text-warning ms-1"></i>{% endif %}
+                  </button>
+                  <ul class="dropdown-menu">
+                    {% for station_type in station_type_name %}
+                    <li>
+                      <label class="dropdown-item">
+                        <input
+                          type="checkbox"
+                          name="station_type_filter"
+                          value="{{ station_type.id }}"
+                          {% if station_type.id|string in station_type_filter|map('string') %}checked{% endif %}
+                        />
+                        {{ station_type.name }}
+                      </label>
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                {% if station_type_filter %}
+                <button
+                  class="btn btn-sm btn-outline-danger filter-clear-btn"
+                  type="button"
+                  data-filter-name="station_type_filter"
+                  title="Сбросить фильтр"
+                  style="padding: 2px 6px; line-height: 1"
+                >
+                  <i class="bi bi-x-lg"></i>
+                </button>
+                {% endif %}
+              </div>
+            </th>
+            <th class="text-center align-middle ves-ses-dtype-col"{% if owner_year_count %} rowspan="2"{% endif %}>Тип данных</th>
+            {% for year in years %}
+            <th{% if owner_year_count %} rowspan="2"{% endif %} class="text-center align-middle ves-ses-equal-col">{{ ves_year_header(year) }}</th>
+            {% endfor %}
+            <th{% if owner_year_count %} rowspan="2"{% endif %} class="text-center align-middle ves-ses-equal-col ves-ses-date-col">{{ exploitation_date_label }}</th>
+            <th{% if owner_year_count %} rowspan="2"{% endif %} class="text-center align-middle ves-ses-equal-col ves-ses-min-col">{{ min_label }}</th>
+            {% if owner_year_count %}
+            <th
+              class="text-center align-middle ves-ses-owner-start ves-ses-owner-title"
+              colspan="{{ owner_year_count }}"
+            >
+              Выработка электроэнергии электростанцией (от собственника), млн кВтч
+            </th>
+            {% endif %}
+          </tr>
+          {% if owner_year_count %}
+          <tr class="text-center align-middle">
+            {% for year in owner_years %}
+            <th class="text-center align-middle ves-ses-equal-col{% if loop.first %} ves-ses-owner-start{% endif %}">
+              {{ ves_year_header(year) }}
+            </th>
+            {% endfor %}
+          </tr>
+          {% endif %}
+        </thead>
+        <tbody>
+          {% for row in rows %} {% if row.kind in ['est_header', 'ues_header',
+          'res_header', 'rd_header'] %}
+          <tr
+            class="ves-ses-header{% if row.kind == 'ues_header' %} ves-ses-ues-header{% elif row.kind == 'res_header' %} ves-ses-res-header{% elif row.kind == 'rd_header' %} ves-ses-rd-header{% endif %}"
+          >
+            <td class="ves-ses-name-cell">{{ row.label }}</td>
+            <td class="ves-ses-type-cell"></td>
+            <td class="ves-ses-dtype-cell"></td>
+            <td colspan="{{ table_colspan - 3 }}"></td>
+          </tr>
+          {% elif row.kind == 'station' %}
+          <tr
+            data-station-id="{{ row.id }}"
+            data-ves-station="1"
+            data-ves-metric="capacity"
+            data-type-key="{{ row.type_key }}"
+            data-est-id="{{ row.est_id or '' }}"
+            data-ues-id="{{ row.ues_id or '' }}"
+            data-res-id="{{ row.res_id or '' }}"
+            data-rd-id="{{ row.rd_id or '' }}"
+            data-commission-year="{{ row.commission_year if row.commission_year is not none else '' }}"
+            data-exploitation-date="{{ row.exploitation_date_expected or '' }}"
+            data-sample-energy="{{ row.sample_energy | tojson }}"
+            data-owner-energy="{{ row.owner_energy | tojson }}"
+          >
+            <td class="ves-ses-name-cell" rowspan="3">
+              <a
+                href="{{ url_for('station_bp.station_details', station_id=row.id, start_year=start_year, end_year=end_year) }}"
+                class="text-decoration-none"
+                >{{ row.name }}</a
+              >
+            </td>
+            <td class="text-center ves-ses-type-cell" rowspan="3">{{ row.type_name }}</td>
+            <td class="ves-ses-dtype-cell">{{ row.capacity_label }}</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="capacity" data-year="{{ year }}"{{ ves_raw_attrs(row.capacity_raw.get(year)) }}>
+              {{ row.capacity_display.get(year) or '—' }}
+            </td>
+            {% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          <tr
+            data-station-id="{{ row.id }}"
+            data-ves-metric="energy"
+            data-type-key="{{ row.type_key }}"
+            data-est-id="{{ row.est_id or '' }}"
+            data-ues-id="{{ row.ues_id or '' }}"
+            data-res-id="{{ row.res_id or '' }}"
+            data-rd-id="{{ row.rd_id or '' }}"
+          >
+            <td class="ves-ses-dtype-cell">{{ row.energy_label }}</td>
+            {% for year in years %} {% set is_calc =
+            row.energy_is_calc.get(year) %}
+            {% set energy_raw = row.energy_raw.get(year) %}
+            {% set plan_rule = row.energy_plan_rule.get(year) if is_calc else none %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="energy" data-year="{{ year }}"{{ ves_energy_title_attrs(is_calc, plan_rule, energy_raw) }}>
+              {% if can_edit %}
+              {{ ves_deferred_control(
+                'energy',
+                row.energy_display.get(year) or '',
+                orig=(row.energy_display.get(year) if row.energy_stored.get(year) else ''),
+                raw=energy_raw or '',
+                plan_rule=plan_rule or '',
+                year=year,
+                is_calc=is_calc
+              ) }}
+              {% else %} {{ row.energy_display.get(year) or '—' }} {% endif %}
+            </td>
+            {% endfor %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="exploitation-date">
+              {% if can_edit %}
+              {{ ves_deferred_control(
+                'exploitation_date',
+                row.exploitation_date_expected or '',
+                orig=row.exploitation_date_expected or '',
+                is_date=true
+              ) }}
+              {% else %}
+              {{ row.exploitation_date_expected or '—' }}
+              {% endif %}
+            </td>
+            <td class="text-center fw-semibold ves-ses-equal-cell" data-ves-col="min"{{ ves_raw_attrs(row.min_raw) }}>
+              {{ row.min_display or '—' }}
+            </td>
+            {% for year in owner_years %}
+            {% set owner_raw = row.owner_raw.get(year) %}
+            <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}"{{ ves_raw_attrs(owner_raw) }}>
+              {% if can_edit %}
+              {{ ves_deferred_control(
+                'owner',
+                row.owner_display.get(year) or '',
+                orig=row.owner_display.get(year) or '',
+                raw=owner_raw or '',
+                year=year
+              ) }}
+              {% else %} {{ row.owner_display.get(year) or '—' }} {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          <tr
+            data-station-id="{{ row.id }}"
+            data-ves-metric="chiim"
+            data-type-key="{{ row.type_key }}"
+            data-est-id="{{ row.est_id or '' }}"
+            data-ues-id="{{ row.ues_id or '' }}"
+            data-res-id="{{ row.res_id or '' }}"
+            data-rd-id="{{ row.rd_id or '' }}"
+          >
+            <td class="ves-ses-dtype-cell">{{ ves_chiim_label(row) }}</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="chiim" data-year="{{ year }}"{{ ves_raw_attrs(row.chiim_raw.get(year)) }}>
+              {{ row.chiim_display.get(year) or '—' }}
+            </td>
+            {% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          {% else %}
+          <tr
+            class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% elif row.kind == 'type_total' %} ves-ses-incl{% endif %}"
+            data-ves-agg="{{ row.kind }}"
+            data-ves-agg-key="{{ row.agg_key }}"
+            data-ves-metric="capacity"
+            data-type-key="{{ row.type_key or '' }}"
+            data-est-id="{{ row.est_id or '' }}"
+            data-ues-id="{{ row.ues_id or '' }}"
+            data-res-id="{{ row.res_id or '' }}"
+            data-rd-id="{{ row.rd_id or '' }}"
+            {% if row.live_locked %}data-ves-live-locked="1"{% endif %}
+          >
+            <td rowspan="3" class="ves-ses-name-cell">{{ row.label }}</td>
+            <td rowspan="3" class="text-center ves-ses-type-cell">{{ row.type_name or '' }}</td>
+            <td class="ves-ses-dtype-cell">{{ row.capacity_label }}</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="capacity" data-year="{{ year }}"{{ ves_raw_attrs(row.capacity_raw.get(year)) }}>
+              {{ row.capacity_display.get(year) or '—' }}
+            </td>
+            {% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          <tr
+            class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% elif row.kind == 'type_total' %} ves-ses-incl{% endif %}"
+            data-ves-agg="{{ row.kind }}"
+            data-ves-agg-key="{{ row.agg_key }}"
+            data-ves-metric="energy"
+            data-type-key="{{ row.type_key or '' }}"
+            data-est-id="{{ row.est_id or '' }}"
+            data-ues-id="{{ row.ues_id or '' }}"
+            data-res-id="{{ row.res_id or '' }}"
+            data-rd-id="{{ row.rd_id or '' }}"
+            {% if row.live_locked %}data-ves-live-locked="1"{% endif %}
+          >
+            <td class="ves-ses-dtype-cell">{{ row.energy_label }}</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="energy" data-year="{{ year }}"{{ ves_raw_attrs(row.energy_raw.get(year)) }}>
+              {{ row.energy_display.get(year) or '—' }}
+            </td>
+            {% endfor %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="exploitation-date">—</td>
+            <td class="text-center ves-ses-equal-cell" data-ves-col="min"{{ ves_raw_attrs(row.min_raw) }}>
+              {{ row.min_display or '—' }}
+            </td>
+            {% for year in owner_years %}
+            <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}"{{ ves_raw_attrs(row.owner_raw.get(year)) }}>
+              {{ row.owner_display.get(year) or '—' }}
+            </td>
+            {% endfor %}
+          </tr>
+          <tr
+            class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% elif row.kind == 'type_total' %} ves-ses-incl{% endif %}"
+            data-ves-agg="{{ row.kind }}"
+            data-ves-agg-key="{{ row.agg_key }}"
+            data-ves-metric="chiim"
+            data-type-key="{{ row.type_key or '' }}"
+            data-est-id="{{ row.est_id or '' }}"
+            data-ues-id="{{ row.ues_id or '' }}"
+            data-res-id="{{ row.res_id or '' }}"
+            data-rd-id="{{ row.rd_id or '' }}"
+            {% if row.live_locked %}data-ves-live-locked="1"{% endif %}
+          >
+            <td class="ves-ses-dtype-cell">{{ ves_chiim_label(row) }}</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="chiim" data-year="{{ year }}"{{ ves_raw_attrs(row.chiim_raw.get(year)) }}>
+              {{ row.chiim_display.get(year) or '—' }}
+            </td>
+            {% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          {% endif %} {% endfor %}
+        </tbody>
+      </table>
+      {% include 'energy_balance/ee_balance/_ves_ses_entity_pagination.html' %}
+    </div>
+  </div>
+</div>
+
+{% if can_edit %}
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='js/energy_balance/ee_balance_ves_ses_live.js') }}?v=4"></script>
+<script>
+  (function () {
+    const SAVE_URL = {{ url_for('energy_balance_bp.ee_balance_ves_ses_value')|tojson }};
+    const DIGITS = {{ rounding_digits|tojson }};
+    const START_YEAR = {{ start_year|tojson }};
+    const END_YEAR = {{ end_year|tojson }};
+    const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
+    const headers = {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRFToken': CSRF || ''
+    };
+
+    function autoFormatDateDots(input) {
+      if (!input || input.dataset.dateAutoformatBound === '1') return;
+      input.dataset.dateAutoformatBound = '1';
+      input.addEventListener('input', function () {
+        const prev = input.value || '';
+        if (/^\d{4}-\d{2}-\d{2}$/.test(prev.trim()) || /^\d{2}\.\d{2}\.\d{4}$/.test(prev.trim())) {
+          return;
+        }
+        if (/[^\d.]/.test(prev)) return;
+        const digits = prev.replace(/\D/g, '').slice(0, 8);
+        if (!digits) return;
+        let formatted = digits;
+        if (digits.length > 4) {
+          formatted = digits.slice(0, 2) + '.' + digits.slice(2, 4) + '.' + digits.slice(4);
+        } else if (digits.length > 2) {
+          formatted = digits.slice(0, 2) + '.' + digits.slice(2);
+        }
+        if (formatted === prev) return;
+        input.value = formatted;
+        try {
+          const pos = formatted.length;
+          input.setSelectionRange(pos, pos);
+        } catch (e) { /* ignore */ }
+      });
+    }
+
+    function bindMaterializedInput(input) {
+      if (!input || input.dataset.vesBound === '1') return input;
+      input.dataset.vesBound = '1';
+      if (input.classList.contains('ves-ses-date-value')) {
+        autoFormatDateDots(input);
+      }
+      input.addEventListener('change', function () { saveInput(input); });
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          input.blur();
+        }
+      });
+      return input;
+    }
+
+    function materializeDeferred(el) {
+      if (!el) return null;
+      if (el.tagName === 'INPUT') return bindMaterializedInput(el);
+      if (el.getAttribute('data-ves-deferred') !== '1') return el;
+      const td = el.closest('td');
+      if (!td) return el;
+      const isDate = el.classList.contains('ves-ses-date-value');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.autocomplete = 'off';
+      input.className = 'form-control form-control-sm text-center';
+      if (isDate) {
+        input.classList.add('ves-ses-date-value');
+        input.placeholder = 'дд.мм.гггг';
+      } else {
+        input.classList.add('ves-ses-value');
+        input.inputMode = 'decimal';
+      }
+      if (el.classList.contains('ves-ses-plan-calc-input')) {
+        input.classList.add('ves-ses-plan-calc-input');
+      }
+      ['data-kind', 'data-year', 'data-orig', 'data-raw', 'data-plan-rule', 'data-dirty', 'title'].forEach(function (name) {
+        const value = el.getAttribute(name);
+        if (value != null && value !== '') {
+          input.setAttribute(name, value);
+        }
+      });
+      input.value = (el.textContent || '').replace(/\u00a0/g, ' ').trim();
+      td.replaceChild(input, el);
+      const stationRec =
+        typeof window.armGsRefreshVesSesStationControl === 'function'
+          ? window.armGsRefreshVesSesStationControl(input)
+          : null;
+      void stationRec;
+      return bindMaterializedInput(input);
+    }
+
+    window.armGsMaterializeVesSesInput = materializeDeferred;
+
+    const vesSesTableEl = document.getElementById('vesSesTable');
+    if (vesSesTableEl) {
+      vesSesTableEl.addEventListener('pointerdown', function (ev) {
+        const deferred = ev.target && ev.target.closest && ev.target.closest('[data-ves-deferred="1"]');
+        if (!deferred || !vesSesTableEl.contains(deferred)) return;
+        const input = materializeDeferred(deferred);
+        if (input && input.focus) {
+          window.setTimeout(function () { input.focus(); input.select && input.select(); }, 0);
+        }
+      });
+      vesSesTableEl.addEventListener('focusin', function (ev) {
+        const deferred = ev.target && ev.target.closest && ev.target.closest('[data-ves-deferred="1"]');
+        if (!deferred || !vesSesTableEl.contains(deferred)) return;
+        const input = materializeDeferred(deferred);
+        if (input && input.focus) {
+          input.focus();
+          if (input.select) input.select();
+        }
+      });
+    }
+
+    function saveInput(input) {
+      const row = input.closest('tr');
+      const stationId = row && row.getAttribute('data-station-id');
+      if (!stationId) return;
+      const energyRow = document.querySelector(
+        '#vesSesTable tr[data-station-id="' + stationId + '"][data-ves-metric="energy"]'
+      );
+      const kind = input.getAttribute('data-kind');
+      const value = input.value;
+      const orig = input.getAttribute('data-orig') || '';
+      if (value === orig) return;
+      const payload = {
+        station_id: Number(stationId),
+        kind: kind,
+        value: value,
+        orig: orig,
+        rounding_digits: DIGITS,
+        start_year: START_YEAR,
+        end_year: END_YEAR
+      };
+      if (kind !== 'exploitation_date') {
+        payload.year = Number(input.getAttribute('data-year'));
+      }
+      fetch(SAVE_URL, {
+        method: 'PATCH',
+        headers: headers,
+        body: JSON.stringify(payload)
+      }).then(function (resp) { return resp.json().then(function (data) {
+        return { okHttp: resp.ok, data: data };
+      }); }).then(function (result) {
+        const data = result.data;
+        if (!data || !data.ok) {
+          input.value = orig;
+          input.removeAttribute('data-dirty');
+          if (data && data.error) {
+            window.alert(data.error);
+          }
+          return;
+        }
+        if (data.display != null) input.value = data.display;
+        input.setAttribute('data-orig', input.value);
+        if (kind === 'exploitation_date') {
+          const capacityRow = document.querySelector(
+            '#vesSesTable tr[data-station-id="' + stationId + '"][data-ves-station="1"]'
+          );
+          if (capacityRow) {
+            capacityRow.setAttribute('data-exploitation-date', input.value || '');
+          }
+          input.removeAttribute('data-dirty');
+          const updates = data.plan_updates || {};
+          const rawUpdates = data.plan_raw_updates || {};
+          const ruleUpdates = data.plan_rule_updates || {};
+          Object.keys(updates).forEach(function (year) {
+            let target = energyRow && energyRow.querySelector(
+              'input[data-kind="energy"][data-year="' + year + '"], [data-ves-deferred="1"][data-kind="energy"][data-year="' + year + '"]'
+            );
+            if (!target) return;
+            if ((target.getAttribute('data-orig') || '') !== '') return;
+            if (target.getAttribute('data-ves-deferred') === '1') {
+              target.textContent = updates[year];
+              target.classList.add('ves-ses-plan-calc-input');
+              target.removeAttribute('data-dirty');
+              if (rawUpdates[year]) {
+                target.setAttribute('data-raw', rawUpdates[year]);
+              }
+              if (ruleUpdates[year]) {
+                target.setAttribute('title', ruleUpdates[year]);
+                target.setAttribute('data-plan-rule', ruleUpdates[year]);
+                const td = target.closest('td');
+                if (td) td.setAttribute('title', ruleUpdates[year]);
+              } else if (rawUpdates[year]) {
+                target.setAttribute('title', rawUpdates[year]);
+                target.removeAttribute('data-plan-rule');
+              }
+              return;
+            }
+            target.value = updates[year];
+            target.classList.add('ves-ses-plan-calc-input');
+            target.removeAttribute('data-dirty');
+            if (rawUpdates[year]) {
+              target.setAttribute('data-raw', rawUpdates[year]);
+            }
+            if (ruleUpdates[year]) {
+              target.setAttribute('title', ruleUpdates[year]);
+              target.setAttribute('data-plan-rule', ruleUpdates[year]);
+              const td = target.closest('td');
+              if (td) td.setAttribute('title', ruleUpdates[year]);
+            } else if (rawUpdates[year]) {
+              target.setAttribute('title', rawUpdates[year]);
+              target.removeAttribute('data-plan-rule');
+            }
+          });
+          if (typeof window.armGsRecalcVesSesLive === 'function') {
+            window.armGsRecalcVesSesLive(stationId);
+          }
+          return;
+        }
+        if (data.raw) {
+          input.setAttribute('data-raw', data.raw);
+          input.setAttribute('title', data.raw);
+        } else {
+          input.removeAttribute('data-raw');
+          input.removeAttribute('title');
+        }
+        input.removeAttribute('data-dirty');
+        input.classList.remove('ves-ses-plan-calc-input');
+        const updates = data.plan_updates || {};
+        const rawUpdates = data.plan_raw_updates || {};
+        const ruleUpdates = data.plan_rule_updates || {};
+        Object.keys(updates).forEach(function (year) {
+          let target = energyRow && energyRow.querySelector(
+            'input[data-kind="energy"][data-year="' + year + '"], [data-ves-deferred="1"][data-kind="energy"][data-year="' + year + '"]'
+          );
+          if (!target) return;
+          if ((target.getAttribute('data-orig') || '') !== '') return;
+          if (target.getAttribute('data-ves-deferred') === '1') {
+            target.textContent = updates[year];
+            target.classList.add('ves-ses-plan-calc-input');
+            target.removeAttribute('data-dirty');
+            if (rawUpdates[year]) {
+              target.setAttribute('data-raw', rawUpdates[year]);
+            }
+            if (ruleUpdates[year]) {
+              target.setAttribute('title', ruleUpdates[year]);
+              target.setAttribute('data-plan-rule', ruleUpdates[year]);
+              const td = target.closest('td');
+              if (td) td.setAttribute('title', ruleUpdates[year]);
+            } else if (rawUpdates[year]) {
+              target.setAttribute('title', rawUpdates[year]);
+              target.removeAttribute('data-plan-rule');
+            }
+            return;
+          }
+          target.value = updates[year];
+          target.classList.add('ves-ses-plan-calc-input');
+          target.removeAttribute('data-dirty');
+          if (rawUpdates[year]) {
+            target.setAttribute('data-raw', rawUpdates[year]);
+          }
+          if (ruleUpdates[year]) {
+            target.setAttribute('title', ruleUpdates[year]);
+            target.setAttribute('data-plan-rule', ruleUpdates[year]);
+            const td = target.closest('td');
+            if (td) td.setAttribute('title', ruleUpdates[year]);
+          } else if (rawUpdates[year]) {
+            target.setAttribute('title', rawUpdates[year]);
+            target.removeAttribute('data-plan-rule');
+          }
+        });
+        if (typeof window.armGsRecalcVesSesLive === 'function') {
+          window.armGsRecalcVesSesLive(stationId);
+        }
+      }).catch(function () {
+        input.value = orig;
+        input.removeAttribute('data-dirty');
+      });
+    }
+
+    function isVesSesPasteable(inp) {
+      if (!inp || inp.readOnly || inp.disabled) return false;
+      if (inp.matches && inp.matches('input.ves-ses-value')) return true;
+      return !!(inp.matches && inp.matches('[data-ves-deferred="1"].ves-ses-value'));
+    }
+
+    function vesSesRowPasteTargets(tr) {
+      if (!tr) return [];
+      return Array.prototype.slice
+        .call(tr.querySelectorAll('input.ves-ses-value, [data-ves-deferred="1"].ves-ses-value'))
+        .filter(isVesSesPasteable)
+        .map(function (el) {
+          return materializeDeferred(el);
+        })
+        .filter(isVesSesPasteable);
+    }
+
+    if (typeof window.initPowerDemandSummaryRowPaste === 'function') {
+      window.initPowerDemandSummaryRowPaste(document.getElementById('vesSesTable'), {
+        isPasteableInput: isVesSesPasteable,
+        getRowPasteTargets: vesSesRowPasteTargets
+      });
+    }
+
+    if (typeof window.initVesSesLiveTotals === 'function') {
+      window.initVesSesLiveTotals(document.getElementById('vesSesTable'), {
+        years: {{ years|tojson }},
+        planYears: {{ plan_years|tojson }},
+        ownerYears: {{ owner_years|tojson }},
+        currentYear: {{ current_year|tojson }},
+        sampleStart: {{ sample_start|tojson }},
+        sampleEnd: {{ sample_end|tojson }},
+        digits: DIGITS,
+        chiimScale: {{ chiim_scale|tojson }},
+        chiimDigits: {{ chiim_digits|tojson }}
+      });
+    }
+  })();
+</script>
+{% endif %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const vesSesTable = document.getElementById("vesSesTable");
+    const vesSesNameTh = vesSesTable && vesSesTable.querySelector("thead th.ves-ses-name-col");
+    const vesSesTypeTh = vesSesTable && vesSesTable.querySelector("thead th.ves-ses-type-col");
+    function syncVesSesStickyColumns() {
+      if (!vesSesTable || !vesSesNameTh || !vesSesTypeTh) return;
+      vesSesTable.style.setProperty(
+        "--ves-ses-sticky-name-w",
+        vesSesNameTh.getBoundingClientRect().width + "px"
+      );
+      vesSesTable.style.setProperty(
+        "--ves-ses-sticky-type-w",
+        vesSesTypeTh.getBoundingClientRect().width + "px"
+      );
+    }
+    syncVesSesStickyColumns();
+    if (window.ResizeObserver) {
+      const stickyColObserver = new ResizeObserver(syncVesSesStickyColumns);
+      stickyColObserver.observe(vesSesNameTh);
+      stickyColObserver.observe(vesSesTypeTh);
+    }
+    window.addEventListener("resize", syncVesSesStickyColumns);
+
+    function bindCollapse(buttonId, collapseId, activeClass) {
+      const button = document.getElementById(buttonId);
+      const collapseEl = document.getElementById(collapseId);
+      if (!button || !collapseEl || typeof bootstrap === "undefined") return;
+
+      // Управление через API Bootstrap (без data-bs-toggle — иначе двойной toggle).
+      const collapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, {
+        toggle: false,
+      });
+      button.addEventListener("click", function () {
+        collapse.toggle();
+      });
+
+      function refreshStickyHeight() {
+        collapseEl.style.height = "";
+        collapseEl.style.overflow = "";
+        if (typeof window.armGsUpdatePdSummaryControlsStickyHeight === "function") {
+          window.armGsUpdatePdSummaryControlsStickyHeight();
+        }
+        if (typeof window.armGsApplyStickyTheadOffsets === "function") {
+          window.armGsApplyStickyTheadOffsets();
+        }
+      }
+
+      collapseEl.addEventListener("show.bs.collapse", function () {
+        button.classList.remove("btn-outline-secondary", "text-dark");
+        button.classList.add(activeClass, "text-white");
+        button.setAttribute("aria-expanded", "true");
+      });
+      collapseEl.addEventListener("shown.bs.collapse", refreshStickyHeight);
+      collapseEl.addEventListener("hide.bs.collapse", function () {
+        button.setAttribute("aria-expanded", "false");
+        if (buttonId === "filtersToggleBtn" && {{ has_active_filters | tojson }}) {
+          button.classList.remove("btn-primary");
+          button.classList.add("btn-warning", "text-white");
+          return;
+        }
+        button.classList.remove(activeClass, "text-white", "btn-warning");
+        button.classList.add("btn-outline-secondary", "text-dark");
+      });
+      collapseEl.addEventListener("hidden.bs.collapse", refreshStickyHeight);
+
+      if (collapseEl.classList.contains("show")) {
+        button.classList.remove("btn-outline-secondary", "text-dark");
+        if (!(buttonId === "filtersToggleBtn" && {{ has_active_filters | tojson }})) {
+          button.classList.add(activeClass, "text-white");
+        }
+        button.setAttribute("aria-expanded", "true");
+      }
+    }
+    bindCollapse("filtersToggleBtn", "filtersCollapse", "btn-primary");
+    bindCollapse("importExportToggleBtn", "importExportCollapse", "btn-primary");
+
+    (function initVesSesExport() {
+      const form = document.getElementById("vesSesExportForm");
+      const exportBtn = document.getElementById("vesSesExportBtn");
+      if (!form || !exportBtn) return;
+
+      function parseFilenameFromContentDisposition(cd) {
+        if (!cd) return "export.xlsx";
+        const mUtf = /filename\*=UTF-8''([^;\n]+)/i.exec(cd);
+        if (mUtf && mUtf[1]) {
+          try {
+            return decodeURIComponent(mUtf[1].trim());
+          } catch (e1) {
+            return mUtf[1].trim();
+          }
+        }
+        const mQuot = /filename="([^"]+)"/i.exec(cd);
+        if (mQuot && mQuot[1]) return mQuot[1].trim();
+        const mBare = /filename=([^;\n]+)/i.exec(cd);
+        if (mBare && mBare[1]) {
+          return mBare[1].trim().replace(/^["']|["']$/g, "");
+        }
+        return "export.xlsx";
+      }
+
+      exportBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (exportBtn.disabled) return;
+
+        const params = new URLSearchParams(window.location.search);
+        params.delete("page");
+        params.set("per_page", "all");
+        const rdSel = document.getElementById("rounding_digits");
+        if (rdSel) params.set("rounding_digits", rdSel.value);
+
+        const exportUrl =
+          form.getAttribute("action") +
+          (params.toString() ? "?" + params.toString() : "");
+        const originalHtml = exportBtn.innerHTML;
+        exportBtn.disabled = true;
+        exportBtn.innerHTML =
+          '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Экспорт…';
+
+        fetch(exportUrl, {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: { "X-Requested-With": "XMLHttpRequest" },
+        })
+          .then(function (resp) {
+            if (!resp.ok) {
+              return resp.text().then(function (text) {
+                throw new Error(
+                  "Ошибка сервера (" +
+                    resp.status +
+                    "): " +
+                    (text ? text.substring(0, 200) : "")
+                );
+              });
+            }
+            const contentType = (resp.headers.get("content-type") || "").toLowerCase();
+            if (
+              contentType.indexOf("application/vnd.openxmlformats") === -1 &&
+              contentType.indexOf("application/octet-stream") === -1
+            ) {
+              return resp.text().then(function () {
+                throw new Error("Получен неожиданный тип ответа от сервера");
+              });
+            }
+            const filename = parseFilenameFromContentDisposition(
+              resp.headers.get("Content-Disposition")
+            );
+            return resp.blob().then(function (blob) {
+              return { blob: blob, filename: filename };
+            });
+          })
+          .then(function (payload) {
+            const objectUrl = URL.createObjectURL(payload.blob);
+            const a = document.createElement("a");
+            a.href = objectUrl;
+            a.download = payload.filename || "export.xlsx";
+            document.body.appendChild(a);
+            a.click();
+            URL.revokeObjectURL(objectUrl);
+            document.body.removeChild(a);
+          })
+          .catch(function (error) {
+            console.error("[EXPORT ves_ses]", error);
+            alert(
+              "Ошибка при экспорте: " +
+                (error && error.message ? error.message : String(error))
+            );
+          })
+          .finally(function () {
+            exportBtn.innerHTML = originalHtml;
+            exportBtn.disabled = false;
+          });
+      });
+    })();
+
+    const roundingSelect = document.getElementById("rounding_digits");
+    const roundingHidden = document.getElementById("rounding_digits_hidden");
+    if (roundingSelect) {
+      roundingSelect.addEventListener("change", function () {
+        const value = roundingSelect.value;
+        if (roundingHidden) {
+          roundingHidden.value = value;
+        }
+        const url = new URL(window.location.href);
+        url.searchParams.set("rounding_digits", value);
+        window.location.href = url.toString();
+      });
+    }
+
+    document.querySelectorAll('input[name="station_type_filter"]').forEach(function (input) {
+      if (!input.closest(".dropdown-menu")) return;
+      input.addEventListener("change", function () {
+        const params = new URLSearchParams(window.location.search);
+        params.delete("station_type_filter");
+        params.set("page", "1");
+        document.querySelectorAll('input[name="station_type_filter"]:checked').forEach(function (cb) {
+          if (!cb.closest(".dropdown-menu")) return;
+          params.append("station_type_filter", cb.value);
+        });
+        const query = params.toString();
+        window.location.href = window.location.pathname + (query ? "?" + query : "");
+      });
+    });
+
+    document.querySelectorAll(".filter-clear-btn").forEach(function (button) {
+      button.addEventListener("click", function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        const filterName = this.getAttribute("data-filter-name");
+        if (!filterName) return;
+        const params = new URLSearchParams(window.location.search);
+        params.delete(filterName);
+        const query = params.toString();
+        window.location.href = window.location.pathname + (query ? "?" + query : "");
+      });
+    });
+  });
+</script>
+<script id="filters-data" type="application/json">
+  {{ {
+      'energy_system_type_list': energy_system_type_list|default([], true),
+      'union_energy_system_list': union_energy_system_list|default([], true),
+      'regional_energy_system_list': regional_energy_system_list|default([], true),
+      'federal_district_list': federal_district_list|default([], true),
+      'regional_district_list': regional_district_list|default([], true),
+      'energy_system_type_filter': energy_system_type_filter|default([], true),
+      'union_energy_system_filter': union_energy_system_filter|default([], true),
+      'regional_energy_system_filter': regional_energy_system_filter|default([], true),
+      'federal_district_filter': federal_district_filter|default([], true),
+      'regional_district_filter': regional_district_filter|default([], true),
+      'regional_energy_system_mapping': regional_energy_system_mapping|default({}, true),
+      'regional_district_mapping': regional_district_mapping|default({}, true),
+      'est_to_ues_mapping': est_to_ues_mapping|default({}, true),
+      'est_to_res_mapping': est_to_res_mapping|default({}, true),
+      'est_to_rd_mapping': est_to_rd_mapping|default({}, true),
+      'est_to_fd_mapping': est_to_fd_mapping|default({}, true),
+      'ues_to_est_mapping': ues_to_est_mapping|default({}, true),
+      'ues_to_res_mapping': ues_to_res_mapping|default({}, true),
+      'ues_to_rd_mapping': ues_to_rd_mapping|default({}, true),
+      'ues_to_fd_mapping': ues_to_fd_mapping|default({}, true),
+      'res_to_est_mapping': res_to_est_mapping|default({}, true),
+      'res_to_ues_mapping_one': res_to_ues_mapping_one|default({}, true),
+      'res_to_rd_mapping': res_to_rd_mapping|default({}, true),
+      'res_to_fd_mapping': res_to_fd_mapping|default({}, true),
+      'rd_to_fd_mapping_one': rd_to_fd_mapping_one|default({}, true),
+      'rd_to_res_mapping': rd_to_res_mapping|default({}, true),
+      'rd_to_ues_mapping': rd_to_ues_mapping|default({}, true),
+      'rd_to_est_mapping': rd_to_est_mapping|default({}, true),
+      'fd_to_rd_mapping': fd_to_rd_mapping|default({}, true),
+      'fd_to_res_mapping': fd_to_res_mapping|default({}, true),
+      'fd_to_ues_mapping': fd_to_ues_mapping|default({}, true),
+      'fd_to_est_mapping': fd_to_est_mapping|default({}, true)
+  } | tojson | safe }}
+</script>
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof initializeStationFilters === "function") {
+      initializeStationFilters();
+    }
+  });
+</script>
+{% endif %} {% endblock %}

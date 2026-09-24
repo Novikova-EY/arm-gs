@@ -1,47 +1,41 @@
 {% set current_slug = current_slug|default('') %}
 {% set first_row_active_slug = first_row_active_slug|default(current_slug) %}
-{% macro ee_balance_sheet_url(sheet_slug, hydro_year_key=None) -%}
+{% set cross_slug = current_slug if current_slug else 'ees-rossii' %}
+{% macro ee_balance_sheet_url(sheet_slug) -%}
   {%- if start_year is defined and end_year is defined and rounding_digits is defined -%}
-    {%- if hydro_year_key -%}
-      {{ url_for('energy_balance_bp.ee_balance_table', slug=sheet_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, hydro_year=hydro_year_key) }}
-    {%- else -%}
-      {{ url_for('energy_balance_bp.ee_balance_table', slug=sheet_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}
-    {%- endif -%}
+    {{ url_for('energy_balance_bp.ee_balance_table', slug=sheet_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}
   {%- else -%}
-    {%- if hydro_year_key -%}
-      {{ url_for('energy_balance_bp.ee_balance_table', slug=sheet_slug, hydro_year=hydro_year_key) }}
-    {%- else -%}
-      {{ url_for('energy_balance_bp.ee_balance_table', slug=sheet_slug) }}
-    {%- endif -%}
+    {{ url_for('energy_balance_bp.ee_balance_table', slug=sheet_slug) }}
   {%- endif -%}
 {%- endmacro %}
-<div class="d-flex flex-nowrap gap-2 w-100 overflow-auto pb-1">
-  {% for group in sheet_groups %}
-    {% for nav_sheet in group.sheets %}
-    {% set href_slug = nav_sheet.first_child_slug if nav_sheet.first_child_slug else nav_sheet.slug %}
-    <a href="{{ ee_balance_sheet_url(href_slug, hydro_year) }}"
-       class="btn {% if nav_sheet.slug == first_row_active_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0">
-      {{ nav_sheet.sheet_name }}
-    </a>
+{% macro power_balance_cross_url(sheet_slug) -%}
+  {%- if start_year is defined and end_year is defined and rounding_digits is defined -%}
+    {{ url_for('energy_balance_bp.power_balance_table', slug=sheet_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}
+  {%- else -%}
+    {{ url_for('energy_balance_bp.power_balance_table', slug=sheet_slug) }}
+  {%- endif -%}
+{%- endmacro %}
+<div class="d-flex align-items-center gap-2 w-100 pb-1">
+  <div class="d-flex flex-nowrap gap-2 overflow-auto flex-grow-1" style="min-width:0;">
+    {% for group in sheet_groups %}
+      {% for nav_sheet in group.sheets %}
+      {% set href_slug = nav_sheet.first_child_slug if nav_sheet.first_child_slug else nav_sheet.slug %}
+      <a href="{{ ee_balance_sheet_url(href_slug) }}"
+         class="btn {% if nav_sheet.slug == first_row_active_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0">
+        {{ nav_sheet.sheet_name }}
+      </a>
+      {% endfor %}
     {% endfor %}
-  {% endfor %}
+  </div>
+  <a href="{{ power_balance_cross_url(cross_slug) }}"
+     class="btn btn-secondary fs-5 text-nowrap flex-shrink-0">Балансы мощности</a>
 </div>
 {% if tites_east_child_sheets %}
 <div class="d-flex flex-nowrap gap-2 w-100 overflow-auto pb-1" role="navigation" aria-label="Энергосистемы ТИТЭС Востока">
   {% for nav_sheet in tites_east_child_sheets %}
-  <a href="{{ ee_balance_sheet_url(nav_sheet.slug, hydro_year) }}"
+  <a href="{{ ee_balance_sheet_url(nav_sheet.slug) }}"
      class="btn {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0">
     {{ nav_sheet.sheet_name }}
-  </a>
-  {% endfor %}
-</div>
-{% endif %}
-{% if show_hydro_year_nav %}
-<div class="d-flex flex-nowrap gap-2 w-100 overflow-auto pb-1" role="navigation" aria-label="Вариант водохозяйственного года">
-  {% for item in hydro_year_buttons %}
-  <a href="{{ ee_balance_sheet_url(current_slug, item.key) }}"
-     class="btn {% if hydro_year == item.key %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0">
-    {{ item.label }}
   </a>
   {% endfor %}
 </div>

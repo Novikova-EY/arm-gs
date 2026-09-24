@@ -75,10 +75,22 @@ def _norm_label(text: str | None) -> str:
 
 
 def _is_first_sz_name(name: str | None) -> bool:
+    """1-я СЗ: «1-я СЗ ЕЭС» и полное имя «Первая синхронная зона» (без обязательного «СЗ»)."""
     n = _norm_label(name)
+    compact = n.replace(" ", "")
     if "калининг" in n:
         return False
-    return ("1" in n or "перв" in n) and "сз" in n
+    if "втор" in n or compact.startswith("2я") or compact.startswith("2ая") or n.startswith("2 "):
+        return False
+    has_first = (
+        "перв" in n
+        or compact.startswith("1я")
+        or compact.startswith("1ая")
+        or n.startswith("1 ")
+        or "1 я" in n
+    )
+    has_zone = "сз" in n or "синхрон" in n
+    return has_first and has_zone
 
 
 def _rows_have_max_power(rows: list[Any]) -> bool:

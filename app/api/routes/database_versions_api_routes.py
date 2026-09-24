@@ -5,7 +5,8 @@ GET /api/database_versions — список версий для выбора
 GET /api/database_versions/<id> — сведения по одной версии
 
 Клиент выбирает id и дальше запрашивает данные:
-GET /api/datasets/<database_version>
+GET /api/datasets/<database_version>/<dataset>
+Пример: GET /api/datasets/37/gentypes_info
 """
 from __future__ import annotations
 

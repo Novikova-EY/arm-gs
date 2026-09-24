@@ -8,8 +8,9 @@
 (часто плановые годы лежат там, а строка ``without_nt`` пустая). Для 1-й СЗ —
 дополнительно варианты ``*_kaliningrad*``.
 
-ТИТЭС Востока (листы энергорайонов): как на
-``/energy_consumption/summary/oes/`` — одноименные строки **без варианта О-1**.
+ТИТЭС (Восток и Сибирь, включая РЭС и энергорайоны): как на
+``/energy_consumption/summary/oes/?ds_ues=317`` — строка с вариантом периметра
+«не указано» (``perimeter_variant_code IS NULL``), не «без НТ» и не О-1.
 """
 
 from __future__ import annotations
@@ -26,7 +27,11 @@ from app.common.perimeter_variant.registry import (
     is_o1_perimeter_variant_code,
 )
 from app.energy_balance.services.power_balance_demand_max_services import (
+    _is_first_sz_name,
     resolve_demand_max_territory,
+)
+from app.energy_balance.services.power_balance_page_services import (
+    _is_tites_isolated_balance_sheet,
 )
 from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
     EnergyUnitEnergyConsumptionParameter,
@@ -68,17 +73,6 @@ _FIRST_SA_EXTRA_CODES = (
     "without_nt_with_gaes_without_kaliningrad_es",
     "without_nt_without_gaes_without_kaliningrad_es",
 )
-
-
-def _norm_name(text: str | None) -> str:
-    return (text or "").casefold().replace("ё", "е").replace("-", " ").strip()
-
-
-def _is_first_sz_name(name: str | None) -> bool:
-    n = _norm_name(name)
-    if "калининг" in n:
-        return False
-    return ("1" in n or "перв" in n) and "сз" in n
 
 
 def year_values_from_consumption_rows(
@@ -151,6 +145,21 @@ def _merge_consumption_rows_by_year(
     return list(by_year.values())
 
 
+def _consumption_rows_unspecified_perimeter(
+    model: Any,
+    fk_column: str,
+    parent_id: int,
+) -> list[Any]:
+    """Сводка ТИТЭС: вариант «не указано» (NULL), без О-1 и без «без НТ»."""
+    return _merge_consumption_rows_by_year(
+        [None],
+        model,
+        fk_column,
+        parent_id,
+        skip_o1=True,
+    )
+
+
 def _consumption_rows_energy_unit_without_o1(
     model: Any,
     fk_column: str,
@@ -200,7 +209,11 @@ def load_ee_balance_consumption_inputs(
     years: list[int],
     sheets: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, dict[int, Decimal]]]:
-    """consumption по листам БЭ из потребления ЭЭ (вариант без НТ + GAES/NULL)."""
+    """consumption по листам БЭ из потребления ЭЭ.
+
+    Обычные ОЭС/СЗ/ЕЭС — вариант без НТ (+ GAES/NULL).
+    ТИТЭС — вариант «не указано» (NULL).
+    """
     if not years or not sheets:
         return {}
     inputs: dict[str, dict[str, dict[int, Decimal]]] = {}
@@ -220,13 +233,18 @@ def load_ee_balance_consumption_inputs(
             parent_id = int(territory["id"])
         except (TypeError, ValueError, KeyError):
             continue
-        rows = _consumption_rows_without_nt(
-            model,
-            fk_column,
-            parent_id,
-            kind=kind,
-            name=territory.get("name") or sheet.get("sheet_name"),
-        )
+        if _is_tites_isolated_balance_sheet(sheet):
+            rows = _consumption_rows_unspecified_perimeter(
+                model, fk_column, parent_id
+            )
+        else:
+            rows = _consumption_rows_without_nt(
+                model,
+                fk_column,
+                parent_id,
+                kind=kind,
+                name=territory.get("name") or sheet.get("sheet_name"),
+            )
         year_map = year_values_from_consumption_rows(rows, years)
         if year_map:
             inputs[slug] = {CONSUMPTION_ROW_KEY: year_map}

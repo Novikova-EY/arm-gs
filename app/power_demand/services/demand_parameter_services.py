@@ -1569,6 +1569,15 @@ def _summary_row_pd_snapshot(row: Any) -> dict[str, Any]:
         "combined_on_ez",
         "combined_on_fo",
         "combined_on_cz",
+        "calculated_max_power_mw",
+        "calculated_combined_on_ees_mw",
+        "calculated_combined_on_cz_mw",
+        "calculated_max_sa_mw",
+        "calculated_max_ees_russia_mw",
+        "calculated_max_ees_via_oes_mw",
+        "calculated_max_ees_via_es_mw",
+        "calculated_max_ees_via_ez_mw",
+        "calculated_max_power_consumption_mw",
     ):
         if hasattr(row, k):
             snap[k] = getattr(row, k, None)
@@ -1605,6 +1614,15 @@ def _fmt_pd_snap_val(
         "combined_on_ez",
         "combined_on_fo",
         "combined_on_cz",
+        "calculated_max_power_mw",
+        "calculated_combined_on_ees_mw",
+        "calculated_combined_on_cz_mw",
+        "calculated_max_sa_mw",
+        "calculated_max_ees_russia_mw",
+        "calculated_max_ees_via_oes_mw",
+        "calculated_max_ees_via_es_mw",
+        "calculated_max_ees_via_ez_mw",
+        "calculated_max_power_consumption_mw",
     ):
         return format_decimal_trim_for_display(val, digits=rounding_digits) or "—"
     s = str(val).strip()
@@ -1658,6 +1676,15 @@ def _diff_pd_snap_for_log(
                 "combined_on_ez",
                 "combined_on_fo",
                 "combined_on_cz",
+                "calculated_max_power_mw",
+                "calculated_combined_on_ees_mw",
+                "calculated_combined_on_cz_mw",
+                "calculated_max_sa_mw",
+                "calculated_max_ees_russia_mw",
+                "calculated_max_ees_via_oes_mw",
+                "calculated_max_ees_via_es_mw",
+                "calculated_max_ees_via_ez_mw",
+                "calculated_max_power_consumption_mw",
             )
         ):
             if _pd_snap_numeric_equal(vb, va):
@@ -1744,11 +1771,14 @@ def _maybe_log_pd_summary_cell(
     chunks: list[str] = [", ".join(header_bits)] + diff_lines
     from app.power_demand.services.demand_summary_logging import log_pd_summary_cell_change
 
+    vid = getattr(row, "database_version_id", None)
+    if vid is None:
+        vid = get_current_version()
     log_pd_summary_cell_change(
         _username(),
         summary_log_scope,
         detail_chunks=chunks,
-        database_version_id=getattr(row, "database_version_id", None),
+        database_version_id=vid,
     )
 
 
@@ -1794,6 +1824,11 @@ def _plan_year_extra_editable(demand_model_name: str, parameter_key: str) -> boo
             "calculated_max_power_mw",
             "calculated_combined_on_ees_mw",
         )
+    if dm in (
+        "SynchronousAreaDemandParameter",
+        "EnergySystemTypeDemandParameter",
+    ):
+        return pk == "combined_on_ees"
     return False
 
 

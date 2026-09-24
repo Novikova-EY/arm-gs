@@ -1,19 +1,22 @@
 # -*- coding: utf-8 -*-
-"""Импорт выработки ЭЭ из сводов ОЭС (xlsx/xls) во все версии БД."""
+"""Импорт выработки ЭЭ из сводов ОЭС (xlsx/xls) в выбранную версию БД."""
 
 from __future__ import annotations
 
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from io import BytesIO
+from math import isfinite
 from typing import Any, Sequence
 
 from openpyxl import load_workbook
 
-from app.common.models.database_version_model import DatabaseVersion
-from app.common.services.database_version_filter import filter_by_explicit_db_version
+from app.common.services.database_version_filter import (
+    filter_by_explicit_db_version,
+    get_current_db_version_id,
+)
 from app.common.services.tranzaction_services import _commit_with_retry, quick_fix_seq
 from app.extensions import db
 from app.energy_balance.models.espp_energy_generation_model import ESPPEnergyGeneration
@@ -130,19 +133,31 @@ def _is_uuid(value: str) -> bool:
     return bool(UUID_RE.match(value.strip()))
 
 
+_DECIMAL_6 = Decimal("0.000001")
+
+
 def _to_decimal_or_none(value) -> Decimal | None:
-    if value is None:
+    """Приведение к Decimal с округлением до 6 знаков (хвост float/текста из Excel)."""
+    if value is None or isinstance(value, bool):
         return None
     if isinstance(value, str) and not value.strip():
         return None
     try:
-        if isinstance(value, (int, float, Decimal)):
-            dec = Decimal(str(value))
+        if isinstance(value, Decimal):
+            dec = value
+        elif isinstance(value, int):
+            dec = Decimal(value)
+        elif isinstance(value, float):
+            # openpyxl: 1693.362 → 1693.3619999999998; format(.6f) срезает хвост.
+            if not isfinite(value):
+                return None
+            dec = Decimal(format(value, ".6f"))
         else:
+            # Текст тоже может нести хвост: «118,67106666666667».
             dec = to_decimal(value)
-        if dec is None:
-            return None
-        return dec
+            if dec is None:
+                return None
+        return dec.quantize(_DECIMAL_6, rounding=ROUND_HALF_UP).normalize()
     except (InvalidOperation, ValueError, TypeError):
         return None
 
@@ -669,14 +684,6 @@ def parse_ee_generation_workbook(file_bytes: bytes, filename: str | None = None)
     return parsed
 
 
-def _all_database_version_ids() -> list[int | None]:
-    version_ids: list[int | None] = [None]
-    for dv in DatabaseVersion.query.filter(DatabaseVersion.id.isnot(None)).order_by(DatabaseVersion.id).all():
-        if dv.id is not None:
-            version_ids.append(dv.id)
-    return version_ids
-
-
 def _build_res_id_by_name_map(version_id: int | None) -> dict[str, int]:
     result: dict[str, int] = {}
     q = filter_by_explicit_db_version(
@@ -1044,17 +1051,10 @@ def import_ee_generation_from_excel(file, user: str) -> dict[str, Any]:
     filename = getattr(file, "filename", None)
     parsed = parse_ee_generation_workbook(raw, filename=filename)
 
-    version_ids = _all_database_version_ids()
-    stats: dict[str, int] = defaultdict(int)
-    errors: list[str] = []
-
-    for version_id in version_ids:
-        version_stats, version_errors = _import_parsed_workbook(parsed, version_id)
-        for key, value in version_stats.items():
-            stats[key] += value
-        errors.extend(version_errors)
-        if len(errors) > 30:
-            errors = errors[:30]
+    version_id = get_current_db_version_id()
+    stats, errors = _import_parsed_workbook(parsed, version_id)
+    if len(errors) > 30:
+        errors = errors[:30]
 
     try:
         quick_fix_seq(SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations", "id")
@@ -1074,6 +1074,7 @@ def import_ee_generation_from_excel(file, user: str) -> dict[str, Any]:
         + stats["espp_rows_updated"]
         + stats["control_rows_updated"]
     )
+    version_label = f"версия БД {version_id}" if version_id is not None else "без версии БД"
     if parsed.is_multi_year:
         years = sorted(
             {
@@ -1095,7 +1096,7 @@ def import_ee_generation_from_excel(file, user: str) -> dict[str, Any]:
             f"{f', КПО: {kto_updated}' if kto_updated else ''}"
             f"{f', признак эл.ст.: {sign_updated}' if sign_updated else ''}). "
             f"Строк в файле: {len(parsed.multi_year_stations)}. "
-            f"Версий БД: {len(version_ids)}."
+            f"Загружено в {version_label}."
         )
     else:
         message = (
@@ -1104,7 +1105,7 @@ def import_ee_generation_from_excel(file, user: str) -> dict[str, Any]:
             f"(станции: {stats['station_rows_updated']}, "
             f"ЭСПП: {stats['espp_rows_updated']}, "
             f"контроль: {stats['control_rows_updated']}). "
-            f"Версий БД: {len(version_ids)}."
+            f"Загружено в {version_label}."
         )
     log_to_db(
         user,

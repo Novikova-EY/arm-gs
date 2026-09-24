@@ -103,9 +103,9 @@
         min-width: 0;
     }
     .power-demand-summary-table col.summary-col-parameter {
-        width: 22rem;
-        min-width: 18rem;
-        max-width: 28rem;
+        width: 26rem;
+        min-width: 20rem;
+        max-width: 32rem;
         box-sizing: border-box;
     }
     .power-demand-summary-table col.summary-col-year {
@@ -116,8 +116,8 @@
     }
     .summary-parameter-col,
     .summary-parameter-cell {
-        width: 22rem;
-        min-width: 18rem;
+        width: 26rem;
+        min-width: 20rem;
         box-sizing: border-box;
         overflow-wrap: anywhere;
         word-break: break-word;
@@ -215,6 +215,29 @@
                     </td>
                     {% endfor %}
                 </tr>
+                <tr class="summary-row-param" data-parameter-key="peak_datetime">
+                    <td class="align-middle summary-parameter-cell">{{ row_peak_dt_label }}</td>
+                    {% for col in columns %}
+                    {% set val = peak_values[loop.index0] %}
+                    <td class="text-center summary-year-cell">
+                        {% if can_edit_ozp %}
+                        <input type="text"
+                               class="form-control form-control-lg text-center fuel-param-input"
+                               autocomplete="off"
+                               maxlength="64"
+                               placeholder="дд.мм.гггг чч:мм"
+                               data-model="OzpMaxPowerParameter"
+                               data-parameter-key="peak_datetime"
+                               data-slice="{{ col.ozp_end }}"
+                               value="{{ val }}"
+                               title="{{ val }}"
+                               aria-label="{{ row_peak_dt_label }} — {{ col.label }}" />
+                        {% else %}
+                        {{ val if val else "—" }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
                 <tr class="summary-row-param" data-parameter-key="growth_pct">
                     <td class="align-middle summary-parameter-cell">
                         <span class="text-wrap">{{ row_growth_label }}<i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ (growth_formula_text or '')|e }}" style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;" aria-label="Как считается"></i></span>
@@ -230,8 +253,8 @@
         </table>
     </div>
 </div>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}"></script>
-<script src="{{ url_for('static', filename='js/power_demand/ozp_max_power.js') }}"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='js/power_demand/ozp_max_power.js') }}?v=3"></script>
 <script>
 window.__ozpMaximaCsrfToken = {{ csrf_token|tojson }};
 </script>

@@ -12,6 +12,8 @@ from app.fuel.services.equipment_groups.equipment_group_specific_fuel_consumptio
     get_equipment_groups_with_specific_fuel_consumption_data,
     SPECIFIC_FUEL_CONSUMPTION_COLUMNS,
     build_equipment_group_specific_fuel_consumption_hierarchy,
+    consumption_has_calc_mismatch,
+    get_calc_mismatch_attrs,
 )
 from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
     EQUIPMENT_GROUP_ID_HEADER,
@@ -24,6 +26,12 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
     style_data_row,
     write_merged_section_row,
 )
+
+# Excel «Bad»: красный фон расходящихся ячеек, как table-danger на странице
+FILL_CALC_MISMATCH = PatternFill(patternType="solid", fgColor="FFC7CE")
+FONT_CALC_MISMATCH = Font(color="9C0006")
+FONT_CALC_MISMATCH_BOLD = Font(color="9C0006", bold=True)
+_DATA_COLUMNS_OFFSET = 2  # EquipmentGroup.id + «Группа оборудования»
 
 
 def _format_cell_value(param, attr, is_numeric, rounding_digits):
@@ -38,6 +46,20 @@ def _format_cell_value(param, attr, is_numeric, rounding_digits):
     return str(val) if val is not None else "—"
 
 
+def _highlight_calc_mismatch_cells(ws, param, *, bold=False) -> None:
+    """Красный фон и текст у пар поле / *_calc — как table-danger на странице."""
+    mismatched = get_calc_mismatch_attrs(param)
+    if not mismatched:
+        return
+    row_idx = ws.max_row
+    font = FONT_CALC_MISMATCH_BOLD if bold else FONT_CALC_MISMATCH
+    for col_offset, (attr, _label, _is_numeric) in enumerate(SPECIFIC_FUEL_CONSUMPTION_COLUMNS):
+        if attr in mismatched:
+            cell = ws.cell(row=row_idx, column=_DATA_COLUMNS_OFFSET + 1 + col_offset)
+            cell.fill = FILL_CALC_MISMATCH
+            cell.font = font
+
+
 def export_stations_equipment_group_specific_fuel_consumption_to_excel(
     filters,
     start_year,
@@ -47,11 +69,13 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
     page=1,
     show_all=True,
     rounding_digits=1,
+    show_calc_mismatch=False,
 ):
     """
     Экспортирует удельные показатели групп оборудования в Excel.
     Учитывает фильтры: субъекты, ОЭС, региональные энергосистемы и т.п.
     Всегда полный набор строк (per_page=all); иерархия и агрегации по полным данным.
+    При show_calc_mismatch — только строки, которые видны по кнопке «Расхождения calc».
     """
     data = get_equipment_groups_with_specific_fuel_consumption_data(
         filters=filters,
@@ -62,6 +86,12 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
         show_all=show_all,
     )
     rows = data.get("rows") or []
+    if show_calc_mismatch:
+        rows = [
+            (eg, param)
+            for eg, param in rows
+            if consumption_has_calc_mismatch(param)
+        ]
     if not rows:
         return None
 
@@ -153,6 +183,10 @@ def export_stations_equipment_group_specific_fuel_consumption_to_excel(
                             if is_composite_parent:
                                 style_data_row(
                                     ws, ws.max_row, bold=True, fill=FILL_STATION_SUMMARY
+                                )
+                            if show_calc_mismatch:
+                                _highlight_calc_mismatch_cells(
+                                    ws, param, bold=is_composite_parent
                                 )
 
     for col_idx, max_length in enumerate(max_lengths, start=1):

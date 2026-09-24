@@ -97,8 +97,36 @@
         return;
     }
 
+    function formatOzpPeakDatetimeInput(inp) {
+        if (!inp || inp.dataset.parameterKey !== "peak_datetime") {
+            return;
+        }
+        var raw = String(inp.value || "").trim();
+        if (!raw) {
+            return;
+        }
+        var m = /(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?\s+(\d{1,2})[:\-.](\d{2})/.exec(raw);
+        if (!m) {
+            return;
+        }
+        var dd = String(parseInt(m[1], 10)).padStart(2, "0");
+        var mm = String(parseInt(m[2], 10)).padStart(2, "0");
+        var datePart = dd + "." + mm;
+        if (m[3]) {
+            var y = parseInt(m[3], 10);
+            if (m[3].length === 2) {
+                y = y <= 68 ? 2000 + y : 1900 + y;
+            }
+            datePart += "." + String(y).padStart(4, "0");
+        }
+        var hh = String(parseInt(m[4], 10)).padStart(2, "0");
+        inp.value = datePart + " " + hh + ":" + m[5];
+    }
+
     if (typeof window.initPowerDemandSummaryRowPaste === "function") {
-        window.initPowerDemandSummaryRowPaste(table);
+        window.initPowerDemandSummaryRowPaste(table, {
+            formatPeakDatetime: formatOzpPeakDatetimeInput,
+        });
     }
 
     if (typeof bootstrap !== "undefined" && bootstrap.Tooltip) {
@@ -186,6 +214,11 @@
             recalcOzpGrowth();
         }
     });
+    table.addEventListener("blur", function (e) {
+        if (e.target && e.target.matches('input.fuel-param-input[data-parameter-key="peak_datetime"]')) {
+            formatOzpPeakDatetimeInput(e.target);
+        }
+    }, true);
 
     var saveBtn = document.getElementById("ozpMaximaSaveBtn");
     var saveUrl = table.dataset.saveUrl;
@@ -198,7 +231,7 @@
             return;
         }
         var cells = [];
-        table.querySelectorAll("input.fuel-param-input[data-parameter-key=\"max_power\"][data-slice]").forEach(
+        table.querySelectorAll("input.fuel-param-input[data-parameter-key][data-slice]").forEach(
             function (inp) {
                 cells.push({
                     ozp_end_year: inp.getAttribute("data-slice"),

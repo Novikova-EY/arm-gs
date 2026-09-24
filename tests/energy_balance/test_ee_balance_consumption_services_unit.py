@@ -120,8 +120,10 @@ def test_load_energy_unit_consumption_for_tites_sheet():
     assert captured["fk"] == "id_energy_unit"
     assert captured["parent_id"] == 104
     assert None in captured["codes"]
+    assert CODE_WITHOUT_NT not in captured["codes"]
     assert "o1" not in captured["codes"]
     assert "o1_without_nt" not in captured["codes"]
+    assert captured["codes"] == [None]
     assert inputs["eu-104"]["consumption"][2026] == Decimal("41")
 
 
@@ -160,3 +162,36 @@ def test_tites_eu_consumption_does_not_fall_back_to_o1():
         inputs = load_ee_balance_consumption_inputs([2026], sheets=sheets)
 
     assert "eu-104" not in inputs
+
+
+def test_tites_ues_consumption_uses_unspecified_not_without_nt():
+    sheets = [
+        {
+            "slug": "oes-318",
+            "layout": "oes_standard",
+            "group": "oes",
+            "sheet_name": "ТИТЭС Сибири",
+            "territory": {"kind": "ues", "id": 318, "name": "ТИТЭС Сибири"},
+        }
+    ]
+    captured = {}
+
+    def fake_rows(model, fk, parent_id, perimeter_variant_code=None):
+        captured.setdefault("codes", []).append(perimeter_variant_code)
+        if perimeter_variant_code is None:
+            return [_row(year=2026, value=Decimal("7678"))]
+        if perimeter_variant_code == CODE_WITHOUT_NT:
+            return [_row(year=2026, value=Decimal("15962"))]
+        return []
+
+    with patch(
+        "app.energy_balance.services.ee_balance_consumption_services.resolve_demand_max_territory",
+        return_value={"kind": "ues", "id": 318, "name": "ТИТЭС Сибири"},
+    ), patch(
+        "app.energy_balance.services.ee_balance_consumption_services.get_demand_rows",
+        fake_rows,
+    ):
+        inputs = load_ee_balance_consumption_inputs([2026], sheets=sheets)
+
+    assert captured["codes"] == [None]
+    assert inputs["oes-318"]["consumption"][2026] == Decimal("7678")

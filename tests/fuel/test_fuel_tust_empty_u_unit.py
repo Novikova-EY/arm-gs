@@ -29,3 +29,23 @@ def test_boiler_tust_from_q_turt_when_u_is_empty():
     assert fuel_param.tust == expected
     assert fuel_param.b == expected
     assert fuel_param.eust == Decimal("0")
+
+
+def test_boiler_tust_when_consumption_row_missing():
+    """Нет строки U в [byear, cyear] — как пустая U, не Skip: TUST = Q·TURT/1000."""
+    svc = EquipmentGroupFuelCalculationService(session=None)
+    fuel_param = SimpleNamespace(
+        qotr=None,
+        e=Decimal("0"),
+        q=Decimal("1098.2"),
+        turt=Decimal("168.8"),
+        nust=None,
+        ved=2,
+        equipment_group=None,
+        ewtp=None,
+    )
+    svc._calculate_energy_part(fuel_param=fuel_param, consumption=None)
+    expected = Decimal("1098.2") * Decimal("168.8") / Decimal("1000")
+    assert fuel_param.tust == expected
+    assert fuel_param.b == expected
+    assert fuel_param.eust == Decimal("0")

@@ -92,17 +92,64 @@ def test_build_centralized_zone_perimeter_entities_skips_unspecified_variant() -
     assert entities[0].parameters == dss.PARAMETERS_CZ_OES_SUMMARY
 
 
-def test_synchronous_area_summary_parameters_omit_combined_on_ees() -> None:
-    """На сводной таблице у СЗ нет совмещённого на ЕЭС, расчёта и проверки к нему."""
+def test_synchronous_area_summary_parameters_include_combined_on_ees() -> None:
+    """На сводной таблице у СЗ есть совмещённое на ЕЭС (строка k на coeff), без расчёта/проверки."""
     for params in (
         dss.PARAMETERS_SYNCHRONOUS_AREA,
         dss.PARAMETERS_FIRST_SYNCHRONOUS_AREA_OES_SUMMARY,
     ):
         keys = {k for k, _ in params}
-        assert "combined_on_ees" not in keys
+        assert "combined_on_ees" in keys
         assert "calculated_max_sa_mw" not in keys
+        assert "calculated_combined_on_ees_mw" not in keys
         assert "max_power" in keys
         assert "calculated_max_power_mw" in keys
+
+
+def test_ees_russia_summary_parameters_include_combined_on_ees() -> None:
+    for params in (
+        dss.PARAMETERS_EES_RUSSIA_OES_SUMMARY,
+        dss.PARAMETERS_EES_RUSSIA_EZ_SUMMARY,
+    ):
+        keys = {k for k, _ in params}
+        assert "combined_on_ees" in keys
+        assert "max_power" in keys
+
+
+def test_tites_summary_parameters_include_combined_for_coeff_k() -> None:
+    keys = {k for k, _ in dss.PARAMETERS_TITES_OES_SUMMARY}
+    assert "max_power" in keys
+    assert "combined_on_oes" in keys
+    assert "combined_on_ees" in keys
+
+
+def test_res_combined_aggregation_skips_tites_branch_rows() -> None:
+    years = [2024]
+    rows = [
+        {
+            "parameter_key": "combined_on_ees",
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "id_regional_energy_system": 1,
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": 1,
+            "id_union_energy_system": 10,
+            "year_values": ["100"],
+            "pd_pd_tites_branch_row": True,
+        },
+        {
+            "parameter_key": "combined_on_ees",
+            "demand_model_name": "RegionalEnergySystemDemandParameter",
+            "id_regional_energy_system": 2,
+            "parent_fk_column": "id_regional_energy_system",
+            "parent_id": 2,
+            "id_union_energy_system": 20,
+            "year_values": ["50"],
+        },
+    ]
+    sourced = list(
+        dss._iter_res_level_aggregation_source_rows(rows, "combined_on_ees")
+    )
+    assert [r["id_regional_energy_system"] for r in sourced] == [2]
 
 
 def test_build_national_and_sync_zone_prefix_entities_order() -> None:

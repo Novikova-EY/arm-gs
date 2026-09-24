@@ -10,6 +10,10 @@
     min-width: 100%;
 }
 
+.ves-ses-plan-calc-cell .ves-ses-plan-calc-input {
+    background-color: #fff8e1;
+}
+
 /* Область «Агрегаты»: на всю высоту контента; при узком окне — только горизонтальный скролл */
 .station-machines-table-viewport {
     width: 100%;
@@ -258,6 +262,7 @@
 {% set can_edit_station_energy = can_edit_station_energy | default(can_edit or can_edit_fuel_dz) %}
 {% set can_add_machine = can_add_machine | default(false) %}
 {% set is_station_decentralized_zone = is_station_decentralized_zone | default(false) %}
+{% set is_ves_or_ses_station = is_ves_or_ses_station | default(false) %}
 {% set can_edit_any = can_edit or can_edit_fuel or can_edit_fuel_dz %}
 {% set can_edit_external_code = current_user.is_authenticated and current_user.is_admin %}
 {# id / external_code / Код КТО — не для reader/guest; только admin и editor #}
@@ -975,6 +980,9 @@
                                 </tbody>
                             </table>
                         </div>
+                        {% if (is_ges_station or is_gaes_station) and hydro_forecast %}
+                        {% include 'generation/prospective_places/_hydro_energy_forecast_table.html' %}
+                        {% endif %}
                         {% if is_gaes_station %}
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
                             <h3 class="mb-0 ms-3">Потребление электрической энергии ГАЭС на заряд, млн кВтч</h3>
@@ -1012,6 +1020,31 @@
                             </table>
                         </div>
                         {% endif %}
+                        {% if is_ves_or_ses_station %}
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
+                            <h3 class="mb-0 ms-3">Выработка электроэнергии электростанцией (от собственника), млн кВтч</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped table-bordered table-responsive machines-table" id="station-owner-energy-generation-table" data-auto-export-excel="off">
+                                <thead class="table-success">
+                                    <tr class="text-center align-middle" style="word-wrap: break-word;">
+                                        <th class="align-middle" style="min-width: 260px;"></th>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                        <th class="text-center align-middle{% if year_features and year_features.get(year) %} machines-year-th-with-feature{% endif %}"{% if not (year_features and year_features.get(year)) %} style="min-width: 4.5rem;"{% endif %}>
+                                            {{ year }}
+                                            {% if year_features and year_features.get(year) %}
+                                                <div class="machines-year-feature-caption">{{ year_features.get(year) }}</div>
+                                            {% endif %}
+                                        </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody id="station-owner-energy-generation-tbody">
+                                    {% include 'generation/stations/_station_owner_energy_generation_row.html' %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
                         {% if can_edit_any %}
                         <div class="d-flex justify-content-end mt-3 gap-3 flex-wrap">
                             <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
@@ -1021,7 +1054,8 @@
                                     value="1"
                                     class="btn btn-outline-success fs-5"
                                     data-is-gaes="{{ 1 if is_gaes_station else 0 }}"
-                                    title="{% if is_gaes_station %}Применить код КТО, таблицы «Выработка электроэнергии» и «Потребление ГАЭС на заряд» во всех версиях БД (по external_code станции){% else %}Применить код КТО и таблицу «Выработка электроэнергии электростанцией» во всех версиях БД (по external_code станции){% endif %}"
+                                    data-is-ves-ses="{{ 1 if is_ves_or_ses_station else 0 }}"
+                                    title="{% if is_gaes_station %}Применить код КТО, таблицы «Выработка электроэнергии» и «Потребление ГАЭС на заряд» во всех версиях БД (по external_code станции){% elif is_ves_or_ses_station %}Применить код КТО и таблицы «Выработка электроэнергии электростанцией» и «Выработка электроэнергии электростанцией (от собственника)» во всех версиях БД (по external_code станции){% else %}Применить код КТО и таблицу «Выработка электроэнергии электростанцией» во всех версиях БД (по external_code станции){% endif %}"
                                     onclick="return confirmStationMachinesSaveAllVersions(this);">Сохранить во всех версиях</button>
                             {% endif %}
                             <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
@@ -1035,6 +1069,10 @@
                         var table = document.getElementById('station-energy-generation-table');
                         if (table && typeof window.initProspectivePlaceForecastRowPaste === 'function') {
                             window.initProspectivePlaceForecastRowPaste(table);
+                        }
+                        var ownerTable = document.getElementById('station-owner-energy-generation-table');
+                        if (ownerTable && typeof window.initProspectivePlaceForecastRowPaste === 'function') {
+                            window.initProspectivePlaceForecastRowPaste(ownerTable);
                         }
                     })();
                     </script>
@@ -1635,6 +1673,25 @@
                 .then(html => { genTbody.innerHTML = html; })
                 .catch(err => console.error('Ошибка обновления выработки:', err));
             setUrlSearchParamPreserveOthers('rounding_digits_gen', selectedRounding);
+            reloadOwnerEnergyGenerationRow(selectedRounding);
+        }
+
+        function reloadOwnerEnergyGenerationRow(selectedRounding) {
+            const ownerTbody = document.getElementById('station-owner-energy-generation-tbody');
+            if (!ownerTbody) return;
+            const ownerUrl = `{{ url_for('station_bp.station_details_station_owner_energy_row', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits_gen=${encodeURIComponent(selectedRounding)}`;
+            fetch(ownerUrl, { cache: 'no-store' })
+                .then(r => {
+                    if (r.status === 204) {
+                        ownerTbody.innerHTML = '';
+                        return Promise.resolve(null);
+                    }
+                    return r.text();
+                })
+                .then(html => {
+                    if (html !== null) ownerTbody.innerHTML = html;
+                })
+                .catch(err => console.error('Ошибка обновления выработки от собственника:', err));
         }
 
         function reloadGaesChargeRow(selectedRounding) {
@@ -1751,16 +1808,26 @@ window.confirmStationMachinesSaveAllVersions = function (btn) {
     if (!form) return false;
 
     var isGaes = btn && String(btn.getAttribute('data-is-gaes') || '') === '1';
-    var msg1 = isGaes
-        ? ('Сохранить код КТО, таблицы выработки и заряда ГАЭС во ВСЕХ версиях базы данных?\n\n'
+    var isVesSes = btn && String(btn.getAttribute('data-is-ves-ses') || '') === '1';
+    var msg1;
+    if (isGaes) {
+        msg1 = 'Сохранить код КТО, таблицы выработки и заряда ГАЭС во ВСЕХ версиях базы данных?\n\n'
             + 'Будут синхронизированы код КТО, таблицы «Выработка электроэнергии электростанцией» '
             + 'и «Потребление ГАЭС на заряд» для всех копий электростанции с тем же '
             + 'external_code в каждой версии БД.\n\n'
-            + 'Остальная общая информация и агрегаты не изменяются.')
-        : ('Сохранить код КТО и таблицу выработки во ВСЕХ версиях базы данных?\n\n'
+            + 'Остальная общая информация и агрегаты не изменяются.';
+    } else if (isVesSes) {
+        msg1 = 'Сохранить код КТО, таблицы выработки и выработки от собственника во ВСЕХ версиях базы данных?\n\n'
+            + 'Будут синхронизированы код КТО, таблицы «Выработка электроэнергии электростанцией» '
+            + 'и «Выработка электроэнергии электростанцией (от собственника)» для всех копий '
+            + 'электростанции с тем же external_code в каждой версии БД.\n\n'
+            + 'Остальная общая информация и агрегаты не изменяются.';
+    } else {
+        msg1 = 'Сохранить код КТО и таблицу выработки во ВСЕХ версиях базы данных?\n\n'
             + 'Будут синхронизированы код КТО и таблица «Выработка электроэнергии электростанцией, млн кВтч» '
             + 'для всех копий электростанции с тем же external_code в каждой версии БД.\n\n'
-            + 'Остальная общая информация и агрегаты не изменяются.');
+            + 'Остальная общая информация и агрегаты не изменяются.';
+    }
     if (!confirm(msg1)) {
         return false;
     }

@@ -17,6 +17,7 @@ from app.energy_balance.services.ee_generation_import_services import (
     _extract_external_code,
     _is_espp_row,
     _resolve_espp_res_name,
+    _to_decimal_or_none,
     parse_ee_generation_workbook,
 )
 from app.generation.models.station.station_constants import STATION_SIGN_ESPP
@@ -33,6 +34,19 @@ def _build_workbook_bytes(rows: list[list]) -> bytes:
     buffer = BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()
+
+
+def test_to_decimal_or_none_strips_float_binary_noise():
+    assert _to_decimal_or_none(1693.3619999999998) == Decimal("1693.362")
+    assert _to_decimal_or_none(119.67106599999999) == Decimal("119.671066")
+    assert _to_decimal_or_none(563.4134000000001) == Decimal("563.4134")
+    assert _to_decimal_or_none(118.67106666666667) == Decimal("118.671067")
+    assert _to_decimal_or_none("118,67106666666667") == Decimal("118.671067")
+    assert _to_decimal_or_none("17430,157457") == Decimal("17430.157457")
+    assert _to_decimal_or_none(100.5) == Decimal("100.5")
+    assert _to_decimal_or_none(None) is None
+    assert _to_decimal_or_none("") is None
+    assert _to_decimal_or_none(Decimal("1.25")) == Decimal("1.25")
 
 
 def test_detect_multi_year_column_layout():

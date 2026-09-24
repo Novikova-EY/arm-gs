@@ -48,14 +48,19 @@ from app.common.services.database_version_filter import (
 MOSCOW = ZoneInfo("Europe/Moscow")
 
 
-def _is_gaes_station(station: Station) -> bool:
-    try:
-        st = station.station_type
-        if not st or not st.name:
-            return False
-        return st.name.strip().lower() == "гаэс"
-    except Exception:
-        return False
+from app.generation.services.station_services.station_type_flags import (
+    is_gaes_station as _is_gaes_station,
+    is_ges_station as _is_ges_station,
+    is_ves_or_ses_station as _is_ves_or_ses_station,
+)
+from app.generation.services.station_services.ves_ses_plan_generation_services import (
+    attach_ves_ses_plan_generation,
+)
+from app.generation.prospective_places.services.hydro_energy_forecast_services import (
+    build_hydro_forecast_view,
+    hydro_forecast_owner_for_station,
+    save_station_hydro_forecast_from_form,
+)
 
 
 def _save_station_meta_from_form(
@@ -220,6 +225,8 @@ from app.generation.services.station_services.station_services import (
     save_station_energy_generation_service,
     station_annual_energy_by_year,
     save_station_gaes_charge_consumption_service,
+    station_owner_energy_by_year,
+    save_station_owner_energy_generation_service,
     _apply_machine_display_names,
     _apply_machine_gen_companies_for_version,
     get_gen_company_choices_for_version,
@@ -255,9 +262,11 @@ def _handle_station_machines_all_versions_save(
     start_year: int,
     end_year: int,
     is_gaes_station: bool,
+    is_ves_or_ses_station: bool,
 ) -> bool:
     """
-    Синхронизация кода КТО, выработки (и заряда ГАЭС для станций ГАЭС)
+    Синхронизация кода КТО, выработки (заряда ГАЭС для ГАЭС,
+    выработки от собственника для ВЭС/СЭС)
     station_details во всех версиях БД.
     Возвращает True, если запрос был с all_versions=1 (вызвавший обработку или отказ).
     """
@@ -285,6 +294,7 @@ def _handle_station_machines_all_versions_save(
     sync_station_kto = True
     sync_station_energy = True
     sync_station_gaes_charge = bool(is_gaes_station)
+    sync_station_owner_energy = bool(is_ves_or_ses_station)
 
     request_meta = {
         "path": request.path,
@@ -301,6 +311,7 @@ def _handle_station_machines_all_versions_save(
             end_year=end_year,
             sync_station_energy=sync_station_energy,
             sync_station_gaes_charge=sync_station_gaes_charge,
+            sync_station_owner_energy=sync_station_owner_energy,
             sync_station_general_info=sync_station_general_info,
             sync_station_kto=sync_station_kto,
             sync_machines=False,
@@ -309,6 +320,7 @@ def _handle_station_machines_all_versions_save(
         vt = result.get("versions_touched", 0)
         ue = result.get("updated_energy_rows", 0)
         ug = result.get("updated_gaes_rows", 0)
+        uo = result.get("updated_owner_energy_rows", 0)
         uk = result.get("updated_kto_stations", 0)
         warnings = result.get("warnings") or []
 
@@ -325,11 +337,14 @@ def _handle_station_machines_all_versions_save(
             ]
             if sync_station_gaes_charge:
                 parts.append(f"строк заряда ГАЭС: {ug}")
-            tables_label = (
-                "Код КТО, таблицы выработки и заряда ГАЭС применены"
-                if sync_station_gaes_charge
-                else "Код КТО и таблица выработки применены"
-            )
+            if sync_station_owner_energy:
+                parts.append(f"строк выработки от собственника: {uo}")
+            if sync_station_gaes_charge:
+                tables_label = "Код КТО, таблицы выработки и заряда ГАЭС применены"
+            elif sync_station_owner_energy:
+                tables_label = "Код КТО, таблицы выработки и выработки от собственника применены"
+            else:
+                tables_label = "Код КТО и таблица выработки применены"
             flash(
                 f"{tables_label} во всех версиях БД ("
                 + ", ".join(parts)
@@ -757,6 +772,8 @@ def station_details(station_id):
     )
 
     is_gaes_station = _is_gaes_station(station)
+    is_ges_station = _is_ges_station(station)
+    is_ves_or_ses_station = _is_ves_or_ses_station(station)
 
     # Используем кэшированные справочники для оптимизации
     form_data = CacheService.get_station_details_form_data()
@@ -794,6 +811,22 @@ def station_details(station_id):
         }
     else:
         station.station_gaes_charge_by_year = {}
+
+    if is_ves_or_ses_station:
+        station.station_owner_energy_by_year = station_owner_energy_by_year(
+            station.id, start_year, end_year, station_version_id
+        )
+        attach_ves_ses_plan_generation(
+            station,
+            start_year=start_year,
+            end_year=end_year,
+            station_version_id=station_version_id,
+        )
+    else:
+        station.station_owner_energy_by_year = {}
+        station.station_energy_plan_calc_by_year = {}
+        station.station_energy_plan_rule_by_year = {}
+        station.ves_ses_plan_years = []
 
     current_year = get_current_year()
 
@@ -929,6 +962,7 @@ def station_details(station_id):
                     start_year=start_year,
                     end_year=end_year,
                     is_gaes_station=is_gaes_station,
+                    is_ves_or_ses_station=is_ves_or_ses_station,
                 )
                 if not machines_all_versions_handled:
                     if not form_machines.validate():
@@ -998,12 +1032,17 @@ def station_details(station_id):
                             end_year,
                             request.form,
                         )
-                        if gen_changes or gaes_changes:
+                        hydro_changes = save_station_hydro_forecast_from_form(
+                            user, station, request.form
+                        )
+                        if gen_changes or gaes_changes or hydro_changes:
                             parts = []
                             if gen_changes:
                                 parts.append("Выработка электроэнергии сохранена.")
                             if gaes_changes:
                                 parts.append("Потребление электроэнергии ГАЭС на заряд сохранено.")
+                            if hydro_changes:
+                                parts.append("Прогноз выработки сохранён.")
                             flash(" ".join(parts), "success")
                             invalidate_cache("station_full", station_id=station.id)
                             invalidate_cache_pattern("station_list:*")
@@ -1022,8 +1061,28 @@ def station_details(station_id):
                         end_year,
                         request.form,
                     )
-                    if gen_changes:
-                        flash("Выработка электроэнергии сохранена!", "success")
+                    owner_changes = []
+                    if is_ves_or_ses_station:
+                        owner_changes = save_station_owner_energy_generation_service(
+                            user,
+                            station,
+                            station_version_id,
+                            start_year,
+                            end_year,
+                            request.form,
+                        )
+                    hydro_changes = save_station_hydro_forecast_from_form(
+                        user, station, request.form
+                    )
+                    if gen_changes or owner_changes or hydro_changes:
+                        parts = []
+                        if gen_changes:
+                            parts.append("Выработка электроэнергии сохранена.")
+                        if owner_changes:
+                            parts.append("Выработка электроэнергии (от собственника) сохранена.")
+                        if hydro_changes:
+                            parts.append("Прогноз выработки сохранён.")
+                        flash(" ".join(parts), "success")
                         invalidate_cache("station_full", station_id=station.id)
                         invalidate_cache_pattern("station_list:*")
                 except Exception as e:
@@ -1089,6 +1148,7 @@ def station_details(station_id):
                 start_year=start_year,
                 end_year=end_year,
                 is_gaes_station=is_gaes_station,
+                is_ves_or_ses_station=is_ves_or_ses_station,
             )
             if form_machines.validate_on_submit() and not machines_all_versions_handled:
                 try:
@@ -1171,12 +1231,17 @@ def station_details(station_id):
                     end_year,
                     request.form,
                 )
-                if gen_changes or gaes_changes:
+                hydro_changes = save_station_hydro_forecast_from_form(
+                    user, station, request.form
+                )
+                if gen_changes or gaes_changes or hydro_changes:
                     parts = []
                     if gen_changes:
                         parts.append("Выработка электроэнергии сохранена.")
                     if gaes_changes:
                         parts.append("Потребление электроэнергии ГАЭС на заряд сохранено.")
+                    if hydro_changes:
+                        parts.append("Прогноз выработки сохранён.")
                     flash(" ".join(parts), "success")
                     invalidate_cache("station_full", station_id=station.id)
                     invalidate_cache_pattern("station_list:*")
@@ -1210,8 +1275,28 @@ def station_details(station_id):
                     end_year,
                     request.form,
                 )
-                if gen_changes:
-                    flash("Выработка электроэнергии сохранена!", "success")
+                owner_changes = []
+                if is_ves_or_ses_station:
+                    owner_changes = save_station_owner_energy_generation_service(
+                        user,
+                        station,
+                        station_version_id,
+                        start_year,
+                        end_year,
+                        request.form,
+                    )
+                hydro_changes = save_station_hydro_forecast_from_form(
+                    user, station, request.form
+                )
+                if gen_changes or owner_changes or hydro_changes:
+                    parts = []
+                    if gen_changes:
+                        parts.append("Выработка электроэнергии сохранена.")
+                    if owner_changes:
+                        parts.append("Выработка электроэнергии (от собственника) сохранена.")
+                    if hydro_changes:
+                        parts.append("Прогноз выработки сохранён.")
+                    flash(" ".join(parts), "success")
                     invalidate_cache("station_full", station_id=station.id)
                     invalidate_cache_pattern("station_list:*")
                 return redirect(url_for("station_bp.station_details", station_id=station.id, **request.args))
@@ -1394,6 +1479,12 @@ def station_details(station_id):
         station, station_version_id
     )
 
+    hydro_forecast = None
+    if is_ges_station or is_gaes_station:
+        owner = hydro_forecast_owner_for_station(station)
+        if owner is not None:
+            hydro_forecast = build_hydro_forecast_view(owner[0], owner[1])
+
     _years_from_db = [y.number for y in get_year_list_full()]
     filter_year_list = (
         _years_from_db
@@ -1434,6 +1525,10 @@ def station_details(station_id):
         format_station_energy_gen_display=format_station_energy_gen_display,
         format_station_energy_gaes_display=format_station_energy_gaes_display,
         is_gaes_station=is_gaes_station,
+        is_ges_station=is_ges_station,
+        is_ves_or_ses_station=is_ves_or_ses_station,
+        hydro_forecast=hydro_forecast,
+        can_edit_hydro_forecast=can_edit_station_energy,
         # Pass backend timings to the template (fallback to 0 if not computed)
         backend_prepare_ms=int((before_render_at - route_started_at) * 1000),
         res_auto_map=res_auto_map,
@@ -1823,7 +1918,11 @@ def station_details_station_energy_row(station_id):
     current_version_id = get_current_db_version_id()
 
     def _station_query():
-        return db.session.query(Station).filter_by(id=station_id)
+        return (
+            db.session.query(Station)
+            .options(joinedload(Station.station_type), selectinload(Station.machines))
+            .filter_by(id=station_id)
+        )
 
     station, station_version_id = _load_station_with_version(
         _station_query, current_version_id, station_id=station_id
@@ -1838,6 +1937,14 @@ def station_details_station_energy_row(station_id):
         station.id, start_year, end_year, station_version_id
     )
 
+    if _is_ves_or_ses_station(station):
+        attach_ves_ses_plan_generation(
+            station,
+            start_year=start_year,
+            end_year=end_year,
+            station_version_id=station_version_id,
+        )
+
     from app.common.services.help_services import format_decimal_for_display
 
     def format_station_energy_gen_display(val):
@@ -1849,6 +1956,7 @@ def station_details_station_energy_row(station_id):
         start_year=start_year,
         end_year=end_year,
         can_edit=can_edit_energy,
+        can_edit_station_energy=can_edit_energy,
         format_station_energy_gen_display=format_station_energy_gen_display,
     )
     resp = make_response(html)
@@ -1920,6 +2028,66 @@ def station_details_station_gaes_charge_row(station_id):
     )
     resp = make_response(html)
     resp.headers["Cache-Control"] = "no-store" if can_edit else "public, max-age=120"
+    return resp
+
+
+@station_bp.route("/station_details/<int:station_id>/station_owner_energy_row", methods=["GET"])
+@login_required
+def station_details_station_owner_energy_row(station_id):
+    """HTML строки таблицы выработки от собственника (округление)."""
+    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
+    rounding_digits = _rounding_for_station_energy_fragment("rounding_digits_gen")
+    edit_roles = [
+        "admin",
+        "generation-admin",
+        "generation-editor",
+        "generation_admin",
+        "generation_editor",
+    ]
+    can_edit = current_user.is_authenticated and any(
+        role in current_user.role_names for role in edit_roles
+    )
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return (
+            db.session.query(Station)
+            .options(joinedload(Station.station_type))
+            .filter_by(id=station_id)
+        )
+
+    station, station_version_id = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
+    if not station:
+        abort(404)
+    if not _is_ves_or_ses_station(station):
+        return make_response("", 204)
+
+    can_edit_fuel_dz = can_fuel_user_edit_decentralized_station_details(current_user, station)
+    can_edit_energy = can_edit or can_edit_fuel_dz
+
+    station.station_owner_energy_by_year = station_owner_energy_by_year(
+        station.id, start_year, end_year, station_version_id
+    )
+
+    from app.common.services.help_services import format_decimal_for_display
+
+    def format_station_energy_gen_display(val):
+        return format_decimal_for_display(val, digits=rounding_digits)
+
+    html = render_template(
+        "generation/stations/_station_owner_energy_generation_row.html",
+        station=station,
+        start_year=start_year,
+        end_year=end_year,
+        can_edit=can_edit_energy,
+        can_edit_station_energy=can_edit_energy,
+        format_station_energy_gen_display=format_station_energy_gen_display,
+    )
+    resp = make_response(html)
+    resp.headers["Cache-Control"] = "no-store" if can_edit_energy else "public, max-age=120"
     return resp
 
 

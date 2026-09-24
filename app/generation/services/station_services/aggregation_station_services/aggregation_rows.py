@@ -300,6 +300,10 @@ def get_full_aggregation_rows(start_year, end_year, station_ids, filters=None):
         query_direct = query_direct.filter(Station.name.ilike(name_filter))
         query_via_district = query_via_district.filter(Station.name.ilike(name_filter))
 
+    from app.generation.services.station_services.filters_services import apply_external_code_sql_filter
+    query_direct = apply_external_code_sql_filter(query_direct, filters)
+    query_via_district = apply_external_code_sql_filter(query_via_district, filters)
+
     # Фильтр по компании - требует join с GenCompany
     if filters.get("gen_company_filter"):
         from app.refdata.models.gen_companies.gen_company_model import GenCompany

@@ -14,6 +14,9 @@ MAX_USERNAME = 100
 MAX_ACTION = 500
 MAX_ENTITY_TYPE = 50
 
+# События открытия страниц (фильтр журнала и антидубль middleware)
+PAGE_VIEW_ACTION_PREFIX = "Открыта страница"
+
 def _to_username(user: Any) -> Optional[str]:
     try:
         if user is None:
@@ -55,6 +58,17 @@ def _make_independent_session():
         if has_app_context():
             current_app.logger.error(f"log_to_db: cannot create session: {e!r}")
         return None
+
+def _mark_page_view_logged(action: str) -> None:
+    """Помечает запрос, чтобы middleware не писал повторный лог открытия страницы."""
+    if not action.startswith(PAGE_VIEW_ACTION_PREFIX):
+        return
+    try:
+        if has_app_context():
+            g.page_view_logged = True
+    except Exception:
+        pass
+
 
 def log_to_db(
     user: Any,
@@ -111,6 +125,7 @@ def log_to_db(
 
         session.add(rec)
         session.commit()
+        _mark_page_view_logged(safe_action)
 
     except (DataError, DBAPIError, SQLAlchemyError, Exception) as e:
         if session is not None:

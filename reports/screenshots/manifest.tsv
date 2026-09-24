@@ -1,0 +1,18 @@
+stem	chapter	caption	path	file
+01_home	infra	Главная страница АРМ «Генеральная схема»	/	c:\arm_gs\reports\screenshots\01_home.png
+02_db_versions	infra	Управление версиями базы данных	/generation/stations/database_versions	c:\arm_gs\reports\screenshots\02_db_versions.png
+03_refdata	refdata	Подсистема «Справочники» (стартовая страница)	/refdata/	c:\arm_gs\reports\screenshots\03_refdata.png
+04_generation	generation	Подсистема «Генерация» (стартовая страница)	/generation/	c:\arm_gs\reports\screenshots\04_generation.png
+05_stations	generation	Реестр электростанций модуля «Генерация»	/generation/stations/	c:\arm_gs\reports\screenshots\05_stations.png
+06_power_demand	loads	Подсистема «Нагрузки» (стартовая страница)	/power_demand/	c:\arm_gs\reports\screenshots\06_power_demand.png
+07_power_demand_summary	loads	Сводная таблица нагрузок по ОЭС	/power_demand/summary/oes/	c:\arm_gs\reports\screenshots\07_power_demand_summary.png
+08_energy_consumption	demand	Подсистема «Спрос» (стартовая страница)	/energy_consumption/	c:\arm_gs\reports\screenshots\08_energy_consumption.png
+09_energy_consumption_summary	demand	Сводная таблица спроса (потребления ЭЭ) по ОЭС	/energy_consumption/summary/oes/	c:\arm_gs\reports\screenshots\09_energy_consumption_summary.png
+10_energy_balance	balance	Подсистема «Балансы электроэнергии и мощности»	/energy_balance/	c:\arm_gs\reports\screenshots\10_energy_balance.png
+11_ee_generation	balance	Раздел выработки электрической энергии	/energy_balance/ee_generation/	c:\arm_gs\reports\screenshots\11_ee_generation.png
+12_power_balance	balance	Раздел балансов мощности	/energy_balance/power_balance/	c:\arm_gs\reports\screenshots\12_power_balance.png
+13_fuel	fuel	Подсистема «Топливо» (стартовая страница)	/fuel/	c:\arm_gs\reports\screenshots\13_fuel.png
+14_fuel_calculation	fuel	Расчётный контур модуля «Топливо»	/fuel/calculation	c:\arm_gs\reports\screenshots\14_fuel_calculation.png
+15_electrical_intensity	ei	Подсистема «Электроёмкость» (долгосрочный прогноз потребления)	/energy_consumption/electrical_intensity_start/	c:\arm_gs\reports\screenshots\15_electrical_intensity.png
+16_electrical_intensity_fo	ei	Таблица электроёмкости по федеральным округам	/electrical_intensity/electrical_intensity_fo/	c:\arm_gs\reports\screenshots\16_electrical_intensity_fo.png
+17_output_documents	docs	Передача данных для выходных документов	/output_documents_transfer	c:\arm_gs\reports\screenshots\17_output_documents.png

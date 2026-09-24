@@ -4,7 +4,6 @@ packaging/
 backups/
 __pycache__/
 _*/
-_otet_analysis/
 *.py[cod]
 .cursor/
 .pytest_cache/

@@ -27,12 +27,13 @@
                 class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
                 id="powerBalanceYearForm">
             {% for key, values in request.args.lists() %}
-              {% if key != 'start_year' and key != 'end_year' %}
+              {% if key != 'start_year' and key != 'end_year' and key != 'demand_mode' %}
                 {% for value in values %}
                 <input type="hidden" name="{{ key }}" value="{{ value }}">
                 {% endfor %}
               {% endif %}
             {% endfor %}
+            <input type="hidden" name="demand_mode" value="{{ demand_mode|default('max') }}">
             <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
             <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
               {% for year in filter_year_list %}
@@ -49,6 +50,17 @@
             <a href="{{ url_for('energy_balance_bp.power_balance_table', slug=sheet.slug) }}"
                class="btn btn-outline-danger">Сбросить</a>
           </form>
+          {% set _dm = demand_mode if demand_mode is defined else request.args.get('demand_mode', 'max') %}
+          <div class="btn-group flex-shrink-0 ms-3" role="group" aria-label="Режим максимума потребления">
+            <button type="button" data-demand-mode="max"
+               class="btn text-wrap {% if _dm != 'cold' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+              Максимум
+            </button>
+            <button type="button" data-demand-mode="cold"
+               class="btn text-wrap {% if _dm == 'cold' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+              Холодная пятилетка
+            </button>
+          </div>
           <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
             <form method="GET"
                   action="{{ url_for('energy_balance_bp.export_power_balance') }}"
@@ -61,6 +73,7 @@
               <input type="hidden" name="end_year" value="{{ end_year }}">
               {% endif %}
               <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+              <input type="hidden" name="demand_mode" value="{{ demand_mode|default('max') }}">
               <button type="button"
                       id="powerBalanceExcelExportBtn"
                       class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2"
@@ -108,9 +121,19 @@
       #powerBalanceTable.power-demand-summary-table {
         width: 100%;
         min-width: 100%;
-        table-layout: auto;
+        table-layout: fixed;
         font-size: 1.15rem;
-        --pb-year-col-w: 5.5rem;
+        --pb-label-col-w: 40rem;
+        --pb-unit-col-w: 5.5rem;
+        --pb-year-count: {{ years|length if years else 1 }};
+        --pb-year-col-w: max(
+          5.5rem,
+          calc(
+            (100% - var(--pb-label-col-w) - var(--pb-unit-col-w))
+            / (var(--pb-year-count) + 1.5)
+          )
+        );
+        --pb-note-col-w: calc(var(--pb-year-col-w) * 1.5);
       }
       .page-table-scroll #powerBalanceTable thead th {
         position: sticky;
@@ -121,24 +144,25 @@
           var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
         font-size: 1.28rem;
       }
-      #powerBalanceTable col.pb-col-label,
+      #powerBalanceTable col.pb-col-label {
+        width: var(--pb-label-col-w);
+      }
       #powerBalanceTable col.pb-col-unit {
-        width: 1%;
+        width: var(--pb-unit-col-w);
       }
       #powerBalanceTable col.pb-col-year {
         width: var(--pb-year-col-w);
-        min-width: var(--pb-year-col-w);
       }
       #powerBalanceTable col.pb-col-note {
-        width: calc(var(--pb-year-col-w) * 1.5);
-        min-width: calc(var(--pb-year-col-w) * 1.5);
+        width: var(--pb-note-col-w);
       }
       #powerBalanceTable th.pb-label-col,
       #powerBalanceTable td.pb-row-label {
-        width: 1%;
-        max-width: none;
-        white-space: nowrap;
-        overflow-wrap: normal;
+        width: var(--pb-label-col-w);
+        min-width: var(--pb-label-col-w);
+        max-width: var(--pb-label-col-w);
+        white-space: normal;
+        overflow-wrap: break-word;
         word-break: normal;
         position: sticky;
         left: 0;
@@ -147,10 +171,6 @@
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
       }
       #powerBalanceTable td.pb-row-label.pb-label-wrap {
-        white-space: normal;
-        max-width: 28rem;
-        min-width: 16rem;
-        overflow-wrap: break-word;
         line-height: 1.25;
       }
       #powerBalanceTable thead th.pb-label-col {
@@ -165,11 +185,12 @@
       }
       #powerBalanceTable th.pb-unit-col,
       #powerBalanceTable td.pb-unit-cell {
-        width: 1%;
-        min-width: 5.5rem;
+        width: var(--pb-unit-col-w);
+        min-width: var(--pb-unit-col-w);
+        max-width: var(--pb-unit-col-w);
         white-space: nowrap;
         position: sticky;
-        left: var(--pb-label-col-w, 0px);
+        left: var(--pb-label-sticky-w, var(--pb-label-col-w, 0px));
         --bs-table-bg-state: transparent;
         background-clip: padding-box;
         box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
@@ -193,9 +214,9 @@
       }
       #powerBalanceTable th.pb-note-col,
       #powerBalanceTable td.pb-note-cell {
-        width: calc(var(--pb-year-col-w) * 1.5);
-        min-width: calc(var(--pb-year-col-w) * 1.5);
-        max-width: calc(var(--pb-year-col-w) * 1.5);
+        width: var(--pb-note-col-w);
+        min-width: var(--pb-note-col-w);
+        max-width: var(--pb-note-col-w);
         position: sticky;
         right: 0;
         --bs-table-bg-state: transparent;
@@ -246,10 +267,26 @@
       #powerBalanceTable td.pb-year-cell {
         width: var(--pb-year-col-w);
         min-width: var(--pb-year-col-w);
+        max-width: var(--pb-year-col-w);
         white-space: normal;
       }
       #powerBalanceTable td.pb-ego-tip-cell {
         cursor: help;
+      }
+      .tooltip.pb-tooltip-nowrap {
+        --bs-tooltip-max-width: none;
+      }
+      .tooltip.pb-tooltip-nowrap .tooltip-inner {
+        max-width: none;
+        white-space: nowrap;
+      }
+      .tooltip.pb-tooltip-wrap {
+        --bs-tooltip-max-width: min(36rem, 90vw);
+      }
+      .tooltip.pb-tooltip-wrap .tooltip-inner {
+        max-width: min(36rem, 90vw);
+        white-space: normal;
+        text-align: left;
       }
       #powerBalanceTable .power-demand-year-feature-caption {
         font-size: 0.95em;
@@ -274,13 +311,15 @@
         line-height: 1.2;
       }
       #powerBalanceTable input.pb-custom-label {
-        min-width: 14rem;
-        max-width: 28rem;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
         font-style: italic;
       }
       #powerBalanceTable input.pb-custom-value {
-        min-width: 5.5rem;
-        max-width: 8rem;
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
         margin: 0 auto;
         text-align: center;
       }
@@ -347,13 +386,16 @@
         </thead>
         <tbody>
           {% for row in rows %}
-          <tr class="{{ row.css_class }}{% if row.is_custom %} pb-custom-flow-row{% endif %}{% if row.is_flow_block %} pb-flow-block-row{% endif %}{% if row.hide_when_empty %} pb-row-empty-hidden{% endif %}{% if row.hide_zero_capacity %} pb-zero-capacity-hidden{% endif %}{% if row.is_machine_row %} pb-station-child-hidden{% endif %}"
+          {% set wrap_formula_tooltip = row.key in ('surplus_deficit', 'surplus_deficit_second_unit', 'surplus_deficit_n1', 'surplus_deficit_n1_gao', 'surplus_deficit_n2') %}
+          {% set nowrap_year_tooltip = row.year_cell_tooltip_lines is defined and row.year_cell_tooltip_lines %}
+          <tr class="{{ row.css_class }}{% if row.is_custom %} pb-custom-flow-row{% endif %}{% if row.is_flow_block %} pb-flow-block-row{% endif %}{% if row.hide_when_empty %} pb-row-empty-hidden{% endif %}{% if row.hide_zero_capacity %} pb-zero-capacity-hidden{% endif %}{% if row.is_machine_row or row.is_group_child %} pb-station-child-hidden{% endif %}"
               data-row-key="{{ row.key }}"
               {% if row.hide_zero_capacity %}data-hide-zero-capacity="1"{% endif %}
               data-row-kind="{{ row.kind }}"
               data-indent="{{ row.indent or 0 }}"
               {% if row.collapsible %}data-collapsible="1"{% endif %}
               {% if row.parent_station_key %}data-parent-station-key="{{ row.parent_station_key }}"{% endif %}
+              {% if row.parent_group_key %}data-parent-group-key="{{ row.parent_group_key }}"{% endif %}
               {% if row.editable_values %}data-editable="1"{% endif %}
               {% if row.is_custom %}data-custom-id="{{ row.custom_id }}" data-direction="{{ row.custom_direction }}" data-parent-key="{{ row.custom_parent_key or row.flow_section or '' }}"{% if row.custom_origin_slug %} data-origin-slug="{{ row.custom_origin_slug }}" data-origin-key="{{ row.custom_origin_key }}"{% endif %}{% endif %}
               {% if row.flow_section %}data-flow-section="{{ row.flow_section }}"{% endif %}
@@ -402,15 +444,18 @@
               <button type="button"
                       class="pb-station-toggle"
                       aria-expanded="false"
-                      title="Показать агрегаты"
-                      aria-label="Показать агрегаты">
+                      data-expand-title="{{ row.collapse_expand_title or 'Показать агрегаты' }}"
+                      data-collapse-title="{{ row.collapse_collapse_title or 'Скрыть агрегаты' }}"
+                      title="{{ row.collapse_expand_title or 'Показать агрегаты' }}"
+                      aria-label="{{ row.collapse_expand_title or 'Показать агрегаты' }}">
                 <i class="bi bi-plus-square" aria-hidden="true"></i>
               </button>
               {% endif %}
-              {{ row.label }}{% if row.formula_tooltip and row.key not in ('flow_in', 'flow_out') %}
+              {% include 'energy_balance/_station_machine_label.html' %}{% if row.formula_tooltip and row.key not in ('flow_in', 'flow_out') %}
               <i class="bi bi-info-circle text-primary ms-1 pb-formula-tip"
                  data-bs-toggle="tooltip"
                  data-bs-placement="top"
+                 {% if wrap_formula_tooltip %}data-bs-custom-class="pb-tooltip-wrap"{% endif %}
                  title="{{ row.formula_tooltip|e }}"
                  style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;"
                  aria-label="Формула расчёта"></i>{% endif %}
@@ -440,6 +485,7 @@
                 data-bs-toggle="tooltip"
                 data-bs-placement="top"
                 data-bs-html="true"
+                {% if nowrap_year_tooltip %}data-bs-custom-class="pb-tooltip-nowrap"{% endif %}
                 title="{{ tip_lines|map('e')|join('<br>') }}"
                 {% endif %}>
               {% if row.editable_values %}
@@ -471,11 +517,19 @@
       url.searchParams.set('rounding_digits', this.value);
       window.location.href = url.toString();
     });
+    document.querySelectorAll('[data-demand-mode]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const mode = btn.getAttribute('data-demand-mode') || 'max';
+        const url = new URL(window.location.href);
+        url.searchParams.set('demand_mode', mode);
+        window.location.href = url.toString();
+      });
+    });
     const table = document.getElementById('powerBalanceTable');
     const labelTh = table?.querySelector('thead th.pb-label-col');
     const syncLabelWidth = function () {
       if (!table || !labelTh) return;
-      table.style.setProperty('--pb-label-col-w', labelTh.getBoundingClientRect().width + 'px');
+      table.style.setProperty('--pb-label-sticky-w', labelTh.getBoundingClientRect().width + 'px');
     };
     syncLabelWidth();
     if (window.ResizeObserver && labelTh) {
@@ -649,17 +703,22 @@
       table.querySelectorAll('tbody tr[data-collapsible="1"]').forEach(function (parent) {
         const btn = parent.querySelector('.pb-station-toggle');
         const expanded = btn ? btn.getAttribute('aria-expanded') === 'true' : false;
+        const expandTitle = (btn && btn.getAttribute('data-expand-title')) || 'Показать агрегаты';
+        const collapseTitle = (btn && btn.getAttribute('data-collapse-title')) || 'Скрыть агрегаты';
         const parentKey = parent.getAttribute('data-row-key');
         let el = parent.nextElementSibling;
         const parentIndent = Number(parent.dataset.indent || 0);
         while (el && Number(el.dataset.indent || 0) > parentIndent) {
-          if (el.getAttribute('data-parent-station-key') === parentKey) {
+          const isChild =
+            el.getAttribute('data-parent-station-key') === parentKey ||
+            el.getAttribute('data-parent-group-key') === parentKey;
+          if (isChild) {
             el.classList.toggle('pb-station-child-hidden', !expanded);
           }
           el = el.nextElementSibling;
         }
         if (btn) {
-          btn.title = expanded ? 'Скрыть агрегаты' : 'Показать агрегаты';
+          btn.title = expanded ? collapseTitle : expandTitle;
           btn.setAttribute('aria-label', btn.title);
           const icon = btn.querySelector('i');
           if (icon) {

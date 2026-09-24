@@ -194,3 +194,56 @@ def test_ensure_reuses_shared_group_when_station_is_not_primary_owner():
 
     assert result is shared_set
     create_set.assert_not_called()
+
+
+def test_select_type_link_prefers_composite_child_over_parent():
+    from app.fuel.services.equipment_groups.equipment_group_set_services import (
+        select_equipment_group_on_type_link,
+    )
+
+    parent = SimpleNamespace(
+        id=18202,
+        numb=235,
+        main=None,
+        comp=1,
+        name="Ефремовская ТЭЦ (ТЭЦ-130 ата (Р))",
+    )
+    child = SimpleNamespace(
+        id=18210,
+        numb=238,
+        main=235,
+        comp=None,
+        name="Ефремовская ТЭЦ (ТЭЦ-130 ата (Р))",
+    )
+    with patch(
+        "app.fuel.services.equipment_groups.equipment_group_rebind_services.station_is_primary_owner_of_equipment_group",
+        return_value=True,
+    ):
+        picked = select_equipment_group_on_type_link(
+            [parent, child],
+            station_id=28736,
+            version_id=37,
+            is_new_group=False,
+        )
+    assert picked is child
+
+
+def test_select_type_link_keeps_already_bound_group():
+    from app.fuel.services.equipment_groups.equipment_group_set_services import (
+        select_equipment_group_on_type_link,
+    )
+
+    parent = SimpleNamespace(id=18202, numb=235, main=None, comp=1, name="head")
+    child = SimpleNamespace(id=18210, numb=238, main=235, comp=None, name="child")
+    with patch(
+        "app.fuel.services.equipment_groups.equipment_group_rebind_services.station_is_primary_owner_of_equipment_group",
+        return_value=True,
+    ):
+        picked = select_equipment_group_on_type_link(
+            [parent, child],
+            station_id=28736,
+            version_id=37,
+            is_new_group=False,
+            preferred_equipment_group_id=18210,
+        )
+    assert picked is child

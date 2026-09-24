@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 from typing import Any
 
 _logger = logging.getLogger(__name__)
@@ -29,6 +30,9 @@ from app.energy_balance.services.balance_sheet_note_services import (
     attach_balance_sheet_notes,
 )
 from app.energy_balance.services.ee_balance_generation_services import (
+    GENERATION_GES_KEY,
+    GENERATION_TES_KEY,
+    classify_ee_balance_generation_years,
     generation_type_groups,
     generation_type_keys,
     hydro_year_for_balance_sheet,
@@ -38,6 +42,10 @@ from app.energy_balance.services.ee_balance_manual_generation_services import (
     load_ee_balance_manual_generation_inputs,
     mark_manual_plan_generation_rows,
     overlay_manual_generation_inputs,
+)
+from app.energy_balance.services.ee_balance_tes_forecast_services import (
+    is_tes_forecast_sheet,
+    overlay_tes_forecast_generation_inputs,
 )
 from app.energy_balance.services.power_balance_page_services import (
     EES_SOURCE_SLUGS,
@@ -67,6 +75,8 @@ from app.energy_balance.services.power_balance_page_services import (
     tites_east_child_nav_sheets,
     _attach_formula_tooltips,
     _diff_formula,
+    _eu_name_matches,
+    _to_decimal,
     _append_station_type_group_rows,
     _installed_capacity_rows,
     _mark_ses_ves_collapsible,
@@ -183,6 +193,151 @@ def _ee_sheets_including_slug(slug: str) -> tuple[list[dict[str, Any]], dict[str
 def _ee_row(key: str, label: str, **kwargs: Any) -> dict[str, Any]:
     kwargs.setdefault("unit", EE_BALANCE_UNIT)
     return _row(key, label, **kwargs)
+
+
+def _is_plan_tes_from_consumption_sheet(sheet: dict[str, Any] | None) -> bool:
+    if not sheet:
+        return False
+    name = sheet.get("sheet_name") or (sheet.get("territory") or {}).get("name")
+    return any(
+        _eu_name_matches(name, needles)
+        for needles in (
+            ("анад",),
+            ("центральный", "сахалин"),
+            ("чаун", "билибин"),
+            ("центральный", "камчат"),
+        )
+    )
+
+
+def _other_generation_amount_for_year(
+    row_map: dict[str, dict[int, Any]],
+    groups: list[dict[str, Any]],
+    tes_key: str,
+    year: int,
+) -> Decimal:
+    total = Decimal("0")
+    for group in groups:
+        key = str(group.get("key") or "")
+        if not key or key == tes_key:
+            continue
+        children = [child for child in (group.get("children") or []) if child.get("key")]
+        if children:
+            child_sum = sum(
+                (
+                    _to_decimal((row_map.get(str(child["key"])) or {}).get(year))
+                    for child in children
+                ),
+                Decimal("0"),
+            )
+            total += (
+                child_sum
+                if child_sum != 0
+                else _to_decimal((row_map.get(key) or {}).get(year))
+            )
+        else:
+            total += _to_decimal((row_map.get(key) or {}).get(year))
+    return total
+
+
+def _apply_plan_tes_from_consumption(
+    inputs: dict[str, dict[str, dict[int, Any]]] | None,
+    sheets: list[dict[str, Any]] | None,
+    years: list[int],
+) -> dict[str, dict[str, dict[int, Any]]]:
+    """Плановые годы отдельных энергорайонов: ТЭС = потребление − прочая выработка."""
+    merged = inputs or {}
+    if not sheets or not years:
+        return merged
+    _fact, plan_years = classify_ee_balance_generation_years(
+        years, get_ee_balance_year_features()
+    )
+    if not plan_years:
+        return merged
+    groups = generation_type_groups()
+    tes_key = GENERATION_TES_KEY
+    for sheet in sheets:
+        if not _is_plan_tes_from_consumption_sheet(sheet):
+            continue
+        slug = str(sheet.get("slug") or "")
+        if not slug:
+            continue
+        row_map = merged.setdefault(slug, {})
+        tes_years = dict(row_map.get(tes_key) or {})
+        consumption = row_map.get("consumption") or {}
+        for year in plan_years:
+            residual = _to_decimal(consumption.get(year)) - (
+                _other_generation_amount_for_year(row_map, groups, tes_key, int(year))
+            )
+            tes_years[int(year)] = residual if residual > 0 else Decimal("0")
+        row_map[tes_key] = tes_years
+    return merged
+
+
+def _plan_tes_from_consumption_tooltip(groups: list[dict[str, Any]], tes_key: str) -> str:
+    pieces: list[str] = ["Потребление электрической энергии"]
+    for group in groups:
+        key = str(group.get("key") or "")
+        if not key or key == tes_key:
+            continue
+        children = [child for child in (group.get("children") or []) if child.get("label")]
+        if children:
+            pieces.extend(str(child.get("label") or "").strip() for child in children)
+        else:
+            label = str(group.get("label") or "").strip()
+            if label:
+                pieces.append(label)
+    tes_label = "ТЭС"
+    for group in groups:
+        if str(group.get("key") or "") == tes_key:
+            tes_label = str(group.get("label") or tes_label).strip() or tes_label
+            break
+    return f"В прогнозном периоде: {tes_label} = " + " − ".join(pieces)
+
+
+MAGADAN_TES_FORECAST_TOOLTIP = (
+    "Плановые годы: годовые итоги со страницы помесячного расчёта "
+    "(форма «БЭ по месяцам») по одноименным строкам."
+)
+
+
+def _mark_plan_tes_from_consumption_tooltip(
+    tables: dict[str, dict[str, Any]],
+    sheets: list[dict[str, Any]] | None,
+) -> None:
+    if not sheets:
+        return
+    groups = generation_type_groups()
+    tes_key = GENERATION_TES_KEY
+    tooltip = _plan_tes_from_consumption_tooltip(groups, tes_key)
+    for sheet in sheets:
+        if not _is_plan_tes_from_consumption_sheet(sheet):
+            continue
+        payload = tables.get(str(sheet.get("slug") or ""))
+        if not payload:
+            continue
+        for row in payload.get("rows") or []:
+            if str(row.get("key") or "") == tes_key:
+                row["formula_tooltip"] = tooltip
+                break
+
+
+def _mark_magadan_tes_forecast_tooltip(
+    tables: dict[str, dict[str, Any]],
+    sheets: list[dict[str, Any]] | None,
+) -> None:
+    if not sheets:
+        return
+    overlay_keys = {GENERATION_TES_KEY, GENERATION_GES_KEY, "consumption"}
+    for sheet in sheets:
+        if not is_tes_forecast_sheet(sheet):
+            continue
+        payload = tables.get(str(sheet.get("slug") or ""))
+        if not payload:
+            continue
+        for row in payload.get("rows") or []:
+            if str(row.get("key") or "") in overlay_keys:
+                row["formula_tooltip"] = MAGADAN_TES_FORECAST_TOOLTIP
 
 
 def load_ee_balance_custom_flows(
@@ -540,9 +695,16 @@ def build_ee_balance_tables(
             capacity_inputs,
         )
     inputs = _merge_power_balance_inputs(inputs, custom_inputs)
+    _apply_plan_tes_from_consumption(inputs, sheets, years)
+    try:
+        inputs = overlay_tes_forecast_generation_inputs(inputs, sheets, years)
+    except Exception:
+        _logger.exception("ee balance page: tes monthly forecast overlay failed")
     apply_power_balance_input_values(tables, inputs, rounding_digits=digits)
     _force_ee_units(tables)
     _attach_formula_tooltips(tables, sheets_by_slug, rounding_digits=digits)
+    _mark_plan_tes_from_consumption_tooltip(tables, sheets)
+    _mark_magadan_tes_forecast_tooltip(tables, sheets)
     evaluate_power_balance_tables(tables, years, rounding_digits=digits)
     mark_manual_plan_generation_rows(tables, years)
     for payload in tables.values():
@@ -581,6 +743,17 @@ def build_ee_balance_table_context(
         sheet_hydro_year is not None
         and sheet_has_ges_or_gaes_capacity(payload["rows"], years)
     )
+    tes_forecast_url = None
+    if is_tes_forecast_sheet(sheet):
+        from flask import url_for
+
+        tes_forecast_url = url_for(
+            "energy_balance_bp.ee_balance_tes_forecast",
+            slug=sheet["slug"],
+            start_year=start,
+            end_year=end,
+            rounding_digits=digits,
+        )
     return {
         "sheet": payload["sheet"],
         "sheets": sheets,
@@ -602,4 +775,5 @@ def build_ee_balance_table_context(
         "show_hydro_year_nav": False,
         "hydro_year": sheet_hydro_year if show_hydro_in_title else None,
         "hydro_year_buttons": [],
+        "tes_forecast_url": tes_forecast_url,
     }

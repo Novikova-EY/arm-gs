@@ -219,6 +219,16 @@
                                     </div>
                                 </div>
                                 <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-5 text-start fw-semibold">Ожидаемая дата ввода в эксплуатацию:</div>
+                                    <div class="col-7 text-start">
+                                        {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
+                                            {{ pgu_form.date_exploitation_date_expected(class="form-control") }}
+                                        {% else %}
+                                            {{ pgu_form.date_exploitation_date_expected.data if pgu_form.date_exploitation_date_expected.data else '—' }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="row g-2 align-items-center mb-2">
                                     <div class="col-5 text-start fw-semibold">Ожидаемый год вывода из эксплуатации:</div>
                                     <div class="col-7 text-start">
                                         {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
@@ -723,6 +733,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const yearsMatchInputs = columnYears.length > 0 && columnYears.length === inputs.length;
 
             function extendPowerValue(inputEl, idx) {
+                if (window.__armGsTableRowPasteActive) {
+                    return;
+                }
                 const value = inputEl.value;
                 for (let i = idx + 1; i < inputs.length; i++) {
                     if (hasMaxVersionYear && yearsMatchInputs) {
@@ -817,6 +830,9 @@ document.addEventListener("DOMContentLoaded", function () {
         recomputePguMachineNameFromYearNames(inputs);
 
         function extendNameValue(inputEl, idx) {
+            if (window.__armGsTableRowPasteActive) {
+                return;
+            }
             const value = inputEl.value;
             for (let i = idx + 1; i < inputs.length; i++) {
                 if (hasMaxVersionYear) {

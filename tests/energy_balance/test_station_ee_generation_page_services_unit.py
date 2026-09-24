@@ -29,8 +29,12 @@ from app.generation.models.station.station_constants import (
 )
 
 
-def _station(station_id: int, *, station_sign=None):
-    return SimpleNamespace(id=station_id, station_sign=station_sign)
+def _station(station_id: int, *, station_sign=None, sa_id=7):
+    return SimpleNamespace(
+        id=station_id,
+        station_sign=station_sign,
+        regional_district=SimpleNamespace(id_synchronous_area=sa_id),
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -76,6 +80,28 @@ def test_build_generation_aggregates_sums_all_stations_regardless_of_sign():
     assert aggregates["total"][2024] == Decimal("140")
     assert aggregates["regional_energy_systems"][5][2024] == Decimal("140")
     assert aggregates["union_energy_systems"][10][2024] == Decimal("140")
+    assert aggregates["energy_system_types"][1][2024] == Decimal("140")
+
+
+def test_build_generation_aggregates_sums_synchronous_areas():
+    regular = SimpleNamespace(
+        id=1,
+        station_sign=None,
+        regional_district=SimpleNamespace(id_synchronous_area=7),
+    )
+    espp = SimpleNamespace(
+        id=2,
+        station_sign=STATION_SIGN_ESPP,
+        regional_district=SimpleNamespace(id_synchronous_area=7),
+    )
+    values = {
+        1: {2024: Decimal("100")},
+        2: {2024: Decimal("40")},
+    }
+
+    aggregates = build_generation_aggregates([regular, espp], values)
+
+    assert aggregates["synchronous_areas"][7][2024] == Decimal("140")
 
 
 def test_build_generation_aggregates_after_2018_keeps_espp_stations():
@@ -115,6 +141,8 @@ def test_build_generation_aggregates_through_2018_uses_espp_svod():
     assert aggregates["total"][2018] == Decimal("155")
     assert aggregates["regional_energy_systems"][5][2018] == Decimal("155")
     assert aggregates["union_energy_systems"][10][2018] == Decimal("155")
+    assert aggregates["energy_system_types"][1][2018] == Decimal("155")
+    assert aggregates["synchronous_areas"][7][2018] == Decimal("155")
 
 
 def test_build_stations_sum_by_res_includes_espp_stations_after_2018():

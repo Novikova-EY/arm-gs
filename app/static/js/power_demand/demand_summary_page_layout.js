@@ -341,6 +341,13 @@ if (summaryTable) {
                     window.__pdPdSummaryTerritoryCompactMode ? "1" : "0"
                 );
             } catch (eTc) { /* */ }
+            /* «Сводная таблица» ставит page_size=0; k по умолчанию показываем (таблица короткая). */
+            if (typeof window.__pdPdSummaryApplyInitialCoeffKVisibilityClass === "function") {
+                window.__pdPdSummaryApplyInitialCoeffKVisibilityClass();
+            }
+            if (typeof window.__pdPdSummarySyncCoeffKToggleUi === "function") {
+                window.__pdPdSummarySyncCoeffKToggleUi();
+            }
             /**
              * Rerender uses last core payload and rebuilds tbody, so optional
              * segments (ЧЧИ / ЭЭ / проверка / расчётные макс.) must be loaded

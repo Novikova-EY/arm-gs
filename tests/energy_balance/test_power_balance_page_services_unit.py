@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -11,6 +12,12 @@ import pytest
 from app.energy_balance.services.power_balance_page_services import (
     DEMAND_MAX_COLD_LABEL,
     DEMAND_MAX_COLD_ROW_KEY,
+    DEMAND_MAX_LABEL,
+    DEMAND_MODE_COLD,
+    DEMAND_MODE_MAX,
+    SURPLUS_N1_GAO_LABEL,
+    SURPLUS_N1_GAO_ROW_KEY,
+    SURPLUS_N1_GAO_SHARE,
     SURPLUS_N1_LABEL,
     SURPLUS_N1_ROW_KEY,
     SURPLUS_N2_LABEL,
@@ -37,11 +44,13 @@ from app.energy_balance.services.power_balance_page_services import (
     group_power_balance_sheets,
     is_persistable_power_balance_slug,
     power_balance_station_list_query,
+    resolve_power_balance_demand_mode,
     resolve_power_balance_rounding_digits,
     mark_power_balance_empty_rows,
     sheet_omits_power_flow_block,
     sheet_omits_export_row,
     sheet_includes_cold_demand_row,
+    apply_tites_ego_outage_surplus,
     sheet_includes_ego_outage_surplus,
     sheet_uses_station_capacity_breakdown,
     tites_east_child_nav_sheets,
@@ -132,11 +141,28 @@ def test_each_layout_has_unique_row_keys_and_core_rows(sheet):
     assert not export.get("formula")
     assert "installed_aes" in keys
     assert "installed_ses_ves" in keys
+    assert "installed_ses" in keys
+    assert "installed_ves" in keys
     assert "available_total" in keys
     assert "available_aes" in keys
     assert "available_ses_ves" in keys
+    assert "available_ses" in keys
+    assert "available_ves" in keys
     assert keys.index("installed_total") < keys.index("available_total") < keys.index("constraints")
-    assert keys.index("available_total") == keys.index("installed_ses_ves") + 1
+    assert keys.index("installed_ses") == keys.index("installed_ses_ves") + 1
+    assert keys.index("installed_ves") == keys.index("installed_ses") + 1
+    assert keys.index("available_total") == keys.index("installed_ves") + 1
+    assert keys.index("available_ses") == keys.index("available_ses_ves") + 1
+    assert keys.index("available_ves") == keys.index("available_ses") + 1
+    ses_ves = next(row for row in rows if row["key"] == "installed_ses_ves")
+    ses = next(row for row in rows if row["key"] == "installed_ses")
+    ves = next(row for row in rows if row["key"] == "installed_ves")
+    assert ses_ves.get("collapsible") is True
+    assert ses.get("is_group_child") is True
+    assert ses.get("parent_group_key") == "installed_ses_ves"
+    assert ves.get("parent_group_key") == "installed_ses_ves"
+    assert ses["label"] == "СЭС"
+    assert ves["label"] == "ВЭС"
     available_total = next(row for row in rows if row["key"] == "available_total")
     assert available_total["label"] == "Располагаемая мощность"
     assert "flow_in" in keys
@@ -167,8 +193,18 @@ def test_yug_and_sibir_and_kaliningrad_specific_rows():
     assert "flow_out_rzd" not in vostok_keys
     kal_rows = build_power_balance_rows("kaliningrad")
     kal_by_key = {row["key"]: row for row in kal_rows}
-    assert "1-й единицы" in kal_by_key["surplus_deficit"]["label"]
-    assert "2-й единицы" in kal_by_key["surplus_deficit_second_unit"]["label"]
+    assert "1 ЕГО" in kal_by_key["surplus_deficit"]["label"]
+    assert "2 ЕГО" in kal_by_key["surplus_deficit_second_unit"]["label"]
+    n1_tip = kal_by_key["surplus_deficit"]["formula"]["tooltip"]
+    n2_tip = kal_by_key["surplus_deficit_second_unit"]["formula"]["tooltip"]
+    assert n1_tip.startswith(kal_by_key["surplus_deficit"]["label"] + " = ")
+    assert "Максимум потребления мощности" in n1_tip
+    assert "Располагаемая мощность (суммарная)" in n1_tip
+    assert "первая максимальная располагаемая мощность агрегатов" in n1_tip
+    assert n2_tip.startswith(kal_by_key["surplus_deficit_second_unit"]["label"] + " = ")
+    assert "первая и вторая максимальная располагаемая мощность агрегатов" in n2_tip
+    assert kal_by_key["surplus_deficit"].get("wrap_label") is True
+    assert kal_by_key["surplus_deficit_second_unit"].get("wrap_label") is True
 
 
 def test_unknown_layout_raises():
@@ -223,6 +259,48 @@ def test_rounding_digits_parsed_and_applied():
     assert _row_display(tables3, "centr", "demand_max", 2026) == "10,456"
 
 
+def test_demand_mode_parsed_and_switches_demand_row():
+    assert resolve_power_balance_demand_mode(None) == DEMAND_MODE_MAX
+    assert resolve_power_balance_demand_mode("max") == DEMAND_MODE_MAX
+    assert resolve_power_balance_demand_mode("cold") == DEMAND_MODE_COLD
+    assert resolve_power_balance_demand_mode("COLD") == DEMAND_MODE_COLD
+    tables_max = build_power_balance_tables(
+        [2026],
+        inputs={
+            "centr": {
+                "demand_max": {2026: 100},
+                DEMAND_MAX_COLD_ROW_KEY: {2026: 40},
+                "export": {2026: 10},
+            }
+        },
+    )
+    by_max = {row["key"]: row for row in tables_max["centr"]["rows"]}
+    assert "demand_max" in by_max
+    assert DEMAND_MAX_COLD_ROW_KEY not in by_max
+    assert _row_display(tables_max, "centr", "demand_total", 2026) == "110"
+    tables_cold = build_power_balance_tables(
+        [2026],
+        inputs={
+            "centr": {
+                "demand_max": {2026: 100},
+                DEMAND_MAX_COLD_ROW_KEY: {2026: 40},
+                "export": {2026: 10},
+            }
+        },
+        demand_mode=DEMAND_MODE_COLD,
+    )
+    by_cold = {row["key"]: row for row in tables_cold["centr"]["rows"]}
+    assert "demand_max" not in by_cold
+    assert by_cold[DEMAND_MAX_COLD_ROW_KEY]["label"] == DEMAND_MAX_COLD_LABEL
+    assert by_cold[DEMAND_MAX_COLD_ROW_KEY]["editable_values"] is True
+    assert _row_display(tables_cold, "centr", "demand_total", 2026) == "50"
+    demand_total_terms = [
+        term["row_key"] for term in by_cold["demand_total"]["formula"]["terms"]
+    ]
+    assert demand_total_terms == [DEMAND_MAX_COLD_ROW_KEY, "export"]
+    assert DEMAND_MAX_COLD_LABEL in (by_cold["demand_total"].get("formula_tooltip") or "")
+
+
 def test_table_context_for_known_slug():
     with patch(
         "app.energy_balance.services.power_balance_page_services.get_sipr_start_year",
@@ -245,6 +323,7 @@ def test_table_context_for_known_slug():
     assert context["start_year"] == 2026
     assert context["end_year"] == 2027
     assert context["rounding_digits"] == 1
+    assert context["demand_mode"] == DEMAND_MODE_MAX
     assert 2026 in context["filter_year_list"]
     assert "start_year=2026" in context["station_list_url"]
     demand_max = next(row for row in context["rows"] if row["key"] == "demand_max")
@@ -309,13 +388,15 @@ def test_oes_formulas_match_excel():
                 "installed_gaes": {2026: 5},
                 "installed_tes": {2026: 30},
                 "installed_snee": {2026: 2},
-                "installed_ses_ves": {2026: 3},
+                "installed_ses": {2026: 2},
+                "installed_ves": {2026: 1},
                 "available_aes": {2026: 35},
                 "available_ges": {2026: 9},
                 "available_gaes": {2026: 4},
                 "available_tes": {2026: 28},
                 "available_snee": {2026: 1},
-                "available_ses_ves": {2026: 2},
+                "available_ses": {2026: 1},
+                "available_ves": {2026: 1},
                 "constraints": {2026: 8},
                 "commissioning_after_max": {2026: 4},
                 "flow_in": {2026: 7},
@@ -363,6 +444,82 @@ def test_yug_sibir_vostok_and_kaliningrad_formulas():
     assert _row_display(tables, "kaliningradskaya-sz-ees", "surplus_deficit", 2026) == "175"
     assert _row_display(tables, "kaliningradskaya-sz-ees", "surplus_deficit_second_unit", 2026) == "-50"
     assert KALININGRAD_LARGEST_UNIT_MW == 225
+
+
+def test_kaliningrad_surplus_rows_show_top_ego_unit_tooltips():
+    sheets = [
+        {
+            "slug": "kaliningradskaya-sz-ees",
+            "sheet_name": "Калининградская СЗ ЕЭС",
+            "group": GROUP_SZ,
+            "layout": "kaliningrad",
+            "title": "Баланс мощности Калининградская СЗ ЕЭС",
+            "source_slugs": (),
+            "subtract_slugs": (),
+            "territory": {"kind": "sa", "id": 7, "name": "Калининградская СЗ ЕЭС"},
+            "is_ees_member": False,
+            "skip_direct_capacity": False,
+            "table_number": 1,
+        }
+    ]
+    breakdown = {
+        "kaliningradskaya-sz-ees": {
+            "stations": [
+                {
+                    "key": "installed_station_1",
+                    "label": "Калининградская ТЭЦ-2",
+                    "year_values": {2026: 450},
+                    "rasp_year_values": {2026: 450},
+                    "machines": [
+                        {
+                            "key": "installed_machine_1",
+                            "label": "1 ПГУ",
+                            "year_values": {2026: 225},
+                            "rasp_year_values": {2026: 225},
+                        },
+                        {
+                            "key": "installed_machine_2",
+                            "label": "2 ПГУ",
+                            "year_values": {2026: 225},
+                            "rasp_year_values": {2026: 220},
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+    with patch(
+        "app.energy_balance.services.power_balance_page_services.load_power_balance_station_capacity_breakdown",
+        return_value=breakdown,
+    ):
+        tables = build_power_balance_tables(
+            years=[2026],
+            inputs={
+                "kaliningradskaya-sz-ees": {
+                    "demand_max": {2026: 100},
+                    "installed_tes": {2026: 500},
+                }
+            },
+            sheets=sheets,
+        )
+    rows = {row["key"]: row for row in tables["kaliningradskaya-sz-ees"]["rows"]}
+    assert rows["surplus_deficit"]["year_cell_tooltip_lines"][2026] == [
+        "225 МВт — 1 ПГУ — Калининградская ТЭЦ-2"
+    ]
+    assert rows["surplus_deficit_second_unit"]["year_cell_tooltip_lines"][2026] == [
+        "225 МВт — 1 ПГУ — Калининградская ТЭЦ-2",
+        "220 МВт — 2 ПГУ — Калининградская ТЭЦ-2",
+    ]
+    assert rows["surplus_deficit"]["year_values"][2026] == "175"
+    assert rows["surplus_deficit_second_unit"]["year_values"][2026] == "-50"
+    n1_tip = rows["surplus_deficit"].get("formula_tooltip") or ""
+    n2_tip = rows["surplus_deficit_second_unit"].get("formula_tooltip") or ""
+    assert "Максимум потребления мощности" in n1_tip
+    assert "Располагаемая мощность (суммарная)" in n1_tip
+    assert "первая максимальная располагаемая мощность агрегатов" in n1_tip
+    assert "225" not in n1_tip
+    assert "первая и вторая максимальная располагаемая мощность агрегатов" in n2_tip
+    assert "225" not in n2_tip
 
 
 def test_ees_and_sz1_cross_sheet_formulas():
@@ -637,6 +794,29 @@ def test_installed_capacity_station_rows_replace_type_groups():
     assert keys.index("available_total") < keys.index("constraints")
 
 
+def test_capacity_station_rows_keep_entity_ids_for_links():
+    rows = build_power_balance_rows(
+        "oes_standard",
+        station_items=[
+            {
+                "id": 10,
+                "key": "installed_station_10",
+                "label": "Станция А",
+                "machines": [
+                    {"id": 1, "key": "installed_machine_1", "label": "1 Турбина"},
+                ],
+            }
+        ],
+    )
+    by_key = {row["key"]: row for row in rows}
+    assert by_key["installed_station_10"]["station_id"] == 10
+    assert "machine_id" not in by_key["installed_station_10"]
+    assert by_key["installed_machine_1"]["station_id"] == 10
+    assert by_key["installed_machine_1"]["machine_id"] == 1
+    assert by_key["available_station_10"]["station_id"] == 10
+    assert by_key["available_machine_1"]["machine_id"] == 1
+
+
 def test_station_capacity_breakdown_fills_total_from_machines():
     sheets = [
         {
@@ -701,10 +881,14 @@ def test_station_capacity_breakdown_fills_total_from_machines():
     assert "surplus_deficit" in rows
     assert rows["surplus_deficit"]["label"] == SURPLUS_NORMAL_LABEL
     assert rows[SURPLUS_N1_ROW_KEY]["label"] == SURPLUS_N1_LABEL
+    assert rows[SURPLUS_N1_GAO_ROW_KEY]["label"] == SURPLUS_N1_GAO_LABEL
     assert rows[SURPLUS_N2_ROW_KEY]["label"] == SURPLUS_N2_LABEL
     assert rows["surplus_deficit"]["year_values"][2026] == "-12"
-    assert rows[SURPLUS_N1_ROW_KEY]["year_values"][2026] == "-4"
-    assert rows[SURPLUS_N2_ROW_KEY]["year_values"][2026] == "0"
+    assert rows[SURPLUS_N1_ROW_KEY]["year_values"][2026] == "-20"
+    assert rows[SURPLUS_N1_GAO_ROW_KEY]["year_values"][2026] == "-20"
+    assert rows[SURPLUS_N2_ROW_KEY]["year_values"][2026] == "-24"
+    gao_client = rows[SURPLUS_N1_GAO_ROW_KEY].get("formula_client") or {}
+    assert gao_client["terms"][1]["coeff"] == "0.2"
     surplus_terms = [
         (term.get("row_key"), term.get("coeff"))
         for term in rows["surplus_deficit"]["formula"]["terms"]
@@ -721,10 +905,11 @@ def test_station_capacity_breakdown_fills_total_from_machines():
     assert "Располагаемая мощность (суммарная)" in (rows["surplus_deficit"].get("formula_tooltip") or "")
     assert "export" not in rows
     assert "demand_total" not in rows
-    assert DEMAND_MAX_COLD_ROW_KEY in rows
-    keys = [row["key"] for row in tables["oes-318"]["rows"]]
-    assert keys.index("demand_max") + 1 == keys.index(DEMAND_MAX_COLD_ROW_KEY)
-    assert rows[DEMAND_MAX_COLD_ROW_KEY]["label"] == DEMAND_MAX_COLD_LABEL
+    assert "constraints" not in rows
+    assert "commissioning_after_max" not in rows
+    assert "coverage_total" not in rows
+    assert "demand_max" in rows
+    assert DEMAND_MAX_COLD_ROW_KEY not in rows
     assert not rows["installed_station_10"].get("formula_tooltip")
     assert not rows["installed_machine_1"].get("formula_tooltip")
     assert not rows["available_station_10"].get("formula_tooltip")
@@ -881,10 +1066,11 @@ def test_tites_sheets_include_cold_demand_row_after_demand_max():
         {"slug": "sibir", "sheet_name": "Сибирь", "group": GROUP_OES}
     )
     rows = build_power_balance_rows(
-        "oes_standard", include_export_row=False, include_cold_demand_row=True
+        "oes_standard", include_export_row=False, demand_mode=DEMAND_MODE_COLD
     )
     keys = [row["key"] for row in rows]
-    assert keys.index("demand_max") + 1 == keys.index(DEMAND_MAX_COLD_ROW_KEY)
+    assert DEMAND_MAX_COLD_ROW_KEY in keys
+    assert "demand_max" not in keys
     assert "export" not in keys
     cold = next(row for row in rows if row["key"] == DEMAND_MAX_COLD_ROW_KEY)
     assert cold["label"] == DEMAND_MAX_COLD_LABEL
@@ -893,6 +1079,81 @@ def test_tites_sheets_include_cold_demand_row_after_demand_max():
     assert DEMAND_MAX_COLD_ROW_KEY not in {
         row["key"] for row in build_power_balance_rows("oes_standard")
     }
+
+
+def test_tites_cold_demand_mode_uses_cold_row_for_surplus():
+    sheets = [
+        {
+            "slug": "oes-318",
+            "sheet_name": "ТИТЭС Сибири",
+            "group": GROUP_OES,
+            "layout": "oes_standard",
+            "title": "Баланс мощности ТИТЭС Сибири",
+            "source_slugs": (),
+            "subtract_slugs": (),
+            "territory": {"kind": "ues", "id": 318, "name": "ТИТЭС Сибири"},
+            "is_ees_member": False,
+            "skip_direct_capacity": False,
+            "station_capacity_breakdown": True,
+            "table_number": 1,
+        }
+    ]
+    breakdown = {
+        "oes-318": {
+            "stations": [
+                {
+                    "key": "installed_station_10",
+                    "label": "Станция А",
+                    "year_values": {2026: 15},
+                    "rasp_year_values": {2026: 12},
+                    "machines": [
+                        {
+                            "key": "installed_machine_1",
+                            "label": "1 Турбина",
+                            "year_values": {2026: 10},
+                            "rasp_year_values": {2026: 8},
+                        },
+                        {
+                            "key": "installed_machine_2",
+                            "label": "2 Турбина",
+                            "year_values": {2026: 5},
+                            "rasp_year_values": {2026: 4},
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+    with patch(
+        "app.energy_balance.services.power_balance_page_services.load_power_balance_station_capacity_breakdown",
+        return_value=breakdown,
+    ):
+        tables = build_power_balance_tables(
+            years=[2026],
+            inputs={
+                "oes-318": {
+                    "demand_max": {2026: 100},
+                    DEMAND_MAX_COLD_ROW_KEY: {2026: 20},
+                }
+            },
+            sheets=sheets,
+            demand_mode=DEMAND_MODE_COLD,
+        )
+    rows = {row["key"]: row for row in tables["oes-318"]["rows"]}
+    assert "demand_max" not in rows
+    assert rows[DEMAND_MAX_COLD_ROW_KEY]["year_values"][2026] == "20"
+    surplus_terms = [
+        (term.get("row_key"), term.get("coeff"))
+        for term in rows["surplus_deficit"]["formula"]["terms"]
+    ]
+    assert surplus_terms == [(DEMAND_MAX_COLD_ROW_KEY, None), ("available_total", -1)]
+    assert rows["surplus_deficit"]["year_values"][2026] == "8"
+    assert rows[SURPLUS_N1_ROW_KEY]["year_values"][2026] == "0"
+    assert rows[SURPLUS_N2_ROW_KEY]["year_values"][2026] == "-4"
+    assert SURPLUS_N1_GAO_ROW_KEY not in rows
+    tip = rows["surplus_deficit"].get("formula_tooltip") or ""
+    assert DEMAND_MAX_COLD_LABEL in tip
+    assert DEMAND_MAX_LABEL not in tip.replace(DEMAND_MAX_COLD_LABEL, "")
 
 
 def test_tites_sheets_include_ego_outage_surplus_rows():
@@ -914,14 +1175,204 @@ def test_tites_sheets_include_ego_outage_surplus_rows():
     by_key = {row["key"]: row for row in rows}
     keys = [row["key"] for row in rows]
     assert keys.index("surplus_deficit") + 1 == keys.index(SURPLUS_N1_ROW_KEY)
-    assert keys.index(SURPLUS_N1_ROW_KEY) + 1 == keys.index(SURPLUS_N2_ROW_KEY)
+    assert keys.index(SURPLUS_N1_ROW_KEY) + 1 == keys.index(SURPLUS_N1_GAO_ROW_KEY)
+    assert keys.index(SURPLUS_N1_GAO_ROW_KEY) + 1 == keys.index(SURPLUS_N2_ROW_KEY)
     assert by_key["surplus_deficit"]["label"] == SURPLUS_NORMAL_LABEL
     assert by_key[SURPLUS_N1_ROW_KEY]["label"] == SURPLUS_N1_LABEL
+    assert by_key[SURPLUS_N1_GAO_ROW_KEY]["label"] == SURPLUS_N1_GAO_LABEL
     assert by_key[SURPLUS_N2_ROW_KEY]["label"] == SURPLUS_N2_LABEL
     assert "demand_total" not in by_key
+    assert "constraints" not in by_key
+    assert "commissioning_after_max" not in by_key
+    assert "coverage_total" not in by_key
     assert SURPLUS_N1_ROW_KEY not in {
         row["key"] for row in build_power_balance_rows("oes_standard")
     }
+    gao_terms = [
+        (term.get("row_key"), term.get("coeff"))
+        for term in by_key[SURPLUS_N1_GAO_ROW_KEY]["formula"]["terms"]
+    ]
+    assert gao_terms == [(SURPLUS_N1_ROW_KEY, None), ("demand_max", SURPLUS_N1_GAO_SHARE)]
+    n1_tip = by_key[SURPLUS_N1_ROW_KEY]["formula"]["tooltip"]
+    n2_tip = by_key[SURPLUS_N2_ROW_KEY]["formula"]["tooltip"]
+    gao_tip = by_key[SURPLUS_N1_GAO_ROW_KEY]["formula"]["tooltip"]
+    assert n1_tip == (
+        f"{SURPLUS_N1_LABEL} = Максимум потребления мощности "
+        "− Располагаемая мощность (суммарная) "
+        "− первая максимальная располагаемая мощность агрегатов, "
+        "входящих в данную территорию"
+    )
+    assert n2_tip == (
+        f"{SURPLUS_N2_LABEL} = Максимум потребления мощности "
+        "− Располагаемая мощность (суммарная) "
+        "− первая и вторая максимальная располагаемая мощность агрегатов, "
+        "входящих в данную территорию"
+    )
+    assert gao_tip == (
+        f"{SURPLUS_N1_GAO_LABEL} = {SURPLUS_N1_LABEL} + Максимум потребления мощности × 0,2"
+    )
+
+
+def test_tites_ego_outage_surplus_subtracts_largest_units():
+    years = [2025]
+    tables = {
+        "oes-417": {
+            "sheet": {
+                "slug": "oes-417",
+                "sheet_name": "ТИТЭС Сибири",
+                "group": GROUP_OES,
+            },
+            "rows": [
+                {"key": "demand_max", "year_values_raw": {2025: Decimal("1079")}},
+                {
+                    "key": "available_total",
+                    "year_values_raw": {2025: Decimal("1645.9")},
+                },
+                {
+                    "key": "surplus_deficit",
+                    "year_values_raw": {2025: Decimal("-566.9")},
+                },
+                {
+                    "key": SURPLUS_N1_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+                {
+                    "key": SURPLUS_N1_GAO_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+                {
+                    "key": SURPLUS_N2_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+            ],
+        }
+    }
+    breakdown = {
+        "oes-417": {
+            "stations": [
+                {
+                    "label": "Станция А",
+                    "machines": [
+                        {
+                            "label": "ЕГО-1",
+                            "rasp_year_values": {2025: Decimal("108")},
+                        },
+                        {
+                            "label": "ЕГО-2",
+                            "rasp_year_values": {2025: Decimal("90")},
+                        },
+                    ],
+                }
+            ]
+        }
+    }
+    apply_tites_ego_outage_surplus(tables, years, breakdown, rounding_digits=1)
+    rows = {row["key"]: row for row in tables["oes-417"]["rows"]}
+    assert rows[SURPLUS_N1_ROW_KEY]["year_values"][2025] == "-674,9"
+    assert rows[SURPLUS_N1_GAO_ROW_KEY]["year_values"][2025] == "-459,1"
+    assert rows[SURPLUS_N2_ROW_KEY]["year_values"][2025] == "-764,9"
+    assert rows[SURPLUS_N1_ROW_KEY]["formula_ext_raw"][2025] == "-108"
+    assert rows[SURPLUS_N2_ROW_KEY]["formula_ext_raw"][2025] == "-198"
+
+
+def test_tites_gao_row_hidden_when_normal_scheme_has_no_deficit():
+    years = [2025, 2026]
+    tables = {
+        "oes-417": {
+            "sheet": {
+                "slug": "oes-417",
+                "sheet_name": "ТИТЭС Сибири",
+                "group": GROUP_OES,
+            },
+            "rows": [
+                {"key": "demand_max", "year_values_raw": {2025: Decimal("100"), 2026: Decimal("110")}},
+                {
+                    "key": "available_total",
+                    "year_values_raw": {2025: Decimal("90"), 2026: Decimal("80")},
+                },
+                {
+                    "key": "surplus_deficit",
+                    "year_values_raw": {2025: Decimal("10"), 2026: Decimal("0")},
+                },
+                {
+                    "key": SURPLUS_N1_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+                {
+                    "key": SURPLUS_N1_GAO_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+                {
+                    "key": SURPLUS_N2_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+            ],
+        }
+    }
+    apply_tites_ego_outage_surplus(tables, years, {}, rounding_digits=1)
+    keys = [row["key"] for row in tables["oes-417"]["rows"]]
+    assert SURPLUS_N1_ROW_KEY in keys
+    assert SURPLUS_N2_ROW_KEY in keys
+    assert SURPLUS_N1_GAO_ROW_KEY not in keys
+
+
+def test_tites_gao_row_shown_if_any_year_has_deficit():
+    years = [2025, 2026]
+    tables = {
+        "oes-417": {
+            "sheet": {
+                "slug": "oes-417",
+                "sheet_name": "ТИТЭС Сибири",
+                "group": GROUP_OES,
+            },
+            "rows": [
+                {"key": "demand_max", "year_values_raw": {2025: Decimal("100"), 2026: Decimal("110")}},
+                {
+                    "key": "available_total",
+                    "year_values_raw": {2025: Decimal("90"), 2026: Decimal("200")},
+                },
+                {
+                    "key": "surplus_deficit",
+                    "year_values_raw": {2025: Decimal("10"), 2026: Decimal("-90")},
+                },
+                {
+                    "key": SURPLUS_N1_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+                {
+                    "key": SURPLUS_N1_GAO_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+                {
+                    "key": SURPLUS_N2_ROW_KEY,
+                    "year_values_raw": {},
+                    "year_values": {},
+                    "formula_ext_raw": {},
+                },
+            ],
+        }
+    }
+    apply_tites_ego_outage_surplus(tables, years, {}, rounding_digits=1)
+    rows = {row["key"]: row for row in tables["oes-417"]["rows"]}
+    assert SURPLUS_N1_GAO_ROW_KEY in rows
+    assert rows[SURPLUS_N1_GAO_ROW_KEY]["year_values"][2025] == "30"
+    assert rows[SURPLUS_N1_GAO_ROW_KEY]["year_values"][2026] == "-68"
 
 
 def test_tites_east_falls_back_to_res_when_energy_units_missing():
@@ -1471,3 +1922,22 @@ def test_export_inputs_fill_row_and_demand_total(monkeypatch):
     assert export["editable_values"] is True
     assert _row_display(tables, "centr", "export", 2026) == "15"
     assert _row_display(tables, "centr", "demand_total", 2026) == "15"
+
+
+def test_demand_mode_toggle_in_power_balance_template():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    tmpl = (root / "app/templates/energy_balance/power_balance/power_balance_table.html").read_text(
+        encoding="utf-8"
+    )
+    nav = (root / "app/templates/energy_balance/power_balance/_sheet_nav.html").read_text(
+        encoding="utf-8"
+    )
+    assert 'data-demand-mode="max"' in tmpl
+    assert 'data-demand-mode="cold"' in tmpl
+    assert "Максимум" in tmpl
+    assert "Холодная пятилетка" in tmpl
+    assert "demand_mode" in nav
+    assert "url.searchParams.set('demand_mode'" in tmpl
+    assert 'name="demand_mode"' in tmpl

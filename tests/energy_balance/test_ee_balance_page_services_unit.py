@@ -20,6 +20,9 @@ from app.energy_balance.services.ee_balance_page_services import (
     resolve_ee_balance_hydro_year,
     sheet_has_ges_or_gaes_capacity,
 )
+from app.energy_balance.services.ee_balance_generation_services import (
+    hydro_year_for_balance_sheet,
+)
 from app.energy_balance.services.power_balance_page_services import (
     GROUP_EES,
     GROUP_OES,
@@ -62,6 +65,10 @@ def _stable_station_types_and_no_db_load(monkeypatch):
     monkeypatch.setattr(
         "app.energy_balance.services.ee_balance_page_services.attach_balance_sheet_notes",
         lambda tables, kind: None,
+    )
+    monkeypatch.setattr(
+        "app.energy_balance.services.ee_balance_page_services.overlay_tes_forecast_generation_inputs",
+        lambda inputs, sheets=None, years=None: inputs or {},
     )
 
 
@@ -110,19 +117,35 @@ def test_each_layout_has_energy_rows_and_units(sheet):
     assert not export.get("formula")
     assert "generation_aes" in keys
     assert "generation_ses_ves" in keys
+    assert "generation_ses" in keys
+    assert "generation_ves" in keys
     assert "generation_total" in keys
     assert "flow_in" in keys
     assert "flow_out" in keys
     assert "installed_total" in keys
     assert "installed_aes" in keys
     assert "installed_ses_ves" in keys
+    assert "installed_ses" in keys
+    assert "installed_ves" in keys
     assert "chiim_total" in keys
     assert "chiim_aes" in keys
     assert "chiim_ses_ves" in keys
+    assert "chiim_ses" in keys
+    assert "chiim_ves" in keys
     installed_start = keys.index("installed_total")
     chiim_start = keys.index("chiim_total")
     assert keys[installed_start - 1] == "surplus_deficit_with_flow"
-    assert chiim_start == keys.index("installed_ses_ves") + 1
+    assert chiim_start == keys.index("installed_ves") + 1
+    assert keys.index("generation_ses") == keys.index("generation_ses_ves") + 1
+    assert keys.index("generation_ves") == keys.index("generation_ses") + 1
+    assert keys.index("chiim_ses") == keys.index("chiim_ses_ves") + 1
+    assert keys.index("chiim_ves") == keys.index("chiim_ses") + 1
+    gen_ses_ves = next(row for row in rows if row["key"] == "generation_ses_ves")
+    gen_ses = next(row for row in rows if row["key"] == "generation_ses")
+    assert gen_ses_ves.get("collapsible") is True
+    assert gen_ses.get("is_group_child") is True
+    assert gen_ses.get("parent_group_key") == "generation_ses_ves"
+    assert gen_ses["label"] == "СЭС"
     assert all(k.startswith("installed_") for k in keys[installed_start:chiim_start])
     assert all(k.startswith("chiim_") for k in keys[chiim_start:])
     energy_rows = [
@@ -172,13 +195,15 @@ def test_oes_energy_formulas():
                 "generation_gaes": {2026: "5"},
                 "generation_tes": {2026: "50"},
                 "generation_snee": {2026: "0"},
-                "generation_ses_ves": {2026: "15"},
+                "generation_ses": {2026: "10"},
+                "generation_ves": {2026: "5"},
                 "installed_aes": {2026: 40},
                 "installed_ges": {2026: 10},
                 "installed_gaes": {2026: 5},
                 "installed_tes": {2026: 30},
                 "installed_snee": {2026: 2},
-                "installed_ses_ves": {2026: 3},
+                "installed_ses": {2026: 2},
+                "installed_ves": {2026: 1},
             }
         },
         rounding_digits=1,
@@ -209,6 +234,149 @@ def test_oes_energy_formulas():
     assert "Установленная мощность АЭС" in chiim_aes["formula_tooltip"]
 
 
+def test_selected_eu_plan_tes_equals_consumption_minus_other_generation(monkeypatch):
+    monkeypatch.setattr(
+        "app.energy_balance.services.ee_balance_page_services.get_ee_balance_year_features",
+        lambda: {2024: "факт", 2026: "план"},
+    )
+    residual_inputs = {
+        "consumption": {2024: "100", 2026: "200"},
+        "generation_aes": {2024: "1", 2026: "2"},
+        "generation_ges": {2024: "3", 2026: "4"},
+        "generation_gaes": {2024: "0", 2026: "0"},
+        "generation_tes": {2024: "80", 2026: "999"},
+        "generation_snee": {2024: "5", 2026: "6"},
+        "generation_ses": {2024: "7", 2026: "8"},
+        "generation_ves": {2024: "9", 2026: "10"},
+    }
+    sheets = [
+        {
+            "slug": "eu-255",
+            "sheet_name": "Анадырский энергорайон",
+            "layout": "oes_standard",
+            "territory": {"kind": "eu", "id": 255, "name": "Анадырский энергорайон"},
+        },
+        {
+            "slug": "eu-256",
+            "sheet_name": "Центральный энергорайон Сахалинской области",
+            "layout": "oes_standard",
+            "territory": {
+                "kind": "eu",
+                "id": 256,
+                "name": "Центральный энергорайон Сахалинской области",
+            },
+        },
+        {
+            "slug": "eu-254",
+            "sheet_name": "Чаун-Билибинский энергорайон",
+            "layout": "oes_standard",
+            "territory": {"kind": "eu", "id": 254, "name": "Чаун-Билибинский энергорайон"},
+        },
+        {
+            "slug": "eu-258",
+            "sheet_name": "Центральный энергорайон Камчатского края",
+            "layout": "oes_standard",
+            "territory": {
+                "kind": "eu",
+                "id": 258,
+                "name": "Центральный энергорайон Камчатского края",
+            },
+        },
+        {
+            "slug": "eu-257",
+            "sheet_name": "Центральный энергорайон Магаданской области",
+            "layout": "oes_standard",
+            "territory": {
+                "kind": "eu",
+                "id": 257,
+                "name": "Центральный энергорайон Магаданской области",
+            },
+        },
+    ]
+    tables = build_ee_balance_tables(
+        [2024, 2026],
+        inputs={
+            "eu-255": dict(residual_inputs),
+            "eu-256": dict(residual_inputs),
+            "eu-254": dict(residual_inputs),
+            "eu-258": dict(residual_inputs),
+            "eu-257": dict(residual_inputs),
+        },
+        rounding_digits=1,
+        sheets=sheets,
+    )
+    for slug in ("eu-255", "eu-256", "eu-254", "eu-258"):
+        assert _row_display(tables, slug, "generation_tes", 2024) == "80"
+        assert _row_display(tables, slug, "generation_tes", 2026) == "170"
+        assert _row_display(tables, slug, "generation_total", 2026) == "200"
+        tes = next(row for row in tables[slug]["rows"] if row["key"] == "generation_tes")
+        assert tes["formula_tooltip"].startswith("В прогнозном периоде: ТЭС =")
+        assert "Потребление электрической энергии" in tes["formula_tooltip"]
+        assert "СЭС" in tes["formula_tooltip"]
+        assert "ВЭС" in tes["formula_tooltip"]
+    assert _row_display(tables, "eu-257", "generation_tes", 2026) == "999"
+    magadan_tes = next(
+        row for row in tables["eu-257"]["rows"] if row["key"] == "generation_tes"
+    )
+    assert "помесячного расчёта" in magadan_tes["formula_tooltip"]
+
+
+def test_plan_tes_from_consumption_is_not_negative_when_consumption_unset(monkeypatch):
+    monkeypatch.setattr(
+        "app.energy_balance.services.ee_balance_page_services.get_ee_balance_year_features",
+        lambda: {2026: "план"},
+    )
+    sheets = [
+        {
+            "slug": "eu-254",
+            "sheet_name": "Чаун-Билибинский энергорайон",
+            "layout": "oes_standard",
+        }
+    ]
+    tables = build_ee_balance_tables(
+        [2026],
+        inputs={
+            "eu-254": {
+                "consumption": {2026: "0"},
+                "generation_aes": {2026: "350"},
+                "generation_tes": {2026: "48"},
+            }
+        },
+        rounding_digits=1,
+        sheets=sheets,
+    )
+    assert _row_display(tables, "eu-254", "generation_tes", 2026) == "0"
+    assert _row_display(tables, "eu-254", "generation_aes", 2026) == "350"
+
+
+def test_anadyr_plan_tes_uses_ses_ves_parent_when_children_empty(monkeypatch):
+    monkeypatch.setattr(
+        "app.energy_balance.services.ee_balance_page_services.get_ee_balance_year_features",
+        lambda: {2026: "план"},
+    )
+    sheets = [
+        {
+            "slug": "eu-255",
+            "sheet_name": "Анадырский энергорайон",
+            "layout": "oes_standard",
+        }
+    ]
+    tables = build_ee_balance_tables(
+        [2026],
+        inputs={
+            "eu-255": {
+                "consumption": {2026: "100"},
+                "generation_aes": {2026: "10"},
+                "generation_tes": {2026: "1"},
+                "generation_ses_ves": {2026: "15"},
+            }
+        },
+        rounding_digits=1,
+        sheets=sheets,
+    )
+    assert _row_display(tables, "eu-255", "generation_tes", 2026) == "75"
+
+
 def test_oes_plan_years_make_snee_and_ses_ves_generation_editable(monkeypatch):
     monkeypatch.setattr(
         "app.energy_balance.services.ee_balance_manual_generation_services.classify_ee_balance_generation_years",
@@ -225,9 +393,11 @@ def test_oes_plan_years_make_snee_and_ses_ves_generation_editable(monkeypatch):
         rounding_digits=1,
     )
     snee = next(row for row in tables["centr"]["rows"] if row["key"] == "generation_snee")
-    ses = next(
+    ses_ves = next(
         row for row in tables["centr"]["rows"] if row["key"] == "generation_ses_ves"
     )
+    ses = next(row for row in tables["centr"]["rows"] if row["key"] == "generation_ses")
+    ves = next(row for row in tables["centr"]["rows"] if row["key"] == "generation_ves")
     tes = next(row for row in tables["centr"]["rows"] if row["key"] == "generation_tes")
     ees_snee = next(
         row for row in tables["ees-rossii"]["rows"] if row["key"] == "generation_snee"
@@ -235,10 +405,17 @@ def test_oes_plan_years_make_snee_and_ses_ves_generation_editable(monkeypatch):
     assert snee["editable_values"] is True
     assert snee["editable_years"] == [2026]
     assert snee["value_save_kind"] == "generation"
-    assert ses["editable_values"] is True
+    assert ses_ves.get("formula")
+    assert ses_ves.get("editable_values") is not True
+    assert ses.get("editable_values") is not True
+    assert ves.get("editable_values") is not True
     assert tes.get("editable_values") is not True
     assert ees_snee.get("formula")
     assert ees_snee.get("editable_values") is not True
+    installed_ses = next(
+        row for row in tables["centr"]["rows"] if row["key"] == "installed_ses"
+    )
+    assert installed_ses.get("editable_values") is not True
 
 
 def test_table_context_for_known_slug():
@@ -306,6 +483,83 @@ def test_resolve_ee_balance_hydro_year_defaults_to_average():
     assert resolve_ee_balance_hydro_year("маловодный") == HYDRO_YEAR_LOW
 
 
+def test_hydro_year_for_balance_sheet_average_only_for_five_oes():
+    sheets = [
+        {
+            "slug": "centr",
+            "group": "oes",
+            "layout": "oes_standard",
+            "sheet_name": "ОЭС Центра",
+            "territory": {"kind": "ues", "id": 2, "name": "Центр"},
+        },
+        {
+            "slug": "sibir",
+            "group": "oes",
+            "layout": "oes_sibir",
+            "sheet_name": "ОЭС Сибири",
+            "territory": {"kind": "ues", "id": 6, "name": "Сибирь"},
+        },
+        {
+            "slug": "ees-rossii",
+            "group": "ees",
+            "layout": "ees_rossii",
+            "sheet_name": "ЕЭС России",
+        },
+        {
+            "slug": "1-sz-ees",
+            "group": "sz",
+            "layout": "sz1",
+            "sheet_name": "1-я СЗ ЕЭС",
+        },
+        {
+            "slug": "eu-258",
+            "group": "eu",
+            "layout": "oes_standard",
+            "sheet_name": "Энергорайон",
+            "parent_slug": "oes-2",
+        },
+        {
+            "slug": "eu-101",
+            "group": "eu",
+            "layout": "oes_standard",
+            "sheet_name": "Центральный энергорайон Камчатского края",
+            "parent_slug": "sibir",
+        },
+    ]
+    by_slug = {item["slug"]: item for item in sheets}
+    assert hydro_year_for_balance_sheet(by_slug["centr"], sheets) == HYDRO_YEAR_AVERAGE
+    assert hydro_year_for_balance_sheet(
+        {
+            "slug": "severo-zapad",
+            "group": "oes",
+            "layout": "oes_standard",
+            "sheet_name": "ОЭС Северо-Запада",
+        },
+        sheets,
+    ) == HYDRO_YEAR_AVERAGE
+    assert hydro_year_for_balance_sheet(
+        {
+            "slug": "srednyaya-volga",
+            "group": "oes",
+            "sheet_name": "ОЭС Волги",
+        },
+        sheets,
+    ) == HYDRO_YEAR_AVERAGE
+    assert hydro_year_for_balance_sheet(
+        {"slug": "ural", "group": "oes", "sheet_name": "ОЭС Урала"},
+        sheets,
+    ) == HYDRO_YEAR_AVERAGE
+    assert hydro_year_for_balance_sheet(
+        {"slug": "yug", "group": "oes", "layout": "oes_yug", "sheet_name": "ОЭС Юга"},
+        sheets,
+    ) == HYDRO_YEAR_AVERAGE
+    assert hydro_year_for_balance_sheet(by_slug["sibir"], sheets) == HYDRO_YEAR_LOW
+    assert hydro_year_for_balance_sheet(by_slug["ees-rossii"], sheets) is None
+    assert hydro_year_for_balance_sheet(by_slug["1-sz-ees"], sheets) is None
+    assert hydro_year_for_balance_sheet(by_slug["eu-258"], sheets) == HYDRO_YEAR_AVERAGE
+    assert hydro_year_for_balance_sheet(by_slug["eu-101"], sheets) == HYDRO_YEAR_LOW
+
+
 def test_format_ee_balance_page_title_appends_hydro_year():
     base = "Баланс электрической энергии Северо-Запад"
     assert format_ee_balance_page_title(base) == base
@@ -322,11 +576,13 @@ def test_format_ee_balance_page_title_appends_hydro_year():
     assert format_ee_balance_page_title(already, hydro_year=HYDRO_YEAR_LOW) == already
 
 
-def test_table_context_hydro_year_nav_when_ges_capacity(monkeypatch):
+def test_table_context_hydro_year_in_title_without_buttons(monkeypatch):
     monkeypatch.setattr(
         "app.energy_balance.services.ee_balance_page_services.load_power_balance_installed_capacity_inputs",
         lambda years, sheets=None: {
-            "severo-zapad": {"installed_ges": {2026: 100, 2027: 0}}
+            "severo-zapad": {"installed_ges": {2026: 100, 2027: 0}},
+            "sibir": {"installed_ges": {2026: 80, 2027: 0}},
+            "ees-rossii": {"installed_ges": {2026: 180, 2027: 0}},
         },
     )
     with patch(
@@ -339,37 +595,33 @@ def test_table_context_hydro_year_nav_when_ges_capacity(monkeypatch):
         "app.energy_balance.services.ee_balance_page_services.get_ee_balance_filter_year_list",
         return_value=[2026, 2027],
     ):
-        context_avg = build_ee_balance_table_context("severo-zapad")
-        context_low = build_ee_balance_table_context(
+        context_nw = build_ee_balance_table_context(
             "severo-zapad", hydro_year=HYDRO_YEAR_LOW
         )
-    assert context_avg is not None
-    assert context_low is not None
-    assert context_avg["show_hydro_year_nav"] is True
-    assert context_avg["hydro_year"] == HYDRO_YEAR_AVERAGE
-    assert context_low["hydro_year"] == HYDRO_YEAR_LOW
-    assert context_avg["page_title"] == (
+        context_sibir = build_ee_balance_table_context("sibir")
+        context_ees = build_ee_balance_table_context("ees-rossii")
+    assert context_nw is not None
+    assert context_sibir is not None
+    assert context_ees is not None
+    assert context_nw["show_hydro_year_nav"] is False
+    assert context_nw["hydro_year_buttons"] == []
+    assert context_nw["hydro_year"] == HYDRO_YEAR_AVERAGE
+    assert context_nw["page_title"] == (
         "Баланс электрической энергии Северо-Запад (средневодный год)"
     )
-    assert context_low["page_title"] == (
-        "Баланс электрической энергии Северо-Запад (маловодный год)"
+    assert context_sibir["hydro_year"] == HYDRO_YEAR_LOW
+    assert context_sibir["page_title"] == (
+        "Баланс электрической энергии Сибирь (маловодный год)"
     )
-    assert [item["label"] for item in context_avg["hydro_year_buttons"]] == [
-        "Северо-Запад (средневодный год)",
-        "Северо-Запад (маловодный год)",
-    ]
-    assert [row["key"] for row in context_avg["rows"]] == [
-        row["key"] for row in context_low["rows"]
-    ]
-    assert [row.get("year_values_raw") for row in context_avg["rows"]] == [
-        row.get("year_values_raw") for row in context_low["rows"]
-    ]
+    assert context_ees["hydro_year"] is None
+    assert context_ees["page_title"] == "Баланс электрической энергии ЕЭС России"
 
 
-def test_table_context_passes_hydro_year_to_generation(monkeypatch):
+def test_table_context_does_not_pass_global_hydro_year_to_generation(monkeypatch):
     captured: dict[str, object] = {}
 
     def fake_gen(years, sheets=None, hydro_year=None):
+        captured["called"] = True
         captured["hydro_year"] = hydro_year
         return {}
 
@@ -397,22 +649,24 @@ def test_table_context_passes_hydro_year_to_generation(monkeypatch):
             "severo-zapad", hydro_year=HYDRO_YEAR_LOW
         )
     assert context is not None
-    assert captured["hydro_year"] == HYDRO_YEAR_LOW
+    assert captured["called"] is True
+    assert captured["hydro_year"] is None
 
 
-def test_hydro_year_nav_template_renders_second_row():
+def test_sheet_nav_template_has_no_hydro_year_buttons():
     from jinja2 import Environment, FileSystemLoader
 
     env = Environment(
         loader=FileSystemLoader("app/templates"),
         autoescape=True,
     )
-    env.globals["url_for"] = lambda endpoint, **kwargs: (
-        "/energy_balance/ee_balance/{slug}/?hydro_year={hydro}".format(
-            slug=kwargs.get("slug", ""),
-            hydro=kwargs.get("hydro_year") or "",
-        )
-    )
+    def _url_for(endpoint, **kwargs):
+        slug = kwargs.get("slug", "")
+        if endpoint == "energy_balance_bp.power_balance_table":
+            return "/energy_balance/power_balance/{slug}/".format(slug=slug)
+        return "/energy_balance/ee_balance/{slug}/".format(slug=slug)
+
+    env.globals["url_for"] = _url_for
     html = env.get_template("energy_balance/ee_balance/_sheet_nav.html").render(
         current_slug="severo-zapad",
         sheet_groups=[
@@ -437,46 +691,34 @@ def test_hydro_year_nav_template_renders_second_row():
             {"key": HYDRO_YEAR_LOW, "label": "ОЭС Северо-Запада (маловодный год)"},
         ],
     )
-    assert "ОЭС Северо-Запада (средневодный год)" in html
-    assert "ОЭС Северо-Запада (маловодный год)" in html
-    assert 'hydro_year=average' in html
-    assert 'hydro_year=low' in html
-    assert html.count("btn-primary") >= 2
-
-    hidden = env.get_template("energy_balance/ee_balance/_sheet_nav.html").render(
-        current_slug="kaliningradskaya-sz-ees",
-        sheet_groups=[
-            {
-                "group": "sz",
-                "sheets": [
-                    {
-                        "slug": "kaliningradskaya-sz-ees",
-                        "sheet_name": "Калининградская СЗ",
-                    }
-                ],
-            }
-        ],
-        show_hydro_year_nav=False,
-        hydro_year=None,
-        hydro_year_buttons=[],
-    )
-    assert "средневодный год" not in hidden
-    assert "маловодный год" not in hidden
+    assert "ОЭС Северо-Запада (средневодный год)" not in html
+    assert "ОЭС Северо-Запада (маловодный год)" not in html
+    assert "hydro_year=" not in html
+    assert "Вариант водохозяйственного года" not in html
+    assert "Балансы мощности" in html
+    assert "Балансы ЭЭ" not in html
+    assert "Балансы ЭМ" not in html
+    assert "/energy_balance/power_balance/severo-zapad/" in html
+    assert html.count('class="btn btn-secondary fs-5 text-nowrap flex-shrink-0"') == 1
+    oes_at = html.find("ОЭС Северо-Запада")
+    power_at = html.find("Балансы мощности")
+    assert 0 <= oes_at < power_at
 
 
-def test_tites_east_child_buttons_render_before_hydro_year():
+def test_tites_east_child_buttons_render_without_hydro_year():
     from jinja2 import Environment, FileSystemLoader
 
     env = Environment(
         loader=FileSystemLoader("app/templates"),
         autoescape=True,
     )
-    env.globals["url_for"] = lambda endpoint, **kwargs: (
-        "/energy_balance/ee_balance/{slug}/?hydro_year={hydro}".format(
-            slug=kwargs.get("slug", ""),
-            hydro=kwargs.get("hydro_year") or "",
-        )
-    )
+    def _url_for(endpoint, **kwargs):
+        slug = kwargs.get("slug", "")
+        if endpoint == "energy_balance_bp.power_balance_table":
+            return "/energy_balance/power_balance/{slug}/".format(slug=slug)
+        return "/energy_balance/ee_balance/{slug}/".format(slug=slug)
+
+    env.globals["url_for"] = _url_for
     html = env.get_template("energy_balance/ee_balance/_sheet_nav.html").render(
         current_slug="eu-104",
         first_row_active_slug="oes-15",
@@ -507,15 +749,39 @@ def test_tites_east_child_buttons_render_before_hydro_year():
             {"key": HYDRO_YEAR_LOW, "label": "Камчатская ЭС (маловодный год)"},
         ],
     )
+    power_at = html.find("Балансы мощности")
     kamchatka_at = html.find("Центральный энергорайон Камчатского края")
     chaun_at = html.find("Чаун-Билибинский энергорайон")
     anadyr_at = html.find("Анадырский энергорайон")
-    hydro_at = html.find("Камчатская ЭС (средневодный год)")
-    assert 0 < kamchatka_at < chaun_at < anadyr_at < hydro_at
+    assert 0 < power_at < kamchatka_at < chaun_at < anadyr_at
+    assert "Камчатская ЭС (средневодный год)" not in html
+    assert "hydro_year=" not in html
+    assert "Балансы ЭЭ" not in html
+    assert "/energy_balance/power_balance/eu-104/" in html
     assert "/energy_balance/ee_balance/eu-101/" in html
     assert "/energy_balance/ee_balance/eu-104/" in html
     assert "/energy_balance/ee_balance/eu-105/" in html
-    assert html.count("btn-primary") >= 3
+    assert html.count("btn-primary") >= 2
+
+
+def test_ees_and_sz1_generation_sums_mixed_hydro_years():
+    years = [2026]
+    tables = build_ee_balance_tables(
+        years,
+        inputs={
+            "severo-zapad": {"generation_ges": {2026: 10}},
+            "centr": {"generation_ges": {2026: 20}},
+            "srednyaya-volga": {"generation_ges": {2026: 4}},
+            "yug": {"generation_ges": {2026: 5}},
+            "ural": {"generation_ges": {2026: 6}},
+            "sibir": {"generation_ges": {2026: 7}},
+            "2-sz-ees-vostok": {"generation_ges": {2026: 8}},
+            "kaliningradskaya-sz-ees": {"generation_ges": {2026: 3}},
+        },
+        rounding_digits=1,
+    )
+    assert _row_display(tables, "ees-rossii", "generation_ges", 2026) == "60"
+    assert _row_display(tables, "1-sz-ees", "generation_ges", 2026) == "49"
 
 
 def test_ees_and_sz1_installed_capacity_cross_sheet_formulas():

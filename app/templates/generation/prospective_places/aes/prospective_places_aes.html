@@ -24,7 +24,7 @@
 {% set can_edit = current_user.role_names | select('in', edit_roles) | list | length > 0 %}
 <div class="container-fluid mt-2">
     {% set aes_nav_active = 'list' %}
-    {% set aes_nav_back_url = url_for('prospective_places_bp.prospective_places_start') %}
+    {% set aes_nav_back_url = url_for('generation_bp.generation_start') %}
     {% set aes_nav_back_label = 'Перспективные площадки размещения новых электростанций' %}
     {% include 'generation/prospective_places/aes/_aes_tep_nav_row.html' %}
 

@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% from 'fuel/_shared/fuel_param_edit_macros.html' import fuel_param_numb1120_header_th %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+
+<div id="loading-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Загрузка...</span>
+        </div>
+        <p class="mt-3 h4">Загрузка отчетных данных...</p>
+        <p class="text-muted">Это может занять некоторое время</p>
+    </div>
+</div>
+
+<div class="container-fluid mt-2">
+    <div class="table-responsive" id="stationsTableContainer">
+        <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
+            <a href="{{ url_for('ecology_bp.hub') }}" class="btn btn-secondary fs-5">
+                <i class="bi bi-tree"></i> Модуль «Экология»
+            </a>
+            <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Словарь станций и групп оборудования</a>
+        </div>
+
+        <div class="col-12 mb-2">
+            <h2 class="text-center mb-4">{{ page_title }}</h2>
+        </div>
+
+        {% include 'ecology/_gis_tek_filters.html' %}
+
+        {% set value_column_groups = value_column_groups|default([]) %}
+        {% set value_column_formulas = value_column_formulas|default({}) %}
+        {% set value_column_banner = value_column_banner|default('') %}
+        {% set header_rowspan = header_rowspan|default(2 if value_column_groups else 1) %}
+        {% set group_rowspan = group_rowspan|default(header_rowspan) %}
+        {% set identity_col_count = identity_columns|length %}
+        <style>
+          #gisTekReportTable.ot-hide-empty tbody tr.ot-row-empty-hidden { display: none !important; }
+          #gisTekReportTable tbody tr.gis-tek-summary-row > td {
+            font-weight: 700;
+            background-color: #fff3cd;
+          }
+        </style>
+        <table id="gisTekReportTable"
+               class="table table-hover table-striped table-bordered table-responsive{% if not show_empty_rows|default(false) %} ot-hide-empty{% endif %}">
+            <thead class="table-success">
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    {% for key, label, is_numeric in identity_columns %}
+                    {% if key == 'station_numb' %}
+                    {{ fuel_param_numb1120_header_th(header_rowspan, 'Код группы оборудования', (numb1120_filter|default([])), (numb1120_filter_choices|default([])), 'numb') }}
+                    {% else %}
+                    <th rowspan="{{ header_rowspan }}" style="width: {% if key in ('gis_tek_station_name', 'generation_station_name', 'equipment_group_name') %}220px{% else %}90px{% endif %};">
+                        {{ label }}
+                    </th>
+                    {% endif %}
+                    {% endfor %}
+                    {% if value_column_banner %}
+                    <th colspan="{{ value_columns|length }}">{{ value_column_banner }}</th>
+                    {% elif value_column_groups %}
+                    {% for group_label, group_cols in value_column_groups %}
+                    {% set sub_label = group_cols[0][1] if group_cols|length == 1 else none %}
+                    {% if group_cols|length == 1 and not sub_label %}
+                    {% set group_attr = group_cols[0][0] %}
+                    <th rowspan="{{ group_rowspan }}" style="width: 110px;">{{ group_label }}{% if value_column_formulas.get(group_attr) %}
+                      <i class="bi bi-info-circle text-primary ms-1"
+                         data-bs-toggle="tooltip"
+                         data-bs-placement="top"
+                         title="{{ value_column_formulas.get(group_attr)|e }}"
+                         style="cursor: help; font-size: 0.9em;"
+                         aria-label="Формула"></i>
+                      {% endif %}</th>
+                    {% else %}
+                    <th colspan="{{ group_cols|length }}">{{ group_label }}</th>
+                    {% endif %}
+                    {% endfor %}
+                    {% else %}
+                    {% for attr, label in value_columns %}
+                    <th style="width: 110px;">{{ label }}{% if value_column_formulas.get(attr) %}
+                      <i class="bi bi-info-circle text-primary ms-1"
+                         data-bs-toggle="tooltip"
+                         data-bs-placement="top"
+                         title="{{ value_column_formulas.get(attr)|e }}"
+                         style="cursor: help; font-size: 0.9em;"
+                         aria-label="Формула"></i>
+                      {% endif %}</th>
+                    {% endfor %}
+                    {% endif %}
+                </tr>
+                {% if value_column_groups and value_column_banner %}
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    {% for group_label, group_cols in value_column_groups %}
+                    {% set sub_label = group_cols[0][1] if group_cols|length == 1 else none %}
+                    {% if group_cols|length == 1 and not sub_label %}
+                    {% set group_attr = group_cols[0][0] %}
+                    <th rowspan="{{ group_rowspan }}" style="width: 110px;">{{ group_label }}{% if value_column_formulas.get(group_attr) %}
+                      <i class="bi bi-info-circle text-primary ms-1"
+                         data-bs-toggle="tooltip"
+                         data-bs-placement="top"
+                         title="{{ value_column_formulas.get(group_attr)|e }}"
+                         style="cursor: help; font-size: 0.9em;"
+                         aria-label="Формула"></i>
+                      {% endif %}</th>
+                    {% else %}
+                    <th colspan="{{ group_cols|length }}">{{ group_label }}</th>
+                    {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endif %}
+                {% if value_column_groups %}
+                <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
+                    {% for group_label, group_cols in value_column_groups %}
+                    {% for attr, label in group_cols %}
+                    {% if label %}
+                    <th style="width: 110px;">{{ label }}{% if value_column_formulas.get(attr) %}
+                      <i class="bi bi-info-circle text-primary ms-1"
+                         data-bs-toggle="tooltip"
+                         data-bs-placement="top"
+                         title="{{ value_column_formulas.get(attr)|e }}"
+                         style="cursor: help; font-size: 0.9em;"
+                         aria-label="Формула"></i>
+                      {% endif %}</th>
+                    {% endif %}
+                    {% endfor %}
+                    {% endfor %}
+                </tr>
+                {% endif %}
+            </thead>
+            <tbody>
+                {% if hierarchy and hierarchy|length > 0 %}
+                    {% for ues_block in hierarchy %}
+                        <tr class="table-primary text-center" style="vertical-align: middle; font-weight: bold;">
+                            <td colspan="{{ column_count }}">{{ ues_block.ues_name }}</td>
+                        </tr>
+                        {% for res_block in ues_block.res_list %}
+                            <tr class="table-info text-center" style="vertical-align: middle; font-weight: bold;">
+                                <td colspan="{{ column_count }}">{{ res_block.res_name }}</td>
+                            </tr>
+                            {% for row in res_block.rows %}
+                            <tr class="text-center align-middle{% if row.is_empty %} ot-row-empty-hidden{% endif %}">
+                                <td>{{ row.station_numb if row.station_numb is not none else '—' }}</td>
+                                <td class="text-start">{{ row.gis_tek_station_name }}</td>
+                                <td class="text-start">
+                                    {% if row.generation_stations %}
+                                        {% for st in row.generation_stations %}
+                                            {% if not loop.first %}<br>{% endif %}
+                                            <a href="{{ url_for('station_bp.station_details', station_id=st.id) }}"
+                                               class="text-decoration-none"
+                                               target="_blank"
+                                               rel="noopener noreferrer">{{ st.name }}</a>
+                                        {% endfor %}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td class="text-start">
+                                    {% if row.equipment_group_id %}
+                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=row.equipment_group_id) }}" class="text-decoration-none">
+                                        {{ row.equipment_group_name }}
+                                    </a>
+                                    {% else %}
+                                        {{ row.equipment_group_name }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ row.station_type }}</td>
+                                {% for attr, label in value_columns %}
+                                <td>
+                                    {% set v = row['metrics'].get(attr) %}
+                                    {% if v is not none %}{{ v | format_decimal }}{% else %}—{% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                            {% if res_block.summary %}
+                            <tr class="text-center align-middle gis-tek-summary-row{% if res_block.summary.is_empty %} ot-row-empty-hidden{% endif %}">
+                                <td colspan="{{ identity_col_count }}">{{ res_block.summary.label }}</td>
+                                {% for attr, label in value_columns %}
+                                <td>
+                                    {% set v = res_block.summary.metrics.get(attr) %}
+                                    {% if v is not none %}{{ v | format_decimal }}{% else %}—{% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endif %}
+                        {% endfor %}
+                        {% if ues_block.summary %}
+                        <tr class="text-center align-middle gis-tek-summary-row{% if ues_block.summary.is_empty %} ot-row-empty-hidden{% endif %}">
+                            <td colspan="{{ identity_col_count }}">{{ ues_block.summary.label }}</td>
+                            {% for attr, label in value_columns %}
+                            <td>
+                                {% set v = ues_block.summary.metrics.get(attr) %}
+                                {% if v is not none %}{{ v | format_decimal }}{% else %}—{% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="{{ column_count }}" class="text-center align-middle">Нет данных для отображения</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+        <div class="mt-2">
+            {% if per_page is not none %}
+                {% set pagination_endpoint = list_endpoint %}
+                {% include 'generation/includes/pagination_station.html' %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+<script id="filters-data" type="application/json">
+  {{ {
+      'energy_system_type_list': energy_system_type_list|default([], true),
+      'union_energy_system_list': union_energy_system_list|default([], true),
+      'regional_energy_system_list': regional_energy_system_list|default([], true),
+      'federal_district_list': federal_district_list|default([], true),
+      'regional_district_list': regional_district_list|default([], true),
+      'energy_system_type_filter': energy_system_type_filter|default([], true),
+      'union_energy_system_filter': union_energy_system_filter|default([], true),
+      'regional_energy_system_filter': regional_energy_system_filter|default([], true),
+      'federal_district_filter': federal_district_filter|default([], true),
+      'regional_district_filter': regional_district_filter|default([], true),
+      'regional_energy_system_mapping': regional_energy_system_mapping|default({}, true),
+      'regional_district_mapping': regional_district_mapping|default({}, true),
+      'est_to_ues_mapping': est_to_ues_mapping|default({}, true),
+      'est_to_res_mapping': est_to_res_mapping|default({}, true),
+      'est_to_rd_mapping': est_to_rd_mapping|default({}, true),
+      'est_to_fd_mapping': est_to_fd_mapping|default({}, true),
+      'ues_to_est_mapping': ues_to_est_mapping|default({}, true),
+      'ues_to_res_mapping': ues_to_res_mapping|default({}, true),
+      'ues_to_rd_mapping': ues_to_rd_mapping|default({}, true),
+      'ues_to_fd_mapping': ues_to_fd_mapping|default({}, true),
+      'res_to_est_mapping': res_to_est_mapping|default({}, true),
+      'res_to_ues_mapping_one': res_to_ues_mapping_one|default({}, true),
+      'res_to_rd_mapping': res_to_rd_mapping|default({}, true),
+      'res_to_fd_mapping': res_to_fd_mapping|default({}, true),
+      'rd_to_fd_mapping_one': rd_to_fd_mapping_one|default({}, true),
+      'rd_to_res_mapping': rd_to_res_mapping|default({}, true),
+      'rd_to_ues_mapping': rd_to_ues_mapping|default({}, true),
+      'rd_to_est_mapping': rd_to_est_mapping|default({}, true),
+      'fd_to_rd_mapping': fd_to_rd_mapping|default({}, true),
+      'fd_to_res_mapping': fd_to_res_mapping|default({}, true),
+      'fd_to_ues_mapping': fd_to_ues_mapping|default({}, true),
+      'fd_to_est_mapping': fd_to_est_mapping|default({}, true)
+  } | tojson | safe }}
+</script>
+<script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+{% include 'ecology/_station_filters_toggle_script.html' %}
+<script>
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }, 300);
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
+            new bootstrap.Tooltip(el);
+        });
+        const emptyBtn = document.getElementById('otShowEmptyRowsToggle');
+        emptyBtn?.addEventListener('click', function () {
+            const params = new URLSearchParams(window.location.search);
+            const currentlyShown = emptyBtn.getAttribute('aria-pressed') !== 'false';
+            params.set('show_empty_rows', currentlyShown ? '0' : '1');
+            params.set('page', '1');
+            const qs = params.toString();
+            window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+        });
+        const showTotalsSwitch = document.getElementById('show_totals_switch');
+        showTotalsSwitch?.addEventListener('change', function () {
+            const params = new URLSearchParams(window.location.search);
+            params.set('show_totals', showTotalsSwitch.checked ? '1' : '0');
+            params.set('page', '1');
+            const qs = params.toString();
+            window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+        });
+    });
+</script>
+{% endblock %}

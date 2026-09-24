@@ -3661,7 +3661,7 @@ def stations_equipment_group_specific_fuel_consumption():
 def recalculate_specific_fuel_consumption():
     """
     Пересчет удельных показателей (y_calc, btp_calc, sntp_calc, bk_calc, snk_calc)
-    для выбранного года во всех версиях БД и запись в БД.
+    для выбранного года в текущей версии БД и запись в БД.
     """
     year = request.form.get("year") or request.args.get("year")
     try:
@@ -3679,12 +3679,11 @@ def recalculate_specific_fuel_consumption():
 
     try:
         updated = recalculate_all_specific_fuel_consumption_calc(
-            year=year, all_versions=True
+            year=year, all_versions=False
         )
         if updated:
             flash(
-                f"Пересчитано удельных показателей для года {year} "
-                f"во всех версиях БД: {updated}.",
+                f"Пересчитано удельных показателей для года {year}: {updated}.",
                 "success",
             )
         else:
@@ -6523,6 +6522,12 @@ def export_stations_equipment_group_specific_fuel_consumption():
         except (ValueError, TypeError):
             rounding_digits = 1
 
+        show_calc_mismatch = str(request.args.get("show_calc_mismatch", "")).lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+
         excel_file = export_stations_equipment_group_specific_fuel_consumption_to_excel(
             filters,
             start_year,
@@ -6531,13 +6536,15 @@ def export_stations_equipment_group_specific_fuel_consumption():
             page=1,
             show_all=True,
             rounding_digits=rounding_digits,
+            show_calc_mismatch=show_calc_mismatch,
         )
         if excel_file is None:
             flash("Нет данных для экспорта.", "warning")
             return redirect(url_for(redirect_to, **redirect_args))
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"Удельные_показатели_групп_оборудования_{timestamp}.xlsx"
+        mismatch_suffix = "_расхождения_calc" if show_calc_mismatch else ""
+        filename = f"Удельные_показатели_групп_оборудования{mismatch_suffix}_{timestamp}.xlsx"
 
         excel_file.seek(0)
         return send_file(

@@ -138,6 +138,19 @@ def _station_type_key(name: Any) -> str:
     return ves_ses_type_key(name)
 
 
+# Внутри района: сначала ВЭС, затем СЭС; внутри типа — по алфавиту.
+_VES_SES_TYPE_SORT_RANK = {"ves": 0, "ses": 1}
+
+
+def _ves_ses_station_row_sort_key(row: dict[str, Any]) -> tuple:
+    type_key = str(row.get("type_key") or "")
+    return (
+        _VES_SES_TYPE_SORT_RANK.get(type_key, 2),
+        str(row.get("name") or "").casefold(),
+        int(row.get("id") or 0),
+    )
+
+
 def _can_edit_ves_ses_energy() -> bool:
     if not getattr(current_user, "is_authenticated", False):
         return False
@@ -965,6 +978,7 @@ def build_ves_ses_page_rows(
                                     "rd_id": rd_id,
                                 }
                             )
+                    rd_station_rows.sort(key=_ves_ses_station_row_sort_key)
                     if rd_station_ids:
                         rd_blocks.append(
                             (rd_id, rd_name, rd_station_rows, rd_total, rd_station_ids)

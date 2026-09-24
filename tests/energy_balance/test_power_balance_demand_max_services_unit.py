@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 from app.common.perimeter_variant.constants import CODE_WITHOUT_NT
 from app.energy_balance.services.power_balance_demand_max_services import (
+    _is_first_sz_name,
     load_power_balance_demand_max_inputs,
     year_values_from_max_power_rows,
 )
@@ -228,3 +229,55 @@ def test_tables_fill_demand_max_from_loader():
     assert row["year_values"][2026] == "10,5"
     demand_total = next(item for item in tables["centr"]["rows"] if item["key"] == "demand_total")
     assert demand_total["year_values"][2026] == "10,5"
+
+
+def test_first_sz_name_matches_full_and_short_labels():
+    assert _is_first_sz_name("Первая синхронная зона")
+    assert _is_first_sz_name("1-я СЗ ЕЭС")
+    assert _is_first_sz_name("1-я СЗ")
+    assert not _is_first_sz_name("Вторая синхронная зона")
+    assert not _is_first_sz_name("2-я СЗ ЕЭС")
+    assert not _is_first_sz_name("Синхронная зона Калининградской области")
+    assert not _is_first_sz_name("ЕЭС России")
+
+
+def test_first_sz_falls_back_to_without_nt_kaliningrad_codes():
+    sheets = [
+        {
+            "slug": "1-sz-ees",
+            "layout": "sz1",
+            "group": "sz",
+            "sheet_name": "Первая синхронная зона",
+            "territory": {
+                "kind": "sa",
+                "id": 5,
+                "name": "Первая синхронная зона",
+            },
+        }
+    ]
+    codes: list[str | None] = []
+
+    def fake_block(model, fk, parent_id, display_perimeter_variant_code=None):
+        assert display_perimeter_variant_code == CODE_WITHOUT_NT
+        return []
+
+    def fake_rows(model, fk, parent_id, perimeter_variant_code=None):
+        codes.append(perimeter_variant_code)
+        if perimeter_variant_code == "without_nt_without_gaes_kaliningrad":
+            return [_row(year=2024, value=Decimal("158241"))]
+        return []
+
+    with patch(
+        "app.energy_balance.services.power_balance_demand_max_services.get_demand_rows_for_summary_block",
+        fake_block,
+    ), patch(
+        "app.energy_balance.services.power_balance_demand_max_services.get_demand_rows",
+        fake_rows,
+    ), patch(
+        "app.energy_balance.services.power_balance_demand_max_services.peek_stored_perimeter_variant_code_for_parent",
+        return_value=None,
+    ):
+        inputs = load_power_balance_demand_max_inputs([2024], sheets=sheets)
+
+    assert "without_nt_without_gaes_kaliningrad" in codes
+    assert inputs["1-sz-ees"]["demand_max"][2024] == Decimal("158241")

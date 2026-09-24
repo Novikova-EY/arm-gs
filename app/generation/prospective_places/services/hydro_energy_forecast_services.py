@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Загрузка/сохранение помесячного прогноза выработки ГЭС/ГАЭС (водохозяйственный год)."""
+"""Загрузка/сохранение помесячного прогноза выработки ГЭС/ГАЭС (календарный год)."""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -17,10 +17,23 @@ from app.generation.services.machine_services.machine_services import (
     to_decimal,
 )
 from app.generation.prospective_places.models.prospective_place_hydro_energy_forecast_model import (
+    HYDRO_MONTH_NAMES,
     HYDRO_MONTH_ORDER,
-    HYDRO_MONTH_ROMAN,
     HYDRO_SCENARIOS,
+    PLACE_KIND_GAES,
+    PLACE_KIND_GES,
+    PLACE_KIND_STATION,
     ProspectivePlaceHydroEnergyForecast,
+)
+from app.generation.prospective_places.models.gaes.station_prospective_place_gaes_model import (
+    StationProspectivePlaceGAES,
+)
+from app.generation.prospective_places.models.ges.station_prospective_place_ges_model import (
+    StationProspectivePlaceGES,
+)
+from app.generation.services.station_services.station_type_flags import (
+    is_gaes_station,
+    is_ges_station,
 )
 from app.logs.services.logging_service import log_to_db
 from config import SCHEMA_GENERATION
@@ -97,11 +110,56 @@ def build_hydro_forecast_view(
         )
     return {
         "month_order": HYDRO_MONTH_ORDER,
-        "month_romans": HYDRO_MONTH_ROMAN,
+        "month_names": HYDRO_MONTH_NAMES,
         "scenarios": scenarios,
         "rounding_digits": rounding_digits,
         "format_value": lambda v: format_hydro_gen_display(v, rounding_digits),
     }
+
+
+def hydro_forecast_owner_for_station(station) -> tuple[str, int] | None:
+    """Где хранить прогноз: привязанная площадка ГЭС/ГАЭС или сама станция."""
+    if is_ges_station(station):
+        kind = PLACE_KIND_GES
+        model = StationProspectivePlaceGES
+    elif is_gaes_station(station):
+        kind = PLACE_KIND_GAES
+        model = StationProspectivePlaceGAES
+    else:
+        return None
+
+    station_id = int(station.id)
+    code = (getattr(station, "external_code", None) or "").strip()
+    if not code:
+        return PLACE_KIND_STATION, station_id
+
+    station_vid = getattr(station, "database_version_id", None)
+    if station_vid is None:
+        station_vid = get_current_db_version_id()
+
+    for place in model.query.filter(model.external_code == code).order_by(model.id).all():
+        place_vid = getattr(place, "database_version_id", None)
+        if place_vid is None:
+            place_vid = get_current_db_version_id()
+        if place_vid == station_vid:
+            return kind, int(place.id)
+    return PLACE_KIND_STATION, station_id
+
+
+def save_station_hydro_forecast_from_form(user, station, form_data, *, commit: bool = True) -> list[str]:
+    owner = hydro_forecast_owner_for_station(station)
+    if owner is None:
+        return []
+    kind, place_id = owner
+    return save_hydro_forecast_from_form(
+        user,
+        place_kind=kind,
+        place_id=place_id,
+        form_data=form_data,
+        entity_type="station",
+        entity_id=int(station.id),
+        commit=commit,
+    )
 
 
 def save_hydro_forecast_from_form(
@@ -112,6 +170,7 @@ def save_hydro_forecast_from_form(
     form_data,
     entity_type: str,
     commit: bool = True,
+    entity_id: int | None = None,
 ) -> list[str]:
     """
     Сохраняет помесячные значения из form_data.
@@ -155,14 +214,14 @@ def save_hydro_forecast_from_form(
             new_val = to_decimal(raw)
             rec = by_key.get((scenario, month))
             old_val = rec.electricity_generation if rec else None
-            roman = HYDRO_MONTH_ROMAN.get(month, str(month))
+            month_label = HYDRO_MONTH_NAMES[month]
 
             if new_val is None:
                 if rec is None or old_val is None:
                     continue
                 rec.electricity_generation = None
                 db.session.add(rec)
-                changes.append(f"{title}, {roman}: {_log_num(old_val)} → не указано")
+                changes.append(f"{title}, {month_label}: {_log_num(old_val)} → не указано")
                 continue
 
             if rec is not None and old_val is not None and is_same_decimal(
@@ -183,12 +242,12 @@ def save_hydro_forecast_from_form(
                     rec.database_version_id = version_id
                 db.session.add(rec)
                 by_key[(scenario, month)] = rec
-                changes.append(f"{title}, {roman}: не указано → {_log_num(new_val)}")
+                changes.append(f"{title}, {month_label}: не указано → {_log_num(new_val)}")
             else:
                 rec.electricity_generation = new_val
                 db.session.add(rec)
                 changes.append(
-                    f"{title}, {roman}: {_log_num(old_val)} → {_log_num(new_val)}"
+                    f"{title}, {month_label}: {_log_num(old_val)} → {_log_num(new_val)}"
                 )
 
     if not changes:
@@ -210,6 +269,6 @@ def save_hydro_forecast_from_form(
             f"Изменён прогноз выработки ({place_kind.upper()} id={place_id})",
             details="; ".join(changes),
             entity_type=entity_type,
-            entity_id=place_id,
+            entity_id=place_id if entity_id is None else entity_id,
         )
     return changes

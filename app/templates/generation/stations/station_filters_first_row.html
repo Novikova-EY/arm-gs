@@ -1,18 +1,22 @@
 <!-- Первая строка фильтров -->
+{% set _filters_action = station_filters_action | default(url_for(station_list_endpoint | default('station_bp.station_list'))) %}
+{% set _filters_reset_url = station_filters_reset_url | default(url_for(station_list_endpoint | default('station_bp.station_list'), reset_filters=1)) %}
 <div class="col-12 mb-2">
 
-    <div class="collapse mt-2 show power-demand-filters-collapse" id="filtersCollapse">
+    {% set _filters_open = filters_collapse_open if filters_collapse_open is defined else true %}
+    <div class="collapse mt-2{% if _filters_open %} show{% endif %} power-demand-filters-collapse" id="filtersCollapse">
 
-        <form method="GET" action="{{ url_for(station_list_endpoint | default('station_bp.station_list')) }}" class="d-flex flex-nowrap align-items-center w-100 gap-1">
+        <form method="GET" action="{{ _filters_action }}" class="d-flex flex-nowrap align-items-center w-100 gap-1">
             <!-- Вставляем скрытые input'ы, чтобы передавать уже выбранные фильтры -->
             {% for key, value in request.args.items() %}
-                {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter"] %}
+                {% if key not in ["energy_system_type_filter", "union_energy_system_filter", "regional_energy_system_filter", "federal_district_filter", "regional_district_filter", "gen_company_filter", "station_name_filter", "external_code_filter", "ved_filter"]
+                      and key not in (station_filters_hidden_skip_keys|default([])) %}
                     <input type="hidden" name="{{ key }}" value="{{ value }}">
                 {% endif %}
             {% endfor %}
 
             <!-- Тип энергосистемы -->
-            <div class="filter-item" style="width: 15%;">
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}11%{% else %}15%{% endif %};">
                 <select id="energy_system_type" name="energy_system_type_filter" class="form-select select2" multiple>
                     {% for energy_system_type in energy_system_type_list if energy_system_type.name|lower == 'не указано' %}
                         <option value="{{ energy_system_type.id }}" 
@@ -30,7 +34,7 @@
             </div>
     
             <!-- ОЭС -->
-            <div class="filter-item" style="width: 15%;">
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}11%{% else %}15%{% endif %};">
                 <select id="union_energy_system" name="union_energy_system_filter" class="form-select select2" multiple>
                     {% for union_energy_system in union_energy_system_list if union_energy_system.name|lower == 'не указано' %}
                         <option value="{{ union_energy_system.id }}" 
@@ -48,7 +52,7 @@
             </div>
 
             <!-- Региональная ЭС -->
-            <div class="filter-item" style="width: 15%;">
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}11%{% else %}15%{% endif %};">
                 <select id="regional_energy_system" name="regional_energy_system_filter" class="form-select select2" multiple>
                     {% for regional_energy_system in regional_energy_system_list if regional_energy_system.name|lower == 'не указано' %}
                         <option value="{{ regional_energy_system.id }}" 
@@ -66,7 +70,7 @@
             </div>
     
             <!-- Федеральный округ -->
-            <div class="filter-item" style="width: 15%;">
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}11%{% else %}15%{% endif %};">
                 <select id="federal_district" name="federal_district_filter" class="form-select select2" multiple>
                     {% for federal_district in federal_district_list if federal_district.name|lower == 'не указано' %}
                         <option value="{{ federal_district.id }}" 
@@ -84,7 +88,7 @@
             </div>
     
             <!-- Субъект РФ -->
-            <div class="filter-item" style="width: 15%;">
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}12%{% else %}15%{% endif %};">
                 <select id="regional_district" name="regional_district_filter" class="form-select select2" multiple>
                     {% for regional_district in regional_district_list if regional_district.name|lower == 'не указано' %}
                         <option value="{{ regional_district.id }}" 
@@ -100,14 +104,34 @@
                     {% endfor %}
                 </select>
             </div>
+
+            {% if show_ved_filter|default(false) %}
+            <!-- VED (станции отрасли / промпредприятий) -->
+            <div class="filter-item" style="width: 14%;">
+                <select id="ved_filter" name="ved_filter" class="form-select">
+                    <option value="">Тип станции (отрасль / пром)</option>
+                    {% for option in ved_filter_options|default([]) %}
+                        <option value="{{ option.value }}"
+                            {% if option.value == (ved_filter|default('')) %}selected{% endif %}>
+                            {{ option.label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
     
             <!-- Электростанция -->
-            <div class="filter-item" style="width: 15%;">
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}11%{% else %}13%{% endif %};">
                 {{ form.station_name_filter(class="form-control", value=station_name_filter if station_name_filter else '', placeholder="Электростанция") }}
+            </div>
+
+            <!-- UUID станции / агрегата -->
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}10%{% else %}12%{% endif %};">
+                {{ form.external_code_filter(class="form-control", value=external_code_filter|default(''), placeholder="UUID", spellcheck="false", autocomplete="off") }}
             </div>
     
             <!-- Генерирующая компания -->
-            <div class="filter-item" style="width: 15%;">
+            <div class="filter-item" style="width: {% if show_ved_filter|default(false) %}12%{% else %}15%{% endif %};">
                 {{ form.gen_company_filter(class="form-control", value=gen_company_filter if gen_company_filter else '', placeholder="Генерирующая компания") }}
             </div>
                 
@@ -117,7 +141,7 @@
             </div>
     
             <div class="filter-item">
-                <a href="{{ url_for(station_list_endpoint | default('station_bp.station_list'), reset_filters=1) }}" class="btn btn-outline-danger w-100">Сбросить</a>
+                <a href="{{ _filters_reset_url }}" class="btn btn-outline-danger w-100">Сбросить</a>
             </div>
         </form>
     </div>

@@ -203,6 +203,10 @@ def create_app():
     
     # Инициализация middleware для обработки concurrent updates
     ConcurrentUpdateMiddleware(app)
+
+    # Лог входа пользователя на каждую HTML-страницу модуля
+    from app.logs.services.page_view_logging import init_page_view_logging
+    init_page_view_logging(app)
     
     # Инициализация автоматических бэкапов по расписанию
     from app.common.services.scheduled_backup_service import scheduled_backup_service
@@ -273,6 +277,8 @@ def create_app():
         from app.generation.models.station import (
             station_model,
             station_group_model,
+            station_gaes_charge_consumption_model,
+            station_owner_energy_generation_model,
         )
         from app.generation.models.machine import (
             machine_fuel_model,
@@ -306,6 +312,7 @@ def create_app():
         importlib.import_module("app.energy_consumption.models")  # noqa: F401 — таблицы gs_ec
         importlib.import_module("app.energy_balance.models")  # noqa: F401 — таблицы gs_bem
         importlib.import_module("app.territories.models")  # noqa: F401 — таблицы gs_ter
+        importlib.import_module("app.ecology.models")  # noqa: F401 — таблицы gs_eco
 
         # Проброс мапперов
         db.configure_mappers()
@@ -785,6 +792,7 @@ def create_app():
     from app.electrical_intensity.routes import electrical_intensity_root_bp
     from app.territories.routes import territories_bp
     from app.energy_balance.routes import energy_balance_bp
+    from app.ecology.routes import ecology_bp
     from app.common.perimeter_variant.admin_routes import perimeter_variant_bp
     from app.api import database_versions_api_bp, exchange_api_bp
 
@@ -846,6 +854,7 @@ def create_app():
         target = f"{base}/" if not subpath else f"{base}/{subpath}"
         return redirect(target, code=301)
     app.register_blueprint(territories_bp, url_prefix="/territories")
+    app.register_blueprint(ecology_bp, url_prefix="/ecology")
 
     # Обработчик для Chrome DevTools (чтобы не логировать 404 ошибки)
     @app.route('/.well-known/appspecific/com.chrome.devtools.json')

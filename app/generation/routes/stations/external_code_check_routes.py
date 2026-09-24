@@ -184,7 +184,11 @@ def external_code_check():
 
     database_versions = get_database_versions_for_check()
     with all_db_versions_context():
-        attach_external_codes_by_version(data["stations"], database_versions)
+        attach_external_codes_by_version(
+            data["stations"],
+            database_versions,
+            identity_code_only=bool((filters.get("external_code_filter") or "").strip()),
+        )
 
     context = get_station_list_template_context(
         form,

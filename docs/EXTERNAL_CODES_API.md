@@ -192,11 +192,55 @@ curl http://msk-arm-gs01.ntcees.ru/generation/stations/api/external_codes/machin
 
 ## JSON-обмен: версии БД и наборы datasets
 
-Два независимых API под префиксом `/api`.
+API под префиксом `/api`. Порядок для внешнего клиента:
+
+1. **`GET /api/config`** — discovery (первый запрос в сторону АРМ)
+2. **`GET /api/database_versions`** — выбрать id версии БД
+3. **`GET /api/datasets/<id>/<dataset>`** — забрать набор
+
+### 0. Discovery — `GET /api/config`
+
+Ответ описывает **наши** endpoint'ы (не mock без версии БД):
+
+```json
+{
+  "url": "http://msk-arm-gs01.ntcees.ru/api/datasets/{database_version}/{dataset}",
+  "database_versions_url": "http://msk-arm-gs01.ntcees.ru/api/database_versions",
+  "datasets_url": "http://msk-arm-gs01.ntcees.ru/api/datasets",
+  "datasets": [
+    "daymonth_info",
+    "general_info",
+    "generation_machines",
+    "generation_stations",
+    "gentypes_info",
+    "line_capital_investments",
+    "month_info",
+    "newlines_building",
+    "power_energy_export_import_country",
+    "load_forecast",
+    "substations_customers_info",
+    "substations_load_info",
+    "substations_overload_transformer",
+    "substations_transformer_info",
+    "rational_struct_base"
+  ],
+  "version": "2026-07-01T00:00:00Z",
+  "headers": {
+    "Accept": "application/json"
+  }
+}
+```
+
+- `database_versions_url` — список версий БД (выбрать `database_version`)
+- `url` — шаблон запроса набора: подставить id версии и имя из `datasets`
+  (кроме `database_versions` — он по `database_versions_url`)
+- `datasets_url` — каталог имён / каталог по версии (`/api/datasets`, `/api/datasets/<id>`)
+- `datasets` — реализованные JSON-наборы со страницы `/output_documents_transfer`
+  (без `database_versions` и без нереализованных java-заготовок)
 
 ### 1. Сведения о версиях БД (отдельный API)
 
-Сначала клиент получает список версий и выбирает id.
+Клиент получает список версий и выбирает id.
 
 **GET** `/api/database_versions`
 
@@ -221,98 +265,66 @@ curl http://msk-arm-gs01.ntcees.ru/generation/stations/api/external_codes/machin
 `database_version` — id (`gs_sys.gs_database_versions.id`); его передают в запрос наборов.
 
 `planning_scheme` — `"sipr"` | `"gs"` | `null` (по номеру версии, как на `/refdata/`).
-`current_year` / `period_start` / `period_end` — те же величины, что в наборе `general_info`
-для этой версии. **СиПР и Генеральная схема — разные версии БД**, не два разных API наборов:
-клиент выбирает нужный id в списке версий, затем запрашивает `/api/datasets/<id>`.
+`current_year` / `period_start` / `period_end` — период планирования этой версии
+(как блок «Периоды планирования» на `/refdata/`). **СиПР и Генеральная схема — разные версии БД**,
+не два разных API наборов: клиент выбирает нужный id в списке версий, затем запрашивает
+`/api/datasets/<id>/<dataset>`.
 
-### 2. Один API для JSON-наборов
+### 2. Отдельный API на каждый JSON-набор
 
-После выбора версии — запрос **только по id** (без имени набора в URL).
+После выбора версии — запрос **по id версии и имени набора** (имя = имя файла JSON).
 
 Как открывать:
 
 | URL | Поведение |
 |-----|-----------|
-| `GET /api/datasets` | JSON **в браузере** — список имён наборов |
-| `GET /api/datasets/<id>?year=2030` | JSON **в браузере** — выгрузка с фильтром лет |
-| `GET /api/datasets/<id>` | **файл на скачивание** — полная выгрузка (тяжёлый ответ) |
+| `GET /api/datasets` | JSON — список имён наборов |
+| `GET /api/datasets/<id>` | JSON — каталог наборов этой версии (пути) |
+| `GET /api/datasets/<id>/<dataset>` | JSON — один набор (сразу тело ответа, без файла) |
+| `GET /api/datasets/<id>/<dataset>?year=2030` | JSON — тот же набор с фильтром лет |
 
 Примеры:
 
-- http://127.0.0.1:5000/api/datasets — JSON в браузере  
-- http://127.0.0.1:5000/api/datasets/46?year=2030 — тоже в браузере  
-- http://127.0.0.1:5000/api/datasets/46 — полная выгрузка, файл на скачивание  
+- http://127.0.0.1:5000/api/datasets — список имён  
+- http://127.0.0.1:5000/api/datasets/37 — каталог версии  
+- http://127.0.0.1:5000/api/datasets/37/gentypes_info — набор данных  
+- http://127.0.0.1:5000/api/datasets/37/generation_stations — набор данных  
 
-Сейчас в выгрузке: `general_info`, `gentypes_info`, `generation_objects`, `generation_machines`.
+Публичные наборы (имена как у файлов JSON): `general_info`, `gentypes_info`,
+`generation_stations`, `generation_machines`.
 Набор `equipment_group_params` временно скрыт (код сборки сохранён).
 
-**GET** `/api/datasets/<database_version>` — все наборы этой версии БД.
+**GET** `/api/datasets/<database_version>/<dataset>` — один набор этой версии БД.
 
-Ответ:
+Ответ (пример `gentypes_info`):
 
 ```json
 {
-  "database_version": 7,
-  "version": 7,
-  "datasets": [
-    {
-      "dataset": "general_info",
-      "database_version": 7,
-      "version_number": "ГС-2026",
-      "version": 7,
-      "comment": "",
-      "rows": [
-        {
-          "Текущий год": 2024,
-          "Начало периода": 2026,
-          "Конец периода": 2042
-        }
-      ]
-    },
-    {
-      "dataset": "gentypes_info",
-      "database_version": 7,
-      "version_number": "ГС-2026",
-      "version": 7,
-      "comment": "",
-      "rows": []
-    },
-    {
-      "dataset": "generation_objects",
-      "database_version": 7,
-      "version_number": "ГС-2026",
-      "version": 7,
-      "comment": "",
-      "rows": []
-    },
-    {
-      "dataset": "generation_machines",
-      "database_version": 7,
-      "version_number": "ГС-2026",
-      "version": 7,
-      "comment": "",
-      "rows": []
-    }
-  ]
+  "dataset": "gentypes_info",
+  "database_version": 37,
+  "version_number": "СиПР 2026-2031 (РАБОЧАЯ)",
+  "version": 37,
+  "comment": "",
+  "rows": []
 }
 ```
 
-- В URL только числовой id версии; имя набора (`generation_objects` и т.п.) — внутри элементов `datasets`.
-- Query (опционально): `year`, `start_year`, `end_year` — при наличии фильтра ответ открывается в браузере; без фильтра — скачивание файла.
+- В URL числовой id версии и имя набора (`generation_stations` и т.п.).
+- Неизвестный id версии или имя набора → **404**.
+- Query (опционально): `year`, `start_year`, `end_year`. Ответ всегда JSON в теле API, без скачивания файла.
 
-Годы по умолчанию (полная выгрузка временных рядов): пять последних фактических, текущий (оценка) и все плановые годы этой версии (набор `general_info` от фильтра лет не зависит).
+Годы по умолчанию: с `current_year − 6` по `period_end` той же версии
+(поля из `GET /api/database_versions`). Пример: current_year=2025, period_end=2031 → 2019…2031.
 
-Legacy-алиасы: `/generation/stations/api/datasets/<database_version>`.
+Legacy-алиасы: `/generation/stations/api/datasets/<database_version>/<dataset>`.
 
-### Период версии — `general_info`
+### Общие сведения — `general_info`
 
-Одна строка из блока «Периоды планирования» на `/refdata/`:
+Одна строка на версию БД. «Текущий год», «Начало периода», «Конец периода» —
+те же `current_year` / `period_start` / `period_end`, что в `GET /api/database_versions`.
 
-| Поле | Источник |
-|------|----------|
-| Текущий год | признак года «текущий (оценка)» |
-| Начало периода | начало СиПР / ГС на `/refdata/` (`year_sipr_start`) |
-| Конец периода | для версии «СиПР» — `year_sipr_end`; для «ГС» — конец Генеральной схемы (2042) |
+Поля постановления Правительства РФ и `external_code` пока пустые заглушки:
+таких полей в АРМ нет (пояснение в `comment` набора).
 
 ### Зона × год — `gentypes_info`
 
@@ -327,37 +339,56 @@ Legacy-алиасы: `/generation/stations/api/datasets/<database_version>`.
 | ЧЧИУМ, дата/время максимума | `/power_demand/summary/oes/` |
 | ТНВ, combined_on_ees | параметры нагрузки (`gs_pd_*_demand_params`; на сводке PD) |
 
-Капвложения всегда `0`. Полей ОЗП в mock нет — в выгрузку не входят.
+Капвложения в набор не входят: такого показателя в разрезе зоны в АРМ нет.
+«Максимум потребления мощности ОЗП» — `/power_demand/ozp_maxima/`
+(одно значение на период ОЗП, не по зонам; пишется в строки ЕЭС, у остальных зон 0).
+Дата/время максимума ОЗП — строка
+«Дата и время прохождения максимума потребления мощности, дд.мм чч:мм»
+на той же странице; если пусто — `0`.
+`external_code` — `ref_uuid` типа энергосистемы / синхронной зоны / ОЭС.
 
 Зоны: ЕЭС + все СЗ + все ОЭС версии (без «не указано» и «Новые территории»).
-Годы: от текущего − 5 до конца расчётного периода СиПР/ГС (`/refdata/`).
+Годы: от текущего − 6 до конца расчётного периода СиПР/ГС (`/refdata/`).
 
-### Станция × год — `generation_objects`
+### Станция × год — `generation_stations`
 
-Строка: `external_code`, название, тип станции, год, субъект, зона, номер энергозоны,
-сумма Руст неархивных агрегатов (МВт), годовая выработка (значение как в БД, млн кВт·ч;
-ключ в JSON — «Производство электроэнергии в году, МВт*ч», 3 знака после запятой),
-признак «планируемая»
-(`true`, если у всех неархивных агрегатов ожидаемый год ввода ≥ текущего года версии
-и фактическая дата ввода в работу пуста).
+Порядок полей в строке как в макете: год, зона станции (полное наименование
+синхронной зоны субъекта РФ с карточки станции), ОЭС (поле «ОЭС» карточки —
+название ОЭС/ТИТЭС, например «ТИТЭС Сибири»), `external_code`,
+субъект станции, тип станции, название станции, Руст (МВт; целое без `.0`),
+«станция является планируемой», номер энергозоны субъекта РФ
+(`EnergyZone.number` у «Субъект РФ»; `null`, если нет или «не указано»),
+годовая выработка (значение как в БД, млн кВт·ч; ключ — «Производство электроэнергии
+в году, МВт*ч», до 3 знаков после запятой).
+
+Признак «планируемая»: `true`, если сумма Руст неархивных агрегатов в этом году = 0,
+а в более позднем году относительно «Год» эта сумма > 0.
 
 ### Агрегат × год — `generation_machines`
 
-Строка: `station_external_code` (тот же код, что у станции), `external_code` агрегата,
-год, номер и название агрегата, тип блока, Руст агрегата, тип топлива,
-тип группы оборудования (`gs_sys_equipment_groups`), топливная группа оборудования
-(имя и `equipment_group_external_code` из `gs_fue_equipment_groups`),
-год ввода, год вывода, признак архивности.
+Строка: название агрегата, тип станции агрегата, Руст агрегата (МВт, 2 знака),
+тип топлива, год, субъект и зона агрегата (как у станции), тип агрегата
+(`tes_machine_type`, иначе `machine_type`), признак «блок является планируемым»
+(Руст года = 0, а в более позднем году Руст > 0), год вывода из эксплуатации,
+номер энергозоны, фактическая дата ввода, дата вывода, дата модернизации
+(ожидаемый год модернизации с изменением мощности, иначе без изменения мощности,
+формат `01.01.ГГГГ` или `-`), `external_code` агрегата, затем `station_external_code`
+(код станции для связи с `generation_stations`).
+
+В `comment` набора зафиксированы ограничения: выбросы (зола, SO2, NOx, CO2)
+и «Производство агрегатом электроэнергии в году, МВт*ч» всегда `0`
+(выработка есть только по станции в `generation_stations`);
+«Модернизация целесообразна» всегда `false` — такого поля в АРМ нет;
+`station_external_code` добавлен для связи со станцией.
 
 ### Группа оборудования × год — `equipment_group_params` (временно скрыт)
 
-Сейчас не входит в `GET /api/datasets` и `GET /api/datasets/<id>`.
+Сейчас не входит в `GET /api/datasets` и `GET /api/datasets/<id>/<dataset>`.
 Сборка: `app/api/services/equipment_group_exchange_services.py`.
 
 Строка: `external_code` группы, `station_external_code`, название, тип группы оборудования,
 тип и доступность технологии, код `numb`, год и основные топливные параметры
 (`nust`, `nr`, `h`, выработка/отпуск ЭЭ и ТЭ, СН, расход топлива, тепловая мощность).
-Связь с агрегатом — `equipment_group_external_code` в `generation_machines`.
 
 ### Расположение кода
 

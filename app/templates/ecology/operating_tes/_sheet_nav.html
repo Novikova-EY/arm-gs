@@ -1,0 +1,31 @@
+{% set table_endpoint = table_endpoint|default('ecology_bp.operating_tes_table') %}
+{% set territory_slug = territory.slug %}
+{% set sheet_slug = sheet.slug %}
+{% macro ot_url(s_slug) -%}
+  {%- if start_year is defined and end_year is defined and rounding_digits is defined -%}
+    {%- if view_year -%}
+      {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, view_year=view_year) }}
+    {%- else -%}
+      {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}
+    {%- endif -%}
+  {%- else -%}
+    {{ url_for(table_endpoint, territory_slug=territory_slug, sheet_slug=s_slug) }}
+  {%- endif -%}
+{%- endmacro %}
+<style>
+  .ot-sheet-nav-gap {
+    margin-left: 1.5rem;
+  }
+</style>
+<div class="d-flex align-items-center gap-2 w-100 pb-1">
+  <div class="d-flex flex-nowrap gap-2 overflow-auto flex-grow-1" style="min-width:0;" role="navigation" aria-label="Листы расчёта">
+    {% for nav in calc_sheets %}
+    <a href="{{ ot_url(nav.slug) }}"
+       class="btn {% if nav.slug == sheet_slug %}btn-primary{% else %}btn-outline-primary{% endif %} fs-5 text-nowrap flex-shrink-0{% if nav.slug in ('spravochnik', 'zola', 'obemy') %} ot-sheet-nav-gap{% endif %}">
+      {{ nav.sheet_name }}
+    </a>
+    {% endfor %}
+  </div>
+  <a href="{{ url_for('ecology_bp.hub') }}"
+     class="btn btn-secondary fs-5 text-nowrap flex-shrink-0">Модуль «Экология»</a>
+</div>

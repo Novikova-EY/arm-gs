@@ -140,6 +140,10 @@ class MachineFilterForm(FlaskForm):
         default=False,
         false_values=(False, "false", "False", "0", ""),
     )
+    date_exploitation_date_expected = StringField(
+        'Ожидаемая дата ввода в эксплуатацию',
+        validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
     date_commission_fact = StringField(
         'Фактическая дата ввода в работу',
         validators=[Optional(), Length(max=80), validate_year_or_date]
@@ -269,6 +273,10 @@ class PGUMachineFilterForm(FlaskForm):
     )
     date_exploitation_expected = StringField(
         'Ожидаемый год ввода в эксплуатацию',
+        validators=[Optional(), Length(max=80), validate_year_or_date]
+    )
+    date_exploitation_date_expected = StringField(
+        'Ожидаемая дата ввода в эксплуатацию',
         validators=[Optional(), Length(max=80), validate_year_or_date]
     )
     date_commission_fact = StringField(

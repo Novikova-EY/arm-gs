@@ -5,6 +5,8 @@ from . import (  # noqa: F401
     ee_balance_custom_flow_model,
     ee_balance_export_value_model,
     ee_balance_manual_generation_value_model,
+    ee_balance_tes_monthly_value_model,
+    energy_system_energy_generation_control_model,
     espp_energy_generation_model,
     power_balance_custom_flow_model,
     power_balance_demand_cold_value_model,

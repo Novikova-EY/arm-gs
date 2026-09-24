@@ -113,7 +113,8 @@ _MACHINE_FORM_FIELD_LABELS = {
     "tes_type": "Тип ТЭС",
     "fuel_type": "Топливо",
     "date_exploitation": "Дата ввода в эксплуатацию",
-    "date_exploitation_expected": "Ожидаемая дата ввода в эксплуатацию",
+    "date_exploitation_expected": "Ожидаемый год ввода в эксплуатацию",
+    "date_exploitation_date_expected": "Ожидаемая дата ввода в эксплуатацию",
     "is_commissioning_q4": "Ввод 4 квартала",
     "date_commission_fact": "Фактическая дата ввода",
     "date_joining_expected": "Ожидаемая дата присоединения",
@@ -1074,6 +1075,7 @@ def persist_machine_details_from_validated_forms(
     date_fields = [
         "date_exploitation",
         "date_exploitation_expected",
+        "date_exploitation_date_expected",
         "date_commission_fact",
         "date_joining_expected",
         "date_joining_fact",
@@ -1110,6 +1112,9 @@ def persist_machine_details_from_validated_forms(
                 new_val = normalize_date_list(raw_form_value) if raw_form_value else None
             else:
                 new_val = convert_to_date(raw_form_value)
+                if fld == "date_exploitation_date_expected" and new_val is not None:
+                    # Храним как YYYY-MM-DD (как у остальных date_* полей)
+                    new_val = new_val.strftime("%Y-%m-%d")
 
             # Ограничение: ожидаемый год вывода из эксплуатации не может быть > последнего года версии БД
             if (
@@ -1150,6 +1155,23 @@ def persist_machine_details_from_validated_forms(
                 if old_val_str != new_val_str:
                     changes.append(f"{fld}: {old_val_str} → {new_val_str}")
                     setattr(machine, fld, new_val)
+
+        # Синхронизация «Ожидаемый год ввода» из «Ожидаемая дата ввода» (правило 01.01.ГГГГ → год-1)
+        raw_expl_date = main_form.date_exploitation_date_expected.data
+        if raw_expl_date not in (None, "", "—", "-"):
+            from app.generation.services.station_services.ves_ses_plan_generation_services import (
+                expected_year_from_exploitation_date,
+            )
+
+            parsed_expl_date = convert_to_date(raw_expl_date)
+            derived_year = expected_year_from_exploitation_date(parsed_expl_date)
+            if derived_year is not None:
+                old_year = getattr(machine, "date_exploitation_expected", None)
+                if old_year != derived_year:
+                    changes.append(
+                        f"date_exploitation_expected: {old_year} → {derived_year}"
+                    )
+                    machine.date_exploitation_expected = derived_year
 
         # Отдельная обработка поля year-ввода в работу (целое число, не дата)
         raw_commission_year = main_form.date_commission_year.data
@@ -2408,6 +2430,7 @@ def handle_pgu_machine_post(station_id, machine_id, pgu_machine_id, form_data, u
                 "date_exploitation",
                 "date_commission_year",
                 "date_exploitation_expected",
+                "date_exploitation_date_expected",
                 "date_commission_fact",
                 "date_joining_expected",
                 "date_joining_fact",

@@ -345,7 +345,7 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         page=PAGE_COEFF,
         aggregation_level="Новые ПСУ",
         cell_name="Kнов ПСУ (tech_k_psu)",
-        default_text="K_нов для ПСУ: knps = hnps / ch (этап «Коэфф»; значение в сводке коэффициентов).",
+        default_text="K_нов для ПСУ: knps с параметра распределения (как Кнопка5). hnps/ch — при правке ЧЧИУМ.",
         map_key="tech_k_psu",
         map_name="coeff",
     ),
@@ -421,8 +421,8 @@ FUEL_FORMULA_REGISTRY: tuple[FuelFormulaDef, ...] = (
         aggregation_level="Ввод hn ПСУ",
         cell_name="Ввод hnps (tech_ch_psu)",
         default_text=(
-            "Ввод ЧЧИУМ hnps для ПСУ (поле параметра распределения). После сохранения пересчитывается этап «Коэфф»: "
-            "knps = hnps/ch и связанные поля сводки."
+            "Ввод ЧЧИУМ hnps для ПСУ (поле параметра распределения). knps = hnps/ch при правке ЧЧИУМ "
+            "(как hnps_BeforeUpdate в Access); Кнопка5 поле knps не пересчитывает."
         ),
         map_key="tech_ch_psu",
         map_name="coeff",

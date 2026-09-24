@@ -15,11 +15,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/table_headers.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/change_log_table.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fuel_equipment_group_tree.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}?v=24">
+    <script src="{{ url_for('static', filename='js/common/table_row_paste.js') }}?v=1"></script>
 
     {% block extra_head %}{% endblock %}
 </head>
 
-<body class="container-fluid mt-2">
+<body class="container-fluid mt-2 {% block body_class %}{% endblock %}">
     <div id="preloader" role="status" aria-live="polite" aria-label="Загрузка">
         <!-- Смена вида: замените блок ниже на один из закомментированных вариантов -->
         <div class="loader loader-dual-ring" aria-hidden="true"></div>
@@ -43,6 +45,12 @@
     </div>
 
     <div id="appTopBar" class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-3">
+        <img src="{{ url_for('static', filename='images/ntc-ees_logo.png') }}"
+             alt="НТЦ ЕЭС"
+             class="home-topbar-logo"
+             width="40"
+             height="35">
         <!-- Индикатор версии БД -->
         {% if current_user.is_authenticated %}
         <div class="version-indicator">
@@ -66,6 +74,7 @@
             {% endif %}
         </div>
         {% endif %}
+        </div>
         
         <!-- Навигация и аутентификация -->
         <div class="d-flex align-items-center gap-2 gap-md-3">
@@ -172,10 +181,15 @@
                     function rowLayoutHeight(row) {
                         /* Только offsetHeight ячеек: getBoundingClientRect() у sticky-tr
                            после прокрутки даёт объединение строк → слишком большой top
-                           и щель в шапке, через которую видно тело. */
+                           и щель в шапке, через которую видно тело.
+                           Ячейки с rowspan>1 не задают высоту этой строки (иначе вторая
+                           строка шапки липнет слишком высоко и наезжает на первую). */
                         var h = 0;
                         var cells = row.cells;
                         for (var ci = 0; ci < cells.length; ci++) {
+                            if ((cells[ci].rowSpan || 1) > 1) {
+                                continue;
+                            }
                             var ch = cells[ci].offsetHeight;
                             if (ch > h) {
                                 h = ch;
@@ -273,7 +287,10 @@
                         maxH = 160;
                     }
                     host.style.maxHeight = maxH + 'px';
-                    host.style.setProperty('--pd-coeff-host-client-width', Math.max(0, Math.floor(host.clientWidth)) + 'px');
+                    var hostW = Math.floor(host.clientWidth);
+                    if (hostW > 0) {
+                        host.style.setProperty('--pd-coeff-host-client-width', hostW + 'px');
+                    }
                 });
             }
 

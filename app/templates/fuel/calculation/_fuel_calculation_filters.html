@@ -370,44 +370,47 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
               {% if row.year %}{{ row.year.number }}{% elif row.id_year %}#{{
               row.id_year }}{% else %}—{% endif %}
             </td>
-            <td class="p-1">
+            <td{% if not _is_active %} class="p-1"{% endif %}>
               {% if _is_active %}
               <input
                 type="text"
                 inputmode="decimal"
-                class="form-control form-control-sm text-center fuel-calc-num"
+                class="form-control text-center fuel-calc-num fuel-calc-e-input"
                 id="e_eraspred"
-                value="{% if row.e is not none %}{{ row.e|format_decimal_trim(0)|replace(' ', '') }}{% endif %}"
+                value="{% if row.e is not none %}{{ row.e|format_decimal_trim(-1) }}{% endif %}"
+                {% if row.e is not none %}title="{{ (row.e|format_decimal_trim(0))|e }}"{% endif %}
                 autocomplete="off"
                 aria-label="Выработка ЭЭ, млн кВтч (e)"
               />
-              {% else %} {{ render_numeric_or_dash(row.e) }} {% endif %}
+              {% else %}
+              {% if row.e is not none %}{{ row.e|format_decimal_trim(-1) }}{% else %}—{% endif %}
+              {% endif %}
             </td>
             <td>{{ render_numeric_or_dash(row.doptim) }}</td>
-            <td>
+            <td data-dp-live="{% if _is_active %}k{% endif %}">
               {% if row.k is not none %}{{ row.k|format_decimal(2) }}{% else
               %}—{% endif %}
             </td>
-            <td>
+            <td data-dp-live="{% if _is_active %}kn{% endif %}">
               {% if row.kn is not none %}{{ row.kn|format_decimal(2) }}{% else
               %}—{% endif %}
             </td>
-            <td>
+            <td data-dp-live="{% if _is_active %}knps{% endif %}">
               {% if row.knps is not none %}{{ row.knps|format_decimal(2) }}{%
               else %}—{% endif %}
             </td>
-            <td>
+            <td data-dp-live="{% if _is_active %}kngt{% endif %}">
               {% if row.kngt is not none %}{{ row.kngt|format_decimal(2) }}{%
               else %}—{% endif %}
             </td>
-            <td>
+            <td data-dp-live="{% if _is_active %}knpg{% endif %}">
               {% if row.knpg is not none %}{{ row.knpg|format_decimal(2) }}{%
               else %}—{% endif %}
             </td>
             <td>{{ render_numeric_or_dash(row.hnps) }}</td>
             <td>{{ render_numeric_or_dash(row.hngt) }}</td>
             <td>{{ render_numeric_or_dash(row.hnpg) }}</td>
-            <td>
+            <td data-dp-live="{% if _is_active %}lim{% endif %}">
               {%- if row.lim is none -%}— {%- elif row.lim == 1 -%}да {%- elif
               row.lim == 0 -%}нет {%- else -%}{{ row.lim }}{%- endif -%}
             </td>
@@ -436,11 +439,19 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
     restriction_obl_name_map|default({}) %} {% set _rd =
     rounding_digits|default(1) %}
     <div
+      id="fuelCalcRestrictionsLive"
       class="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2 mt-4"
     >
       <div class="d-flex flex-wrap align-items-baseline gap-2 min-width-0">
         <h3 class="h5 fw-semibold mb-0">Ограничения</h3>
-        <span class="small text-muted">учитываются в этапе «Распред»</span>
+        <span class="small text-muted" id="fuelCalcRestrictionsLiveHint"
+          >учитываются в этапе «Распред»</span
+        >
+        <span
+          class="small text-muted"
+          id="fuelCalcRestrictionsLiveStatus"
+          hidden
+        ></span>
       </div>
       <a
         class="small text-decoration-none"
@@ -453,6 +464,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
     </div>
     <div class="table-responsive mb-2">
       <table
+        id="fuelCalcRestrictionsTable"
         class="table table-bordered align-middle mb-0 distribution-params-table fuel-calc-num"
         data-auto-export-excel="off"
       >
@@ -488,11 +500,12 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
         </thead>
         <tbody>
           {% if _fr_rows %} {% for row in _fr_rows %}
-          <tr class="text-center align-middle">
+          <tr class="text-center align-middle" data-restriction-id="{{ row.id }}">
             {% for attr, label, field_code in _fr_headings %} {% set v =
             row|attr(attr) if row else none %}
             <td
               class="{% if attr in ('oes', 'obl', 'restriction_name') %}text-start px-2{% endif %}"
+              {% if attr in ('emin', 'emax', 'ecur', 'h', 'ecurdis', 'hdis', 'etp', 'kobl') %}data-live-field="{{ attr }}"{% endif %}
             >
               {% if v is none %}— {% elif attr == 'year' %} {{ v|int }} {% elif
               attr == 'oes' %} {% set ok = (v|int)|string %} {% set oname =
@@ -528,6 +541,39 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
           </tr>
           {% endif %}
         </tbody>
+        {% if _fr_rows %}
+        {% set _tot_ecur = namespace(v=none) %}
+        {% set _tot_ecurdis = namespace(v=none) %}
+        {% set _tot_etp = namespace(v=none) %}
+        {% for row in _fr_rows %}
+          {% if row.ecur is not none %}{% set _tot_ecur.v = (_tot_ecur.v or 0) + row.ecur %}{% endif %}
+          {% if row.ecurdis is not none %}{% set _tot_ecurdis.v = (_tot_ecurdis.v or 0) + row.ecurdis %}{% endif %}
+          {% if row.etp is not none %}{% set _tot_etp.v = (_tot_etp.v or 0) + row.etp %}{% endif %}
+        {% endfor %}
+        <tfoot>
+          <tr
+            class="text-center align-middle fw-semibold fuel-restr-oes-total"
+            data-restriction-total="oes"
+          >
+            {% for attr, label, field_code in _fr_headings %}
+            <td
+              class="{% if attr == 'restriction_name' %}text-start px-2{% endif %}"
+              {% if attr in ('ecur', 'ecurdis', 'etp') %}data-total-field="{{ attr }}"{% endif %}
+            >
+              {%- if attr == 'restriction_name' -%}
+              Итого по ОЭС
+              {%- elif attr == 'ecur' -%}
+              {%- if _tot_ecur.v is none -%}—{%- else -%}{{ _tot_ecur.v|format_decimal_trim(_rd) }}{%- endif -%}
+              {%- elif attr == 'ecurdis' -%}
+              {%- if _tot_ecurdis.v is none -%}—{%- else -%}{{ _tot_ecurdis.v|format_decimal_trim(_rd) }}{%- endif -%}
+              {%- elif attr == 'etp' -%}
+              {%- if _tot_etp.v is none -%}—{%- else -%}{{ _tot_etp.v|format_decimal_trim(_rd) }}{%- endif -%}
+              {%- endif -%}
+            </td>
+            {% endfor %}
+          </tr>
+        </tfoot>
+        {% endif %}
       </table>
     </div>
     {% endif %} {% if selected_row %}
@@ -810,6 +856,7 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
           </button>
         </form>
         <form
+          id="nrHfixSkipForm"
           method="POST"
           action="{{ url_for('fuel_bp.run_distribution_stage') }}"
           class="d-inline"
@@ -971,3 +1018,4 @@ tes_type_filter[0] if tes_type_filter and tes_type_filter|length > 0 else none
     {% endif %}
   </div>
 </div>
+<script src="{{ url_for('static', filename='js/fuel/distribution_restrictions_live.js') }}"></script>

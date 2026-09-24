@@ -852,21 +852,36 @@ def get_equipment_groups_with_fuel_params_data(
         else:
             base_query = base_query.filter(EquipmentGroup.id != EquipmentGroup.id)
 
-    total_count = base_query.count()
-
     # Для иерархии EST→ОЭС→РЭС→группы пагинация по строкам разбивает блоки РЭС:
     # части групп одной РЭС оказываются на разных страницах. Поэтому загружаем все группы
     # без limit — каждая РЭС отображается полностью со всеми своими группами.
     from sqlalchemy.orm import selectinload
 
-    from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
+    from app.refdata.models.energy_systems.regional_energy_system_model import (
+        RegionalEnergySystem,
+    )
+    from app.refdata.models.energy_systems.union_energy_system_model import (
+        UnionEnergySystem,
+    )
+    from app.refdata.models.territories.regional_district_model import RegionalDistrict
 
     rows = (
         base_query
         .options(
-            selectinload(EquipmentGroup.regional_energy_system).selectinload(
-                RegionalEnergySystem.union_energy_system
+            selectinload(EquipmentGroup.regional_energy_system)
+            .selectinload(RegionalEnergySystem.union_energy_system)
+            .selectinload(UnionEnergySystem.energy_system_type),
+            selectinload(EquipmentGroup.regional_district).selectinload(
+                RegionalDistrict.federal_district
             ),
+            selectinload(EquipmentGroup.regional_district).selectinload(
+                RegionalDistrict.synchronous_area
+            ),
+            selectinload(EquipmentGroup.regional_district).selectinload(
+                RegionalDistrict.regional_energy_systems
+            ),
+            selectinload(EquipmentGroup.territories_energy_external_mapping),
+            selectinload(EquipmentGroup.gen_company_external_mapping),
         )
         .order_by(EquipmentGroup.name, EquipmentGroup.name_ext, EquipmentGroup.id)
         .all()

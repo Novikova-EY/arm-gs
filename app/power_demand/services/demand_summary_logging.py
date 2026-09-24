@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from sqlalchemy import or_
+
 from app.extensions import db
 from app.logs.models.log_model import Log
 from app.logs.services.log_display_utils import format_logs_for_display
@@ -30,6 +32,27 @@ def entity_type_for_scope(scope: str) -> str:
     return ENTITY_TYPE_BY_SCOPE[scope]
 
 
+def pd_summary_logs_version_filter(database_version_id: int):
+    """Записи журнала сводки: entity_id=версия или database_version_id=версия.
+
+    При записи entity_id берётся из строки параметров и может быть NULL, тогда
+    версия остаётся только в database_version_id (log_to_db). Фильтр только по
+    entity_id тогда даёт пустой журнал.
+    """
+    vid = int(database_version_id)
+    return or_(Log.entity_id == vid, Log.database_version_id == vid)
+
+
+def _pd_summary_logs_query(scope: str, database_version_id: Optional[int]):
+    et = ENTITY_TYPE_BY_SCOPE.get(scope)
+    if not et:
+        return None
+    q = db.session.query(Log).filter(Log.entity_type == et)
+    if database_version_id is not None:
+        q = q.filter(pd_summary_logs_version_filter(database_version_id))
+    return q.order_by(Log.timestamp.desc())
+
+
 def load_pd_summary_logs_raw(
     scope: str,
     database_version_id: Optional[int],
@@ -37,13 +60,9 @@ def load_pd_summary_logs_raw(
     limit: int,
     offset: int = 0,
 ) -> list[Any]:
-    et = ENTITY_TYPE_BY_SCOPE.get(scope)
-    if not et:
+    q = _pd_summary_logs_query(scope, database_version_id)
+    if q is None:
         return []
-    q = db.session.query(Log).filter(Log.entity_type == et)
-    if database_version_id is not None:
-        q = q.filter(Log.entity_id == int(database_version_id))
-    q = q.order_by(Log.timestamp.desc())
     if offset:
         q = q.offset(offset)
     return q.limit(limit).all()
@@ -59,12 +78,9 @@ def load_formatted_pd_summary_logs(
 
 
 def count_pd_summary_logs(scope: str, database_version_id: Optional[int]) -> int:
-    et = ENTITY_TYPE_BY_SCOPE.get(scope)
-    if not et:
+    q = _pd_summary_logs_query(scope, database_version_id)
+    if q is None:
         return 0
-    q = db.session.query(Log).filter(Log.entity_type == et)
-    if database_version_id is not None:
-        q = q.filter(Log.entity_id == int(database_version_id))
     return int(q.count())
 
 

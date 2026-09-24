@@ -4,6 +4,13 @@ from types import SimpleNamespace
 
 from app.api.services import general_info_exchange_services as svc
 
+STUB_FIELDS = {
+    "Дата утверждения Постановления Правительства РФ": "",
+    "Номер Постановления Правительства РФ": "",
+    "Наименование Постановления Правительства РФ": "",
+    "external_code": "",
+}
+
 
 def test_build_general_info_row_sipr(monkeypatch):
     monkeypatch.setattr(
@@ -21,6 +28,7 @@ def test_build_general_info_row_sipr(monkeypatch):
         "Текущий год": 2025,
         "Начало периода": 2026,
         "Конец периода": 2031,
+        **STUB_FIELDS,
     }
 
 
@@ -41,6 +49,7 @@ def test_build_general_info_row_gs(monkeypatch):
         "Текущий год": 2025,
         "Начало периода": 2026,
         "Конец периода": 2042,
+        **STUB_FIELDS,
     }
 
 
@@ -53,6 +62,7 @@ def test_load_general_info_envelope(monkeypatch):
             "Текущий год": 2025,
             "Начало периода": 2026,
             "Конец периода": 2042,
+            **STUB_FIELDS,
         },
     )
     payload = svc.load_general_info_dataset(version_id=46)
@@ -61,6 +71,9 @@ def test_load_general_info_envelope(monkeypatch):
     assert payload["version"] == 46
     assert len(payload["rows"]) == 1
     assert payload["rows"][0]["Конец периода"] == 2042
+    assert payload["rows"][0]["external_code"] == ""
+    assert "пока пустые" in payload["comment"]
+    assert "в АРМ нет" in payload["comment"]
 
 
 def test_planning_meta_scheme(monkeypatch):
@@ -71,6 +84,7 @@ def test_planning_meta_scheme(monkeypatch):
             "Текущий год": 2025,
             "Начало периода": 2026,
             "Конец периода": 2031,
+            **STUB_FIELDS,
         },
     )
     meta = svc.planning_meta_for_version(10, "СиПР 2026-2031")

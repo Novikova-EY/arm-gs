@@ -841,7 +841,17 @@ def all_db_versions_context():
         g.include_all_db_versions = previous
 
 
-def attach_machines_for_external_code_check(stations: list[Station]) -> dict[int, dict]:
+def _external_code_matches_filter(code: Any, needle: str) -> bool:
+    needle = (needle or "").strip().lower()
+    if not needle:
+        return True
+    return needle in (code or "").strip().lower()
+
+
+def attach_machines_for_external_code_check(
+    stations: list[Station],
+    external_code_filter: str | None = None,
+) -> dict[int, dict]:
     """Лёгкая привязка агрегатов для страницы проверки external_code (все версии БД)."""
     from collections import defaultdict
     import re
@@ -852,6 +862,7 @@ def attach_machines_for_external_code_check(stations: list[Station]) -> dict[int
 
     page_station_ids = [station.id for station in stations]
     page_station_id_set = set(page_station_ids)
+    code_filter = (external_code_filter or "").strip()
 
     if not page_station_ids:
         return station_totals
@@ -897,6 +908,8 @@ def attach_machines_for_external_code_check(stations: list[Station]) -> dict[int
     for row in machine_rows:
         station_id = row["id_station"]
         if station_id not in page_station_id_set:
+            continue
+        if code_filter and not _external_code_matches_filter(row["external_code"], code_filter):
             continue
         machine_obj = type("ExternalCodeMachine", (), {})()
         machine_obj.id = row["id"]
@@ -966,17 +979,49 @@ def attach_machines_for_external_code_check(stations: list[Station]) -> dict[int
     return station_totals
 
 
+def _pick_family_member_for_version(
+    family: list,
+    version_id: int,
+    *,
+    anchor_id: Optional[int] = None,
+    anchor_code: str = "",
+):
+    """В одной версии не подменяет код якорной записи чужим одноимённым объектом."""
+    candidates = [
+        item
+        for item in family
+        if getattr(item, "database_version_id", None) == version_id
+    ]
+    if not candidates:
+        return None
+    if anchor_id is not None:
+        for item in candidates:
+            if getattr(item, "id", None) == anchor_id:
+                return item
+    code = (anchor_code or "").strip()
+    if code:
+        for item in candidates:
+            if (getattr(item, "external_code", None) or "").strip() == code:
+                return item
+    return candidates[0]
+
+
 def _codes_and_ids_by_version(
     family: list,
     version_ids: list[int],
+    *,
+    anchor_id: Optional[int] = None,
+    anchor_code: str = "",
 ) -> tuple[dict[int, str], dict[int, Optional[int]]]:
     """Строит словари external_code и id записи по database_version_id."""
     codes: dict[int, str] = {}
     record_ids: dict[int, Optional[int]] = {}
     for version_id in version_ids:
-        matched = next(
-            (item for item in family if getattr(item, "database_version_id", None) == version_id),
-            None,
+        matched = _pick_family_member_for_version(
+            family,
+            version_id,
+            anchor_id=anchor_id,
+            anchor_code=anchor_code,
         )
         if matched is not None:
             codes[version_id] = (getattr(matched, "external_code", None) or "").strip()
@@ -1261,7 +1306,10 @@ def _station_families_for_dedupe_batch(
     return family_map
 
 
-def _station_family_for_check(station: Station) -> list[Station]:
+def _station_family_for_check(
+    station: Station,
+    identity_code_only: bool = False,
+) -> list[Station]:
     from sqlalchemy import or_
     from sqlalchemy.orm import joinedload
 
@@ -1281,14 +1329,15 @@ def _station_family_for_check(station: Station) -> list[Station]:
     regional_district = getattr(db_station, "regional_district", None)
 
     signature_filters = []
-    if name_key:
-        signature_filters.append(db.func.lower(db.func.trim(Station.name)) == name_key)
-    if name_so_key:
-        signature_filters.append(db.func.lower(db.func.trim(Station.name_so)) == name_so_key)
-    if name_combined_key:
-        signature_filters.append(
-            db.func.lower(db.func.trim(Station.name_combined)) == name_combined_key
-        )
+    if not identity_code_only:
+        if name_key:
+            signature_filters.append(db.func.lower(db.func.trim(Station.name)) == name_key)
+        if name_so_key:
+            signature_filters.append(db.func.lower(db.func.trim(Station.name_so)) == name_so_key)
+        if name_combined_key:
+            signature_filters.append(
+                db.func.lower(db.func.trim(Station.name_combined)) == name_combined_key
+            )
 
     signature_family = []
     if signature_filters:
@@ -1333,7 +1382,10 @@ def _station_family_for_check(station: Station) -> list[Station]:
     return _filter_stations_by_company_compatibility(db_station, merged_family)
 
 
-def _machine_family_for_check(machine: Machine) -> list[Machine]:
+def _machine_family_for_check(
+    machine: Machine,
+    identity_code_only: bool = False,
+) -> list[Machine]:
     from sqlalchemy.orm import joinedload
 
     db_machine = (
@@ -1355,13 +1407,17 @@ def _machine_family_for_check(machine: Machine) -> list[Machine]:
     if station is not None:
         allowed_station_ids = {
             station_item.id
-            for station_item in _station_family_for_check(station)
+            for station_item in _station_family_for_check(
+                station,
+                identity_code_only=identity_code_only,
+            )
             if getattr(station_item, "id", None) is not None
         }
 
     signature_family = []
     if (
-        allowed_station_ids
+        not identity_code_only
+        and allowed_station_ids
         and machine_number_key
         and machine_name_key
     ):
@@ -1417,6 +1473,7 @@ def _machine_family_for_check(machine: Machine) -> list[Machine]:
 def attach_external_codes_by_version(
     stations: list[Station],
     database_versions: list[dict[str, Any]],
+    identity_code_only: bool = False,
 ) -> tuple[dict[str, dict[Optional[int], str]], dict[str, dict[Optional[int], str]]]:
     """Заполняет у станций и агрегатов словарь external_code и id записей по версиям БД."""
     version_ids = [version["id"] for version in database_versions]
@@ -1427,8 +1484,16 @@ def attach_external_codes_by_version(
     with all_db_versions_context():
         for station in stations:
             anchor = (getattr(station, "external_code", None) or "").strip()
-            station_family = _station_family_for_check(station)
-            family_codes, family_record_ids = _codes_and_ids_by_version(station_family, version_ids)
+            station_family = _station_family_for_check(
+                station,
+                identity_code_only=identity_code_only,
+            )
+            family_codes, family_record_ids = _codes_and_ids_by_version(
+                station_family,
+                version_ids,
+                anchor_id=getattr(station, "id", None),
+                anchor_code=anchor,
+            )
 
             station.external_codes_by_version = family_codes
             station.external_code_record_ids_by_version = family_record_ids
@@ -1436,9 +1501,15 @@ def attach_external_codes_by_version(
 
             for machine in station.machines or []:
                 machine_anchor = (getattr(machine, "external_code", None) or "").strip()
-                machine_family = _machine_family_for_check(machine)
+                machine_family = _machine_family_for_check(
+                    machine,
+                    identity_code_only=identity_code_only,
+                )
                 machine_family_codes, machine_record_ids = _codes_and_ids_by_version(
-                    machine_family, version_ids
+                    machine_family,
+                    version_ids,
+                    anchor_id=getattr(machine, "id", None),
+                    anchor_code=machine_anchor,
                 )
 
                 machine.external_codes_by_version = machine_family_codes

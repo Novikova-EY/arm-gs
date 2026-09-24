@@ -84,6 +84,8 @@ class PGUMachine(db.Model, AuditMixin, VersionedModelMixin):
     date_commission_year = db.Column(db.Integer, nullable=True)
     # ожидаемый год ввода в эксплуатацию
     date_exploitation_expected = db.Column(db.Integer, nullable=True)
+    # ожидаемая дата ввода в эксплуатацию (ДД.ММ.ГГГГ / ГГГГ-ММ-ДД)
+    date_exploitation_date_expected = db.Column(db.String(10), nullable=True)
     # фактическая дата присоединения
     date_commission_fact = db.Column(db.String(10), nullable=True)
     # ожидаемая дата присоединения

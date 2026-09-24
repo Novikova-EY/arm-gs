@@ -731,8 +731,9 @@ def get_stations_list(
             Station.id_station_type.in_(filters["station_type_filter"])
         )
 
-    from app.generation.services.station_services.filters_services import apply_station_sign_sql_filter
+    from app.generation.services.station_services.filters_services import apply_station_sign_sql_filter, apply_external_code_sql_filter
     station_ids_query = apply_station_sign_sql_filter(station_ids_query, filters)
+    station_ids_query = apply_external_code_sql_filter(station_ids_query, filters)
 
     if filters.get("station_name_filter"):
         station_ids_query = station_ids_query.filter(
@@ -830,20 +831,32 @@ def get_stations_list(
             Station.id_regional_district,
             Station.id_regional_energy_system,
         ).all()
-        station_ids_in_rows = list({row[0] for row in station_rows})
-        machine_counts = {}
-        if station_ids_in_rows:
-            machine_counts = dict(
-                db.session.query(Machine.id_station, func.count(Machine.id))
-                .filter(Machine.id_station.in_(station_ids_in_rows))
-                .group_by(Machine.id_station)
-                .all()
+        # Поиск по UUID: все записи с этим кодом (в т.ч. дубли в одной версии).
+        # Без фильтра схлопываем копии одной станции по версиям.
+        if (filters.get("external_code_filter") or "").strip():
+            seen_ids: set[int] = set()
+            all_station_ids = []
+            for row in station_rows:
+                station_id = row[0]
+                if station_id is None or station_id in seen_ids:
+                    continue
+                seen_ids.add(station_id)
+                all_station_ids.append(station_id)
+        else:
+            station_ids_in_rows = list({row[0] for row in station_rows})
+            machine_counts = {}
+            if station_ids_in_rows:
+                machine_counts = dict(
+                    db.session.query(Machine.id_station, func.count(Machine.id))
+                    .filter(Machine.id_station.in_(station_ids_in_rows))
+                    .group_by(Machine.id_station)
+                    .all()
+                )
+            all_station_ids = dedupe_station_ids_from_rows(
+                station_rows,
+                get_current_db_version_id(),
+                machine_counts=machine_counts,
             )
-        all_station_ids = dedupe_station_ids_from_rows(
-            station_rows,
-            get_current_db_version_id(),
-            machine_counts=machine_counts,
-        )
         raw_station_ids = all_station_ids
     else:
         raw_station_ids = [row[0] for row in station_ids_query.all()]
@@ -916,6 +929,7 @@ def get_stations_list(
                 Station.id_station_type.in_(filters["station_type_filter"])
             )
         pgu_station_query = apply_station_sign_sql_filter(pgu_station_query, filters)
+        pgu_station_query = apply_external_code_sql_filter(pgu_station_query, filters)
         if filters.get("station_name_filter"):
             pgu_station_query = pgu_station_query.filter(
                 Station.name.ilike(f"%{filters['station_name_filter']}%")
@@ -990,7 +1004,11 @@ def get_stations_list(
     extra_station_ids = []
     if (
         not external_code_check
-        and (filters.get("station_name_filter") or filters.get("note_filter"))
+        and (
+            filters.get("station_name_filter")
+            or filters.get("note_filter")
+            or filters.get("external_code_filter")
+        )
         and not machine_filters_present
     ):
         station_query = filter_by_db_version(Station.query, Station)
@@ -998,6 +1016,7 @@ def get_stations_list(
             station_query = station_query.filter(
                 Station.name.ilike(f"%{filters['station_name_filter']}%")
             )
+        station_query = apply_external_code_sql_filter(station_query, filters)
         if filters.get("note_filter"):
             station_query = station_query.filter(
                 Station.note.ilike(f"%{filters['note_filter']}%")
@@ -1665,6 +1684,8 @@ def get_stations_list_with_pgu_machines(
 
     if filters.get("station_name_filter"):
         station_query = station_query.filter(Station.name.ilike(f"%{filters['station_name_filter']}%"))
+    from app.generation.services.station_services.filters_services import apply_external_code_sql_filter
+    station_query = apply_external_code_sql_filter(station_query, filters)
 
     if filters.get("gen_company_filter"):
         gen_company_ids = [g[0] for g in db.session.query(GenCompany.id).filter(
@@ -2437,6 +2458,8 @@ def get_next_station_info(current_page, per_page, filters):
             station_ids_query = station_ids_query.filter(
                 Station.name.ilike(f"%{filters['station_name_filter']}%")
             )
+        from app.generation.services.station_services.filters_services import apply_external_code_sql_filter
+        station_ids_query = apply_external_code_sql_filter(station_ids_query, filters)
         
         if filters.get("gen_company_filter"):
             gen_company_ids = db.session.query(GenCompany.id).filter(
@@ -2687,6 +2710,8 @@ def get_filtered_station_ids(filters):
         station_ids_query = station_ids_query.filter(
             Station.name.ilike(f"%{filters['station_name_filter']}%")
         )
+    from app.generation.services.station_services.filters_services import apply_external_code_sql_filter
+    station_ids_query = apply_external_code_sql_filter(station_ids_query, filters)
 
     if filters.get("gen_company_filter"):
         gen_company_ids = db.session.query(GenCompany.id).filter(
@@ -2782,12 +2807,18 @@ def get_filtered_station_ids(filters):
         ]
     )
     extra_station_ids = []
-    if (filters.get("station_name_filter") or filters.get("note_filter")) and not machine_filters_present:
+    if (
+        filters.get("station_name_filter")
+        or filters.get("note_filter")
+        or filters.get("external_code_filter")
+    ) and not machine_filters_present:
         station_query = filter_by_db_version(Station.query, Station)
         if filters.get("station_name_filter"):
             station_query = station_query.filter(
                 Station.name.ilike(f"%{filters['station_name_filter']}%")
             )
+        from app.generation.services.station_services.filters_services import apply_external_code_sql_filter
+        station_query = apply_external_code_sql_filter(station_query, filters)
         if filters.get("note_filter"):
             station_query = station_query.filter(
                 Station.note.ilike(f"%{filters['note_filter']}%")
@@ -2993,7 +3024,10 @@ def get_station_list_data(
             get_union_energy_system_list_full,
         )
 
-        station_totals = attach_machines_for_external_code_check(stations)
+        station_totals = attach_machines_for_external_code_check(
+            stations,
+            external_code_filter=filters.get("external_code_filter"),
+        )
         hierarchy_data = build_external_code_check_hierarchy(stations, include_names=True)
         prev_page_last_info = station_data.get("prev_page_last_info")
         regional_districts_count_per_res = get_regional_districts_count_per_res()
@@ -3515,11 +3549,15 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
     from app.common.services.get_services.stations.pgu_tes_machine_type_get_services import get_pgu_tes_machine_type_list_full
     from app.common.services.get_services.fuels.fuel_type_get_services import get_fuel_type_list_full
     
-    get_station_type_list_full.cache_clear()
-    get_tes_type_list_full.cache_clear()
-    get_tes_machine_type_list_full.cache_clear()
-    get_pgu_tes_machine_type_list_full.cache_clear()
-    get_fuel_type_list_full.cache_clear()
+    for func in (
+        get_station_type_list_full,
+        get_tes_type_list_full,
+        get_tes_machine_type_list_full,
+        get_pgu_tes_machine_type_list_full,
+        get_fuel_type_list_full,
+    ):
+        if hasattr(func, "cache_clear"):
+            func.cache_clear()
     
     # Типы ТЭС
     tes_type_query = TesType.query
@@ -3634,6 +3672,7 @@ def get_station_list_template_context(form, data, rounding_digits, filters, show
             "condition_type_filter": filters.get("condition_type_filter"),
             "gen_company_filter": filters.get("gen_company_filter"),
             "station_name_filter": filters.get("station_name_filter"),
+            "external_code_filter": filters.get("external_code_filter"),
             "note_filter": filters.get("note_filter"),
             "equipment_group_name_filter": filters.get("equipment_group_name_filter"),
             "numb1120_filter": filters.get("numb1120_filter") or [],
@@ -4867,6 +4906,31 @@ def station_annual_energy_by_year(
     }
 
 
+def _station_numeric_field_changed(raw_value, orig_value) -> bool:
+    """
+    Сравнивает ввод формы с исходным значением.
+
+    Пустое поле и 0 — разные значения: очистка нуля должна сохраняться.
+    """
+    from app.generation.services.machine_services.machine_services import (
+        is_same_decimal,
+        to_decimal,
+    )
+
+    empty_markers = (None, "", "—", "-", "–")
+    raw_empty = raw_value in empty_markers or (
+        isinstance(raw_value, str) and not raw_value.strip()
+    )
+    orig_empty = orig_value in empty_markers or (
+        isinstance(orig_value, str) and not str(orig_value).strip()
+    )
+    if raw_empty and orig_empty:
+        return False
+    if raw_empty != orig_empty:
+        return True
+    return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
+
+
 def save_station_energy_generation_service(
     user,
     station: Station,
@@ -4895,11 +4959,6 @@ def save_station_energy_generation_service(
         except Exception:
             return str(v).replace(".", ",")
 
-    def _field_changed(raw_value, orig_value) -> bool:
-        if orig_value in (None, "", "—", "-"):
-            return raw_value not in (None, "", "—", "-")
-        return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
-
     try:
         by_year = {
             r.year_number: r
@@ -4913,7 +4972,7 @@ def save_station_energy_generation_service(
             raw = form_data.get(field)
             orig_raw = form_data.get(f"{field}_orig")
 
-            if not _field_changed(raw, orig_raw):
+            if not _station_numeric_field_changed(raw, orig_raw):
                 continue
 
             new_val = to_decimal(raw)
@@ -5003,11 +5062,6 @@ def save_station_gaes_charge_consumption_service(
         except Exception:
             return str(v).replace(".", ",")
 
-    def _field_changed(raw_value, orig_value) -> bool:
-        if orig_value in (None, "", "—", "-"):
-            return raw_value not in (None, "", "—", "-")
-        return not is_same_decimal(to_decimal(raw_value), to_decimal(orig_value))
-
     try:
         q = StationGaesChargeConsumption.query.filter(
             StationGaesChargeConsumption.id_station == station.id,
@@ -5022,7 +5076,7 @@ def save_station_gaes_charge_consumption_service(
             raw = form_data.get(field)
             orig_raw = form_data.get(f"{field}_orig")
 
-            if not _field_changed(raw, orig_raw):
+            if not _station_numeric_field_changed(raw, orig_raw):
                 continue
 
             new_val = to_decimal(raw)
@@ -5090,6 +5144,127 @@ def save_station_gaes_charge_consumption_service(
             station_name=station.name or "Без названия",
             change_lines=changes,
             database_version_id=station_version_id,
+        )
+        return changes
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def station_owner_energy_by_year(
+    station_id: int,
+    start_year: int,
+    end_year: int,
+    station_version_id: int | None,
+) -> dict[int, object]:
+    """Выработка от собственника по годам (млн кВтч) для карточки ВЭС/СЭС."""
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_owner_energy_generation_model import (
+        StationOwnerEnergyGeneration,
+    )
+
+    q = StationOwnerEnergyGeneration.query.filter(
+        StationOwnerEnergyGeneration.id_station == station_id,
+        StationOwnerEnergyGeneration.year_number >= start_year,
+        StationOwnerEnergyGeneration.year_number <= end_year,
+    )
+    q = filter_by_explicit_db_version(q, StationOwnerEnergyGeneration, station_version_id)
+    return {row.year_number: row.electricity_generation for row in q.all()}
+
+
+def save_station_owner_energy_generation_service(
+    user,
+    station: Station,
+    station_version_id: int | None,
+    start_year: int,
+    end_year: int,
+    form_data,
+) -> list:
+    """
+    Выработка электроэнергии электростанцией (от собственника) по годам, млн кВтч.
+    Только для ВЭС и СЭС.
+    """
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_owner_energy_generation_model import (
+        StationOwnerEnergyGeneration,
+    )
+    from app.generation.services.machine_services.machine_services import to_decimal, is_same_decimal
+
+    changes: list[str] = []
+
+    def _log_num(v) -> str:
+        if v is None:
+            return "не указано"
+        try:
+            return str(v).replace(".", ",").rstrip("0").rstrip(",") or "0"
+        except Exception:
+            return str(v).replace(".", ",")
+
+    try:
+        q = StationOwnerEnergyGeneration.query.filter(
+            StationOwnerEnergyGeneration.id_station == station.id,
+            StationOwnerEnergyGeneration.year_number >= start_year,
+            StationOwnerEnergyGeneration.year_number <= end_year,
+        )
+        q = filter_by_explicit_db_version(q, StationOwnerEnergyGeneration, station_version_id)
+        by_year = {r.year_number: r for r in q.all()}
+
+        for year in range(start_year, end_year + 1):
+            field = f"st_owner_gen_{year}"
+            raw = form_data.get(field)
+            orig_raw = form_data.get(f"{field}_orig")
+
+            if not _station_numeric_field_changed(raw, orig_raw):
+                continue
+
+            new_val = to_decimal(raw)
+            rec = by_year.get(year)
+            old_val = rec.electricity_generation if rec else None
+
+            if new_val is None:
+                if rec is None or old_val is None:
+                    continue
+                rec.electricity_generation = None
+                db.session.add(rec)
+                changes.append(f"{year} г.: {_log_num(old_val)} → не указано")
+                continue
+
+            if rec is not None and old_val is not None and is_same_decimal(to_decimal(old_val), new_val):
+                continue
+
+            if rec is None:
+                rec = StationOwnerEnergyGeneration(
+                    id_station=station.id,
+                    year_number=year,
+                    electricity_generation=new_val,
+                )
+                set_db_version_on_create(rec)
+                if station_version_id is not None:
+                    rec.database_version_id = station_version_id
+                db.session.add(rec)
+                by_year[year] = rec
+                changes.append(f"{year} г.: не указано → {_log_num(new_val)}")
+            else:
+                rec.electricity_generation = new_val
+                db.session.add(rec)
+                changes.append(f"{year} г.: {_log_num(old_val)} → {_log_num(new_val)}")
+
+        if not changes:
+            return []
+
+        try:
+            quick_fix_seq(SCHEMA_GENERATION, "gs_gen_station_owner_energy_generations", "id")
+        except Exception:
+            pass
+        _commit_with_retry()
+
+        rd_name = station.regional_district.name if station.regional_district else "не указано"
+        log_to_db(
+            user,
+            f"Изменения в электростанции {station.name} ({rd_name}), выработка электроэнергии от собственника (млн кВтч)",
+            details="; ".join(changes),
+            entity_type="station",
+            entity_id=station.id,
         )
         return changes
     except Exception:

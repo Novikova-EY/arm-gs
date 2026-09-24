@@ -10,7 +10,7 @@ from app.common.services.database_version_filter import get_current_db_version_i
 from app.extensions import db
 from app.refdata.models.years.year_model import Year
 
-EXCHANGE_YEARS_BEFORE_CURRENT = 5
+EXCHANGE_YEARS_BEFORE_CURRENT = 6
 
 # Общий comment для stub-наборов без данных в АРМ (ручное заполнение).
 MANUAL_FILL_EXCHANGE_COMMENT = (
@@ -84,7 +84,7 @@ def resolve_database_version(version_id: int | None) -> tuple[int | None, str | 
 
 
 def exchange_years_bounds(version_id: int) -> tuple[int, int] | None:
-    """Границы выгрузки: current_year − 5 … period_end из /api/database_versions."""
+    """Границы выгрузки: current_year − 6 … period_end из /api/database_versions."""
     from app.api.services.general_info_exchange_services import planning_meta_for_version
 
     row = db.session.get(DatabaseVersion, int(version_id))
@@ -109,7 +109,7 @@ def exchange_years_bounds(version_id: int) -> tuple[int, int] | None:
 
 
 def load_exchange_years(version_id: int | None) -> list[int]:
-    """Годы набора: от current_year − 5 до period_end, только годы справочника версии."""
+    """Годы набора: от current_year − 6 до period_end, только годы справочника версии."""
     if version_id is None:
         return []
     bounds = exchange_years_bounds(int(version_id))

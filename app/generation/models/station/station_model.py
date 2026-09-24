@@ -12,6 +12,10 @@ from app.extensions import db
 from config import SCHEMA_GENERATION, SCHEMA_REFDATA
 from app.common.models.audit_mixin import AuditMixin
 from app.common.models.versioned_model import VersionedModelMixin
+from app.common.services.unique_uuid_services import (
+    ensure_unique_identity_uuid,
+    extra_identity_uuid_sources,
+)
 from app.generation.models.station.station_constants import (
     STATION_SIGN_ESPP,
     STATION_SIGN_UNSPECIFIED,
@@ -115,6 +119,11 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
     )
     station_gaes_charge_consumptions = db.relationship(
         'StationGaesChargeConsumption',
+        back_populates='station',
+        cascade="all, delete-orphan",
+    )
+    station_owner_energy_generations = db.relationship(
+        'StationOwnerEnergyGeneration',
         back_populates='station',
         cascade="all, delete-orphan",
     )
@@ -378,17 +387,29 @@ def _find_existing_station_external_code(connection, target, district_key) -> st
 @event.listens_for(Station, 'before_insert')
 def generate_external_code_before_insert(mapper, connection, target):
     """Генерирует стабильный external_code перед вставкой электростанции."""
-    if target.external_code:
-        return
-    district_key = _resolve_regional_district_key(connection, target)
-    existing_external_code = _find_existing_station_external_code(connection, target, district_key)
-    if existing_external_code:
-        target.external_code = existing_external_code
-        return
-    key = _station_key(
-        target.name,
-        target.name_so,
-        target.name_combined,
-        district_key,
+    preferred = (target.external_code or "").strip() or None
+    if not preferred:
+        district_key = _resolve_regional_district_key(connection, target)
+        existing_external_code = _find_existing_station_external_code(
+            connection, target, district_key
+        )
+        if existing_external_code:
+            preferred = existing_external_code
+        else:
+            key = _station_key(
+                target.name,
+                target.name_so,
+                target.name_combined,
+                district_key,
+            )
+            preferred = str(uuid.uuid5(uuid.NAMESPACE_URL, key))
+    target.external_code = ensure_unique_identity_uuid(
+        connection,
+        schema=SCHEMA_GENERATION,
+        table="gs_gen_stations",
+        column="external_code",
+        preferred=preferred,
+        version_id=getattr(target, "database_version_id", None),
+        exclude_id=getattr(target, "id", None),
+        extra_sources=extra_identity_uuid_sources(SCHEMA_GENERATION, "gs_gen_stations"),
     )
-    target.external_code = str(uuid.uuid5(uuid.NAMESPACE_URL, key))

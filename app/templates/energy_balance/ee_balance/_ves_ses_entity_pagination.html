@@ -1,0 +1,65 @@
+{# Пагинация по ОЭС — как на /power_demand/summary/oes/. #}
+{% set pag = ves_ses_entity_pagination if ves_ses_entity_pagination is defined else pagination %}
+{% if pag is defined and (pag.total_pages | default(1)) > 1 and not pag.show_all %}
+{% set _pag_endpoint = pagination_endpoint | default(request.endpoint) %}
+{% set pag_args = request.args.to_dict() %}
+<nav class="mt-3 mb-2" aria-label="Пагинация СЭС/ВЭС">
+  <div class="small text-muted mb-2 text-center">
+    Страница {{ pag.page }} из {{ pag.total_pages }}
+    {% if pag.section_titles %}
+    — {{ pag.section_titles | join(', ') }}
+    {% endif %}
+  </div>
+  <ul class="pagination justify-content-center mb-0 flex-wrap" id="vesSesEntityPaginationLinks">
+    <li class="page-item{% if not pag.has_prev %} disabled{% endif %}">
+      {% if pag.has_prev and _pag_endpoint %}
+      {% set prev_args = dict(pag_args) %}
+      {% set _ = prev_args.update({'page': pag.page - 1, 'page_size': pag.page_size}) %}
+      {% set _ = prev_args.pop('per_page', None) %}
+      <a class="page-link" href="{{ url_for(_pag_endpoint, **prev_args) }}">« Назад</a>
+      {% else %}
+      <span class="page-link">« Назад</span>
+      {% endif %}
+    </li>
+    {% for p in range(1, pag.total_pages + 1) %}
+      {% if pag.total_pages > 7 and p != 1 and p != pag.total_pages and (p < pag.page - 1 or p > pag.page + 1) %}
+        {% if p == 2 or p == pag.total_pages - 1 %}
+    <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% else %}
+    <li class="page-item{% if p == pag.page %} active{% endif %}">
+      {% if p == pag.page or not _pag_endpoint %}
+      <span class="page-link">{{ p }}</span>
+      {% else %}
+      {% set page_args = dict(pag_args) %}
+      {% set _ = page_args.update({'page': p, 'page_size': pag.page_size}) %}
+      {% set _ = page_args.pop('per_page', None) %}
+      <a class="page-link" href="{{ url_for(_pag_endpoint, **page_args) }}">{{ p }}</a>
+      {% endif %}
+    </li>
+      {% endif %}
+    {% endfor %}
+    <li class="page-item{% if not pag.has_next %} disabled{% endif %}">
+      {% if pag.has_next and _pag_endpoint %}
+      {% set next_args = dict(pag_args) %}
+      {% set _ = next_args.update({'page': pag.page + 1, 'page_size': pag.page_size}) %}
+      {% set _ = next_args.pop('per_page', None) %}
+      <a class="page-link" href="{{ url_for(_pag_endpoint, **next_args) }}">Вперёд »</a>
+      {% else %}
+      <span class="page-link">Вперёд »</span>
+      {% endif %}
+    </li>
+    <li class="page-item ms-2">
+      {% if _pag_endpoint %}
+      {% set all_args = dict(pag_args) %}
+      {% set _ = all_args.update({'page_size': 0}) %}
+      {% set _ = all_args.pop('page', None) %}
+      {% set _ = all_args.pop('per_page', None) %}
+      <a class="page-link" href="{{ url_for(_pag_endpoint, **all_args) }}">{{ pag.all_label | default(pagination_all_label) | default('Все ОЭС') }}</a>
+      {% else %}
+      <span class="page-link">{{ pag.all_label | default(pagination_all_label) | default('Все ОЭС') }}</span>
+      {% endif %}
+    </li>
+  </ul>
+</nav>
+{% endif %}

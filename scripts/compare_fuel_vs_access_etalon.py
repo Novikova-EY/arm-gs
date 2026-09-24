@@ -167,10 +167,11 @@ def _key_ci(row: dict, *names: str) -> str | None:
     return None
 
 
-def load_access(oes: int | None, year: int | None):
-    stations = _read_tsv(ETALON_DIR / "stations.tsv")
-    extras = _read_tsv(ETALON_DIR / "extra.tsv") if (ETALON_DIR / "extra.tsv").is_file() else []
-    params = _read_tsv(ETALON_DIR / "params.tsv")
+def load_access(oes: int | None, year: int | None, etalon_dir: Path | None = None):
+    d = Path(etalon_dir) if etalon_dir is not None else ETALON_DIR
+    stations = _read_tsv(d / "stations.tsv")
+    extras = _read_tsv(d / "extra.tsv") if (d / "extra.tsv").is_file() else []
+    params = _read_tsv(d / "params.tsv")
 
     by_st: dict[tuple[int, int], dict] = {}
     for r in stations:
@@ -525,10 +526,16 @@ def main() -> int:
     parser.add_argument("--oes", type=int, default=None)
     parser.add_argument("--year", type=int, default=None)
     parser.add_argument("--db-version-id", type=int, default=int(os.environ.get("COMPARE_DB_VERSION_ID", "37")))
+    parser.add_argument(
+        "--etalon-dir",
+        default=os.environ.get("COMPARE_ETALON_DIR", str(ETALON_DIR)),
+        help="Каталог TSV эталона (stations.tsv / extra.tsv / params.tsv)",
+    )
     args = parser.parse_args()
     years = (args.year,) if args.year else YEARS
+    etalon_dir = Path(args.etalon_dir)
 
-    acc_st, acc_dop, acc_params = load_access(args.oes, args.year)
+    acc_st, acc_dop, acc_params = load_access(args.oes, args.year, etalon_dir=etalon_dir)
     app = create_app()
     with app.app_context():
         ver = DatabaseVersion.query.get(args.db_version_id)
@@ -554,7 +561,7 @@ def main() -> int:
                 oes_years.append(key)
         oes_years.sort(key=lambda x: (x[0] or 99, x[1]))
 
-    reports_dir = ETALON_DIR / "reports"
+    reports_dir = etalon_dir / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     all_reports = []
     tsv_path = reports_dir / "mismatches.tsv"
@@ -597,7 +604,7 @@ def main() -> int:
     summary = {
         "arm_db_version": ver_name,
         "arm_db_version_id": args.db_version_id,
-        "etalon_dir": str(ETALON_DIR),
+        "etalon_dir": str(etalon_dir),
         "abs_tol": ABS_TOL,
         "scenarios": [
             {

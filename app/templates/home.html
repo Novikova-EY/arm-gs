@@ -1,165 +1,88 @@
-{% extends 'base.html' %}
+{% extends 'hub_base.html' %}
 
 {% block title %}АРМ Генеральная схема{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
-<div class="container-fluid mt-2">
+{% macro home_tile(href, title, icon='', extra_class='') %}
+<a class="home-outline__tile {{ extra_class }}" href="{{ href }}">
+    {% if caller %}
+    {{ caller() }}
+    {% else %}
+    <i class="bi {{ icon }}" aria-hidden="true"></i>
+    {% endif %}
+    <span>{{ title }}</span>
+</a>
+{% endmacro %}
+{% macro home_tile_soon(title, icon) %}
+<a class="home-outline__tile is-soon" href="#" aria-disabled="true" tabindex="-1">
+    <i class="bi {{ icon }}" aria-hidden="true"></i>
+    <span>{{ title }} <span class="home-outline__soon-mark">Скоро</span></span>
+</a>
+{% endmacro %}
 
-<div class="container content-start-container">
-    <div class="container-fluid">
-        <h2 class="text-center align-middle mb-4">АРМ «Генеральная схема»</h2>
-
-        <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('generation_bp.generation_start') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Генерация
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Балансы ЭЭ и ЭМ
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('fuel_bp.fuel_start') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Топливо
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">
-                            Экология
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4 border-secondary border-2 opacity-50">
-
-        <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('power_demand_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Нагрузки
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('energy_consumption_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Спрос
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('economics_bp.hub') }}" class="btn btn-primary fs-4 w-100 py-4">Экономика</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4 border-secondary border-2 opacity-50">
-
-        <div class="row g-4 justify-content-center">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="#" class="btn btn-secondary fs-4 w-100 py-4 disabled">Рациональная структура</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('long_term_consumption_bp.electrical_intensity_start') }}" class="btn btn-primary fs-4 w-100 py-4">Долгосрочный прогноз потребления</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('territories_bp.territories_start') }}" class="btn btn-primary fs-4 w-100 py-4">Характеристики территорий</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-4 border-secondary border-2 opacity-50">
-
-        <div class="row g-4 justify-content-center{% if not current_user.is_admin %} pb-4{% endif %}">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('refdata_bp.refdata') }}" class="btn btn-primary fs-4 w-100 py-4">Справочники</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {% if current_user.is_admin %}
-        <hr class="my-4 border-secondary border-2 opacity-50">
-
-        <div class="row g-4 justify-content-center pb-4">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('users_bp.list_users') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Пользователи и роли
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('perimeter_variant_bp.perimeter_variants_admin') }}" class="btn btn-primary fs-4 w-100 py-4">
-                            Варианты сценариев расчета
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm w-100">
-                    <div class="card-body text-center">
-                        <a href="{{ url_for('station_bp.database_versions') }}" class="btn btn-success fs-4 w-100 py-4">Управление версиями базы данных</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
+<div class="home-outline">
+    <div class="home-outline__title-row">
+        <img src="{{ url_for('static', filename='images/ntc-ees_logo.png') }}"
+             alt=""
+             class="home-outline__title-logo"
+             width="56"
+             height="48">
+        <h1 class="home-outline__title">АРМ «Генеральная схема»</h1>
     </div>
-</div>
 
+    <section class="home-outline__section" aria-label="Энергоресурсы и балансы">
+        <h2 class="home-outline__section-title">Энергоресурсы и балансы</h2>
+        <div class="home-outline__tiles">
+            {{ home_tile(url_for('generation_bp.generation_start'), 'Генерация', 'bi-lightning-charge') }}
+            {{ home_tile(url_for('energy_balance_bp.hub'), 'Балансы ЭЭ и ЭМ', 'bi-bar-chart') }}
+            {{ home_tile(url_for('fuel_bp.fuel_start'), 'Топливо', 'bi-droplet') }}
+            {{ home_tile(url_for('ecology_bp.hub'), 'Экология', 'bi-tree') }}
+        </div>
+    </section>
+
+    <section class="home-outline__section" aria-label="Потребление">
+        <h2 class="home-outline__section-title">Потребление</h2>
+        <div class="home-outline__tiles">
+            {% call home_tile(url_for('power_demand_bp.hub'), 'Нагрузки') %}
+            <svg class="home-outline__icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 3.2v16.6h17.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
+                <path d="M5.2 11.4h15.8" stroke="currentColor" stroke-width="0.9" stroke-dasharray="1.3 1.4" opacity="0.4"/>
+                <path d="M5.2 12.6h1.2v1.8h1.2v2.6h1.2V12h1.4V7.4h1.2v.9h1.3v1.8h1.2v-.7h1.3v-1.2h1.5V5h1.3v.9h1.3v4.4h1.4"
+                      stroke="currentColor" stroke-width="1.65" stroke-linejoin="miter" stroke-miterlimit="8" stroke-linecap="butt"/>
+            </svg>
+            {% endcall %}
+            {{ home_tile(url_for('energy_consumption_bp.hub'), 'Спрос', 'bi-graph-up') }}
+        </div>
+    </section>
+
+    <section class="home-outline__section" aria-label="Прогноз и территории">
+        <h2 class="home-outline__section-title">Прогноз и территории</h2>
+        <div class="home-outline__tiles">
+            {{ home_tile_soon('Рациональная структура', 'bi-diagram-3') }}
+            {{ home_tile(url_for('long_term_consumption_bp.electrical_intensity_start'), 'Долгосрочный прогноз потребления', 'bi-calendar3') }}
+            {{ home_tile(url_for('territories_bp.territories_start'), 'Характеристики территорий', 'bi-geo-alt') }}
+        </div>
+    </section>
+
+    <section class="home-outline__section" aria-label="Нормативно-справочная информация">
+        <h2 class="home-outline__section-title">Нормативно-справочная информация</h2>
+        <div class="home-outline__tiles">
+            {{ home_tile(url_for('refdata_bp.refdata'), 'Справочники', 'bi-book') }}
+            {{ home_tile(url_for('start.output_documents_transfer'), 'Передача данных для выходных документов', 'bi-file-earmark-arrow-up') }}
+        </div>
+    </section>
+
+    {% if current_user.is_admin %}
+    <section class="home-outline__section" aria-label="Администрирование и версии">
+        <h2 class="home-outline__section-title">Администрирование и версии</h2>
+        <div class="home-outline__tiles">
+            {{ home_tile(url_for('users_bp.list_users'), 'Пользователи и роли', 'bi-people', 'is-admin') }}
+            {{ home_tile(url_for('perimeter_variant_bp.perimeter_variants_admin'), 'Варианты сценариев расчета', 'bi-list-check', 'is-admin') }}
+            {{ home_tile(url_for('station_bp.database_versions'), 'Управление версиями базы данных', 'bi-database', 'is-admin') }}
+        </div>
+    </section>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

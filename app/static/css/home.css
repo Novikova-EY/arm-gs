@@ -1,0 +1,453 @@
+/* Общий фон, шапка и плитки хабов. Подключается из base.html на всех страницах. */
+
+:root {
+    --home-bg: #f7fafc;
+    --home-navy: #003b8a;
+    --home-blue: #0067bc;
+    --home-blue-soft: #82aede;
+    --home-tile: #dbe7f5;
+    --home-tile-hover: #c5d9ef;
+    --home-gold: #837041;
+    --home-gold-line: #c6b58c;
+    --home-teal: #1a6450;
+    --home-teal-soft: #d7ebe3;
+    --home-teal-border: #7eb9a8;
+    --home-teal-hover: #c1ddd3;
+    --home-danger: #e43e28;
+    --home-muted: #6b7c93;
+    --home-disabled-bg: #e6dfcc;
+    --home-disabled-text: #837041;
+    --home-radius: 16px;
+}
+
+html {
+    background: #fff;
+}
+
+html:has(body.home-outline-page) {
+    background: var(--home-bg);
+}
+
+body {
+    min-height: 100vh;
+    margin-top: 0 !important;
+}
+
+body.home-outline-page {
+    background: var(--home-bg);
+    color: var(--home-navy);
+    padding-left: 0;
+    padding-right: 0;
+}
+
+body:not(.home-outline-page) #appTopBar {
+    margin-left: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+    margin-right: calc(var(--bs-gutter-x, 1.5rem) * -0.5);
+}
+
+#appTopBar {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    background: #fff;
+    border-bottom: 1px solid #dbe7f5;
+    margin-bottom: 0;
+    padding: 0.65rem 1.5rem;
+}
+
+#appTopBar .btn {
+    font-size: 1.05rem;
+    font-weight: 500;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+}
+
+#appTopBar .fs-4 {
+    font-size: 1.15rem !important;
+    font-weight: 500;
+    color: var(--home-navy);
+}
+
+#appTopBar .version-indicator .btn {
+    padding: 0.4rem 1rem;
+    font-size: 1.05rem;
+}
+
+#appTopBar .btn-outline-success {
+    color: var(--home-teal);
+    border-color: var(--home-teal);
+    background: #fff;
+}
+
+#appTopBar .btn-outline-success:hover,
+#appTopBar .btn-outline-success:focus-visible {
+    color: var(--home-teal);
+    border-color: var(--home-teal);
+    background: var(--home-teal-soft);
+}
+
+#appTopBar .btn-outline-primary-white {
+    border-color: var(--home-blue-soft) !important;
+    color: var(--home-navy) !important;
+    background: #fff !important;
+}
+
+#appTopBar .btn-outline-primary-white:hover,
+#appTopBar .btn-outline-primary-white:focus-visible {
+    background: var(--home-bg) !important;
+    border-color: var(--home-blue) !important;
+    color: var(--home-navy) !important;
+}
+
+#appTopBar .btn-outline-secondary {
+    border-color: var(--home-blue-soft);
+    color: var(--home-navy);
+    background: #fff;
+}
+
+#appTopBar .btn-outline-secondary:hover {
+    background: var(--home-bg);
+    border-color: var(--home-blue);
+    color: var(--home-navy);
+}
+
+#appTopBar .btn-outline-danger {
+    color: var(--home-danger);
+    border-color: #f6beac;
+    background: #fff;
+}
+
+#appTopBar .btn-outline-danger:hover {
+    background: #fbe4dd;
+    color: var(--home-danger);
+    border-color: var(--home-danger);
+}
+
+body.home-outline-page .btn,
+body.home-outline-page .home-outline__back {
+    font-weight: 700;
+}
+
+/* Все страницы: капсульные кнопки, как в шапке */
+.btn {
+    --bs-btn-border-radius: 999px;
+    font-weight: 500;
+}
+
+.input-group > .btn {
+    --bs-btn-border-radius: var(--bs-border-radius);
+}
+
+.btn-secondary {
+    --bs-btn-color: var(--home-navy);
+    --bs-btn-bg: #fff;
+    --bs-btn-border-color: var(--home-blue-soft);
+    --bs-btn-hover-color: var(--home-navy);
+    --bs-btn-hover-bg: var(--home-bg);
+    --bs-btn-hover-border-color: var(--home-blue);
+    --bs-btn-focus-shadow-rgb: 0, 103, 188;
+    --bs-btn-active-color: var(--home-navy);
+    --bs-btn-active-bg: var(--home-tile);
+    --bs-btn-active-border-color: var(--home-blue);
+    --bs-btn-disabled-color: var(--home-muted);
+    --bs-btn-disabled-bg: #fff;
+    --bs-btn-disabled-border-color: #c5d6ea;
+}
+
+.home-topbar-logo {
+    display: block;
+    width: 40px;
+    height: auto;
+}
+
+.home-outline {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 1.5rem 1.75rem 2.5rem;
+}
+
+.home-outline__title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin: 0.25rem 0 1.75rem;
+}
+
+.home-outline__title-logo {
+    width: 56px;
+    height: auto;
+    flex-shrink: 0;
+}
+
+.home-outline__title {
+    margin: 0;
+    font-size: 2.15rem;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    color: var(--home-navy);
+}
+
+.home-outline__section + .home-outline__section {
+    margin-top: 1.75rem;
+}
+
+.home-outline__tiles + .home-outline__section {
+    margin-top: 1.75rem;
+}
+
+/* Группы без названия: золотая полоса, как линия у заголовков на главной */
+.home-outline__tiles + .home-outline__section:not(:has(> .home-outline__section-title)),
+.home-outline__section + .home-outline__section:not(:has(> .home-outline__section-title)) {
+    padding-top: 1.75rem;
+    background-image: linear-gradient(
+        90deg,
+        transparent,
+        var(--home-gold-line) 8%,
+        var(--home-gold) 50%,
+        var(--home-gold-line) 92%,
+        transparent
+    );
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
+    background-position: center top;
+}
+
+.home-outline__section-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0 0 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--home-gold);
+}
+
+.home-outline__section-title::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--home-gold-line);
+}
+
+.home-outline__tiles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.home-outline__tile {
+    box-sizing: border-box;
+    flex: 1 1 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.95rem;
+    min-height: 5.75rem;
+    padding: 1.1rem 1.35rem;
+    border: 1px solid var(--home-blue-soft);
+    border-radius: var(--home-radius);
+    background: var(--home-tile);
+    color: var(--home-navy);
+    text-align: center;
+    text-decoration: none;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.25;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.home-outline__tile i,
+.home-outline__tile .home-outline__icon-svg {
+    width: 1.7rem;
+    height: 1.7rem;
+    color: var(--home-navy);
+    flex-shrink: 0;
+}
+
+.home-outline__tile i {
+    font-size: 1.7rem;
+}
+
+.home-outline__tile .home-outline__icon-svg {
+    overflow: visible;
+}
+
+.home-outline__tile:hover,
+.home-outline__tile:focus-visible {
+    background: var(--home-tile-hover);
+    border-color: var(--home-blue);
+    color: var(--home-navy);
+}
+
+.home-outline__tile:hover i,
+.home-outline__tile:focus-visible i,
+.home-outline__tile:hover .home-outline__icon-svg,
+.home-outline__tile:focus-visible .home-outline__icon-svg {
+    color: var(--home-navy);
+}
+
+.home-outline__tile.is-disabled,
+.home-outline__tile.is-disabled:hover {
+    background: var(--home-disabled-bg);
+    border-color: var(--home-gold-line);
+    color: var(--home-disabled-text);
+}
+
+.home-outline__tile.is-disabled {
+    pointer-events: none;
+}
+
+.home-outline__tile.is-disabled i {
+    color: var(--home-disabled-text);
+}
+
+.home-outline__tile.is-admin,
+.home-outline__tile.is-admin:hover,
+.home-outline__tile.is-admin:focus-visible {
+    background: #e6dfcc;
+    border-color: #c6b58c;
+    color: #2f2818;
+    font-weight: 700;
+}
+
+.home-outline__tile.is-admin i,
+.home-outline__tile.is-admin:hover i,
+.home-outline__tile.is-admin:focus-visible i {
+    color: #2f2818;
+}
+
+.home-outline__tile.is-soon,
+.home-outline__tile.is-soon:hover {
+    background: #e8eaed;
+    border-color: #c9cdd3;
+    color: #6b7280;
+    pointer-events: none;
+}
+
+.home-outline__tile.is-soon i {
+    color: #8b919a;
+}
+
+.home-outline__soon-mark {
+    display: inline-block;
+    margin-left: 0.45rem;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    color: #6b7280;
+    background: #f4f5f7;
+    border: 1px solid #c9cdd3;
+    border-radius: 999px;
+}
+
+.home-outline__tile.is-disabled.is-accent,
+.home-outline__tile.is-disabled.is-accent:hover {
+    background: var(--home-disabled-bg);
+    border-color: var(--home-gold-line);
+    color: var(--home-disabled-text);
+}
+
+.home-outline__tile.is-accent {
+    background: var(--home-teal-soft);
+    border-color: var(--home-teal-border);
+    color: var(--home-teal);
+}
+
+.home-outline__tile.is-accent i {
+    color: var(--home-teal);
+}
+
+.home-outline__tile.is-accent:hover,
+.home-outline__tile.is-accent:focus-visible {
+    background: var(--home-teal-hover);
+    border-color: var(--home-teal);
+    color: var(--home-teal);
+}
+
+.home-outline__tile.is-ghost {
+    background: #fff;
+    border-color: #c5d6ea;
+    color: var(--home-navy);
+    font-size: 1.25rem;
+    min-height: 4.75rem;
+}
+
+.home-outline__tile.is-ghost:hover,
+.home-outline__tile.is-ghost:focus-visible {
+    background: var(--home-bg);
+    border-color: var(--home-blue-soft);
+    color: var(--home-navy);
+}
+
+.home-outline__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.5rem;
+}
+
+.home-outline__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--home-blue-soft);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--home-navy);
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.home-outline__back:hover,
+.home-outline__back:focus-visible {
+    background: var(--home-bg);
+    border-color: var(--home-blue);
+    color: var(--home-navy);
+}
+
+.home-outline__empty,
+.home-outline__caption {
+    width: 100%;
+    text-align: center;
+    color: var(--home-muted);
+}
+
+.home-outline__empty {
+    font-size: 1.2rem;
+    padding: 2rem 0;
+}
+
+.home-outline__caption {
+    font-size: 0.95rem;
+    margin: -0.25rem 0 1rem;
+}
+
+@media (min-width: 768px) {
+    .home-outline__tile {
+        flex: 0 1 calc((100% - 1rem) / 2);
+        max-width: calc((100% - 1rem) / 2);
+    }
+}
+
+@media (max-width: 576px) {
+    .home-outline__title {
+        font-size: 1.5rem;
+    }
+
+    .home-outline__tile {
+        font-size: 1.25rem;
+        min-height: 4.75rem;
+    }
+}
+
+
+

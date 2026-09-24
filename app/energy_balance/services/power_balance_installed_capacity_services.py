@@ -2,7 +2,8 @@
 """Мощности списка станций для балансов: p_ust по типам, ограничения и вводы Q4.
 
 Типы — справочник station_type (порядок display_order): «не указано» не берём,
-ВЭС и СЭС суммируем в одну строку. Территория — ОЭС или синхронная зона листа.
+ВЭС и СЭС суммируем в строку «СЭС, ВЭС» с подстроками СЭС и ВЭС. Территория —
+ОЭС или синхронная зона листа.
 Ограничения мощности — сумма Рогр (или Руст−Ррасп) по всем станциям территории.
 Вводы после максимума — Руст агрегатов с «Ввод 4 квартала» в ожидаемом году ввода.
 """
@@ -23,13 +24,29 @@ from app.common.services.get_services.stations.station_type_get_services import 
     get_station_type_list_full,
 )
 
+def _ses_ves_child_groups(
+    ses_ids: tuple[int, ...] = (),
+    ves_ids: tuple[int, ...] = (),
+) -> list[dict[str, Any]]:
+    return [
+        {"key": "installed_ses", "label": "СЭС", "type_ids": tuple(ses_ids), "is_ses_ves": False},
+        {"key": "installed_ves", "label": "ВЭС", "type_ids": tuple(ves_ids), "is_ses_ves": False},
+    ]
+
+
 DEFAULT_STATION_TYPE_GROUPS: tuple[dict[str, Any], ...] = (
     {"key": "installed_aes", "label": "АЭС", "type_ids": (), "is_ses_ves": False},
     {"key": "installed_ges", "label": "ГЭС", "type_ids": (), "is_ses_ves": False},
     {"key": "installed_gaes", "label": "ГАЭС", "type_ids": (), "is_ses_ves": False},
     {"key": "installed_tes", "label": "ТЭС", "type_ids": (), "is_ses_ves": False},
     {"key": "installed_snee", "label": "СНЭЭ", "type_ids": (), "is_ses_ves": False},
-    {"key": "installed_ses_ves", "label": "СЭС, ВЭС", "type_ids": (), "is_ses_ves": True},
+    {
+        "key": "installed_ses_ves",
+        "label": "СЭС, ВЭС",
+        "type_ids": (),
+        "is_ses_ves": True,
+        "children": _ses_ves_child_groups(),
+    },
 )
 
 # Листы, которые читают p_ust напрямую (как фильтр ОЭС / СЗ на station_list).
@@ -56,11 +73,16 @@ def _is_unspecified_name(name: str | None) -> bool:
     return (not n) or ("не указано" in n) or n in {"не указан", "не указана"}
 
 
+def _is_ses_name(name: str | None) -> bool:
+    return "сэс" in _norm(name)
+
+
+def _is_ves_name(name: str | None) -> bool:
+    return "вэс" in _norm(name)
+
+
 def _is_ves_or_ses_name(name: str | None) -> bool:
-    n = _norm(name)
-    if not n:
-        return False
-    return "вэс" in n or "сэс" in n
+    return _is_ses_name(name) or _is_ves_name(name)
 
 
 def _stable_type_key(name: str, type_id: int | None) -> str:
@@ -75,24 +97,46 @@ def _stable_type_key(name: str, type_id: int | None) -> str:
         return "installed_tes"
     if "снээ" in n:
         return "installed_snee"
+    if "сэс" in n:
+        return "installed_ses"
+    if "вэс" in n:
+        return "installed_ves"
     if type_id is None:
         return "installed_type_unknown"
     return f"installed_type_{int(type_id)}"
 
 
+def _plain_attr(obj: Any, name: str) -> Any:
+    """Значение атрибута без refresh: у detached/expired ORM getattr даёт DetachedInstanceError."""
+    data = getattr(obj, "__dict__", None)
+    if isinstance(data, dict) and name in data:
+        return data[name]
+    try:
+        return getattr(obj, name, None)
+    except Exception:
+        return None
+
+
 def _groups_from_station_types(station_types: list[Any]) -> list[dict[str, Any]]:
     groups: list[dict[str, Any]] = []
     ses_ves_ids: list[int] = []
+    ses_ids: list[int] = []
+    ves_ids: list[int] = []
     ses_ves_at: int | None = None
     for station_type in station_types:
-        type_id = getattr(station_type, "id", None)
-        name = getattr(station_type, "name", None)
+        type_id = _plain_attr(station_type, "id")
+        name = _plain_attr(station_type, "name")
         if type_id is None or int(type_id) <= 0 or _is_unspecified_name(name):
             continue
         if _is_ves_or_ses_name(name):
             if ses_ves_at is None:
                 ses_ves_at = len(groups)
-            ses_ves_ids.append(int(type_id))
+            type_int = int(type_id)
+            ses_ves_ids.append(type_int)
+            if _is_ses_name(name):
+                ses_ids.append(type_int)
+            elif _is_ves_name(name):
+                ves_ids.append(type_int)
             continue
         groups.append(
             {
@@ -111,9 +155,19 @@ def _groups_from_station_types(station_types: list[Any]) -> list[dict[str, Any]]
                 "label": "СЭС, ВЭС",
                 "type_ids": tuple(ses_ves_ids),
                 "is_ses_ves": True,
+                "children": _ses_ves_child_groups(tuple(ses_ids), tuple(ves_ids)),
             },
         )
     return groups
+
+
+def iter_station_type_groups(groups: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Родительские группы типов и вложенные СЭС / ВЭС — для загрузки значений."""
+    items: list[dict[str, Any]] = []
+    for group in groups or []:
+        items.append(group)
+        items.extend(group.get("children") or [])
+    return items
 
 
 def get_power_balance_station_type_groups() -> list[dict[str, Any]]:
@@ -549,11 +603,10 @@ def load_power_balance_installed_capacity_inputs(
     if sheets:
         sheet_specs: list[tuple[str, dict[str, Any] | None]] = []
         for sheet in sheets:
-            if (
-                sheet.get("skip_table")
-                or sheet.get("skip_direct_capacity")
-                or sheet.get("layout") in {"ees_rossii", "sz1"}
-            ):
+            if sheet.get("skip_direct_capacity") or sheet.get("layout") in {
+                "ees_rossii",
+                "sz1",
+            }:
                 continue
             sheet_specs.append((sheet["slug"], sheet.get("territory")))
     else:
@@ -600,12 +653,13 @@ def load_power_balance_installed_capacity_inputs(
         else:
             continue
         sheet_inputs: dict[str, dict[int, Decimal]] = {}
-        for group in groups:
+        for group in iter_station_type_groups(groups):
             type_ids = tuple(group.get("type_ids") or ())
             sheet_inputs[group["key"]] = _year_values_for_types(by_type, type_ids, years)
             sheet_inputs[available_row_key(group["key"])] = _year_values_for_types(
                 by_type_rasp, type_ids, years
             )
+        sheet_inputs["installed_total"] = _year_values_filled(ust_map, years)
         sheet_inputs["constraints"] = _constraints_year_values(
             ogr_map, ust_map, rasp_map, years
         )
@@ -657,6 +711,28 @@ def _machine_sort_tuple(machine_number: Any) -> tuple[int, str]:
         elif digits:
             break
     return (int(digits) if digits else 10**9, text)
+
+
+def _optional_int(value: Any) -> int | None:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _station_capacity_sort_key(item: dict[str, Any]) -> tuple:
+    """Тип станции по display_order (NULLS LAST), затем название по алфавиту."""
+    display_order = _optional_int(item.get("type_display_order"))
+    type_id = _optional_int(item.get("type_id")) or 0
+    return (
+        display_order is None,
+        display_order if display_order is not None else 0,
+        type_id,
+        _norm(item.get("label")),
+        int(item.get("id") or 0),
+    )
 
 
 # Токены энергорайонов ТИТЭС Востока: при общей РЭС (Чукотка) режем станции по имени.
@@ -782,6 +858,13 @@ def _station_ids_for_capacity_territory(territory: dict[str, Any] | None) -> lis
         if ids:
             return ids
         return _station_ids_for_energy_unit_via_res(entity_id, str(territory.get("name") or ""))
+    if kind == "sa":
+        from app.refdata.models.territories.regional_district_model import RegionalDistrict
+
+        query = query.filter(
+            Station.regional_district.has(RegionalDistrict.id_synchronous_area == entity_id)
+        )
+        return [int(row[0]) for row in query.all() if row[0] is not None]
     return []
 
 
@@ -800,6 +883,7 @@ def _query_station_machine_powers(
     from app.generation.models.machine.machine_model import Machine
     from app.generation.models.machine.machine_power_model import MachinePower
     from app.generation.models.station.station_model import Station
+    from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 
     current_version_id = get_current_db_version_id()
 
@@ -824,6 +908,8 @@ def _query_station_machine_powers(
         db.session.query(
             Station.id.label("station_id"),
             Station.name.label("station_name"),
+            Station.id_station_type.label("station_type_id"),
+            StationType.display_order.label("station_type_display_order"),
             Machine.id.label("machine_id"),
             Machine.machine_number.label("machine_number"),
             Machine.machine_name.label("machine_name"),
@@ -833,6 +919,7 @@ def _query_station_machine_powers(
         )
         .select_from(Machine)
         .join(Station, and_(Station.id == Machine.id_station, _version_cond(Station)))
+        .outerjoin(StationType, StationType.id == Station.id_station_type)
         .outerjoin(
             MachinePower,
             and_(
@@ -849,6 +936,8 @@ def _query_station_machine_powers(
         .group_by(
             Station.id,
             Station.name,
+            Station.id_station_type,
+            StationType.display_order,
             Machine.id,
             Machine.machine_number,
             Machine.machine_name,
@@ -878,6 +967,10 @@ def _build_station_capacity_items(
                 "key": station_capacity_row_key(station_id),
                 "label": str(getattr(row, "station_name", None) or "").strip()
                 or f"Станция {station_id}",
+                "type_id": _optional_int(getattr(row, "station_type_id", None)),
+                "type_display_order": _optional_int(
+                    getattr(row, "station_type_display_order", None)
+                ),
                 "year_values": {int(year): Decimal("0") for year in years},
                 "rasp_year_values": {int(year): Decimal("0") for year in years},
                 "machines": {},
@@ -923,24 +1016,27 @@ def _build_station_capacity_items(
         )
         station["machines"] = [{k: v for k, v in item.items() if k != "number"} for item in machine_items]
         items.append(station)
-    items.sort(key=lambda item: (_norm(item.get("label")), int(item.get("id") or 0)))
+    items.sort(key=_station_capacity_sort_key)
     return items
+
+
+def _sheet_needs_station_machine_powers(sheet: dict[str, Any] | None) -> bool:
+    """ТИТЭС — разбивка по станциям; Калининград — подсказки 1-й/2-й ЕГО."""
+    if not sheet or sheet.get("skip_table") or sheet.get("skip_direct_capacity"):
+        return False
+    if sheet.get("station_capacity_breakdown"):
+        return True
+    return str(sheet.get("layout") or "") == "kaliningrad"
 
 
 def load_power_balance_station_capacity_breakdown(
     years: list[int],
     sheets: list[dict[str, Any]] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Станции и агрегаты с p_ust для листов ТИТЭС (вместо разбивки по типам)."""
+    """Станции и агрегаты с p_ust/p_rasp для ТИТЭС и подсказок ЕГО Калининграда."""
     if not years or not sheets:
         return {}
-    targets = [
-        sheet
-        for sheet in sheets
-        if sheet.get("station_capacity_breakdown")
-        and not sheet.get("skip_table")
-        and not sheet.get("skip_direct_capacity")
-    ]
+    targets = [sheet for sheet in sheets if _sheet_needs_station_machine_powers(sheet)]
     if not targets:
         return {}
     start_year = min(years)
@@ -951,6 +1047,11 @@ def load_power_balance_station_capacity_breakdown(
         if not slug:
             continue
         territory = sheet.get("territory") or {}
+        if not territory.get("id"):
+            try:
+                territory = resolve_sheet_territory(slug) or {}
+            except Exception:
+                territory = {}
         try:
             station_ids = _station_ids_for_capacity_territory(territory)
         except Exception:

@@ -256,11 +256,13 @@ BASE_PARAMETERS: tuple[tuple[str, str], ...] = (
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
 )
-# Блок «ТИТЭС и децентрализованная зона» на сводке по ОЭС — только базовые показатели.
+# Блок «ТИТЭС и децентрализованная зона» на сводке по ОЭС: базовые + совмещённые (для k на coeff).
 PARAMETERS_TITES_OES_SUMMARY: tuple[tuple[str, str], ...] = (
     ("max_power", "Максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
+    ("combined_on_oes", "Совмещенное потребление мощности на час прохождения максимума ОЭС, МВт"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 # На сводках /power_demand/summary/{oes,federal_districts,energy_zones}/ исторический столбец только у базовых показателей.
 SUMMARY_HIST_PARAMETER_KEYS: frozenset[str] = frozenset(pk for pk, _ in BASE_PARAMETERS)
@@ -316,6 +318,7 @@ PARAMETERS_EES_RUSSIA_OES_SUMMARY: tuple[tuple[str, str], ...] = (
     ("calculated_max_ees_via_es_mw", "Расчетное максимальное потребление мощности (через РЭС), МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 # То же на сводке по энергозонам (+ «через ЭЗ»).
 PARAMETERS_EES_RUSSIA_EZ_SUMMARY: tuple[tuple[str, str], ...] = (
@@ -326,6 +329,7 @@ PARAMETERS_EES_RUSSIA_EZ_SUMMARY: tuple[tuple[str, str], ...] = (
     ("calculated_max_ees_via_ez_mw", "Расчетное максимальное потребление мощности (через ЭЗ), МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 _EES_UNIFIED_DEMAND_MODEL_NAME = EnergySystemTypeDemandParameter.__name__
 _EES_AGGREGATE_DEMAND_MODEL_NAME = EesRussiaDemandParameter.__name__
@@ -446,18 +450,21 @@ PARAMETERS_RES_EZ_MAX: tuple[tuple[str, str], ...] = (
     ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
     ("combined_on_ez", "Совмещенное потребление мощности на час прохождения максимума ЭЗ, МВт"),
 )
-# Синхронная зона на сводной таблице (ОЭС / ФО / энергозоны): без совмещённого на ЕЭС и его расчёта/проверки.
+# Синхронная зона на сводной таблице (ОЭС / ФО / энергозоны): совмещённое на ЕЭС
+# (для строки k на coeff); расчёт и проверка совмещённого не показываются.
 PARAMETERS_SYNCHRONOUS_AREA: tuple[tuple[str, str], ...] = (
     ("max_power", "Максимальное потребление мощности, МВт"),
     ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
     ("avg_temp", "Среднесуточная ТНВ, °C"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 # «Первая синхронная зона с/без НТ» на сводке (без «Среднесуточная ТНВ»).
 PARAMETERS_FIRST_SYNCHRONOUS_AREA_OES_SUMMARY: tuple[tuple[str, str], ...] = (
     ("max_power", "Максимальное потребление мощности, МВт"),
     ("calculated_max_power_mw", "Расчетное максимальное потребление мощности, МВт"),
     ("peak_datetime", "Дата и время, мск"),
+    ("combined_on_ees", "Совмещенное потребление мощности на час прохождения максимума ЕЭС, МВт"),
 )
 
 
@@ -649,6 +656,16 @@ def _res_parameter_year_floats_from_summary_rows(
     return [None] * n_y
 
 
+def _synchronous_area_matches_name_prefix(sa: Any, prefix_cf: str) -> bool:
+    """Краткое или полное наименование СЗ начинается с префикса (casefold)."""
+    target = (prefix_cf or "").strip().casefold()
+    if not target:
+        return False
+    name_cf = (getattr(sa, "name", None) or "").strip().casefold()
+    full_cf = (getattr(sa, "name_full", None) or "").strip().casefold()
+    return name_cf.startswith(target) or full_cf.startswith(target)
+
+
 def _resolve_synchronous_area_id_by_name_prefix_cf(prefix_cf: str) -> int | None:
     target = (prefix_cf or "").strip().casefold()
     if not target:
@@ -658,8 +675,7 @@ def _resolve_synchronous_area_id_by_name_prefix_cf(prefix_cf: str) -> int | None
     for sa in query.all():
         if not _is_valid_named_item(sa):
             continue
-        name_cf = (getattr(sa, "name", None) or "").strip().casefold()
-        if name_cf.startswith(target):
+        if _synchronous_area_matches_name_prefix(sa, target):
             return int(sa.id)
     return None
 
@@ -5115,6 +5131,11 @@ def _iter_res_level_aggregation_source_rows(
             continue
         if r.get("demand_model_name") != dm_res:
             continue
+        # ТИТЭС: совмещённые строки нужны для k, в суммы ЕЭС/ОЭС/СЗ их не берём.
+        if parameter_key in ("combined_on_oes", "combined_on_ees") and r.get(
+            "pd_pd_tites_branch_row"
+        ):
+            continue
         res_id = _regional_energy_system_id_from_flat_row(r)
         if res_id is None:
             continue
@@ -6580,21 +6601,39 @@ def _apply_first_sa_kaliningrad_es_subtract_from_year(
     return out
 
 
+def _summary_row_has_display_year_values(row: dict[str, Any]) -> bool:
+    return any(
+        v not in (None, "", "—") for v in (row.get("year_values") or [])
+    )
+
+
 def _find_ues_summary_row(
     summary_rows: list[dict[str, Any]],
     *,
     ues_id: int,
     parameter_key: str,
+    prefer_label_cf: str | None = None,
 ) -> dict[str, Any] | None:
     dm_ues = UnionEnergySystemDemandParameter.__name__
+    matches: list[dict[str, Any]] = []
     for row in summary_rows:
         if row.get("demand_model_name") != dm_ues:
             continue
         if row.get("parameter_key") != parameter_key:
             continue
         if _union_energy_system_id_from_flat_row(row) == ues_id:
+            matches.append(row)
+    if not matches:
+        return None
+    label_target = (prefer_label_cf or "").strip().casefold()
+    if label_target:
+        for row in matches:
+            if str(row.get("entity_label") or "").strip().casefold() == label_target:
+                return row
+    for row in matches:
+        if _summary_row_has_display_year_values(row):
             return row
-    return None
+    return matches[0]
 
 
 def _find_res_summary_row(
@@ -6679,6 +6718,7 @@ def apply_second_sa_from_ues_east_formula(
             summary_rows,
             ues_id=ues_east_id,
             parameter_key=source_pk,
+            prefer_label_cf=_UES_EAST_NAME_CF,
         )
         if source_row is None:
             continue
@@ -8955,10 +8995,18 @@ def _flatten_entity(
     rounding_digits: int,
     *,
     avg_temp_uses_global_rounding: bool = False,
+    inside_tites_subtree: bool = False,
 ) -> list[dict[str, Any]]:
     entity_rows: list[dict[str, Any]] = []
+    inside_tites_subtree = inside_tites_subtree or (
+        entity.entity_kind == "aggregation_level"
+        and str(entity.label or "").strip() == _TITES_AND_DZ_AGGREGATE_LABEL
+    )
     if entity.entity_kind == "aggregation_level" and not entity.parameters:
-        entity_rows.append(_aggregation_level_header_row(entity, years))
+        header = _aggregation_level_header_row(entity, years)
+        if inside_tites_subtree:
+            header["pd_pd_tites_branch_row"] = True
+        entity_rows.append(header)
         for child in entity.children:
             entity_rows.extend(
                 _flatten_entity(
@@ -8966,6 +9014,7 @@ def _flatten_entity(
                     years,
                     rounding_digits,
                     avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
+                    inside_tites_subtree=inside_tites_subtree,
                 )
             )
         return entity_rows
@@ -9062,6 +9111,8 @@ def _flatten_entity(
             entity_rows[-1]["pd_pd_ez_res_fully_in_zone"] = bool(
                 entity.ez_res_fully_in_zone
             )
+        if inside_tites_subtree:
+            entity_rows[-1]["pd_pd_tites_branch_row"] = True
 
     for child in entity.children:
         entity_rows.extend(
@@ -9070,6 +9121,7 @@ def _flatten_entity(
                 years,
                 rounding_digits,
                 avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
+                inside_tites_subtree=inside_tites_subtree,
             )
         )
     return entity_rows

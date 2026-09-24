@@ -17,6 +17,9 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.extensions import db
 from app.fuel.models.fue_distribution_parameter_model import DistributionParameter
+from app.fuel.services.calculation.access_bdis_cursor import (
+    sort_equipment_group_ids_access_findnext,
+)
 from app.fuel.services.calculation.distribution.distribution_stage_services import (
     D03,
     DistributionStageService,
@@ -95,6 +98,11 @@ class FuelStageService:
             group_ids,
             year_number=int(row.year.number),
             effective_db_version=effective_db_version,
+        )
+        group_ids = sort_equipment_group_ids_access_findnext(
+            self.session,
+            group_ids,
+            year_number=int(row.year.number),
         )
         distribution_name = (
             row.union_energy_system.name if row.union_energy_system is not None else None

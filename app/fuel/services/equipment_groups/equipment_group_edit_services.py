@@ -1264,16 +1264,21 @@ def update_equipment_group_from_form(equipment_group_id, form_data):
 
     new_name = (form_data.get("name") or "").strip()
     current_version_id = get_current_db_version_id()
-    station_id = _get_station_id_for_equipment_group(equipment_group_id)
 
-    # Сначала объединяем дубликаты по имени (как на station_details)
-    result = rename_or_merge_equipment_group_for_station(
-        station_id=station_id,
-        equipment_group_id=equipment_group_id,
-        new_name=new_name or (group.name or "").strip(),
-        current_version_id=current_version_id,
-    )
-    target_id = result["primary_id"] if result["merged"] else equipment_group_id
+    # Слияние по имени — только при переименовании. Иначе голова составной станции
+    # с тем же автоименем, что у дочерней группы, съедает ребёнка при смене типа.
+    name_changed = bool(new_name) and new_name != old_name_before
+    if name_changed:
+        result = rename_or_merge_equipment_group_for_station(
+            station_id=_get_station_id_for_equipment_group(equipment_group_id),
+            equipment_group_id=equipment_group_id,
+            new_name=new_name,
+            current_version_id=current_version_id,
+        )
+        target_id = result["primary_id"] if result["merged"] else equipment_group_id
+    else:
+        result = {"merged": False, "primary_id": equipment_group_id}
+        target_id = equipment_group_id
 
     # Применяем данные формы к целевой группе
     target_group = EquipmentGroup.query.filter_by(id=target_id).first()

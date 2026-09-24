@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Импорт перетоков ЭЭ из сводов ОЭС и сводного файла (лист «Перетоки», xlsx/xls) во все версии БД."""
+"""Импорт перетоков ЭЭ из сводов ОЭС и сводного файла (лист «Перетоки», xlsx/xls) в выбранную версию БД."""
 
 from __future__ import annotations
 
@@ -11,8 +11,10 @@ from typing import Any
 
 from openpyxl import load_workbook
 
-from app.common.models.database_version_model import DatabaseVersion
-from app.common.services.database_version_filter import filter_by_explicit_db_version
+from app.common.services.database_version_filter import (
+    filter_by_explicit_db_version,
+    get_current_db_version_id,
+)
 from app.common.services.tranzaction_services import _commit_with_retry, quick_fix_seq
 from app.extensions import db
 from app.energy_balance.models.regional_energy_system_transfer_model import (
@@ -20,7 +22,6 @@ from app.energy_balance.models.regional_energy_system_transfer_model import (
     RegionalEnergySystemTransfer,
 )
 from app.energy_balance.services.ee_generation_import_services import (
-    _all_database_version_ids,
     _extract_year_number,
     _normalize_name,
     _normalize_text,
@@ -387,18 +388,11 @@ def import_ee_transfers_from_excel(file, user: str) -> dict[str, Any]:
     filename = getattr(file, "filename", None)
     parsed = parse_ee_transfers_workbook(raw, filename=filename)
 
-    version_ids = _all_database_version_ids()
-    stats: dict[str, int] = defaultdict(int)
-    errors: list[str] = []
-
+    version_id = get_current_db_version_id()
     try:
-        for version_id in version_ids:
-            version_stats, version_errors = _import_parsed_transfers_for_version(parsed, version_id)
-            for key, value in version_stats.items():
-                stats[key] += value
-            errors.extend(version_errors)
-            if len(errors) > 30:
-                errors = errors[:30]
+        stats, errors = _import_parsed_transfers_for_version(parsed, version_id)
+        if len(errors) > 30:
+            errors = errors[:30]
     finally:
         clear_transfer_import_resolver_cache()
 
@@ -422,10 +416,11 @@ def import_ee_transfers_from_excel(file, user: str) -> dict[str, Any]:
     updated = stats.get("transfer_rows_updated", 0)
     unchanged = stats.get("transfer_rows_unchanged", 0)
     changed = inserted + updated
+    version_label = f"версия БД {version_id}" if version_id is not None else "без версии БД"
     message = (
         f"Импорт перетоков ЭЭ за {parsed.year_number} г. ({source_label}) завершён. "
         f"Добавлено: {inserted}, обновлено: {updated}, без изменений: {unchanged}. "
-        f"Версий БД: {len(version_ids)}."
+        f"Загружено в {version_label}."
     )
     if changed == 0 and unchanged > 0:
         message += (

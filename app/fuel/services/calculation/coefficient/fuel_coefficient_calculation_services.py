@@ -34,7 +34,10 @@ from app.fuel.services.calculation.station_ewtp import (
     resolve_station_ewtp,
 )
 from app.fuel.services.calculation.specific_consumption_lookup import (
+    AccessSeekBookmark,
+    fuel_row_numb1120,
     query_specific_consumption_access_seek,
+    resolve_access_ud_seek,
 )
 
 
@@ -60,7 +63,8 @@ def _obor_int(obor) -> int | None:
 
 def _access_k_coefficients_from_h(row: DistributionParameter, ch: Decimal) -> tuple[Decimal, Decimal, Decimal]:
     """
-    Access: knps = hnps/ch, kngt = hngt/ch, knpg = hnpg/ch (обработчики hn*_AfterUpdate / BeforeUpdate).
+    Access: knps = hnps/ch, kngt = hngt/ch, knpg = hnpg/ch — только
+    hnps_BeforeUpdate / hngt_AfterUpdate / hnpg_AfterUpdate, не Кнопка5.
     При ch <= 0 коэффициенты обнуляем.
     """
     hnps = d0(row.hnps)
@@ -69,6 +73,28 @@ def _access_k_coefficients_from_h(row: DistributionParameter, ch: Decimal) -> tu
     if ch <= 0:
         return Decimal("0"), Decimal("0"), Decimal("0")
     return hnps / ch, hngt / ch, hnpg / ch
+
+
+def _access_kn_star_from_form(row: DistributionParameter) -> tuple[Decimal, Decimal, Decimal]:
+    """Кнопка5: knps/kngt/knpg с формы. Сибирь 2027: leftover 1.1939, не hnps/ch."""
+    return d0(row.knps), d0(row.kngt), d0(row.knpg)
+
+
+def _access_kn_from_new_capacity(
+    *,
+    cnustn: Decimal,
+    cnustnps: Decimal,
+    cnustngt: Decimal,
+    cnustnpg: Decimal,
+    knps: Decimal,
+    kngt: Decimal,
+    knpg: Decimal,
+    form_kn: Decimal,
+) -> Decimal:
+    """Access Кнопка5: If cnustn > 0 Then kn = … — иначе поле kn на форме не трогаем."""
+    if cnustn > 0:
+        return (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) / cnustn
+    return form_kn
 
 
 @dataclass
@@ -424,6 +450,7 @@ class FuelCoefficientCalculationService:
         sum_e_cyear = Decimal("0")
 
         updated_fuel_rows = 0
+        ud_bookmark = AccessSeekBookmark()
 
         for kind, fp, cursor in walk_access_bdis_cursor(
             cursor_rows,
@@ -445,8 +472,15 @@ class FuelCoefficientCalculationService:
             # Access: bnust1 — NUST последней строки byear курсора, не Seek по этой станции.
             base_nust = cursor.bnust1
 
-            spec = self._bdis_specific_row(
-                equipment_group_id, byear, cyear, effective_db_version
+            spec = resolve_access_ud_seek(
+                self.session,
+                self._bdis_specific_row(
+                    equipment_group_id, byear, cyear, effective_db_version
+                ),
+                ud_bookmark,
+                numb1120=fuel_row_numb1120(cur_row, groups_by_id),
+                byear=byear,
+                database_version_id=effective_db_version,
             )
             if spec is None:
                 continue
@@ -494,7 +528,7 @@ class FuelCoefficientCalculationService:
         ph1 = ch / bh if bh > 0 else Decimal("0")
         pe = e_target / be if be > 0 else Decimal("0")
 
-        knps, kngt, knpg = _access_k_coefficients_from_h(row, ch)
+        knps, kngt, knpg = _access_kn_star_from_form(row)
 
         hd = Decimal("0")
         if (cnust - cnustn) > 0:
@@ -503,9 +537,16 @@ class FuelCoefficientCalculationService:
                 - (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) * ch / Decimal("1000")
             ) / (cnust - cnustn) * Decimal("1000")
 
-        kn = Decimal("0")
-        if cnustn > 0:
-            kn = (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) / cnustn
+        kn = _access_kn_from_new_capacity(
+            cnustn=cnustn,
+            cnustnps=cnustnps,
+            cnustngt=cnustngt,
+            cnustnpg=cnustnpg,
+            knps=knps,
+            kngt=kngt,
+            knpg=knpg,
+            form_kn=d0(row.kn),
+        )
 
         ph = hd / bh if bh > 0 else Decimal("0")
         pq = cq / bq if bq > 0 else Decimal("0")
@@ -733,7 +774,7 @@ class FuelCoefficientCalculationService:
         cnustn = csumnustn
         cnustngt = csumnustngt
         cnustnpg = csumnustnpg
-        knps, kngt, knpg = _access_k_coefficients_from_h(row, ch)
+        knps, kngt, knpg = _access_kn_star_from_form(row)
 
         hd = Decimal("0")
         if (cnust - cnustn) > 0:
@@ -742,9 +783,16 @@ class FuelCoefficientCalculationService:
                 - (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) * ch / Decimal("1000")
             ) / (cnust - cnustn) * Decimal("1000")
 
-        kn = Decimal("0")
-        if cnustn > 0:
-            kn = (cnustnps * knps + cnustngt * kngt + cnustnpg * knpg) / cnustn
+        kn = _access_kn_from_new_capacity(
+            cnustn=cnustn,
+            cnustnps=cnustnps,
+            cnustngt=cnustngt,
+            cnustnpg=cnustnpg,
+            knps=knps,
+            kngt=kngt,
+            knpg=knpg,
+            form_kn=d0(row.kn),
+        )
 
         base_preview = self.compute_base_year_preview_for_distribution_parameter(
             distribution_parameter_id

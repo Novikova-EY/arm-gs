@@ -31,8 +31,13 @@ content %} {% if current_user.is_authenticated %}
 
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
-    <div class="col-12 mb-2 text-center">
-      <h2 class="mb-4">Выработка электроэнергии электростанциями</h2>
+    <div class="col-12 mb-2 position-relative">
+      <h2 class="mb-4 text-center px-5">Выработка электроэнергии электростанциями</h2>
+      <a
+        href="{{ url_for('energy_balance_bp.ee_generation_totals_summary', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+        class="btn btn-primary position-absolute top-0 end-0"
+        style="white-space: nowrap;"
+      >Итоговые значения</a>
     </div>
 
     {# Липкая панель: кнопки, фильтры, импорт/экспорт, строка годов — над шапкой

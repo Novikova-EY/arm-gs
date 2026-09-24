@@ -349,10 +349,29 @@ def _resolve_station_placement(station: Station) -> tuple[int, int, int, int, in
     return est_id, ues.id, res.id, rd_id, eu_id
 
 
+def _resolve_station_synchronous_area_id(station: Station) -> int:
+    """Синхронная зона станции — с субъекта РФ (regional_district)."""
+    district = getattr(station, "regional_district", None)
+    raw = getattr(district, "id_synchronous_area", None) if district is not None else None
+    if raw is None:
+        raw = getattr(station, "id_synchronous_area", None)
+    try:
+        sa_id = int(raw)
+    except (TypeError, ValueError):
+        return -1
+    if sa_id in (0, -1):
+        return -1
+    return sa_id
+
+
 def _add_period_sum(target: dict[int, Decimal], period_key: int, value) -> None:
     if value is None:
         return
-    target[period_key] = target.get(period_key, Decimal(0)) + Decimal(str(value))
+    if isinstance(value, Decimal):
+        dec = value
+    else:
+        dec = Decimal(str(value))
+    target[period_key] = target.get(period_key, Decimal(0)) + dec
 
 
 # Подсказки «i» для строк итогов, контроля и проверки на странице ee_generation.
@@ -396,15 +415,21 @@ def build_generation_aggregates(
         "regional_districts": defaultdict(dict),
         "regional_energy_systems": defaultdict(dict),
         "union_energy_systems": defaultdict(dict),
+        "energy_system_types": defaultdict(dict),
+        "synchronous_areas": defaultdict(dict),
         "total": {},
     }
     res_placement: dict[int, tuple[int, int]] = {}
+    res_to_sa: dict[int, int] = {}
 
     for station in stations or []:
         periods = values_by_station.get(station.id, {})
         est_id, ues_id, res_id, rd_id, eu_id = _resolve_station_placement(station)
+        sa_id = _resolve_station_synchronous_area_id(station)
         if res_id not in (None, -1) and res_id not in res_placement:
             res_placement[res_id] = (est_id, ues_id)
+        if res_id not in (None, -1) and sa_id != -1 and res_id not in res_to_sa:
+            res_to_sa[res_id] = sa_id
         is_espp = _is_espp_station_sign(getattr(station, "station_sign", None))
 
         for period_key, value in periods.items():
@@ -421,10 +446,15 @@ def build_generation_aggregates(
                 _add_period_sum(aggregates["regional_energy_systems"][res_id], period_key, value)
             if ues_id != -1:
                 _add_period_sum(aggregates["union_energy_systems"][ues_id], period_key, value)
+            if est_id != -1:
+                _add_period_sum(aggregates["energy_system_types"][est_id], period_key, value)
+            if sa_id != -1:
+                _add_period_sum(aggregates["synchronous_areas"][sa_id], period_key, value)
 
     if espp_by_res and period_columns:
         for res_id, periods in espp_by_res.items():
-            _est_id, ues_id = res_placement.get(res_id, (-1, -1))
+            est_id, ues_id = res_placement.get(res_id, (-1, -1))
+            sa_id = res_to_sa.get(res_id, -1)
             for period_key, _label in period_columns:
                 if not _period_uses_espp_svod(
                     period_key, months_calendar_year=months_calendar_year
@@ -440,6 +470,14 @@ def build_generation_aggregates(
                     _add_period_sum(
                         aggregates["union_energy_systems"][ues_id], period_key, value
                     )
+                if est_id != -1:
+                    _add_period_sum(
+                        aggregates["energy_system_types"][est_id], period_key, value
+                    )
+                if sa_id != -1:
+                    _add_period_sum(
+                        aggregates["synchronous_areas"][sa_id], period_key, value
+                    )
                 _add_period_sum(aggregates["total"], period_key, value)
 
     return {
@@ -447,6 +485,8 @@ def build_generation_aggregates(
         "regional_districts": dict(aggregates["regional_districts"]),
         "regional_energy_systems": dict(aggregates["regional_energy_systems"]),
         "union_energy_systems": dict(aggregates["union_energy_systems"]),
+        "energy_system_types": dict(aggregates["energy_system_types"]),
+        "synchronous_areas": dict(aggregates["synchronous_areas"]),
         "total": aggregates["total"],
     }
 

@@ -79,8 +79,8 @@ def select_equipment_group_ids_for_calculation(
     """
     Id групп по Access filter_text и версии БД.
 
-    Условие ved из фильтра Access применяется к EquipmentGroupFuelParam.ved
-    (рабочая «Станции(Схема).VED»), а не к EquipmentGroup.vedomstvo.
+    Условия oes/obl/ved из фильтра Access применяются к EquipmentGroupFuelParam
+    (рабочая «Станции(Схема).OES/OBL/VED»), а не к справочнику EquipmentGroup.
     При наличии year_numbers строка параметров должна относиться к одному из этих лет
     (обычно base_year и/или расчётный year параметра распределения).
 
@@ -111,12 +111,12 @@ def select_equipment_group_ids_for_calculation(
     if group_expr is not None:
         query = query.filter(group_expr)
 
-    ved_expr = AccessFilterAdapter.build_ved_expression(filter_text or "")
-    if ved_expr is not None:
+    param_expr = AccessFilterAdapter.build_param_expression(filter_text or "")
+    if param_expr is not None:
         years = [int(y) for y in (year_numbers or ()) if y is not None]
         fp_pred = [
             EquipmentGroupFuelParam.equipment_group_id == EquipmentGroup.id,
-            ved_expr,
+            param_expr,
         ]
         if years:
             fp_pred.append(EquipmentGroupFuelParam.year_number.in_(years))

@@ -7,11 +7,116 @@ from flask_login import login_required
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
+from app.auth.routes.decorators import roles_required
+
 start_bp = Blueprint('start', __name__)
 
 @start_bp.route('/')
 def index():
     return render_template('home.html')
+
+
+@start_bp.route('/output_documents_transfer')
+@login_required
+def output_documents_transfer():
+    """Страница ссылок JSON-API для выходных документов (доступна всем авторизованным)."""
+    from flask import g
+
+    from app.api.services.database_versions_api_services import list_database_versions
+    from app.api.services.output_documents_catalog import build_output_document_groups
+
+    versions = list_database_versions().get("rows") or []
+    selected_version_id = None
+    current = getattr(g, "current_db_version", None)
+    version_ids = {int(row["database_version"]) for row in versions}
+    try:
+        current_id = int(current) if current is not None else None
+    except (TypeError, ValueError):
+        current_id = None
+    if current_id in version_ids:
+        selected_version_id = current_id
+    elif versions:
+        selected_version_id = int(versions[0]["database_version"])
+
+    return render_template(
+        "output_documents_transfer.html",
+        versions=versions,
+        selected_version_id=selected_version_id,
+        json_groups=build_output_document_groups(),
+    )
+
+
+@start_bp.route(
+    "/output_documents_transfer/export_excel/<dataset>",
+    methods=["GET"],
+)
+@login_required
+@roles_required(["admin"])
+def export_output_document_excel(dataset: str):
+    """Выгрузка одного JSON-набора в Excel (только роль admin)."""
+    from app.api.services.database_versions_api_services import (
+        UnknownDatabaseVersionError,
+    )
+    from app.api.services.exchange_api_services import UnknownDatasetError
+    from app.api.services.output_documents_excel_export_services import (
+        build_dataset_excel_bytes,
+        build_export_filename,
+        load_output_document_payload_for_excel,
+    )
+
+    version_raw = request.args.get("database_version")
+    database_version = None
+    if version_raw is not None and str(version_raw).strip() != "":
+        try:
+            database_version = int(version_raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Некорректный database_version."}), 400
+
+    try:
+        payload = load_output_document_payload_for_excel(
+            dataset,
+            database_version=database_version,
+        )
+    except ValueError:
+        return jsonify(
+            {"error": "Укажите database_version для выгрузки набора."}
+        ), 400
+    except UnknownDatabaseVersionError:
+        return jsonify(
+            {
+                "error": "unknown_database_version",
+                "database_version": database_version,
+            }
+        ), 404
+    except UnknownDatasetError:
+        return jsonify({"error": "unknown_dataset", "dataset": dataset}), 404
+    except Exception as exc:
+        current_app.logger.error(
+            "Ошибка загрузки набора %s для Excel: %s", dataset, exc
+        )
+        return jsonify({"error": "Не удалось загрузить JSON-набор."}), 500
+
+    try:
+        output = build_dataset_excel_bytes(payload)
+        filename = build_export_filename(
+            str(payload.get("dataset") or dataset),
+            database_version=payload.get("database_version", database_version),
+        )
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype=(
+                "application/vnd.openxmlformats-officedocument"
+                ".spreadsheetml.sheet"
+            ),
+            max_age=0,
+        )
+    except Exception as exc:
+        current_app.logger.error(
+            "Ошибка выгрузки Excel для набора %s: %s", dataset, exc
+        )
+        return jsonify({"error": "Не удалось сформировать Excel-файл."}), 500
 
 
 def _safe_excel_sheet_name(sheet_name: str) -> str:

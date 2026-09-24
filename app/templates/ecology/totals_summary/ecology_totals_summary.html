@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+
+{% macro totals_summary_rows(block, columns, rowspan_column_keys) -%}
+{% if block and block.rows %}
+{% for row in block.rows %}
+<tr class="{{ block.row_class|default('table-info') }} cmp-summary-row{% if row.is_empty %} ot-row-empty-hidden{% endif %}"
+    data-row-key="{{ row.key }}">
+  {% for cell in row.cells %}
+  {% set col = columns[loop.index0] %}
+  {% set is_span_col = col.key in rowspan_column_keys %}
+  {% set is_station = col.key in ['NAME', 'Stancia'] %}
+  {% if is_span_col and not row.is_group_first %}
+  {% else %}
+  <td class="text-center{% if col.sticky %} cmp-sticky{% if is_station %} cmp-station-name text-start fw-bold{% endif %}{% else %} cmp-data{% endif %}{% if col.diff_highlight %} cmp-diff-col{% endif %}{% if col.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}"
+      data-col-key="{{ col.key }}"
+      {% if is_span_col %}rowspan="{{ block.rowspan }}"{% endif %}
+      {% if col.sticky %}data-cmp-col="{{ col.sticky_index }}" style="left: var(--cmp-sticky-{{ col.sticky_index }}, 0px);"{% endif %}>
+    {% if col.diff_highlight and row.cell_nonzero[loop.index0] %}
+    <span class="cmp-diff-nonzero">{{ cell }}</span>
+    {% else %}
+    {{ cell }}
+    {% endif %}
+  </td>
+  {% endif %}
+  {% endfor %}
+</tr>
+{% endfor %}
+{% endif %}
+{%- endmacro %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+{% if current_user.is_authenticated %}
+{% set column_count = columns|length %}
+
+<div class="container-fluid mt-2">
+  <div class="d-flex align-items-center gap-2 w-100 pb-1 mb-2">
+    <div class="btn-group flex-shrink-0" role="group" aria-label="Состав данных">
+      {% for nav in comparison_sheets %}
+      <a href="{{ url_for('ecology_bp.totals_summary', sheet_slug=nav.slug) }}{% if request.query_string %}?{{ request.query_string.decode() }}{% endif %}"
+         class="btn fs-5 text-nowrap {% if nav.slug == sheet.slug %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ nav.nav_label }}
+      </a>
+      {% endfor %}
+    </div>
+    <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 ms-auto">
+      <a href="{{ url_for('ecology_bp.hub') }}" class="btn btn-secondary fs-5">Модуль «Экология»</a>
+      <a href="{{ url_for('ecology_bp.gis_tes_fuel_comparison', sheet_slug=sheet.slug) }}" class="btn btn-outline-secondary fs-5">Анализ {{ sheet.nav_label }}</a>
+    </div>
+  </div>
+
+  <div class="col-12 mb-2">
+    <h2 class="text-center mb-3">{{ page_title }}</h2>
+  </div>
+
+  <div class="col-12 mb-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <form method="GET" action="{{ url_for('ecology_bp.totals_summary', sheet_slug=sheet.slug) }}" class="d-flex align-items-center gap-2" id="yearForm">
+          {% for key, values in request.args.lists() %}
+            {% if key not in ['start_year', 'end_year', 'aggregation_type'] %}
+              {% for value in values %}
+              <input type="hidden" name="{{ key }}" value="{{ value }}">
+              {% endfor %}
+            {% endif %}
+          {% endfor %}
+          {% for at in aggregation_types %}
+          <input type="hidden" name="aggregation_type" value="{{ at }}">
+          {% endfor %}
+          <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
+          <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 4.5rem;">
+            {% for year in filter_year_list %}
+            <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+          <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
+          <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 4.5rem;">
+            {% for year in filter_year_list %}
+            <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-success">Применить</button>
+          <a href="{{ url_for('ecology_bp.totals_summary', sheet_slug=sheet.slug) }}" class="btn btn-outline-danger">Сбросить</a>
+          <button type="button" id="exportTotalsSummaryExcel" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2 ms-3" style="white-space: nowrap;">
+            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+          </button>
+        </form>
+      </div>
+
+      <form method="get" action="{{ url_for('ecology_bp.totals_summary', sheet_slug=sheet.slug) }}" id="totalsFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
+        <input type="hidden" name="start_year" value="{{ start_year }}">
+        <input type="hidden" name="end_year" value="{{ end_year }}">
+
+        <input type="checkbox" class="btn-check" id="aggregationEES" name="aggregation_type" value="ees" {% if 'ees' in aggregation_types %}checked{% endif %}>
+        <label for="aggregationEES" class="btn {% if 'ees' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">ЕЭС</label>
+
+        <input type="checkbox" class="btn-check" id="aggregationTITES" name="aggregation_type" value="tites" {% if 'tites' in aggregation_types %}checked{% endif %}>
+        <label for="aggregationTITES" class="btn {% if 'tites' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">ТИТЭС</label>
+
+        <input type="checkbox" class="btn-check" id="aggregationRussia" name="aggregation_type" value="russia" {% if 'russia' in aggregation_types %}checked{% endif %}>
+        <label for="aggregationRussia" class="btn {% if 'russia' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center me-3" style="min-width: 80px;">Россия</label>
+
+        <input type="checkbox" class="btn-check" id="aggregationFO" name="aggregation_type" value="fo" {% if 'fo' in aggregation_types %}checked{% endif %}>
+        <label for="aggregationFO" class="btn {% if 'fo' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">ФО</label>
+
+        <input type="checkbox" class="btn-check" id="aggregationOES" name="aggregation_type" value="oes" {% if 'oes' in aggregation_types %}checked{% endif %}>
+        <label for="aggregationOES" class="btn {% if 'oes' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center me-3" style="min-width: 80px;">ОЭС</label>
+
+        {% if sorted_synchronous_area_ids %}
+          {% for sa_id in sorted_synchronous_area_ids %}
+            {% set sa_name = synchronous_area_names[sa_id] %}
+            {% set sa_checkbox_id = 'aggregationSyncArea' + sa_id|string %}
+            {% set sa_value = 'sync_area_' + sa_id|string %}
+            {% set is_checked = sa_value in aggregation_types %}
+            <input type="checkbox" class="btn-check sync-area-checkbox" id="{{ sa_checkbox_id }}" name="aggregation_type" value="{{ sa_value }}" {% if is_checked %}checked{% endif %}>
+            <label for="{{ sa_checkbox_id }}" class="btn {% if is_checked %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center sync-area-label {% if loop.last %}me-3{% endif %}" style="min-width: auto; white-space: nowrap;">{{ sa_name }}</label>
+          {% endfor %}
+        {% endif %}
+
+        <div class="d-flex align-items-center gap-1">
+          <label for="rounding_digits" class="mb-0" style="white-space: nowrap;">Округл:</label>
+          <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 150px;">
+            <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+            <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+            <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+            <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+            <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+          </select>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <style>
+    .ecology-totals-wrap {
+      max-height: calc(100vh - 280px);
+      overflow: auto;
+    }
+    .ecology-totals-wrap table {
+      white-space: nowrap;
+    }
+    .ecology-totals-wrap thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #d1e7dd;
+      white-space: nowrap;
+      vertical-align: middle;
+      line-height: 1.2;
+    }
+    /* Подписи показателей в шапке (в т.ч. PROCH / CO2 / UD_*) — с переносом слов */
+    .ecology-totals-wrap thead th.cmp-data {
+      white-space: normal;
+      word-break: normal;
+      overflow-wrap: break-word;
+      hyphens: none;
+      min-width: 6.5rem;
+      max-width: 8.5rem;
+      padding-left: 0.2rem;
+      padding-right: 0.2rem;
+    }
+    .ecology-totals-wrap thead th.cmp-sticky {
+      white-space: nowrap;
+      max-width: none;
+    }
+    .ecology-totals-wrap tbody td {
+      white-space: nowrap;
+    }
+    .ecology-totals-wrap td.cmp-sticky,
+    .ecology-totals-wrap th.cmp-sticky {
+      position: sticky;
+      z-index: 2;
+      background: inherit;
+    }
+    .ecology-totals-wrap thead th.cmp-sticky {
+      z-index: 6;
+      background: #d1e7dd;
+    }
+    #ecologyTotalsTable tbody tr.cmp-summary-row > td {
+      font-weight: 600;
+    }
+  </style>
+
+  <div class="ecology-totals-wrap table-responsive">
+    <table id="ecologyTotalsTable" class="table table-hover table-striped table-bordered mb-0">
+      <thead class="table-success">
+        {% for header_row in header_rows %}
+        {% set row_is_key = header_row and header_row[0].is_key %}
+        <tr class="text-center align-middle{% if row_is_key %} cmp-key-row{% endif %}">
+          {% for cell in header_row %}
+          {% set is_station_col = cell.column_key in ['NAME', 'Stancia'] %}
+          <th class="text-center align-middle{% if cell.sticky %} cmp-sticky{% else %} cmp-data{% endif %}{% if is_station_col %} cmp-station-name{% endif %}{% if cell.diff_highlight %} cmp-diff-col{% endif %}{% if cell.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}"
+              {% if cell.rowspan > 1 %}rowspan="{{ cell.rowspan }}"{% endif %}
+              {% if cell.colspan > 1 %}colspan="{{ cell.colspan }}"{% endif %}
+              {% if cell.sticky %}data-cmp-col="{{ cell.col_index }}" style="left: var(--cmp-sticky-{{ cell.col_index }}, 0px);"{% endif %}
+              {% if not is_station_col %}title="{{ cell.text }}{% if cell.access_code %} ({{ cell.access_code }}){% endif %}"{% endif %}>{% if not is_station_col %}{{ cell.text }}{% if cell.access_code %}<br /><span class="text-muted small">({{ cell.access_code }})</span>{% endif %}{% endif %}</th>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </thead>
+      <tbody>
+        {% if blocks %}
+          {% for block in blocks %}
+            {{ totals_summary_rows(block, columns, rowspan_column_keys) }}
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="{{ column_count }}" class="text-center">Нет данных для выбранных параметров</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const totalsForm = document.getElementById("totalsFilterForm");
+  if (totalsForm) {
+    totalsForm.querySelectorAll('input[type="checkbox"], #rounding_digits').forEach(function (el) {
+      el.addEventListener("change", function () {
+        totalsForm.submit();
+      });
+    });
+  }
+
+  // Sticky offsets for left identity columns
+  const table = document.getElementById("ecologyTotalsTable");
+  if (table) {
+    const stickyCount = {{ sticky_col_count|default(4) }};
+    let left = 0;
+    for (let i = 0; i < stickyCount; i++) {
+      const th = table.querySelector('thead th[data-cmp-col="' + i + '"]');
+      const width = th ? th.getBoundingClientRect().width : 120;
+      document.documentElement.style.setProperty('--cmp-sticky-' + i, left + 'px');
+      left += width;
+    }
+  }
+
+  const exportButton = document.getElementById("exportTotalsSummaryExcel");
+  if (!exportButton) return;
+  exportButton.addEventListener("click", function (e) {
+    e.preventDefault();
+    const originalText = this.innerHTML;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Экспорт...';
+    this.disabled = true;
+
+    const params = new URLSearchParams();
+    const yearForm = document.getElementById("yearForm");
+    if (yearForm) {
+      const startYearSelect = yearForm.querySelector("#start_year");
+      const endYearSelect = yearForm.querySelector("#end_year");
+      if (startYearSelect) params.set("start_year", startYearSelect.value);
+      if (endYearSelect) params.set("end_year", endYearSelect.value);
+    }
+    if (totalsForm) {
+      const roundingSelect = totalsForm.querySelector("#rounding_digits");
+      if (roundingSelect) params.set("rounding_digits", roundingSelect.value);
+      params.delete("aggregation_type");
+      totalsForm.querySelectorAll('input[name="aggregation_type"]:checked').forEach(function (checkbox) {
+        params.append("aggregation_type", checkbox.value);
+      });
+    }
+    if (!params.has("start_year")) params.set("start_year", "{{ start_year }}");
+    if (!params.has("end_year")) params.set("end_year", "{{ end_year }}");
+    if (!params.has("rounding_digits")) params.set("rounding_digits", "{{ rounding_digits }}");
+
+    const exportUrl = '{{ url_for("ecology_bp.totals_summary_export", sheet_slug=sheet.slug) }}?' + params.toString();
+    window.open(exportUrl, "_blank", "noopener");
+    setTimeout(() => {
+      this.innerHTML = originalText;
+      this.disabled = false;
+    }, 1000);
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

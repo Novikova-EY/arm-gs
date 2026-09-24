@@ -93,11 +93,14 @@
 {%- endmacro %}
 
 {# Шапка столбца numb1120: выпадающий фильтр (поиск, несколько кодов, прокрутка списка). #}
-{% macro fuel_param_numb1120_header_th(rowspan=2, label='Код группы оборудования', selected=None, choices=None, code='numb1120') -%}
+{% macro fuel_param_numb1120_header_th(rowspan=2, label='Код группы оборудования', selected=None, choices=None, code='numb1120', extra_class='', sticky_col=none) -%}
 {% set _selected = (selected or [])|map('string')|list %}
 {% set _choices = choices or [] %}
 {% set _choice_strs = _choices|map('string')|list %}
-<th rowspan="{{ rowspan }}" class="fuel-param-col-numb1120" data-column="numb1120">
+<th rowspan="{{ rowspan }}"
+    class="fuel-param-col-numb1120{% if extra_class %} {{ extra_class }}{% endif %}"
+    data-column="numb1120"
+    {% if sticky_col is not none %}data-cmp-col="{{ sticky_col }}" style="left: var(--cmp-sticky-{{ sticky_col }}, 0px);"{% endif %}>
     {{ label }}<br><span class="text-muted small">({{ code }})</span>
     <select id="numb1120HeaderFilter"
             class="d-none numb1120-header-filter"

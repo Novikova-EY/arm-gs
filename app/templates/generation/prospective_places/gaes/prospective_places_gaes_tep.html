@@ -31,7 +31,7 @@
 {% set qs = request.query_string.decode('utf-8') if request.query_string else '' %}
 {% set qs_suffix = ('?' + qs) if qs else '' %}
 {% set url_list = url_for('prospective_places_bp.prospective_places_gaes') + qs_suffix %}
-{% set url_prospective_start = url_for('prospective_places_bp.prospective_places_start') %}
+{% set url_prospective_start = url_for('generation_bp.generation_start') %}
 <div class="container-fluid mt-2">
     <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-2">
         <a href="{{ url_list }}" class="btn btn-secondary fs-5">Список перспективных площадок ГАЭС</a>

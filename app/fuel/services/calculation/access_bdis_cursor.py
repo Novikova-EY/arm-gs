@@ -99,6 +99,46 @@ def fuel_param_access_n1(fp: Any, groups_by_id: dict[int, Any] | None = None) ->
     )
 
 
+def sort_equipment_group_ids_access_findnext(
+    session,
+    group_ids: Sequence[int],
+    *,
+    year_number: int,
+) -> list[int]:
+    """Порядок Кнопка49 FindNext по numb1 для строк расчётного года."""
+    ids = [int(g) for g in group_ids if g is not None]
+    if not ids:
+        return []
+    from app.fuel.models.fue_equipment_group_fuel_param_model import (
+        EquipmentGroupFuelParam,
+    )
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    groups = {
+        g.id: g
+        for g in session.query(EquipmentGroup).filter(EquipmentGroup.id.in_(ids)).all()
+    }
+
+    fps = (
+        session.query(EquipmentGroupFuelParam)
+        .filter(
+            EquipmentGroupFuelParam.equipment_group_id.in_(ids),
+            EquipmentGroupFuelParam.year_number == int(year_number),
+        )
+        .all()
+    )
+    by_gid: dict[int, Any] = {}
+    for fp in fps:
+        by_gid.setdefault(int(fp.equipment_group_id), fp)
+    ordered = sort_access_filter_rows(
+        list(by_gid.values()),
+        n1_of=lambda fp: fuel_param_access_n1(fp, groups),
+    )
+    seen = [int(fp.equipment_group_id) for fp in ordered]
+    rest = [gid for gid in ids if gid not in seen]
+    return seen + rest
+
+
 def walk_access_bdis_cursor(
     rows: Iterable[Any],
     *,

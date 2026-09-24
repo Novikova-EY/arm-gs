@@ -1283,6 +1283,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!td) return;
         recalcFuelDerivedForYear(td.getAttribute('data-fuel-year'));
     });
+
+    function applyRoundingChange(paramName, value) {
+        var url = new URL(window.location.href);
+        url.searchParams.set(paramName, value);
+        window.location.href = url.toString();
+    }
+    document.getElementById('rounding_digits_table1')?.addEventListener('change', function() {
+        applyRoundingChange('rounding_digits_table1', this.value);
+    });
 })();
 </script>
 

@@ -19,7 +19,7 @@
 
 Зоны: ЕЭС + все СЗ + все ОЭС версии (без «не указано» / «Новые территории»),
 энергорайоны ТИТЭС Востока и РЭС ТИТЭС (Востока и Сибири).
-Годы: [current_year − 5 … period_end] той же версии, что в /api/database_versions.
+Годы: [current_year − 6 … period_end] той же версии, что в /api/database_versions.
 """
 from __future__ import annotations
 
@@ -237,7 +237,7 @@ def append_tites_res_sheets(sheets: list[dict[str, Any]]) -> list[dict[str, Any]
 
 
 def load_gentypes_years(version_id: int | None) -> list[int]:
-    """Годы: current_year − 5 … period_end, как у generation_stations / database_versions."""
+    """Годы: current_year − 6 … period_end, как у generation_stations / database_versions."""
     return load_exchange_years(version_id)
 
 

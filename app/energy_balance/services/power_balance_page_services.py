@@ -292,10 +292,37 @@ def sheet_omits_export_row(sheet: dict[str, Any] | None) -> bool:
     return _is_tites_isolated_balance_sheet(sheet)
 
 
+DEMAND_MAX_LABEL = "Максимум потребления мощности"
 DEMAND_MAX_COLD_LABEL = (
     "Максимум потребления мощности (для условий температуры наиболее холодной "
     "пятидневки с обеспеченностью 0,92)"
 )
+DEMAND_MODE_MAX = "max"
+DEMAND_MODE_COLD = "cold"
+DEMAND_ROW_KEYS = frozenset({"demand_max", DEMAND_MAX_COLD_ROW_KEY})
+
+
+def resolve_power_balance_demand_mode(value: Any = None) -> str:
+    text = str(value or "").strip().lower()
+    if text in (DEMAND_MODE_COLD, "cold_five", "cold5"):
+        return DEMAND_MODE_COLD
+    return DEMAND_MODE_MAX
+
+
+def is_cold_demand_mode(demand_mode: str | None = None) -> bool:
+    return resolve_power_balance_demand_mode(demand_mode) == DEMAND_MODE_COLD
+
+
+def power_balance_demand_row_key(demand_mode: str | None = None) -> str:
+    if is_cold_demand_mode(demand_mode):
+        return DEMAND_MAX_COLD_ROW_KEY
+    return "demand_max"
+
+
+def power_balance_demand_row_label(demand_mode: str | None = None) -> str:
+    if is_cold_demand_mode(demand_mode):
+        return DEMAND_MAX_COLD_LABEL
+    return DEMAND_MAX_LABEL
 
 
 def sheet_includes_cold_demand_row(sheet: dict[str, Any] | None) -> bool:
@@ -308,14 +335,50 @@ SURPLUS_N1_ROW_KEY = "surplus_deficit_n1"
 SURPLUS_N1_LABEL = (
     "Дефицит (-)/избыток (+) с учетом останова 1 ЕГО с наибольшей располагаемой мощностью"
 )
+SURPLUS_N1_GAO_ROW_KEY = "surplus_deficit_n1_gao"
+SURPLUS_N1_GAO_LABEL = (
+    "Дефицит (-)/избыток (+) с учетом останова 1-й ЕГО и вводом 20% ГАО"
+)
+SURPLUS_N1_GAO_SHARE = Decimal("0.2")
 SURPLUS_N2_ROW_KEY = "surplus_deficit_n2"
 SURPLUS_N2_LABEL = (
     "Дефицит (-)/избыток (+) с учетом останова 2-й ЕГО с наибольшей располагаемой мощностью"
 )
 
 
+def _ego_outage_n1_formula_tooltip(
+    label: str, demand_label: str = DEMAND_MAX_LABEL
+) -> str:
+    return (
+        f"{label} = {demand_label} "
+        "− Располагаемая мощность (суммарная) "
+        "− первая максимальная располагаемая мощность агрегатов, "
+        "входящих в данную территорию"
+    )
+
+
+def _ego_outage_n2_formula_tooltip(
+    label: str, demand_label: str = DEMAND_MAX_LABEL
+) -> str:
+    return (
+        f"{label} = {demand_label} "
+        "− Располагаемая мощность (суммарная) "
+        "− первая и вторая максимальная располагаемая мощность агрегатов, "
+        "входящих в данную территорию"
+    )
+
+
+def _ego_outage_n1_gao_formula_tooltip(
+    label: str, demand_label: str = DEMAND_MAX_LABEL
+) -> str:
+    return f"{label} = {SURPLUS_N1_LABEL} + {demand_label} × 0,2"
+
+
 def sheet_includes_ego_outage_surplus(sheet: dict[str, Any] | None) -> bool:
-    """ТИТЭС: дефицит в нормальной схеме и с остановом 1-й / 2-й ЕГО."""
+    """ТИТЭС: дефицит в нормальной схеме и с остановом 1-й / 2-й ЕГО.
+
+    Без строк ограничений, вводов после максимума и итога покрытия потребности.
+    """
     return _is_tites_isolated_balance_sheet(sheet)
 
 
@@ -783,6 +846,69 @@ def _sum_formula(*row_keys: str) -> dict[str, Any]:
     return {"terms": [{"row_key": key} for key in row_keys]}
 
 
+SES_VES_EXPAND_TITLE = "Показать СЭС и ВЭС"
+SES_VES_COLLAPSE_TITLE = "Скрыть СЭС и ВЭС"
+
+
+def _mark_ses_ves_collapsible(row: dict[str, Any]) -> dict[str, Any]:
+    row["collapsible"] = True
+    row["collapse_expand_title"] = SES_VES_EXPAND_TITLE
+    row["collapse_collapse_title"] = SES_VES_COLLAPSE_TITLE
+    return row
+
+
+def _append_station_type_group_rows(
+    rows: list[dict[str, Any]],
+    type_groups: list[dict[str, Any]],
+    *,
+    make_row,
+    type_formula_builder=None,
+    map_key=None,
+    indent: int = 1,
+    parent_sums_children: bool = True,
+) -> None:
+    """Строки типов станций; «СЭС, ВЭС» — группа с подстроками СЭС и ВЭС."""
+    key_map = map_key or (lambda key: key)
+    for group in type_groups:
+        key = key_map(group["key"])
+        children = list(group.get("children") or [])
+        child_keys = [key_map(child["key"]) for child in children if child.get("key")]
+        if child_keys and parent_sums_children:
+            formula = _sum_formula(*child_keys)
+        elif type_formula_builder is not None:
+            formula = type_formula_builder(key)
+        else:
+            formula = None
+        parent_row = make_row(
+            key,
+            group["label"],
+            indent=indent,
+            kind=KIND_CHILD,
+            formula=formula,
+        )
+        if child_keys:
+            _mark_ses_ves_collapsible(parent_row)
+        rows.append(parent_row)
+        for child in children:
+            if not child.get("key"):
+                continue
+            child_key = key_map(child["key"])
+            child_formula = (
+                type_formula_builder(child_key) if type_formula_builder is not None else None
+            )
+            child_row = make_row(
+                child_key,
+                child.get("label") or "",
+                indent=indent + 1,
+                kind=KIND_CHILD,
+                italic=True,
+                formula=child_formula,
+            )
+            child_row["is_group_child"] = True
+            child_row["parent_group_key"] = key
+            rows.append(child_row)
+
+
 def _diff_formula(left_key: str, *subtract_keys: str, const: Decimal | int | None = None) -> dict[str, Any]:
     terms: list[dict[str, Any]] = [{"row_key": left_key}]
     for key in subtract_keys:
@@ -1132,8 +1258,12 @@ def _jsonable_formula(formula: dict[str, Any] | None) -> dict[str, Any] | None:
         if "coeff" in term:
             coeff = term.get("coeff")
             try:
-                item["coeff"] = int(coeff)
-            except (TypeError, ValueError):
+                dec = _to_decimal(coeff)
+                if dec == dec.to_integral_value():
+                    item["coeff"] = int(dec)
+                else:
+                    item["coeff"] = format(dec, "f")
+            except (TypeError, ValueError, ArithmeticError):
                 item["coeff"] = str(coeff)
         if "const" in term:
             item["const"] = format(_to_decimal(term["const"]), "f")
@@ -1204,6 +1334,10 @@ def _capacity_breakdown_rows(
             )
             station_row["is_station_row"] = True
             station_row["collapsible"] = bool(machine_keys)
+            try:
+                station_row["station_id"] = int(item["id"])
+            except (TypeError, ValueError, KeyError):
+                pass
             rows.append(station_row)
             for machine in machine_items:
                 machine_row = _row(
@@ -1215,6 +1349,12 @@ def _capacity_breakdown_rows(
                 )
                 machine_row["is_machine_row"] = True
                 machine_row["parent_station_key"] = item["key"]
+                if station_row.get("station_id") is not None:
+                    machine_row["station_id"] = station_row["station_id"]
+                try:
+                    machine_row["machine_id"] = int(machine["id"])
+                except (TypeError, ValueError, KeyError):
+                    pass
                 rows.append(machine_row)
         return rows
     type_groups = get_power_balance_station_type_groups()
@@ -1227,18 +1367,13 @@ def _capacity_breakdown_rows(
             formula=_sum_formula(*type_keys) if type_keys else None,
         ),
     ]
-    for group in type_groups:
-        key = map_key(group["key"])
-        formula = type_formula_builder(key) if type_formula_builder is not None else None
-        rows.append(
-            _row(
-                key,
-                group["label"],
-                indent=1,
-                kind=KIND_CHILD,
-                formula=formula,
-            )
-        )
+    _append_station_type_group_rows(
+        rows,
+        type_groups,
+        make_row=_row,
+        type_formula_builder=type_formula_builder,
+        map_key=map_key,
+    )
     return rows
 
 
@@ -1281,27 +1416,29 @@ def _demand_and_coverage_rows(
     subtract_slugs: tuple[str, ...] = (),
     station_items: list[dict[str, Any]] | None = None,
     include_export_row: bool = True,
-    include_cold_demand_row: bool = False,
     include_ego_outage_surplus: bool = False,
+    surplus_tooltip: str | None = None,
+    surplus_wrap_label: bool = False,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     def _agg(row_key: str) -> dict[str, Any] | None:
         if not source_slugs:
             return None
         return _sheet_sum_formula(row_key, source_slugs, subtract_slugs)
 
-    demand_keys = ("demand_max", EXPORT_ROW_KEY) if include_export_row else ("demand_max",)
+    mode = resolve_power_balance_demand_mode(demand_mode)
+    demand_key = power_balance_demand_row_key(mode)
+    demand_label = power_balance_demand_row_label(mode)
+    cold_mode = mode == DEMAND_MODE_COLD
+    demand_keys = (demand_key, EXPORT_ROW_KEY) if include_export_row else (demand_key,)
     rows: list[dict[str, Any]] = [
-        _row("demand_max", "Максимум потребления мощности"),
+        _row(
+            demand_key,
+            demand_label,
+            editable_values=cold_mode,
+            wrap_label=cold_mode,
+        ),
     ]
-    if include_cold_demand_row:
-        rows.append(
-            _row(
-                DEMAND_MAX_COLD_ROW_KEY,
-                DEMAND_MAX_COLD_LABEL,
-                editable_values=True,
-                wrap_label=True,
-            )
-        )
     if include_export_row:
         rows.append(_row(EXPORT_ROW_KEY, "Экспорт мощности", editable_values=True))
     if not include_ego_outage_surplus:
@@ -1323,29 +1460,36 @@ def _demand_and_coverage_rows(
                 type_formula_builder=_agg if source_slugs else None,
                 station_items=station_items,
             ),
-            _row("constraints", "Ограничения мощности", formula=_agg("constraints")),
-            _row(
-                "commissioning_after_max",
-                "Вводы мощности после прохождения максимума",
-                formula=_agg("commissioning_after_max"),
-            ),
-            _row(
-                "coverage_total",
-                "Итого покрытие потребности",
-                kind=KIND_TOTAL,
-                formula=_diff_formula("installed_total", "constraints", "commissioning_after_max"),
-            ),
         ]
     )
+    if not include_ego_outage_surplus:
+        rows.extend(
+            [
+                _row("constraints", "Ограничения мощности", formula=_agg("constraints")),
+                _row(
+                    "commissioning_after_max",
+                    "Вводы мощности после прохождения максимума",
+                    formula=_agg("commissioning_after_max"),
+                ),
+                _row(
+                    "coverage_total",
+                    "Итого покрытие потребности",
+                    kind=KIND_TOTAL,
+                    formula=_diff_formula(
+                        "installed_total", "constraints", "commissioning_after_max"
+                    ),
+                ),
+            ]
+        )
     if include_ego_outage_surplus:
         surplus_label = SURPLUS_NORMAL_LABEL
         surplus_formula: dict[str, Any] = {
             "terms": [
-                {"row_key": "demand_max"},
+                {"row_key": demand_key},
                 {"row_key": "available_total", "coeff": -1},
             ],
             "tooltip": (
-                f"{SURPLUS_NORMAL_LABEL} = Максимум потребления мощности "
+                f"{SURPLUS_NORMAL_LABEL} = {demand_label} "
                 "− Располагаемая мощность (суммарная)"
             ),
         }
@@ -1354,12 +1498,14 @@ def _demand_and_coverage_rows(
         surplus_formula = _diff_formula(
             "coverage_total", "demand_total", const=surplus_const
         )
+        if surplus_tooltip:
+            surplus_formula["tooltip"] = surplus_tooltip
     rows.append(
         _row(
             "surplus_deficit",
             surplus_label,
             kind=KIND_TOTAL,
-            wrap_label=include_ego_outage_surplus,
+            wrap_label=include_ego_outage_surplus or surplus_wrap_label,
             formula=surplus_formula,
         )
     )
@@ -1373,11 +1519,23 @@ def _demand_and_coverage_rows(
                     wrap_label=True,
                     formula={
                         "terms": [{"row_key": "surplus_deficit"}],
-                        "tooltip": (
-                            f"{SURPLUS_N1_LABEL} = Максимум потребления мощности "
-                            "− (Располагаемая мощность (суммарная) "
-                            "− первая максимальная располагаемая мощность агрегатов, "
-                            "входящих в данную территорию)"
+                        "tooltip": _ego_outage_n1_formula_tooltip(
+                            SURPLUS_N1_LABEL, demand_label=demand_label
+                        ),
+                    },
+                ),
+                _row(
+                    SURPLUS_N1_GAO_ROW_KEY,
+                    SURPLUS_N1_GAO_LABEL,
+                    kind=KIND_TOTAL,
+                    wrap_label=True,
+                    formula={
+                        "terms": [
+                            {"row_key": SURPLUS_N1_ROW_KEY},
+                            {"row_key": demand_key, "coeff": SURPLUS_N1_GAO_SHARE},
+                        ],
+                        "tooltip": _ego_outage_n1_gao_formula_tooltip(
+                            SURPLUS_N1_GAO_LABEL, demand_label=demand_label
                         ),
                     },
                 ),
@@ -1388,11 +1546,8 @@ def _demand_and_coverage_rows(
                     wrap_label=True,
                     formula={
                         "terms": [{"row_key": "surplus_deficit"}],
-                        "tooltip": (
-                            f"{SURPLUS_N2_LABEL} = Максимум потребления мощности "
-                            "− (Располагаемая мощность (суммарная) "
-                            "− первая и вторая максимальная располагаемая мощность агрегатов, "
-                            "входящих в данную территорию)"
+                        "tooltip": _ego_outage_n2_formula_tooltip(
+                            SURPLUS_N2_LABEL, demand_label=demand_label
                         ),
                     },
                 ),
@@ -1415,12 +1570,14 @@ def _final_surplus_row(
     label: str | None = None,
     *,
     formula: dict[str, Any] | None = None,
+    wrap_label: bool = False,
 ) -> dict[str, Any]:
     return _row(
         key,
         label
         or "Дефицит (-)/избыток (+) с учетом перетока мощности в смежные энергосистемы",
         kind=KIND_TOTAL,
+        wrap_label=wrap_label,
         formula=formula or _sum_formula("surplus_deficit", "flow_total"),
     )
 
@@ -1430,15 +1587,15 @@ def _rows_oes_standard(
     station_items: list[dict[str, Any]] | None = None,
     include_flow_block: bool = True,
     include_export_row: bool = True,
-    include_cold_demand_row: bool = False,
     include_ego_outage_surplus: bool = False,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     rows = [
         *_demand_and_coverage_rows(
             station_items=station_items,
             include_export_row=include_export_row,
-            include_cold_demand_row=include_cold_demand_row,
             include_ego_outage_surplus=include_ego_outage_surplus,
+            demand_mode=demand_mode,
         )
     ]
     if not include_flow_block:
@@ -1459,15 +1616,15 @@ def _rows_oes_yug(
     station_items: list[dict[str, Any]] | None = None,
     include_flow_block: bool = True,
     include_export_row: bool = True,
-    include_cold_demand_row: bool = False,
     include_ego_outage_surplus: bool = False,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     return _rows_oes_standard(
         station_items=station_items,
         include_flow_block=include_flow_block,
         include_export_row=include_export_row,
-        include_cold_demand_row=include_cold_demand_row,
         include_ego_outage_surplus=include_ego_outage_surplus,
+        demand_mode=demand_mode,
     )
 
 
@@ -1476,15 +1633,15 @@ def _rows_oes_sibir(
     station_items: list[dict[str, Any]] | None = None,
     include_flow_block: bool = True,
     include_export_row: bool = True,
-    include_cold_demand_row: bool = False,
     include_ego_outage_surplus: bool = False,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     return _rows_oes_standard(
         station_items=station_items,
         include_flow_block=include_flow_block,
         include_export_row=include_export_row,
-        include_cold_demand_row=include_cold_demand_row,
         include_ego_outage_surplus=include_ego_outage_surplus,
+        demand_mode=demand_mode,
     )
 
 
@@ -1493,24 +1650,26 @@ def _rows_oes_vostok(
     station_items: list[dict[str, Any]] | None = None,
     include_flow_block: bool = True,
     include_export_row: bool = True,
-    include_cold_demand_row: bool = False,
     include_ego_outage_surplus: bool = False,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     return _rows_oes_standard(
         station_items=station_items,
         include_flow_block=include_flow_block,
         include_export_row=include_export_row,
-        include_cold_demand_row=include_cold_demand_row,
         include_ego_outage_surplus=include_ego_outage_surplus,
+        demand_mode=demand_mode,
     )
 
 
 def _rows_ees_rossii(
     source_slugs: tuple[str, ...] | list[str] | None = None,
+    *,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     slugs = tuple(source_slugs or EES_SOURCE_SLUGS)
     return [
-        *_demand_and_coverage_rows(source_slugs=slugs),
+        *_demand_and_coverage_rows(source_slugs=slugs, demand_mode=demand_mode),
         _transfer_header(formula=_sum_formula("flow_in", "flow_out")),
         _row("flow_in", "Получение мощности (+)", indent=1, kind=KIND_TRANSFER),
         _row("flow_out", "Передача мощности (-)", indent=1, kind=KIND_TRANSFER),
@@ -1521,11 +1680,17 @@ def _rows_ees_rossii(
 def _rows_sz1(
     source_slugs: tuple[str, ...] | list[str] | None = None,
     subtract_slugs: tuple[str, ...] | list[str] | None = None,
+    *,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
     add_slugs = tuple(source_slugs or SZ1_ADD_SLUGS)
     sub_slugs = tuple(SZ1_SUB_SLUGS if subtract_slugs is None else subtract_slugs)
     return [
-        *_demand_and_coverage_rows(source_slugs=add_slugs, subtract_slugs=sub_slugs),
+        *_demand_and_coverage_rows(
+            source_slugs=add_slugs,
+            subtract_slugs=sub_slugs,
+            demand_mode=demand_mode,
+        ),
         _transfer_header(formula=_sum_formula("flow_in", "flow_out")),
         _row("flow_in", "Получение мощности (+)", indent=1, kind=KIND_TRANSFER),
         _row("flow_out", "Передача мощности (-)", indent=1, kind=KIND_TRANSFER),
@@ -1533,14 +1698,27 @@ def _rows_sz1(
     ]
 
 
-def _rows_kaliningrad() -> list[dict[str, Any]]:
+def _rows_kaliningrad(*, demand_mode: str | None = None) -> list[dict[str, Any]]:
+    n1_label = (
+        "Дефицит (-)/избыток (+) с учетом останова 1 ЕГО с наибольшей располагаемой мощностью"
+    )
+    n2_label = (
+        "Дефицит (-)/избыток (+) с учетом останова 2 ЕГО с наибольшей располагаемой мощностью"
+    )
+    demand_label = power_balance_demand_row_label(demand_mode)
+    n2_formula = _diff_formula("surplus_deficit", const=-KALININGRAD_LARGEST_UNIT_MW)
+    n2_formula["tooltip"] = _ego_outage_n2_formula_tooltip(
+        n2_label, demand_label=demand_label
+    )
     return [
         *_demand_and_coverage_rows(
-            surplus_deficit_label=(
-                "Дефицит (-)/избыток (+) с учетом останова 1-й единицы "
-                "генерирующего оборудования с наибольшей располагаемой мощностью"
-            ),
+            surplus_deficit_label=n1_label,
             surplus_const=-KALININGRAD_LARGEST_UNIT_MW,
+            surplus_tooltip=_ego_outage_n1_formula_tooltip(
+                n1_label, demand_label=demand_label
+            ),
+            surplus_wrap_label=True,
+            demand_mode=demand_mode,
         ),
         _row(
             "flow_total",
@@ -1552,11 +1730,9 @@ def _rows_kaliningrad() -> list[dict[str, Any]]:
         _row("flow_out", "Передача мощности (-)", indent=1, kind=KIND_TRANSFER),
         _final_surplus_row(
             key="surplus_deficit_second_unit",
-            label=(
-                "Дефицит (-)/избыток (+) с учетом останова 2-й единицы "
-                "генерирующего оборудования с наибольшей располагаемой мощностью"
-            ),
-            formula=_diff_formula("surplus_deficit", const=-KALININGRAD_LARGEST_UNIT_MW),
+            label=n2_label,
+            formula=n2_formula,
+            wrap_label=True,
         ),
     ]
 
@@ -1886,24 +2062,29 @@ def build_power_balance_rows(
     station_items: list[dict[str, Any]] | None = None,
     include_flow_block: bool = True,
     include_export_row: bool = True,
-    include_cold_demand_row: bool = False,
     include_ego_outage_surplus: bool = False,
+    demand_mode: str | None = None,
 ) -> list[dict[str, Any]]:
+    mode = resolve_power_balance_demand_mode(demand_mode)
     if layout == "ees_rossii":
-        return _rows_ees_rossii(source_slugs=source_slugs)
+        return _rows_ees_rossii(source_slugs=source_slugs, demand_mode=mode)
     if layout == "sz1":
-        return _rows_sz1(source_slugs=source_slugs, subtract_slugs=subtract_slugs)
+        return _rows_sz1(
+            source_slugs=source_slugs,
+            subtract_slugs=subtract_slugs,
+            demand_mode=mode,
+        )
     builder = _LAYOUT_BUILDERS.get(layout)
     if builder is None:
         raise KeyError(f"Неизвестный макет баланса мощности: {layout}")
     if layout == "kaliningrad":
-        return builder()
+        return builder(demand_mode=mode)
     return builder(
         station_items=station_items,
         include_flow_block=include_flow_block,
         include_export_row=include_export_row,
-        include_cold_demand_row=include_cold_demand_row,
         include_ego_outage_surplus=include_ego_outage_surplus,
+        demand_mode=mode,
     )
 
 
@@ -2330,13 +2511,59 @@ def _top_ego_units_by_year(
     return result
 
 
+def _set_ego_hover_tooltip_lines(
+    n1: dict[str, Any],
+    n2: dict[str, Any],
+    top_by_year: dict[int, list[dict[str, Any]]],
+    years: list[int],
+    rounding_digits: int,
+) -> None:
+    """Подсказки ячеек: 1-я ЕГО на n1, 1-я и 2-я — на n2."""
+    n1["year_cell_tooltip_lines"] = {}
+    n2["year_cell_tooltip_lines"] = {}
+    for year in years:
+        year_int = int(year)
+        tops = top_by_year.get(year_int) or []
+        if len(tops) > 0:
+            n1["year_cell_tooltip_lines"][year_int] = [
+                _format_ego_hover_line(
+                    tops[0]["value"],
+                    tops[0]["machine_label"],
+                    tops[0]["station_label"],
+                    rounding_digits,
+                )
+            ]
+        if tops:
+            n2["year_cell_tooltip_lines"][year_int] = [
+                _format_ego_hover_line(
+                    item["value"],
+                    item["machine_label"],
+                    item["station_label"],
+                    rounding_digits,
+                )
+                for item in tops
+            ]
+
+
+def _row_has_negative_value(row: dict[str, Any], years: list[int]) -> bool:
+    """True, если хотя бы в одном году сырое значение строки строго меньше нуля."""
+    for year in years:
+        if _raw_cell(row, int(year)) < 0:
+            return True
+    return False
+
+
 def apply_tites_ego_outage_surplus(
     tables: dict[str, dict[str, Any]],
     years: list[int],
     station_breakdown: dict[str, dict[str, Any]] | None,
     rounding_digits: int | None = None,
 ) -> None:
-    """N-1/N-2: максимум потребления минус оставшаяся располагаемая после останова ЕГО."""
+    """N-1/N-2: максимум потребления − располагаемая − мощность останавливаемых ЕГО.
+
+    Строка с 20% ГАО: N-1 + максимум потребления × 0,2; только если в нормальной
+    схеме есть хотя бы одно отрицательное значение.
+    """
     digits = resolve_power_balance_rounding_digits(rounding_digits)
     for slug, payload in tables.items():
         sheet = payload.get("sheet") or {}
@@ -2348,12 +2575,25 @@ def apply_tites_ego_outage_surplus(
         n2 = by_key.get(SURPLUS_N2_ROW_KEY)
         if surplus is None or n1 is None or n2 is None:
             continue
+        gao = by_key.get(SURPLUS_N1_GAO_ROW_KEY)
         demand_row = by_key.get("demand_max") or {}
+        surplus_terms = (surplus.get("formula") or {}).get("terms") or []
+        demand_key = next(
+            (
+                str(term.get("row_key") or "")
+                for term in surplus_terms
+                if str(term.get("row_key") or "") in DEMAND_ROW_KEYS
+            ),
+            "",
+        )
+        if demand_key:
+            demand_row = by_key.get(demand_key) or demand_row
+        elif DEMAND_MAX_COLD_ROW_KEY in by_key and "demand_max" not in by_key:
+            demand_row = by_key.get(DEMAND_MAX_COLD_ROW_KEY) or {}
         rasp_row = by_key.get("available_total") or {}
         stations = ((station_breakdown or {}).get(slug) or {}).get("stations") or []
         top_by_year = _top_ego_units_by_year(stations, years, count=2)
-        n1["year_cell_tooltip_lines"] = {}
-        n2["year_cell_tooltip_lines"] = {}
+        _set_ego_hover_tooltip_lines(n1, n2, top_by_year, years, digits)
         for year in years:
             year_int = int(year)
             demand = _raw_cell(demand_row, year_int)
@@ -2361,37 +2601,51 @@ def apply_tites_ego_outage_surplus(
             tops = top_by_year.get(year_int) or []
             top1 = _to_decimal(tops[0]["value"]) if len(tops) > 0 else Decimal("0")
             top2 = _to_decimal(tops[1]["value"]) if len(tops) > 1 else Decimal("0")
-            n1_value = demand - (rasp - top1)
-            n2_value = demand - (rasp - top1 - top2)
+            n1_value = demand - rasp - top1
+            n2_value = demand - rasp - top1 - top2
             n1.setdefault("year_values_raw", {})[year_int] = n1_value
             n1.setdefault("year_values", {})[year_int] = format_power_balance_cell(
                 n1_value, digits=digits
             )
-            n1.setdefault("formula_ext_raw", {})[year_int] = format(top1, "f")
+            n1.setdefault("formula_ext_raw", {})[year_int] = format(-top1, "f")
             n2.setdefault("year_values_raw", {})[year_int] = n2_value
             n2.setdefault("year_values", {})[year_int] = format_power_balance_cell(
                 n2_value, digits=digits
             )
-            n2.setdefault("formula_ext_raw", {})[year_int] = format(top1 + top2, "f")
-            if len(tops) > 0:
-                n1["year_cell_tooltip_lines"][year_int] = [
-                    _format_ego_hover_line(
-                        tops[0]["value"],
-                        tops[0]["machine_label"],
-                        tops[0]["station_label"],
-                        digits,
-                    )
-                ]
-            if tops:
-                n2["year_cell_tooltip_lines"][year_int] = [
-                    _format_ego_hover_line(
-                        item["value"],
-                        item["machine_label"],
-                        item["station_label"],
-                        digits,
-                    )
-                    for item in tops
-                ]
+            n2.setdefault("formula_ext_raw", {})[year_int] = format(-(top1 + top2), "f")
+            if gao is not None:
+                gao_value = n1_value + demand * SURPLUS_N1_GAO_SHARE
+                gao.setdefault("year_values_raw", {})[year_int] = gao_value
+                gao.setdefault("year_values", {})[year_int] = format_power_balance_cell(
+                    gao_value, digits=digits
+                )
+                gao.setdefault("formula_ext_raw", {})[year_int] = "0"
+        if gao is not None and not _row_has_negative_value(surplus, years):
+            payload["rows"] = [
+                row for row in payload["rows"] if row.get("key") != SURPLUS_N1_GAO_ROW_KEY
+            ]
+
+
+def apply_kaliningrad_ego_hover_tooltips(
+    tables: dict[str, dict[str, Any]],
+    years: list[int],
+    station_breakdown: dict[str, dict[str, Any]] | None,
+    rounding_digits: int | None = None,
+) -> None:
+    """Калининград: в подсказках 1-й и 2-й ЕГО — фактические агрегаты по Ррасп."""
+    digits = resolve_power_balance_rounding_digits(rounding_digits)
+    for slug, payload in tables.items():
+        sheet = payload.get("sheet") or {}
+        if str(sheet.get("layout") or "") != "kaliningrad":
+            continue
+        by_key = {row["key"]: row for row in payload.get("rows") or []}
+        n1 = by_key.get("surplus_deficit")
+        n2 = by_key.get("surplus_deficit_second_unit")
+        if n1 is None or n2 is None:
+            continue
+        stations = ((station_breakdown or {}).get(slug) or {}).get("stations") or []
+        top_by_year = _top_ego_units_by_year(stations, years, count=2)
+        _set_ego_hover_tooltip_lines(n1, n2, top_by_year, years, digits)
 
 
 def evaluate_power_balance_tables(
@@ -2415,10 +2669,12 @@ def build_power_balance_tables(
     rounding_digits: int | None = None,
     custom_flows: dict[str, list[dict[str, Any]]] | None = None,
     sheets: list[dict[str, Any]] | None = None,
+    demand_mode: str | None = None,
 ) -> dict[str, dict[str, Any]]:
     if years is None:
         years = get_power_balance_year_columns()
     digits = resolve_power_balance_rounding_digits(rounding_digits)
+    mode = resolve_power_balance_demand_mode(demand_mode)
     if sheets is None:
         sheets = get_power_balance_sheets()
     station_breakdown: dict[str, dict[str, Any]] = {}
@@ -2445,8 +2701,8 @@ def build_power_balance_tables(
                 station_items=station_items,
                 include_flow_block=not sheet_omits_power_flow_block(sheet),
                 include_export_row=not sheet_omits_export_row(sheet),
-                include_cold_demand_row=sheet_includes_cold_demand_row(sheet),
                 include_ego_outage_surplus=sheet_includes_ego_outage_surplus(sheet),
+                demand_mode=mode,
             ),
         }
     if custom_flows is None:
@@ -2488,6 +2744,9 @@ def build_power_balance_tables(
     _attach_formula_tooltips(tables, sheets_by_slug, rounding_digits=digits)
     evaluate_power_balance_tables(tables, years, rounding_digits=digits)
     apply_tites_ego_outage_surplus(
+        tables, years, station_breakdown, rounding_digits=digits
+    )
+    apply_kaliningrad_ego_hover_tooltips(
         tables, years, station_breakdown, rounding_digits=digits
     )
     for payload in tables.values():
@@ -2672,13 +2931,17 @@ def build_power_balance_table_context(
     start_year: Any = None,
     end_year: Any = None,
     rounding_digits: Any = None,
+    demand_mode: Any = None,
 ) -> dict[str, Any] | None:
     sheets, sheet = _sheets_including_slug(slug)
     if sheet is None:
         return None
     years = get_power_balance_year_columns(start_year, end_year)
     digits = resolve_power_balance_rounding_digits(rounding_digits)
-    tables = build_power_balance_tables(years, rounding_digits=digits, sheets=sheets)
+    mode = resolve_power_balance_demand_mode(demand_mode)
+    tables = build_power_balance_tables(
+        years, rounding_digits=digits, sheets=sheets, demand_mode=mode
+    )
     payload = tables.get(sheet["slug"])
     if payload is None:
         return None
@@ -2699,6 +2962,7 @@ def build_power_balance_table_context(
         "end_year": end,
         "filter_year_list": get_power_balance_filter_year_list(),
         "rounding_digits": digits,
+        "demand_mode": mode,
         "station_list_url": build_power_balance_station_list_url(station_query),
         "omit_flow_block": sheet_omits_power_flow_block(payload["sheet"] or sheet),
         "rows": payload["rows"],

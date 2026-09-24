@@ -1,0 +1,736 @@
+{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+block content %} {% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+  <div class="page-table-scroll">
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
+      <div class="col-12 mb-2">
+        <div class="d-flex flex-wrap align-items-start gap-2 w-100">
+          <div
+            class="d-flex flex-column gap-2 flex-grow-1"
+            style="min-width: 0"
+          >
+            {% set current_slug = sheet.slug %} {% include
+            'energy_balance/ee_balance/_sheet_nav.html' %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 mb-2 text-center">
+        <h2 class="mb-2">{{ page_title }}</h2>
+      </div>
+
+      <div class="col-12 mb-2">
+        <div class="d-flex align-items-center flex-wrap gap-2 w-100">
+          <form
+            method="GET"
+            action="{{ url_for(table_endpoint, slug=sheet.slug) }}"
+            class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
+            id="tesForecastYearForm"
+          >
+            {% for key, values in request.args.lists() %} {% if key !=
+            'start_year' and key != 'end_year' and key != 'view_year' %} {% for
+            value in values %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}" />
+            {% endfor %} {% endif %} {% endfor %} {% if view_year %}
+            <input type="hidden" name="view_year" value="{{ view_year }}" />
+            {% endif %}
+            <label for="start_year" class="mb-0" style="white-space: nowrap"
+              >Год начала:</label
+            >
+            <select
+              name="start_year"
+              id="start_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
+              {% for year in filter_year_list %}
+              <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+            <label for="end_year" class="mb-0" style="white-space: nowrap"
+              >Год конца:</label
+            >
+            <select
+              name="end_year"
+              id="end_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
+              {% for year in filter_year_list %}
+              <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-success">
+              Применить
+            </button>
+            <a
+              href="{{ url_for(table_endpoint, slug=sheet.slug) }}"
+              class="btn btn-outline-danger"
+              >Сбросить</a
+            >
+          </form>
+          {% if range_years %}
+          <div
+            class="d-flex flex-wrap gap-1 align-items-center flex-grow-1"
+            style="min-width: 0"
+            role="group"
+            aria-label="Плановые годы"
+          >
+            {% for year in range_years %} {% set year_feature =
+            year_features.get(year) if year_features is defined else none %} {%
+            set year_btn_label = (year ~ ' (' ~ year_feature ~ ')') if
+            year_feature else year %} {% if view_year == year %}
+            <span class="btn btn-success text-nowrap" aria-current="true"
+              >{{ year_btn_label }}</span
+            >
+            {% else %}
+            <a
+              href="{{ url_for(table_endpoint, slug=sheet.slug, start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, view_year=year) }}"
+              class="btn btn-outline-success text-nowrap"
+              title="Показать данные за {{ year }} год"
+              >{{ year_btn_label }}</a
+            >
+            {% endif %} {% endfor %}
+          </div>
+          {% endif %}
+          <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+            <button
+              type="button"
+              id="pbShowEmptyRowsToggle"
+              class="btn btn-primary text-nowrap flex-shrink-0"
+              aria-pressed="true"
+              title="Скрыть строки, у которых все значения пусты или равны нулю"
+            >
+              Пустые строки
+            </button>
+            <div
+              class="d-flex align-items-center gap-1 flex-shrink-0"
+              style="min-width: 11rem"
+            >
+              <label
+                for="rounding_digits"
+                class="mb-0 flex-shrink-0"
+                style="white-space: nowrap"
+                >Округл:</label
+              >
+              <select
+                id="rounding_digits"
+                name="rounding_digits_ui"
+                class="form-select"
+                style="min-width: 140px"
+              >
+                <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .page-table-scroll > .pd-ec-summary-sticky-stack {
+        left: 0;
+      }
+      #tesForecastTable.power-demand-summary-table {
+        width: 100%;
+        min-width: 100%;
+        table-layout: auto;
+        font-size: 1.15rem;
+        --pb-year-col-w: 5.5rem;
+      }
+      .page-table-scroll #tesForecastTable thead th {
+        position: sticky;
+        top: var(--pd-summary-controls-sticky-height, 0px);
+        z-index: 50;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow: inset 0 -1px 0
+          var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+        font-size: 1.28rem;
+      }
+      #tesForecastTable col.pb-col-label,
+      #tesForecastTable col.pb-col-unit {
+        width: 1%;
+      }
+      #tesForecastTable col.pb-col-year {
+        width: var(--pb-year-col-w);
+        min-width: var(--pb-year-col-w);
+      }
+      #tesForecastTable th.pb-label-col,
+      #tesForecastTable td.pb-row-label {
+        width: 1%;
+        max-width: none;
+        white-space: nowrap;
+        overflow-wrap: normal;
+        word-break: normal;
+        position: sticky;
+        left: 0;
+        --bs-table-bg-state: transparent;
+        background-clip: padding-box;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #tesForecastTable thead th.pb-label-col {
+        z-index: 52;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow:
+          inset 0 -1px 0
+            var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+          4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #tesForecastTable tbody td.pb-row-label {
+        z-index: 4;
+        background-color: var(--bs-body-bg, #fff);
+      }
+      #tesForecastTable th.pb-unit-col,
+      #tesForecastTable td.pb-unit-cell {
+        width: 1%;
+        min-width: 5.5rem;
+        white-space: nowrap;
+        position: sticky;
+        left: var(--pb-label-col-w, 0px);
+        --bs-table-bg-state: transparent;
+        background-clip: padding-box;
+        box-shadow: 4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #tesForecastTable thead th.pb-unit-col {
+        z-index: 51;
+        background-color: var(--bs-success-bg-subtle, #d1e7dd);
+        box-shadow:
+          inset 0 -1px 0
+            var(--bs-table-border-color, var(--bs-border-color, #dee2e6)),
+          4px 0 6px -4px rgba(0, 0, 0, 0.15);
+      }
+      #tesForecastTable tbody td.pb-unit-cell {
+        z-index: 3;
+        background-color: var(--bs-body-bg, #fff);
+      }
+      #tesForecastTable.table-striped
+        > tbody
+        > tr:nth-of-type(odd)
+        > td.pb-row-label,
+      #tesForecastTable.table-striped
+        > tbody
+        > tr:nth-of-type(odd)
+        > td.pb-unit-cell {
+        background-color: var(--bs-table-striped-bg, #f8f9fa);
+      }
+      #tesForecastTable.table-hover > tbody > tr:hover > td.pb-row-label,
+      #tesForecastTable.table-hover > tbody > tr:hover > td.pb-unit-cell {
+        background-color: var(--bs-table-hover-bg, #ececec);
+      }
+      #tesForecastTable tbody tr.table-info > * {
+        --bs-table-accent-bg: transparent;
+        box-shadow: none;
+      }
+      #tesForecastTable tbody tr.table-info > td.pb-row-label,
+      #tesForecastTable tbody tr.table-info > td.pb-unit-cell {
+        background-color: var(--bs-table-info-bg, #cff4fc);
+      }
+      #tesForecastTable tbody tr.tes-ref-row > * {
+        --bs-table-accent-bg: transparent;
+        box-shadow: none;
+        color: #5c636a;
+      }
+      #tesForecastTable tbody tr.tes-ref-row > td {
+        background-color: #eef1f4;
+      }
+      #tesForecastTable tbody tr.tes-ref-row > td.pb-row-label,
+      #tesForecastTable tbody tr.tes-ref-row > td.pb-unit-cell {
+        background-color: #eef1f4;
+      }
+      #tesForecastTable.table-hover
+        > tbody
+        > tr.tes-ref-row:hover
+        > td,
+      #tesForecastTable.table-hover
+        > tbody
+        > tr.tes-ref-row:hover
+        > td.pb-row-label,
+      #tesForecastTable.table-hover
+        > tbody
+        > tr.tes-ref-row:hover
+        > td.pb-unit-cell {
+        background-color: #e4e8ec;
+      }
+      #tesForecastTable tbody tr.tes-ref-row .pb-formula-tip {
+        color: #6c757d !important;
+      }
+      #tesForecastTable .tes-ref-badge {
+        display: inline-block;
+        margin-left: 0.4rem;
+        padding: 0.05rem 0.4rem;
+        font-size: 0.72em;
+        font-style: normal;
+        font-weight: 500;
+        color: #6c757d;
+        background: #dde2e7;
+        border-radius: 0.25rem;
+        vertical-align: 0.12em;
+      }
+      #tesForecastTable th.pb-year-col,
+      #tesForecastTable td.pb-year-cell {
+        width: var(--pb-year-col-w);
+        min-width: var(--pb-year-col-w);
+        white-space: normal;
+      }
+      #tesForecastTable .power-demand-year-feature-caption {
+        font-size: 0.95em;
+        line-height: 1.25;
+        margin-top: 0.2rem;
+        word-wrap: break-word;
+      }
+      #tesForecastTable td.pb-indent-1 {
+        padding-left: 1.75rem !important;
+      }
+      #tesForecastTable td.pb-indent-2 {
+        padding-left: 3.25rem !important;
+      }
+      #tesForecastTable td.pb-indent-3 {
+        padding-left: 4.75rem !important;
+      }
+      #tesForecastTable input.pb-custom-value {
+        min-width: 5.5rem;
+        max-width: 8rem;
+        margin: 0 auto;
+        text-align: center;
+        font-size: inherit;
+        line-height: inherit;
+        font-weight: inherit;
+        font-family: inherit;
+      }
+      #tesForecastTable.pb-hide-empty tbody tr.pb-row-empty-hidden {
+        display: none !important;
+      }
+      #tesForecastTable tbody tr.pb-station-child-hidden {
+        display: none !important;
+      }
+      #tesForecastTable .pb-station-toggle {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        line-height: 1;
+        color: #0d6efd;
+        vertical-align: -0.15em;
+        margin-right: 0.35rem;
+      }
+      #tesForecastTable .pb-station-toggle .bi {
+        font-size: 1.05rem;
+      }
+    </style>
+
+    <table
+      class="table table-hover table-striped table-bordered align-middle power-demand-summary-table"
+      id="tesForecastTable"
+      data-update-url="{{ url_for(update_endpoint, slug=sheet.slug) }}"
+      data-can-edit="{{ 1 if can_edit else 0 }}"
+      data-year="{{ view_year }}"
+      data-rounding="{{ rounding_digits }}"
+    >
+      <colgroup>
+        <col class="pb-col-label" />
+        <col class="pb-col-unit" />
+        {% for month in months %}
+        <col class="pb-col-year" />
+        {% endfor %}
+        <col class="pb-col-year" />
+      </colgroup>
+      <thead class="table-success">
+        <tr class="text-center align-middle">
+          <th class="text-center align-middle pb-label-col">Наименование</th>
+          <th class="text-center align-middle pb-unit-col">Ед.изм.</th>
+          {% for month in months %}
+          <th class="text-center align-middle pb-year-col">{{ month_names[month] }}</th>
+          {% endfor %}
+          <th class="text-center align-middle pb-year-col">
+            {{ view_year }}
+            <div class="text-wrap power-demand-year-feature-caption">
+              {% if year_features is defined and view_year in year_features %}
+              {{ year_features[view_year] }} {% endif %}
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr
+          class="{{ row.css_class }}{% if row.italic %} fst-italic{% endif %}{% if row.parent_station_key %} pb-station-child-hidden{% endif %}"
+          data-row-key="{{ row.key }}"
+          data-row-kind="{{ row.kind }}"
+          data-indent="{{ row.indent or 0 }}"
+          {% if row.collapsible %}data-collapsible="1"{% endif %}
+          {% if row.parent_station_key %}data-parent-station-key="{{ row.parent_station_key }}"{% endif %}
+        >
+          {% if row.kind == 'section' %}
+          <td
+            class="text-start pb-row-label fw-bold"
+            colspan="{{ months|length + 3 }}"
+          >
+            {{ row.label }}
+          </td>
+          {% else %}
+          <td
+            class="text-start pb-row-label{% if row.indent %} pb-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+          >
+            {% if row.collapsible %}
+            <button
+              type="button"
+              class="pb-station-toggle"
+              aria-expanded="false"
+              data-expand-title="{{ row.collapse_expand_title or 'Показать агрегаты' }}"
+              data-collapse-title="{{ row.collapse_collapse_title or 'Скрыть агрегаты' }}"
+              title="{{ row.collapse_expand_title or 'Показать агрегаты' }}"
+              aria-label="{{ row.collapse_expand_title or 'Показать агрегаты' }}"
+            >
+              <i class="bi bi-plus-square" aria-hidden="true"></i>
+            </button>
+            {% endif %} {% include 'energy_balance/_station_machine_label.html' %}
+            {% if row.is_reference %}
+            <span class="tes-ref-badge">справочно</span>
+            {% endif %}
+            {% if row.formula_tooltip %}
+            <i
+              class="bi bi-info-circle text-primary ms-1 pb-formula-tip"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="{{ row.formula_tooltip|e }}"
+              style="cursor: help; font-size: 0.9em; vertical-align: -0.1em"
+              aria-label="Формула расчёта"
+            ></i>
+            {% endif %}
+          </td>
+          <td
+            class="text-center align-middle pb-unit-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
+          >
+            {{ row.unit if row.unit is defined else '' }}
+          </td>
+          {% for month in months %}
+          <td
+            class="text-center pb-year-cell tes-month-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+            data-month="{{ month }}"
+          >
+            {% if row.editable and can_edit %}
+            <input
+              type="text"
+              class="form-control form-control-sm pb-custom-value tes-edit-value"
+              data-month="{{ month }}"
+              value="{{ row.displays[month] if row.displays is defined else '' }}"
+              inputmode="decimal"
+              aria-label="{{ row.label }} {{ month_names[month] }}"
+            />
+            {% else %}
+            {{ row.displays[month] if row.displays is defined else '' }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td
+            class="text-center pb-year-cell tes-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}"
+            data-month="year"
+          >
+            {{ row.displays['year'] if row.displays is defined else '' }}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#tesForecastTable [data-bs-toggle="tooltip"]').forEach(function (el) {
+      new bootstrap.Tooltip(el);
+    });
+    document.getElementById('rounding_digits')?.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      url.searchParams.set('rounding_digits', this.value);
+      window.location.href = url.toString();
+    });
+    const table = document.getElementById('tesForecastTable');
+    const labelTh = table?.querySelector('thead th.pb-label-col');
+    const syncLabelWidth = function () {
+      if (!table || !labelTh) return;
+      table.style.setProperty('--pb-label-col-w', labelTh.getBoundingClientRect().width + 'px');
+      if (typeof window.armGsApplyStickyTheadOffsets === 'function') {
+        window.armGsApplyStickyTheadOffsets();
+      }
+    };
+    syncLabelWidth();
+    if (window.ResizeObserver && labelTh) {
+      new ResizeObserver(syncLabelWidth).observe(labelTh);
+    }
+    window.addEventListener('resize', syncLabelWidth);
+    if (!table) return;
+
+    window.__pbShowEmptyRows = true;
+    function applyEmptyRowsVisibility() {
+      const showEmpty = window.__pbShowEmptyRows === true;
+      table.querySelectorAll('tbody tr').forEach(function (tr) {
+        if (tr.getAttribute('data-row-kind') === 'section' || tr.getAttribute('data-collapsible') === '1') {
+          tr.classList.remove('pb-row-empty-hidden');
+          return;
+        }
+        let empty = true;
+        tr.querySelectorAll('td.pb-year-cell').forEach(function (td) {
+          const input = td.querySelector('input.tes-edit-value');
+          const text = (input ? input.value : td.textContent || '').trim();
+          if (text && text !== '—' && text !== '-' && text !== '0') empty = false;
+        });
+        tr.classList.toggle('pb-row-empty-hidden', !showEmpty && empty);
+      });
+      table.classList.toggle('pb-hide-empty', !showEmpty);
+      syncLabelWidth();
+    }
+    function syncEmptyRowsToggleUi() {
+      const btn = document.getElementById('pbShowEmptyRowsToggle');
+      if (!btn) return;
+      const on = window.__pbShowEmptyRows === true;
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.classList.toggle('btn-primary', on);
+      btn.classList.toggle('btn-outline-primary', !on);
+      btn.title = on
+        ? 'Скрыть строки, у которых все значения пусты или равны нулю'
+        : 'Показать строки, у которых все значения пусты или равны нулю';
+    }
+    function applyStationChildrenVisibility() {
+      table.querySelectorAll('tbody tr[data-collapsible="1"]').forEach(function (parent) {
+        const btn = parent.querySelector('.pb-station-toggle');
+        const expanded = btn ? btn.getAttribute('aria-expanded') === 'true' : false;
+        const expandTitle = (btn && btn.getAttribute('data-expand-title')) || 'Показать агрегаты';
+        const collapseTitle = (btn && btn.getAttribute('data-collapse-title')) || 'Скрыть агрегаты';
+        const parentKey = parent.getAttribute('data-row-key');
+        let el = parent.nextElementSibling;
+        const parentIndent = Number(parent.dataset.indent || 0);
+        while (el && Number(el.dataset.indent || 0) > parentIndent) {
+          const isDirect = el.getAttribute('data-parent-station-key') === parentKey;
+          if (!expanded) {
+            el.classList.add('pb-station-child-hidden');
+          } else if (isDirect) {
+            el.classList.remove('pb-station-child-hidden');
+          }
+          el = el.nextElementSibling;
+        }
+        if (btn) {
+          btn.title = expanded ? collapseTitle : expandTitle;
+          btn.setAttribute('aria-label', btn.title);
+          const icon = btn.querySelector('i');
+          if (icon) {
+            icon.classList.toggle('bi-dash-square', expanded);
+            icon.classList.toggle('bi-plus-square', !expanded);
+          }
+        }
+      });
+      syncLabelWidth();
+    }
+    syncEmptyRowsToggleUi();
+    applyEmptyRowsVisibility();
+    applyStationChildrenVisibility();
+    document.getElementById('pbShowEmptyRowsToggle')?.addEventListener('click', function () {
+      window.__pbShowEmptyRows = !window.__pbShowEmptyRows;
+      syncEmptyRowsToggleUi();
+      applyEmptyRowsVisibility();
+    });
+    table.addEventListener('click', function (event) {
+      const btn = event.target.closest('.pb-station-toggle');
+      if (!btn || !table.contains(btn)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      applyStationChildrenVisibility();
+    });
+
+    const updateUrl = table.dataset.updateUrl;
+    const canEdit = table.dataset.canEdit === '1';
+    const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
+    const applyCells = function (cells) {
+      if (!cells) return;
+      Object.keys(cells).forEach(function (rowKey) {
+        const tr = table.querySelector('tr[data-row-key="' + rowKey + '"]');
+        if (!tr) return;
+        const rowCells = cells[rowKey] || {};
+        Object.keys(rowCells).forEach(function (col) {
+          const selector = col === 'year'
+            ? 'td.tes-year-cell'
+            : 'td.tes-month-cell[data-month="' + col + '"]';
+          const td = tr.querySelector(selector);
+          if (!td) return;
+          const input = td.querySelector('input.tes-edit-value');
+          if (input && document.activeElement !== input) {
+            input.value = rowCells[col] || '';
+          } else if (!input) {
+            td.textContent = rowCells[col] || '';
+          }
+        });
+      });
+    };
+    const parseDisplay = function (raw) {
+      const s = (raw || '').toString().trim().replace(/\s+/g, '').replace(',', '.');
+      if (!s) return null;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : null;
+    };
+    const formatDisplay = function (n) {
+      if (n === null || n === undefined || !Number.isFinite(n)) return '';
+      const digits = Number(table.dataset.rounding || 1);
+      const out = digits < 0 ? String(Math.round(n)) : n.toFixed(digits);
+      return out.replace('.', ',');
+    };
+    const isTesStationKey = function (key) {
+      return /^tes_station_\d+$/.test(key || '');
+    };
+    const isTesMachineKey = function (key) {
+      return /^tes_machine_\d+$/.test(key || '');
+    };
+    const isTesGroupKey = function (key) {
+      return /^tes_group_\d+_/.test(key || '');
+    };
+    const descendantTesMachines = function (parentTr, directOnly) {
+      const parentKey = parentTr.getAttribute('data-row-key');
+      const parentIndent = Number(parentTr.dataset.indent || 0);
+      const rows = [];
+      let el = parentTr.nextElementSibling;
+      while (el && Number(el.dataset.indent || 0) > parentIndent) {
+        if (isTesMachineKey(el.getAttribute('data-row-key'))) {
+          if (!directOnly || el.getAttribute('data-parent-station-key') === parentKey) {
+            rows.push(el);
+          }
+        }
+        el = el.nextElementSibling;
+      }
+      return rows;
+    };
+    const setMonthDisplay = function (tr, month, text) {
+      const td = tr.querySelector('td.tes-month-cell[data-month="' + month + '"]');
+      if (!td) return;
+      const input = td.querySelector('input.tes-edit-value');
+      if (input) input.value = text;
+      else td.textContent = text;
+    };
+    const refreshRowYear = function (tr) {
+      let total = 0;
+      let any = false;
+      tr.querySelectorAll('td.tes-month-cell').forEach(function (td) {
+        const input = td.querySelector('input.tes-edit-value');
+        const n = parseDisplay(input ? input.value : td.textContent);
+        if (n === null) return;
+        total += n;
+        any = true;
+      });
+      const yearTd = tr.querySelector('td.tes-year-cell');
+      if (yearTd) yearTd.textContent = any ? formatDisplay(total) : '';
+    };
+    const syncGroupMonth = function (groupTr, month) {
+      let total = 0;
+      let any = false;
+      descendantTesMachines(groupTr, true).forEach(function (mtr) {
+        const inp = mtr.querySelector(
+          'td.tes-month-cell[data-month="' + month + '"] input.tes-edit-value'
+        );
+        const n = parseDisplay(inp && inp.value);
+        if (n === null) return;
+        total += n;
+        any = true;
+      });
+      setMonthDisplay(groupTr, month, any ? formatDisplay(total) : '');
+      refreshRowYear(groupTr);
+    };
+    const syncStationMachineMonth = function (el) {
+      const tr = el.closest('tr');
+      const key = tr && tr.getAttribute('data-row-key');
+      const month = el.dataset.month;
+      if (!tr || !month) return;
+      if (isTesMachineKey(key)) {
+        const parentKey = tr.getAttribute('data-parent-station-key');
+        const parentTr = parentKey
+          ? table.querySelector('tr[data-row-key="' + parentKey + '"]')
+          : null;
+        let stationTr = parentTr;
+        if (parentTr && isTesGroupKey(parentKey)) {
+          syncGroupMonth(parentTr, month);
+          const stationKey = parentTr.getAttribute('data-parent-station-key');
+          stationTr = stationKey
+            ? table.querySelector('tr[data-row-key="' + stationKey + '"]')
+            : null;
+        }
+        if (!stationTr || !isTesStationKey(stationTr.getAttribute('data-row-key'))) return;
+        const stationInp = stationTr.querySelector(
+          'td.tes-month-cell[data-month="' + month + '"] input.tes-edit-value'
+        );
+        if (!stationInp) return;
+        let total = 0;
+        let any = false;
+        descendantTesMachines(stationTr, false).forEach(function (mtr) {
+          const inp = mtr.querySelector(
+            'td.tes-month-cell[data-month="' + month + '"] input.tes-edit-value'
+          );
+          const n = parseDisplay(inp && inp.value);
+          if (n === null) return;
+          total += n;
+          any = true;
+        });
+        stationInp.value = any ? formatDisplay(total) : '';
+        refreshRowYear(stationTr);
+        return;
+      }
+      if (!isTesStationKey(key)) return;
+      descendantTesMachines(tr, false).forEach(function (mtr) {
+        const inp = mtr.querySelector(
+          'td.tes-month-cell[data-month="' + month + '"] input.tes-edit-value'
+        );
+        if (inp) inp.value = '';
+      });
+      let elRow = tr.nextElementSibling;
+      const parentIndent = Number(tr.dataset.indent || 0);
+      while (elRow && Number(elRow.dataset.indent || 0) > parentIndent) {
+        if (isTesGroupKey(elRow.getAttribute('data-row-key'))) {
+          setMonthDisplay(elRow, month, '');
+          refreshRowYear(elRow);
+        }
+        elRow = elRow.nextElementSibling;
+      }
+      refreshRowYear(tr);
+    };
+    if (canEdit && updateUrl) {
+      const saveField = function (el) {
+        const tr = el.closest('tr');
+        fetch(updateUrl, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF || ''},
+          body: JSON.stringify({
+            year: table.dataset.year,
+            month: el.dataset.month,
+            row_key: tr?.dataset.rowKey,
+            value: el.value,
+            rounding_digits: table.dataset.rounding
+          })
+        }).then(function (resp) {
+          if (!resp.ok) throw new Error('save failed');
+          return resp.json();
+        }).then(function (data) {
+          if (!data.ok) throw new Error(data.error || 'save failed');
+          el.classList.remove('is-invalid');
+          applyCells(data.cells);
+        }).catch(function () {
+          el.classList.add('is-invalid');
+        });
+      };
+      table.querySelectorAll('input.tes-edit-value').forEach(function (input) {
+        input.addEventListener('input', function () {
+          if (isTesMachineKey(input.closest('tr')?.dataset.rowKey)) {
+            syncStationMachineMonth(input);
+          }
+        });
+        input.addEventListener('change', function () {
+          if (isTesStationKey(input.closest('tr')?.dataset.rowKey)) {
+            syncStationMachineMonth(input);
+          }
+          saveField(input);
+        });
+      });
+    }
+  });
+</script>
+{% endif %} {% endblock %}

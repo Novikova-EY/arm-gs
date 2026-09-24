@@ -19,6 +19,7 @@ from app.common.services.database_version_filter import (
     get_current_db_version_id,
     set_db_version_on_create,
 )
+from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_specific_fuel_consumption_model import (
     EquipmentGroupSpecificFuelConsumption,
@@ -83,16 +84,34 @@ def recalculate_all_specific_fuel_consumption_calc(
         if end_year is not None:
             query = query.filter(EquipmentGroupFuelParam.year_number <= end_year)
 
+    # Периметр версии: группы оборудования текущей версии (как у пересчёта цен).
+    # Дополнительно фильтруем FuelParam.database_version_id, чтобы не трогать
+    # чужие копии параметров при рассинхроне штампа версии.
+    current_version_id = None if all_versions else get_current_db_version_id()
     if not all_versions:
-        current_version_id = get_current_db_version_id()
+        eg_query = EquipmentGroup.query
         if current_version_id is not None:
+            eg_query = eg_query.filter(
+                EquipmentGroup.database_version_id == current_version_id
+            )
             query = query.filter(
                 EquipmentGroupFuelParam.database_version_id == current_version_id
             )
         else:
+            eg_query = eg_query.filter(
+                EquipmentGroup.database_version_id.is_(None)
+            )
             query = query.filter(
                 EquipmentGroupFuelParam.database_version_id.is_(None)
             )
+        allowed_eg_ids = {
+            row.id for row in eg_query.with_entities(EquipmentGroup.id).all()
+        }
+        if not allowed_eg_ids:
+            return 0
+        query = query.filter(
+            EquipmentGroupFuelParam.equipment_group_id.in_(allowed_eg_ids)
+        )
 
     params = query.all()
     if not params:
@@ -118,13 +137,18 @@ def recalculate_all_specific_fuel_consumption_calc(
 
     # no_autoflush: не сбрасывать pending INSERT до поиска по UQ
     with db.session.no_autoflush:
-        for (equipment_group_id, year_number), param_list in by_key.items():
+        for (eg_id, year_number), param_list in by_key.items():
             param = param_list[0]
-            version_id = param.database_version_id
+            # В режиме текущей версии пишем штамп активной версии; иначе — из param.
+            version_id = (
+                current_version_id
+                if not all_versions
+                else param.database_version_id
+            )
 
             # Поиск строго по UQ, без фильтра версии (см. get_or_create_*)
             consumption = EquipmentGroupSpecificFuelConsumption.query.filter_by(
-                equipment_group_id=equipment_group_id,
+                equipment_group_id=eg_id,
                 year_number=year_number,
             ).first()
 
@@ -148,7 +172,7 @@ def recalculate_all_specific_fuel_consumption_calc(
 
             if consumption is None:
                 consumption = EquipmentGroupSpecificFuelConsumption(
-                    equipment_group_id=equipment_group_id,
+                    equipment_group_id=eg_id,
                     year_number=year_number,
                     database_version_id=version_id,
                     y_calc=y_calc_val,
@@ -159,11 +183,17 @@ def recalculate_all_specific_fuel_consumption_calc(
                 )
                 set_db_version_on_create(consumption)
                 db.session.add(consumption)
-                _sync_numb1120_from_equipment_group(consumption, equipment_group_id)
+                _sync_numb1120_from_equipment_group(consumption, eg_id)
                 updates_count += 1
             else:
                 changed = False
 
+                if (
+                    not all_versions
+                    and consumption.database_version_id != version_id
+                ):
+                    consumption.database_version_id = version_id
+                    changed = True
                 if consumption.y_calc != y_calc_val:
                     consumption.y_calc = y_calc_val
                     changed = True
@@ -179,7 +209,7 @@ def recalculate_all_specific_fuel_consumption_calc(
                 if consumption.snk_calc != snk_calc_val:
                     consumption.snk_calc = snk_calc_val
                     changed = True
-                if _sync_numb1120_from_equipment_group(consumption, equipment_group_id):
+                if _sync_numb1120_from_equipment_group(consumption, eg_id):
                     changed = True
 
                 if changed:

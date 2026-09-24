@@ -1809,7 +1809,7 @@
             .then(function (r) { return r.json(); })
             .then(function (data) {
                 if (!data || !data.ok) {
-                    return null;
+                    throw new Error((data && data.error) || "Не удалось загрузить журнал");
                 }
                 appendLogs(data.logs, replaceBody);
                 var off = offset + (data.logs ? data.logs.length : 0);
@@ -1819,7 +1819,7 @@
                     tb.replaceChildren();
                     var tr = document.createElement("tr");
                     var td = document.createElement("td");
-                    td.colSpan = 6;
+                    td.colSpan = 5;
                     td.className = "text-center text-muted p-3";
                     td.textContent = "Нет записей";
                     tr.appendChild(td);
@@ -1835,18 +1835,15 @@
                 tb.replaceChildren();
                 var tr = document.createElement("tr");
                 var td = document.createElement("td");
-                td.colSpan = 6;
+                td.colSpan = 5;
                 td.className = "text-center text-danger p-3";
                 td.textContent = "Не удалось загрузить журнал";
                 tr.appendChild(td);
                 tb.appendChild(tr);
             });
         }
-        if (window.__pdSummaryRowsReady && typeof window.__pdSummaryRowsReady.then === "function") {
-            window.__pdSummaryRowsReady.then(startLazyLogsLoad, startLazyLogsLoad);
-        } else {
-            startLazyLogsLoad();
-        }
+        /* Журнал не зависит от data.json — грузим сразу, не дожидаясь таблицы. */
+        startLazyLogsLoad();
     } else {
         fetch(base + "?offset=0&limit=0", { credentials: "same-origin" })
             .then(function (r) { return r.json(); })
@@ -1881,17 +1878,17 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=28"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=29"></script>
 {% endif %}
 
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_layout.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_layout.js') }}?v=4"></script>
 
 {% if can_edit_summary_cells %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}"></script>
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_year_period_mode.js') }}"></script>
 {% endif %}
 <script type="application/json" id="pd-summary-page-config">{"hist_editable_keys": {{ (pd_summary_hist_editable_keys | default([])) | tojson }}, "hist_restricted": {{ (pd_summary_hist_restricted | default(false)) | tojson }}, "csrf_token": {{ csrf_token | tojson }}}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_main.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_main.js') }}?v=4"></script>
 {% if active_summary in ('oes', 'fo', 'ez') %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_cascade_common.js') }}"></script>
 {% endif %}
