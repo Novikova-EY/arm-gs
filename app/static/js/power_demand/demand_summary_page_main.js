@@ -433,6 +433,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!longLoaded) {
             state.long = false;
         }
+        if (!state.reporting && !state.medium && !state.long) {
+            state.reporting = true;
+            write(state);
+        }
         apply(state);
         if (longLoaded) {
             try {

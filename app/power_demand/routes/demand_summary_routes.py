@@ -629,14 +629,17 @@ def _parse_coeff_page_data_year_range() -> tuple[int, int, int, bool, bool]:
 
     Как «Максимумы…»: первая отрисовка — только отчётное окно N−9…N.
     Среднесрок (N+1…N+6) — при pd_medium=1 или если форма годов заходит за N.
-    Долгосрок (N+7…N+18) — только coeff_include_long=1.
+    Долгосрок (N+7…N+18) — при coeff_include_long=1 или если выбранный год конца периода позже N+6.
     """
     n = _coeff_base_year_n()
     include_long = _parse_coeff_include_long()
     include_medium = include_long or _parse_summary_include_medium_years()
     _sy, ui_ey, applied = _parse_coeff_ui_year_form_range(n)
+    if applied and int(ui_ey) > int(n) + 6:
+        include_long = True
     if applied and int(ui_ey) > int(n):
         include_medium = True
+    include_medium = include_medium or include_long
     end_year = n + 18 if include_long else (n + 6 if include_medium else n)
     sy, ey = _clamp_coeff_data_years(n - 9, end_year)
     return n, sy, ey, include_medium, include_long

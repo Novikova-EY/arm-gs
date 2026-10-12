@@ -1547,6 +1547,26 @@ if (summaryTable) {
 
         lastApplied = migrateCalcMaxKeysInKeyMap(lastApplied);
 
+        var showKeysOnMigration = spec.showKeysOnceOnMigration || [];
+        if (showKeysOnMigration.length) {
+            var visibilityMigrationKey = storageKey + ":plan-input-rows-v1";
+            function showPlanInputRows() {
+                showKeysOnMigration.forEach(function (k) {
+                    if (Object.prototype.hasOwnProperty.call(lastApplied, k)) {
+                        lastApplied[k] = true;
+                    }
+                });
+            }
+            try {
+                if (sessionStorage.getItem(visibilityMigrationKey) !== "1") {
+                    showPlanInputRows();
+                    sessionStorage.setItem(visibilityMigrationKey, "1");
+                }
+            } catch (eVisibilityMigration) {
+                showPlanInputRows();
+            }
+        }
+
         syncCheckboxesFromKeys(lastApplied);
         applyVisibilityFromKeys(lastApplied);
         try {
@@ -1633,7 +1653,11 @@ if (summaryTable) {
 
     var summaryView = summaryTable.getAttribute("data-summary-view");
     var routeVariant = summaryTable.getAttribute("data-summary-route-variant") || "max";
-    var coeffDefaultHidden = routeVariant === "coeff" ? ["peak_datetime", "avg_temp"] : [];
+    var coeffDefaultHidden =
+        routeVariant === "coeff" &&
+        !summaryTable.classList.contains("fuel-params-edit-table")
+            ? ["peak_datetime", "avg_temp"]
+            : [];
     var rowPickerDefaultHidden = coeffDefaultHidden.slice();
     pdSummaryCalcMaxPickerKeysForView(summaryView, routeVariant).forEach(function (k) {
         if (rowPickerDefaultHidden.indexOf(k) < 0) {
@@ -1894,6 +1918,7 @@ if (summaryTable) {
         initPdSummaryRowPicker({
             rowKeys: ["max_power", "calculated_max_power_mw", "peak_datetime", "calculated_max_power_consumption_mw", "avg_temp", "combined_on_oes", "combined_on_ees", "calculated_combined_on_ees_mw", "calculated_max_ees_via_oes_mw", "calculated_max_ees_russia_mw", "calculated_max_ees_via_es_mw", "combined_on_es"],
             defaultHiddenKeys: rowPickerDefaultHidden,
+            showKeysOnceOnMigration: routeVariant === "coeff" && summaryTable.classList.contains("fuel-params-edit-table") ? ["peak_datetime", "avg_temp"] : [],
             storageKey: routeVariant === "coeff" ? "powerDemandSummaryOesCoeffVisibleRowKeysV2" : "powerDemandSummaryOesVisibleRowKeysV3",
             modalId: "powerDemandOesRowsModal",
             applyBtnId: "powerDemandOesRowsApply"
@@ -1916,6 +1941,7 @@ if (summaryTable) {
         initPdSummaryRowPicker({
             rowKeys: foRowKeys,
             defaultHiddenKeys: rowPickerDefaultHidden,
+            showKeysOnceOnMigration: routeVariant === "coeff" && summaryTable.classList.contains("fuel-params-edit-table") ? ["peak_datetime", "avg_temp"] : [],
             storageKey: routeVariant === "coeff" ? "powerDemandSummaryFoCoeffVisibleRowKeysV4" : "powerDemandSummaryFoVisibleRowKeysV2",
             modalId: "powerDemandFoRowsModal",
             applyBtnId: "powerDemandFoRowsApply"
@@ -1937,6 +1963,7 @@ if (summaryTable) {
                 "calculated_max_ees_via_ez_mw",
             ],
             defaultHiddenKeys: rowPickerDefaultHidden,
+            showKeysOnceOnMigration: routeVariant === "coeff" && summaryTable.classList.contains("fuel-params-edit-table") ? ["peak_datetime", "avg_temp"] : [],
             storageKey: routeVariant === "coeff" ? "powerDemandSummaryEzCoeffVisibleRowKeysV2" : "powerDemandSummaryEzVisibleRowKeysV2",
             modalId: "powerDemandEzRowsModal",
             applyBtnId: "powerDemandEzRowsApply"

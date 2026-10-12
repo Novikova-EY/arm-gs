@@ -44,6 +44,7 @@
     <section class="home-outline__section" aria-label="Потребление">
         <h2 class="home-outline__section-title">Потребление</h2>
         <div class="home-outline__tiles">
+            {{ home_tile(url_for('energy_consumption_bp.hub'), 'Спрос', 'bi-graph-up') }}
             {% call home_tile(url_for('power_demand_bp.hub'), 'Нагрузки') %}
             <svg class="home-outline__icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M4 3.2v16.6h17.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/>
@@ -52,15 +53,14 @@
                       stroke="currentColor" stroke-width="1.65" stroke-linejoin="miter" stroke-miterlimit="8" stroke-linecap="butt"/>
             </svg>
             {% endcall %}
-            {{ home_tile(url_for('energy_consumption_bp.hub'), 'Спрос', 'bi-graph-up') }}
         </div>
     </section>
 
     <section class="home-outline__section" aria-label="Прогноз и территории">
         <h2 class="home-outline__section-title">Прогноз и территории</h2>
         <div class="home-outline__tiles">
-            {{ home_tile_soon('Рациональная структура', 'bi-diagram-3') }}
             {{ home_tile(url_for('long_term_consumption_bp.electrical_intensity_start'), 'Долгосрочный прогноз потребления', 'bi-calendar3') }}
+            {{ home_tile_soon('Рациональная структура', 'bi-diagram-3') }}
             {{ home_tile(url_for('territories_bp.territories_start'), 'Характеристики территорий', 'bi-geo-alt') }}
         </div>
     </section>

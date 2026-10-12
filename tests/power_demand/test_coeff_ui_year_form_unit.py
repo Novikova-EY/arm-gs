@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from flask import Flask
 
 from app.power_demand.routes import demand_summary_routes as routes
@@ -89,6 +90,21 @@ def test_parse_coeff_page_data_year_range_form_past_n_includes_medium(monkeypatc
     assert include_long is False
 
 
+@pytest.mark.parametrize("scope", ("oes", "federal_districts", "energy_zones"))
+def test_parse_coeff_page_data_year_range_form_in_long_period_loads_long_years(monkeypatch, scope):
+    app = Flask(__name__)
+    monkeypatch.setattr(routes, "_filter_year_list_for_summary", lambda: list(range(2010, 2041)))
+    monkeypatch.setattr(routes, "_coeff_base_year_n", lambda: 2025)
+    with app.test_request_context(
+        f"/power_demand/summary/coeff/{scope}/?pd_page_size=2&pd_page=1&start_year=2028&end_year=2033"
+    ):
+        n, sy, ey, include_medium, include_long = routes._parse_coeff_page_data_year_range()
+    assert n == 2025
+    assert (sy, ey) == (2016, 2040)
+    assert include_medium is True
+    assert include_long is True
+
+
 def test_parse_coeff_page_data_year_range_include_long(monkeypatch):
     app = Flask(__name__)
     monkeypatch.setattr(routes, "_filter_year_list_for_summary", lambda: list(range(2010, 2041)))
@@ -98,6 +114,21 @@ def test_parse_coeff_page_data_year_range_include_long(monkeypatch):
     ):
         n, sy, ey, include_medium, include_long = routes._parse_coeff_page_data_year_range()
     assert (n, sy, ey, include_medium, include_long) == (2025, 2016, 2040, True, True)
+
+
+def test_slice_coeff_summary_keeps_loaded_long_values():
+    years = list(range(2016, 2044))
+    values = [str(year) for year in years]
+    ctx = {
+        "years": years,
+        "summary_rows": [{"year_values": values.copy(), "year_k_values": values.copy()}],
+    }
+    slice_coeff_summary_for_lazy_long_segment(
+        ctx, 2025, include_long=True, include_medium=True
+    )
+    assert ctx["years"] == years
+    assert ctx["summary_rows"][0]["year_values"][17] == "2033"
+    assert ctx["summary_rows"][0]["year_k_values"][17] == "2033"
 
 
 def test_coeff_period_header_groups_html_reporting_only():

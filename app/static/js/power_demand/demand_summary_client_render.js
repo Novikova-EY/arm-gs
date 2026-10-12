@@ -446,9 +446,45 @@
         return String(verifyRow.parameter_key || "") === "verify_for_" + paramKey;
     }
 
-    function coeffPlanHideYear(row, year, yearIsPlan, cfg) {
+    function isTerritoryPlanInputEditable(row, cfg) {
+        if (!cfg.can_edit_summary_cells || row.pd_pd_formula_derived_row) {
+            return false;
+        }
+        var pk = row.parameter_key || "";
+        return (
+            (cfg.active_summary === "oes" &&
+                (pk === "peak_datetime" ||
+                    pk === "avg_temp" ||
+                    pk === "combined_on_es" ||
+                    pk === "combined_on_oes" ||
+                    pk === "combined_on_ees")) ||
+            (cfg.active_summary === "fo" &&
+                (pk === "peak_datetime" ||
+                    pk === "avg_temp" ||
+                    pk === "combined_on_cz" ||
+                    pk === "combined_on_fo")) ||
+            (cfg.active_summary === "ez" &&
+                (pk === "peak_datetime" ||
+                    pk === "avg_temp" ||
+                    pk === "combined_on_ez" ||
+                    pk === "combined_on_ees"))
+        );
+    }
+
+    function coeffPlanHideYear(row, year, yearIsPlan, cfg, displayValue) {
         var pk = row.parameter_key || "";
         if (!yearIsPlan[String(year)] || pk === "max_power") {
+            return false;
+        }
+        var manualRange = coeffManualVisibleYearRange();
+        var base = coeffBaseYear(cfg);
+        var y = parseInt(year, 10);
+        if (
+            manualRange && base != null && y > base &&
+            y >= manualRange.sy && y <= manualRange.ey &&
+            displayValue != null && String(displayValue).trim() !== "" &&
+            String(displayValue).trim() !== "—"
+        ) {
             return false;
         }
         if (row.pd_pd_verify_for_row || String(pk).indexOf("verify_for_") === 0) {
@@ -457,8 +493,9 @@
         if (isFoCoeffCzTotalRow(row)) {
             return false;
         }
-        var base = coeffBaseYear(cfg);
-        var y = parseInt(year, 10);
+        if (isTerritoryPlanInputEditable(row, cfg)) {
+            return false;
+        }
         var isMedium =
             base != null && !isNaN(y) && y >= base + 1 && y <= base + 6;
         var inReport =
@@ -538,6 +575,7 @@
             classes.push("summary-row-hidden");
         } else if (
             isCoeffRoute(cfg) &&
+            !cfg.can_edit_summary_cells &&
             (pk === "peak_datetime" || pk === "avg_temp")
         ) {
             classes.push("summary-row-hidden");
@@ -778,13 +816,16 @@
         return value;
     }
 
-    function planHideYearCell(row, year, yearIsPlan, cfg) {
+    function planHideYearCell(row, year, yearIsPlan, cfg, displayValue) {
         var pk = row.parameter_key || "";
         if (row.pd_pd_verify_for_row || String(pk).indexOf("verify_for_") === 0) {
             return false;
         }
         if (isCoeffRoute(cfg)) {
-            return coeffPlanHideYear(row, year, yearIsPlan, cfg || {});
+            return coeffPlanHideYear(row, year, yearIsPlan, cfg || {}, displayValue);
+        }
+        if (isTerritoryPlanInputEditable(row, cfg)) {
+            return false;
         }
         return !!yearIsPlan[String(year)] && pk !== "max_power";
     }
@@ -893,7 +934,7 @@
             yrid = null;
             yrTt = "";
         }
-        var planHide = planHideYearCell(row, year, yearIsPlan, cfg);
+        var planHide = planHideYearCell(row, year, yearIsPlan, cfg, value);
         var coeff = isCoeffRoute(cfg);
         var baseYear = coeffBaseYear(cfg);
 
@@ -1238,7 +1279,7 @@
                     ? String(kValues[ix])
                     : "—";
             var kTt = ix < kTooltips.length ? kTooltips[ix] || "" : "";
-            var planHide = coeffPlanHideYear(row, year, yearIsPlan, cfg);
+            var planHide = coeffPlanHideYear(row, year, yearIsPlan, cfg, kDisp);
             td.className = "text-center summary-year-cell summary-year-k-cell";
             if (planHide) {
                 td.classList.add("summary-plan-empty");
@@ -2511,6 +2552,16 @@
         var yearCells = tr.querySelectorAll("td.summary-year-cell");
         yearCells.forEach(function (td, ix) {
             if (td.classList.contains("summary-plan-empty")) {
+                var year = years[ix];
+                var updatedValue =
+                    ix < values.length && values[ix] != null ? String(values[ix]) : "—";
+                updatedValue = displayMwValueForRow(row, updatedValue);
+                if (
+                    isCoeffRoute(cfg) && !summaryYearOutOfRange(row, year) &&
+                    !planHideYearCell(row, year, yearIsPlan, cfg, updatedValue)
+                ) {
+                    td.replaceWith(buildYearCell(row, year, ix, cfg, yearIsPlan));
+                }
                 return;
             }
             var value =

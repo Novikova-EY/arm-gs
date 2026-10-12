@@ -1067,7 +1067,7 @@
                     {% endif %}
                     {% set _pd_row_stripe = 'pd-entity-block-stripe-alt' if (_pd_block_idx.n % 2 == 0) else 'pd-entity-block-stripe-base' %}
                 {% endif %}
-                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_ee_row') %} pd-pd-ee-row summary-row-hidden{% elif row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
+                <tr class="summary-kind-{{ row.entity_kind }} summary-row-param{% if row.get('pd_pd_verify_for_row') %} pd-pd-verify-for-row{% endif %}{% if row.get('pd_pd_ee_row') %} pd-pd-ee-row summary-row-hidden{% elif row.get('pd_pd_chi_row') %} pd-pd-chi-row summary-row-hidden{% elif active_summary in ('oes', 'fo', 'ez') and row.parameter_key is defined and row.parameter_key in pd_readonly_parameter_keys %} pd-pd-calc-max-row summary-row-hidden{% endif %}{% if row.get('pd_pd_verify_for_row') %} summary-row-hidden{% elif summary_route_variant == 'coeff' and not can_edit_summary_cells and row.parameter_key in ('peak_datetime', 'avg_temp') %} summary-row-hidden{% elif row_initial_hidden %} summary-row-hidden{% endif %}"
                     data-parameter-key="{{ row.parameter_key }}"
                     {% if row.demand_model_name %}data-demand-model-name="{{ row.demand_model_name|e }}"{% endif %}
                     {% if row.id_union_energy_system is not none %}data-id-union-energy-system="{{ row.id_union_energy_system }}"{% endif %}
@@ -1372,7 +1372,8 @@
                     {% set _fd_combined_cz_medium_only = summary_route_variant == 'coeff' and _is_medium_year and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'combined_on_cz' %}
                     {% set _ez_calc_plan_uncollapse = summary_route_variant == 'coeff' and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') and (_yr_in_coef_report or _is_medium_year) %}
                     {% set _ez_combined_ees_medium_only = summary_route_variant == 'coeff' and _is_medium_year and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'combined_on_ees' %}
-                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
+                    {% set _territory_plan_editable = can_edit_summary_cells and not row.get('pd_pd_formula_derived_row') and ((active_summary == 'oes' and row.parameter_key in ('peak_datetime', 'avg_temp', 'combined_on_es', 'combined_on_oes', 'combined_on_ees')) or (active_summary == 'fo' and row.parameter_key in ('peak_datetime', 'avg_temp', 'combined_on_cz', 'combined_on_fo')) or (active_summary == 'ez' and row.parameter_key in ('peak_datetime', 'avg_temp', 'combined_on_ez', 'combined_on_ees')) ) %}
+
                     {% set _yr_tt = (row.year_numeric_tooltips|default([]))[ix] if (row.year_numeric_tooltips|default([]))|length > ix else '' %}
                     {% set _pv_variant_year_out_of_range = false %}
                     {% if not row.get('pd_pd_skip_perimeter_variant_year_bounds') %}
@@ -1382,6 +1383,8 @@
                     {% set _pv_variant_year_out_of_range = _pv_variant_year_out_of_range or (_pv_to is not none and _yr > _pv_to) %}
                     {% endif %}
                     {% if _pv_variant_year_out_of_range %}{% set value = '—' %}{% endif %}
+                    {% set _manual_plan_value = summary_route_variant == 'coeff' and pd_coeff_years_applied|default(false) and coeff_base_year is defined and _yr > coeff_base_year and start_year <= _yr <= end_year and value not in (none, '', '—') %}
+                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _manual_plan_value and not _territory_plan_editable and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
                     {% set _can_edit_year_cell = _can_edit_cell and not _pv_variant_year_out_of_range %}
                     <td class="text-center summary-year-cell{% if summary_route_variant == 'coeff' %} summary-year-mw-cell{% endif %}{% if _plan_hide %} summary-plan-empty{% endif %}"
                         {% if pd_pd_max_year_segments and summary_route_variant != 'coeff' %}data-ec-summary-col-year="{{ _yr }}"{% endif %}
@@ -1589,7 +1592,8 @@
                     {% set _fd_combined_cz_medium_only = _is_medium_year and row.demand_model_name == 'FederalDistrictDemandParameter' and row.parameter_key == 'combined_on_cz' %}
                     {% set _ez_calc_plan_uncollapse = row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key in ('calculated_max_power_mw', 'calculated_combined_on_ees_mw') and (_yr_in_coef_report or _is_medium_year) %}
                     {% set _ez_combined_ees_medium_only = _is_medium_year and row.demand_model_name == 'EnergyZoneDemandParameter' and row.parameter_key == 'combined_on_ees' %}
-                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
+                    {% set _manual_plan_k_value = pd_coeff_years_applied|default(false) and coeff_base_year is defined and _yr > coeff_base_year and start_year <= _yr <= end_year and k_disp not in (none, '', '—') %}
+                    {% set _plan_hide = _plan_col and row.parameter_key != 'max_power' and not _manual_plan_k_value and not _res_combined_medium_exempt and not (_ues_calc_plan_uncollapse or _ues_combined_ees_medium_only) and not (_fd_calc_plan_uncollapse or _fd_combined_cz_medium_only) and not (_ez_calc_plan_uncollapse or _ez_combined_ees_medium_only) and not _cz_fo_tot and not row.get('pd_pd_verify_for_row') %}
                     {% set _is_medium_k = coeff_base_year is defined and _yr >= coeff_base_year + 1 and _yr <= coeff_base_year + 6 %}
                     {% set _medium_k_input = _is_medium_k and _can_edit_cell and row.parameter_key not in ('peak_datetime', 'avg_temp', 'max_power') and not _cz_fo_tot %}
                     {% set yrid = row.year_row_ids[ix] if row.year_row_ids is defined and (row.year_row_ids|length) > ix else none %}
@@ -1878,17 +1882,17 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=29"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=32"></script>
 {% endif %}
 
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_layout.js') }}?v=4"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_layout.js') }}?v=5"></script>
 
 {% if can_edit_summary_cells %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}"></script>
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_year_period_mode.js') }}"></script>
 {% endif %}
 <script type="application/json" id="pd-summary-page-config">{"hist_editable_keys": {{ (pd_summary_hist_editable_keys | default([])) | tojson }}, "hist_restricted": {{ (pd_summary_hist_restricted | default(false)) | tojson }}, "csrf_token": {{ csrf_token | tojson }}}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_main.js') }}?v=4"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_main.js') }}?v=5"></script>
 {% if active_summary in ('oes', 'fo', 'ez') %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_cascade_common.js') }}"></script>
 {% endif %}
