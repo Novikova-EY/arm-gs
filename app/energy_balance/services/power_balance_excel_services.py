@@ -19,14 +19,22 @@ from app.energy_balance.services.power_balance_page_services import (
     KIND_CHILD,
     KIND_TOTAL,
     KIND_TRANSFER,
+    EES_RUSSIA_WITH_TITES_NAME,
+    EES_RUSSIA_WITH_TITES_SLUG,
     POWER_BALANCE_UNIT,
+    SYNCHRONOUS_ZONES_SLUG,
+    _append_ees_russia_with_tites_table,
+    _power_balance_navigation_sheets,
     build_power_balance_tables,
     get_power_balance_sheets,
     get_power_balance_year_columns,
     get_power_balance_year_features,
+    group_power_balance_sheets,
     is_power_balance_flow_block_row,
+    power_balance_sheet_title,
     resolve_power_balance_demand_mode,
     resolve_power_balance_rounding_digits,
+    tites_east_child_nav_sheets,
 )
 
 HEADER_FILL = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
@@ -41,9 +49,11 @@ THIN = Border(
 
 
 def power_balance_excel_table_title(sheet: dict[str, Any]) -> str:
-    """Первая строка листа: «Таблица N - Баланс мощности …, МВт»."""
+    """Первая строка листа: «Таблица N - Баланс электрической мощности …, МВт»."""
     number = sheet.get("table_number") or 0
-    title = str(sheet.get("title") or f"Баланс мощности {sheet.get('sheet_name') or ''}").strip()
+    title = str(
+        sheet.get("title") or power_balance_sheet_title(sheet.get("sheet_name"))
+    ).strip()
     unit = str(sheet.get("unit") or POWER_BALANCE_UNIT).strip() or POWER_BALANCE_UNIT
     if title.lower().endswith(f", {unit.lower()}"):
         named = title
@@ -228,6 +238,53 @@ def _write_sheet(
     ws.print_title_rows = "1:2"
 
 
+def _sheets_in_navigation_order(
+    sheets: list[dict[str, Any]], aggregate_sheet: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Flatten the visible tab buttons, inserting the TITES children at their hub."""
+    sheets_by_slug = {str(sheet.get("slug") or ""): sheet for sheet in sheets}
+    sheets_by_slug[str(aggregate_sheet.get("slug") or "")] = aggregate_sheet
+    ordered: list[dict[str, Any]] = []
+    added: set[str] = set()
+
+    def append(slug: str, *, sheet_override: dict[str, Any] | None = None) -> None:
+        if not slug or slug in added:
+            return
+        sheet = sheet_override or sheets_by_slug.get(slug)
+        if not sheet or sheet.get("skip_table"):
+            return
+        ordered.append(sheet)
+        added.add(slug)
+
+    navigation = _power_balance_navigation_sheets(sheets)
+    for group in group_power_balance_sheets(navigation):
+        for nav_sheet in group["sheets"]:
+            slug = str(nav_sheet.get("slug") or "")
+            if slug == SYNCHRONOUS_ZONES_SLUG:
+                continue
+            if nav_sheet.get("is_tites_east_hub"):
+                for child in tites_east_child_nav_sheets(sheets, slug):
+                    append(str(child.get("slug") or ""), sheet_override=child)
+                continue
+            if slug == "vostok" and slug not in sheets_by_slug:
+                east_zone = sheets_by_slug.get("2-sz-ees-vostok")
+                if east_zone:
+                    append(
+                        "vostok",
+                        sheet_override={
+                            **east_zone,
+                            "slug": "vostok",
+                            "data_slug": "2-sz-ees-vostok",
+                            "sheet_name": nav_sheet["sheet_name"],
+                        },
+                    )
+                continue
+            append(slug, sheet_override=nav_sheet if slug == EES_RUSSIA_WITH_TITES_SLUG else None)
+
+    for sheet in sheets:
+        append(str(sheet.get("slug") or ""))
+    return ordered
+
 def export_power_balance_to_excel(
     *,
     start_year: Any = None,
@@ -243,6 +300,7 @@ def export_power_balance_to_excel(
     year_features: dict[int, str] | None = None,
 ) -> BytesIO:
     """Файл со вкладкой на каждый лист баланса мощности."""
+    include_navigation_aggregate = sheets is None and tables is None
     digits = resolve_power_balance_rounding_digits(rounding_digits)
     mode = resolve_power_balance_demand_mode(demand_mode)
     if years is None:
@@ -251,8 +309,15 @@ def export_power_balance_to_excel(
         sheets = get_power_balance_sheets()
     if tables is None:
         tables = build_power_balance_tables(
-            years, rounding_digits=digits, demand_mode=mode
+            years, rounding_digits=digits, demand_mode=mode, sheets=sheets
         )
+    if include_navigation_aggregate:
+        aggregate_sheet = _append_ees_russia_with_tites_table(
+            tables, sheets, years, digits
+        )
+        if aggregate_sheet is not None:
+            aggregate_sheet.update(sheet_name=EES_RUSSIA_WITH_TITES_NAME)
+            sheets = _sheets_in_navigation_order(sheets, aggregate_sheet)
     if year_features is None:
         year_features = get_power_balance_year_features()
 
@@ -262,7 +327,7 @@ def export_power_balance_to_excel(
     for sheet in sheets:
         if sheet.get("skip_table"):
             continue
-        slug = sheet.get("slug")
+        slug = sheet.get("data_slug") or sheet.get("slug")
         payload = (tables or {}).get(slug) or {}
         rows = payload.get("rows") or []
         if first:
@@ -282,7 +347,6 @@ def export_power_balance_to_excel(
             show_empty_rows=show_empty_rows,
             show_flow_rows=show_flow_rows,
         )
-
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)

@@ -2,6 +2,8 @@ from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.station.station_gaes_charge_consumption_model import StationGaesChargeConsumption
 from app.generation.models.station.station_owner_energy_generation_model import StationOwnerEnergyGeneration
+from app.generation.models.station.station_snee_energy_consumption_model import StationSneeEnergyConsumption
+from app.generation.models.station.station_snee_efficiency_model import StationSneeEfficiency
 
 from app.generation.models.machine.machine_model import Machine
 from app.generation.models.machine.machine_power_model import MachinePower

@@ -8,9 +8,10 @@
 (часто плановые годы лежат там, а строка ``without_nt`` пустая). Для 1-й СЗ —
 дополнительно варианты ``*_kaliningrad*``.
 
-ТИТЭС (Восток и Сибирь, включая РЭС и энергорайоны): как на
-``/energy_consumption/summary/oes/?ds_ues=317`` — строка с вариантом периметра
+ТИТЭС (Восток и Сибирь, включая РЭС и энергорайоны): вариант периметра
 «не указано» (``perimeter_variant_code IS NULL``), не «без НТ» и не О-1.
+Для ТИТЭС Сибири годовой итог считается по дочерним территориям той же формулой,
+что и на сводке потребления; сохранённые значения используются для остальных лет.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from app.energy_balance.services.power_balance_demand_max_services import (
 )
 from app.energy_balance.services.power_balance_page_services import (
     _is_tites_isolated_balance_sheet,
+    _is_tites_sibir_name,
 )
 from app.energy_consumption.models.energy_systems.energy_unit_energy_consumption_parameter_model import (
     EnergyUnitEnergyConsumptionParameter,
@@ -205,6 +207,30 @@ def _consumption_rows_without_nt(
     return _merge_consumption_rows_by_year(codes, model, fk_column, parent_id)
 
 
+def _tites_siberia_consumption_year_values(
+    parent_id: int,
+    years: list[int],
+) -> dict[int, Decimal]:
+    from app.energy_consumption.services.energy_consumption_summary_services import (
+        _build_ues_entities_filtered,
+        _flatten_entities,
+        _sum_tites_energy_units_by_parameter,
+    )
+
+    entities = _build_ues_entities_filtered(
+        lambda ues: ues.id == parent_id,
+        tree_years=years,
+    )
+    summary_rows = _flatten_entities(entities, years, rounding_digits=1)
+    values = _sum_tites_energy_units_by_parameter(
+        summary_rows,
+        years,
+        "energy_consumption_mln_kvt_ch",
+        None,
+    )
+    return {year: value for year, value in values.items() if value is not None}
+
+
 def load_ee_balance_consumption_inputs(
     years: list[int],
     sheets: list[dict[str, Any]] | None = None,
@@ -246,6 +272,11 @@ def load_ee_balance_consumption_inputs(
                 name=territory.get("name") or sheet.get("sheet_name"),
             )
         year_map = year_values_from_consumption_rows(rows, years)
+        if kind == "ues" and _is_tites_sibir_name(
+            territory.get("name") or sheet.get("sheet_name")
+        ):
+            # В сводке ТИТЭС считается по энергорайонам, а сохранённый итог ОЭС может быть нулевым.
+            year_map.update(_tites_siberia_consumption_year_values(parent_id, years))
         if year_map:
             inputs[slug] = {CONSUMPTION_ROW_KEY: year_map}
     return inputs

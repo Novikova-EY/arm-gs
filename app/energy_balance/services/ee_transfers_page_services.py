@@ -41,6 +41,7 @@ from app.energy_balance.services.station_ee_generation_page_services import (
 )
 from sqlalchemy.orm import joinedload
 
+from app.refdata.models.energy_systems.energy_unit_model import EnergyUnit
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.territories.foreign_border_country_model import ForeignBorderCountry
 
@@ -88,21 +89,32 @@ def _load_res_territory_maps_uncached() -> dict[str, Any]:
     rd_res_map: dict[int, set[int]] = defaultdict(set)
     res_ues_map: dict[int, int | None] = {}
     res_est_map: dict[int, int | None] = {}
+    tites_ues_ids: set[int] = set()
 
     rd_fd_single: dict[int, int | None] = {}
-    for rd in RegionalDistrict.query.all():
+    for rd in filter_by_db_version(RegionalDistrict.query, RegionalDistrict).all():
         rd_fd_single[rd.id] = rd.id_federal_district
 
-    for res in RegionalEnergySystem.query.options(
-        joinedload(RegionalEnergySystem.union_energy_system)
+    for res in filter_by_db_version(
+        RegionalEnergySystem.query.options(
+            joinedload(RegionalEnergySystem.union_energy_system)
+        ),
+        RegionalEnergySystem,
     ).all():
         for rd in res.regional_districts or []:
-            if rd.id is not None:
+            if rd.id in rd_fd_single:
                 res_rd_map[res.id].add(rd.id)
                 rd_res_map[rd.id].add(res.id)
         res_ues_map[res.id] = res.id_union_energy_system
         ues = res.union_energy_system
         res_est_map[res.id] = ues.id_energy_system_type if ues else None
+        if ues and "титэс" in (ues.name or "").casefold():
+            tites_ues_ids.add(ues.id)
+
+    eu_res_map = {
+        energy_unit.id: energy_unit.id_regional_energy_system
+        for energy_unit in filter_by_db_version(EnergyUnit.query, EnergyUnit).all()
+    }
 
     res_fd_map: dict[int, set[int]] = defaultdict(set)
     for res_id, rd_ids in res_rd_map.items():
@@ -123,11 +135,13 @@ def _load_res_territory_maps_uncached() -> dict[str, Any]:
         "rd_fd_map": dict(rd_fd_map),
         "res_ues_map": res_ues_map,
         "res_est_map": res_est_map,
+        "tites_ues_ids": tites_ues_ids,
+        "eu_res_map": eu_res_map,
     }
 
 
 def _get_res_territory_maps() -> dict[str, Any]:
-    return cached_load("res_territory_maps", (), _load_res_territory_maps_uncached)
+    return cached_load("res_territory_maps_v3", (), _load_res_territory_maps_uncached)
 
 
 def _transfer_matches_filters(
@@ -152,6 +166,7 @@ def _transfer_matches_filters(
     to_country_id = row.get("to_country_id")
     to_rd_id = row.get("to_rd_id")
     to_eu_id = row.get("to_eu_id")
+    to_ues_id = row.get("to_ues_id")
 
     linked_res_ids: set[int] = set()
     if from_res_id is not None:
@@ -159,19 +174,18 @@ def _transfer_matches_filters(
     elif from_rd_id is not None:
         linked_res_ids.update(rd_res_map.get(from_rd_id, set()))
 
-    source_ues_ids = {
-        res_ues_map.get(res_id)
-        for res_id in linked_res_ids
-        if res_ues_map.get(res_id) is not None
-    }
     source_est_ids = {
         res_est_map.get(res_id)
         for res_id in linked_res_ids
         if res_est_map.get(res_id) is not None
     }
 
-    if ues_filter and not (source_ues_ids & set(ues_filter)):
-        return False
+    if ues_filter:
+        # ОЭС определяется по РЭС-источнику. Субъект РФ может быть связан
+        # с несколькими РЭС и не должен попадать в результат целиком из-за
+        # совпадения только одного из них с выбранной ОЭС.
+        if from_res_id is None or res_ues_map.get(from_res_id) not in ues_filter:
+            return False
     if est_filter and not (source_est_ids & set(est_filter)):
         return False
     if res_filter and not (linked_res_ids & set(res_filter)):
@@ -208,11 +222,28 @@ def _transfer_matches_filters(
         matches_eu = bool(to_eu_filter) and to_eu_id is not None and to_eu_id in to_eu_filter
         if not (matches_res or matches_country or matches_rd or matches_eu):
             return False
+    to_ues_filter = _parse_int_list(filters.get("transfer_to_ues_filter"))
+    if to_ues_filter and to_ues_id not in to_ues_filter:
+        return False
     return True
 
 
 def _load_energy_unit_list() -> list[dict[str, Any]]:
     return [{"id": item.id, "name": item.name} for item in get_energy_unit_list().all()]
+
+
+def _load_transfer_ues_list() -> list[dict[str, Any]]:
+    ues_names = dict(get_union_energy_systems_map())
+    display_orders = get_union_energy_system_display_order_map()
+    return [
+        {"id": ues_id, "name": ues_name}
+        for ues_id, ues_name in sorted(
+            ues_names.items(),
+            key=lambda item: union_energy_system_hierarchy_sort_key(
+                item[0], ues_names, display_orders
+            ),
+        )
+    ]
 
 
 def _load_regional_district_list() -> list[dict[str, Any]]:
@@ -229,7 +260,10 @@ def _load_foreign_border_country_list() -> list[dict[str, Any]]:
         ForeignBorderCountry.display_order.asc().nullslast(),
         ForeignBorderCountry.name.asc(),
     ).all()
-    return [{"id": item.id, "name": item.name} for item in items]
+    return [
+        {"id": item.id, "name": item.name, "display_order": item.display_order}
+        for item in items
+    ]
 
 
 def _load_transfer_rows(
@@ -264,24 +298,77 @@ def _load_transfer_rows(
     return q.all()
 
 
+def _infer_transfer_target_res_id(
+    row: dict[str, Any],
+    *,
+    territory_maps: dict[str, Any],
+    ues_names: dict[int, str],
+    display_orders: dict[int, int | None],
+) -> int | None:
+    """Определить РЭС получателя, в том числе для субъекта РФ и энергорайона."""
+    res_id = row.get("to_res_id")
+    if res_id is not None:
+        return res_id
+
+    eu_id = row.get("to_eu_id")
+    if eu_id is not None:
+        return territory_maps.get("eu_res_map", {}).get(eu_id)
+
+    rd_id = row.get("to_rd_id")
+    if rd_id is None:
+        return None
+    res_ids = territory_maps.get("rd_res_map", {}).get(rd_id, set())
+    if not res_ids:
+        return None
+    if len(res_ids) == 1:
+        return next(iter(res_ids))
+
+    res_ues_map = territory_maps.get("res_ues_map", {})
+
+    def _candidate_sort_key(candidate_id: int) -> tuple:
+        ues_id = res_ues_map.get(candidate_id)
+        if ues_id is None:
+            ues_id = -1
+        return (
+            union_energy_system_hierarchy_sort_key(ues_id, ues_names, display_orders),
+            candidate_id,
+        )
+
+    return min(res_ids, key=_candidate_sort_key)
+
+
 def _infer_transfer_ues_id(
     rec: RegionalEnergySystemTransfer,
     *,
     res_ues_map: dict[int, int | None],
     rd_res_map: dict[int, set[int]],
+    tites_ues_ids: set[int] | None = None,
+    ues_names: dict[int, str] | None = None,
+    display_orders: dict[int, int | None] | None = None,
 ) -> int | None:
-    """Для сводных перетоков без ОЭС в файле — ОЭС по РЭС/субъекту источника."""
+    """Выводить перетоки от входящих в ТИТЭС РЭС из отдельного блока, не из ОЭС-родителя."""
+    from_res_id = getattr(rec, "id_from_regional_energy_system", None)
+    source_res_ues_id = res_ues_map.get(from_res_id) if from_res_id is not None else None
+    tites_ues_ids = tites_ues_ids or set()
+    if source_res_ues_id is not None:
+        if source_res_ues_id in tites_ues_ids:
+            return source_res_ues_id
+        if rec.id_union_energy_system in tites_ues_ids:
+            # Не показывать под ТИТЭС строки РЭС, которые к ней не относятся.
+            return source_res_ues_id
     if rec.id_union_energy_system is not None:
         return rec.id_union_energy_system
-    from_res_id = rec.id_from_regional_energy_system
     if from_res_id is not None:
-        return res_ues_map.get(from_res_id)
+        return source_res_ues_id
     from_rd_id = rec.id_from_regional_district
     if from_rd_id is not None:
-        for res_id in rd_res_map.get(from_rd_id, set()):
-            ues_id = res_ues_map.get(res_id)
-            if ues_id is not None:
-                return ues_id
+        target_res_id = _infer_transfer_target_res_id(
+            {"to_rd_id": from_rd_id},
+            territory_maps={"rd_res_map": rd_res_map, "res_ues_map": res_ues_map},
+            ues_names=ues_names or {},
+            display_orders=display_orders or {},
+        )
+        return res_ues_map.get(target_res_id)
     return None
 
 
@@ -292,6 +379,7 @@ def _build_transfer_pairs(
     """Собирает уникальные пары перетоков с периодами."""
     ues_names = dict(get_union_energy_systems_map())
     ues_names[-1] = "Не указано"
+    ues_display_orders = get_union_energy_system_display_order_map()
     res_names = dict(get_regional_energy_systems_name_map())
     rd_names = dict(get_regional_districts_map())
     eu_names = {item.id: item.name for item in get_energy_unit_list().all()}
@@ -299,6 +387,7 @@ def _build_transfer_pairs(
     res_ues_map = territory_maps["res_ues_map"]
     rd_res_map = territory_maps["rd_res_map"]
     res_est_map = territory_maps["res_est_map"]
+    tites_ues_ids = territory_maps.get("tites_ues_ids", set())
 
     pair_key_to_row: dict[tuple, dict[str, Any]] = {}
 
@@ -307,6 +396,9 @@ def _build_transfer_pairs(
             rec,
             res_ues_map=res_ues_map,
             rd_res_map=rd_res_map,
+            tites_ues_ids=tites_ues_ids,
+            ues_names=ues_names,
+            display_orders=ues_display_orders,
         )
         ues_id = resolved_ues_id if resolved_ues_id is not None else -1
         pair_key = (
@@ -337,6 +429,17 @@ def _build_transfer_pairs(
                 to_name = rd_names.get(rec.id_to_regional_district) or rec.to_display_name
             else:
                 to_name = eu_names.get(rec.id_to_energy_unit) or rec.to_display_name
+            target_res_id = _infer_transfer_target_res_id(
+                {
+                    "to_res_id": rec.id_to_regional_energy_system,
+                    "to_eu_id": rec.id_to_energy_unit,
+                    "to_rd_id": rec.id_to_regional_district,
+                },
+                territory_maps=territory_maps,
+                ues_names=ues_names,
+                display_orders=ues_display_orders,
+            )
+            target_ues_id = res_ues_map.get(target_res_id)
             pair_key_to_row[pair_key] = {
                 "ues_id": ues_id,
                 "ues_name": rec.source_oes_name or ues_names.get(ues_id, f"id={ues_id}"),
@@ -353,6 +456,8 @@ def _build_transfer_pairs(
                 "to_country_id": rec.id_to_foreign_border_country,
                 "to_rd_id": rec.id_to_regional_district,
                 "to_eu_id": rec.id_to_energy_unit,
+                "to_ues_id": target_ues_id,
+                "to_ues_name": ues_names.get(target_ues_id, "—"),
                 "periods": {period_key: None for period_key, _ in period_columns},
             }
 
@@ -385,7 +490,7 @@ def _get_all_transfer_pairs(
         )
         return _build_transfer_pairs(db_rows, period_columns)
 
-    return cached_load("transfer_pairs", key_parts, _loader)
+    return cached_load("transfer_pairs_v3", key_parts, _loader)
 
 
 def _transfer_row_destination_sort_key(row: dict[str, Any]) -> tuple:
@@ -622,6 +727,7 @@ def get_ee_transfers_page_data(
         "page": current_page,
         "per_page": per_page,
         "hierarchy": hierarchy,
+        "all_rows": filtered_pairs,
         "period_columns": period_columns,
         "period_mode": period_mode,
         "rounding_digits": rounding_digits,
@@ -644,5 +750,8 @@ def get_ee_transfers_page_data(
             "transfer_energy_units",
             (),
             _load_energy_unit_list,
+        ),
+        "transfer_ues_list": cached_load(
+            "transfer_ues_list", (), _load_transfer_ues_list
         ),
     }

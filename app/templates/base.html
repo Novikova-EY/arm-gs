@@ -16,7 +16,10 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/change_log_table.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fuel_equipment_group_tree.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}?v=24">
-    <script src="{{ url_for('static', filename='js/common/table_row_paste.js') }}?v=1"></script>
+    {% if request.blueprint == 'energy_balance_bp' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/energy_balance_table_typography.css') }}?v=7">
+    {% endif %}
+    <script src="{{ url_for('static', filename='js/common/table_row_paste.js') }}?v=2"></script>
 
     {% block extra_head %}{% endblock %}
 </head>

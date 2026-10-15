@@ -59,7 +59,7 @@ MODULE_LABELS = {
     "energy_consumption_bp": "Спрос",
     "long_term_consumption_bp": "Долгосрочный прогноз потребления",
     "electrical_intensity_root_bp": "Долгосрочный прогноз потребления",
-    "energy_balance_bp": "Балансы ЭЭ и ЭМ",
+    "energy_balance_bp": "Балансы электрической энергии и мощности",
     "ecology_bp": "Экология",
     "economics_bp": "Экономика",
     "territories_bp": "Характеристики территорий",

@@ -279,6 +279,7 @@
     }
 
     function applyPastedValues(targets, startIdx, values, formatPeakDatetime) {
+        var changed = [];
         for (var i = 0; i < values.length; i++) {
             var ti = startIdx + i;
             if (ti >= targets.length) {
@@ -291,7 +292,9 @@
             }
             inp.dispatchEvent(new Event("input", { bubbles: true }));
             inp.dispatchEvent(new Event("change", { bubbles: true }));
+            changed.push(inp);
         }
+        return changed;
     }
 
     function resolveRowTargetsFn(options, sampleInput) {
@@ -372,18 +375,25 @@
         }
 
         window.__armGsTableRowPasteActive = true;
+        var changedInputs = [];
         try {
             for (var r = 0; r < rowTrs.length; r++) {
                 var values = maybeTrimExcelLeadingColumns(grid[r] || [], startIdx);
-                applyPastedValues(
-                    rowTargets(rowTrs[r]),
-                    startIdx,
-                    values,
-                    formatPeakDatetime
+                changedInputs = changedInputs.concat(
+                    applyPastedValues(
+                        rowTargets(rowTrs[r]),
+                        startIdx,
+                        values,
+                        formatPeakDatetime
+                    )
                 );
             }
         } finally {
             window.__armGsTableRowPasteActive = false;
+        }
+
+        if (changedInputs.length && typeof options.onPasteComplete === "function") {
+            options.onPasteComplete(changedInputs);
         }
     });
 

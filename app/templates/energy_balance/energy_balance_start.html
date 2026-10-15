@@ -7,20 +7,30 @@
 {% if current_user.is_authenticated %}
 <div class="home-outline">
     <div class="home-outline__title-row">
-        <h1 class="home-outline__title">Модуль «Балансы ЭЭ и ЭМ»</h1>
+        <h1 class="home-outline__title">Модуль «Балансы электрической энергии и мощности»</h1>
     </div>
 
     <section class="home-outline__section">
+        <h2 class="home-outline__section-title">Отчетные сведения</h2>
         <div class="home-outline__tiles">
-            {{ hub_tile(url_for('energy_balance_bp.ee_generation'), 'Выработка ЭЭ') }}
-            {{ hub_tile(url_for('energy_balance_bp.ee_transfers'), 'Перетоки ЭЭ') }}
+            {{ hub_tile(url_for('energy_balance_bp.ee_generation'), 'Выработка электрической энергии') }}
+            {{ hub_tile(url_for('energy_balance_bp.ee_transfers'), 'Перетоки электрической энергии') }}
         </div>
     </section>
 
     <section class="home-outline__section">
+        <h2 class="home-outline__section-title">Агрегированные значения</h2>
         <div class="home-outline__tiles">
-            {{ hub_tile(url_for('energy_balance_bp.power_balance_table', slug='ees-rossii'), 'Балансы мощности', 'is-accent') }}
-            {{ hub_tile(url_for('energy_balance_bp.ee_balance_table', slug='ees-rossii'), 'Балансы энергии', 'is-accent') }}
+            {{ hub_tile(url_for('energy_balance_bp.ee_import_export'), 'Импорт/экспорт электрической энергии по ОЭС') }}
+            {{ hub_tile(url_for('energy_balance_bp.ee_receive_transfer_oes'), 'Прием/передача электрической энергии по ОЭС') }}
+        </div>
+    </section>
+
+    <section class="home-outline__section">
+        <h2 class="home-outline__section-title">Расчетные значения</h2>
+        <div class="home-outline__tiles">
+            {{ hub_tile(url_for('energy_balance_bp.power_balance_table', slug='ees-rossii'), 'Балансы электрической мощности', 'is-accent') }}
+            {{ hub_tile(url_for('energy_balance_bp.ee_balance_table', slug='ees-rossii'), 'Балансы электрической энергии', 'is-accent') }}
         </div>
     </section>
 </div>

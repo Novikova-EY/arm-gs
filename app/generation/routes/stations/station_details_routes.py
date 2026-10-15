@@ -7,13 +7,18 @@ from flask import (
 import time
 from functools import lru_cache
 from collections import defaultdict
+from decimal import Decimal
+from types import SimpleNamespace
 from typing import Optional
 from app.logs.services.logging_service import log_to_db
 from flask_login import login_required, current_user
 from flask import session
 from app.generation.forms.station_forms import StationFilterForm
 from app.generation.forms.machine_forms import MachineFilterSmallForm
-from app.generation.models.station.station_constants import STATION_SIGN_UNSPECIFIED
+from app.generation.models.station.station_constants import (
+    STATION_SIGN_CHOICES,
+    STATION_SIGN_UNSPECIFIED,
+)
 from app.generation.models.station.station_model import Station
 from app.generation.models.station.station_group_model import StationGroup
 from app.generation.models.machine.machine_model import Machine
@@ -52,6 +57,7 @@ from app.generation.services.station_services.station_type_flags import (
     is_gaes_station as _is_gaes_station,
     is_ges_station as _is_ges_station,
     is_ves_or_ses_station as _is_ves_or_ses_station,
+    is_snee_station as _is_snee_station,
 )
 from app.generation.services.station_services.ves_ses_plan_generation_services import (
     attach_ves_ses_plan_generation,
@@ -61,6 +67,24 @@ from app.generation.prospective_places.services.hydro_energy_forecast_services i
     hydro_forecast_owner_for_station,
     save_station_hydro_forecast_from_form,
 )
+
+
+def _attach_snee_plan_generation(station, start_year, end_year, year_features):
+    """Рассчитывает выработку СНЭЭ для лет с признаком «план»."""
+    efficiency = getattr(station, "station_snee_efficiency_percent", None)
+    consumption_by_year = getattr(station, "station_snee_energy_consumption_by_year", {})
+    calculated = {}
+    if efficiency is not None:
+        efficiency_ratio = Decimal(str(efficiency)) / Decimal("100")
+        for year in range(start_year, end_year + 1):
+            feature = str((year_features or {}).get(year, "")).lower()
+            consumption = consumption_by_year.get(year)
+            if "план" in feature and consumption is not None:
+                calculated[year] = Decimal(str(consumption)) * efficiency_ratio
+    station.station_energy_plan_calc_by_year = calculated
+    station.station_energy_plan_rule_by_year = {
+        year: "КПД, % × потребление СНЭЭ / 100" for year in calculated
+    }
 
 
 def _save_station_meta_from_form(
@@ -227,6 +251,9 @@ from app.generation.services.station_services.station_services import (
     save_station_gaes_charge_consumption_service,
     station_owner_energy_by_year,
     save_station_owner_energy_generation_service,
+    station_snee_energy_consumption_by_year,
+    station_snee_efficiency_percent,
+    save_station_snee_energy_consumption_service,
     _apply_machine_display_names,
     _apply_machine_gen_companies_for_version,
     get_gen_company_choices_for_version,
@@ -263,10 +290,11 @@ def _handle_station_machines_all_versions_save(
     end_year: int,
     is_gaes_station: bool,
     is_ves_or_ses_station: bool,
+    is_snee_station: bool,
 ) -> bool:
     """
-    Синхронизация кода КТО, выработки (заряда ГАЭС для ГАЭС,
-    выработки от собственника для ВЭС/СЭС)
+    Синхронизация кода КТО, выработки и специальных таблиц потребления
+    (заряд ГАЭС для ГАЭС, потребление СНЭЭ, выработка от собственника для ВЭС/СЭС)
     station_details во всех версиях БД.
     Возвращает True, если запрос был с all_versions=1 (вызвавший обработку или отказ).
     """
@@ -295,6 +323,7 @@ def _handle_station_machines_all_versions_save(
     sync_station_energy = True
     sync_station_gaes_charge = bool(is_gaes_station)
     sync_station_owner_energy = bool(is_ves_or_ses_station)
+    sync_station_snee_consumption = bool(is_snee_station)
 
     request_meta = {
         "path": request.path,
@@ -312,6 +341,7 @@ def _handle_station_machines_all_versions_save(
             sync_station_energy=sync_station_energy,
             sync_station_gaes_charge=sync_station_gaes_charge,
             sync_station_owner_energy=sync_station_owner_energy,
+            sync_station_snee_consumption=sync_station_snee_consumption,
             sync_station_general_info=sync_station_general_info,
             sync_station_kto=sync_station_kto,
             sync_machines=False,
@@ -321,6 +351,8 @@ def _handle_station_machines_all_versions_save(
         ue = result.get("updated_energy_rows", 0)
         ug = result.get("updated_gaes_rows", 0)
         uo = result.get("updated_owner_energy_rows", 0)
+        us = result.get("updated_snee_consumption_rows", 0)
+        ueff = result.get("updated_snee_efficiency_rows", 0)
         uk = result.get("updated_kto_stations", 0)
         warnings = result.get("warnings") or []
 
@@ -339,10 +371,15 @@ def _handle_station_machines_all_versions_save(
                 parts.append(f"строк заряда ГАЭС: {ug}")
             if sync_station_owner_energy:
                 parts.append(f"строк выработки от собственника: {uo}")
+            if sync_station_snee_consumption:
+                parts.append(f"строк потребления СНЭЭ: {us}")
+                parts.append(f"значений КПД СНЭЭ: {ueff}")
             if sync_station_gaes_charge:
                 tables_label = "Код КТО, таблицы выработки и заряда ГАЭС применены"
             elif sync_station_owner_energy:
                 tables_label = "Код КТО, таблицы выработки и выработки от собственника применены"
+            elif sync_station_snee_consumption:
+                tables_label = "Код КТО, таблицы выработки и потребления СНЭЭ применены"
             else:
                 tables_label = "Код КТО и таблица выработки применены"
             flash(
@@ -774,6 +811,7 @@ def station_details(station_id):
     is_gaes_station = _is_gaes_station(station)
     is_ges_station = _is_ges_station(station)
     is_ves_or_ses_station = _is_ves_or_ses_station(station)
+    is_snee_station = _is_snee_station(station)
 
     # Используем кэшированные справочники для оптимизации
     form_data = CacheService.get_station_details_form_data()
@@ -811,6 +849,19 @@ def station_details(station_id):
         }
     else:
         station.station_gaes_charge_by_year = {}
+
+    if is_snee_station:
+        station.station_snee_energy_consumption_by_year = (
+            station_snee_energy_consumption_by_year(
+                station.id, start_year, end_year, station_version_id
+            )
+        )
+        station.station_snee_efficiency_percent = station_snee_efficiency_percent(
+            station.id, station_version_id
+        )
+    else:
+        station.station_snee_energy_consumption_by_year = {}
+        station.station_snee_efficiency_percent = None
 
     if is_ves_or_ses_station:
         station.station_owner_energy_by_year = station_owner_energy_by_year(
@@ -963,6 +1014,7 @@ def station_details(station_id):
                     end_year=end_year,
                     is_gaes_station=is_gaes_station,
                     is_ves_or_ses_station=is_ves_or_ses_station,
+                    is_snee_station=is_snee_station,
                 )
                 if not machines_all_versions_handled:
                     if not form_machines.validate():
@@ -1061,6 +1113,16 @@ def station_details(station_id):
                         end_year,
                         request.form,
                     )
+                    snee_changes = []
+                    if is_snee_station:
+                        snee_changes = save_station_snee_energy_consumption_service(
+                            user,
+                            station,
+                            station_version_id,
+                            start_year,
+                            end_year,
+                            request.form,
+                        )
                     owner_changes = []
                     if is_ves_or_ses_station:
                         owner_changes = save_station_owner_energy_generation_service(
@@ -1074,12 +1136,14 @@ def station_details(station_id):
                     hydro_changes = save_station_hydro_forecast_from_form(
                         user, station, request.form
                     )
-                    if gen_changes or owner_changes or hydro_changes:
+                    if gen_changes or owner_changes or snee_changes or hydro_changes:
                         parts = []
                         if gen_changes:
                             parts.append("Выработка электроэнергии сохранена.")
                         if owner_changes:
                             parts.append("Выработка электроэнергии (от собственника) сохранена.")
+                        if snee_changes:
+                            parts.append("Потребление и КПД СНЭЭ сохранены.")
                         if hydro_changes:
                             parts.append("Прогноз выработки сохранён.")
                         flash(" ".join(parts), "success")
@@ -1149,6 +1213,7 @@ def station_details(station_id):
                 end_year=end_year,
                 is_gaes_station=is_gaes_station,
                 is_ves_or_ses_station=is_ves_or_ses_station,
+                is_snee_station=is_snee_station,
             )
             if form_machines.validate_on_submit() and not machines_all_versions_handled:
                 try:
@@ -1465,6 +1530,8 @@ def station_details(station_id):
     # Render template (measure render time separately)
     t3 = time.perf_counter()
     year_features = get_year_feature_dict()
+    if is_snee_station:
+        _attach_snee_plan_generation(station, start_year, end_year, year_features)
     print(f"[DIAG] get_year_feature_dict: {(time.perf_counter() - t3)*1000:.0f} мс")
     t4 = time.perf_counter()
     from app.common.services.help_services import format_decimal_for_display
@@ -1474,6 +1541,9 @@ def station_details(station_id):
 
     def format_station_energy_gaes_display(val):
         return format_decimal_for_display(val, digits=rounding_digits_gaes)
+
+    def format_station_energy_snee_display(val):
+        return format_decimal_for_display(val, digits=rounding_digits_gen)
 
     station_prospective_place_tep_links = _station_prospective_place_tep_links(
         station, station_version_id
@@ -1524,9 +1594,11 @@ def station_details(station_id):
         year_features=year_features,
         format_station_energy_gen_display=format_station_energy_gen_display,
         format_station_energy_gaes_display=format_station_energy_gaes_display,
+        format_station_energy_snee_display=format_station_energy_snee_display,
         is_gaes_station=is_gaes_station,
         is_ges_station=is_ges_station,
         is_ves_or_ses_station=is_ves_or_ses_station,
+        is_snee_station=is_snee_station,
         hydro_forecast=hydro_forecast,
         can_edit_hydro_forecast=can_edit_station_energy,
         # Pass backend timings to the template (fallback to 0 if not computed)
@@ -1937,6 +2009,16 @@ def station_details_station_energy_row(station_id):
         station.id, start_year, end_year, station_version_id
     )
 
+    is_snee = _is_snee_station(station)
+    year_features = get_year_feature_dict()
+    if is_snee:
+        station.station_snee_energy_consumption_by_year = station_snee_energy_consumption_by_year(
+            station.id, start_year, end_year, station_version_id
+        )
+        station.station_snee_efficiency_percent = station_snee_efficiency_percent(
+            station.id, station_version_id
+        )
+        _attach_snee_plan_generation(station, start_year, end_year, year_features)
     if _is_ves_or_ses_station(station):
         attach_ves_ses_plan_generation(
             station,
@@ -1958,6 +2040,8 @@ def station_details_station_energy_row(station_id):
         can_edit=can_edit_energy,
         can_edit_station_energy=can_edit_energy,
         format_station_energy_gen_display=format_station_energy_gen_display,
+        year_features=year_features,
+        is_snee_station=is_snee,
     )
     resp = make_response(html)
     resp.headers["Cache-Control"] = "no-store" if can_edit_energy else "public, max-age=120"
@@ -2089,6 +2173,378 @@ def station_details_station_owner_energy_row(station_id):
     resp = make_response(html)
     resp.headers["Cache-Control"] = "no-store" if can_edit_energy else "public, max-age=120"
     return resp
+
+
+@station_bp.route(
+    "/station_details/<int:station_id>/energy_value",
+    methods=["PATCH"],
+)
+@login_required
+def station_details_energy_value(station_id):
+    """Сохраняет одно значение выработки, потребления или КПД СНЭЭ."""
+    payload = request.get_json(silent=True) or {}
+    kind = payload.get("kind")
+    if kind not in {"generation", "snee_consumption", "snee_efficiency"}:
+        return jsonify(ok=False, error="Неизвестный тип значения"), 400
+
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return (
+            db.session.query(Station)
+            .options(joinedload(Station.station_type))
+            .filter_by(id=station_id)
+        )
+
+    station, station_version_id = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
+    if not station:
+        abort(404)
+
+    edit_roles = {
+        "admin", "generation-admin", "generation-editor",
+        "generation_admin", "generation_editor",
+    }
+    can_edit = current_user.is_authenticated and bool(
+        edit_roles.intersection(current_user.role_names)
+    )
+    if not can_edit and not can_fuel_user_edit_decentralized_station_details(current_user, station):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    if kind in {"snee_consumption", "snee_efficiency"} and not _is_snee_station(station):
+        return jsonify(ok=False, error="Поле доступно только для электростанций СНЭЭ"), 400
+
+    raw_value = payload.get("value")
+    raw_value = "" if raw_value is None else str(raw_value)
+    if raw_value.strip() not in {"", "—", "-", "–"}:
+        from app.generation.services.machine_services.machine_services import to_decimal
+
+        if to_decimal(raw_value) is None:
+            return jsonify(ok=False, error="Введите числовое значение"), 400
+
+    form_data = {}
+    if kind == "generation":
+        try:
+            year = int(payload.get("year"))
+        except (TypeError, ValueError):
+            return jsonify(ok=False, error="Неверный год"), 400
+        form_data = {
+            f"st_gen_{year}": raw_value,
+            f"st_gen_{year}_orig": payload.get("orig", ""),
+        }
+        save = save_station_energy_generation_service
+        start_year = end_year = year
+    elif kind == "snee_consumption":
+        try:
+            year = int(payload.get("year"))
+        except (TypeError, ValueError):
+            return jsonify(ok=False, error="Неверный год"), 400
+        form_data = {
+            f"st_snee_consumption_{year}": raw_value,
+            f"st_snee_consumption_{year}_orig": payload.get("orig", ""),
+        }
+        save = save_station_snee_energy_consumption_service
+        start_year = end_year = year
+    else:
+        form_data = {
+            "st_snee_efficiency_percent": raw_value,
+            "st_snee_efficiency_percent_orig": payload.get("orig", ""),
+        }
+        save = save_station_snee_energy_consumption_service
+        start_year, end_year = 1, 0
+
+    try:
+        changes = save(
+            current_user,
+            station,
+            station_version_id,
+            start_year,
+            end_year,
+            form_data,
+        )
+        if changes:
+            invalidate_cache("station_full", station_id=station.id)
+            invalidate_cache_pattern("station_list:*")
+        return jsonify(ok=True, changed=bool(changes))
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Не удалось сохранить значение station_details station_id=%s kind=%s",
+            station_id,
+            kind,
+        )
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+
+
+@station_bp.route(
+    "/station_details/<int:station_id>/meta_value",
+    methods=["PATCH"],
+)
+@login_required
+def station_details_meta_value(station_id):
+    """Сохраняет одно редактируемое поле блока «Общая информация»."""
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify(ok=False, error="Некорректный запрос"), 400
+    field_name = payload.get("field")
+    raw_value = payload.get("value")
+    if not isinstance(field_name, str) or field_name not in {
+        "name",
+        "id_station_group",
+        "id_condition_type",
+        "id_station_type",
+        "station_sign",
+        "note",
+        "external_code",
+        "kto",
+        "id_regional_district",
+        "location",
+        "id_regional_energy_system",
+        "id_energy_unit",
+    }:
+        return jsonify(ok=False, error="Неизвестное поле станции"), 400
+    if not isinstance(raw_value, str):
+        return jsonify(ok=False, error="Некорректное значение поля"), 400
+
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return (
+            db.session.query(Station)
+            .options(
+                joinedload(Station.station_type),
+                joinedload(Station.regional_district),
+                joinedload(Station.group),
+                joinedload(Station.condition_type),
+                joinedload(Station.energy_unit),
+            )
+            .filter_by(id=station_id)
+        )
+
+    station, station_version_id = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
+    if not station:
+        abort(404)
+
+    edit_roles = {
+        "admin", "generation-admin", "generation-editor",
+        "generation_admin", "generation_editor",
+    }
+    fuel_edit_roles = {"admin", "fuel-admin", "fuel-editor"}
+    can_edit = current_user.is_authenticated and bool(
+        edit_roles.intersection(current_user.role_names)
+    )
+    can_edit_fuel = current_user.is_authenticated and bool(
+        fuel_edit_roles.intersection(current_user.role_names)
+    )
+    can_edit_fuel_dz = can_fuel_user_edit_decentralized_station_details(
+        current_user, station
+    )
+    core_fields = {
+        "name",
+        "id_station_group",
+        "id_condition_type",
+        "note",
+        "id_regional_district",
+        "location",
+    }
+    generation_fields = {
+        "id_station_type",
+        "id_regional_energy_system",
+        "id_energy_unit",
+    }
+    if field_name in core_fields and not (can_edit or can_edit_fuel_dz):
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    if field_name in generation_fields and not can_edit:
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    if field_name == "station_sign" and not can_edit_fuel:
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    is_station_admin = current_user.is_authenticated and getattr(
+        current_user, "is_admin", False
+    )
+    if field_name in {"external_code", "kto"} and not is_station_admin:
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+
+    form = StationFilterForm()
+    if field_name == "id_condition_type":
+        form.id_condition_type.choices = choices_cache.get_choices(
+            ConditionType, ConditionType.id
+        )
+    elif field_name == "id_station_group":
+        form.id_station_group.choices = choices_cache.get_choices(
+            StationGroup, StationGroup.id
+        )
+    elif field_name == "id_station_type":
+        query = filter_by_explicit_db_version(
+            StationType.query.order_by(StationType.id),
+            StationType,
+            station_version_id,
+        )
+        form.id_station_type.choices = [(row.id, row.name) for row in query.all()]
+    elif field_name == "id_energy_unit":
+        query = filter_by_explicit_db_version(
+            EnergyUnit.query.order_by(EnergyUnit.id),
+            EnergyUnit,
+            station_version_id,
+        )
+        form.id_energy_unit.choices = [(row.id, row.name) for row in query.all()]
+    elif field_name == "id_regional_district":
+        form.id_regional_district.choices = get_regional_district_list_full()
+    elif field_name == "id_regional_energy_system":
+        query = filter_by_explicit_db_version(
+            RegionalEnergySystem.query.order_by(RegionalEnergySystem.id),
+            RegionalEnergySystem,
+            station_version_id,
+        )
+        form.id_regional_energy_system.choices = [
+            (row.id, row.name) for row in query.all()
+        ]
+    elif field_name == "station_sign":
+        form.station_sign.choices = STATION_SIGN_CHOICES
+
+    field = getattr(form, field_name)
+    raw_value = "" if raw_value is None else str(raw_value)
+    try:
+        field.process_formdata([raw_value])
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error="Некорректное значение поля"), 400
+    if not field.validate(form):
+        return jsonify(
+            ok=False,
+            error=" ".join(field.errors) or "Некорректное значение поля",
+        ), 400
+    if field_name == "external_code" and not str(field.data or "").strip():
+        return jsonify(ok=False, error="external_code не может быть пустым."), 400
+
+    current_values = {
+        "name": station.name,
+        "id_station_group": station.id_station_group,
+        "id_condition_type": station.id_condition_type or 0,
+        "id_station_type": station.id_station_type,
+        "station_sign": station.station_sign or STATION_SIGN_UNSPECIFIED,
+        "note": station.note or "",
+        "external_code": station.external_code or "",
+        "kto": station.kto or "",
+        "id_regional_district": station.id_regional_district,
+        "location": station.location or "",
+        "id_regional_energy_system": station.id_regional_energy_system,
+        "id_energy_unit": station.id_energy_unit,
+    }
+    current_values[field_name] = field.data
+    update_form = SimpleNamespace(
+        **{
+            name: SimpleNamespace(data=value)
+            for name, value in current_values.items()
+        }
+    )
+    regional_district_list = get_regional_district_list_full()
+
+    try:
+        changes = update_station_from_form_service(
+            session.get("username", "Неизвестный пользователь"),
+            station,
+            update_form,
+            regional_district_list,
+            can_edit_generation=can_edit or (is_station_admin and field_name in {"external_code", "kto"}),
+            can_edit_fuel=can_edit_fuel,
+            can_edit_fuel_dz=can_edit_fuel_dz,
+            only_fields={field_name},
+        )
+        if changes:
+            invalidate_cache("station_full", station_id=station.id)
+            invalidate_cache_pattern("station_list:*")
+        saved_values = {
+            "id_station_group": station.id_station_group,
+            "id_condition_type": station.id_condition_type,
+            "id_station_type": station.id_station_type,
+            "station_sign": station.station_sign or STATION_SIGN_UNSPECIFIED,
+            "id_regional_district": station.id_regional_district,
+            "id_regional_energy_system": station.id_regional_energy_system,
+            "id_energy_unit": station.id_energy_unit,
+        }
+        saved_value = (
+            saved_values[field_name]
+            if field_name in saved_values
+            else getattr(station, field_name)
+        )
+        return jsonify(
+            ok=True,
+            changed=bool(changes),
+            value="" if saved_value is None else str(saved_value),
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Не удалось сохранить поле станции station_id=%s field=%s",
+            station_id,
+            field_name,
+        )
+        return jsonify(ok=False, error="Не удалось сохранить поле станции"), 500
+
+
+@station_bp.route(
+    "/station_details/<int:station_id>/station_snee_energy_consumption_row",
+    methods=["GET"],
+)
+@login_required
+def station_details_station_snee_energy_consumption_row(station_id):
+    """HTML строки потребления СНЭЭ для обновления при смене округления."""
+    start_year = request.args.get("start_year", get_filter_start_year(), type=int)
+    end_year = request.args.get("end_year", get_filter_end_year(), type=int)
+    rounding_digits = _rounding_for_station_energy_fragment("rounding_digits_gen")
+    edit_roles = {
+        "admin", "generation-admin", "generation-editor",
+        "generation_admin", "generation_editor",
+    }
+    can_edit = current_user.is_authenticated and bool(
+        edit_roles.intersection(current_user.role_names)
+    )
+    current_version_id = get_current_db_version_id()
+
+    def _station_query():
+        return (
+            db.session.query(Station)
+            .options(joinedload(Station.station_type))
+            .filter_by(id=station_id)
+        )
+
+    station, station_version_id = _load_station_with_version(
+        _station_query, current_version_id, station_id=station_id
+    )
+    if not station:
+        abort(404)
+    if not _is_snee_station(station):
+        return make_response("", 204)
+
+    station.station_snee_energy_consumption_by_year = (
+        station_snee_energy_consumption_by_year(
+            station.id, start_year, end_year, station_version_id
+        )
+    )
+    from app.common.services.help_services import format_decimal_for_display
+
+    def format_station_energy_snee_display(value):
+        return format_decimal_for_display(value, digits=rounding_digits)
+
+    html = render_template(
+        "generation/stations/_station_snee_energy_consumption_row.html",
+        station=station,
+        start_year=start_year,
+        end_year=end_year,
+        can_edit=can_edit,
+        can_edit_station_energy=can_edit,
+        format_station_energy_snee_display=format_station_energy_snee_display,
+    )
+    response = make_response(html)
+    response.headers["Cache-Control"] = "no-store" if can_edit else "public, max-age=120"
+    return response
 
 
 @lru_cache(maxsize=128)

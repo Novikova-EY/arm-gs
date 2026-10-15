@@ -1,0 +1,19 @@
+{# Годовое потребление электроэнергии СНЭЭ. #}
+{% set can_edit_energy = can_edit_station_energy if can_edit_station_energy is defined else can_edit %}
+<tr>
+  <td class="text-start align-middle fw-semibold" style="min-width: 260px; vertical-align: middle; white-space: normal">
+    Потребление<br />электрической энергии,<br />млн кВтч<br /><span class="text-muted fw-normal" style="font-size: 0.85em">(год)</span>
+  </td>
+  {% for year in range(start_year, end_year + 1) %}
+  {% set value = station.station_snee_energy_consumption_by_year.get(year) %}
+  {% set display_value = format_station_energy_snee_display(value) if value is not none else '' %}
+  <td class="text-center align-middle" {% if value is not none %}title="{{ value | format_decimal(0) | e }}"{% endif %}>
+    {% if can_edit_energy %}
+    <input type="hidden" name="st_snee_consumption_{{ year }}_orig" value="{{ display_value }}" />
+    <input type="text" class="form-control text-center forecast-paste-input" name="st_snee_consumption_{{ year }}" data-save-kind="snee_consumption" data-orig="{{ display_value }}" data-year="{{ year }}" inputmode="decimal" autocomplete="off" value="{{ display_value }}" style="min-width: 6rem" />
+    {% elif value is not none %}
+    {{ format_station_energy_snee_display(value) }}
+    {% else %}—{% endif %}
+  </td>
+  {% endfor %}
+</tr>

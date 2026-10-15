@@ -2530,7 +2530,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const table = document.querySelector(".power-demand-summary-table[data-save-cell-url]");
     const saveBtn = document.getElementById("demandSummarySaveBtn");
-    if (!table || !saveBtn) {
+    if (!table) {
         return;
     }
     const saveUrl = table.dataset.saveCellUrl;
@@ -2742,7 +2742,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return parsePeakDatetimeParts(normalizePeakDatetimeText(val));
     }
 
-    function validateDemandSummaryPeak(inp) {
+    function validateDemandSummaryPeak(inp, showAlert) {
         if (inp.dataset.parameterKey !== "peak_datetime") {
             return true;
         }
@@ -2756,18 +2756,22 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         var pdt = parsePeakDatetimeSummary(inp.value);
         if (!pdt) {
-            alert("«Дата и время»: укажите дату в формате ДД.ММ.ГГГГ ЧЧ:ММ или только год (ГГГГ).");
+            if (showAlert !== false) {
+                alert("«Дата и время»: укажите дату в формате ДД.ММ.ГГГГ ЧЧ:ММ или только год (ГГГГ).");
+            }
             return false;
         }
         var colY = parseInt(sl, 10);
         if (!Number.isNaN(colY) && pdt.getFullYear() !== colY) {
-            alert(
-                "Год в «Дата и время» (" +
-                    pdt.getFullYear() +
-                    ") должен совпадать с годом столбца (" +
-                    colY +
-                    ")."
-            );
+            if (showAlert !== false) {
+                alert(
+                    "Год в «Дата и время» (" +
+                        pdt.getFullYear() +
+                        ") должен совпадать с годом столбца (" +
+                        colY +
+                        ")."
+                );
+            }
             return false;
         }
         return true;
@@ -2982,39 +2986,62 @@ document.addEventListener("DOMContentLoaded", function () {
         return { url: saveVariantUrl, payload: vPayload };
     }
 
-    async function savePerimeterVariantSelect(sel) {
+    async function savePerimeterVariantSelect(sel, options) {
+        options = options || {};
         const req = buildPerimeterVariantSaveRequest(sel);
+        const cell = sel.closest("td");
         if (req.skip) {
             return true;
         }
         if (req.error) {
-            alert(req.error);
+            if (cell) {
+                cell.classList.remove("pd-summary-cell-save-success");
+                cell.classList.add("pd-summary-cell-save-error");
+            }
+            if (options.showAlert !== false) {
+                alert(req.error);
+            }
             return false;
         }
-        const vResp = await fetch(req.url, {
-            method: "POST",
-            credentials: "same-origin",
-            headers: headers,
-            body: JSON.stringify(req.payload)
-        });
-        const vData = await vResp.json().catch(function () { return null; });
-        if (!vResp.ok || !vData || !vData.ok) {
-            const vMsg = (vData && vData.error) ? vData.error : "Не удалось сохранить вариант периметра.";
-            alert(vMsg);
-            return false;
+        if (cell) {
+            cell.classList.remove("pd-summary-cell-save-success", "pd-summary-cell-save-error");
         }
-        sel.setAttribute("data-initial", sel.value || "");
-        const startTr = findSummaryBlockStartTr(sel.closest("tr"));
-        if (startTr) {
-            collectSummaryBlockRows(startTr).forEach(function (tr) {
-                if (sel.value) {
-                    tr.setAttribute("data-perimeter-variant-code", sel.value);
-                } else {
-                    tr.removeAttribute("data-perimeter-variant-code");
-                }
+        try {
+            const vResp = await fetch(req.url, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: headers,
+                body: JSON.stringify(req.payload)
             });
+            const vData = await vResp.json().catch(function () { return null; });
+            if (!vResp.ok || !vData || !vData.ok) {
+                throw new Error((vData && vData.error) ? vData.error : "Не удалось сохранить вариант периметра.");
+            }
+            sel.setAttribute("data-initial", sel.value || "");
+            const startTr = findSummaryBlockStartTr(sel.closest("tr"));
+            if (startTr) {
+                collectSummaryBlockRows(startTr).forEach(function (tr) {
+                    if (sel.value) {
+                        tr.setAttribute("data-perimeter-variant-code", sel.value);
+                    } else {
+                        tr.removeAttribute("data-perimeter-variant-code");
+                    }
+                });
+            }
+            if (cell) {
+                cell.classList.add("pd-summary-cell-save-success");
+            }
+            return true;
+        } catch (error) {
+            if (cell) {
+                cell.classList.add("pd-summary-cell-save-error");
+            }
+            console.error("[power_demand summary variant save]", error);
+            if (options.showAlert !== false) {
+                alert(error && error.message ? error.message : "Ошибка сети при сохранении.");
+            }
+            return false;
         }
-        return true;
     }
 
     syncAllPdEcPerimeterVariantSelectInitials(table);
@@ -3027,11 +3054,181 @@ document.addEventListener("DOMContentLoaded", function () {
             ev.target.matches("select.pd-ec-perimeter-variant-select")
         ) {
             syncPdEcPerimeterVariantSelectLabels(table);
+            if (variantSelectNeedsSave(ev.target)) {
+                savePerimeterVariantSelect(ev.target, { showAlert: false });
+            }
         }
     });
 
+    const cellSavePromises = new WeakMap();
+    const cellSaveTimers = new WeakMap();
+
+    function getSummaryCellFeedbackTarget(input) {
+        return input && input.closest ? input.closest("td") : null;
+    }
+
+    function clearSummaryCellFeedback(input) {
+        const cell = getSummaryCellFeedbackTarget(input);
+        if (cell) {
+            cell.classList.remove("pd-summary-cell-save-success", "pd-summary-cell-save-error");
+        }
+    }
+
+    function setSummaryCellFeedback(input, state) {
+        const cell = getSummaryCellFeedbackTarget(input);
+        if (!cell) {
+            return;
+        }
+        cell.classList.remove("pd-summary-cell-save-success", "pd-summary-cell-save-error");
+        if (state === "success") {
+            cell.classList.add("pd-summary-cell-save-success");
+        } else if (state === "error") {
+            cell.classList.add("pd-summary-cell-save-error");
+        }
+    }
+
+    function buildSummaryCellPayload(inp, value) {
+        const sliceRaw = inp.dataset.slice || inp.getAttribute("data-slice");
+        const pk = inp.dataset.parameterKey || inp.getAttribute("data-parameter-key") || "";
+        const payload = {
+            demand_model_name: inp.dataset.model || inp.getAttribute("data-model"),
+            parameter_key: pk,
+            value: value,
+            rounding_digits: pk.indexOf("coeff_k_") === 0 ? roundingDigitsK : roundingDigits,
+            rounding_digits_k: roundingDigitsK,
+            slice_key: sliceRaw === "hist" ? "hist" : (sliceRaw ? parseInt(sliceRaw, 10) : null)
+        };
+        const ridAttr = inp.getAttribute("data-row-id");
+        if (ridAttr !== null && ridAttr !== "") {
+            const rid = parseInt(ridAttr, 10);
+            if (!Number.isNaN(rid)) {
+                payload.row_id = rid;
+            }
+        }
+        const blockStartTr = findSummaryBlockStartTr(inp.closest("tr"));
+        const pfk = inp.getAttribute("data-parent-fk") ||
+            (blockStartTr ? blockStartTr.getAttribute("data-parent-fk-column") : null);
+        if (pfk) {
+            payload.parent_fk_column = pfk;
+        }
+        const pidi = inp.getAttribute("data-parent-id") ||
+            (blockStartTr ? blockStartTr.getAttribute("data-parent-id") : null);
+        if (pidi !== null && pidi !== "") {
+            payload.parent_id = parseInt(pidi, 10);
+        }
+        if (!payload.demand_model_name && blockStartTr) {
+            payload.demand_model_name = blockStartTr.getAttribute("data-demand-model-name") || "";
+        }
+        const pvcTr = inp.closest("tr");
+        const pvcFromSelect = perimeterVariantPayloadValue(inp);
+        if (pvcFromSelect !== null && pvcFromSelect !== undefined) {
+            payload.perimeter_variant_code = pvcFromSelect;
+        } else {
+            const pvcAttr = pvcTr ? pvcTr.getAttribute("data-perimeter-variant-code") : null;
+            if (pvcAttr) {
+                payload.perimeter_variant_code = pvcAttr;
+            }
+        }
+        const logScope = table.getAttribute("data-summary-log-scope");
+        if (logScope) {
+            payload.summary_log_scope = logScope;
+        }
+        return payload;
+    }
+
+    async function saveSummaryCell(inp, options) {
+        options = options || {};
+        if (!inp || !isPdSummaryHistInputAllowed(inp)) {
+            return false;
+        }
+        const currentSave = cellSavePromises.get(inp);
+        if (currentSave) {
+            const result = await currentSave;
+            if (!result) {
+                return false;
+            }
+            if (normForCompare(inp.value) !== normForCompare(inp.getAttribute("data-initial") || "")) {
+                return saveSummaryCell(inp, options);
+            }
+            return true;
+        }
+
+        formatPeakDatetimeSummaryInput(inp);
+        if (!validateDemandSummaryPeak(inp, options.showAlert !== false)) {
+            setSummaryCellFeedback(inp, "error");
+            return false;
+        }
+        const initial = inp.getAttribute("data-initial") || "";
+        const value = inp.value;
+        if (normForCompare(initial) === normForCompare(value)) {
+            return true;
+        }
+        const payload = buildSummaryCellPayload(inp, value);
+        if (!payload.demand_model_name || !payload.parameter_key) {
+            const error = new Error("Не удалось сохранить ячейку: нет модели или параметра. Обновите страницу и попробуйте снова.");
+            setSummaryCellFeedback(inp, "error");
+            if (options.showAlert) {
+                alert(error.message);
+            }
+            return false;
+        }
+
+        clearSummaryCellFeedback(inp);
+        const savePromise = (async function () {
+            try {
+                const response = await fetch(saveUrl, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: headers,
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json().catch(function () { return null; });
+                if (!response.ok || !data || !data.ok) {
+                    throw new Error((data && data.error) ? data.error : "Не удалось сохранить.");
+                }
+                const savedValue = typeof data.display_value === "string"
+                    ? (data.display_value === "—" ? "" : data.display_value)
+                    : value;
+                inp.setAttribute("data-initial", savedValue);
+                if (inp.value === value) {
+                    inp.value = savedValue;
+                    setSummaryCellFeedback(inp, "success");
+                }
+                return true;
+            } catch (error) {
+                if (inp.value === value) {
+                    setSummaryCellFeedback(inp, "error");
+                }
+                console.error("[power_demand summary cell save]", error);
+                if (options.showAlert) {
+                    alert(error && error.message ? error.message : "Ошибка сети при сохранении.");
+                }
+                return false;
+            } finally {
+                cellSavePromises.delete(inp);
+                if (normForCompare(inp.value) !== normForCompare(inp.getAttribute("data-initial") || "")) {
+                    scheduleSummaryCellSave(inp, 0);
+                }
+            }
+        })();
+        cellSavePromises.set(inp, savePromise);
+        return savePromise;
+    }
+
+    function scheduleSummaryCellSave(inp, delay) {
+        const previousTimer = cellSaveTimers.get(inp);
+        if (previousTimer) {
+            clearTimeout(previousTimer);
+        }
+        const timer = setTimeout(function () {
+            cellSaveTimers.delete(inp);
+            saveSummaryCell(inp, { showAlert: false });
+        }, delay);
+        cellSaveTimers.set(inp, timer);
+    }
+
     async function runDemandSummarySave() {
-        if (saveBtn.disabled) {
+        if (!saveBtn || saveBtn.disabled) {
             return;
         }
         syncAllPdEcPerimeterVariantSelectInitials(table);
@@ -3057,158 +3254,120 @@ document.addEventListener("DOMContentLoaded", function () {
         );
         const changed = [];
         inputs.forEach(function (inp) {
-            if (!isPdSummaryHistInputAllowed(inp)) {
-                return;
-            }
-            const initial = inp.getAttribute("data-initial") || "";
-            if (normForCompare(initial) !== normForCompare(inp.value)) {
+            if (isPdSummaryHistInputAllowed(inp) &&
+                normForCompare(inp.getAttribute("data-initial") || "") !== normForCompare(inp.value)) {
                 changed.push(inp);
             }
         });
         changed.sort(function (a, b) {
-            const pa = (a.dataset.parameterKey || a.getAttribute("data-parameter-key") || "");
-            const pb = (b.dataset.parameterKey || b.getAttribute("data-parameter-key") || "");
+            const pa = a.dataset.parameterKey || a.getAttribute("data-parameter-key") || "";
+            const pb = b.dataset.parameterKey || b.getAttribute("data-parameter-key") || "";
             const ac = pa.indexOf("coeff_k_") === 0 ? 0 : 1;
             const bc = pb.indexOf("coeff_k_") === 0 ? 0 : 1;
-            if (ac !== bc) {
-                return ac - bc;
-            }
-            return 0;
+            return ac - bc;
         });
         if (changed.length === 0 && changedVariants.length === 0) {
-            alert("Нет изменений для сохранения.");
+            alert("Все изменения уже сохранены.");
             return;
         }
 
         const originalHtml = saveBtn.innerHTML;
         saveBtn.disabled = true;
         saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Сохранение...';
-
         try {
             for (let vi = 0; vi < changedVariants.length; vi++) {
                 const sel = changedVariants[vi];
                 if (!(await savePerimeterVariantSelect(sel))) {
-                    saveBtn.innerHTML = originalHtml;
-                    saveBtn.disabled = false;
                     return;
                 }
             }
             for (let i = 0; i < changed.length; i++) {
-                const inp = changed[i];
-                formatPeakDatetimeSummaryInput(inp);
-                if (!validateDemandSummaryPeak(inp)) {
-                    saveBtn.innerHTML = originalHtml;
-                    saveBtn.disabled = false;
+                if (!(await saveSummaryCell(changed[i], { showAlert: true }))) {
                     return;
                 }
-                const sliceRaw = inp.dataset.slice || inp.getAttribute("data-slice");
-                const pk =
-                    inp.dataset.parameterKey || inp.getAttribute("data-parameter-key") || "";
-                const payload = {
-                    demand_model_name: inp.dataset.model || inp.getAttribute("data-model"),
-                    parameter_key: pk,
-                    value: inp.value,
-                    rounding_digits: pk.indexOf("coeff_k_") === 0 ? roundingDigitsK : roundingDigits,
-                    rounding_digits_k: roundingDigitsK,
-                    slice_key: sliceRaw === "hist" ? "hist" : (sliceRaw ? parseInt(sliceRaw, 10) : null)
-                };
-                const ridAttr = inp.getAttribute("data-row-id");
-                if (ridAttr !== null && ridAttr !== "") {
-                    const rid = parseInt(ridAttr, 10);
-                    if (!Number.isNaN(rid)) {
-                        payload.row_id = rid;
-                    }
-                }
-                const blockStartTr = findSummaryBlockStartTr(inp.closest("tr"));
-                const pfk =
-                    inp.getAttribute("data-parent-fk") ||
-                    (blockStartTr
-                        ? blockStartTr.getAttribute("data-parent-fk-column")
-                        : null);
-                if (pfk) {
-                    payload.parent_fk_column = pfk;
-                }
-                const pidi =
-                    inp.getAttribute("data-parent-id") ||
-                    (blockStartTr ? blockStartTr.getAttribute("data-parent-id") : null);
-                if (pidi !== null && pidi !== "") {
-                    payload.parent_id = parseInt(pidi, 10);
-                }
-                if (!payload.demand_model_name && blockStartTr) {
-                    payload.demand_model_name =
-                        blockStartTr.getAttribute("data-demand-model-name") || "";
-                }
-                const pvcTr = inp.closest("tr");
-                const pvcFromSelect = perimeterVariantPayloadValue(inp);
-                if (pvcFromSelect !== null && pvcFromSelect !== undefined) {
-                    payload.perimeter_variant_code = pvcFromSelect;
-                } else {
-                    const pvcAttr = pvcTr ? pvcTr.getAttribute("data-perimeter-variant-code") : null;
-                    if (pvcAttr) {
-                        payload.perimeter_variant_code = pvcAttr;
-                    }
-                }
-                if (!payload.demand_model_name || !payload.parameter_key) {
-                    alert(
-                        "Не удалось сохранить ячейку: нет модели или параметра. Обновите страницу и попробуйте снова."
-                    );
-                    saveBtn.innerHTML = originalHtml;
-                    saveBtn.disabled = false;
-                    return;
-                }
-                const logScope = table.getAttribute("data-summary-log-scope");
-                if (logScope) {
-                    payload.summary_log_scope = logScope;
-                }
-                const response = await fetch(saveUrl, {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: headers,
-                    body: JSON.stringify(payload)
-                });
-                const data = await response.json().catch(function () { return null; });
-                if (!response.ok || !data || !data.ok) {
-                    const msg = (data && data.error) ? data.error : "Не удалось сохранить.";
-                    alert(msg);
-                    saveBtn.innerHTML = originalHtml;
-                    saveBtn.disabled = false;
-                    return;
-                }
-                if (typeof data.display_value === "string") {
-                    inp.value = data.display_value === "—" ? "" : data.display_value;
-                }
-                inp.setAttribute("data-initial", inp.value || "");
             }
+            syncPdEcPerimeterVariantSelectLabels(table);
             if (changed.length > 0) {
                 window.armGsPageScrollRestore.reload({ table: table, changedInputs: changed });
             } else if (changedVariants.length > 0) {
-                window.armGsPageScrollRestore.reload({
-                    table: table,
-                    changedInputs: changedVariants
-                });
+                window.armGsPageScrollRestore.reload({ table: table, changedInputs: changedVariants });
             }
-            syncPdEcPerimeterVariantSelectLabels(table);
-            saveBtn.innerHTML = originalHtml;
-            saveBtn.disabled = false;
-        } catch (e) {
-            alert("Ошибка сети при сохранении.");
+        } catch (error) {
+            alert(error && error.message ? error.message : "Ошибка сети при сохранении.");
+        } finally {
             saveBtn.innerHTML = originalHtml;
             saveBtn.disabled = false;
         }
     }
 
-    saveBtn.addEventListener("click", function () {
-        runDemandSummarySave();
+    if (saveBtn) {
+        saveBtn.addEventListener("click", function () {
+            runDemandSummarySave();
+        });
+    }
+
+    const summaryCellFocusSelector =
+        ".fuel-param-input, .pd-coeff-manual-input, .pd-coeff-medium-k-input, " +
+        ".pd-coeff-display-k, .pd-coeff-display-mw, .pd-coeff-source-select";
+
+    table.addEventListener("focusin", function (event) {
+        const input = event.target;
+        if (!input.matches || !input.matches(summaryCellFocusSelector)) {
+            return;
+        }
+        const cell = getSummaryCellFeedbackTarget(input);
+        if (cell) {
+            cell.classList.add("pd-summary-cell-focused");
+        }
+    });
+
+    table.addEventListener("focusout", function (event) {
+        const input = event.target;
+        if (!input.matches || !input.matches(summaryCellFocusSelector)) {
+            return;
+        }
+        const cell = getSummaryCellFeedbackTarget(input);
+        if (cell && (!event.relatedTarget || !cell.contains(event.relatedTarget))) {
+            cell.classList.remove("pd-summary-cell-focused");
+        }
+    });
+
+    table.addEventListener("input", function (event) {
+        const input = event.target;
+        if (!input || !input.matches || !input.matches(
+            ".fuel-param-input[data-model][data-slice], input.pd-coeff-medium-k-input[data-model][data-slice][data-parameter-key^=\"coeff_k_\"]"
+        )) {
+            return;
+        }
+        if (!isPdSummaryHistInputAllowed(input)) {
+            return;
+        }
+        clearSummaryCellFeedback(input);
+        scheduleSummaryCellSave(input, 400);
+    });
+
+    table.addEventListener("change", function (event) {
+        const input = event.target;
+        if (input && input.matches && input.matches(
+            ".fuel-param-input[data-model][data-slice], input.pd-coeff-medium-k-input[data-model][data-slice][data-parameter-key^=\"coeff_k_\"]"
+        )) {
+            scheduleSummaryCellSave(input, 0);
+        }
     });
 
     table.addEventListener("blur", function (e) {
-        if (
-            e.target &&
-            e.target.matches(
-                'input.fuel-param-input[data-parameter-key="peak_datetime"], textarea.fuel-param-input[data-parameter-key="peak_datetime"]'
-            )
-        ) {
+        if (!e.target || !e.target.matches) {
+            return;
+        }
+        if (e.target.matches(
+            'input.fuel-param-input[data-parameter-key="peak_datetime"], textarea.fuel-param-input[data-parameter-key="peak_datetime"]'
+        )) {
             formatPeakDatetimeSummaryInput(e.target);
+        }
+        if (e.target.matches(
+            ".fuel-param-input[data-model][data-slice], input.pd-coeff-medium-k-input[data-model][data-slice][data-parameter-key^=\"coeff_k_\"]"
+        )) {
+            scheduleSummaryCellSave(e.target, 0);
         }
     }, true);
 

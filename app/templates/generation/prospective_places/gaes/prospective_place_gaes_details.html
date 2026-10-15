@@ -85,14 +85,14 @@
     </div>
 
     <div class="d-flex align-items-center mb-4">
-        <h2 class="mb-0 ms-3 d-flex align-items-center gap-3">
+        <h1 class="mb-0 ms-3 d-flex align-items-center gap-3">
             {{ place.site_name or 'Перспективная площадка ГАЭС' }}
             {% if can_edit %}
                 <span class="edit-indicator ms-3">Режим редактирования</span>
             {% else %}
                 <span class="readonly-indicator ms-3">Режим просмотра</span>
             {% endif %}
-        </h2>
+        </h1>
     </div>
 
     {% if can_edit %}

@@ -494,7 +494,7 @@ def handle_machine_get(station_id, machine_id, start_year, end_year, rounding_di
     advanced_form = EditMachineForm(prefix="adv_")
     perf_mark("forms_init")
 
-    _fill_main_form_choices(main_form)
+    _fill_main_form_choices(main_form, machine)
     _fill_fuel_equipment_group_choices(main_form, station.id, machine)
     # _fill_advanced_form_choices(advanced_form) - убрано, так как choices устанавливаются ниже
 
@@ -1815,7 +1815,7 @@ def handle_machine_post(station_id, machine_id, form_data, user, start_year, end
                                     machine_id=machine.id,
                                     **redirect_args))
 
-    _fill_main_form_choices(main_form)
+    _fill_main_form_choices(main_form, machine)
     _fill_fuel_equipment_group_choices(main_form, station.id, machine)
     # Проверяем, нужно ли заполнять advanced_form choices
     print(f"[DEBUG] handle_machine_post: tes_types entries: {len(advanced_form.tes_types.entries)}")
@@ -2802,15 +2802,26 @@ def _fill_fuel_equipment_group_choices(main_form, station_id: int, machine=None)
             main_form.id_fuel_equipment_group.data = choices_cache.EMPTY_VALUE_ID
 
 
-def _fill_main_form_choices(form):
-    """Заполняет choices для основной формы с использованием унифицированного кэширования"""
+def _fill_main_form_choices(form, machine=None):
+    """Заполняет choices основной формы и сохраняет выбранный тип агрегата."""
     # Добавляем дефолтное значение "не указано", чтобы оно отображалось в select
     # и могло выступать "пустым" значением до обязательного выбора пользователем.
     form.id_gen_company.choices = choices_cache.get_choices_with_default(GenCompany, GenCompany.id)
     form.id_energy_area.choices = choices_cache.get_choices_with_default(EnergyArea, EnergyArea.id)
     form.id_machine_type.choices = choices_cache.get_choices(MachineType, MachineType.id)
     form.id_tes_machine_type.choices = choices_cache.get_choices(TesMachineType, TesMachineType.id)
-    form.id_equipment_group.choices = choices_cache.get_choices_with_default(EquipmentGroupType, EquipmentGroupType.id)
+    equipment_group_choices = list(
+        choices_cache.get_choices_with_default(EquipmentGroupType, EquipmentGroupType.id)
+    )
+    current_group_id = getattr(machine, "id_equipment_group", None)
+    current_group = getattr(machine, "equipment_group", None)
+    if current_group_id and not any(
+        choice_id == current_group_id for choice_id, _ in equipment_group_choices
+    ):
+        current_group_name = getattr(current_group, "name", None)
+        if current_group_name:
+            equipment_group_choices.append((current_group_id, current_group_name))
+    form.id_equipment_group.choices = equipment_group_choices
     
     form.id_condition_type.choices = choices_cache.get_choices(ConditionType, ConditionType.id)
     if form.id_condition_type.data is None:

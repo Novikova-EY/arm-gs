@@ -1010,6 +1010,7 @@
                 if (row.parent_id != null) {
                     ta.setAttribute("data-parent-id", String(row.parent_id));
                 }
+                td.classList.add("pd-summary-control-cell");
                 td.appendChild(ta);
             } else {
                 var inp = document.createElement("input");
@@ -1044,6 +1045,7 @@
                 if (row.parent_id != null) {
                     inp.setAttribute("data-parent-id", String(row.parent_id));
                 }
+                td.classList.add("pd-summary-control-cell");
                 td.appendChild(inp);
             }
         } else if (uesReadonlyCoeffDisplay || isFoCoeffCzTotalRow(row)) {
@@ -1069,6 +1071,7 @@
                 ro.setAttribute("title", yrTt);
                 ro.setAttribute("data-db-full", yrTt);
             }
+            td.classList.add("pd-summary-control-cell");
             td.appendChild(ro);
         } else {
             td.textContent = value;
@@ -1216,7 +1219,7 @@
             });
             var manTd = document.createElement("td");
             manTd.className =
-                "text-center summary-coeff-mixin-cell summary-coeff-manual-cell";
+                "text-center summary-coeff-mixin-cell summary-coeff-manual-cell pd-summary-control-cell";
             var manInp = document.createElement("input");
             manInp.type = "text";
             manInp.inputMode = "decimal";
@@ -1235,7 +1238,7 @@
             tr.appendChild(manTd);
             var srcTd = document.createElement("td");
             srcTd.className =
-                "text-center summary-coeff-mixin-cell summary-coeff-source-cell";
+                "text-center summary-coeff-mixin-cell summary-coeff-source-cell pd-summary-control-cell";
             var sel = document.createElement("select");
             sel.className = "form-select form-select-sm pd-coeff-source-select";
             sel.setAttribute(
@@ -1304,6 +1307,7 @@
                 kRo.lang = "ru";
                 kRo.className =
                     "form-control form-control-lg text-center pd-coeff-display-k";
+                td.classList.add("pd-summary-control-cell");
                 kRo.value = kDisp;
                 kRo.setAttribute(
                     "aria-label",
@@ -1426,7 +1430,7 @@
 
     function buildNoteCell(row, cfg, noteRowspan) {
         var td = document.createElement("td");
-        td.className = "summary-entity-note-cell text-start";
+        td.className = "summary-entity-note-cell pd-summary-note-cell text-start";
         td.rowSpan = noteRowspan > 0 ? noteRowspan : 1;
         td.setAttribute("data-original-note-rowspan", String(row.entity_rowspan || 1));
         if (isCoeffRoute(cfg)) {
@@ -1461,11 +1465,13 @@
                 ta.setAttribute("data-parent-id", String(row.parent_id));
             }
             ta.setAttribute("aria-label", (row.entity_label || "") + " — примечание");
+            wrap.classList.add("pd-summary-note-editable");
             wrap.appendChild(ta);
         } else {
             var span = document.createElement("span");
             span.className = "text-break";
             span.textContent = noteText;
+            wrap.classList.add("pd-summary-note-readonly");
             wrap.appendChild(span);
         }
         td.appendChild(wrap);
@@ -3337,7 +3343,7 @@
         document.dispatchEvent(new CustomEvent("pd-summary-rows-rendered"));
     }
 
-    var RENDER_ROWS_CHUNK_SIZE = 48;
+    var RENDER_ROWS_CHUNK_SIZE = 256;
     var lastRenderedSummaryPayload = null;
 
     function renderSummaryTableBody(payload) {
@@ -3398,10 +3404,19 @@
 
         tbody.replaceChildren();
         var rowIndex = 0;
+        var renderChunkSize = rows.length <= 1024 ? rows.length : RENDER_ROWS_CHUNK_SIZE;
         return new Promise(function (resolve) {
+            function scheduleRenderChunk() {
+                if (document.visibilityState === "hidden") {
+                    window.setTimeout(renderChunk, 0);
+                    return;
+                }
+                window.requestAnimationFrame(renderChunk);
+            }
+
             function renderChunk() {
                 var fragChunk = document.createDocumentFragment();
-                var end = Math.min(rowIndex + RENDER_ROWS_CHUNK_SIZE, rows.length);
+                var end = Math.min(rowIndex + renderChunkSize, rows.length);
                 for (; rowIndex < end; rowIndex++) {
                     buildRowNodes(
                         rows[rowIndex],
@@ -3423,13 +3438,13 @@
                 }
                 tbody.appendChild(fragChunk);
                 if (rowIndex < rows.length) {
-                    window.requestAnimationFrame(renderChunk);
+                    scheduleRenderChunk();
                     return;
                 }
                 finishSummaryTableBodyRender(tbody, payload);
                 resolve();
             }
-            window.requestAnimationFrame(renderChunk);
+            scheduleRenderChunk();
         });
     }
 

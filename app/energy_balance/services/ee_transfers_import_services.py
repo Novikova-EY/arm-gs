@@ -33,6 +33,12 @@ from app.energy_balance.services.ee_transfers_resolve_services import (
     TransferImportResolver,
     clear_transfer_import_resolver_cache,
 )
+from app.energy_balance.services.ee_import_export_oes_value_services import (
+    recalculate_ee_import_export_oes_values,
+)
+from app.energy_balance.services.ee_receive_transfer_oes_value_services import (
+    recalculate_ee_receive_transfer_oes_values,
+)
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from config import SCHEMA_ENERGY_BALANCE
 
@@ -401,6 +407,14 @@ def import_ee_transfers_from_excel(file, user: str) -> dict[str, Any]:
     except Exception:
         pass
 
+    recalculate_ee_import_export_oes_values(
+        year_number=parsed.year_number,
+        version_id=version_id,
+    )
+    recalculate_ee_receive_transfer_oes_values(
+        year_number=parsed.year_number,
+        version_id=version_id,
+    )
     _commit_with_retry()
 
     from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache

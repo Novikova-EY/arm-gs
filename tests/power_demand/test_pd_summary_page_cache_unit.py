@@ -142,6 +142,35 @@ def test_strip_pagination_makes_shared_build_key(app):
             )
 
 
+def test_full_build_cache_can_be_page_specific(app):
+    with app.app_context():
+        cache._memory_cache = {}
+        cache._cache_generation = 0
+        calls = {"n": 0}
+
+        def build_loader():
+            calls["n"] += 1
+            return {"page": calls["n"]}
+
+        with patch.object(cache, "get_redis_client", return_value=None):
+            with patch.object(cache, "get_current_db_version_id", return_value=3):
+                with app.test_request_context(
+                    "/power_demand/summary/oes/data.json?pd_data_segments=core&pd_page=1&pd_page_size=2"
+                ):
+                    b1 = cache.cached_load_pd_summary_full_build(
+                        "oes", build_loader, include_pagination=True
+                    )
+                with app.test_request_context(
+                    "/power_demand/summary/oes/data.json?pd_data_segments=core&pd_page=2&pd_page_size=2"
+                ):
+                    b2 = cache.cached_load_pd_summary_full_build(
+                        "oes", build_loader, include_pagination=True
+                    )
+                assert calls["n"] == 2
+                assert b1 == {"page": 1}
+                assert b2 == {"page": 2}
+
+
 def test_full_build_cache_shared_across_pages(app):
     with app.app_context():
         cache._memory_cache = {}
@@ -184,6 +213,49 @@ def test_oes_national_prefix_sources_cache_roundtrip(app):
                 got[0]["v"] = 99
                 again = cache.get_cached_oes_national_prefix_sources([2024, 2025], 1)
                 assert again[0]["v"] == 1
+
+
+def test_clear_page_cache_bumps_generation_without_scanning_redis(app):
+    class FakeRedis:
+        def __init__(self):
+            self.values = {}
+            self.generation = 0
+            self.scans = 0
+
+        def get(self, key):
+            if key == cache._REDIS_GENERATION_KEY:
+                return str(self.generation).encode()
+            return self.values.get(key)
+
+        def incr(self, key):
+            assert key == cache._REDIS_GENERATION_KEY
+            self.generation += 1
+            return self.generation
+
+        def setex(self, key, _ttl, value):
+            self.values[key] = value
+
+        def delete(self, key):
+            self.values.pop(key, None)
+
+        def scan_iter(self, **_kwargs):
+            self.scans += 1
+            return iter(self.values)
+
+    with app.app_context():
+        cache._memory_cache = {}
+        redis = FakeRedis()
+        with patch.object(cache, "get_redis_client", return_value=redis):
+            with patch.object(cache, "get_current_db_version_id", return_value=3):
+                cache.set_cached_value("summary-key", {"value": "old"})
+                assert cache.get_cached_value("summary-key") == {"value": "old"}
+
+                cache.clear_pd_summary_page_cache()
+
+                assert redis.generation == 1
+                assert redis.scans == 0
+                assert cache.get_cached_value("summary-key") is None
+                assert "summary-key" not in redis.values
 
 
 def test_invalidate_power_demand_display_caches_bumps_and_clears_memory(app):

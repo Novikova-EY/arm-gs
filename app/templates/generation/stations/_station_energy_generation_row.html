@@ -18,9 +18,11 @@ can_edit_station_energy is defined else can_edit %}
   {% for year in range(start_year, end_year + 1) %}
   {% set stored = station.station_energy_by_year.get(year) %}
   {% set calc = plan_calc.get(year) %}
-  {% set is_calc_display = calc is not none and (stored is none or stored == calc) %}
+  {% set year_feature = (year_features.get(year, '') if year_features is defined else '') | lower %}
+  {% set is_snee_plan_year = is_snee_station is defined and is_snee_station and 'план' in year_feature %}
+  {% set is_calc_display = calc is not none and (is_snee_plan_year or stored is none or stored == calc) %}
   {% set plan_rule = plan_rules.get(year) if is_calc_display else none %}
-  {% set v = stored if stored is not none else calc %}
+  {% set v = calc if is_snee_plan_year and calc is not none else (stored if stored is not none else calc) %}
   {% set v_full = (v | format_decimal(0)) if v is not none else '' %}
   <td
     class="text-center align-middle{% if is_calc_display %} ves-ses-plan-calc-cell{% endif %}"
@@ -28,11 +30,16 @@ can_edit_station_energy is defined else can_edit %}
   >
     {% if can_edit_energy %}
       {% set disp = format_station_energy_gen_display(v) if v is not none else '' %}
-      <input type="hidden" name="st_gen_{{ year }}_orig" value="{% if stored is none %}{% else %}{{ disp }}{% endif %}" />
+      {% set stored_disp = format_station_energy_gen_display(stored) if stored is not none else '' %}
+      <input type="hidden" name="st_gen_{{ year }}_orig" value="{{ stored_disp }}" />
       <input
         type="text"
         class="form-control text-center forecast-paste-input{% if is_calc_display %} ves-ses-plan-calc-input{% endif %}"
         name="st_gen_{{ year }}"
+        data-save-kind="generation"
+        data-orig="{{ stored_disp }}"
+        data-year="{{ year }}"
+        {% if is_snee_plan_year %}data-snee-plan-year="1"{% endif %}
         inputmode="decimal"
         autocomplete="off"
         value="{{ disp }}"

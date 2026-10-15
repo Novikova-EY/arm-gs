@@ -20,7 +20,7 @@
         <a href="{{ url_for('station_bp.station_list') }}" class="btn btn-secondary fs-5">Электростанции РФ</a>
     </div>
 
-    <h2 class="mb-4">{{ station_add_title | default('Создание новой  электростанции') }}</h2>
+    <h1 class="mb-4">{{ station_add_title | default('Создание новой  электростанции') }}</h1>
     
     <form method="POST" id="addStationForm">
         {{ form.hidden_tag() }}

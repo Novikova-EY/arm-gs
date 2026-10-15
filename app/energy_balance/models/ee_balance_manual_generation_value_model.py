@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Ручной ввод выработки СНЭЭ / СЭС / ВЭС в плановых годах баланса ЭЭ."""
+"""Ручная плановая выработка СНЭЭ и ТЭС, ГЭС, ГАЭС всех ОЭС."""
 from sqlalchemy.sql import func
 from sqlalchemy import Index, Numeric, text
 

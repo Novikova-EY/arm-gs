@@ -25,6 +25,7 @@ OUTPUT_DOCUMENT_GROUPS: tuple[dict[str, Any], ...] = (
             "generation_machines.json",
             "generation_stations.json",
             "gentypes_info.json",
+            "hour_info.json",
             "line_capital_investments.json",
             "month_info.json",
             "newlines_building.json",

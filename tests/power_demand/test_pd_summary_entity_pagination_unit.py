@@ -3,9 +3,12 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from app.power_demand.services.pd_summary_entity_pagination import (
     filter_segment_rows_to_pagination_page,
     paginate_oes_summary_rows,
+    paginate_summary_entities_for_scope,
     paginate_summary_rows_for_scope,
     split_oes_summary_rows_for_pagination,
     split_summary_rows_for_pagination,
@@ -345,6 +348,152 @@ def test_split_oes_does_not_treat_nt_aggregation_inside_ues_as_suffix():
     assert any(r["entity_label"] == "Новые территории" for r in sections[0])
     assert sections[1][0]["entity_label"] == "ОЭС Урала"
     assert sfx[0]["entity_label"].startswith("ТИТЭС")
+
+
+def test_oes_page_build_defers_tites_tree_until_last_page(monkeypatch):
+    from app.power_demand.services import demand_summary_services as service
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CORE,
+    )
+
+    entities = [
+        SimpleNamespace(
+            label="ЕЭС России",
+            depth=0,
+            entity_kind="default",
+            demand_model_name="EnergySystemTypeDemandParameter",
+        ),
+        SimpleNamespace(
+            label="ОЭС Центра",
+            depth=0,
+            entity_kind="group",
+            demand_model_name="UnionEnergySystemDemandParameter",
+            id_union_energy_system=1,
+        ),
+        SimpleNamespace(
+            label="ОЭС Юга",
+            depth=0,
+            entity_kind="group",
+            demand_model_name="UnionEnergySystemDemandParameter",
+            id_union_energy_system=2,
+        ),
+    ]
+    tites = SimpleNamespace(
+        label="ТИТЭС и децентрализованная зона",
+        depth=0,
+        entity_kind="aggregation_level",
+    )
+    built = []
+    monkeypatch.setattr(service, "_build_tites_entity", lambda: built.append(True) or tites)
+
+    first_page, first_meta = service._paginate_oes_entities_with_lazy_tites(
+        list(entities), (1, 1), frozenset({PD_SUMMARY_SEGMENT_CORE})
+    )
+    assert first_meta["has_next"] is True
+    assert not built
+    assert all(entity is not tites for entity in first_page)
+
+    last_page, last_meta = service._paginate_oes_entities_with_lazy_tites(
+        list(entities), (2, 1), frozenset({PD_SUMMARY_SEGMENT_CORE})
+    )
+    assert last_meta["has_next"] is False
+    assert built == [True]
+    assert last_page[-1] is tites
+
+
+def test_paginate_summary_entities_selects_oes_page_with_prefix_and_suffix():
+    prefix = SimpleNamespace(
+        label="ЕЭС России",
+        depth=0,
+        entity_kind="default",
+        demand_model_name="EnergySystemTypeDemandParameter",
+    )
+    first = SimpleNamespace(
+        label="ОЭС Центра",
+        depth=0,
+        entity_kind="perimeter_variant",
+        demand_model_name="UnionEnergySystemDemandParameter",
+        id_union_energy_system=1,
+    )
+    first_variant = SimpleNamespace(
+        label="ОЭС Центра с НТ",
+        depth=0,
+        entity_kind="perimeter_variant",
+        demand_model_name="UnionEnergySystemDemandParameter",
+        id_union_energy_system=1,
+    )
+    second = SimpleNamespace(
+        label="ОЭС Юга",
+        depth=0,
+        entity_kind="union_energy_system",
+        demand_model_name="UnionEnergySystemDemandParameter",
+        id_union_energy_system=2,
+    )
+    suffix = SimpleNamespace(
+        label="ТИТЭС и децентрализованная зона",
+        depth=0,
+        entity_kind="aggregation_level",
+    )
+    entities = [prefix, first, first_variant, second, suffix]
+
+    page1, meta1 = paginate_summary_entities_for_scope(
+        entities, "oes", page=1, page_size=1
+    )
+    page2, meta2 = paginate_summary_entities_for_scope(
+        entities, "oes", page=2, page_size=1
+    )
+
+    assert page1 == [prefix, first, first_variant]
+    assert page2 == [second, suffix]
+    assert meta1["total_sections"] == 2
+    assert meta1["section_titles"] == ["ОЭС Центра"]
+    assert meta1["has_next"] is True
+    assert meta2["section_titles"] == ["ОЭС Юга"]
+    assert meta2["has_prev"] is True
+    assert meta2["has_next"] is False
+
+
+def test_paginate_summary_entities_is_limited_to_core_segment():
+    from app.power_demand.services.demand_summary_services import (
+        _paginate_summary_entities_for_page,
+    )
+
+    entities = [object(), object()]
+    selected, meta = _paginate_summary_entities_for_page(
+        entities,
+        "oes",
+        (1, 1),
+        frozenset({"core", "calc_max"}),
+    )
+
+    assert selected is entities
+    assert meta is None
+
+
+def test_paginate_summary_entities_fo_and_ez_sections():
+    fo_entities = [
+        SimpleNamespace(label="ЦЗ", depth=0, entity_kind="centralized_zone", demand_model_name="CentralizedZoneDemandParameter"),
+        SimpleNamespace(label="Центральный ФО", depth=0, entity_kind="group", demand_model_name="FederalDistrictDemandParameter", id_federal_district=10),
+        SimpleNamespace(label="Южный ФО", depth=0, entity_kind="perimeter_variant", demand_model_name="FederalDistrictDemandParameter", id_federal_district=20),
+    ]
+    ez_entities = [
+        SimpleNamespace(label="ЕЭС", depth=0, entity_kind="default", demand_model_name="EnergySystemTypeDemandParameter"),
+        SimpleNamespace(label="ЭЗ-1", depth=0, entity_kind="group", demand_model_name="EnergyZoneDemandParameter", id_energy_zone=1),
+        SimpleNamespace(label="ЭЗ-2", depth=0, entity_kind="perimeter_variant", demand_model_name="EnergyZoneDemandParameter", id_energy_zone=2),
+        SimpleNamespace(label="Новые территории", depth=0, entity_kind="aggregation_level"),
+    ]
+
+    fo_page, fo_meta = paginate_summary_entities_for_scope(
+        fo_entities, "fo", page=2, page_size=1
+    )
+    ez_page, ez_meta = paginate_summary_entities_for_scope(
+        ez_entities, "ez", page=2, page_size=1
+    )
+
+    assert [entity.label for entity in fo_page] == ["Южный ФО"]
+    assert fo_meta["total_sections"] == 2
+    assert [entity.label for entity in ez_page] == ["ЭЗ-2", "Новые территории"]
+    assert ez_meta["total_sections"] == 2
 
 
 def test_split_groups_perimeter_variant_oes_blocks_by_ues_id():

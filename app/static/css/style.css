@@ -2,6 +2,18 @@ body {
     font-family: 'Roboto', sans-serif !important;
 }
 
+/* Единый адаптивный размер заголовков страниц во всех разделах АРМ,
+   как у заголовка сводки нагрузок (Bootstrap h1). */
+body h1 {
+    font-size: calc(1.375rem + 1.5vw) !important;
+}
+
+@media (min-width: 1200px) {
+    body h1 {
+        font-size: 2.5rem !important;
+    }
+}
+
 /* Стартовые страницы разделов (Топливо, Генерация и т.п.): немного шире .container на широких экранах */
 @media (min-width: 1400px) {
     .container.content-start-container {

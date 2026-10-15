@@ -13,9 +13,6 @@ from app.energy_balance.services.ee_balance_custom_flow_services import (
     update_custom_flow_value,
 )
 from app.energy_balance.services.ee_balance_excel_services import export_ee_balance_to_excel
-from app.energy_balance.services.ee_balance_export_services import (
-    update_ee_balance_export_value,
-)
 from app.energy_balance.services.balance_sheet_note_services import (
     BALANCE_KIND_EE,
     update_balance_sheet_note,
@@ -26,6 +23,8 @@ from app.energy_balance.services.ee_balance_manual_generation_services import (
 from app.energy_balance.services.ee_balance_page_services import (
     build_ee_balance_table_context,
     first_row_active_slug,
+    URAL_WITHOUT_TYUMEN_SLUG,
+    SEVERO_ZAPAD_CENTER_SLUG,
     format_ee_balance_cell,
     get_ee_balance_sheet,
     get_ee_balance_sheets,
@@ -34,26 +33,46 @@ from app.energy_balance.services.ee_balance_page_services import (
     resolve_ee_balance_rounding_digits,
     tites_east_child_nav_sheets,
 )
+from app.energy_balance.services.ee_import_export_value_services import (
+    update_ee_import_export_value,
+)
+from app.energy_balance.services.ee_receive_transfer_oes_value_services import (
+    update_ee_receive_transfer_value,
+)
 from app.energy_balance.services.ee_balance_tes_forecast_services import (
     build_tes_forecast_context,
     is_tes_forecast_sheet,
     update_tes_forecast_value,
 )
+from app.energy_balance.services.ee_balance_hydro_own_needs_services import (
+    save_hydro_own_needs_coefficient,
+)
 from app.energy_balance.services.ee_balance_ves_ses_page_services import (
     _format_cell,
     _can_edit_ves_ses_energy,
+    build_aes_page_context,
+    build_gaes_page_context,
+    build_ges_page_context,
+    build_snee_page_context,
     build_ves_ses_page_context,
     can_edit_station_energy_row,
 )
 from app.energy_balance.services.ee_balance_ves_ses_excel_services import (
     export_ves_ses_to_excel,
 )
+from app.common.services.help_services import format_decimal_trim_for_display
 from app.generation.models.station.station_model import Station
 from app.generation.services.station_services.station_services import (
     save_station_energy_generation_service,
     save_station_owner_energy_generation_service,
 )
-from app.generation.services.station_services.station_type_flags import is_ves_or_ses_station
+from app.generation.services.station_services.station_type_flags import (
+    is_aes_station,
+    is_gaes_station,
+    is_ges_station,
+    is_snee_station,
+    is_ves_or_ses_station,
+)
 from app.generation.services.station_services.ves_ses_plan_generation_services import (
     attach_ves_ses_plan_generation,
     save_station_exploitation_date_expected,
@@ -133,6 +152,64 @@ def ee_balance_ves_ses():
     return render_template("energy_balance/ee_balance/ee_balance_ves_ses.html", **context)
 
 
+def _render_station_focus_page(context_builder, endpoint: str):
+    from app.generation.services.station_services.filters_services import (
+        extract_filters_from_args,
+    )
+
+    context = context_builder(
+        start_year=request.args.get("start_year"),
+        end_year=request.args.get("end_year"),
+        rounding_digits=request.args.get("rounding_digits"),
+        page=request.args.get("page"),
+        per_page=request.args.get("page_size", request.args.get("per_page")),
+        list_filters=extract_filters_from_args(request.args),
+    )
+    from app.generation.forms.station_forms import StationFilterForm
+
+    context["form"] = StationFilterForm()
+    context["station_filters_action"] = url_for(endpoint)
+    context["station_filters_reset_url"] = url_for(
+        endpoint,
+        start_year=context.get("start_year"),
+        end_year=context.get("end_year"),
+        rounding_digits=context.get("rounding_digits"),
+    )
+    return render_template("energy_balance/ee_balance/ee_balance_ves_ses.html", **context)
+
+
+@energy_balance_bp.route("/ee_balance/aes/")
+@login_required
+def ee_balance_aes():
+    return _render_station_focus_page(
+        build_aes_page_context, "energy_balance_bp.ee_balance_aes"
+    )
+
+
+@energy_balance_bp.route("/ee_balance/ges/")
+@login_required
+def ee_balance_ges():
+    return _render_station_focus_page(
+        build_ges_page_context, "energy_balance_bp.ee_balance_ges"
+    )
+
+
+@energy_balance_bp.route("/ee_balance/gaes/")
+@login_required
+def ee_balance_gaes():
+    return _render_station_focus_page(
+        build_gaes_page_context, "energy_balance_bp.ee_balance_gaes"
+    )
+
+
+@energy_balance_bp.route("/ee_balance/snee/")
+@login_required
+def ee_balance_snee():
+    return _render_station_focus_page(
+        build_snee_page_context, "energy_balance_bp.ee_balance_snee"
+    )
+
+
 @energy_balance_bp.route("/ee_balance/ses-ves/export/")
 @login_required
 def export_ee_balance_ves_ses():
@@ -179,14 +256,49 @@ def ee_balance_ves_ses_value():
     except (TypeError, ValueError):
         return jsonify(ok=False, error="Неверный запрос"), 400
     kind = str(data.get("kind") or "").strip()
-    if kind not in {"energy", "owner", "exploitation_date"}:
+    if kind not in {"energy", "owner", "exploitation_date", "coefficient"}:
         return jsonify(ok=False, error="Неверный тип значения"), 400
 
     station = Station.query.options(joinedload(Station.station_type)).get(station_id)
     if station is None:
         return jsonify(ok=False, error="Станция не найдена"), 404
-    if not is_ves_or_ses_station(station):
-        return jsonify(ok=False, error="Доступно только для СЭС и ВЭС"), 400
+    is_aes = is_aes_station(station)
+    is_ges = is_ges_station(station)
+    is_gaes = is_gaes_station(station)
+    is_snee = is_snee_station(station)
+    is_station_focus = is_aes or is_ges or is_gaes or is_snee
+    if not (is_ves_or_ses_station(station) or is_station_focus):
+        return jsonify(ok=False, error="Доступно только для СЭС, ВЭС, АЭС, ГЭС, ГАЭС и СНЭЭ"), 400
+    if kind == "coefficient":
+        if not (is_ges or is_gaes):
+            return jsonify(ok=False, error="Коэффициент доступен только для ГЭС и ГАЭС"), 400
+        if not can_edit_station_energy_row(station):
+            return jsonify(ok=False, error="Недостаточно прав"), 403
+        try:
+            coefficient = save_hydro_own_needs_coefficient(
+                station.id,
+                "ges" if is_ges else "gaes",
+                data.get("value"),
+            )
+        except ValueError as exc:
+            return jsonify(ok=False, error=str(exc)), 400
+        except Exception:
+            current_app.logger.exception("Не удалось сохранить коэффициент СН ГЭС/ГАЭС")
+            return jsonify(ok=False, error="Не удалось сохранить коэффициент"), 500
+        coefficient_display = (
+            format_decimal_trim_for_display(coefficient, digits=0)
+            if coefficient is not None
+            else ""
+        )
+        return jsonify(
+            ok=True,
+            kind=kind,
+            display=coefficient_display,
+            raw=coefficient_display,
+            changed=True,
+        )
+    if is_station_focus and kind != "energy":
+        return jsonify(ok=False, error="Для АЭС, ГЭС, ГАЭС и СНЭЭ доступно только редактирование выработки"), 400
     if not can_edit_station_energy_row(station):
         return jsonify(ok=False, error="Недостаточно прав"), 403
 
@@ -407,6 +519,7 @@ def ee_balance_tes_forecast_value(slug: str):
         row_key=saved.get("row_key"),
         month=saved.get("month"),
         cells=saved.get("cells") or {},
+        formula_cells=saved.get("formula_cells") or {},
         tes_total_display=tes_total_display,
     )
 
@@ -493,35 +606,16 @@ def ee_balance_custom_flow_item(slug: str, row_id: int):
     return jsonify(ok=True, year=saved["year"], display=display)
 
 
-@energy_balance_bp.route("/ee_balance/<slug>/export_value/", methods=["PATCH"])
-@login_required
-def ee_balance_export_value(slug: str):
-    _require_sheet(slug)
-    data = request.get_json(silent=True) or {}
-    if "year" not in data:
-        return jsonify(ok=False, error="Неверный запрос"), 400
-    digits = resolve_ee_balance_rounding_digits(
-        data.get("rounding_digits", request.args.get("rounding_digits"))
-    )
-    try:
-        saved = update_ee_balance_export_value(slug, data.get("year"), data.get("value"))
-    except ValueError as exc:
-        return jsonify(ok=False, error=str(exc)), 400
-    except Exception:
-        current_app.logger.exception("Не удалось сохранить экспорт электрической энергии баланса")
-        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
-    display = (
-        ""
-        if saved.get("value") is None
-        else format_ee_balance_cell(saved["value"], digits=digits)
-    )
-    return jsonify(ok=True, year=saved["year"], display=display)
-
-
 @energy_balance_bp.route("/ee_balance/<slug>/generation_value/", methods=["PATCH"])
 @login_required
 def ee_balance_generation_value(slug: str):
-    _require_sheet(slug)
+    if not _can_edit_ves_ses_energy():
+        return jsonify(ok=False, error="Недостаточно прав"), 403
+    if slug == URAL_WITHOUT_TYUMEN_SLUG:
+        if get_ee_balance_sheet("ural") is None:
+            abort(404)
+    else:
+        _require_sheet(slug)
     data = request.get_json(silent=True) or {}
     if "year" not in data:
         return jsonify(ok=False, error="Неверный запрос"), 400
@@ -539,7 +633,7 @@ def ee_balance_generation_value(slug: str):
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
         current_app.logger.exception(
-            "Не удалось сохранить выработку СНЭЭ/СЭС/ВЭС баланса электрической энергии"
+            "Не удалось сохранить выработку СНЭЭ/ТЭС баланса электрической энергии"
         )
         return jsonify(ok=False, error="Не удалось сохранить значение"), 500
     display = (
@@ -555,7 +649,8 @@ def ee_balance_generation_value(slug: str):
 @energy_balance_bp.route("/ee_balance/<slug>/note/", methods=["PATCH"])
 @login_required
 def ee_balance_note(slug: str):
-    _require_sheet(slug)
+    if slug not in {URAL_WITHOUT_TYUMEN_SLUG, SEVERO_ZAPAD_CENTER_SLUG}:
+        _require_sheet(slug)
     data = request.get_json(silent=True) or {}
     try:
         saved = update_balance_sheet_note(
@@ -567,4 +662,77 @@ def ee_balance_note(slug: str):
         current_app.logger.exception("Не удалось сохранить примечание баланса электрической энергии")
         return jsonify(ok=False, error="Не удалось сохранить примечание"), 500
     return jsonify(ok=True, note=saved.get("note") or "", row_key=saved.get("row_key") or "")
+
+
+@energy_balance_bp.route("/ee_balance/<slug>/import_export_value/", methods=["PATCH"])
+@login_required
+def ee_balance_import_export_value(slug: str):
+    _require_sheet(slug)
+    data = request.get_json(silent=True) or {}
+    if "year" not in data:
+        return jsonify(ok=False, error="Неверный запрос"), 400
+    try:
+        ues_id = int(data.get("ues_id"))
+        country_id = int(data.get("country_id"))
+        year = int(data.get("year"))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error="Неверные данные ячейки"), 400
+    try:
+        saved = update_ee_import_export_value(
+            ues_id=ues_id,
+            country_id=country_id,
+            year=year,
+            direction=data.get("direction"),
+            raw_value=data.get("value"),
+        )
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception("Не удалось сохранить импорт/экспорт ЭЭ")
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+    digits = resolve_ee_balance_rounding_digits(
+        data.get("rounding_digits", request.args.get("rounding_digits"))
+    )
+    display = (
+        ""
+        if saved.get("value") is None
+        else format_ee_balance_cell(saved["value"], digits=digits)
+    )
+    return jsonify(ok=True, year=saved["year"], display=display)
+
+
+@energy_balance_bp.route("/ee_balance/<slug>/receive_transfer_value/", methods=["PATCH"])
+@login_required
+def ee_balance_receive_transfer_value(slug: str):
+    _require_sheet(slug)
+    data = request.get_json(silent=True) or {}
+    if "year" not in data:
+        return jsonify(ok=False, error="Неверный запрос"), 400
+    try:
+        source_ues_id = int(data.get("source_ues_id"))
+        target_ues_id = int(data.get("target_ues_id"))
+        year = int(data.get("year"))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error="Неверные данные ячейки"), 400
+    try:
+        saved = update_ee_receive_transfer_value(
+            source_ues_id=source_ues_id,
+            target_ues_id=target_ues_id,
+            year=year,
+            raw_value=data.get("value"),
+        )
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception("Не удалось сохранить прием/передачу ЭЭ")
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+    digits = resolve_ee_balance_rounding_digits(
+        data.get("rounding_digits", request.args.get("rounding_digits"))
+    )
+    display = (
+        ""
+        if saved.get("value") is None
+        else format_ee_balance_cell(saved["value"], digits=digits)
+    )
+    return jsonify(ok=True, year=saved["year"], display=display)
 

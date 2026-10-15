@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "ai-humanizer": {
+      "source": "ofershap/ai-humanizer",
+      "sourceType": "github",
+      "skillPath": "skills/ai-humanizer/SKILL.md",
+      "computedHash": "ab5ae0d5dfb9364281ef82eb7b702d8eeed7b0d2efff650657efaa16b835998f"
+    },
+    "code-humanizer": {
+      "source": "LeonardNJU/code-humanizer",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "aeafd04de8d1a9b7ded1c7fa64aa57613c7af8bd875f5a22151bc74b10caf290"
+    }
+  }
+}

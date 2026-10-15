@@ -202,9 +202,16 @@ def test_json_date_or_dash_and_year_as_date():
     assert svc.json_year_as_date(None) == "-"
 
 
+def test_machine_page_number_strips_and_defaults_to_none():
+    assert svc.machine_page_number(SimpleNamespace(machine_number=" 1 ")) == "1"
+    assert svc.machine_page_number(SimpleNamespace(machine_number="")) is None
+    assert svc.machine_page_number(SimpleNamespace(machine_number=None)) is None
+
+
 def test_build_machine_year_row_mock_keys_and_placeholders():
     row = svc.build_machine_year_row(
         name="Агрегат 1. ТЭС 1",
+        number="1",
         station_type="ТЭС",
         capacity=100,
         fuel="уголь",
@@ -223,6 +230,7 @@ def test_build_machine_year_row_mock_keys_and_placeholders():
     )
     assert list(row.keys()) == [
         "Название агрегата",
+        "Станционный номер",
         "Тип станции агрегата",
         "Установленная мощность агрегата, МВт",
         "Тип топлива",
@@ -245,6 +253,7 @@ def test_build_machine_year_row_mock_keys_and_placeholders():
         "external_code",
         "station_external_code",
     ]
+    assert row[svc.KEY_MACHINE_NUMBER] == "1"
     assert row[svc.KEY_MACHINE_CAPACITY] == 100.0
     assert row[svc.KEY_MACHINE_GENERATION] == 0.0
     assert row[svc.KEY_ASH] == 0.0
@@ -410,6 +419,7 @@ def test_build_generation_machines_rows_fields_and_planned():
     assert rows[2][svc.KEY_MACHINE_CAPACITY] == 100.0
     assert rows[2][svc.KEY_MACHINE_PLANNED] is False
     assert rows[2][svc.KEY_MACHINE_NAME] == "Агрегат 1. ТЭС 1"
+    assert rows[2][svc.KEY_MACHINE_NUMBER] == "1"
     assert rows[2][svc.KEY_MACHINE_STATION_TYPE] == "ТЭС"
     assert rows[2][svc.KEY_MACHINE_SUBJECT] == "Санкт-Петербург"
     assert rows[2][svc.KEY_MACHINE_ZONE] == "1-я синхронная зона ЕЭС России"
@@ -459,7 +469,10 @@ def test_generation_machines_comment_lists_missing_sources():
     assert "Ожидаемый год модернизации без изменения мощности" in text
     assert "station_external_code" in text
     assert "связи со станцией" in text
-    assert text.count("\n\n") == 3
+    assert "Станционный номер" in text
+    assert "Номер агрегата" in text
+    assert text.endswith('14.10.2026 - добавлено поле "Станционный номер"')
+    assert text.count("\n\n") == 5
     payload = svc.dataset_envelope(
         "generation_machines",
         database_version=7,

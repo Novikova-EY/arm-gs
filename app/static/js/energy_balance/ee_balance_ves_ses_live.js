@@ -409,6 +409,27 @@
         return (energy * scale) / capacity;
     }
 
+    function aesOwnNeedsPercent(capacity, energy) {
+        if (capacity == null || energy == null || energy === 0) return null;
+        return (capacity / energy) * 100;
+    }
+
+    function aesDeliveryEnergy(capacity, energy) {
+        var ownNeeds = aesOwnNeedsPercent(capacity, energy);
+        if (ownNeeds == null || energy === 0) return null;
+        return energy - (ownNeeds / energy) * 100;
+    }
+
+    function hydroOwnNeeds(coefficient, energy) {
+        if (coefficient == null || energy == null) return null;
+        return coefficient * energy;
+    }
+
+    function hydroDelivery(coefficient, energy) {
+        var ownNeeds = hydroOwnNeeds(coefficient, energy);
+        return ownNeeds == null ? null : energy - ownNeeds;
+    }
+
     function setCellText(td, value, digits) {
         if (!td) {
             return;
@@ -508,6 +529,7 @@
         cfg.digits = cfg.digits == null ? 1 : Number(cfg.digits);
         cfg.chiimScale = cfg.chiimScale == null ? 1000 : Number(cfg.chiimScale);
         cfg.chiimDigits = cfg.chiimDigits == null ? -1 : Number(cfg.chiimDigits);
+        cfg.coefficientMode = !!cfg.coefficientMode;
 
         var energyById = {};
         var chiimById = {};
@@ -549,6 +571,9 @@
                 energyTds: mapByYear(energyTr, "td[data-ves-col='energy']"),
                 ownerTds: mapByYear(energyTr, "td[data-ves-col='owner']"),
                 chiimTds: mapByYear(chiimTr, "td[data-ves-col='chiim']"),
+                ownNeedsTds: mapByYear(table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='own_needs']"), "td[data-ves-col='own-needs']"),
+                deliveryTds: mapByYear(table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='delivery']"), "td[data-ves-col='delivery']"),
+                coefficientInput: table.querySelector("tr[data-station-id='" + id + "'][data-ves-metric='own_needs'] input[data-kind='coefficient']"),
                 minTd: energyTr ? energyTr.querySelector("td[data-ves-col='min']") : null
             };
             stations.push(rec);
@@ -583,6 +608,8 @@
                 energyTds: mapByYear(energyRow, "td[data-ves-col='energy']"),
                 ownerTds: mapByYear(energyRow, "td[data-ves-col='owner']"),
                 chiimTds: mapByYear(chiimRow, "td[data-ves-col='chiim']"),
+                ownNeedsTds: mapByYear(table.querySelector("tr[data-ves-agg-key='" + key + "'][data-ves-metric='own_needs']"), "td[data-ves-col='own-needs']"),
+                deliveryTds: mapByYear(table.querySelector("tr[data-ves-agg-key='" + key + "'][data-ves-metric='delivery']"), "td[data-ves-col='delivery']"),
                 minTd: energyRow ? energyRow.querySelector("td[data-ves-col='min']") : null
             };
             agg.stations = stations.filter(function (st) {
@@ -617,6 +644,7 @@
             });
             var energyRaw = {};
             var capacityRaw = {};
+            var coefficient = readControlNumber(st.coefficientInput);
             cfg.years.forEach(function (year) {
                 var energyVal = readEnergy(st, year);
                 energyRaw[year] = energyVal;
@@ -692,6 +720,20 @@
                     chiimHours(energyRaw[year], capacityRaw[year], cfg.chiimScale),
                     cfg.chiimDigits
                 );
+                setCellText(
+                    st.ownNeedsTds[year],
+                    cfg.coefficientMode
+                        ? hydroOwnNeeds(coefficient, energyRaw[year])
+                        : aesOwnNeedsPercent(capacityRaw[year], energyRaw[year]),
+                    cfg.digits
+                );
+                setCellText(
+                    st.deliveryTds[year],
+                    cfg.coefficientMode
+                        ? hydroDelivery(coefficient, energyRaw[year])
+                        : aesDeliveryEnergy(capacityRaw[year], energyRaw[year]),
+                    cfg.digits
+                );
             });
         }
 
@@ -699,9 +741,18 @@
             var energy = {};
             var capacity = {};
             var owner = {};
+            var ownNeeds = {};
+            var delivery = {};
+            var coefficient = readControlNumber(st.coefficientInput);
             cfg.years.forEach(function (year) {
                 energy[year] = readEnergy(st, year);
                 capacity[year] = cellRawNumber(st.capacityTds[year]);
+                ownNeeds[year] = cfg.coefficientMode
+                    ? hydroOwnNeeds(coefficient, energy[year])
+                    : null;
+                delivery[year] = cfg.coefficientMode
+                    ? hydroDelivery(coefficient, energy[year])
+                    : null;
             });
             cfg.ownerYears.forEach(function (year) {
                 owner[year] = readOwner(st, year);
@@ -710,6 +761,8 @@
                 energy: energy,
                 capacity: capacity,
                 owner: owner,
+                ownNeeds: ownNeeds,
+                delivery: delivery,
                 min: cellRawNumber(st.minTd)
             };
         }
@@ -724,9 +777,13 @@
                 var capacity = {};
                 var owner = {};
                 var minSum = null;
+                var ownNeeds = {};
+                var delivery = {};
                 cfg.years.forEach(function (year) {
                     energy[year] = null;
                     capacity[year] = null;
+                    ownNeeds[year] = null;
+                    delivery[year] = null;
                 });
                 cfg.ownerYears.forEach(function (year) {
                     owner[year] = null;
@@ -744,6 +801,14 @@
                         var cVal = snap.capacity[year];
                         if (cVal != null) {
                             capacity[year] = capacity[year] == null ? cVal : capacity[year] + cVal;
+                        }
+                        var ownNeedsVal = snap.ownNeeds[year];
+                        if (ownNeedsVal != null) {
+                            ownNeeds[year] = ownNeeds[year] == null ? ownNeedsVal : ownNeeds[year] + ownNeedsVal;
+                        }
+                        var deliveryVal = snap.delivery[year];
+                        if (deliveryVal != null) {
+                            delivery[year] = delivery[year] == null ? deliveryVal : delivery[year] + deliveryVal;
                         }
                     });
                     cfg.ownerYears.forEach(function (year) {
@@ -763,6 +828,20 @@
                         agg.chiimTds[year],
                         chiimHours(energy[year], capacity[year], cfg.chiimScale),
                         cfg.chiimDigits
+                    );
+                    setCellText(
+                        agg.ownNeedsTds[year],
+                        cfg.coefficientMode
+                            ? ownNeeds[year]
+                            : aesOwnNeedsPercent(capacity[year], energy[year]),
+                        cfg.digits
+                    );
+                    setCellText(
+                        agg.deliveryTds[year],
+                        cfg.coefficientMode
+                            ? delivery[year]
+                            : aesDeliveryEnergy(capacity[year], energy[year]),
+                        cfg.digits
                     );
                 });
                 cfg.ownerYears.forEach(function (year) {

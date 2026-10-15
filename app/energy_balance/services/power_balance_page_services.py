@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+from copy import deepcopy
 from decimal import ROUND_HALF_UP, Decimal
 from types import SimpleNamespace
 from typing import Any
@@ -90,7 +91,7 @@ MAX_CUSTOM_FLOW_INDENT = 3
 
 POWER_BALANCE_ROUNDING_DIGITS = 1
 POWER_BALANCE_ROUNDING_CHOICES = (-1, 0, 1, 2, 3)
-# Единица измерения всех строк таблиц БМ (заголовок макета: «Баланс мощности …, МВт»).
+# Единица измерения всех строк таблиц БМ (заголовок макета: «Баланс электрической мощности …, МВт»).
 POWER_BALANCE_UNIT = "МВт"
 
 # Останов крупнейшего агрегата на листе «Калининградская СЗ ЕЭС» (константа макета).
@@ -106,6 +107,8 @@ EES_SOURCE_SLUGS = (
     "sibir",
     "2-sz-ees-vostok",
 )
+EES_RUSSIA_WITH_TITES_SLUG = "ees-rossii-with-tites"
+EES_RUSSIA_WITH_TITES_NAME = "ЭЭС России"
 # 1-я СЗ ЕЭС = ОЭС 1-й зоны минус Калининград.
 SZ1_ADD_SLUGS = (
     "severo-zapad",
@@ -122,6 +125,8 @@ GROUP_SZ = "sz"
 GROUP_OES = "oes"
 GROUP_RES = "res"
 GROUP_EU = "eu"
+SYNCHRONOUS_ZONES_SLUG = "synchronous-zones"
+SYNCHRONOUS_ZONES_NAME = "Синхронные зоны"
 SHEET_GROUP_ORDER = (GROUP_EES, GROUP_SZ, GROUP_OES)
 ALL_SHEET_GROUP_ORDER = (*SHEET_GROUP_ORDER, GROUP_RES, GROUP_EU)
 # Энергорайоны ТИТЭС Востока (сводка /power_demand/summary/oes/) — порядок кнопок.
@@ -140,7 +145,7 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "ees-rossii",
         "sheet_name": "ЕЭС России",
         "group": GROUP_EES,
-        "title": "Баланс мощности ЕЭС России",
+        "title": "Баланс электрической мощности ЕЭС России",
         "layout": "ees_rossii",
         "skip_direct_capacity": True,
     },
@@ -148,7 +153,7 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "1-sz-ees",
         "sheet_name": "1-я СЗ ЕЭС",
         "group": GROUP_SZ,
-        "title": "Баланс мощности 1-я СЗ ЕЭС",
+        "title": "Баланс электрической мощности 1-я СЗ ЕЭС",
         "layout": "sz1",
         "skip_direct_capacity": True,
     },
@@ -156,21 +161,21 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "2-sz-ees-vostok",
         "sheet_name": "2-я СЗ ЕЭС (ОЭС Востока)",
         "group": GROUP_SZ,
-        "title": "Баланс мощности 2-я СЗ ЕЭС (ОЭС Востока)",
+        "title": "Баланс электрической мощности 2-я СЗ ЕЭС (ОЭС Востока)",
         "layout": "oes_vostok",
     },
     {
         "slug": "kaliningradskaya-sz-ees",
         "sheet_name": "Калининградская СЗ ЕЭС",
         "group": GROUP_SZ,
-        "title": "Баланс мощности Калининградская СЗ ЕЭС",
+        "title": "Баланс электрической мощности Калининградская СЗ ЕЭС",
         "layout": "kaliningrad",
     },
     {
         "slug": "severo-zapad",
         "sheet_name": "Северо-Запад",
         "group": GROUP_OES,
-        "title": "Баланс мощности Северо-Запад",
+        "title": "Баланс электрической мощности Северо-Запад",
         "layout": "oes_standard",
         "is_ees_member": True,
     },
@@ -178,7 +183,7 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "centr",
         "sheet_name": "Центр",
         "group": GROUP_OES,
-        "title": "Баланс мощности Центр",
+        "title": "Баланс электрической мощности Центр",
         "layout": "oes_standard",
         "is_ees_member": True,
     },
@@ -186,7 +191,7 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "srednyaya-volga",
         "sheet_name": "Средняя Волга",
         "group": GROUP_OES,
-        "title": "Баланс мощности Средняя Волга",
+        "title": "Баланс электрической мощности Средняя Волга",
         "layout": "oes_standard",
         "is_ees_member": True,
     },
@@ -194,7 +199,7 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "yug",
         "sheet_name": "Юг",
         "group": GROUP_OES,
-        "title": "Баланс мощности Юг",
+        "title": "Баланс электрической мощности Юг",
         "layout": "oes_yug",
         "is_ees_member": True,
     },
@@ -202,7 +207,7 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "ural",
         "sheet_name": "Урал",
         "group": GROUP_OES,
-        "title": "Баланс мощности Урал",
+        "title": "Баланс электрической мощности Урал",
         "layout": "oes_standard",
         "is_ees_member": True,
     },
@@ -210,7 +215,7 @@ POWER_BALANCE_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "sibir",
         "sheet_name": "Сибирь",
         "group": GROUP_OES,
-        "title": "Баланс мощности Сибирь",
+        "title": "Баланс электрической мощности Сибирь",
         "layout": "oes_sibir",
         "is_ees_member": True,
     },
@@ -267,6 +272,25 @@ def _is_tites_east_name(name: str | None) -> bool:
 def _is_tites_sibir_name(name: str | None) -> bool:
     n = _norm_label(name).replace("э", "е")
     return "титес" in n and "сибир" in n
+
+
+# Заголовок страницы листа БМ в интерфейсе («Баланс электрической мощности ЕЭС России»).
+POWER_BALANCE_TITLE_PREFIX = "Баланс электрической мощности"
+# Короткое имя для названия веб-страницы (заголовок вкладки браузера).
+POWER_BALANCE_BROWSER_TITLE_PREFIX = "Баланс ЭМ"
+
+
+def power_balance_sheet_title(sheet_name: str | None) -> str:
+    name = str(sheet_name or "").strip()
+    return f"{POWER_BALANCE_TITLE_PREFIX} {name}".strip()
+
+
+def format_power_balance_browser_title(base_title: str) -> str:
+    """«Баланс электрической мощности ЕЭС России» → «Баланс ЭМ ЕЭС России»."""
+    title = str(base_title or "").strip()
+    if not title.startswith(POWER_BALANCE_TITLE_PREFIX):
+        return title
+    return f"{POWER_BALANCE_BROWSER_TITLE_PREFIX}{title[len(POWER_BALANCE_TITLE_PREFIX):]}"
 
 
 def sheet_uses_station_capacity_breakdown(sheet: dict[str, Any] | None) -> bool:
@@ -417,10 +441,6 @@ def _oes_layout_and_slug(name: str, obj_id: int) -> tuple[str, str]:
 
 
 def _sa_catalog_display_name(area: Any) -> str:
-    """Подпись СЗ на листах баланса: полное наименование, иначе краткое."""
-    full = str(getattr(area, "name_full", None) or "").strip()
-    if full:
-        return full
     return str(getattr(area, "name", None) or "").strip()
 
 
@@ -498,7 +518,7 @@ def _make_sheet(
         "sheet_name": sheet_name,
         "group": group,
         "layout": layout,
-        "title": title or f"Баланс мощности {sheet_name}",
+        "title": title or power_balance_sheet_title(sheet_name),
         "source_slugs": tuple(source_slugs),
         "subtract_slugs": tuple(subtract_slugs),
         "territory": territory,
@@ -566,7 +586,7 @@ def _finalize_sheets(sheets: list[dict[str, Any]]) -> list[dict[str, Any]]:
     _apply_cross_sheet_sources(ordered)
     table_number = 0
     for sheet in ordered:
-        sheet["title"] = f"Баланс мощности {sheet['sheet_name']}"
+        sheet["title"] = power_balance_sheet_title(sheet["sheet_name"])
         if sheet.get("skip_table"):
             sheet["table_number"] = 0
             continue
@@ -590,6 +610,7 @@ def _ref_view(item: Any) -> Any | None:
             id_energy_system_type=getattr(item, "id_energy_system_type", None),
             id_union_energy_system=getattr(item, "id_union_energy_system", None),
             id_regional_energy_system=getattr(item, "id_regional_energy_system", None),
+            display_order=getattr(item, "display_order", None),
         )
         if _is_unspecified_ref(view):
             return None
@@ -669,7 +690,17 @@ def _sheets_from_refdata() -> list[dict[str, Any]] | None:
 
     for ues in ues_list:
         name = str(ues.name).strip()
-        if _is_new_territories_name(name) or _is_oes_vostok_name(name):
+        if _is_new_territories_name(name):
+            continue
+        if _is_oes_vostok_name(name):
+            second_zone = next(
+                (sheet for sheet in sheets if sheet.get("slug") == "2-sz-ees-vostok"),
+                None,
+            )
+            if second_zone is not None:
+                second_zone["oes_vostok_display_order"] = getattr(
+                    ues, "display_order", None
+                )
             continue
         layout, slug = _oes_layout_and_slug(name, int(ues.id))
         est = est_by_id.get(int(getattr(ues, "id_energy_system_type", 0) or 0))
@@ -685,6 +716,7 @@ def _sheets_from_refdata() -> list[dict[str, Any]] | None:
             territory={"kind": "ues", "id": int(ues.id), "name": name},
             is_ees_member=is_ees_member,
         )
+        sheet["display_order"] = getattr(ues, "display_order", None)
         if _is_tites_sibir_name(name):
             sheet["station_capacity_breakdown"] = True
         if _is_tites_east_name(name):
@@ -1755,6 +1787,108 @@ def get_power_balance_sheets() -> list[dict[str, Any]]:
     return _finalize_sheets([dict(sheet) for sheet in POWER_BALANCE_SHEETS])
 
 
+def ees_russia_with_tites_source_slugs(
+    sheets: list[dict[str, Any]],
+) -> tuple[str, ...]:
+    ees_sheet = next(
+        (
+            item
+            for item in sheets
+            if item.get("slug") == "ees-rossii" or item.get("layout") == "ees_rossii"
+        ),
+        None,
+    )
+    if ees_sheet is None:
+        return ()
+
+    source_slugs = [str(ees_sheet["slug"])]
+    tites_hubs = {
+        str(item.get("slug") or "")
+        for item in sheets
+        if item.get("is_tites_east_hub")
+    }
+    for item in sheets:
+        slug = str(item.get("slug") or "")
+        if not slug or slug in source_slugs or item.get("skip_table"):
+            continue
+        normalized_name = _norm_label(item.get("sheet_name")).replace("э", "е")
+        if (
+            "титес" in normalized_name
+            or str(item.get("parent_slug") or "") in tites_hubs
+            or item.get("station_capacity_breakdown")
+        ):
+            source_slugs.append(slug)
+    return tuple(source_slugs) if len(source_slugs) > 1 else ()
+
+
+def _ees_russia_with_tites_sheet(
+    sheets: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    source_slugs = ees_russia_with_tites_source_slugs(sheets)
+    if not source_slugs:
+        return None
+    ees_sheet = next(item for item in sheets if item.get("slug") == source_slugs[0])
+    result = dict(ees_sheet)
+    result.update(
+        slug=EES_RUSSIA_WITH_TITES_SLUG,
+        sheet_name=EES_RUSSIA_WITH_TITES_NAME,
+        title=power_balance_sheet_title(EES_RUSSIA_WITH_TITES_NAME),
+        source_slugs=source_slugs,
+    )
+    result.pop("is_ees_member", None)
+    return result
+
+
+def _power_balance_navigation_sheets(
+    sheets: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    result = list(sheets)
+    if not any(item.get("slug") == EES_RUSSIA_WITH_TITES_SLUG for item in result):
+        aggregate_sheet = _ees_russia_with_tites_sheet(sheets)
+        if aggregate_sheet is not None:
+            insert_at = next(
+                (index for index, item in enumerate(result) if item.get("slug") == "ees-rossii"),
+                0,
+            )
+            result.insert(insert_at, aggregate_sheet)
+
+    zones = [
+        item
+        for item in result
+        if item.get("group") == GROUP_SZ
+        and item.get("slug") != SYNCHRONOUS_ZONES_SLUG
+    ]
+    if zones and not any(item.get("slug") == SYNCHRONOUS_ZONES_SLUG for item in result):
+        hub = {
+            "slug": SYNCHRONOUS_ZONES_SLUG,
+            "sheet_name": SYNCHRONOUS_ZONES_NAME,
+            "group": GROUP_SZ,
+            "first_child_slug": zones[0]["slug"],
+        }
+        result.insert(result.index(zones[0]), hub)
+    return result
+
+
+def synchronous_zone_subtab_sheets(
+    sheets: list[dict[str, Any]] | None,
+    current_slug: str | None,
+) -> list[dict[str, Any]]:
+    """Синхронные зоны во второй строке кнопок при открытом листе зоны."""
+    items = sheets or []
+    current = next(
+        (item for item in items if str(item.get("slug") or "") == str(current_slug or "")),
+        None,
+    )
+    if not current or current.get("group") != GROUP_SZ:
+        return []
+    return [
+        item
+        for item in items
+        if item.get("group") == GROUP_SZ
+        and item.get("slug") != SYNCHRONOUS_ZONES_SLUG
+    ]
+
+
 def is_persistable_power_balance_slug(slug: str) -> bool:
     """Slug, в который можно писать ручной ввод, даже если каталог временно запасной."""
     text = str(slug or "").strip()
@@ -1884,7 +2018,7 @@ def _synthetic_sheet_for_slug(slug: str) -> dict[str, Any] | None:
             skip_direct_capacity=True,
         )
     sheet["table_number"] = 0
-    sheet["title"] = f"Баланс мощности {sheet['sheet_name']}"
+    sheet["title"] = power_balance_sheet_title(sheet["sheet_name"])
     return sheet
 
 
@@ -1892,7 +2026,10 @@ def get_power_balance_sheet(slug: str) -> dict[str, Any] | None:
     wanted = str(slug or "").strip()
     if not wanted:
         return None
-    for sheet in get_power_balance_sheets():
+    sheets = get_power_balance_sheets()
+    if wanted == EES_RUSSIA_WITH_TITES_SLUG:
+        return _ees_russia_with_tites_sheet(sheets)
+    for sheet in sheets:
         if sheet["slug"] == wanted:
             return sheet
     return _synthetic_sheet_for_slug(wanted)
@@ -1922,6 +2059,52 @@ def group_power_balance_sheets(
         if group not in buckets:
             continue
         buckets[group].append(sheet)
+
+    oes_sheets = buckets[GROUP_OES]
+    has_second_zone = any(sheet.get("slug") == "2-sz-ees-vostok" for sheet in items)
+    has_oes_vostok = any(
+        sheet.get("slug") == "vostok"
+        or (
+            sheet.get("group") == GROUP_OES
+            and _is_oes_vostok_name(sheet.get("sheet_name"))
+        )
+        for sheet in items
+    )
+    if has_second_zone and not has_oes_vostok:
+        second_zone = next(
+            (sheet for sheet in items if sheet.get("slug") == "2-sz-ees-vostok"),
+            {},
+        )
+        display_order = second_zone.get("oes_vostok_display_order")
+        insert_at = None
+        if display_order is not None:
+            insert_at = next(
+                (
+                    index
+                    for index, sheet in enumerate(oes_sheets)
+                    if sheet.get("display_order") is not None
+                    and sheet["display_order"] > display_order
+                ),
+                len(oes_sheets),
+            )
+        if insert_at is None:
+            sibir_index = next(
+                (index for index, sheet in enumerate(oes_sheets) if sheet.get("slug") == "sibir"),
+                None,
+            )
+            if sibir_index is not None:
+                insert_at = sibir_index + 1
+        if insert_at is not None:
+            oes_sheets.insert(
+                insert_at,
+                {
+                    "slug": "vostok",
+                    "sheet_name": "ОЭС Востока",
+                    "group": GROUP_OES,
+                    "display_order": display_order,
+                },
+            )
+
     return [
         {"group": group, "sheets": buckets[group]}
         for group in SHEET_GROUP_ORDER
@@ -2252,7 +2435,10 @@ def _formula_tooltip(
         return ""
 
     def _sheet_name(slug: str) -> str:
-        return (sheets_by_slug.get(slug) or {}).get("sheet_name") or slug
+        sheet = sheets_by_slug.get(slug) or {}
+        if current_slug == "ees-rossii" and sheet.get("layout") == "oes_vostok":
+            return "ОЭС Востока"
+        return sheet.get("sheet_name") or slug
 
     slug_terms = [term for term in terms if term.get("slug") and term.get("row_key")]
     row_keys = {term.get("row_key") for term in slug_terms}
@@ -2925,6 +3111,75 @@ def build_power_balance_station_list_url(query: dict[str, Any]) -> str:
     return f"{base}{joiner}{urlencode(pairs)}"
 
 
+def _append_ees_russia_with_tites_table(
+    tables: dict[str, dict[str, Any]],
+    sheets: list[dict[str, Any]],
+    years: list[int],
+    rounding_digits: int,
+) -> dict[str, Any] | None:
+    aggregate_sheet = _ees_russia_with_tites_sheet(sheets)
+    if aggregate_sheet is None:
+        return None
+
+    source_slugs = [
+        source_slug
+        for source_slug in aggregate_sheet["source_slugs"]
+        if source_slug in tables
+    ]
+    source_payloads = [tables[source_slug] for source_slug in source_slugs]
+    base_payload = tables.get(source_slugs[0]) if source_slugs else None
+    if base_payload is None or not source_payloads:
+        return None
+
+    source_rows_by_slug = {
+        source_slug: {
+            str(row.get("key") or ""): row
+            for row in tables[source_slug].get("rows") or []
+        }
+        for source_slug in source_slugs
+    }
+    aggregate_rows = deepcopy(base_payload["rows"])
+    for row in aggregate_rows:
+        key = str(row.get("key") or "")
+        if not key:
+            continue
+        aggregate_sources = source_slugs
+        if row.get("kind") == KIND_TRANSFER or row.get("is_custom") or row.get("flow_section"):
+            aggregate_sources = [source_slugs[0]]
+        terms = [
+            {"slug": source_slug, "row_key": key}
+            for source_slug in aggregate_sources
+            if key in source_rows_by_slug.get(source_slug, {})
+        ]
+        row["formula"] = {"terms": terms}
+        row["editable_values"] = False
+        row["editable_label"] = False
+        row["can_add_custom_flow"] = False
+        row.pop("editable_years", None)
+        row.pop("value_save_kind", None)
+        row.pop("row_key", None)
+
+    tables[EES_RUSSIA_WITH_TITES_SLUG] = {
+        "sheet": aggregate_sheet,
+        "rows": aggregate_rows,
+    }
+    sheets_by_slug = {str(item.get("slug") or ""): item for item in sheets}
+    sheets_by_slug[EES_RUSSIA_WITH_TITES_SLUG] = aggregate_sheet
+    tooltip_tables = {source_slug: tables[source_slug] for source_slug in source_slugs}
+    tooltip_tables[EES_RUSSIA_WITH_TITES_SLUG] = tables[EES_RUSSIA_WITH_TITES_SLUG]
+    _attach_formula_tooltips(
+        tooltip_tables, sheets_by_slug, rounding_digits=rounding_digits
+    )
+    evaluate_power_balance_tables(tables, years, rounding_digits=rounding_digits)
+    attach_balance_sheet_notes(
+        {EES_RUSSIA_WITH_TITES_SLUG: tables[EES_RUSSIA_WITH_TITES_SLUG]},
+        BALANCE_KIND_POWER,
+    )
+    mark_power_balance_empty_rows(aggregate_rows, years)
+    mark_zero_installed_capacity_pairs(aggregate_rows, years)
+    return aggregate_sheet
+
+
 def build_power_balance_table_context(
     slug: str,
     *,
@@ -2933,7 +3188,13 @@ def build_power_balance_table_context(
     rounding_digits: Any = None,
     demand_mode: Any = None,
 ) -> dict[str, Any] | None:
-    sheets, sheet = _sheets_including_slug(slug)
+    is_ees_russia_with_tites = slug == EES_RUSSIA_WITH_TITES_SLUG
+    if is_ees_russia_with_tites:
+        sheets = get_power_balance_sheets()
+        sheet = _ees_russia_with_tites_sheet(sheets)
+    else:
+        balance_slug = "2-sz-ees-vostok" if slug == "vostok" else slug
+        sheets, sheet = _sheets_including_slug(balance_slug)
     if sheet is None:
         return None
     years = get_power_balance_year_columns(start_year, end_year)
@@ -2942,20 +3203,43 @@ def build_power_balance_table_context(
     tables = build_power_balance_tables(
         years, rounding_digits=digits, sheets=sheets, demand_mode=mode
     )
+    if is_ees_russia_with_tites:
+        sheet = _append_ees_russia_with_tites_table(tables, sheets, years, digits)
+        if sheet is None:
+            return None
     payload = tables.get(sheet["slug"])
     if payload is None:
         return None
-    page_title = sheet["title"]
+    page_title = (
+        power_balance_sheet_title("ОЭС Востока")
+        if slug == "vostok"
+        else sheet["title"]
+    )
     start = years[0] if years else None
     end = years[-1] if years else None
     station_query = power_balance_station_list_query(sheet, sheets, start, end)
+    navigation_sheets = _power_balance_navigation_sheets(sheets)
+    is_synchronous_zone = sheet.get("group") == GROUP_SZ and slug != "vostok"
     return {
         "sheet": payload["sheet"],
         "sheets": sheets,
-        "sheet_groups": group_power_balance_sheets(sheets),
+        "page_slug": slug,
+        "sheet_groups": group_power_balance_sheets(navigation_sheets),
         "tites_east_child_sheets": tites_east_child_nav_sheets(sheets, sheet["slug"]),
-        "first_row_active_slug": first_row_active_slug(sheet, sheet["slug"]),
+        "synchronous_zone_subtab_sheets": (
+            synchronous_zone_subtab_sheets(sheets, sheet["slug"])
+            if is_synchronous_zone
+            else []
+        ),
+        "first_row_active_slug": (
+            SYNCHRONOUS_ZONES_SLUG
+            if is_synchronous_zone
+            else "vostok"
+            if slug == "vostok"
+            else first_row_active_slug(sheet, sheet["slug"])
+        ),
         "page_title": page_title,
+        "browser_title": format_power_balance_browser_title(page_title),
         "years": years,
         "year_features": get_power_balance_year_features(),
         "start_year": start,

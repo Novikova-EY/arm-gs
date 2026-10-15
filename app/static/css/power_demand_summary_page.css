@@ -667,8 +667,13 @@
         width: 100%;
         min-width: 0;
     }
-    #powerDemandSummaryTable.fuel-params-edit-table td.summary-entity-note-cell:has(> .summary-entity-note-wrap),
-    #powerDemandSummaryTable td.summary-entity-note-cell:has(> .summary-entity-note-wrap) {
+    #powerDemandSummaryTable td.pd-summary-cell-save-success {
+        box-shadow: inset 0 0 0 2px var(--bs-success);
+    }
+    #powerDemandSummaryTable td.pd-summary-cell-save-error {
+        box-shadow: inset 0 0 0 2px var(--bs-danger);
+    }
+    #powerDemandSummaryTable td.summary-entity-note-cell.pd-summary-note-cell {
         padding: 0 !important;
         height: 1px;
         vertical-align: middle;
@@ -680,13 +685,13 @@
         box-sizing: border-box;
         margin: 0;
     }
-    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap:has(> .text-break) {
+    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap.pd-summary-note-readonly {
         display: flex;
         align-items: center;
         justify-content: flex-start;
         text-align: left;
     }
-    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap:has(> textarea.power-demand-summary-note-field) {
+    #powerDemandSummaryTable td.summary-entity-note-cell > .summary-entity-note-wrap.pd-summary-note-editable {
         display: block;
     }
     #powerDemandSummaryTable.fuel-params-edit-table .summary-entity-note-wrap textarea.fuel-param-input.power-demand-summary-note-field {
@@ -715,13 +720,7 @@
         align-self: center;
     }
     /* Как #fuelParamsTable: поле на всю ячейку; k — в отдельной строке таблицы */
-    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(input.fuel-param-input),
-    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(textarea.fuel-param-input),
-    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(> .pd-coeff-manual-input),
-    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(.pd-coeff-medium-k-input),
-    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(.pd-coeff-display-k),
-    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(.pd-coeff-display-mw),
-    #powerDemandSummaryTable.fuel-params-edit-table tbody td:has(> .pd-coeff-source-select) {
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td.pd-summary-control-cell {
         padding: 0 !important;
         vertical-align: middle;
     }
@@ -763,8 +762,8 @@
         background-clip: padding-box;
     }
     /* Те же размеры ячеек k/МВт для строк УЭС с только чтением, если таблица без fuel-params-edit-table */
-    #powerDemandSummaryTable:not(.fuel-params-edit-table) tbody td.summary-year-k-cell:has(.pd-coeff-display-k),
-    #powerDemandSummaryTable:not(.fuel-params-edit-table) tbody td.summary-year-mw-cell:has(.pd-coeff-display-mw) {
+    #powerDemandSummaryTable:not(.fuel-params-edit-table) tbody td.summary-year-k-cell.pd-summary-control-cell,
+    #powerDemandSummaryTable:not(.fuel-params-edit-table) tbody td.summary-year-mw-cell.pd-summary-control-cell {
         padding: 0 !important;
         vertical-align: middle;
     }
@@ -785,12 +784,21 @@
         background-color: transparent;
         background-clip: padding-box;
     }
+    /*
+     * Синий контур фокуса должен совпадать по размеру с зелёным контуром сохранённой ячейки
+     * (td.pd-summary-cell-save-success). Оба рисуются на <td>, поэтому рамка обводит всю ячейку,
+     * а не только поле ввода (в высоких ячейках input ниже td и рамка выглядела меньше).
+     */
+    #powerDemandSummaryTable.fuel-params-edit-table tbody td.pd-summary-cell-focused {
+        box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+    }
     #powerDemandSummaryTable.fuel-params-edit-table .fuel-param-input:focus,
     #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-manual-input:focus,
     #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-medium-k-input:focus,
     #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-display-k:focus,
+    #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-display-mw:focus,
     #powerDemandSummaryTable.fuel-params-edit-table .pd-coeff-source-select:focus {
-        box-shadow: inset 0 0 0 2px var(--bs-primary, #0d6efd);
+        box-shadow: none;
         outline: 0;
         z-index: 1;
         position: relative;

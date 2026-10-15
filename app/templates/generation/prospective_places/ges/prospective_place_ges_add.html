@@ -6,7 +6,7 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
     <a href="{{ url_for('prospective_places_bp.prospective_places_ges') }}" class="btn btn-outline-secondary mb-3">← Назад к списку</a>
-    <h2 class="mb-4">Добавление новой перспективной площадки ГЭС</h2>
+    <h1 class="mb-4">Добавление новой перспективной площадки ГЭС</h1>
 
     <form method="POST">
         {{ form.hidden_tag() }}

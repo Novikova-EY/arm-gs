@@ -3,9 +3,11 @@
 from . import (  # noqa: F401
     balance_sheet_note_model,
     ee_balance_custom_flow_model,
-    ee_balance_export_value_model,
+    ee_import_export_oes_value_model,
+    ee_receive_transfer_oes_value_model,
     ee_balance_manual_generation_value_model,
     ee_balance_tes_monthly_value_model,
+    ee_balance_station_own_needs_coefficient_model,
     energy_system_energy_generation_control_model,
     espp_energy_generation_model,
     power_balance_custom_flow_model,

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ page_title }}{% endblock %}
+{% block title %}{{ browser_title | default(page_title) }}{% endblock %}
 
 {% block content %}
 {% if current_user.is_authenticated %}
@@ -10,14 +10,14 @@
       <div class="col-12 mb-2">
         <div class="d-flex flex-wrap align-items-start gap-2 w-100">
           <div class="d-flex flex-column gap-2 flex-grow-1" style="min-width:0;">
-            {% set current_slug = sheet.slug %}
+            {% set current_slug = page_slug|default(sheet.slug) %}
             {% include 'energy_balance/power_balance/_sheet_nav.html' %}
           </div>
         </div>
       </div>
 
       <div class="col-12 mb-2 text-center">
-        <h2 class="mb-2">{{ page_title }}</h2>
+        <h1 class="mb-2">{{ page_title }}</h1>
       </div>
 
       <div class="col-12 mb-2">
@@ -263,12 +263,17 @@
       #powerBalanceTable.table-hover > tbody > tr.table-warning:hover > td.pb-note-cell {
         background-color: #ffe69c;
       }
-      #powerBalanceTable th.pb-year-col,
-      #powerBalanceTable td.pb-year-cell {
+      #powerBalanceTable th.pb-year-col {
         width: var(--pb-year-col-w);
         min-width: var(--pb-year-col-w);
         max-width: var(--pb-year-col-w);
         white-space: normal;
+      }
+      #powerBalanceTable td.pb-year-cell {
+        width: var(--pb-year-col-w);
+        min-width: var(--pb-year-col-w);
+        max-width: var(--pb-year-col-w);
+        white-space: nowrap;
       }
       #powerBalanceTable td.pb-ego-tip-cell {
         cursor: help;
@@ -322,6 +327,13 @@
         max-width: 100%;
         margin: 0 auto;
         text-align: center;
+        font-size: inherit;
+      }
+      #powerBalanceTable td.pb-year-cell.is-save-success {
+        box-shadow: inset 0 0 0 2px var(--bs-success);
+      }
+      #powerBalanceTable td.pb-year-cell.is-save-error {
+        box-shadow: inset 0 0 0 2px var(--bs-danger);
       }
       #powerBalanceTable tbody tr.pb-custom-flow-row > td.pb-row-label,
       #powerBalanceTable tbody tr.pb-custom-flow-row > td.pb-unit-cell {
@@ -1127,7 +1139,10 @@
       if (valueInput) {
         const tr = valueInput.closest('tr');
         const td = valueInput.closest('td');
-        if (td) td.dataset.raw = String(parseRaw(valueInput.value));
+        if (td) {
+          td.dataset.raw = String(parseRaw(valueInput.value));
+          td.classList.remove('is-save-success', 'is-save-error');
+        }
         recalcTable();
         const rowId = tr && tr.dataset.customId;
         const year = valueInput.getAttribute('data-year');
@@ -1147,7 +1162,12 @@
                 ? EXPORT_VALUE_URL
                 : (rowKey === DEMAND_COLD_ROW_KEY ? DEMAND_COLD_VALUE_URL : null));
           if (!url) return;
-          api(url, 'PATCH', payload).catch(function (err) {
+          api(url, 'PATCH', payload).then(function () {
+            const td = valueInput.closest('td');
+            if (td) td.classList.add('is-save-success');
+          }).catch(function (err) {
+            const td = valueInput.closest('td');
+            if (td) td.classList.add('is-save-error');
             console.error(err);
             window.alert(err.message || 'Ошибка сохранения');
           });

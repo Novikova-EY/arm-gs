@@ -1,4 +1,4 @@
-{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+{% extends 'base.html' %} {% block title %}{{ browser_title | default(page_title) }}{% endblock %} {%
 block content %} {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
@@ -16,55 +16,112 @@ block content %} {% if current_user.is_authenticated %}
       </div>
 
       <div class="col-12 mb-2 text-center">
-        <h2 class="mb-2">{{ page_title }}</h2>
+        <h1 class="mb-2">{{ page_title }}</h1>
       </div>
 
       <div class="col-12 mb-2">
         <div class="d-flex align-items-center flex-wrap gap-2 w-100">
           <form
             method="GET"
-            action="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
+            action="{{ url_for('energy_balance_bp.ee_balance_table', slug=page_slug|default(sheet.slug)) }}"
             class="d-flex align-items-center gap-2 flex-wrap flex-grow-0"
             id="eeBalanceYearForm"
           >
-            {% for key, values in request.args.lists() %}
-              {% if key != 'start_year' and key != 'end_year' %}
-                {% for value in values %}
-                <input type="hidden" name="{{ key }}" value="{{ value }}">
-                {% endfor %}
-              {% endif %}
-            {% endfor %}
-            {% if show_hydro_year_nav and hydro_year and 'hydro_year' not in request.args %}
-            <input type="hidden" name="hydro_year" value="{{ hydro_year }}">
+            {% for key, values in request.args.lists() %} {% if key !=
+            'start_year' and key != 'end_year' %} {% for value in values %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}" />
+            {% endfor %} {% endif %} {% endfor %} {% if show_hydro_year_nav and
+            hydro_year and 'hydro_year' not in request.args %}
+            <input type="hidden" name="hydro_year" value="{{ hydro_year }}" />
             {% endif %}
-            <label for="start_year" class="mb-0" style="white-space: nowrap;">Год начала:</label>
-            <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+            <label for="start_year" class="mb-0" style="white-space: nowrap"
+              >Год начала:</label
+            >
+            <select
+              name="start_year"
+              id="start_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
               {% for year in filter_year_list %}
-              <option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>
+              <option
+                value="{{ year }}"
+                {% if start_year == year %}selected{% endif %}
+              >
+                {{ year }}
+              </option>
               {% endfor %}
             </select>
-            <label for="end_year" class="mb-0" style="white-space: nowrap;">Год конца:</label>
-            <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 5.5rem;">
+            <label for="end_year" class="mb-0" style="white-space: nowrap"
+              >Год конца:</label
+            >
+            <select
+              name="end_year"
+              id="end_year"
+              class="form-select"
+              style="width: auto; min-width: 5.5rem"
+            >
               {% for year in filter_year_list %}
-              <option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>
+              <option
+                value="{{ year }}"
+                {% if end_year == year %}selected{% endif %}
+              >
+                {{ year }}
+              </option>
               {% endfor %}
             </select>
             <button type="submit" class="btn btn-outline-success">
               Применить
             </button>
             <a
-              href="{{ url_for('energy_balance_bp.ee_balance_table', slug=sheet.slug) }}"
+              href="{{ url_for('energy_balance_bp.ee_balance_table', slug=page_slug|default(sheet.slug)) }}"
               class="btn btn-outline-danger"
               >Сбросить</a
             >
             <a
-              href="{{ url_for('energy_balance_bp.ee_balance_ves_ses', rounding_digits=rounding_digits) }}"
+              href="{{ url_for('energy_balance_bp.ee_balance_aes', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
               class="btn btn-outline-primary ms-4"
               target="_blank"
               rel="noopener noreferrer"
               data-no-preloader
-              title="Выработка ВИЭ"
-              >Выработка ВИЭ</a
+              title="Выработка ЭЭ АЭС"
+              >Выработка ЭЭ АЭС</a
+            >
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_ges', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+              class="btn btn-outline-primary"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ЭЭ ГЭС"
+              >Выработка ЭЭ ГЭС</a
+            >
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_gaes', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+              class="btn btn-outline-primary"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ЭЭ ГАЭС"
+              >Выработка ЭЭ ГАЭС</a
+            >
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_snee', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+              class="btn btn-outline-primary"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ЭЭ СНЭЭ"
+              >Выработка ЭЭ СНЭЭ</a
+            >
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_ves_ses', rounding_digits=rounding_digits) }}"
+              class="btn btn-outline-primary"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ЭЭ ВИЭ"
+              >Выработка ЭЭ ВИЭ</a
             >
           </form>
           <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
@@ -75,14 +132,17 @@ block content %} {% if current_user.is_authenticated %}
               class="d-inline m-0 flex-shrink-0"
             >
               {% if start_year is defined and start_year %}
-              <input type="hidden" name="start_year" value="{{ start_year }}">
+              <input type="hidden" name="start_year" value="{{ start_year }}" />
+              {% endif %} {% if end_year is defined and end_year %}
+              <input type="hidden" name="end_year" value="{{ end_year }}" />
               {% endif %}
-              {% if end_year is defined and end_year %}
-              <input type="hidden" name="end_year" value="{{ end_year }}">
-              {% endif %}
-              <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+              <input
+                type="hidden"
+                name="rounding_digits"
+                value="{{ rounding_digits }}"
+              />
               {% if hydro_year %}
-              <input type="hidden" name="hydro_year" value="{{ hydro_year }}">
+              <input type="hidden" name="hydro_year" value="{{ hydro_year }}" />
               {% endif %}
               <button
                 type="button"
@@ -123,12 +183,42 @@ block content %} {% if current_user.is_authenticated %}
                 style="white-space: nowrap"
                 >Округл:</label
               >
-              <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
-                <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
-                <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
-                <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
-                <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
-                <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+              <select
+                id="rounding_digits"
+                name="rounding_digits_ui"
+                class="form-select"
+                style="min-width: 140px"
+              >
+                <option
+                  value="0"
+                  {% if rounding_digits == 0 %}selected{% endif %}
+                >
+                  Не округлять
+                </option>
+                <option
+                  value="1"
+                  {% if rounding_digits == 1 %}selected{% endif %}
+                >
+                  1 знак
+                </option>
+                <option
+                  value="2"
+                  {% if rounding_digits == 2 %}selected{% endif %}
+                >
+                  2 знака
+                </option>
+                <option
+                  value="3"
+                  {% if rounding_digits == 3 %}selected{% endif %}
+                >
+                  3 знака
+                </option>
+                <option
+                  value="-1"
+                  {% if rounding_digits == -1 %}selected{% endif %}
+                >
+                  Целое число
+                </option>
               </select>
             </div>
           </div>
@@ -304,11 +394,15 @@ block content %} {% if current_user.is_authenticated %}
         > td.pb-note-cell {
         background-color: #ffe69c;
       }
-      #eeBalanceTable th.pb-year-col,
-      #eeBalanceTable td.pb-year-cell {
+      #eeBalanceTable th.pb-year-col {
         width: var(--pb-year-col-w);
         min-width: var(--pb-year-col-w);
         white-space: normal;
+      }
+      #eeBalanceTable td.pb-year-cell {
+        width: var(--pb-year-col-w);
+        min-width: var(--pb-year-col-w);
+        white-space: nowrap;
       }
       #eeBalanceTable .power-demand-year-feature-caption {
         font-size: 0.95em;
@@ -348,6 +442,13 @@ block content %} {% if current_user.is_authenticated %}
         max-width: 8rem;
         margin: 0 auto;
         text-align: center;
+        font-size: inherit;
+      }
+      #eeBalanceTable td.pb-year-cell.is-save-success {
+        box-shadow: inset 0 0 0 2px var(--bs-success);
+      }
+      #eeBalanceTable td.pb-year-cell.is-save-error {
+        box-shadow: inset 0 0 0 2px var(--bs-danger);
       }
       #eeBalanceTable tbody tr.pb-custom-flow-row > td.pb-row-label,
       #eeBalanceTable tbody tr.pb-custom-flow-row > td.pb-unit-cell {
@@ -378,14 +479,14 @@ block content %} {% if current_user.is_authenticated %}
       #eeBalanceTable .pb-station-toggle .bi {
         font-size: 1.05rem;
       }
-      #eeBalanceTable a.pb-tes-forecast-calc {
+      #eeBalanceTable a.pb-row-calc {
         color: #0d6efd;
         text-decoration: none;
         margin-left: 0.35rem;
         vertical-align: -0.1em;
         line-height: 1;
       }
-      #eeBalanceTable a.pb-tes-forecast-calc .bi {
+      #eeBalanceTable a.pb-row-calc .bi {
         font-size: 1.05rem;
       }
     </style>
@@ -400,6 +501,7 @@ block content %} {% if current_user.is_authenticated %}
       {%
       endif
       %}
+      data-can-edit="{{ 1 if can_edit else 0 }}"
     >
       <colgroup>
         <col class="pb-col-label" />
@@ -462,12 +564,13 @@ block content %} {% if current_user.is_authenticated %}
           %}
           {%
           if
-          row.editable_values
+          row.editable_values and (row.value_save_kind != 'generation' or can_edit)
           %}data-editable="1"
           {%
           endif
           %}
-          {% if row.is_custom %}{% elif row.key == 'export' %}data-save-kind="export"{% elif row.value_save_kind %}data-save-kind="{{ row.value_save_kind }}"{% endif %}
+          {% if row.is_custom %}{% elif row.value_save_kind %}data-save-kind="{{ row.value_save_kind }}"{% endif %}
+          {% if row.value_save_kind == 'import_export' %}data-ues-id="{{ row.ues_id }}" data-country-id="{{ row.country_id }}" data-direction="{{ row.direction }}"{% elif row.value_save_kind == 'receive_transfer' %}data-source-ues-id="{{ row.source_ues_id }}" data-target-ues-id="{{ row.target_ues_id }}"{% endif %}
           {%
           if
           row.is_custom
@@ -492,8 +595,8 @@ block content %} {% if current_user.is_authenticated %}
           {%
           endif
           %}
-          data-formula="{{ row.formula_client|tojson }}"
-          data-ext-raw="{{ (row.formula_ext_raw or {})|tojson }}"
+          data-formula='{{ row.formula_client|tojson }}'
+          data-ext-raw='{{ (row.formula_ext_raw or {})|tojson }}'
         >
           <td
             class="text-start pb-row-label{% if row.indent %} pb-indent-{{ row.indent }}{% endif %}{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
@@ -556,18 +659,89 @@ block content %} {% if current_user.is_authenticated %}
             >
               <i class="bi bi-plus-square" aria-hidden="true"></i>
             </button>
-            {% endif %} {{ row.label }}{% if row.key == 'generation_total' and tes_forecast_url is defined and tes_forecast_url %}
+            {% endif %} {{ row.label }}{% if row.key == 'generation_tes' and
+            sheet.slug == 'oes-318' and row.value_save_kind != 'generation' %}
+            <button
+              type="button"
+              class="btn btn-link p-0 ms-1 pb-row-info align-baseline"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+              title="{{ row.formula_tooltip|e }}"
+              aria-label="Формула расчёта выработки ТЭС"
+            ><i class="bi bi-info-circle text-primary" aria-hidden="true"></i></button>
+            {% elif row.key in ('generation_ges', 'generation_tes') and
+            row.value_save_kind != 'generation' and
+            tes_forecast_url is defined and tes_forecast_url %}
             <a
               href="{{ tes_forecast_url }}"
-              class="pb-tes-forecast-calc"
+              class="pb-row-calc"
               target="_blank"
               rel="noopener noreferrer"
               data-no-preloader
-              title="Помесячный расчёт прогнозной выработки ТЭС"
-              aria-label="Помесячный расчёт прогнозной выработки ТЭС"
-            ><i class="bi bi-calculator" aria-hidden="true"></i></a>
-            {% endif %}{% if row.formula_tooltip and row.key not
-            in ('flow_in', 'flow_out') %}
+              title="Помесячный расчёт прогнозной выработки ГЭС и ТЭС"
+              aria-label="Помесячный расчёт прогнозной выработки ГЭС и ТЭС"
+              ><i class="bi bi-calculator" aria-hidden="true"></i
+            ></a>
+            {% endif %}{% if row.key == 'generation_aes' %}
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_aes', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+              class="pb-row-calc"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка АЭС"
+              aria-label="Калькулятор выработки АЭС"
+              ><i class="bi bi-calculator" aria-hidden="true"></i
+            ></a>
+            {% endif %}{% if row.key == 'generation_ges' %}
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_ges', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+              class="pb-row-calc"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ГЭС"
+              aria-label="Калькулятор выработки ГЭС"
+              ><i class="bi bi-calculator" aria-hidden="true"></i
+            ></a>
+            {% endif %}{% if row.key == 'generation_gaes' %}
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_gaes', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+              class="pb-row-calc"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ГАЭС"
+              aria-label="Калькулятор выработки ГАЭС"
+              ><i class="bi bi-calculator" aria-hidden="true"></i
+            ></a>
+            {% endif %}{% if row.key == 'generation_snee' %}
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_snee', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
+              class="pb-row-calc"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка СНЭЭ"
+              aria-label="Калькулятор выработки СНЭЭ"
+              ><i class="bi bi-calculator" aria-hidden="true"></i
+            ></a>
+            {% endif %}{% if row.key == 'generation_ses_ves' %}
+            <a
+              href="{{ url_for('energy_balance_bp.ee_balance_ves_ses', rounding_digits=rounding_digits) }}"
+              class="pb-row-calc"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-no-preloader
+              title="Выработка ВИЭ"
+              aria-label="Калькулятор выработки ВИЭ"
+              ><i class="bi bi-calculator" aria-hidden="true"></i
+            ></a>
+            {% endif %}{% if row.formula_tooltip and row.key not in ('flow_in',
+            'flow_out', 'generation_ses_ves') and not (row.key in
+            ('generation_ges', 'generation_tes') and tes_forecast_url is defined
+            and tes_forecast_url) and not (row.key == 'generation_tes' and
+            sheet.slug == 'oes-318') %}
             <i
               class="bi bi-info-circle text-primary ms-1 pb-formula-tip"
               data-bs-toggle="tooltip"
@@ -597,8 +771,9 @@ block content %} {% if current_user.is_authenticated %}
             {{ row.unit if row.unit is defined else '' }}
           </td>
           {% for year in years %} {% set year_editable = row.editable_values and
-          (row.editable_years is not defined or not row.editable_years or year
-          in row.editable_years) %}
+          (row.value_save_kind != 'generation' or can_edit) and
+          (row.editable_years is not defined or not row.editable_years or
+          year in row.editable_years) %}
           <td
             class="text-center pb-year-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}"
             data-year="{{ year }}"
@@ -653,9 +828,11 @@ block content %} {% if current_user.is_authenticated %}
     const ADD_URL = {{ url_for('energy_balance_bp.ee_balance_custom_flow_add', slug=sheet.slug)|tojson }};
     const ITEM_URL_TMPL = {{ url_for('energy_balance_bp.ee_balance_custom_flow_item', slug=sheet.slug, row_id=0)|tojson }};
     const CURRENT_SLUG = {{ sheet.slug|tojson }};
-    const EXPORT_VALUE_URL = {{ url_for('energy_balance_bp.ee_balance_export_value', slug=sheet.slug)|tojson }};
     const NOTE_SAVE_URL = {{ url_for('energy_balance_bp.ee_balance_note', slug=sheet.slug)|tojson }};
     const GENERATION_VALUE_URL = {{ url_for('energy_balance_bp.ee_balance_generation_value', slug=sheet.slug)|tojson }};
+    const IMPORT_EXPORT_VALUE_URL = {{ url_for('energy_balance_bp.ee_balance_import_export_value', slug=sheet.slug)|tojson }};
+    const RECEIVE_TRANSFER_VALUE_URL = {{ url_for('energy_balance_bp.ee_balance_receive_transfer_value', slug=sheet.slug)|tojson }};
+    const CAN_EDIT = table.dataset.canEdit === '1';
     const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
     const headers = {
       'Content-Type': 'application/json',
@@ -1254,7 +1431,10 @@ block content %} {% if current_user.is_authenticated %}
       if (valueInput) {
         const tr = valueInput.closest('tr');
         const td = valueInput.closest('td');
-        if (td) td.dataset.raw = String(parseRaw(valueInput.value));
+        if (td) {
+          td.dataset.raw = String(parseRaw(valueInput.value));
+          td.classList.remove('is-save-success', 'is-save-error');
+        }
         recalcTable();
         const rowId = tr && tr.dataset.customId;
         const year = valueInput.getAttribute('data-year');
@@ -1270,13 +1450,35 @@ block content %} {% if current_user.is_authenticated %}
           };
           const saveKind = tr && tr.dataset.saveKind;
           if (saveKind === 'generation' && rowKey) payload.row_key = rowKey;
+          if (saveKind === 'import_export') {
+            payload.ues_id = Number(tr.dataset.uesId);
+            payload.country_id = Number(tr.dataset.countryId);
+            payload.direction = tr.dataset.direction;
+          }
+          if (saveKind === 'receive_transfer') {
+            payload.source_ues_id = Number(tr.dataset.sourceUesId);
+            payload.target_ues_id = Number(tr.dataset.targetUesId);
+          }
+          if (saveKind === 'generation' && !CAN_EDIT) {
+            window.alert('Недостаточно прав для изменения выработки');
+            return;
+          }
           const url = rowId
             ? itemUrl(rowId, tr && tr.dataset.originSlug)
-            : (saveKind === 'export' || rowKey === 'export'
-                ? EXPORT_VALUE_URL
-                : (saveKind === 'generation' ? GENERATION_VALUE_URL : null));
+            : (saveKind === 'generation'
+              ? GENERATION_VALUE_URL
+              : saveKind === 'import_export'
+                ? IMPORT_EXPORT_VALUE_URL
+                : saveKind === 'receive_transfer'
+                  ? RECEIVE_TRANSFER_VALUE_URL
+                  : null);
           if (!url) return;
-          api(url, 'PATCH', payload).catch(function (err) {
+          api(url, 'PATCH', payload).then(function () {
+            const td = valueInput.closest('td');
+            if (td) td.classList.add('is-save-success');
+          }).catch(function (err) {
+            const td = valueInput.closest('td');
+            if (td) td.classList.add('is-save-error');
             console.error(err);
             window.alert(err.message || 'Ошибка сохранения');
           });

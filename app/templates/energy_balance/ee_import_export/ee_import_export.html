@@ -1,0 +1,398 @@
+{% extends 'base.html' %}
+{% block title %}{{ page_title|default('Импорт/Экспорт ЭЭ') }}{% endblock %}
+{% block content %}
+{% if current_user.is_authenticated %}
+<div class="container-fluid mt-2">
+  <div class="page-table-scroll">
+    <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm pb-2">
+      <div class="ee-import-export-title-row mb-2">
+        <span aria-hidden="true"></span>
+        <h1 class="mb-0 text-center">{{ page_title|default('Импорт/Экспорт электрической энергии') }}</h1>
+        <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5 ee-import-export-module-link">
+          <i class="bi bi-gear-wide-connected"></i> Модуль «Балансы электрической энергии и мощности»
+        </a>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <button id="importExportToggleBtn" class="btn btn-outline-secondary text-dark" type="button"
+                data-bs-toggle="collapse" data-bs-target="#importExportCollapse"
+                aria-expanded="false" aria-controls="importExportCollapse">
+          📁 {{ 'Экспорт' if page_variant|default(false) else 'Импорт / Экспорт' }}
+        </button>
+      </div>
+
+      <div class="collapse" id="importExportCollapse">
+        <div class="d-flex align-items-center gap-2 py-1">
+          <a class="btn btn-outline-success" href="{{ url_for(export_endpoint|default('energy_balance_bp.export_ee_import_export'), start_year=start_year, end_year=end_year, rounding_digits=rounding_digits, direction_filter=direction_filter, country_filter=country_filter) }}">
+            <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+          </a>
+        </div>
+      </div>
+
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <form method="GET" action="{{ url_for(page_endpoint|default('energy_balance_bp.ee_import_export')) }}" class="d-flex align-items-center flex-wrap gap-2" id="yearForm">
+          <input type="hidden" name="rounding_digits" value="{{ rounding_digits }}">
+          {% for direction in direction_filter %}<input type="hidden" name="direction_filter" value="{{ direction }}">{% endfor %}
+          {% for country_id in country_filter %}<input type="hidden" name="country_filter" value="{{ country_id }}">{% endfor %}
+          <label for="start_year" class="mb-0" style="white-space: nowrap">Год начала:</label>
+          <select name="start_year" id="start_year" class="form-select" style="width: auto; min-width: 4.5rem">
+            {% for year in filter_year_list %}<option value="{{ year }}" {% if start_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+          </select>
+          <label for="end_year" class="mb-0" style="white-space: nowrap">Год конца:</label>
+          <select name="end_year" id="end_year" class="form-select" style="width: auto; min-width: 4.5rem">
+            {% for year in filter_year_list %}<option value="{{ year }}" {% if end_year == year %}selected{% endif %}>{{ year }}</option>{% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-success">Применить</button>
+          <a href="{{ url_for(page_endpoint|default('energy_balance_bp.ee_import_export')) }}" class="btn btn-outline-danger">Сбросить</a>
+        </form>
+        <form method="GET" action="{{ url_for(page_endpoint|default('energy_balance_bp.ee_import_export')) }}" class="d-flex align-items-center gap-2 ms-auto" id="roundingForm">
+          <input type="hidden" name="start_year" value="{{ start_year }}">
+          <input type="hidden" name="end_year" value="{{ end_year }}">
+          {% for direction in direction_filter %}<input type="hidden" name="direction_filter" value="{{ direction }}">{% endfor %}
+          {% for country_id in country_filter %}<input type="hidden" name="country_filter" value="{{ country_id }}">{% endfor %}
+          <label for="rounding_digits" class="mb-0" style="white-space: nowrap">Округл:</label>
+          <select id="rounding_digits" name="rounding_digits" class="form-select" style="min-width: 8rem" onchange="this.form.submit()">
+            <option value="-1" {% if rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+            <option value="0" {% if rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+            <option value="1" {% if rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+            <option value="2" {% if rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+            <option value="3" {% if rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+          </select>
+        </form>
+      </div>
+    </div>
+
+    {% set column_count = 2 + period_columns|length %}
+    <div class="table-responsive ee-import-export-scroll">
+      <table class="table table-hover table-striped table-bordered ee-import-export-table{% if rounding_digits == 0 %} ee-import-export-unrounded{% endif %}" id="eeImportExportTable" data-can-edit="{{ '1' if can_edit else '0' }}" data-rounding-digits="{{ rounding_digits }}"
+             data-save-url="{{ url_for(save_endpoint|default('energy_balance_bp.ee_import_export_value'), rounding_digits=rounding_digits) }}"
+             data-csrf-token="{% if csrf_token is string %}{{ csrf_token }}{% else %}{{ csrf_token() }}{% endif %}">
+        <thead class="table-success">
+          <tr class="text-center align-middle">
+            <th style="min-width: 180px">
+              <span class="d-inline-flex align-items-center justify-content-center gap-1">
+                {{ 'Прием/Передача' if page_variant|default(false) else 'Экспорт/Импорт' }}
+                <span class="dropdown d-inline-block">
+                  <button class="btn dropdown-toggle ee-import-export-filter-btn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-label="Фильтр по направлению">
+                    {% if direction_filter %}<i class="bi bi-funnel-fill text-warning"></i>{% endif %}
+                  </button>
+                  <ul class="dropdown-menu" style="min-width: 220px">
+                    {% for option in direction_options %}
+                    <li><label class="dropdown-item"><input type="checkbox" name="direction_filter" value="{{ option.id }}" {% if option.id in direction_filter %}checked{% endif %}> {{ option.name }}</label></li>
+                    {% endfor %}
+                  </ul>
+                </span>
+                {% if direction_filter %}<button class="btn btn-sm btn-outline-danger filter-clear-btn" type="button" data-filter-name="direction_filter" title="Сбросить фильтр"><i class="bi bi-x-lg"></i></button>{% endif %}
+              </span>
+            </th>
+            <th style="min-width: 200px">
+              <span class="d-inline-flex align-items-center justify-content-center gap-1">
+                {{ 'Наименование ОЭС' if page_variant|default(false) else 'Страна' }}
+                <span class="dropdown d-inline-block">
+                  <button class="btn dropdown-toggle ee-import-export-filter-btn" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-label="{{ 'Фильтр по ОЭС' if page_variant|default(false) else 'Фильтр по стране' }}">
+                    {% if country_filter %}<i class="bi bi-funnel-fill text-warning"></i>{% endif %}
+                  </button>
+                  <ul class="dropdown-menu" style="max-height: 300px; overflow-y: auto; min-width: 260px">
+                    {% for country in country_options %}
+                    <li><label class="dropdown-item"><input type="checkbox" name="country_filter" value="{{ country.id }}" {% if country.id in country_filter %}checked{% endif %}> {{ country.name }}</label></li>
+                    {% endfor %}
+                  </ul>
+                </span>
+                {% if country_filter %}<button class="btn btn-sm btn-outline-danger filter-clear-btn" type="button" data-filter-name="country_filter" title="Сбросить фильтр"><i class="bi bi-x-lg"></i></button>{% endif %}
+              </span>
+            </th>
+            {% for period_num, period_label in period_columns %}
+            {% set year_feature_label = year_features.get(period_num) if year_features else none %}
+            <th class="text-center align-middle{% if year_feature_label %} ee-year-th-with-feature{% endif %}"{% if not year_feature_label %} style="min-width: 85px"{% endif %}>
+              {{ period_label }}
+              {% if year_feature_label %}<div class="ee-year-feature-caption">{{ year_feature_label }}</div>{% endif %}
+              <span class="text-muted small fw-normal d-block">млн кВтч</span>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% if hierarchy %}
+            {% for oes_block in hierarchy %}
+            <tr class="table-primary text-center fw-bold"><td colspan="{{ column_count }}">{{ oes_block.ues_name }}</td></tr>
+              {% for transfer_row in oes_block.rows %}
+              <tr class="text-center align-middle" data-ues-id="{{ oes_block.ues_id }}" data-country-id="{{ transfer_row.country_id }}" data-direction="{{ transfer_row.direction }}">
+                <td>{{ transfer_row.direction_label }}</td>
+                <td class="text-start">{{ transfer_row.country_name }}</td>
+                {% for period_num, period_label in period_columns %}
+                {% if can_edit %}
+                {% set raw_value = transfer_row.cell_raw_values.get(period_num, '') %}
+                {% set display_value = transfer_row.cell_values.get(period_num, '') %}
+                <td class="text-center align-middle ee-import-export-year-cell" data-year="{{ period_num }}" data-raw="{{ raw_value }}">
+                  <input type="text" class="form-control form-control-sm ee-import-export-value" data-year="{{ period_num }}" data-original="{{ '' if display_value == '—' else display_value }}" value="{{ '' if display_value == '—' else display_value }}" inputmode="decimal" aria-label="{{ transfer_row.direction_label }} {{ transfer_row.country_name }}, {{ period_num }}">
+                </td>
+                {% else %}
+                <td>{{ transfer_row.cell_values.get(period_num, '—') }}</td>
+                {% endif %}
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            {% endfor %}
+          {% else %}
+          <tr><td colspan="{{ column_count }}" class="text-center text-muted py-4">Данные не найдены</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<style>
+  .ee-import-export-title-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .ee-import-export-module-link {
+    grid-column: 3;
+    justify-self: end;
+    white-space: nowrap;
+  }
+  @media (max-width: 767.98px) {
+    .ee-import-export-title-row {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .ee-import-export-title-row h2 {
+      grid-row: 1;
+    }
+    .ee-import-export-title-row > span {
+      display: none;
+    }
+    .ee-import-export-module-link {
+      grid-column: 1;
+      grid-row: 2;
+      justify-self: end;
+    }
+  }
+  /* Шапка остаётся видимой при скролле: top компенсирует липкую панель фильтров */
+  .page-table-scroll .ee-import-export-scroll:not(.pd-coeff-summary-scroll-wrap) table thead tr:nth-child(1) th {
+    top: var(--pd-summary-controls-sticky-height, 0px);
+  }
+  .page-table-scroll .ee-import-export-scroll:not(.pd-coeff-summary-scroll-wrap) table thead tr:nth-child(2) th {
+    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row2-top, var(--sticky-thead-row1-height, 0px)));
+  }
+  .page-table-scroll .ee-import-export-scroll:not(.pd-coeff-summary-scroll-wrap) table thead tr:nth-child(3) th {
+    top: calc(var(--pd-summary-controls-sticky-height, 0px) + var(--sticky-thead-row3-top, var(--sticky-thead-row3-offset, 0px)));
+  }
+  #eeImportExportTable.ee-import-export-table {
+    border-top: 0 !important;
+  }
+  #eeImportExportTable.ee-import-export-table > thead,
+  #eeImportExportTable.ee-import-export-table > thead > tr,
+  #eeImportExportTable.ee-import-export-table > thead > tr > th,
+  #eeImportExportTable.ee-import-export-table > :not(caption) > * {
+    border-top: 0 !important;
+  }
+  #eeImportExportTable.ee-import-export-table > thead > tr > th {
+    box-shadow: inset 0 -1px 0 var(--bs-table-border-color, var(--bs-border-color, #dee2e6));
+  }
+  #eeImportExportTable thead th.ee-year-th-with-feature {
+    min-width: 7.25rem;
+    max-width: 10rem;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+  #eeImportExportTable.ee-import-export-unrounded thead th.ee-year-th-with-feature {
+    max-width: none;
+  }
+  #eeImportExportTable thead .ee-year-feature-caption {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.82em;
+    line-height: 1.3;
+    font-weight: inherit;
+    text-align: center;
+    word-break: normal;
+    overflow-wrap: normal;
+    word-wrap: normal;
+    hyphens: none;
+  }
+  #eeImportExportTable .ee-import-export-filter-btn {
+    padding: 0 0.35rem 0 0;
+    line-height: 1;
+    min-height: 0;
+    white-space: nowrap;
+  }
+  #eeImportExportTable td.ee-import-export-year-cell {
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+  }
+  #eeImportExportTable td.ee-import-export-year-cell.is-save-success {
+    box-shadow: inset 0 0 0 2px var(--bs-success);
+  }
+  #eeImportExportTable td.ee-import-export-year-cell.is-save-error {
+    box-shadow: inset 0 0 0 2px var(--bs-danger);
+  }
+  #eeImportExportTable .ee-import-export-year-cell .ee-import-export-value {
+    width: 100%;
+    padding: 0.125rem 0.25rem;
+    font-size: inherit;
+    line-height: 1.2;
+    text-align: center;
+  }
+</style>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const table = document.getElementById("eeImportExportTable");
+    if (table?.dataset.roundingDigits === "0") {
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      function fitUnroundedColumns() {
+        if (!context) return;
+        const headerCells = table.tHead?.rows[0]?.cells;
+        if (!headerCells) return;
+
+        for (let columnIndex = 2; columnIndex < headerCells.length; columnIndex += 1) {
+          let widestText = 0;
+          for (const row of table.tBodies[0]?.rows || []) {
+            if (!row.matches("tr[data-ues-id]")) continue;
+            const cell = row.cells[columnIndex];
+            if (!cell) continue;
+
+            const textElement = cell.querySelector("input") || cell;
+            const style = window.getComputedStyle(textElement);
+            context.font = style.font;
+            widestText = Math.max(
+              widestText,
+              context.measureText(textElement.value ?? cell.textContent.trim()).width,
+            );
+          }
+
+          const minimumColumnWidth =
+            parseFloat(window.getComputedStyle(headerCells[columnIndex]).minWidth) || 0;
+          const minWidth = `${Math.ceil(Math.max(minimumColumnWidth, widestText + 34))}px`;
+          headerCells[columnIndex].style.minWidth = minWidth;
+          for (const row of table.tBodies[0]?.rows || []) {
+            if (row.matches("tr[data-ues-id]") && row.cells[columnIndex]) {
+              row.cells[columnIndex].style.minWidth = minWidth;
+            }
+          }
+        }
+      }
+
+      fitUnroundedColumns();
+      table.addEventListener("input", fitUnroundedColumns);
+      window.addEventListener("resize", fitUnroundedColumns);
+    }
+
+    function navigateWithColumnFilters() {
+      const params = new URLSearchParams(window.location.search);
+      ["direction_filter", "country_filter"].forEach((name) => params.delete(name));
+      document.querySelectorAll('input[name="direction_filter"]:checked, input[name="country_filter"]:checked').forEach((input) => {
+        params.append(input.name, input.value);
+      });
+      window.location.href = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+    }
+
+    document.querySelectorAll('input[name="direction_filter"], input[name="country_filter"]').forEach((input) => {
+      input.addEventListener("change", navigateWithColumnFilters);
+    });
+    document.querySelectorAll(".filter-clear-btn[data-filter-name]").forEach((button) => {
+      button.addEventListener("click", function () {
+        const params = new URLSearchParams(window.location.search);
+        params.delete(this.dataset.filterName);
+        window.location.href = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+      });
+    });
+  });
+</script>
+{% if can_edit %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const table = document.getElementById("eeImportExportTable");
+    if (!table) return;
+    const saveUrl = table.dataset.saveUrl;
+    const csrfToken = table.dataset.csrfToken;
+
+    table.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && event.target.matches("input.ee-import-export-value")) {
+        event.preventDefault();
+        event.target.blur();
+      }
+    });
+
+    table.addEventListener("change", async function (event) {
+      const input = event.target.closest("input.ee-import-export-value");
+      if (!input || window.__armGsTableRowPasteActive) return;
+      const row = input.closest("tr[data-ues-id]");
+      const cell = input.closest("td[data-year]");
+      if (!row || !cell) return;
+      await saveCell(row, input, cell);
+    });
+
+    async function saveCell(row, input, cell, deferReload) {
+      input.disabled = true;
+      cell.classList.remove("is-save-success", "is-save-error");
+      try {
+        const response = await fetch(saveUrl, {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": csrfToken || "",
+          },
+          body: JSON.stringify({
+             ues_id: row.dataset.uesId,
+             country_id: row.dataset.countryId,
+             direction: row.dataset.direction,
+             year: input.dataset.year,
+            value: input.value,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || result.ok === false) throw new Error(result.error || "Ошибка сохранения");
+
+        cell.dataset.raw = result.raw;
+        input.dataset.original = result.display;
+        input.value = result.display;
+        cell.classList.add("is-save-success");
+        if (result.direction !== row.dataset.direction) {
+          if (deferReload) return true;
+          window.location.reload();
+        }
+      } catch (error) {
+        input.value = input.dataset.original || "";
+        cell.classList.add("is-save-error");
+        window.alert(error.message || "Ошибка сохранения значения");
+      } finally {
+        input.disabled = false;
+      }
+      return false;
+    }
+
+    // Построчная вставка из Excel: значения по годам идут в следующие строки ОЭС — страна.
+    if (typeof window.initPowerDemandSummaryRowPaste === "function") {
+      window.initPowerDemandSummaryRowPaste(table, {
+        isPasteableInput: function (input) {
+          return input.matches("input.ee-import-export-value") && !input.disabled;
+        },
+        getRowPasteTargets: function (tr) {
+          return tr && tr.matches("tr[data-ues-id]")
+            ? Array.prototype.slice.call(tr.querySelectorAll("input.ee-import-export-value"))
+            : [];
+        },
+        onPasteComplete: async function (changedInputs) {
+          let reload = false;
+          for (const input of changedInputs) {
+            const row = input.closest("tr[data-ues-id]");
+            const cell = input.closest("td[data-year]");
+            if (row && cell && input.value !== input.dataset.original) {
+              reload = (await saveCell(row, input, cell, true)) || reload;
+            }
+          }
+          if (reload) window.location.reload();
+        },
+      });
+    }
+  });
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}

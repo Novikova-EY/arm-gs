@@ -15,8 +15,8 @@ from flask import request
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.generation.services.station_services.aggregation_cache import get_redis_client
 
-# v42: ТИТЭС — combined_on_oes/ees для строк k на coeff.
-PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 42
+# v43: кэш full-build зависит от pd_page / pd_page_size для предварительной пагинации.
+PD_SUMMARY_PAGE_CACHE_KEY_VERSION = 43
 _CACHE_TIMEOUT = timedelta(minutes=30)
 _memory_cache: dict[str, tuple[int, Any, datetime]] = {}
 # Поколение кэша: отсекает «опоздавшие» записи после clear (threaded/gunicorn).
@@ -92,9 +92,15 @@ def make_pd_summary_data_cache_key(scope: str, query_string: str) -> str:
     )
 
 
-def make_pd_summary_build_cache_key(scope: str, query_string: str) -> str:
-    """Ключ полного дерева (без пагинации)."""
-    stripped = strip_pd_pagination_from_query_string(query_string)
+def make_pd_summary_build_cache_key(
+    scope: str, query_string: str, *, include_pagination: bool = False
+) -> str:
+    """Ключ построенных данных; по умолчанию общий для всех страниц."""
+    stripped = (
+        query_string
+        if include_pagination
+        else strip_pd_pagination_from_query_string(query_string)
+    )
     version_id = get_current_db_version_id()
     raw = (
         f"pd_summary_build:v{PD_SUMMARY_PAGE_CACHE_KEY_VERSION}:"
@@ -183,10 +189,14 @@ def set_cached_value(cache_key: str, value: Any, *, generation: int | None = Non
 def cached_load_pd_summary_full_build(
     scope: str,
     loader: Callable[[], dict[str, Any]],
+    *,
+    include_pagination: bool = False,
 ) -> dict[str, Any]:
-    """Кэш полного build (все секции) — общий для разных pd_page / pd_page_size."""
+    """Кэш построенных данных; пагинация включается в ключ по требованию."""
     query_string = request.query_string.decode("utf-8") if request.query_string else ""
-    cache_key = make_pd_summary_build_cache_key(scope, query_string)
+    cache_key = make_pd_summary_build_cache_key(
+        scope, query_string, include_pagination=include_pagination
+    )
     generation = _get_cache_generation()
     cached = get_cached_value(cache_key)
     if cached is not None:
@@ -250,22 +260,13 @@ def set_cached_oes_national_prefix_sources(
 
 
 def clear_pd_summary_page_cache() -> None:
-    """Сбрасывает кэш JSON-данных сводок нагрузок (Redis + in-memory)."""
+    """Логически сбрасывает JSON-кэш, не сканируя Redis по всем его ключам."""
     global _memory_cache
 
+    # Каждая запись содержит поколение: после bump старые данные перестают
+    # возвращаться сразу, а физически удаляются Redis по TTL. SCAN + DELETE
+    # здесь блокировали сохранение ячейки пропорционально размеру всего кэша.
     _bump_cache_generation()
-    redis_client = get_redis_client()
-    if redis_client:
-        try:
-            for prefix in (
-                f"pd_summary:v{PD_SUMMARY_PAGE_CACHE_KEY_VERSION}:",
-                f"pd_summary_build:v{PD_SUMMARY_PAGE_CACHE_KEY_VERSION}:",
-                f"pd_oes_prefix:v{PD_SUMMARY_PAGE_CACHE_KEY_VERSION}:",
-            ):
-                for key in redis_client.scan_iter(match=f"{prefix}*"):
-                    redis_client.delete(key)
-        except Exception:
-            pass
     _memory_cache = {}
 
 

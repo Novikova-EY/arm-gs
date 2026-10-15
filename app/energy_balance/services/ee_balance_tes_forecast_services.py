@@ -499,6 +499,7 @@ def _row(
     italic: bool = False,
     css_class: str | None = None,
     is_reference: bool = False,
+    formula_months: list[int] | None = None,
 ) -> dict[str, Any]:
     if css_class is None:
         css_class = "table-info" if kind in {KIND_TOTAL, KIND_SECTION} else ""
@@ -517,6 +518,7 @@ def _row(
         "parent_station_key": None,
         "is_machine_row": False,
         "is_reference": is_reference,
+        "formula_months": list(formula_months or []),
     }
 
 
@@ -704,15 +706,16 @@ def compute_tes_forecast_year(
 
     share_values = _month_map()
     consumption = _month_map()
+    consumption_formula_months: list[int] = []
     stored_share = stored.get(ROW_CONSUMPTION_SHARE) or {}
     stored_cons = stored.get(ROW_CONSUMPTION) or {}
     for month in HYDRO_MONTH_ORDER:
         share_values[month] = _to_decimal(stored_share.get(month))
-        stored_month = _to_decimal(stored_cons.get(month))
-        if stored_month is not None:
-            consumption[month] = stored_month
-        elif share_values[month] is not None and annual_consumption is not None:
+        if share_values[month] is not None and annual_consumption not in (None, 0):
             consumption[month] = annual_consumption * share_values[month]
+            consumption_formula_months.append(month)
+        else:
+            consumption[month] = _to_decimal(stored_cons.get(month))
 
     pivr_by_ges: list[dict[int, Decimal | None]] = []
     for station in ges_stations:
@@ -818,11 +821,12 @@ def compute_tes_forecast_year(
         ),
         _row(
             ROW_CONSUMPTION,
-            "Потребление в электрической энергии",
+            "Потребление электрической энергии",
             _with_year_total(consumption),
             editable=True,
+            formula_months=consumption_formula_months,
             css_class="table-info",
-            formula_tooltip="Если месяц не задан: годовое потребление листа БЭ × доля месяца. Итого = SUM(январь:декабрь)",
+            formula_tooltip="При наличии годового потребления листа БЭ и доли месяца: потребление = годовое потребление × доля; ячейка не редактируется. Иначе доступен ручной ввод. Итого = SUM(январь:декабрь)",
         ),
         _row(
             ROW_PRODUCTION,
@@ -1724,13 +1728,23 @@ def build_tes_forecast_context(
     years = get_power_balance_year_columns(start_year, end_year)
     year_features = get_power_balance_year_features()
     plan_years = tes_forecast_plan_years(years, year_features)
-    tab_years = plan_years or list(years)
+    tab_years = list(years)
     selected = resolve_tes_forecast_view_year(view_year, tab_years)
     if selected is None:
         return None
     digits = resolve_power_balance_rounding_digits(rounding_digits)
     hydro_year = HYDRO_YEAR_LOW
     payload = build_tes_forecast_year_payload(sheet, selected, rounding_digits=digits)
+    rows = payload["rows"]
+    if sheet.get("slug") == "oes-318" and is_tites_sibir_tes_forecast_sheet(sheet):
+        rows = [
+            row
+            for row in rows
+            if row["key"] not in {ROW_CHIIM_HEADER, ROW_KIUM_HEADER}
+            and not row["key"].startswith(
+                ("tes_", "capacity_tes", "chiim_tes", "kium_tes")
+            )
+        ]
     page_title = tes_forecast_page_title(sheet)
     return {
         "sheet": sheet,
@@ -1743,7 +1757,7 @@ def build_tes_forecast_context(
         "end_year": years[-1] if years else None,
         "filter_year_list": get_power_balance_filter_year_list(),
         "rounding_digits": digits,
-        "rows": payload["rows"],
+        "rows": rows,
         "months": list(HYDRO_MONTH_ORDER),
         "month_names": HYDRO_MONTH_NAMES,
         "hydro_year": hydro_year,
@@ -1798,12 +1812,13 @@ def overlay_tes_forecast_generation_inputs(
             except Exception:
                 _logger.exception("ee balance tes forecast: entities for overlay failed")
                 continue
+            annual_consumption = _to_decimal(
+                (sheet_map.get(CONSUMPTION_ROW_KEY) or {}).get(year_int)
+            )
             rows = compute_tes_forecast_year(
                 year=year_int,
                 stored=stored,
-                annual_consumption=_to_decimal(
-                    (sheet_map.get(CONSUMPTION_ROW_KEY) or {}).get(year_int)
-                ),
+                annual_consumption=annual_consumption,
                 ges_stations=entities.get("ges_stations"),
                 tes_stations=entities.get("tes_stations"),
                 aes_stations=entities.get("aes_stations"),
@@ -1812,6 +1827,13 @@ def overlay_tes_forecast_generation_inputs(
                 ges_pivr_scope=_tes_forecast_ges_pivr_scope(sheet),
             )
             for source_key, target_key in _EE_OVERLAY_YEAR_FIELDS:
+                if (
+                    target_key == CONSUMPTION_ROW_KEY
+                    and is_tites_sibir_tes_forecast_sheet(sheet)
+                    and annual_consumption not in (None, 0)
+                ):
+                    # Неполные месячные доли не должны уменьшать годовой спрос из сводки.
+                    continue
                 _put_year_input(
                     sheet_map,
                     target_key,
@@ -1885,6 +1907,14 @@ def update_tes_forecast_value(
         raise ValueError("Редактирование доступно только для плановых годов")
     key = str(row_key or "").strip()
     entities = load_tes_forecast_entities(sheet, year_int)
+    if key == ROW_CONSUMPTION:
+        stored = load_tes_forecast_stored(slug, year_int)
+        share = _to_decimal(
+            (stored.get(ROW_CONSUMPTION_SHARE) or {}).get(month_int)
+        )
+        annual = load_tes_forecast_annual_consumption(sheet, year_int)
+        if share is not None and annual not in (None, 0):
+            raise ValueError("Ячейка рассчитана по формуле и недоступна для редактирования")
     if not is_tes_forecast_editable_key(key):
         raise ValueError("Эта ячейка считается по формуле")
     try:
@@ -1901,6 +1931,11 @@ def update_tes_forecast_value(
         "version_id": version_id,
     }
     _write_month_value(row_key=key, parsed=parsed, **write_kw)
+    if key == ROW_CONSUMPTION_SHARE and parsed is not None:
+        annual = load_tes_forecast_annual_consumption(sheet, year_int)
+        if annual is not None and annual != 0:
+            # Старая ручная запись не должна перекрывать расчёт по новой доле.
+            _write_month_value(row_key=ROW_CONSUMPTION, parsed=None, **write_kw)
     station_to_machines, machine_to_station = _tes_generation_key_links(
         entities.get("tes_stations") or []
     )
@@ -1917,11 +1952,16 @@ def update_tes_forecast_value(
         rounding_digits=rounding_digits,
         entities=entities,
     )
+    consumption_row = next(
+        (row for row in payload["rows"] if row.get("key") == ROW_CONSUMPTION),
+        {},
+    )
     return {
         "year": year_int,
         "row_key": key,
         "month": month_int,
         "value": parsed,
         "cells": cells_payload(payload["rows"]),
+        "formula_cells": {ROW_CONSUMPTION: consumption_row.get("formula_months") or []},
         "tes_total": payload["tes_total"],
     }

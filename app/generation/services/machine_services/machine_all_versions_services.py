@@ -38,6 +38,10 @@ from app.generation.models.station.station_gaes_charge_consumption_model import 
 from app.generation.models.station.station_owner_energy_generation_model import (
     StationOwnerEnergyGeneration,
 )
+from app.generation.models.station.station_snee_energy_consumption_model import (
+    StationSneeEnergyConsumption,
+)
+from app.generation.models.station.station_snee_efficiency_model import StationSneeEfficiency
 from app.energy_balance.models.station_energy_generation_model import (
     STATION_ENERGY_GENERATION_PERIOD_YEAR,
     StationEnergyGeneration,
@@ -549,6 +553,57 @@ def _sync_station_year_table_all_versions(
     return updated_rows
 
 
+def _sync_station_snee_efficiency_all_versions(
+    *,
+    station_external_code: str,
+    version_ids: list[Optional[int]],
+    version_numbers: dict[int, str],
+    efficiency_percent: Decimal | None,
+    versions_touched_set: set[Optional[int]],
+    change_log: list[str],
+) -> int:
+    updated_rows = 0
+    if efficiency_percent is not None and not (0 <= efficiency_percent <= 100):
+        raise ValueError("КПД должен быть в диапазоне от 0 до 100 %.")
+
+    for version_id in version_ids:
+        version_changed = False
+        for target_station in _stations_by_external_code(station_external_code, version_id):
+            query = StationSneeEfficiency.query.filter(
+                StationSneeEfficiency.id_station == target_station.id
+            )
+            query = filter_by_explicit_db_version(query, StationSneeEfficiency, version_id)
+            record = query.first()
+            old_value = to_decimal(record.efficiency_percent) if record else None
+            if is_same_decimal(old_value, efficiency_percent):
+                continue
+            if efficiency_percent is None:
+                if record is None:
+                    continue
+                db.session.delete(record)
+            elif record is None:
+                record = StationSneeEfficiency(
+                    id_station=target_station.id,
+                    efficiency_percent=efficiency_percent,
+                )
+                set_db_version_on_create(record)
+                if version_id is not None:
+                    record.database_version_id = version_id
+                db.session.add(record)
+            else:
+                record.efficiency_percent = efficiency_percent
+                db.session.add(record)
+            updated_rows += 1
+            version_changed = True
+            change_log.append(
+                f"КПД СНЭЭ, {database_version_log_prefix(version_id, version_numbers)}, "
+                f"станция id={target_station.id}: {_log_num(old_value)} → {_log_num(efficiency_percent)} %"
+            )
+        if version_changed:
+            versions_touched_set.add(version_id)
+    return updated_rows
+
+
 def _apply_values_to_machine(
     machine: Machine, values: dict[str, Any]
 ) -> tuple[bool, list[tuple[str, str, str]]]:
@@ -597,6 +652,7 @@ def update_station_machines_all_versions_from_form(
     sync_station_energy: bool = False,
     sync_station_gaes_charge: bool = False,
     sync_station_owner_energy: bool = False,
+    sync_station_snee_consumption: bool = False,
     sync_station_general_info: bool = False,
     sync_station_kto: bool = False,
     sync_machines: bool = True,
@@ -607,8 +663,8 @@ def update_station_machines_all_versions_from_form(
 
     Агрегаты — по external_code машины (fuel_so, note, id_gen_company).
     Общая информация / местоположение / код КТО — по external_code станции.
-    Выработка, заряд ГАЭС и выработка от собственника — по external_code станции
-    (st_gen_*, st_gaes_charge_*, st_owner_gen_*).
+    Выработка, потребление ГАЭС/СНЭЭ и выработка от собственника — по external_code станции
+    (st_gen_*, st_gaes_charge_*, st_owner_gen_*, st_snee_consumption_*).
     """
     request_meta = request_meta or {}
     if start_year > end_year:
@@ -620,6 +676,7 @@ def update_station_machines_all_versions_from_form(
     has_energy_form = bool(sync_station_energy)
     has_gaes_form = bool(sync_station_gaes_charge)
     has_owner_energy_form = bool(sync_station_owner_energy)
+    has_snee_consumption_form = bool(sync_station_snee_consumption)
     has_general_info_form = sync_station_general_info and _form_has_station_general_info(
         form_data
     )
@@ -630,6 +687,7 @@ def update_station_machines_all_versions_from_form(
         and not has_energy_form
         and not has_gaes_form
         and not has_owner_energy_form
+        and not has_snee_consumption_form
         and not has_general_info_form
         and not has_kto_form
     ):
@@ -641,6 +699,8 @@ def update_station_machines_all_versions_from_form(
             "updated_energy_rows": 0,
             "updated_gaes_rows": 0,
             "updated_owner_energy_rows": 0,
+            "updated_snee_consumption_rows": 0,
+            "updated_snee_efficiency_rows": 0,
             "no_changes": True,
             "warnings": ["В форме нет данных для синхронизации во всех версиях."],
         }
@@ -666,6 +726,8 @@ def update_station_machines_all_versions_from_form(
     updated_energy_rows = 0
     updated_gaes_rows = 0
     updated_owner_energy_rows = 0
+    updated_snee_consumption_rows = 0
+    updated_snee_efficiency_rows = 0
     updated_stations = 0
     updated_kto_stations = 0
 
@@ -673,7 +735,7 @@ def update_station_machines_all_versions_from_form(
 
     logger.info(
         "[station_all_versions] START station_id=%s station_name=%r user=%r "
-        "machines=%s general=%s kto=%s energy=%s gaes=%s owner_energy=%s years=%s..%s meta=%s",
+        "machines=%s general=%s kto=%s energy=%s gaes=%s owner_energy=%s snee_consumption=%s years=%s..%s meta=%s",
         station.id,
         station.name,
         user,
@@ -683,6 +745,7 @@ def update_station_machines_all_versions_from_form(
         has_energy_form,
         has_gaes_form,
         has_owner_energy_form,
+        has_snee_consumption_form,
         start_year,
         end_year,
         request_meta,
@@ -692,25 +755,29 @@ def update_station_machines_all_versions_from_form(
         has_energy_form
         or has_gaes_form
         or has_owner_energy_form
+        or has_snee_consumption_form
         or has_general_info_form
         or has_kto_form
     )
     if needs_station_code and not station_external_code:
         warnings.append(
             "У электростанции отсутствует external_code — общая информация, код КТО, "
-            "выработка, заряд ГАЭС и выработка от собственника не синхронизированы во всех версиях."
+            "выработка и специальные таблицы потребления не синхронизированы во всех версиях."
         )
         has_energy_form = False
         has_gaes_form = False
         has_owner_energy_form = False
+        has_snee_consumption_form = False
         has_general_info_form = False
         has_kto_form = False
 
-    if has_energy_form or has_gaes_form or has_owner_energy_form:
+    if has_energy_form or has_gaes_form or has_owner_energy_form or has_snee_consumption_form:
         for seq_schema, seq_table in (
             (SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations"),
             (SCHEMA_GENERATION, "gs_gen_station_gaes_charge_consumptions"),
             (SCHEMA_GENERATION, "gs_gen_station_owner_energy_generations"),
+            (SCHEMA_GENERATION, "gs_gen_station_snee_energy_consumptions"),
+            (SCHEMA_GENERATION, "gs_gen_station_snee_efficiencies"),
         ):
             try:
                 quick_fix_seq(seq_schema, seq_table, "id")
@@ -791,6 +858,35 @@ def update_station_machines_all_versions_from_form(
                 versions_touched_set=versions_touched_set,
                 change_log=station_table_log,
             )
+
+        if has_snee_consumption_form and station_external_code:
+            year_values = _year_values_from_form(
+                form_data, "st_snee_consumption", start_year, end_year
+            )
+            updated_snee_consumption_rows = _sync_station_year_table_all_versions(
+                station_external_code=station_external_code,
+                version_ids=version_ids,
+                version_numbers=version_numbers,
+                year_values=year_values,
+                model_cls=StationSneeEnergyConsumption,
+                value_attr="electricity_consumption",
+                table_label="Потребление электроэнергии СНЭЭ",
+                versions_touched_set=versions_touched_set,
+                change_log=station_table_log,
+            )
+            if "st_snee_efficiency_percent" in form_keys:
+                raw_efficiency = form_data.get("st_snee_efficiency_percent")
+                efficiency_percent = to_decimal(raw_efficiency)
+                if raw_efficiency not in (None, "") and str(raw_efficiency).strip() and efficiency_percent is None:
+                    raise ValueError("Введите числовое значение КПД.")
+                updated_snee_efficiency_rows = _sync_station_snee_efficiency_all_versions(
+                    station_external_code=station_external_code,
+                    version_ids=version_ids,
+                    version_numbers=version_numbers,
+                    efficiency_percent=efficiency_percent,
+                    versions_touched_set=versions_touched_set,
+                    change_log=station_table_log,
+                )
 
         for anchor_id in (anchor_machine_ids if has_machine_form else []):
             anchor = anchors_by_id.get(anchor_id)
@@ -889,6 +985,8 @@ def update_station_machines_all_versions_from_form(
         or updated_energy_rows > 0
         or updated_gaes_rows > 0
         or updated_owner_energy_rows > 0
+        or updated_snee_consumption_rows > 0
+        or updated_snee_efficiency_rows > 0
     )
     if not any_changes:
         logger.info(
@@ -904,6 +1002,8 @@ def update_station_machines_all_versions_from_form(
             "updated_energy_rows": 0,
             "updated_gaes_rows": 0,
             "updated_owner_energy_rows": 0,
+            "updated_snee_consumption_rows": 0,
+            "updated_snee_efficiency_rows": 0,
             "no_changes": True,
             "warnings": warnings,
             "per_machine_log": per_machine_log,
@@ -915,6 +1015,8 @@ def update_station_machines_all_versions_from_form(
             (SCHEMA_ENERGY_BALANCE, "gs_bem_station_energy_generations"),
             (SCHEMA_GENERATION, "gs_gen_station_gaes_charge_consumptions"),
             (SCHEMA_GENERATION, "gs_gen_station_owner_energy_generations"),
+            (SCHEMA_GENERATION, "gs_gen_station_snee_energy_consumptions"),
+            (SCHEMA_GENERATION, "gs_gen_station_snee_efficiencies"),
         ):
             try:
                 quick_fix_seq(seq_schema, seq_table, "id")
@@ -952,6 +1054,8 @@ def update_station_machines_all_versions_from_form(
         f"Обновлено строк выработки: {updated_energy_rows}",
         f"Обновлено строк заряда ГАЭС: {updated_gaes_rows}",
         f"Обновлено строк выработки от собственника: {updated_owner_energy_rows}",
+        f"Обновлено строк потребления СНЭЭ: {updated_snee_consumption_rows}",
+        f"Обновлено значений КПД СНЭЭ: {updated_snee_efficiency_rows}",
         f"Мета запроса: {request_meta}",
     ]
     if per_machine_log:
@@ -979,7 +1083,7 @@ def update_station_machines_all_versions_from_form(
     if current_app:
         current_app.logger.info(
             "[station_all_versions] SUCCESS station_id=%s versions=%s machines=%s "
-            "stations=%s kto=%s energy_rows=%s gaes_rows=%s owner_energy_rows=%s",
+            "stations=%s kto=%s energy_rows=%s gaes_rows=%s owner_energy_rows=%s snee_consumption_rows=%s",
             station.id,
             versions_touched,
             updated_count,
@@ -988,6 +1092,7 @@ def update_station_machines_all_versions_from_form(
             updated_energy_rows,
             updated_gaes_rows,
             updated_owner_energy_rows,
+            updated_snee_consumption_rows,
         )
 
     return {
@@ -998,6 +1103,8 @@ def update_station_machines_all_versions_from_form(
         "updated_energy_rows": updated_energy_rows,
         "updated_gaes_rows": updated_gaes_rows,
         "updated_owner_energy_rows": updated_owner_energy_rows,
+        "updated_snee_consumption_rows": updated_snee_consumption_rows,
+        "updated_snee_efficiency_rows": updated_snee_efficiency_rows,
         "warnings": warnings,
         "per_machine_log": per_machine_log,
         "station_table_log": station_table_log,

@@ -190,8 +190,79 @@ def test_tites_ues_consumption_uses_unspecified_not_without_nt():
     ), patch(
         "app.energy_balance.services.ee_balance_consumption_services.get_demand_rows",
         fake_rows,
+    ), patch(
+        "app.energy_balance.services.ee_balance_consumption_services._tites_siberia_consumption_year_values",
+        return_value={},
     ):
         inputs = load_ee_balance_consumption_inputs([2026], sheets=sheets)
 
     assert captured["codes"] == [None]
     assert inputs["oes-318"]["consumption"][2026] == Decimal("7678")
+
+
+def test_tites_siberia_consumption_uses_summary_energy_units():
+    from app.energy_consumption.services import energy_consumption_summary_services as summary
+
+    for parent_id in (318, 417):
+        slug = f"oes-{parent_id}"
+        sheets = [{
+            "slug": slug,
+            "layout": "oes_standard",
+            "group": "oes",
+            "sheet_name": "ТИТЭС Сибири",
+            "territory": {"kind": "ues", "id": parent_id, "name": "ТИТЭС Сибири"},
+        }]
+        years = [2025, 2026, 2027, 2028]
+        source_rows = [
+            {
+                "demand_model_name": EnergyUnitEnergyConsumptionParameter.__name__,
+                "parameter_key": "energy_consumption_mln_kvt_ch",
+                "id_union_energy_system": ues_id,
+                "perimeter_variant_code": code,
+                "year_values": values,
+                "year_numeric_tooltips": values,
+            }
+            for ues_id, code, values in (
+                (parent_id, None, ["7678", "8000", "8200", ""]),
+                (parent_id, None, ["", "64", "134", ""]),
+                (parent_id, "o1", ["99999"] * 4),
+                (parent_id, CODE_WITHOUT_NT, ["15962"] * 4),
+                (999, None, ["99999"] * 4),
+            )
+        ]
+
+        def build_entities(predicate, **kwargs):
+            return [
+                row for row in source_rows
+                if predicate(SimpleNamespace(id=row["id_union_energy_system"]))
+            ]
+
+        def stored_rows(model, fk, entity_id, *, perimeter_variant_code=None):
+            if perimeter_variant_code is not None:
+                return []
+            return [
+                _row(year=2025, value=Decimal("7678")),
+                _row(year=2026, value=Decimal("0")),
+                _row(year=2028, value=Decimal("8724")),
+            ]
+
+        with patch(
+            "app.energy_balance.services.ee_balance_consumption_services.get_demand_rows",
+            stored_rows,
+        ), patch.object(
+            summary, "_build_ues_entities_filtered", build_entities,
+        ), patch.object(
+            summary, "_flatten_entities", lambda entities, years, **kwargs: entities,
+        ), patch.object(
+            summary, "_tites_union_energy_system_ids", return_value=frozenset({parent_id}),
+        ), patch.object(
+            summary, "_tites_sakha_yakutia_extra_energy_unit_ids", return_value=frozenset(),
+        ):
+            inputs = load_ee_balance_consumption_inputs(years, sheets=sheets)
+
+        assert inputs[slug]["consumption"] == {
+            2025: Decimal("7678"),
+            2026: Decimal("8064"),
+            2027: Decimal("8334"),
+            2028: Decimal("8724"),
+        }

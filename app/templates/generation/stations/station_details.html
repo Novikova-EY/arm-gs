@@ -347,6 +347,21 @@
 .station-toolbar-rounding label {
     font-size: 1rem;
 }
+
+/* КПД СНЭЭ в тулбаре выработки: крупнее и жирнее остальных подписей;
+   подпись и поле ввода — одного размера шрифта */
+.station-snee-efficiency-control {
+    font-size: 1.35rem;
+}
+.station-snee-efficiency-control .station-snee-efficiency-label,
+.station-snee-efficiency-control .station-snee-efficiency-input {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+.station-snee-efficiency-control .station-snee-efficiency-label {
+    color: var(--bs-dark);
+}
 </style>
 <style>
 /* Крупнее шрифт для таблицы агрегатов, как на странице агрегата */
@@ -426,7 +441,7 @@
         {% endfor %}
 
         <div class="station-header-tep generation-details-header-row mt-4 mb-4 ms-3 me-3">
-            <h2 class="generation-details-header-title">Информация об  электростанции</h2>
+            <h1 class="generation-details-header-title">Информация об  электростанции</h1>
             {% if can_edit_any %}
                 <span class="edit-indicator">Режим редактирования</span>
             {% else %}
@@ -473,7 +488,7 @@
                                 <div class="col-5 text-start fw-semibold">Название:</div>
                                 <div class="col-7 text-start">
                                     {% if can_edit_station_meta %}
-                                        <input type="text" name="name" class="form-control station-name" value="{{ form.name.data or '' }}">
+                                        <input type="text" name="name" class="form-control station-name" value="{{ form.name.data or '' }}" data-station-meta-autosave="1">
                                     {% else %}
                                         <span class="station-name">{{ form.name.data or '' }}</span>
                                     {% endif %}
@@ -484,7 +499,7 @@
                                 <div class="col-7 text-start">
                                     {% if can_edit_station_meta %}
                                         <span id="id_station_group_span">
-                                            {{ form.id_station_group(class="form-select") }}
+                                            {{ form.id_station_group(class="form-select", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
                                         <span>{{ form.id_station_group.data.label if form.id_station_group.data.label else '—' }}</span>
@@ -495,7 +510,7 @@
                                 <div class="col-5 text-start fw-semibold">Состояние:</div>
                                 <div class="col-7 text-start" id="id_condition_type_span">
                                     {% if can_edit_station_meta %}
-                                        {{ form.id_condition_type(class="form-select") }}
+                                        {{ form.id_condition_type(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
                                         {{ (form.id_condition_type.choices | selectattr('0','equalto', form.id_condition_type.data) | map(attribute=1) | list | first) or '—' }}
                                     {% endif %}
@@ -509,7 +524,7 @@
                                 <div class="col-5 text-start fw-semibold">Тип  электростанции:</div>
                                 <div class="col-7 text-start" id="id_station_type_span">
                                     {% if can_edit %}
-                                        {{ form.id_station_type(class="form-select") }}
+                                        {{ form.id_station_type(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
                                         {{ station.station_type.name if station.station_type else '—' }}
                                     {% endif %}
@@ -519,7 +534,7 @@
                                 <div class="col-5 text-start fw-semibold">Признак электростанции:</div>
                                 <div class="col-7 text-start" id="station_sign_span">
                                     {% if can_edit_fuel %}
-                                        {{ form.station_sign(class="form-select") }}
+                                        {{ form.station_sign(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
                                         {{ station.station_sign_display }}
                                     {% endif %}
@@ -530,7 +545,7 @@
                                 <div class="col-7 text-start">
                                     {% if can_edit_station_meta %}
                                         <span id="note">
-                                            {{ form.note(class="form-control") }}
+                                            {{ form.note(class="form-control", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
                                         <span>{{ form.note.data.label if form.note.data.label else '—' }}</span>
@@ -542,7 +557,7 @@
                                 <div class="col-5 text-start fw-semibold">external_code:</div>
                                 <div class="col-7 text-start">
                                     {% if can_edit_external_code %}
-                                        {{ form.external_code(class="form-control", maxlength="36", spellcheck="false", autocomplete="off") }}
+                                        {{ form.external_code(class="form-control", maxlength="36", spellcheck="false", autocomplete="off", data_station_meta_autosave="1") }}
                                     {% else %}
                                         {{ station.external_code if station.external_code else '—' }}
                                     {% endif %}
@@ -552,7 +567,7 @@
                                 <div class="col-5 text-start fw-semibold">Код КТО:</div>
                                 <div class="col-7 text-start">
                                     {% if can_edit_external_code %}
-                                        {{ form.kto(class="form-control", maxlength="80", spellcheck="false", autocomplete="off") }}
+                                        {{ form.kto(class="form-control", maxlength="80", spellcheck="false", autocomplete="off", data_station_meta_autosave="1") }}
                                     {% else %}
                                         {{ station.kto if station.kto else '—' }}
                                     {% endif %}
@@ -585,7 +600,7 @@
                                 <div class="col-5 text-start fw-semibold">Региональная энергосистема:</div>
                                 <div class="col-7 text-start" id="regional_energy_system">
                                     {% if can_edit %}
-                                        {{ form.id_regional_energy_system(class="form-select") }}
+                                        {{ form.id_regional_energy_system(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
                                         {% if station.regional_energy_system_obj %}
                                             {{ station.regional_energy_system_obj.name }}
@@ -599,7 +614,7 @@
                                 <div class="col-5 text-start fw-semibold">Энергоузел:</div>
                                 <div class="col-7 text-start" id="id_energy_unit_span">
                                     {% if can_edit %}
-                                        {{ form.id_energy_unit(class="form-select") }}
+                                        {{ form.id_energy_unit(class="form-select", data_station_meta_autosave="1") }}
                                     {% else %}
                                         <span>{{ form.id_energy_unit.data.label if form.id_energy_unit.data.label else '—' }}</span>
                                     {% endif %}
@@ -618,7 +633,7 @@
                                 <div class="col-7 text-start">
                                     {% if can_edit_station_meta %}
                                         <span id="id_regional_district_span">
-                                            {{ form.id_regional_district(class="form-select", id="id_regional_district") }}
+                                            {{ form.id_regional_district(class="form-select", id="id_regional_district", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
                                         <span>{{ (form.id_regional_district.choices | selectattr('0','equalto', form.id_regional_district.data) | map(attribute=1) | list | first) or '—' }}</span>
@@ -630,7 +645,7 @@
                                 <div class="col-7 text-start">
                                     {% if can_edit_station_meta %}
                                         <span id="location_span">
-                                            {{ form.location(class="form-control") }}
+                                            {{ form.location(class="form-control", data_station_meta_autosave="1") }}
                                         </span>
                                     {% else %}
                                         <span>{{ form.location.data.label if form.location.data.label else '—' }}</span>
@@ -701,7 +716,6 @@
                                                     <div class="d-flex gap-1 flex-shrink-0">
                                                         <a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=group_entity.id, **request.args) }}" class="btn btn-outline-success btn-sm">Открыть</a>
                                                         <button type="submit" class="btn btn-outline-primary btn-sm">Сохранить</button>
-                                                        {% if can_save_equipment_group_all_versions %}<button type="submit" name="all_versions" value="1" class="btn btn-outline-secondary btn-sm" title="Применить переименование и объединение дубликатов во всех версиях БД">Сохранить во всех версиях</button>{% endif %}
                                                     </div>
                                                 </form>
                                                 {% if missing_eg_name_row and can_add_equipment_group %}
@@ -922,6 +936,32 @@
                 </div>
             </div>
         </div>
+        <style>
+            #station-energy-generation-table td.is-save-success,
+            #station-snee-energy-consumption-table td.is-save-success {
+                box-shadow: inset 0 0 0 2px var(--bs-success);
+            }
+            #station-energy-generation-table td.is-save-error,
+            #station-snee-energy-consumption-table td.is-save-error {
+                box-shadow: inset 0 0 0 2px var(--bs-danger);
+            }
+            #station-snee-efficiency-control.is-save-success {
+                box-shadow: inset 0 0 0 2px var(--bs-success);
+                border-radius: .375rem;
+            }
+            #station-snee-efficiency-control.is-save-error {
+                box-shadow: inset 0 0 0 2px var(--bs-danger);
+                border-radius: .375rem;
+            }
+            #stationForm [data-station-meta-autosave].is-save-success {
+                border-color: var(--bs-success);
+                box-shadow: 0 0 0 .15rem rgba(var(--bs-success-rgb), .2);
+            }
+            #stationForm [data-station-meta-autosave].is-save-error {
+                border-color: var(--bs-danger);
+                box-shadow: 0 0 0 .15rem rgba(var(--bs-danger-rgb), .2);
+            }
+        </style>
         <!-- Выработка электроэнергии; для ГАЭС — в одной форме с блоком «Потребление на заряд», кнопки внизу -->
         <div class="container-fluid mt-4">
             <div class="row g-3">
@@ -929,6 +969,18 @@
                     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
                         <h3 class="mb-0 ms-3">Выработка электроэнергии электростанцией, млн кВтч</h3>
                         <div class="d-flex align-items-center gap-2 ms-auto">
+                            {% if is_snee_station %}
+                            <div id="station-snee-efficiency-control" class="d-flex align-items-center gap-2 station-toolbar-rounding station-snee-efficiency-control">
+                                <label for="station-snee-efficiency-percent" class="mb-0 text-nowrap station-snee-efficiency-label">КПД, % =</label>
+                                {% set efficiency_display = station.station_snee_efficiency_percent | format_decimal(0) if station.station_snee_efficiency_percent is not none else '' %}
+                                {% if can_edit_station_energy %}
+                                <input type="hidden" name="st_snee_efficiency_percent_orig" value="{{ efficiency_display }}" form="stationUnifiedSaveForm">
+                                <input type="text" id="station-snee-efficiency-percent" class="form-control text-center station-snee-efficiency-input" name="st_snee_efficiency_percent" data-save-kind="snee_efficiency" data-orig="{{ efficiency_display }}" value="{{ efficiency_display }}" inputmode="decimal" autocomplete="off" min="0" max="100" style="width: 7rem" form="stationUnifiedSaveForm" aria-label="КПД электростанции СНЭЭ, процентов">
+                                {% else %}
+                                <span class="station-snee-efficiency-label">{{ efficiency_display if efficiency_display else '—' }}</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
                             <div class="d-flex align-items-center gap-1 station-toolbar-rounding">
                                 <label for="rounding_digits_gen" class="mb-0" style="white-space: nowrap; min-width: 100px;">Округл:</label>
                                 <select id="rounding_digits_gen" name="rounding_digits_gen" class="form-select" style="min-width: 150px;" aria-label="Округление для выработки электроэнергии">
@@ -982,6 +1034,31 @@
                         </div>
                         {% if (is_ges_station or is_gaes_station) and hydro_forecast %}
                         {% include 'generation/prospective_places/_hydro_energy_forecast_table.html' %}
+                        {% endif %}
+                        {% if is_snee_station %}
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
+                            <h3 class="mb-0 ms-3">Потребление электрической энергии электростанцией, млн кВтч</h3>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped table-bordered table-responsive machines-table" id="station-snee-energy-consumption-table" data-auto-export-excel="off">
+                                <thead class="table-success">
+                                    <tr class="text-center align-middle" style="word-wrap: break-word;">
+                                        <th class="align-middle" style="min-width: 260px;"></th>
+                                        {% for year in range(start_year, end_year + 1) %}
+                                        <th class="text-center align-middle{% if year_features and year_features.get(year) %} machines-year-th-with-feature{% endif %}"{% if not (year_features and year_features.get(year)) %} style="min-width: 4.5rem;"{% endif %}>
+                                            {{ year }}
+                                            {% if year_features and year_features.get(year) %}
+                                                <div class="machines-year-feature-caption">{{ year_features.get(year) }}</div>
+                                            {% endif %}
+                                        </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody id="station-snee-energy-consumption-tbody">
+                                    {% include 'generation/stations/_station_snee_energy_consumption_row.html' %}
+                                </tbody>
+                            </table>
+                        </div>
                         {% endif %}
                         {% if is_gaes_station %}
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3 mt-4">
@@ -1048,16 +1125,7 @@
                         {% if can_edit_any %}
                         <div class="d-flex justify-content-end mt-3 gap-3 flex-wrap">
                             <button type="submit" class="btn btn-outline-primary fs-5">Сохранить</button>
-                            {% if can_save_machines_all_versions %}
-                            <button type="submit"
-                                    name="all_versions"
-                                    value="1"
-                                    class="btn btn-outline-success fs-5"
-                                    data-is-gaes="{{ 1 if is_gaes_station else 0 }}"
-                                    data-is-ves-ses="{{ 1 if is_ves_or_ses_station else 0 }}"
-                                    title="{% if is_gaes_station %}Применить код КТО, таблицы «Выработка электроэнергии» и «Потребление ГАЭС на заряд» во всех версиях БД (по external_code станции){% elif is_ves_or_ses_station %}Применить код КТО и таблицы «Выработка электроэнергии электростанцией» и «Выработка электроэнергии электростанцией (от собственника)» во всех версиях БД (по external_code станции){% else %}Применить код КТО и таблицу «Выработка электроэнергии электростанцией» во всех версиях БД (по external_code станции){% endif %}"
-                                    onclick="return confirmStationMachinesSaveAllVersions(this);">Сохранить во всех версиях</button>
-                            {% endif %}
+                            {# Кнопка «Сохранить во всех версиях» скрыта. #}
                             <a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="btn btn-outline-danger fs-5">Сбросить</a>
                         </div>
                         {% endif %}
@@ -1074,6 +1142,150 @@
                         if (ownerTable && typeof window.initProspectivePlaceForecastRowPaste === 'function') {
                             window.initProspectivePlaceForecastRowPaste(ownerTable);
                         }
+                        var saveUrl = {{ url_for('station_bp.station_details_energy_value', station_id=station.id)|tojson }};
+                        var saveRequests = new WeakMap();
+                        var csrfInput = document.querySelector('#stationUnifiedSaveForm input[name="csrf_token"]');
+                        var csrfToken = csrfInput ? csrfInput.value : '';
+
+                        function parseEnergyNumber(value) {
+                            var normalized = String(value == null ? '' : value)
+                                .replace(/[\s\u00a0\u202f]/g, '')
+                                .replace(',', '.')
+                                .trim();
+                            if (!normalized || normalized === '—' || normalized === '-') return null;
+                            var parsed = Number(normalized);
+                            return Number.isFinite(parsed) ? parsed : null;
+                        }
+
+                        function feedbackTarget(input) {
+                            return input.closest('td') || document.getElementById('station-snee-efficiency-control');
+                        }
+
+                        function markSaveState(input, state) {
+                            var target = feedbackTarget(input);
+                            if (!target) return;
+                            target.classList.remove('is-save-success', 'is-save-error');
+                            if (state) target.classList.add(state);
+                        }
+
+                        function updateOrigField(input, value) {
+                            input.setAttribute('data-orig', value);
+                            if (input.name) {
+                                var origField = document.querySelector(
+                                    '[name="' + input.name + '_orig"]'
+                                );
+                                if (origField) origField.value = value;
+                            }
+                        }
+
+                        function sendCellSave(input, value, orig, state) {
+                            state.inFlight = true;
+                            var payload = {
+                                kind: input.getAttribute('data-save-kind'),
+                                year: input.getAttribute('data-year'),
+                                value: value,
+                                orig: orig
+                            };
+                            fetch(saveUrl, {
+                                method: 'PATCH',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-CSRFToken': csrfToken
+                                },
+                                body: JSON.stringify(payload)
+                            }).then(function (response) {
+                                return response.json().catch(function () { return {}; }).then(function (data) {
+                                    if (!response.ok || !data.ok) {
+                                        throw new Error(data.error || 'Не удалось сохранить значение');
+                                    }
+                                    return data;
+                                });
+                            }).then(function () {
+                                updateOrigField(input, value);
+                                if (input.value === value) markSaveState(input, 'is-save-success');
+                            }).catch(function (error) {
+                                if (input.value === value) {
+                                    input.value = orig;
+                                    markSaveState(input, 'is-save-error');
+                                    {% if is_snee_station %}
+                                    if (payload.kind === 'snee_consumption' || payload.kind === 'snee_efficiency') {
+                                        recalculateSneePlanGeneration();
+                                    }
+                                    {% endif %}
+                                }
+                                console.error('Ошибка автосохранения значения станции:', error);
+                                window.alert(error.message || 'Ошибка сохранения');
+                            }).finally(function () {
+                                state.inFlight = false;
+                                if (input.value !== (input.getAttribute('data-orig') || '') && !state.timer) {
+                                    queueCellSave(input);
+                                }
+                            });
+                        }
+
+                        function flushCellSave(input) {
+                            var state = saveRequests.get(input) || { inFlight: false };
+                            saveRequests.set(input, state);
+                            state.timer = null;
+                            var value = input.value;
+                            var orig = input.getAttribute('data-orig') || '';
+                            if (value === orig || state.inFlight) return;
+                            sendCellSave(input, value, orig, state);
+                        }
+
+                        function queueCellSave(input) {
+                            if (!input || !input.getAttribute('data-save-kind')) return;
+                            markSaveState(input, null);
+                            var state = saveRequests.get(input) || { inFlight: false };
+                            saveRequests.set(input, state);
+                            if (state.timer) window.clearTimeout(state.timer);
+                            state.timer = window.setTimeout(function () {
+                                flushCellSave(input);
+                            }, 400);
+                        }
+
+                        {% if is_snee_station %}
+                        function formatPlanGeneration(value) {
+                            var rounding = Number((document.getElementById('rounding_digits_gen') || {}).value);
+                            if (rounding === -1) return String(Math.round(value));
+                            if (rounding === 0) {
+                                return value.toFixed(16).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',');
+                            }
+                            return value.toFixed(Number.isFinite(rounding) ? rounding : 1).replace('.', ',');
+                        }
+
+                        function recalculateSneePlanGeneration() {
+                            var efficiencyInput = document.getElementById('station-snee-efficiency-percent');
+                            if (!efficiencyInput) return;
+                            var efficiency = parseEnergyNumber(efficiencyInput.value);
+                            document.querySelectorAll('#station-energy-generation-table [data-snee-plan-year="1"]').forEach(function (generationInput) {
+                                var year = generationInput.getAttribute('data-year');
+                                var consumptionInput = document.querySelector('[name="st_snee_consumption_' + year + '"]');
+                                var consumption = consumptionInput ? parseEnergyNumber(consumptionInput.value) : null;
+                                var value = efficiency === null || consumption === null
+                                    ? ''
+                                    : formatPlanGeneration(efficiency * consumption / 100);
+                                if (generationInput.value !== value) {
+                                    generationInput.value = value;
+                                    queueCellSave(generationInput);
+                                }
+                            });
+                        }
+                        {% endif %}
+
+                        document.addEventListener('input', function (event) {
+                            var input = event.target;
+                            if (!input || !input.matches || !input.matches('[data-save-kind]')) return;
+                            {% if is_snee_station %}
+                            if (input.getAttribute('data-save-kind') === 'snee_consumption' ||
+                                input.getAttribute('data-save-kind') === 'snee_efficiency') {
+                                recalculateSneePlanGeneration();
+                            }
+                            {% endif %}
+                            queueCellSave(input);
+                        });
                     })();
                     </script>
                     {% endif %}
@@ -1674,6 +1886,7 @@
                 .catch(err => console.error('Ошибка обновления выработки:', err));
             setUrlSearchParamPreserveOthers('rounding_digits_gen', selectedRounding);
             reloadOwnerEnergyGenerationRow(selectedRounding);
+            reloadSneeEnergyConsumptionRow(selectedRounding);
         }
 
         function reloadOwnerEnergyGenerationRow(selectedRounding) {
@@ -1692,6 +1905,24 @@
                     if (html !== null) ownerTbody.innerHTML = html;
                 })
                 .catch(err => console.error('Ошибка обновления выработки от собственника:', err));
+        }
+
+        function reloadSneeEnergyConsumptionRow(selectedRounding) {
+            const tbody = document.getElementById('station-snee-energy-consumption-tbody');
+            if (!tbody) return;
+            const url = `{{ url_for('station_bp.station_details_station_snee_energy_consumption_row', station_id=station.id) }}?start_year={{ start_year }}&end_year={{ end_year }}&rounding_digits_gen=${encodeURIComponent(selectedRounding)}`;
+            fetch(url, { cache: 'no-store' })
+                .then(r => {
+                    if (r.status === 204) {
+                        tbody.innerHTML = '';
+                        return Promise.resolve(null);
+                    }
+                    return r.text();
+                })
+                .then(html => {
+                    if (html !== null) tbody.innerHTML = html;
+                })
+                .catch(err => console.error('Ошибка обновления потребления электроэнергии СНЭЭ:', err));
         }
 
         function reloadGaesChargeRow(selectedRounding) {
@@ -1800,6 +2031,117 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <script>
+// Автосохранение редактируемых полей блока «Общая информация».
+(function () {
+    var saveUrl = {{ url_for('station_bp.station_details_meta_value', station_id=station.id)|tojson }};
+    var csrfInput = document.querySelector('#stationUnifiedSaveForm input[name="csrf_token"]');
+    var csrfToken = csrfInput ? csrfInput.value : '';
+    var requests = new WeakMap();
+    document.querySelectorAll('[data-station-meta-autosave]').forEach(function (input) {
+        input.setAttribute('data-orig', input.value);
+    });
+    var saveForm = document.getElementById('stationUnifiedSaveForm');
+    if (saveForm) {
+        saveForm.addEventListener('submit', function () {
+            document.querySelectorAll('[data-station-meta-autosave]').forEach(function (input) {
+                var state = requests.get(input);
+                if (state && state.timer) window.clearTimeout(state.timer);
+                if (state) state.timer = null;
+            });
+        });
+    }
+
+    function setState(input, state) {
+        input.classList.remove('is-save-success', 'is-save-error');
+        if (state) input.classList.add(state);
+    }
+
+    function saveField(input) {
+        var state = requests.get(input) || { inFlight: false, timer: null };
+        requests.set(input, state);
+        if (state.timer) {
+            window.clearTimeout(state.timer);
+            state.timer = null;
+        }
+        var value = input.value;
+        var orig = input.getAttribute('data-orig');
+        if (orig === null) {
+            orig = value;
+            input.setAttribute('data-orig', orig);
+        }
+        if (value === orig || state.inFlight) return;
+
+        state.inFlight = true;
+        fetch(saveUrl, {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ field: input.name, value: value })
+        }).then(function (response) {
+            return response.json().catch(function () { return {}; }).then(function (data) {
+                if (!response.ok || !data.ok) {
+                    throw new Error(data.error || 'Не удалось сохранить поле');
+                }
+                return data;
+            });
+        }).then(function (data) {
+            var savedValue = String(data.value == null ? value : data.value);
+            input.setAttribute('data-orig', savedValue);
+            if (input.value === value) {
+                input.value = savedValue;
+                setState(input, 'is-save-success');
+            }
+        }).catch(function (error) {
+            if (input.value === value) {
+                input.value = orig;
+                setState(input, 'is-save-error');
+                window.alert(error.message || 'Ошибка сохранения');
+            }
+            console.error('Ошибка автосохранения общей информации станции:', error);
+        }).finally(function () {
+            state.inFlight = false;
+            if (input.value !== (input.getAttribute('data-orig') || '') && !state.timer) {
+                state.timer = window.setTimeout(function () {
+                    saveField(input);
+                }, 0);
+            }
+        });
+    }
+
+    function queueSave(input, delay) {
+        if (!input || !input.matches('[data-station-meta-autosave]')) return;
+        setState(input, null);
+        var state = requests.get(input) || { inFlight: false, timer: null };
+        requests.set(input, state);
+        if (state.timer) window.clearTimeout(state.timer);
+        state.timer = window.setTimeout(function () {
+            saveField(input);
+        }, delay);
+    }
+
+    document.addEventListener('input', function (event) {
+        if (event.target.matches('[data-station-meta-autosave]')) {
+            queueSave(event.target, 450);
+        }
+    });
+    document.addEventListener('change', function (event) {
+        if (event.target.matches('[data-station-meta-autosave]')) {
+            queueSave(event.target, 0);
+        }
+    });
+    document.addEventListener('focusout', function (event) {
+        if (event.target.matches('[data-station-meta-autosave]')) {
+            saveField(event.target);
+        }
+    });
+})();
+</script>
+
+<script>
 /**
  * Двойное подтверждение сохранения кода КТО, выработки (и заряда ГАЭС) во всех версиях БД.
  */
@@ -1809,6 +2151,7 @@ window.confirmStationMachinesSaveAllVersions = function (btn) {
 
     var isGaes = btn && String(btn.getAttribute('data-is-gaes') || '') === '1';
     var isVesSes = btn && String(btn.getAttribute('data-is-ves-ses') || '') === '1';
+    var isSnee = btn && String(btn.getAttribute('data-is-snee') || '') === '1';
     var msg1;
     if (isGaes) {
         msg1 = 'Сохранить код КТО, таблицы выработки и заряда ГАЭС во ВСЕХ версиях базы данных?\n\n'
@@ -1821,6 +2164,12 @@ window.confirmStationMachinesSaveAllVersions = function (btn) {
             + 'Будут синхронизированы код КТО, таблицы «Выработка электроэнергии электростанцией» '
             + 'и «Выработка электроэнергии электростанцией (от собственника)» для всех копий '
             + 'электростанции с тем же external_code в каждой версии БД.\n\n'
+            + 'Остальная общая информация и агрегаты не изменяются.';
+    } else if (isSnee) {
+        msg1 = 'Сохранить код КТО, КПД и таблицы выработки и потребления СНЭЭ во ВСЕХ версиях базы данных?\n\n'
+            + 'Будут синхронизированы код КТО, КПД СНЭЭ и таблицы «Выработка электроэнергии электростанцией» '
+            + 'и «Потребление электрической энергии электростанцией» для всех копий электростанции '
+            + 'с тем же external_code в каждой версии БД.\n\n'
             + 'Остальная общая информация и агрегаты не изменяются.';
     } else {
         msg1 = 'Сохранить код КТО и таблицу выработки во ВСЕХ версиях базы данных?\n\n'

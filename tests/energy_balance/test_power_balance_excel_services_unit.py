@@ -146,6 +146,64 @@ def _sample_tables():
     }
 
 
+def test_default_export_follows_button_order_and_expands_tites_subtabs():
+    sheets = [
+        {"slug": "ees-rossii", "sheet_name": "ЕЭС России", "group": "ees"},
+        {"slug": "1-sz-ees", "sheet_name": "1-я СЗ ЕЭС", "group": "sz"},
+        {"slug": "severo-zapad", "sheet_name": "Северо-Запад", "group": "oes"},
+        {
+            "slug": "tites-hub",
+            "sheet_name": "ТИТЭС Востока",
+            "group": "oes",
+            "skip_table": True,
+            "is_tites_east_hub": True,
+        },
+        {
+            "slug": "eu-101",
+            "sheet_name": "Центральный энергорайон Камчатского края",
+            "group": "eu",
+            "parent_slug": "tites-hub",
+        },
+    ]
+    tables = {
+        sheet["slug"]: {"sheet": sheet, "rows": []}
+        for sheet in sheets
+        if not sheet.get("skip_table")
+    }
+
+    def append_aggregate(current_tables, current_sheets, years, rounding_digits):
+        aggregate = {
+            "slug": "ees-rossii-with-tites",
+            "sheet_name": "ЭЭС России",
+            "title": "Баланс электрической мощности ЭЭС России",
+        }
+        current_tables[aggregate["slug"]] = {"sheet": aggregate, "rows": []}
+        return aggregate
+
+    with patch(
+        "app.energy_balance.services.power_balance_excel_services.get_power_balance_sheets",
+        return_value=sheets,
+    ), patch(
+        "app.energy_balance.services.power_balance_excel_services.build_power_balance_tables",
+        return_value=tables,
+    ), patch(
+        "app.energy_balance.services.power_balance_excel_services._append_ees_russia_with_tites_table",
+        side_effect=append_aggregate,
+    ):
+        stream = export_power_balance_to_excel(
+            years=[2026], year_features={}, tables=None, sheets=None
+        )
+
+    sheetnames = load_workbook(stream).sheetnames
+    assert sheetnames[:4] == [
+        "ЭЭС России",
+        "ЕЭС России",
+        "1-я СЗ ЕЭС",
+        "Северо-Запад",
+    ]
+    assert sheetnames[4].startswith("Центральный энергорайон")
+
+
 def test_export_writes_tab_per_sheet_and_title_row():
     stream = export_power_balance_to_excel(
         years=[2026],

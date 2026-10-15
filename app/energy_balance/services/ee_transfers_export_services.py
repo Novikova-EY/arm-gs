@@ -26,12 +26,13 @@ FILL_TOTAL_RU = PatternFill(start_color="F8D7DA", end_color="F8D7DA", fill_type=
 def _write_transfer_row(
     ws,
     row_idx: int,
+    to_ues_name: str,
     to_name: str,
     period_columns: list[tuple[int, str]],
     periods: dict,
     rounding_digits: int,
 ) -> int:
-    values = [to_name]
+    values = [to_ues_name, to_name]
     values.extend(
         format_transfer_cell(periods.get(period_key), rounding_digits)
         for period_key, _label in period_columns
@@ -39,7 +40,7 @@ def _write_transfer_row(
     for col_idx, value in enumerate(values, start=1):
         cell = ws.cell(row=row_idx, column=col_idx, value=value)
         cell.alignment = Alignment(
-            horizontal="left" if col_idx == 1 else "center",
+            horizontal="left" if col_idx <= 2 else "center",
             vertical="center",
             wrap_text=True,
         )
@@ -56,7 +57,7 @@ def _write_total_row(
     *,
     fill=None,
 ) -> int:
-    values = [label]
+    values = [label, ""]
     values.extend(
         format_transfer_cell(period_totals.get(period_key), rounding_digits)
         for period_key, _label in period_columns
@@ -64,7 +65,7 @@ def _write_total_row(
     for col_idx, value in enumerate(values, start=1):
         cell = ws.cell(row=row_idx, column=col_idx, value=value)
         cell.alignment = Alignment(
-            horizontal="left" if col_idx == 1 else "center",
+            horizontal="left" if col_idx <= 2 else "center",
             vertical="center",
             wrap_text=True,
         )
@@ -104,7 +105,7 @@ def export_ee_transfers_to_excel(
     transfer_aggregates = page_data.get("transfer_aggregates") or {}
     should_show_totals = page_data.get("should_show_totals") or {}
 
-    columns = ["Энергосистема"] + [label for _key, label in period_columns]
+    columns = ["ОЭС", "Энергосистема"] + [label for _key, label in period_columns]
     num_cols = len(columns)
 
     wb = Workbook()
@@ -149,6 +150,7 @@ def export_ee_transfers_to_excel(
                 row_idx = _write_transfer_row(
                     ws,
                     row_idx,
+                    transfer_row.get("to_ues_name") or "—",
                     transfer_row.get("to_name") or "—",
                     period_columns,
                     transfer_row.get("periods") or {},

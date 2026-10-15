@@ -18,7 +18,7 @@ block content %}
       </div>
 
       <div class="col-12 mb-2 text-center">
-        <h2 class="mb-2">
+        <h1 class="mb-2">
           {{ page_title }}{% if formula_text %}
           <i
             class="bi bi-info-circle text-primary ms-2"
@@ -338,6 +338,12 @@ block content %}
         padding-left: 0.15rem;
         padding-right: 0.15rem;
       }
+      #operatingTesTable td.is-save-success {
+        box-shadow: inset 0 0 0 2px var(--bs-success);
+      }
+      #operatingTesTable td.is-save-error {
+        box-shadow: inset 0 0 0 2px var(--bs-danger);
+      }
       .page-table-scroll .ot-table-scroll-end-spacer {
         height: 2.5rem;
       }
@@ -355,6 +361,13 @@ block content %}
         min-width: 16rem;
         max-width: 22rem;
         white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: normal;
+        vertical-align: top;
+      }
+      #operatingTesTable.ot-chars-table td.ot-note-cell .ot-note-text {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
       #operatingTesTable.ot-chars-table th.ot-source-col,
       #operatingTesTable.ot-chars-table td.ot-source-cell {
@@ -368,10 +381,19 @@ block content %}
         font-size: inherit;
         background-color: var(--ot-source-bg, #fff);
       }
-      #operatingTesTable.ot-chars-table td.ot-note-cell input.ot-edit-value {
+      #operatingTesTable.ot-chars-table td.ot-note-cell textarea.ot-edit-value {
+        display: block;
+        min-height: 0;
+        padding-top: 0.1rem;
+        padding-bottom: 0.1rem;
+        line-height: 1.2;
+        overflow-y: hidden;
+        resize: none;
         text-align: left;
         padding-left: 0.4rem;
         padding-right: 0.4rem;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
       }
       #operatingTesTable tbody td.ot-row-label.ot-fuel-colored {
         background-color: var(--ot-fuel-bg) !important;
@@ -578,15 +600,16 @@ block content %}
           {% endfor %} {% if sheet.layout == 'spravochnik' %}
           <td class="text-start ot-note-cell">
             {% if row.editable_values and can_edit %}
-            <input
-              type="text"
+            <textarea
               class="form-control form-control-sm ot-edit-value"
               data-year="{{ row.year }}"
               data-field="note"
-              value="{{ row.note or '' }}"
               aria-label="Примечание"
-            />
-            {% else %} {{ row.note or '' }} {% endif %}
+              rows="1"
+            >{{ row.note or '' }}</textarea>
+            {% else %}
+            <span class="ot-note-text">{{ row.note or '' }}</span>
+            {% endif %}
           </td>
           <td class="text-start ot-source-cell">
             {% if row.editable_values and can_edit %}
@@ -972,30 +995,70 @@ block content %}
     const canEdit = table?.dataset.canEdit === '1';
     const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
     if (canEdit && updateUrl) {
-      const saveField = function (el) {
-        const tr = el.closest('tr');
-        fetch(updateUrl, {
-          method: 'PATCH',
-          headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF || ''},
-          body: JSON.stringify({
-            year: el.dataset.year,
-            territory: el.dataset.territory,
-            row_key: tr?.dataset.rowKey,
-            field: el.dataset.field || tr?.dataset.editableField,
-            value: el.value
-          })
-        }).then(function (resp) {
-          if (!resp.ok) throw new Error('save failed');
-          return resp.json();
-        }).then(function (data) {
-          if (!data.ok) throw new Error(data.error || 'save failed');
-          el.classList.remove('is-invalid');
-        }).catch(function () {
-          el.classList.add('is-invalid');
-        });
+      const clearSaveState = function (el) {
+        const cell = el.closest('td');
+        cell?.classList.remove('is-save-success', 'is-save-error');
+        if (cell) cell.removeAttribute('title');
+        el.classList.remove('is-invalid');
+        el.removeAttribute('aria-invalid');
       };
-      table.querySelectorAll('input.ot-edit-value').forEach(function (input) {
-        input.addEventListener('change', function () { saveField(input); });
+      const saveField = async function (el) {
+        const tr = el.closest('tr');
+        const cell = el.closest('td');
+        clearSaveState(el);
+        el.disabled = true;
+        try {
+          const response = await fetch(updateUrl, {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': CSRF || ''
+            },
+            body: JSON.stringify({
+              year: el.dataset.year,
+              territory: el.dataset.territory,
+              row_key: tr?.dataset.rowKey,
+              field: el.dataset.field || tr?.dataset.editableField,
+              value: el.value
+            })
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || 'Не удалось сохранить значение');
+          }
+          el.classList.remove('is-invalid');
+          el.removeAttribute('aria-invalid');
+          if (cell) {
+            cell.classList.add('is-save-success');
+            cell.title = 'Сохранено';
+          }
+        } catch (error) {
+          el.classList.add('is-invalid');
+          el.setAttribute('aria-invalid', 'true');
+          if (cell) {
+            cell.classList.add('is-save-error');
+            cell.title = error.message || 'Не удалось сохранить значение';
+          }
+        } finally {
+          el.disabled = false;
+        }
+      };
+      table.querySelectorAll('.ot-edit-value, .ot-edit-source').forEach(function (field) {
+        field.addEventListener('input', function () { clearSaveState(field); });
+        field.addEventListener('change', function () { saveField(field); });
+      });
+      const noteFields = table.querySelectorAll('td.ot-note-cell textarea.ot-edit-value');
+      noteFields.forEach(function (textarea) {
+        const resizeNote = function () {
+          textarea.style.height = 'auto';
+          if (textarea.scrollHeight > textarea.clientHeight) {
+            textarea.style.height = textarea.scrollHeight + 'px';
+          }
+        };
+        requestAnimationFrame(resizeNote);
+        textarea.addEventListener('input', resizeNote);
       });
       const applySourceColor = function (select) {
         const tr = select.closest('tr');
@@ -1022,7 +1085,6 @@ block content %}
         applySourceColor(select);
         select.addEventListener('change', function () {
           applySourceColor(select);
-          saveField(select);
         });
       });
     }

@@ -5,7 +5,7 @@
 {% block content %}
 {% if current_user.is_authenticated %}
   <div class="container mt-5">
-      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить тип технологии</h2>
+      <h1 class="mb-4"><i class="fas fa-plus-circle"></i> Добавить тип технологии</h1>
 
       <form action="{{ url_for('refdata_bp.add_technology_type') }}" method="POST">
         {{ form.hidden_tag() }}

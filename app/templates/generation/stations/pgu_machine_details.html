@@ -41,13 +41,13 @@
 
     <div class="container-fluid">
         <div class="d-flex align-items-center mb-4">
-            <h2 class="mb-0 ms-0 d-flex align-items-center gap-3">Агрегат ПГУ
+            <h1 class="mb-0 ms-0 d-flex align-items-center gap-3">Агрегат ПГУ
                 {% if can_edit or (current_user.role_names | select('in', allowed_roles) | list | length > 0) %}
                     <span class="edit-indicator ms-3">Режим редактирования</span>
                 {% else %}
                     <span class="readonly-indicator ms-3">Режим просмотра</span>
                 {% endif %}
-            </h2>
+            </h1>
         </div>
 
         <a href="{{ url_for('station_bp.machine_details', station_id=station.id, machine_id=parent_machine.id, **request.args) }}" class="text-decoration-underline mb-3 fs-3 d-inline-block">

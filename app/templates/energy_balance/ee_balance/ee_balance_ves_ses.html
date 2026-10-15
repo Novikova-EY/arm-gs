@@ -1,10 +1,10 @@
-{% extends 'base.html' %} {% block title %}{{ page_title }}{% endblock %} {%
+{% extends 'base.html' %} {% block title %}{{ browser_title | default(page_title) }}{% endblock %} {%
 block content %} {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
       <div class="col-12 mb-2 text-center">
-        <h2 class="mb-2">{{ page_title }}</h2>
+        <h1 class="mb-2">{{ page_title }}</h1>
       </div>
       <div class="col-12 mb-2">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -18,6 +18,7 @@ block content %} {% if current_user.is_authenticated %}
             >
               🔍 Фильтры / Поиск
             </button>
+            {% if not is_station_focus %}
             <button
               id="importExportToggleBtn"
               class="btn btn-outline-secondary text-dark"
@@ -27,6 +28,7 @@ block content %} {% if current_user.is_authenticated %}
             >
               📁 Импорт / Экспорт
             </button>
+            {% endif %}
           </div>
           <div class="flex-grow-1 d-flex justify-content-center align-items-center">
             <p class="mb-0 fw-bold">Найдено станций: {{ total_stations|default(0) }}</p>
@@ -38,6 +40,7 @@ block content %} {% if current_user.is_authenticated %}
           >
         </div>
       </div>
+      {% if not is_station_focus %}
       <div class="col-12 mb-2">
         <div class="collapse power-demand-import-export-collapse" id="importExportCollapse">
           {# Как power_demand summary: type="button" + fetch; страница не уходит с экрана #}
@@ -64,6 +67,7 @@ block content %} {% if current_user.is_authenticated %}
           </form>
         </div>
       </div>
+      {% endif %}
       {% set filters_collapse_open = true %}
       {% include 'generation/stations/station_filters_first_row.html' %}
       {# Как station_filters_third_row: годы всегда видны. #}
@@ -71,7 +75,7 @@ block content %} {% if current_user.is_authenticated %}
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
           <form
             method="GET"
-            action="{{ url_for('energy_balance_bp.ee_balance_ves_ses') }}"
+            action="{{ station_filters_action or url_for('energy_balance_bp.ee_balance_ves_ses') }}"
             id="vesSesFilterForm"
             class="d-flex align-items-center gap-2 flex-wrap"
           >
@@ -159,7 +163,9 @@ block content %} {% if current_user.is_authenticated %}
     {% set year_count = years|length %}
     {% set owner_years = owner_years or [] %}
     {% set owner_year_count = owner_years|length %}
-    {% set table_colspan = 3 + year_count + 2 + owner_year_count %}
+    {% set tail_col_count = (0 if is_station_focus else 2) + owner_year_count %}
+    {% set table_colspan = (2 if is_station_focus else 3) + year_count + tail_col_count %}
+    {% set station_focus_rowspan = 2 if is_snee_focus else (6 if show_gaes_charge else 5) %}
     {% set exploitation_date_label = exploitation_date_label or 'Ожидаемая дата ввода в эксплуатацию' %}
     {% macro ves_raw_attrs(raw_text) -%}
       {%- if raw_text -%} title="{{ raw_text|e }}" data-raw="{{ raw_text|e }}"{%- endif -%}
@@ -185,9 +191,53 @@ block content %} {% if current_user.is_authenticated %}
               aria-label="Формула расчёта ЧЧИУМ"
             ></i>
     {% endmacro %}
+    {% macro focus_extra_rows(row) %}
+          {% if not is_snee_focus %}
+          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="own_needs">
+            <td class="ves-ses-dtype-cell ves-ses-own-needs-cell">
+              <span class="ves-ses-own-needs-label">СН, млн.кВт·ч</span>
+              {% if is_coefficient_focus and row.kind == 'station' %}
+                {% if can_edit %}
+                <span class="ves-ses-own-needs-coefficient">
+                  <span class="ves-ses-own-needs-coefficient-label">СН, % =</span>
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="%"
+                    class="form-control form-control-sm text-center ves-ses-value ves-ses-coefficient-input"
+                    data-kind="coefficient"
+                    data-orig="{{ row.own_needs_coefficient_display|e }}"
+                    {% if row.own_needs_coefficient_raw %}data-raw="{{ row.own_needs_coefficient_raw|e }}"{% endif %}
+                    value="{{ row.own_needs_coefficient_display|e }}"
+                    aria-label="СН, % для {{ row.name|e }}"
+                    title="СН, %"
+                  />
+                </span>
+                {% else %}
+                <span class="small">СН, %: {{ row.own_needs_coefficient_display or '—' }}</span>
+                {% endif %}
+              {% endif %}
+              <i class="bi bi-info-circle text-primary mx-1 ves-ses-formula-tip" title="{{ focus_own_needs_formula|e }}" aria-label="Формула расчёта СН, млн.кВт·ч"></i>
+            </td>
+            {% for year in years %}<td class="text-center ves-ses-equal-cell" data-ves-col="own-needs" data-year="{{ year }}"{{ ves_raw_attrs(row.own_needs_raw.get(year)) }}>{{ row.own_needs_display.get(year) or '—' }}</td>{% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          <tr{% if row.kind == 'station' %} data-station-id="{{ row.id }}"{% else %} class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}"{% endif %} data-ves-metric="delivery">
+            <td class="ves-ses-dtype-cell">
+              Отпуск электроэнергии, млн.кВт·ч
+              <i class="bi bi-info-circle text-primary ms-1 ves-ses-formula-tip" title="{{ focus_delivery_formula|e }}" aria-label="Формула расчёта отпуска электроэнергии"></i>
+            </td>
+            {% for year in years %}<td class="text-center ves-ses-equal-cell" data-ves-col="delivery" data-year="{{ year }}"{{ ves_raw_attrs(row.delivery_raw.get(year)) }}>{{ row.delivery_display.get(year) or '—' }}</td>{% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          {% endif %}
+    {% endmacro %}
     {% macro ves_blank_date_min_owner() %}
+            {% if not is_station_focus %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="exploitation-date">—</td>
             <td class="text-center ves-ses-equal-cell" data-ves-col="min">—</td>
+            {% endif %}
             {% for year in owner_years %}
             <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}">—</td>
             {% endfor %}
@@ -226,6 +276,17 @@ block content %} {% if current_user.is_authenticated %}
         --ves-ses-sticky-name-w: var(--ves-ses-name-col-w);
         --ves-ses-sticky-type-w: var(--ves-ses-type-col-w);
       }
+      {% if is_station_focus %}
+      #vesSesTable.power-demand-summary-table {
+        --ves-ses-sticky-type-w: 0px;
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+      #vesSesTable.power-demand-summary-table > :not(caption) > * > * {
+        border-left-width: 0;
+        border-top-width: 0;
+      }
+      {% endif %}
       .page-table-scroll #vesSesTable thead th {
         position: sticky;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
@@ -297,6 +358,15 @@ block content %} {% if current_user.is_authenticated %}
         max-width: var(--ves-ses-type-col-w);
         left: var(--ves-ses-sticky-name-w);
         z-index: 7;
+      }
+      #vesSesTable tbody td.ves-ses-name-cell {
+        z-index: 32;
+      }
+      #vesSesTable tbody td.ves-ses-type-cell {
+        z-index: 31;
+      }
+      #vesSesTable tbody td.ves-ses-dtype-cell {
+        z-index: 30;
       }
       #vesSesTable thead th.ves-ses-type-col {
         white-space: normal;
@@ -375,8 +445,7 @@ block content %} {% if current_user.is_authenticated %}
         > td.ves-ses-dtype-cell {
         background-color: #ffe0c2;
       }
-      #vesSesTable th.ves-ses-equal-col,
-      #vesSesTable td.ves-ses-equal-cell {
+      #vesSesTable th.ves-ses-equal-col {
         width: var(--ves-ses-equal-col-w);
         min-width: var(--ves-ses-equal-col-w);
         max-width: var(--ves-ses-equal-col-w);
@@ -387,8 +456,24 @@ block content %} {% if current_user.is_authenticated %}
         padding-left: 0.25rem;
         padding-right: 0.25rem;
       }
+      #vesSesTable td.ves-ses-equal-cell {
+        width: var(--ves-ses-equal-col-w);
+        min-width: var(--ves-ses-equal-col-w);
+        max-width: var(--ves-ses-equal-col-w);
+        white-space: nowrap;
+        line-height: 1.2;
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+      }
       #vesSesTable .ves-ses-plan-calc-input {
         background-color: #fff8e1;
+      }
+      #vesSesTable .ves-ses-own-needs-coefficient {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        margin-left: 0.35rem;
+        white-space: nowrap;
       }
       #vesSesTable input.ves-ses-value,
       #vesSesTable .ves-ses-deferred {
@@ -401,6 +486,29 @@ block content %} {% if current_user.is_authenticated %}
         font-size: inherit;
         line-height: inherit;
         font-weight: inherit;
+      }
+      /* Компактное поле коэффициента СН, % (идёт после общего правила .ves-ses-value). */
+      #vesSesTable input.ves-ses-coefficient-input {
+        width: 2.6rem;
+        min-width: 2.6rem;
+        max-width: 2.6rem;
+        margin: 0;
+        padding: 0.05rem 0.15rem;
+        font-size: 0.9rem;
+      }
+      /* Строка СН в ячейке «Тип данных» — всё в одну строку, включая кнопку i. */
+      #vesSesTable td.ves-ses-own-needs-cell {
+        white-space: nowrap;
+      }
+      #vesSesTable td.ves-ses-own-needs-cell .ves-ses-own-needs-label,
+      #vesSesTable td.ves-ses-own-needs-cell .ves-ses-formula-tip {
+        vertical-align: middle;
+      }
+      #vesSesTable td.is-save-success {
+        box-shadow: inset 0 0 0 2px var(--bs-success);
+      }
+      #vesSesTable td.is-save-error {
+        box-shadow: inset 0 0 0 2px var(--bs-danger);
       }
       #vesSesTable .ves-ses-deferred {
         display: block;
@@ -466,6 +574,18 @@ block content %} {% if current_user.is_authenticated %}
         > td {
         background-color: #ffe0c2;
       }
+      /* Строка отпуска на страницах типа станции — светло-оранжевая подсветка. */
+      #vesSesTable
+        tr[data-station-id][data-ves-metric="delivery"]
+        > td {
+        background-color: #ffe6d0 !important;
+      }
+      #vesSesTable.table-hover
+        > tbody
+        > tr[data-station-id][data-ves-metric="delivery"]:hover
+        > td {
+        background-color: #ffd8b8 !important;
+      }
       #vesSesTable tr[data-ves-metric="chiim"] > td {
         border-bottom-width: 2px;
       }
@@ -494,20 +614,22 @@ block content %} {% if current_user.is_authenticated %}
 
     <div class="table-responsive">
       <table
-        class="table table-hover table-bordered align-middle power-demand-summary-table"
+        class="table table-hover table-bordered align-middle power-demand-summary-table{% if is_coefficient_focus %} ves-ses-coefficient-focus{% endif %}"
         id="vesSesTable"
         data-auto-export-excel="off"
         {% if page_size and page_size != 0 %}data-ves-paginated="1"{% endif %}
       >
         <colgroup>
           <col class="ves-ses-col-name">
-          <col class="ves-ses-col-type">
+          {% if not is_station_focus %}<col class="ves-ses-col-type">{% endif %}
           <col class="ves-ses-col-dtype">
           {% for year in years %}
           <col class="ves-ses-col-equal">
           {% endfor %}
+          {% if not is_station_focus %}
           <col class="ves-ses-col-equal">
           <col class="ves-ses-col-equal">
+          {% endif %}
           {% for year in owner_years %}
           <col class="ves-ses-col-equal">
           {% endfor %}
@@ -515,6 +637,7 @@ block content %} {% if current_user.is_authenticated %}
         <thead class="table-success text-center">
           <tr class="text-center align-middle">
             <th class="text-center align-middle ves-ses-name-col"{% if owner_year_count %} rowspan="2"{% endif %}>Наименование</th>
+            {% if not is_station_focus %}
             <th class="text-center align-middle ves-ses-type-col"{% if owner_year_count %} rowspan="2"{% endif %}>
               <div class="d-flex align-items-center justify-content-center gap-1 flex-wrap">
                 <div class="dropdown">
@@ -557,12 +680,15 @@ block content %} {% if current_user.is_authenticated %}
                 {% endif %}
               </div>
             </th>
+            {% endif %}
             <th class="text-center align-middle ves-ses-dtype-col"{% if owner_year_count %} rowspan="2"{% endif %}>Тип данных</th>
             {% for year in years %}
             <th{% if owner_year_count %} rowspan="2"{% endif %} class="text-center align-middle ves-ses-equal-col">{{ ves_year_header(year) }}</th>
             {% endfor %}
+            {% if not is_station_focus %}
             <th{% if owner_year_count %} rowspan="2"{% endif %} class="text-center align-middle ves-ses-equal-col ves-ses-date-col">{{ exploitation_date_label }}</th>
             <th{% if owner_year_count %} rowspan="2"{% endif %} class="text-center align-middle ves-ses-equal-col ves-ses-min-col">{{ min_label }}</th>
+            {% endif %}
             {% if owner_year_count %}
             <th
               class="text-center align-middle ves-ses-owner-start ves-ses-owner-title"
@@ -589,9 +715,9 @@ block content %} {% if current_user.is_authenticated %}
             class="ves-ses-header{% if row.kind == 'ues_header' %} ves-ses-ues-header{% elif row.kind == 'res_header' %} ves-ses-res-header{% elif row.kind == 'rd_header' %} ves-ses-rd-header{% endif %}"
           >
             <td class="ves-ses-name-cell">{{ row.label }}</td>
-            <td class="ves-ses-type-cell"></td>
+            {% if not is_station_focus %}<td class="ves-ses-type-cell"></td>{% endif %}
             <td class="ves-ses-dtype-cell"></td>
-            <td colspan="{{ table_colspan - 3 }}"></td>
+            <td colspan="{{ table_colspan - (3 if not is_station_focus else 2) }}"></td>
           </tr>
           {% elif row.kind == 'station' %}
           <tr
@@ -608,14 +734,14 @@ block content %} {% if current_user.is_authenticated %}
             data-sample-energy="{{ row.sample_energy | tojson }}"
             data-owner-energy="{{ row.owner_energy | tojson }}"
           >
-            <td class="ves-ses-name-cell" rowspan="3">
+            <td class="ves-ses-name-cell" rowspan="{{ station_focus_rowspan if is_station_focus else 3 }}">
               <a
                 href="{{ url_for('station_bp.station_details', station_id=row.id, start_year=start_year, end_year=end_year) }}"
                 class="text-decoration-none"
                 >{{ row.name }}</a
               >
             </td>
-            <td class="text-center ves-ses-type-cell" rowspan="3">{{ row.type_name }}</td>
+            {% if not is_station_focus %}<td class="text-center ves-ses-type-cell" rowspan="3">{{ row.type_name }}</td>{% endif %}
             <td class="ves-ses-dtype-cell">{{ row.capacity_label }}</td>
             {% for year in years %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="capacity" data-year="{{ year }}"{{ ves_raw_attrs(row.capacity_raw.get(year)) }}>
@@ -652,6 +778,7 @@ block content %} {% if current_user.is_authenticated %}
               {% else %} {{ row.energy_display.get(year) or '—' }} {% endif %}
             </td>
             {% endfor %}
+            {% if not is_station_focus %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="exploitation-date">
               {% if can_edit %}
               {{ ves_deferred_control(
@@ -667,6 +794,7 @@ block content %} {% if current_user.is_authenticated %}
             <td class="text-center fw-semibold ves-ses-equal-cell" data-ves-col="min"{{ ves_raw_attrs(row.min_raw) }}>
               {{ row.min_display or '—' }}
             </td>
+            {% endif %}
             {% for year in owner_years %}
             {% set owner_raw = row.owner_raw.get(year) %}
             <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}"{{ ves_raw_attrs(owner_raw) }}>
@@ -682,6 +810,16 @@ block content %} {% if current_user.is_authenticated %}
             </td>
             {% endfor %}
           </tr>
+          {% if show_gaes_charge %}
+          <tr data-station-id="{{ row.id }}" data-ves-metric="gaes_charge">
+            <td class="ves-ses-dtype-cell">{{ row.gaes_charge_label }}</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="gaes-charge" data-year="{{ year }}"{{ ves_raw_attrs(row.gaes_charge_raw.get(year)) }}>{{ row.gaes_charge_display.get(year) or '—' }}</td>
+            {% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          {% endif %}
+          {% if not is_snee_focus %}
           <tr
             data-station-id="{{ row.id }}"
             data-ves-metric="chiim"
@@ -699,6 +837,8 @@ block content %} {% if current_user.is_authenticated %}
             {% endfor %}
             {{ ves_blank_date_min_owner() }}
           </tr>
+          {% endif %}
+          {% if is_station_focus %}{{ focus_extra_rows(row) }}{% endif %}
           {% else %}
           <tr
             class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% elif row.kind == 'type_total' %} ves-ses-incl{% endif %}"
@@ -712,8 +852,8 @@ block content %} {% if current_user.is_authenticated %}
             data-rd-id="{{ row.rd_id or '' }}"
             {% if row.live_locked %}data-ves-live-locked="1"{% endif %}
           >
-            <td rowspan="3" class="ves-ses-name-cell">{{ row.label }}</td>
-            <td rowspan="3" class="text-center ves-ses-type-cell">{{ row.type_name or '' }}</td>
+            <td rowspan="{{ station_focus_rowspan if is_station_focus else 3 }}" class="ves-ses-name-cell">{{ row.label }}</td>
+            {% if not is_station_focus %}<td rowspan="3" class="text-center ves-ses-type-cell">{{ row.type_name or '' }}</td>{% endif %}
             <td class="ves-ses-dtype-cell">{{ row.capacity_label }}</td>
             {% for year in years %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="capacity" data-year="{{ year }}"{{ ves_raw_attrs(row.capacity_raw.get(year)) }}>
@@ -740,16 +880,28 @@ block content %} {% if current_user.is_authenticated %}
               {{ row.energy_display.get(year) or '—' }}
             </td>
             {% endfor %}
+            {% if not is_station_focus %}
             <td class="text-center ves-ses-equal-cell" data-ves-col="exploitation-date">—</td>
             <td class="text-center ves-ses-equal-cell" data-ves-col="min"{{ ves_raw_attrs(row.min_raw) }}>
               {{ row.min_display or '—' }}
             </td>
+            {% endif %}
             {% for year in owner_years %}
             <td class="text-center ves-ses-equal-cell{% if loop.first %} ves-ses-owner-start{% endif %}" data-ves-col="owner" data-year="{{ year }}"{{ ves_raw_attrs(row.owner_raw.get(year)) }}>
               {{ row.owner_display.get(year) or '—' }}
             </td>
             {% endfor %}
           </tr>
+          {% if show_gaes_charge %}
+          <tr class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% elif row.kind == 'type_total' %} ves-ses-incl{% endif %}" data-ves-agg="{{ row.kind }}" data-ves-agg-key="{{ row.agg_key }}" data-ves-metric="gaes_charge">
+            <td class="ves-ses-dtype-cell">{{ row.gaes_charge_label }}</td>
+            {% for year in years %}
+            <td class="text-center ves-ses-equal-cell" data-ves-col="gaes-charge" data-year="{{ year }}"{{ ves_raw_attrs(row.gaes_charge_raw.get(year)) }}>{{ row.gaes_charge_display.get(year) or '—' }}</td>
+            {% endfor %}
+            {{ ves_blank_date_min_owner() }}
+          </tr>
+          {% endif %}
+          {% if not is_snee_focus %}
           <tr
             class="ves-ses-total{% if row.kind == 'russia_total' %} ves-ses-russia{% elif row.kind == 'ues_total' %} ves-ses-ues-total{% elif row.kind == 'type_total' %} ves-ses-incl{% endif %}"
             data-ves-agg="{{ row.kind }}"
@@ -770,6 +922,8 @@ block content %} {% if current_user.is_authenticated %}
             {% endfor %}
             {{ ves_blank_date_min_owner() }}
           </tr>
+          {% endif %}
+          {% if is_station_focus %}{{ focus_extra_rows(row) }}{% endif %}
           {% endif %} {% endfor %}
         </tbody>
       </table>
@@ -780,7 +934,7 @@ block content %} {% if current_user.is_authenticated %}
 
 {% if can_edit %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}?v=3"></script>
-<script src="{{ url_for('static', filename='js/energy_balance/ee_balance_ves_ses_live.js') }}?v=4"></script>
+<script src="{{ url_for('static', filename='js/energy_balance/ee_balance_ves_ses_live.js') }}?v=6"></script>
 <script>
   (function () {
     const SAVE_URL = {{ url_for('energy_balance_bp.ee_balance_ves_ses_value')|tojson }};
@@ -877,6 +1031,7 @@ block content %} {% if current_user.is_authenticated %}
 
     const vesSesTableEl = document.getElementById('vesSesTable');
     if (vesSesTableEl) {
+      vesSesTableEl.querySelectorAll('input.ves-ses-coefficient-input').forEach(bindMaterializedInput);
       vesSesTableEl.addEventListener('pointerdown', function (ev) {
         const deferred = ev.target && ev.target.closest && ev.target.closest('[data-ves-deferred="1"]');
         if (!deferred || !vesSesTableEl.contains(deferred)) return;
@@ -907,6 +1062,8 @@ block content %} {% if current_user.is_authenticated %}
       const value = input.value;
       const orig = input.getAttribute('data-orig') || '';
       if (value === orig) return;
+      const cell = input.closest('td');
+      if (cell) cell.classList.remove('is-save-success', 'is-save-error');
       const payload = {
         station_id: Number(stationId),
         kind: kind,
@@ -916,7 +1073,7 @@ block content %} {% if current_user.is_authenticated %}
         start_year: START_YEAR,
         end_year: END_YEAR
       };
-      if (kind !== 'exploitation_date') {
+      if (kind !== 'exploitation_date' && kind !== 'coefficient') {
         payload.year = Number(input.getAttribute('data-year'));
       }
       fetch(SAVE_URL, {
@@ -929,12 +1086,14 @@ block content %} {% if current_user.is_authenticated %}
         const data = result.data;
         if (!data || !data.ok) {
           input.value = orig;
+          if (cell) cell.classList.add('is-save-error');
           input.removeAttribute('data-dirty');
           if (data && data.error) {
             window.alert(data.error);
           }
           return;
         }
+        if (cell) cell.classList.add('is-save-success');
         if (data.display != null) input.value = data.display;
         input.setAttribute('data-orig', input.value);
         if (kind === 'exploitation_date') {
@@ -1000,9 +1159,15 @@ block content %} {% if current_user.is_authenticated %}
           input.removeAttribute('data-raw');
           input.removeAttribute('title');
         }
-        input.removeAttribute('data-dirty');
-        input.classList.remove('ves-ses-plan-calc-input');
-        const updates = data.plan_updates || {};
+      input.removeAttribute('data-dirty');
+      input.classList.remove('ves-ses-plan-calc-input');
+      if (kind === 'coefficient') {
+        if (typeof window.armGsRecalcVesSesLive === 'function') {
+          window.armGsRecalcVesSesLive(stationId);
+        }
+        return;
+      }
+      const updates = data.plan_updates || {};
         const rawUpdates = data.plan_raw_updates || {};
         const ruleUpdates = data.plan_rule_updates || {};
         Object.keys(updates).forEach(function (year) {
@@ -1050,12 +1215,14 @@ block content %} {% if current_user.is_authenticated %}
         }
       }).catch(function () {
         input.value = orig;
+        if (cell) cell.classList.add('is-save-error');
         input.removeAttribute('data-dirty');
       });
     }
 
     function isVesSesPasteable(inp) {
       if (!inp || inp.readOnly || inp.disabled) return false;
+      if (inp.matches && inp.matches('input.ves-ses-coefficient-input')) return false;
       if (inp.matches && inp.matches('input.ves-ses-value')) return true;
       return !!(inp.matches && inp.matches('[data-ves-deferred="1"].ves-ses-value'));
     }
@@ -1088,7 +1255,8 @@ block content %} {% if current_user.is_authenticated %}
         sampleEnd: {{ sample_end|tojson }},
         digits: DIGITS,
         chiimScale: {{ chiim_scale|tojson }},
-        chiimDigits: {{ chiim_digits|tojson }}
+        chiimDigits: {{ chiim_digits|tojson }},
+        coefficientMode: {{ is_coefficient_focus|tojson }}
       });
     }
   })();
@@ -1100,21 +1268,23 @@ block content %} {% if current_user.is_authenticated %}
     const vesSesNameTh = vesSesTable && vesSesTable.querySelector("thead th.ves-ses-name-col");
     const vesSesTypeTh = vesSesTable && vesSesTable.querySelector("thead th.ves-ses-type-col");
     function syncVesSesStickyColumns() {
-      if (!vesSesTable || !vesSesNameTh || !vesSesTypeTh) return;
+      if (!vesSesTable || !vesSesNameTh) return;
       vesSesTable.style.setProperty(
         "--ves-ses-sticky-name-w",
         vesSesNameTh.getBoundingClientRect().width + "px"
       );
-      vesSesTable.style.setProperty(
-        "--ves-ses-sticky-type-w",
-        vesSesTypeTh.getBoundingClientRect().width + "px"
-      );
+      if (vesSesTypeTh) {
+        vesSesTable.style.setProperty(
+          "--ves-ses-sticky-type-w",
+          vesSesTypeTh.getBoundingClientRect().width + "px"
+        );
+      }
     }
     syncVesSesStickyColumns();
     if (window.ResizeObserver) {
       const stickyColObserver = new ResizeObserver(syncVesSesStickyColumns);
       stickyColObserver.observe(vesSesNameTh);
-      stickyColObserver.observe(vesSesTypeTh);
+      if (vesSesTypeTh) stickyColObserver.observe(vesSesTypeTh);
     }
     window.addEventListener("resize", syncVesSesStickyColumns);
 

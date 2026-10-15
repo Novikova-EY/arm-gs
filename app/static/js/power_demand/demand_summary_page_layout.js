@@ -79,13 +79,21 @@ window.addEventListener("resize", function () {
     }
 });
 
+function schedulePowerDemandSummaryFrame(callback) {
+    if (document.visibilityState === "hidden") {
+        window.setTimeout(callback, 0);
+        return;
+    }
+    window.requestAnimationFrame(callback);
+}
+
 function finishPowerDemandSummaryInitialRenderNow() {
     if (!powerDemandSummaryLoaderShell || powerDemandSummaryLoaderShell.dataset.ready === "1") {
         return;
     }
     powerDemandSummaryLoaderShell.dataset.ready = "1";
-    window.requestAnimationFrame(function () {
-        window.requestAnimationFrame(function () {
+    schedulePowerDemandSummaryFrame(function () {
+        schedulePowerDemandSummaryFrame(function () {
             if (powerDemandSummaryScrollWrap) {
                 powerDemandSummaryScrollWrap.style.visibility = "";
             }
@@ -103,7 +111,7 @@ function finishPowerDemandSummaryInitialRenderNow() {
                 window.__pdPdSummaryInitTableTooltips();
             }
             refreshPowerDemandSummaryLayout();
-            window.requestAnimationFrame(function () {
+            schedulePowerDemandSummaryFrame(function () {
                 refreshPowerDemandSummaryLayout();
                 if (window.armGsPageScrollRestore) {
                     var pdSummaryTable = document.getElementById("powerDemandSummaryTable");
@@ -1155,35 +1163,50 @@ if (summaryTable) {
         function syncSummaryNoteFieldHeights() {
             // Сброс зафиксированных px-высот: иначе после скрытия строк фильтром
             // старая высота «Примечания» растягивает оставшиеся строки блока.
-            clearSummaryNoteFieldHeights();
-            void summaryTable.offsetHeight;
-
-            summaryTable.querySelectorAll("td.summary-entity-note-cell > .summary-entity-note-wrap").forEach(function (wrap) {
-                var td = wrap.closest("td.summary-entity-note-cell");
-                if (!td || td.offsetHeight < 1) {
-                    return;
-                }
-                var cellH = td.clientHeight;
-                wrap.style.height = cellH + "px";
+            var wraps = Array.prototype.slice.call(
+                summaryTable.querySelectorAll(
+                    "td.summary-entity-note-cell > .summary-entity-note-wrap"
+                )
+            );
+            var measurements = wraps.map(function (wrap) {
+                wrap.style.height = "";
                 var ta = wrap.querySelector("textarea.power-demand-summary-note-field");
-                if (!ta) {
+                if (ta) {
+                    ta.style.height = "auto";
+                    ta.style.minHeight = "0";
+                    ta.style.paddingTop = "0";
+                    ta.style.paddingBottom = "0";
+                }
+                return { wrap: wrap, ta: ta };
+            });
+
+            // Сначала сбрасываем все стили, затем читаем layout, и только потом
+            // записываем размеры. Иначе каждая ячейка заставляет браузер заново
+            // пересчитывать всю большую таблицу (forced reflow на каждое примечание).
+            void summaryTable.offsetHeight;
+            measurements.forEach(function (item) {
+                var td = item.wrap.closest("td.summary-entity-note-cell");
+                item.cellH = td && td.offsetHeight >= 1 ? td.clientHeight : 0;
+                item.contentH = item.ta ? item.ta.scrollHeight : 0;
+            });
+            measurements.forEach(function (item) {
+                if (!item.cellH) {
                     return;
                 }
-                ta.style.height = "auto";
-                ta.style.minHeight = "0";
-                ta.style.paddingTop = "0";
-                ta.style.paddingBottom = "0";
-                var contentH = ta.scrollHeight;
-                ta.style.height = cellH + "px";
-                ta.style.minHeight = cellH + "px";
-                if (contentH <= cellH) {
-                    var padTotal = cellH - contentH;
+                item.wrap.style.height = item.cellH + "px";
+                if (!item.ta) {
+                    return;
+                }
+                item.ta.style.height = item.cellH + "px";
+                item.ta.style.minHeight = item.cellH + "px";
+                if (item.contentH <= item.cellH) {
+                    var padTotal = item.cellH - item.contentH;
                     var padTop = Math.floor(padTotal / 2);
-                    ta.style.paddingTop = padTop + "px";
-                    ta.style.paddingBottom = (padTotal - padTop) + "px";
+                    item.ta.style.paddingTop = padTop + "px";
+                    item.ta.style.paddingBottom = (padTotal - padTop) + "px";
                 } else {
-                    ta.style.paddingTop = "0.2rem";
-                    ta.style.paddingBottom = "0.2rem";
+                    item.ta.style.paddingTop = "0.2rem";
+                    item.ta.style.paddingBottom = "0.2rem";
                 }
             });
         }

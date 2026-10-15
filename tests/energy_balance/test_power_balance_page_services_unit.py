@@ -15,6 +15,7 @@ from app.energy_balance.services.power_balance_page_services import (
     DEMAND_MAX_LABEL,
     DEMAND_MODE_COLD,
     DEMAND_MODE_MAX,
+    EES_RUSSIA_WITH_TITES_SLUG,
     SURPLUS_N1_GAO_LABEL,
     SURPLUS_N1_GAO_ROW_KEY,
     SURPLUS_N1_GAO_SHARE,
@@ -35,6 +36,9 @@ from app.energy_balance.services.power_balance_page_services import (
     build_power_balance_station_list_url,
     build_power_balance_table_context,
     build_power_balance_tables,
+    _append_ees_russia_with_tites_table,
+    _power_balance_navigation_sheets,
+    format_power_balance_browser_title,
     custom_flow_row_key,
     first_row_active_slug,
     get_power_balance_sheet,
@@ -53,6 +57,7 @@ from app.energy_balance.services.power_balance_page_services import (
     apply_tites_ego_outage_surplus,
     sheet_includes_ego_outage_surplus,
     sheet_uses_station_capacity_breakdown,
+    synchronous_zone_subtab_sheets,
     tites_east_child_nav_sheets,
     tites_east_hub_redirect_slug,
 )
@@ -120,7 +125,27 @@ def test_power_balance_sheets_order_ees_then_sz_then_oes():
         "Калининградская СЗ ЕЭС",
     ]
     for sheet in sheets:
-        assert sheet["title"] == f"Баланс мощности {sheet['sheet_name']}"
+        assert sheet["title"] == f"Баланс электрической мощности {sheet['sheet_name']}"
+
+
+def test_power_balance_nav_inserts_oes_vostok_at_reference_display_order():
+    sheets = [
+        {"slug": "2-sz-ees-vostok", "group": GROUP_SZ, "oes_vostok_display_order": 7},
+        {"slug": "sibir", "sheet_name": "ОЭС Сибири", "group": GROUP_OES, "display_order": 6},
+        {"slug": "oes-417", "sheet_name": "ТИТЭС Сибири", "group": GROUP_OES, "display_order": 8},
+        {"slug": "oes-416", "sheet_name": "ТИТЭС Востока", "group": GROUP_OES, "display_order": 9},
+    ]
+
+    groups = group_power_balance_sheets(sheets)
+    oes = next(group["sheets"] for group in groups if group["group"] == GROUP_OES)
+
+    assert [sheet["slug"] for sheet in oes] == [
+        "sibir",
+        "vostok",
+        "oes-417",
+        "oes-416",
+    ]
+    assert oes[1]["display_order"] == 7
 
 
 def test_get_power_balance_sheet_unknown_returns_none():
@@ -301,6 +326,78 @@ def test_demand_mode_parsed_and_switches_demand_row():
     assert DEMAND_MAX_COLD_LABEL in (by_cold["demand_total"].get("formula_tooltip") or "")
 
 
+def test_ees_russia_with_tites_table_sums_ees_and_tites(monkeypatch):
+    year = 2030
+    sheets = [
+        {
+            "slug": "ees-rossii",
+            "sheet_name": "ЕЭС России",
+            "group": GROUP_EES,
+            "layout": "ees_rossii",
+        },
+        {
+            "slug": "oes-tites-sibir",
+            "sheet_name": "ТИТЭС Сибири",
+            "group": GROUP_OES,
+            "layout": "oes_sibir",
+            "station_capacity_breakdown": True,
+        },
+    ]
+
+    def _row(key, value, *, kind="value"):
+        return {
+            "key": key,
+            "label": key,
+            "kind": kind,
+            "year_values_raw": {year: Decimal(value)},
+            "year_values": {year: str(value)},
+        }
+
+    tables = {
+        "ees-rossii": {
+            "sheet": sheets[0],
+            "rows": [
+                _row("demand_max", 100),
+                _row("coverage_total", 120),
+                _row("flow_in", 5, kind="transfer"),
+            ],
+        },
+        "oes-tites-sibir": {
+            "sheet": sheets[1],
+            "rows": [
+                _row("demand_max", 20),
+                _row("coverage_total", 25),
+                _row("flow_in", 9, kind="transfer"),
+            ],
+        },
+    }
+    monkeypatch.setattr(
+        "app.energy_balance.services.power_balance_page_services._attach_formula_tooltips",
+        lambda *args, **kwargs: None,
+    )
+
+    aggregate_sheet = _append_ees_russia_with_tites_table(tables, sheets, [year], 1)
+
+    assert aggregate_sheet["slug"] == EES_RUSSIA_WITH_TITES_SLUG
+    assert aggregate_sheet["sheet_name"] == "ЭЭС России"
+    assert [item["slug"] for item in _power_balance_navigation_sheets(sheets)[:1]] == [
+        EES_RUSSIA_WITH_TITES_SLUG
+    ]
+    aggregate_rows = {row["key"]: row for row in tables[EES_RUSSIA_WITH_TITES_SLUG]["rows"]}
+    assert aggregate_rows["demand_max"]["year_values_raw"][year] == Decimal("120")
+    assert aggregate_rows["coverage_total"]["year_values_raw"][year] == Decimal("145")
+    assert aggregate_rows["flow_in"]["year_values_raw"][year] == Decimal("5")
+    assert aggregate_rows["demand_max"]["editable_values"] is False
+
+
+def test_format_power_balance_browser_title():
+    assert (
+        format_power_balance_browser_title("Баланс электрической мощности ЕЭС России")
+        == "Баланс ЭМ ЕЭС России"
+    )
+    assert format_power_balance_browser_title("Другой заголовок") == "Другой заголовок"
+
+
 def test_table_context_for_known_slug():
     with patch(
         "app.energy_balance.services.power_balance_page_services.get_sipr_start_year",
@@ -313,10 +410,38 @@ def test_table_context_for_known_slug():
         return_value={2026: "Отчет", 2027: "План"},
     ):
         context = build_power_balance_table_context("centr")
+        ees_context = build_power_balance_table_context("ees-rossii")
+        second_zone_context = build_power_balance_table_context("2-sz-ees-vostok")
+        first_zone_context = build_power_balance_table_context("1-sz-ees")
+        vostok_context = build_power_balance_table_context("vostok")
     assert context is not None
+    assert ees_context is not None
+    assert second_zone_context is not None
+    assert first_zone_context is not None
+    assert vostok_context is not None
+    assert ees_context["page_title"] == "Баланс электрической мощности ЕЭС России"
+    assert ees_context["browser_title"] == "Баланс ЭМ ЕЭС России"
+    assert vostok_context["page_slug"] == "vostok"
+    assert vostok_context["first_row_active_slug"] == "vostok"
+    assert vostok_context["page_title"] == "Баланс электрической мощности ОЭС Востока"
+    assert vostok_context["sheet"]["slug"] == "2-sz-ees-vostok"
+    assert vostok_context["rows"] == second_zone_context["rows"]
     assert context["sheet"]["sheet_name"] == "Центр"
-    assert context["page_title"] == "Баланс мощности Центр"
+    assert context["page_title"] == "Баланс электрической мощности Центр"
+    assert context["browser_title"] == "Баланс ЭМ Центр"
     assert [item["group"] for item in context["sheet_groups"]] == [GROUP_EES, GROUP_SZ, GROUP_OES]
+    synchronous_group = next(
+        item for item in second_zone_context["sheet_groups"] if item["group"] == GROUP_SZ
+    )
+    assert synchronous_group["sheets"][0]["slug"] == "synchronous-zones"
+    assert synchronous_group["sheets"][0]["first_child_slug"] == "1-sz-ees"
+    assert second_zone_context["first_row_active_slug"] == "synchronous-zones"
+    assert [item["slug"] for item in second_zone_context["synchronous_zone_subtab_sheets"]] == [
+        "1-sz-ees",
+        "2-sz-ees-vostok",
+        "kaliningradskaya-sz-ees",
+    ]
+    assert first_zone_context["synchronous_zone_subtab_sheets"][0]["slug"] == "1-sz-ees"
     assert context["years"] == [2026, 2027]
     assert context["year_features"][2026] == "Отчет"
     assert context["year_features"][2027] == "План"
@@ -337,6 +462,42 @@ def test_table_context_for_known_slug():
     assert demand_max["hide_when_empty"] is True
     assert demand_total["hide_when_empty"] is True
     assert build_power_balance_table_context("nope") is None
+
+
+def test_synchronous_zones_render_as_power_balance_subtabs():
+    from jinja2 import Environment, FileSystemLoader
+
+    sheets = get_power_balance_sheets()
+    groups = group_power_balance_sheets(_power_balance_navigation_sheets(sheets))
+    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
+    env.globals["url_for"] = lambda endpoint, **kwargs: (
+        f"/{kwargs['slug']}/?start_year={kwargs['start_year']}&end_year={kwargs['end_year']}"
+        f"&rounding_digits={kwargs['rounding_digits']}&demand_mode={kwargs.get('demand_mode', 'max')}"
+        if endpoint == "energy_balance_bp.power_balance_table"
+        else "/hub/"
+        if endpoint == "energy_balance_bp.hub"
+        else "/ee_balance/ees-rossii/"
+    )
+
+    html = env.get_template("energy_balance/power_balance/_sheet_nav.html").render(
+        current_slug="2-sz-ees-vostok",
+        first_row_active_slug="synchronous-zones",
+        sheet_groups=groups,
+        tites_east_child_sheets=[],
+        synchronous_zone_subtab_sheets=synchronous_zone_subtab_sheets(
+            sheets, "2-sz-ees-vostok"
+        ),
+        start_year=2026,
+        end_year=2031,
+        rounding_digits=1,
+        demand_mode="max",
+    )
+
+    assert html.count("Синхронные зоны") == 2
+    assert html.count("1-я СЗ ЕЭС") == 1
+    assert html.count("2-я СЗ ЕЭС (ОЭС Востока)") == 1
+    assert html.count("Калининградская СЗ ЕЭС") == 1
+    assert "/1-sz-ees/?start_year=2026&amp;end_year=2031&amp;rounding_digits=1&amp;demand_mode=max" in html
 
 
 def test_empty_rows_hidden_keep_filled_custom_and_ancestors():
@@ -558,7 +719,12 @@ def test_ees_and_sz1_cross_sheet_formulas():
     assert sz1_by_key["flow_out"].get("formula") is None
     ees_aes = next(row for row in tables["ees-rossii"]["rows"] if row["key"] == "installed_aes")
     assert "Северо-Запад" in ees_aes["formula_tooltip"]
-    assert "2-я СЗ ЕЭС" in ees_aes["formula_tooltip"]
+    # На листе ЕЭС России 2-я СЗ показывается как ОЭС Востока.
+    assert "ОЭС Востока" in ees_aes["formula_tooltip"]
+    assert "2-я СЗ" not in ees_aes["formula_tooltip"]
+    # На листе 1-й СЗ подпись листа остается прежней.
+    sz1_aes = next(row for row in tables["1-sz-ees"]["rows"] if row["key"] == "installed_aes")
+    assert "ОЭС Востока" not in sz1_aes["formula_tooltip"]
 
 
 def test_sheets_use_refdata_names_and_keep_group_order():
@@ -1448,8 +1614,8 @@ def test_sheets_keep_sz_layout_when_sa_name_tweaked():
     by_slug = {sheet["slug"]: sheet for sheet in sheets}
     assert names == [
         "ЕЭС России",
-        "Первая синхронная зона",
-        "Вторая синхронная зона",
+        "1-ая СЗ",
+        "2-ая СЗ",
         "Синхронная зона Калининградской области",
         "ОЭС Центра",
         "ОЭС Сибири",
@@ -1550,7 +1716,7 @@ def test_table_context_for_dynamic_sz_slug():
         context = build_power_balance_table_context("sz-112")
     assert context is not None
     assert context["sheet"]["slug"] == "sz-112"
-    assert context["page_title"] == "Баланс мощности Синхронная зона X"
+    assert context["page_title"] == "Баланс электрической мощности Синхронная зона X"
     export = next(row for row in context["rows"] if row["key"] == "export")
     assert export["editable_values"] is True
 

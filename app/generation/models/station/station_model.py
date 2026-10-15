@@ -127,6 +127,11 @@ class Station(db.Model, AuditMixin, VersionedModelMixin):
         back_populates='station',
         cascade="all, delete-orphan",
     )
+    station_snee_energy_consumptions = db.relationship(
+        'StationSneeEnergyConsumption',
+        back_populates='station',
+        cascade="all, delete-orphan",
+    )
     machines = db.relationship('Machine', back_populates='machine_station')
     boilers = db.relationship('Boiler', back_populates='boiler_station')
     equipment_group_type_links_v2 = db.relationship(

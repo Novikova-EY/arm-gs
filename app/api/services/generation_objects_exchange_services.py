@@ -58,6 +58,7 @@ KEY_PLANNED = "Станция является планируемой"
 KEY_MACHINE_CODE = "external_code"
 KEY_STATION_CODE_ON_MACHINE = "station_external_code"
 KEY_MACHINE_NAME = "Название агрегата"
+KEY_MACHINE_NUMBER = "Станционный номер"
 KEY_MACHINE_STATION_TYPE = "Тип станции агрегата"
 KEY_MACHINE_CAPACITY = "Установленная мощность агрегата, МВт"
 KEY_FUEL = "Тип топлива"
@@ -87,7 +88,9 @@ GENERATION_MACHINES_COMMENT = (
     "и «Ожидаемый год модернизации без изменения мощности» "
     "(в JSON — «Дата модернизации блока»).\n\n"
     "Поле station_external_code добавлено для связи со станцией "
-    "(тот же код, что external_code в generation_stations)."
+    "(тот же код, что external_code в generation_stations).\n\n"
+    "Поле «Станционный номер» — «Номер агрегата» с карточки агрегата.\n\n"
+    "14.10.2026 - добавлено поле \"Станционный номер\""
 )
 
 
@@ -274,6 +277,15 @@ def json_year_as_date(raw: Any) -> str:
     return text
 
 
+def machine_page_number(machine: Any) -> str | None:
+    """Станционный номер — «Номер агрегата» с карточки; пусто — None."""
+    number = getattr(machine, "machine_number", None)
+    if number is None:
+        return None
+    text = str(number).strip()
+    return text or None
+
+
 def machine_page_name(machine: Any) -> str:
     """Название как на карточке агрегата: machine_name."""
     name = (getattr(machine, "machine_name", None) or "").strip()
@@ -387,6 +399,7 @@ def build_station_year_row(
 def build_machine_year_row(
     *,
     name: str | None,
+    number: str | None,
     station_type: str | None,
     capacity: Any,
     fuel: str | None,
@@ -405,6 +418,7 @@ def build_machine_year_row(
 ) -> dict[str, Any]:
     return {
         KEY_MACHINE_NAME: name,
+        KEY_MACHINE_NUMBER: number,
         KEY_MACHINE_STATION_TYPE: station_type,
         KEY_MACHINE_CAPACITY: capacity_mw(capacity),
         KEY_FUEL: fuel or "",
@@ -713,6 +727,7 @@ def build_generation_machines_rows(
             rows.append(
                 build_machine_year_row(
                     name=machine_page_name(machine),
+                    number=machine_page_number(machine),
                     station_type=station_type,
                     capacity=capacity,
                     fuel=fuel_map.get((machine.id, year)),

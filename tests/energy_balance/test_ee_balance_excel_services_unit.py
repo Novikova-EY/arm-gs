@@ -7,9 +7,16 @@ from unittest.mock import patch
 
 from openpyxl import load_workbook
 
+from app.energy_balance.services import ee_balance_excel_services
 from app.energy_balance.services.ee_balance_excel_services import (
     ee_balance_excel_table_title,
     export_ee_balance_to_excel,
+)
+from app.energy_balance.services.ee_balance_page_services import (
+    EUROPEAN_EES_SLUG,
+    EUROPEAN_EES_WITHOUT_SOUTH_URAL_SLUG,
+    SEVERO_ZAPAD_CENTER_SLUG,
+    URAL_WITHOUT_TYUMEN_SLUG,
 )
 from app.energy_balance.services.power_balance_page_services import KIND_CHILD, KIND_TOTAL
 
@@ -92,6 +99,86 @@ def _sample_tables():
             ],
         },
     }
+
+
+def test_default_export_includes_virtual_and_subtab_balances():
+    base_sheets = [
+        {"slug": "ees-rossii", "sheet_name": "ЕЭС России", "layout": "ees_rossii", "group": "ees"},
+        {"slug": "1-sz-ees", "sheet_name": "1-я СЗ ЕЭС", "layout": "sz1", "group": "sz"},
+        {"slug": "2-sz-ees-vostok", "sheet_name": "2-я СЗ ЕЭС (ОЭС Востока)", "layout": "oes_vostok", "group": "sz"},
+        {"slug": "ural", "sheet_name": "Урал", "layout": "oes_standard", "group": "oes"},
+        {"slug": "severo-zapad", "sheet_name": "Северо-Запад", "layout": "oes_standard", "group": "oes"},
+        {"slug": "tites-hub", "sheet_name": "ТИТЭС Востока", "layout": "oes_vostok", "group": "oes", "skip_table": True, "is_tites_east_hub": True},
+        {"slug": "eu-101", "sheet_name": "Центральный энергорайон Камчатского края", "layout": "oes_standard", "group": "eu", "parent_slug": "tites-hub"},
+    ]
+    tyumen = {"slug": "res-tyumen", "sheet_name": "Тюменская ЭС", "layout": "oes_standard"}
+    regions = [
+        {"slug": f"res-{name}", "sheet_name": name, "layout": "oes_standard"}
+        for name in ("archangelsk", "kaliningrad", "komi")
+    ]
+
+    def build_tables(years, *, rounding_digits, sheets):
+        return {
+            item["slug"]: {"sheet": item, "rows": []}
+            for item in sheets
+            if not item.get("skip_table")
+        }
+
+    def append_european(tables, years, digits, *, slug=EUROPEAN_EES_SLUG,
+                        sheet_name="Европейская часть ЕЭС", source_slugs=()):
+        sheet = {"slug": slug, "sheet_name": sheet_name, "title": sheet_name}
+        tables[slug] = {"sheet": sheet, "rows": []}
+
+    def append_ural(tables, tyumen_slug, years, digits):
+        sheet = {"slug": URAL_WITHOUT_TYUMEN_SLUG,
+                 "sheet_name": "ОЭС Урала (без Тюменской ЭС)"}
+        tables[URAL_WITHOUT_TYUMEN_SLUG] = {"sheet": sheet, "rows": []}
+
+    def append_center(tables, regional_slugs, years, digits):
+        sheet = {"slug": SEVERO_ZAPAD_CENTER_SLUG,
+                 "sheet_name": "ОЭС Северо-Запада (центр)"}
+        tables[SEVERO_ZAPAD_CENTER_SLUG] = {"sheet": sheet, "rows": []}
+
+    with patch.object(ee_balance_excel_services, "get_ee_balance_sheets", return_value=base_sheets), \
+         patch.object(ee_balance_excel_services, "_ural_tyumen_energy_system", return_value=tyumen), \
+         patch.object(ee_balance_excel_services, "_severo_zapad_region_sheets", return_value=regions), \
+         patch.object(ee_balance_excel_services, "_ees_rossii_with_tites_source_slugs",
+                      return_value=("ees-rossii", "eu-101")), \
+         patch.object(ee_balance_excel_services, "_european_ees_navigation_sheet",
+                      return_value={"slug": EUROPEAN_EES_SLUG,
+                                    "sheet_name": "Европейская часть ЕЭС",
+                                    "layout": "sz1"}), \
+         patch.object(ee_balance_excel_services, "build_ee_balance_tables", side_effect=build_tables), \
+         patch.object(ee_balance_excel_services, "_append_european_ees_table", side_effect=append_european), \
+         patch.object(ee_balance_excel_services, "_append_ural_without_tyumen_table", side_effect=append_ural), \
+         patch.object(ee_balance_excel_services, "_overlay_ural_without_tyumen_manual_generation"), \
+         patch.object(ee_balance_excel_services, "_append_severo_zapad_center_table", side_effect=append_center):
+        stream = export_ee_balance_to_excel(
+            years=[2026], rounding_digits=1, year_features={}
+        )
+
+    sheetnames = load_workbook(stream).sheetnames
+    assert "ЕЭС России" in sheetnames
+    assert "Европейская часть ЕЭС" in sheetnames
+    assert any(name.startswith("Европейская часть ЕЭС (без") for name in sheetnames)
+    assert "Тюменская ЭС" in sheetnames
+    assert "ОЭС Урала (без Тюменской ЭС)" in sheetnames
+    assert "ОЭС Северо-Запада (центр)" in sheetnames
+    assert {"archangelsk", "kaliningrad", "komi"}.issubset(sheetnames)
+    assert sheetnames.index("ЭЭС России") < sheetnames.index("ЕЭС России")
+    assert sheetnames.index("Европейская часть ЕЭС") < next(
+        index for index, name in enumerate(sheetnames)
+        if name.startswith("Европейская часть ЕЭС (без")
+    ) < sheetnames.index("1-я СЗ ЕЭС")
+    assert sheetnames.index("ОЭС Урала (с Тюменской ЭС)") < sheetnames.index(
+        "ОЭС Урала (без Тюменской ЭС)"
+    ) < sheetnames.index("Тюменская ЭС")
+    assert sheetnames.index("ЭС ОЭС Северо-Запада") < sheetnames.index(
+        "ОЭС Северо-Запада (центр)"
+    ) < sheetnames.index("archangelsk") < next(
+        index for index, name in enumerate(sheetnames)
+        if name.startswith("Центральный энергорайон")
+    )
 
 
 def test_export_writes_sheet_per_tab_and_energy_title():

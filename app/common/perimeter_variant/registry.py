@@ -2,6 +2,11 @@
 """Публичный API каталога вариантов периметра (БД + fallback)."""
 from __future__ import annotations
 
+from importlib import import_module
+from typing import Iterable
+
+from flask import g, has_request_context
+
 from app.common.perimeter_variant.constants import (
     CENTRALIZED_ZONE_AGGREGATE_NAME,
     CODE_O1,
@@ -511,6 +516,122 @@ _AGGREGATE_MODEL_PERIMETER_ENTITY: dict[str, tuple[str, str]] = {
     ),
 }
 
+_PARENT_MODEL_LOOKUP: dict[tuple[str, str], tuple[str, str]] = {
+    ("EnergySystemTypeDemandParameter", "id_energy_system_type"): (
+        ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+        "app.refdata.models.energy_systems.energy_system_type_model:EnergySystemType",
+    ),
+    ("EnergySystemTypeEnergyConsumptionParameter", "id_energy_system_type"): (
+        ENTITY_KIND_ENERGY_SYSTEM_TYPE,
+        "app.refdata.models.energy_systems.energy_system_type_model:EnergySystemType",
+    ),
+    ("SynchronousAreaEnergyConsumptionParameter", "id_synchronous_area"): (
+        "synchronous_area",
+        "app.refdata.models.energy_systems.synchronous_area_model:SynchronousArea",
+    ),
+    ("UnionEnergySystemDemandParameter", "id_union_energy_system"): (
+        "union_energy_system",
+        "app.refdata.models.energy_systems.union_energy_system_model:UnionEnergySystem",
+    ),
+    ("UnionEnergySystemEnergyConsumptionParameter", "id_union_energy_system"): (
+        "union_energy_system",
+        "app.refdata.models.energy_systems.union_energy_system_model:UnionEnergySystem",
+    ),
+    ("RegionalEnergySystemEnergyConsumptionParameter", "id_regional_energy_system"): (
+        "regional_energy_system",
+        "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
+    ),
+    ("EnergyZoneEnergyConsumptionParameter", "id_energy_zone"): (
+        "energy_zone",
+        "app.refdata.models.energy_systems.energy_zone_model:EnergyZone",
+    ),
+    ("RegionalDistrictDemandParameter", "id_regional_district"): (
+        "regional_district",
+        "app.refdata.models.territories.regional_district_model:RegionalDistrict",
+    ),
+    ("RegionalDistrictEnergyConsumptionParameter", "id_regional_district"): (
+        "regional_district",
+        "app.refdata.models.territories.regional_district_model:RegionalDistrict",
+    ),
+    ("RegionalEnergySystemDemandParameter", "id_regional_energy_system"): (
+        "regional_energy_system",
+        "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
+    ),
+    ("RegionalEnergySystemEnergyConsumptionParameter", "id_regional_energy_system"): (
+        "regional_energy_system",
+        "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
+    ),
+    ("FederalDistrictDemandParameter", "id_federal_district"): (
+        "federal_district",
+        "app.refdata.models.territories.federal_district_model:FederalDistrict",
+    ),
+    ("FederalDistrictEnergyConsumptionParameter", "id_federal_district"): (
+        "federal_district",
+        "app.refdata.models.territories.federal_district_model:FederalDistrict",
+    ),
+    ("EnergyZoneDemandParameter", "id_energy_zone"): (
+        "energy_zone",
+        "app.refdata.models.energy_systems.energy_zone_model:EnergyZone",
+    ),
+    ("SynchronousAreaDemandParameter", "id_synchronous_area"): (
+        "synchronous_area",
+        "app.refdata.models.energy_systems.synchronous_area_model:SynchronousArea",
+    ),
+    ("EnergyUnitDemandParameter", "id_energy_unit"): (
+        "energy_unit",
+        "app.refdata.models.energy_systems.energy_unit_model:EnergyUnit",
+    ),
+    ("EnergyUnitEnergyConsumptionParameter", "id_energy_unit"): (
+        "energy_unit",
+        "app.refdata.models.energy_systems.energy_unit_model:EnergyUnit",
+    ),
+}
+
+
+def preload_perimeter_entity_contexts(
+    requests: Iterable[tuple[str, str | None, int | None]],
+) -> None:
+    """Пакетно заполняет request-cache контекстов привязок вариантов периметра."""
+    if not has_request_context():
+        return
+
+    cache: dict[tuple[str, str | None, int | None], tuple[str, str] | None] = (
+        g.setdefault("_perimeter_entity_context_cache", {})
+    )
+    grouped: dict[tuple[str, str], set[int]] = {}
+    pending_keys: dict[tuple[str, str], list[tuple[str, str | None, int | None]]] = {}
+    for model_name, parent_fk_column, parent_id in requests:
+        key = ((model_name or "").strip(), parent_fk_column, parent_id)
+        if key in cache:
+            continue
+        mapped = _AGGREGATE_MODEL_PERIMETER_ENTITY.get(key[0])
+        if mapped is not None:
+            cache[key] = mapped
+            continue
+        lookup = _PARENT_MODEL_LOOKUP.get((key[0], parent_fk_column or ""))
+        if lookup is None or parent_id is None:
+            cache[key] = None
+            continue
+        lookup_key = (key[0], parent_fk_column or "")
+        grouped.setdefault(lookup_key, set()).add(int(parent_id))
+        pending_keys.setdefault(lookup_key, []).append(key)
+
+    for lookup_key, parent_ids in grouped.items():
+        entity_kind, import_spec = _PARENT_MODEL_LOOKUP[lookup_key]
+        module_name, class_name = import_spec.split(":", 1)
+        model = getattr(import_module(module_name), class_name)
+        parents = model.query.filter(model.id.in_(parent_ids)).all()
+        found = {
+            int(parent.id): (
+                entity_kind,
+                str(getattr(parent, "name", None) or "").strip(),
+            )
+            for parent in parents
+        }
+        for key in pending_keys[lookup_key]:
+            context = found.get(int(key[2]))
+            cache[key] = context if context and context[1] else None
+
 
 def perimeter_entity_context_for_model(
     model_name: str,
@@ -527,92 +648,31 @@ def perimeter_entity_context_for_model(
     key = (model_name or "").strip()
     if not key:
         return None
+    cache = g.get("_perimeter_entity_context_cache") if has_request_context() else None
+    cache_key = (key, parent_fk_column, parent_id)
+    if cache is not None and cache_key in cache:
+        return cache[cache_key]
+
     mapped = _AGGREGATE_MODEL_PERIMETER_ENTITY.get(key)
     if mapped is not None:
+        if cache is not None:
+            cache[cache_key] = mapped
         return mapped
-    parent_lookup: dict[tuple[str, str], tuple[str, str]] = {
-        ("EnergySystemTypeDemandParameter", "id_energy_system_type"): (
-            ENTITY_KIND_ENERGY_SYSTEM_TYPE,
-            "app.refdata.models.energy_systems.energy_system_type_model:EnergySystemType",
-        ),
-        ("EnergySystemTypeEnergyConsumptionParameter", "id_energy_system_type"): (
-            ENTITY_KIND_ENERGY_SYSTEM_TYPE,
-            "app.refdata.models.energy_systems.energy_system_type_model:EnergySystemType",
-        ),
-        ("SynchronousAreaEnergyConsumptionParameter", "id_synchronous_area"): (
-            "synchronous_area",
-            "app.refdata.models.energy_systems.synchronous_area_model:SynchronousArea",
-        ),
-        ("UnionEnergySystemDemandParameter", "id_union_energy_system"): (
-            "union_energy_system",
-            "app.refdata.models.energy_systems.union_energy_system_model:UnionEnergySystem",
-        ),
-        ("UnionEnergySystemEnergyConsumptionParameter", "id_union_energy_system"): (
-            "union_energy_system",
-            "app.refdata.models.energy_systems.union_energy_system_model:UnionEnergySystem",
-        ),
-        ("RegionalEnergySystemEnergyConsumptionParameter", "id_regional_energy_system"): (
-            "regional_energy_system",
-            "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
-        ),
-        ("EnergyZoneEnergyConsumptionParameter", "id_energy_zone"): (
-            "energy_zone",
-            "app.refdata.models.energy_systems.energy_zone_model:EnergyZone",
-        ),
-        ("RegionalDistrictDemandParameter", "id_regional_district"): (
-            "regional_district",
-            "app.refdata.models.territories.regional_district_model:RegionalDistrict",
-        ),
-        ("RegionalDistrictEnergyConsumptionParameter", "id_regional_district"): (
-            "regional_district",
-            "app.refdata.models.territories.regional_district_model:RegionalDistrict",
-        ),
-        ("RegionalEnergySystemDemandParameter", "id_regional_energy_system"): (
-            "regional_energy_system",
-            "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
-        ),
-        ("RegionalEnergySystemEnergyConsumptionParameter", "id_regional_energy_system"): (
-            "regional_energy_system",
-            "app.refdata.models.energy_systems.regional_energy_system_model:RegionalEnergySystem",
-        ),
-        ("FederalDistrictDemandParameter", "id_federal_district"): (
-            "federal_district",
-            "app.refdata.models.territories.federal_district_model:FederalDistrict",
-        ),
-        ("FederalDistrictEnergyConsumptionParameter", "id_federal_district"): (
-            "federal_district",
-            "app.refdata.models.territories.federal_district_model:FederalDistrict",
-        ),
-        ("EnergyZoneDemandParameter", "id_energy_zone"): (
-            "energy_zone",
-            "app.refdata.models.energy_systems.energy_zone_model:EnergyZone",
-        ),
-        ("SynchronousAreaDemandParameter", "id_synchronous_area"): (
-            "synchronous_area",
-            "app.refdata.models.energy_systems.synchronous_area_model:SynchronousArea",
-        ),
-        ("EnergyUnitDemandParameter", "id_energy_unit"): (
-            "energy_unit",
-            "app.refdata.models.energy_systems.energy_unit_model:EnergyUnit",
-        ),
-        ("EnergyUnitEnergyConsumptionParameter", "id_energy_unit"): (
-            "energy_unit",
-            "app.refdata.models.energy_systems.energy_unit_model:EnergyUnit",
-        ),
-    }
+
+    result = None
     if parent_fk_column and parent_id is not None:
-        lookup = parent_lookup.get((key, parent_fk_column))
+        lookup = _PARENT_MODEL_LOOKUP.get((key, parent_fk_column))
         if lookup is not None:
             entity_kind, import_spec = lookup
             module_name, class_name = import_spec.split(":", 1)
-            from importlib import import_module
-
             model = getattr(import_module(module_name), class_name)
             parent = model.query.get(parent_id)
             name = (getattr(parent, "name", None) or "").strip() if parent is not None else ""
             if name:
-                return entity_kind, name
-    return None
+                result = (entity_kind, name)
+    if cache is not None:
+        cache[cache_key] = result
+    return result
 
 
 def filter_query_by_perimeter_variant(q, model: type, variant_code: str | None):

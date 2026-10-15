@@ -190,6 +190,137 @@ def _section_title(section: list[dict[str, Any]]) -> str:
     return ""
 
 
+def _entity_section_start(entity: Any, spec: _PaginationScopeSpec) -> bool:
+    if int(getattr(entity, "depth", 0) or 0) != 0:
+        return False
+    kind = str(getattr(entity, "entity_kind", "") or "")
+    demand_model = str(getattr(entity, "demand_model_name", "") or "")
+    if kind == "union_energy_system" and spec.demand_model_name == UES_DEMAND_MODEL_NAME:
+        return True
+    return demand_model == spec.demand_model_name and kind in spec.section_entity_kinds
+
+
+def _entity_section_id(entity: Any, spec: _PaginationScopeSpec) -> int | None:
+    raw = getattr(entity, spec.id_field, None)
+    if raw is None and getattr(entity, "parent_fk_column", None) == spec.parent_fk_column:
+        raw = getattr(entity, "parent_id", None)
+    try:
+        return int(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _entity_is_suffix(entity: Any, scope: str, spec: _PaginationScopeSpec) -> bool:
+    if scope == "oes":
+        return TITES_SUFFIX_LABEL_FRAGMENT in str(getattr(entity, "label", "") or "")
+    if scope == "ez":
+        label = str(getattr(entity, "label", "") or "").casefold()
+        return (
+            str(getattr(entity, "entity_kind", "") or "") == "aggregation_level"
+            and _NEW_TERRITORIES_LABEL_FRAGMENT in label
+        )
+    return False
+
+
+def paginate_summary_entities_for_scope(
+    entities: list[Any] | None,
+    scope: str,
+    *,
+    page: int,
+    page_size: int,
+) -> tuple[list[Any], dict[str, Any]]:
+    """Отбирает корневые сущности страницы до форматирования строк таблицы."""
+    spec = _SCOPE_SPECS.get(scope)
+    empty_meta = {
+        "enabled": False,
+        "scope": scope,
+        "page": 1,
+        "page_size": page_size,
+        "total_pages": 1,
+        "total_sections": 0,
+        "has_prev": False,
+        "has_next": False,
+        "section_titles": [],
+        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать всё"),
+    }
+    if not entities or spec is None:
+        return list(entities or []), empty_meta
+
+    prefix: list[Any] = []
+    sections: list[list[Any]] = []
+    suffix: list[Any] = []
+    current: list[Any] | None = None
+    current_id: int | None = None
+    in_suffix = False
+
+    for entity in entities:
+        if in_suffix:
+            suffix.append(entity)
+            continue
+        if _entity_is_suffix(entity, scope, spec):
+            if current is not None:
+                sections.append(current)
+                current = None
+                current_id = None
+            in_suffix = True
+            suffix.append(entity)
+            continue
+        if _entity_section_start(entity, spec):
+            section_id = _entity_section_id(entity, spec)
+            if current is not None and section_id is not None and current_id == section_id:
+                current.append(entity)
+                continue
+            if current is not None:
+                sections.append(current)
+            current = [entity]
+            current_id = section_id
+            continue
+        if current is not None:
+            current.append(entity)
+        else:
+            prefix.append(entity)
+
+    if current is not None:
+        sections.append(current)
+
+    total_sections = len(sections)
+    if page_size <= 0 or total_sections == 0:
+        return list(entities), {
+            **empty_meta,
+            "page_size": 0 if page_size <= 0 else page_size,
+            "total_sections": total_sections,
+        }
+
+    total_pages = max(1, (total_sections + page_size - 1) // page_size)
+    page = max(1, min(int(page), total_pages))
+    start = (page - 1) * page_size
+    page_sections = sections[start : start + page_size]
+    selected: list[Any] = []
+    if page == 1:
+        selected.extend(prefix)
+    for section in page_sections:
+        selected.extend(section)
+    if page == total_pages:
+        selected.extend(suffix)
+
+    return selected, {
+        "enabled": True,
+        "scope": scope,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "total_sections": total_sections,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+        "section_titles": [
+            str(getattr(section[0], "label", "") or "").strip()
+            for section in page_sections
+            if section and str(getattr(section[0], "label", "") or "").strip()
+        ],
+        "all_label": PAGINATION_ALL_LABELS.get(scope, "Показать всё"),
+    }
+
+
 def split_summary_rows_for_pagination(
     rows: list[dict[str, Any]] | None,
     scope: str,

@@ -16,6 +16,7 @@ def test_list_exchange_datasets_known_names():
         "generation_stations",
         "generation_machines",
         "daymonth_info",
+        "hour_info",
         "line_capital_investments",
         "month_info",
         "newlines_building",
@@ -80,6 +81,7 @@ def test_config_datasets_match_page_enabled_buttons():
         "generation_machines",
         "generation_stations",
         "gentypes_info",
+        "hour_info",
         "line_capital_investments",
         "month_info",
         "newlines_building",
@@ -164,6 +166,7 @@ def test_list_exchange_datasets_for_version(monkeypatch):
         "generation_stations",
         "generation_machines",
         "daymonth_info",
+        "hour_info",
         "line_capital_investments",
         "month_info",
         "newlines_building",
@@ -181,6 +184,7 @@ def test_list_exchange_datasets_for_version(monkeypatch):
         "/api/datasets/37/generation_stations",
         "/api/datasets/37/generation_machines",
         "/api/datasets/37/daymonth_info",
+        "/api/datasets/37/hour_info",
         "/api/datasets/37/line_capital_investments",
         "/api/datasets/37/month_info",
         "/api/datasets/37/newlines_building",
@@ -279,6 +283,7 @@ def test_output_document_groups_enable_only_public_api():
     assert by_name["generation_stations"]["enabled"] is True
     assert by_name["generation_machines"]["enabled"] is True
     assert by_name["daymonth_info"]["enabled"] is True
+    assert by_name["hour_info"]["enabled"] is True
     assert by_name["line_capital_investments"]["enabled"] is True
     assert by_name["month_info"]["enabled"] is True
     assert by_name["newlines_building"]["enabled"] is True
@@ -293,6 +298,7 @@ def test_output_document_groups_enable_only_public_api():
     assert by_name["rational_struct_base"]["filename"] == "rational_struct_base.json"
     assert by_name["database_versions"]["filename"] == "database_versions.json"
     assert by_name["month_info"]["filename"] == "month_info.json"
+    assert by_name["hour_info"]["filename"] == "hour_info.json"
     assert by_name["newlines_building"]["filename"] == "newlines_building.json"
     assert by_name["power_energy_export_import_country"]["filename"] == (
         "power_energy_export_import_country.json"

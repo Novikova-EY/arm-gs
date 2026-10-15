@@ -7,6 +7,8 @@ from types import SimpleNamespace
 from decimal import Decimal
 from unittest.mock import patch
 
+import pytest
+
 from app.energy_balance.services.ee_balance_generation_services import (
     GENERATION_GES_KEY,
     GENERATION_TES_KEY,
@@ -24,6 +26,7 @@ from app.energy_balance.services.ee_balance_tes_forecast_services import (
     ROW_TES_TOTAL,
     _load_ges_pivr_months,
     compute_tes_forecast_year,
+    format_tes_forecast_rows,
     hours_in_month,
     is_magadan_tes_forecast_sheet,
     is_tes_forecast_sheet,
@@ -35,6 +38,7 @@ from app.energy_balance.services.ee_balance_tes_forecast_services import (
     tes_forecast_plan_years,
     tes_forecast_year_has_tes_input,
     tes_forecast_year_tes_total,
+    update_tes_forecast_value,
     year_hours_total,
     _station_machine_groups,
     machine_group_row_key,
@@ -285,9 +289,182 @@ def test_consumption_from_annual_share_and_ges_used_override():
     consumption = _row(rows, ROW_CONSUMPTION)["values"]
     assert consumption[1] == Decimal("300")
     assert consumption[2] == Decimal("600")
+    assert _row(rows, ROW_CONSUMPTION)["formula_months"] == [1, 2]
     ges_used = _row(rows, ROW_GES_USED)["values"]
     assert ges_used[1] == Decimal("200")
     assert ges_used[2] == Decimal("100")
+
+
+def test_consumption_formula_takes_priority_over_old_manual_value():
+    stored = {
+        "consumption_share": {1: Decimal("0.2")},
+        ROW_CONSUMPTION: {1: Decimal("500"), 2: Decimal("80")},
+    }
+    rows = compute_tes_forecast_year(
+        year=2026, stored=stored, annual_consumption=Decimal("3000")
+    )
+    consumption = _row(rows, ROW_CONSUMPTION)
+    assert consumption["values"][1] == Decimal("600")
+    assert consumption["values"][2] == Decimal("80")
+    assert consumption["formula_months"] == [1]
+
+    for annual in (None, Decimal("0")):
+        without_annual = compute_tes_forecast_year(
+            year=2026, stored=stored, annual_consumption=annual
+        )
+        assert _row(without_annual, ROW_CONSUMPTION)["values"][1] == Decimal("500")
+        assert _row(without_annual, ROW_CONSUMPTION)["formula_months"] == []
+
+    zero_source = compute_tes_forecast_year(
+        year=2026,
+        stored={"consumption_share": {1: Decimal("0.09")}},
+        annual_consumption=Decimal("0"),
+    )
+    assert _row(zero_source, ROW_CONSUMPTION)["values"][1] is None
+    assert _row(zero_source, ROW_CONSUMPTION)["formula_months"] == []
+
+
+@pytest.mark.parametrize(
+    ("annual", "expected_consumption", "clears_manual"),
+    [
+        (Decimal("3000"), "600", True),
+        (None, "500", False),
+        (Decimal("0"), "500", False),
+    ],
+)
+def test_updating_consumption_share_recalculates_when_annual_available(
+    annual, expected_consumption, clears_manual
+):
+    sheet = {"slug": "oes-318", "sheet_name": "ТИТЭС Сибири"}
+    stored = {
+        "consumption_share": {1: Decimal("0.1")},
+        ROW_CONSUMPTION: {1: Decimal("500")},
+    }
+    writes = []
+
+    def write_value(*, row_key, parsed, **kwargs):
+        writes.append((row_key, parsed, kwargs["month"]))
+        if parsed is None:
+            stored.setdefault(row_key, {}).pop(kwargs["month"], None)
+        else:
+            stored.setdefault(row_key, {})[kwargs["month"]] = parsed
+
+    def build_payload(*args, **kwargs):
+        rows = compute_tes_forecast_year(
+            year=2026, stored=stored, annual_consumption=annual
+        )
+        return {"rows": format_tes_forecast_rows(rows, 1), "tes_total": None}
+
+    with (
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.classify_ee_balance_generation_years",
+            return_value=([], [2026]),
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_entities",
+            return_value={"tes_stations": []},
+        ),
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services._ensure_tables"),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_annual_consumption",
+            return_value=annual,
+        ),
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services._version_id", return_value=1),
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services._write_month_value", side_effect=write_value),
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services._commit_with_retry"),
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services.build_tes_forecast_year_payload", side_effect=build_payload),
+    ):
+        result = update_tes_forecast_value(
+            sheet, 2026, "consumption_share", 1, "0,2", rounding_digits=1
+        )
+
+    expected_writes = [("consumption_share", Decimal("0.2"), 1)]
+    if clears_manual:
+        expected_writes.append((ROW_CONSUMPTION, None, 1))
+    assert writes == expected_writes
+    assert result["cells"][ROW_CONSUMPTION]["1"] == expected_consumption
+    assert result["formula_cells"][ROW_CONSUMPTION] == (
+        [1] if annual not in (None, 0) else []
+    )
+
+
+def test_formula_calculated_consumption_cannot_be_updated_manually():
+    sheet = {"slug": "oes-318", "sheet_name": "ТИТЭС Сибири"}
+    with (
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.classify_ee_balance_generation_years",
+            return_value=([], [2026]),
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_entities",
+            return_value={"tes_stations": []},
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_stored",
+            return_value={
+                "consumption_share": {1: Decimal("0.2")},
+                ROW_CONSUMPTION: {1: Decimal("500")},
+            },
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_annual_consumption",
+            return_value=Decimal("3000"),
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services._write_month_value"
+        ) as write_value,
+    ):
+        with pytest.raises(ValueError, match="рассчитана по формуле"):
+            update_tes_forecast_value(
+                sheet, 2026, ROW_CONSUMPTION, 1, "600", rounding_digits=1
+            )
+
+    write_value.assert_not_called()
+
+
+def test_zero_annual_consumption_keeps_month_editable():
+    sheet = {"slug": "oes-318", "sheet_name": "ТИТЭС Сибири"}
+    stored = {"consumption_share": {1: Decimal("0.09")}}
+    rows = compute_tes_forecast_year(
+        year=2026,
+        stored={**stored, ROW_CONSUMPTION: {1: Decimal("11")}},
+        annual_consumption=Decimal("0"),
+    )
+    with (
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.classify_ee_balance_generation_years",
+            return_value=([], [2026]),
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_entities",
+            return_value={"tes_stations": []},
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_stored",
+            return_value=stored,
+        ),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.load_tes_forecast_annual_consumption",
+            return_value=Decimal("0"),
+        ),
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services._ensure_tables"),
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services._version_id", return_value=37),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services._write_month_value"
+        ) as write_value,
+        patch("app.energy_balance.services.ee_balance_tes_forecast_services._commit_with_retry"),
+        patch(
+            "app.energy_balance.services.ee_balance_tes_forecast_services.build_tes_forecast_year_payload",
+            return_value={"rows": format_tes_forecast_rows(rows, 1), "tes_total": None},
+        ),
+    ):
+        result = update_tes_forecast_value(
+            sheet, 2026, ROW_CONSUMPTION, 1, "11", rounding_digits=1
+        )
+
+    write_value.assert_called_once()
+    assert result["cells"][ROW_CONSUMPTION]["1"] == "11"
+    assert result["formula_cells"][ROW_CONSUMPTION] == []
 
 
 def test_pivr_loads_low_water_forecast_from_ges_station_card():
@@ -509,6 +686,46 @@ def test_overlay_copies_ges_and_consumption_year_totals():
     assert merged["eu-257"][GENERATION_TES_KEY][2026] == Decimal("12")
     assert merged["eu-257"][GENERATION_GES_KEY][2026] == Decimal("18")
     assert merged["eu-257"]["consumption"][2026] == Decimal("55")
+
+
+@pytest.mark.parametrize(
+    "annual, expected",
+    [(Decimal("8064"), Decimal("8064")), (Decimal("0"), Decimal("10")), (None, Decimal("10"))],
+)
+def test_tites_siberia_overlay_preserves_annual_consumption(annual, expected):
+    from app.energy_balance.services import ee_balance_tes_forecast_services as service
+
+    sheets = [{
+        "slug": "oes-318",
+        "sheet_name": "ТИТЭС Сибири",
+        "territory": {"name": "ТИТЭС Сибири"},
+    }]
+    inputs = {"oes-318": {"consumption": {2026: annual}}}
+    stored = {2026: {
+        "consumption_share": {1: Decimal("0.99")},
+        "consumption": {1: Decimal("10")},
+        "tes_station_1": {1: Decimal("5")},
+        "ges_used": {1: Decimal("10")},
+    }}
+    entities = {
+        "tes_stations": [{"id": 1, "label": "ТЭЦ", "capacity": Decimal("75"), "machines": []}],
+        "ges_stations": [{
+            "id": 2, "label": "ГЭС", "capacity": Decimal("300"),
+            "machines": [], "pivr": {1: Decimal("12")},
+        }],
+    }
+    with patch.object(
+        service, "classify_ee_balance_generation_years", return_value=([], [2026]),
+    ), patch.object(
+        service, "load_tes_forecast_stored_years", return_value=stored,
+    ), patch.object(
+        service, "load_tes_forecast_entities", return_value=entities,
+    ):
+        merged = overlay_tes_forecast_generation_inputs(inputs, sheets, [2026])
+
+    assert merged["oes-318"]["consumption"][2026] == expected
+    assert merged["oes-318"][GENERATION_TES_KEY][2026] == Decimal("5")
+    assert merged["oes-318"][GENERATION_GES_KEY][2026] == Decimal("10")
 
 
 _FACT_FEATURES = {

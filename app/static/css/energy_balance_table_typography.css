@@ -1,0 +1,65 @@
+/* Размеры текста таблиц совпадают со сводкой ОЭС раздела «Потребность в мощности». */
+table.table {
+    font-size: 1.15rem;
+}
+
+table.table thead th {
+    font-size: 1.28rem;
+}
+
+/* Навигация балансов: вкладки сжимаются по ширине окна вместо появления скролла,
+   служебные кнопки идут в той же строке справа и при нехватке места тоже сжимаются. */
+.energy-balance-sheet-nav {
+    flex-wrap: nowrap !important;
+    align-items: center;
+    min-width: 0;
+}
+
+.energy-balance-sheet-tabs {
+    min-width: 0;
+    /* Полосы подвкладок (ТИТЭС, синхронные зоны, варианты ОЭС) — на своей строке, во всю ширину. */
+    width: 100%;
+    flex-wrap: wrap !important;
+    overflow: visible;
+    gap: 0.5rem !important;
+}
+
+/* Основная полоса вкладок делит строку со служебными кнопками и не переносится:
+   вкладки растягиваются на всю свободную ширину. */
+.energy-balance-sheet-nav > .energy-balance-sheet-tabs {
+    flex: 1 1 0;
+    width: auto;
+    flex-wrap: nowrap !important;
+    overflow: hidden;
+}
+
+.energy-balance-sheet-nav > .energy-balance-sheet-tabs > .energy-balance-sheet-tab {
+    flex: 1 1 auto;
+}
+
+/* Подвкладки — по ширине текста, без растягивания. */
+.energy-balance-sheet-tabs > .energy-balance-sheet-tab {
+    flex: 0 1 auto;
+}
+
+.energy-balance-sheet-tab {
+    min-width: 0;
+    padding: 0.25rem 0.6rem !important;
+    font-size: 1rem !important;
+    line-height: 1.2;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+
+.energy-balance-sheet-utility-tab {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 1rem !important;
+    padding: 0.25rem 0.6rem !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    text-align: center;
+}
+

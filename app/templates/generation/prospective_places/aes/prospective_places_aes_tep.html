@@ -27,13 +27,13 @@
     {% set aes_nav_back_label = 'Список перспективных площадок АЭС' %}
     {% include 'generation/prospective_places/aes/_aes_tep_nav_row.html' %}
 
-    <h2 class="mb-4 text-center">
+    <h1 class="mb-4 text-center">
         {% if toolbar_mode == 'tep_main' %}
         Перечень исходных технико-экономических показателей новых АЭС по проектным (предпроектным) данным
         {% else %}
         Характеристика актуальных площадок размещения новых АЭС
         {% endif %}
-    </h2>
+    </h1>
     {% if page_subtitle %}
     <p class="lead mb-3 text-center">{{ page_subtitle }}</p>
     {% endif %}

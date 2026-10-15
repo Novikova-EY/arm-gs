@@ -6,6 +6,8 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
+from flask import g, has_request_context
+
 from app.common.perimeter_variant.constants import (
     CODE_WITHOUT_NT,
     CODE_WITH_NT,
@@ -963,11 +965,33 @@ def _hub_indexes_for_summary_blocks(
             UnionEnergySystemDemandParameter.__name__,
         ):
             need_ees_sa = True
-    return _build_oes_top_hub_ec_indexes(
-        years,
-        rounding_digits,
-        need_cz=need_cz,
-        need_ees_sa=need_ees_sa,
+    if not need_cz and not need_ees_sa:
+        return None, None
+
+    cache_key = (tuple(int(year) for year in years), int(rounding_digits))
+    request_cache = (
+        g.setdefault("_pd_summary_hub_ec_indexes", {})
+        if has_request_context()
+        else None
+    )
+    if request_cache is not None and cache_key in request_cache:
+        cached_cz, cached_ees_sa = request_cache[cache_key]
+    else:
+        # Several injected segments need the same EC summary pipeline. Build its
+        # indexes once per request rather than reconstructing the whole EC summary
+        # independently for ЧЧИ, combined ЧЧИ, and energy-consumption rows.
+        cached_cz, cached_ees_sa = _build_oes_top_hub_ec_indexes(
+            years,
+            rounding_digits,
+            need_cz=True,
+            need_ees_sa=True,
+        )
+        if request_cache is not None:
+            request_cache[cache_key] = (cached_cz, cached_ees_sa)
+
+    return (
+        cached_cz if need_cz else None,
+        cached_ees_sa if need_ees_sa else None,
     )
 
 

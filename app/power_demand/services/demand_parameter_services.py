@@ -1805,6 +1805,9 @@ def _plan_year_extra_editable(demand_model_name: str, parameter_key: str) -> boo
             "combined_on_cz",
             "combined_on_ez",
         )
+    # Субъекты РФ внутри РЭС на странице ОЭС: значения на час максимума ОЭС/ЕЭС.
+    if dm == "RegionalDistrictDemandParameter":
+        return pk in ("combined_on_oes", "combined_on_ees")
     # Строка объекта объединённой энергосистемы на странице ОЭС.
     if dm == "UnionEnergySystemDemandParameter":
         return pk in (

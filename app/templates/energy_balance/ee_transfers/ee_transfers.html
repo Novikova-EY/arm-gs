@@ -38,17 +38,40 @@ content %} {% if current_user.is_authenticated %}
   data-ee-reporting-end="{{ ee_reporting_end_year }}"
 >
   <div class="page-table-scroll">
-    <div class="col-12 mb-2 text-center">
-      <h2 class="mb-4">Перетоки электрической энергии</h2>
+    <div class="ee-transfers-title-row mb-2">
+      <span aria-hidden="true"></span>
+      <h1 class="mb-0 text-center">Перетоки электрической энергии</h1>
+      <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5 ee-transfers-module-link">
+        <i class="bi bi-gear-wide-connected" aria-hidden="true"></i> Модуль «Балансы электрической энергии и мощности»
+      </a>
     </div>
 
     <div class="pd-ec-summary-sticky-stack border-bottom bg-body shadow-sm">
       {% include 'energy_balance/ee_transfers/ee_transfers_filters.html' %}
     </div>
 
-    {% set column_count = 1 + (period_columns|length) %}
+    {% set column_count = 2 + (period_columns|length) %}
 
     <style>
+      .ee-transfers-title-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .ee-transfers-module-link {
+        grid-column: 3;
+        justify-self: end;
+        white-space: nowrap;
+      }
+
+      @media (max-width: 767.98px) {
+        .ee-transfers-title-row { grid-template-columns: minmax(0, 1fr); }
+        .ee-transfers-title-row > span { display: none; }
+        .ee-transfers-module-link { grid-column: 1; justify-self: end; }
+      }
+
       .page-table-scroll #eeTransfersTable thead th {
         position: sticky;
 
@@ -111,11 +134,37 @@ content %} {% if current_user.is_authenticated %}
 
         white-space: nowrap;
       }
+
+      #eeTransfersTable .ee-transfer-value-cell {
+        padding: 0.25rem;
+        white-space: nowrap;
+      }
+
+      #eeTransfersTable td.ee-transfer-value-cell.is-save-success {
+        box-shadow: inset 0 0 0 2px var(--bs-success);
+      }
+
+      #eeTransfersTable td.ee-transfer-value-cell.is-save-error {
+        box-shadow: inset 0 0 0 2px var(--bs-danger);
+      }
+
+      #eeTransfersTable .ee-transfer-value {
+        width: 100%;
+        padding: 0.125rem 0.25rem;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        line-height: inherit;
+        color: inherit;
+        text-align: center;
+      }
     </style>
 
     <table
       class="table table-hover table-striped table-bordered"
       id="eeTransfersTable"
+      data-save-url="{{ url_for('energy_balance_bp.ee_transfer_value', rounding_digits=rounding_digits) }}"
+      data-csrf-token="{% if csrf_token is string %}{{ csrf_token }}{% else %}{{ csrf_token() }}{% endif %}"
     >
       <thead class="table-success">
         <tr
@@ -180,15 +229,37 @@ content %} {% if current_user.is_authenticated %}
 
         {% for transfer_row in res_block.transfer_rows %}
 
-        <tr class="text-center align-middle">
+        <tr
+          class="text-center align-middle"
+          data-ues-id="{{ transfer_row.ues_id }}"
+          data-source-res-id="{{ transfer_row.from_res_id or '' }}"
+          data-source-rd-id="{{ transfer_row.from_rd_id or '' }}"
+          data-target-res-id="{{ transfer_row.to_res_id or '' }}"
+          data-target-country-id="{{ transfer_row.to_country_id or '' }}"
+          data-target-rd-id="{{ transfer_row.to_rd_id or '' }}"
+          data-target-energy-unit-id="{{ transfer_row.to_eu_id or '' }}"
+        >
+          <td class="text-start">{{ transfer_row.to_ues_name or '—' }}</td>
           <td class="text-start">{{ transfer_row.to_name }}</td>
 
           {% for period_num, period_label in period_columns %}
-
-          <td>
-            {{ format_transfer_cell(transfer_row.periods.get(period_num)) }}
+          {% set editable_period = (ee_period_mode == 'years' and period_num in editable_years) or (ee_period_mode == 'months' and selected_year in editable_years) %}
+          {% if editable_period %}
+          {% set cell_value = transfer_row.periods.get(period_num) %}
+          {% set cell_display = format_transfer_cell(cell_value) %}
+          <td class="ee-transfer-value-cell" data-year="{{ selected_year if ee_period_mode == 'months' else period_num }}" data-month="{{ period_num if ee_period_mode == 'months' else 0 }}" data-raw="{{ cell_value if cell_value is not none else '' }}">
+            <input
+              type="text"
+              class="form-control form-control-sm ee-transfer-value"
+              value="{{ '' if cell_value is none else cell_display }}"
+              data-original="{{ '' if cell_value is none else cell_display }}"
+              inputmode="decimal"
+              aria-label="{{ transfer_row.from_name }} — {{ transfer_row.to_name }}, {{ period_label }}"
+            >
           </td>
-
+          {% else %}
+          <td>{{ format_transfer_cell(transfer_row.periods.get(period_num)) }}</td>
+          {% endif %}
           {% endfor %}
         </tr>
 
@@ -323,6 +394,8 @@ content %} {% if current_user.is_authenticated %}
 
       params.delete("transfer_to_energy_unit_filter");
 
+      params.delete("transfer_to_ues_filter");
+
       document
         .querySelectorAll('input[name="transfer_to_res_filter"]:checked')
         .forEach((cb) => {
@@ -349,6 +422,12 @@ content %} {% if current_user.is_authenticated %}
           params.append("transfer_to_energy_unit_filter", cb.value);
         });
 
+      document
+        .querySelectorAll('input[name="transfer_to_ues_filter"]:checked')
+        .forEach((cb) => {
+          params.append("transfer_to_ues_filter", cb.value);
+        });
+
       params.set("page", "1");
 
       window.location.href = window.location.pathname + "?" + params.toString();
@@ -356,7 +435,7 @@ content %} {% if current_user.is_authenticated %}
 
     document
       .querySelectorAll(
-        'input[name="transfer_to_res_filter"], input[name="transfer_to_country_filter"], input[name="transfer_to_rd_filter"], input[name="transfer_to_energy_unit_filter"]',
+        'input[name="transfer_to_res_filter"], input[name="transfer_to_country_filter"], input[name="transfer_to_rd_filter"], input[name="transfer_to_energy_unit_filter"], input[name="transfer_to_ues_filter"]',
       )
       .forEach((input) => {
         input.addEventListener("change", navigateWithTransferToFilters);
@@ -525,6 +604,8 @@ content %} {% if current_user.is_authenticated %}
 
         params.delete("transfer_to_energy_unit_filter");
 
+        params.delete("transfer_to_ues_filter");
+
         document
           .querySelectorAll('input[name="transfer_to_res_filter"]:checked')
           .forEach((cb) => {
@@ -549,6 +630,12 @@ content %} {% if current_user.is_authenticated %}
           )
           .forEach((cb) => {
             params.append("transfer_to_energy_unit_filter", cb.value);
+          });
+
+        document
+          .querySelectorAll('input[name="transfer_to_ues_filter"]:checked')
+          .forEach((cb) => {
+            params.append("transfer_to_ues_filter", cb.value);
           });
 
         const exportUrl = form.action + "?" + params.toString();
@@ -606,6 +693,73 @@ content %} {% if current_user.is_authenticated %}
           });
       });
     })();
+  });
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const table = document.getElementById("eeTransfersTable");
+    if (!table) return;
+
+    table.addEventListener("keydown", function (event) {
+      const input = event.target.closest("input.ee-transfer-value");
+      if (!input) return;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        input.blur();
+      } else if (event.key === "Escape") {
+        input.value = input.dataset.original || "";
+        input.blur();
+      }
+    });
+
+    table.addEventListener("change", async function (event) {
+      const input = event.target.closest("input.ee-transfer-value");
+      if (!input || input.value === input.dataset.original) return;
+      const row = input.closest("tr[data-ues-id]");
+      const cell = input.closest("td[data-year]");
+      if (!row || !cell) return;
+
+      input.disabled = true;
+      cell.classList.remove("is-save-success", "is-save-error");
+      try {
+        const response = await fetch(table.dataset.saveUrl, {
+          method: "PATCH",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Requested-With": "XMLHttpRequest",
+            "X-CSRFToken": table.dataset.csrfToken || "",
+          },
+          body: JSON.stringify({
+            ues_id: row.dataset.uesId,
+            source_res_id: row.dataset.sourceResId,
+            source_rd_id: row.dataset.sourceRdId,
+            target_res_id: row.dataset.targetResId,
+            target_country_id: row.dataset.targetCountryId,
+            target_rd_id: row.dataset.targetRdId,
+            target_energy_unit_id: row.dataset.targetEnergyUnitId,
+            year: cell.dataset.year,
+            month: cell.dataset.month,
+            value: input.value,
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok || result.ok === false) {
+          throw new Error(result.error || "Ошибка сохранения значения");
+        }
+        input.value = result.display;
+        input.dataset.original = result.display;
+        cell.dataset.raw = result.raw;
+        cell.classList.add("is-save-success");
+      } catch (error) {
+        input.value = input.dataset.original || "";
+        cell.classList.add("is-save-error");
+        window.alert(error.message || "Ошибка сохранения значения");
+      } finally {
+        input.disabled = false;
+      }
+    });
   });
 </script>
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from decimal import Decimal
 from typing import Any
@@ -299,7 +300,9 @@ def build_summary_data_json_response(
     }
     summary_rows = context.get("summary_rows")
     pagination_meta: dict[str, Any] | None = None
-    if entity_pagination is not None and context.get("active_summary") in PAGINATION_SCOPES:
+    if context.get("pd_summary_rows_pre_paginated"):
+        pagination_meta = context.get("pd_entity_pagination")
+    elif entity_pagination is not None and context.get("active_summary") in PAGINATION_SCOPES:
         page, page_size = entity_pagination
         scope = str(context.get("active_summary"))
         if pagination_boundary_rows is not None:
@@ -324,6 +327,9 @@ def build_summary_data_json_response(
                 page_size=page_size,
             )
     if summary_rows:
+        # При пагинации summary_rows — срез ссылок на кэшированное полное дерево.
+        # Копируем только текущую страницу, чтобы overrides не меняли данные в кэше.
+        summary_rows = copy.deepcopy(summary_rows)
         apply_row_formula_text_overrides(summary_rows)
     payload = {
         "ok": True,

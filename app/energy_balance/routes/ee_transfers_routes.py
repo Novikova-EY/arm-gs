@@ -2,12 +2,13 @@
 from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
-from flask import current_app, flash, redirect, render_template, request, send_file, session, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from flask_login import login_required
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
 from app.energy_balance.services.ee_transfers_export_services import export_ee_transfers_to_excel
 from app.energy_balance.services.ee_transfers_import_services import import_ee_transfers_from_excel
+from app.energy_balance.services.ee_transfers_value_services import update_ee_transfer_value
 from app.energy_balance.services.ee_transfers_page_services import (
     format_transfer_cell,
     get_ee_transfers_page_data,
@@ -116,6 +117,7 @@ def ee_transfers():
     filters["transfer_to_country_filter"] = request.args.getlist("transfer_to_country_filter", type=int)
     filters["transfer_to_rd_filter"] = request.args.getlist("transfer_to_rd_filter", type=int)
     filters["transfer_to_energy_unit_filter"] = request.args.getlist("transfer_to_energy_unit_filter", type=int)
+    filters["transfer_to_ues_filter"] = request.args.getlist("transfer_to_ues_filter", type=int)
     page = request.args.get("page", 1, type=int)
     filters.pop("page", None)
     filters.pop("start_year", None)
@@ -195,6 +197,14 @@ def ee_transfers():
     context["start_year"] = page_data["start_year"]
     context["end_year"] = page_data["end_year"]
     context["ee_period_mode"] = ee_period_mode
+    candidate_years = (
+        [selected_year]
+        if ee_period_mode == EE_PERIOD_MODE_MONTHS
+        else range(start_year, end_year + 1)
+    )
+    context["editable_years"] = [
+        year for year in candidate_years if year is not None
+    ]
     context["hierarchy"] = page_data["hierarchy"]
     context["period_columns"] = page_data["period_columns"]
     context["format_transfer_cell"] = lambda val: format_transfer_cell(val, rounding_digits)
@@ -207,18 +217,55 @@ def ee_transfers():
     context["foreign_border_country_list"] = page_data.get("foreign_border_country_list") or []
     context["transfer_regional_district_list"] = page_data.get("transfer_regional_district_list") or []
     context["transfer_energy_unit_list"] = page_data.get("transfer_energy_unit_list") or []
+    context["transfer_ues_list"] = page_data.get("transfer_ues_list") or []
+    context["transfer_to_ues_filter"] = filters.get("transfer_to_ues_filter") or []
 
     has_active_filters = has_any_filters(request.args) or bool(
         context["transfer_to_res_filter"]
         or context["transfer_to_country_filter"]
         or context["transfer_to_rd_filter"]
         or context["transfer_to_energy_unit_filter"]
+        or context["transfer_to_ues_filter"]
     )
 
     return render_template(
         "energy_balance/ee_transfers/ee_transfers.html",
         has_active_filters=has_active_filters,
         **context,
+    )
+
+
+@energy_balance_bp.route("/ee_transfers/value/", methods=["PATCH"])
+@login_required
+def ee_transfer_value():
+    data = request.get_json(silent=True) or {}
+    try:
+        saved = update_ee_transfer_value(
+            ues_id=data.get("ues_id"),
+            source_res_id=data.get("source_res_id"),
+            source_rd_id=data.get("source_rd_id"),
+            target_res_id=data.get("target_res_id"),
+            target_country_id=data.get("target_country_id"),
+            target_rd_id=data.get("target_rd_id"),
+            target_energy_unit_id=data.get("target_energy_unit_id"),
+            year=data.get("year"),
+            month=data.get("month"),
+            raw_value=data.get("value"),
+        )
+    except ValueError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
+    except Exception:
+        current_app.logger.exception("Не удалось сохранить значение перетока ЭЭ")
+        return jsonify(ok=False, error="Не удалось сохранить значение"), 500
+
+    value = saved["value"]
+    rounding_digits = request.args.get("rounding_digits", 1, type=int)
+    if rounding_digits is None or rounding_digits < -1:
+        rounding_digits = 1
+    return jsonify(
+        ok=True,
+        raw="" if value is None else str(value),
+        display="" if value is None else format_transfer_cell(value, rounding_digits),
     )
 
 
@@ -241,6 +288,7 @@ def export_ee_transfers():
         filters["transfer_to_country_filter"] = request.args.getlist("transfer_to_country_filter", type=int)
         filters["transfer_to_rd_filter"] = request.args.getlist("transfer_to_rd_filter", type=int)
         filters["transfer_to_energy_unit_filter"] = request.args.getlist("transfer_to_energy_unit_filter", type=int)
+        filters["transfer_to_ues_filter"] = request.args.getlist("transfer_to_ues_filter", type=int)
         for key in (
             "page",
             "start_year",

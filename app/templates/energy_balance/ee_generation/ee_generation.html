@@ -31,14 +31,31 @@ content %} {% if current_user.is_authenticated %}
 
 <div class="container-fluid mt-2">
   <div class="page-table-scroll">
-    <div class="col-12 mb-2 position-relative">
-      <h2 class="mb-4 text-center px-5">Выработка электроэнергии электростанциями</h2>
-      <a
-        href="{{ url_for('energy_balance_bp.ee_generation_totals_summary', start_year=start_year, end_year=end_year, rounding_digits=rounding_digits) }}"
-        class="btn btn-primary position-absolute top-0 end-0"
-        style="white-space: nowrap;"
-      >Итоговые значения</a>
+    <div class="ee-generation-title-row mb-2">
+      <span aria-hidden="true"></span>
+      <h1 class="mb-0 text-center">Выработка электроэнергии электростанциями</h1>
+      <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5 ee-generation-module-link">
+        <i class="bi bi-gear-wide-connected" aria-hidden="true"></i> Модуль «Балансы электрической энергии и мощности»
+      </a>
     </div>
+    <style>
+      .ee-generation-title-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .ee-generation-module-link {
+        grid-column: 3;
+        justify-self: end;
+        white-space: nowrap;
+      }
+      @media (max-width: 767.98px) {
+        .ee-generation-title-row { grid-template-columns: minmax(0, 1fr); }
+        .ee-generation-title-row > span { display: none; }
+        .ee-generation-module-link { grid-column: 1; justify-self: end; }
+      }
+    </style>
 
     {# Липкая панель: кнопки, фильтры, импорт/экспорт, строка годов — над шапкой
     таблицы (как на summary_table) #}
@@ -74,6 +91,12 @@ content %} {% if current_user.is_authenticated %}
         max-width: 7rem;
         margin: 0 auto;
         font-weight: 600;
+      }
+      #eeGenerationTable td.ee-control-cell.is-save-success {
+        box-shadow: inset 0 0 0 2px var(--bs-success);
+      }
+      #eeGenerationTable td.ee-control-cell.is-save-error {
+        box-shadow: inset 0 0 0 2px var(--bs-danger);
       }
       #eeGenerationTable tbody tr.summary-row-hidden {
         display: none;
@@ -536,12 +559,13 @@ content %} {% if current_user.is_authenticated %}
         const period = input.getAttribute("data-period");
         if (!resId || period == null) return;
 
+        const cell = input.closest('td');
+        if (cell) cell.classList.remove("is-save-success", "is-save-error");
         const parsed = parseRaw(input.value);
         if (Number.isNaN(parsed)) {
-          input.classList.add("is-invalid");
+          if (cell) cell.classList.add("is-save-error");
           return;
         }
-        input.classList.remove("is-invalid");
 
         fetch(SAVE_URL, {
           method: "PATCH",
@@ -572,6 +596,7 @@ content %} {% if current_user.is_authenticated %}
             });
           })
           .then(function (payload) {
+            if (cell) cell.classList.add("is-save-success");
             input.value = payload.display || "";
             const savedRaw =
               payload.value == null || payload.value === ""
@@ -580,7 +605,7 @@ content %} {% if current_user.is_authenticated %}
             updateVerificationCell(resId, period, savedRaw);
           })
           .catch(function (error) {
-            input.classList.add("is-invalid");
+            if (cell) cell.classList.add("is-save-error");
             console.error(error);
           });
       }
@@ -588,7 +613,8 @@ content %} {% if current_user.is_authenticated %}
       table.addEventListener("input", function (event) {
         const input = event.target.closest("input.ee-control-value");
         if (!input || !table.contains(input)) return;
-        input.classList.remove("is-invalid");
+        const cell = input.closest('td');
+        if (cell) cell.classList.remove("is-save-success", "is-save-error");
         const prev = timers.get(input);
         if (prev) clearTimeout(prev);
         timers.set(

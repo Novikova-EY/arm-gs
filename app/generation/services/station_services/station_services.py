@@ -4552,6 +4552,7 @@ def update_station_from_form_service(
     can_edit_generation: bool = True,
     can_edit_fuel: bool = True,
     can_edit_fuel_dz: bool = False,
+    only_fields: set[str] | None = None,
 ) -> list:
     changes = []
     try:
@@ -4593,41 +4594,56 @@ def update_station_from_form_service(
         if not can_edit_generation and not can_edit_fuel and not can_edit_fuel_dz:
             return changes
 
+        def should_update(field_name: str) -> bool:
+            return only_fields is None or field_name in only_fields
+
         can_edit_core = can_edit_generation or can_edit_fuel_dz
 
-        if current_user.is_authenticated and getattr(current_user, "is_admin", False):
-            old_code = (getattr(station, "external_code", None) or "").strip()
-            new_code = (getattr(form, "external_code", None).data or "").strip()
-            if not new_code:
-                raise ValueError("external_code не может быть пустым.")
-            if old_code != new_code:
-                conflict_id = _station_external_code_conflict_id(station, new_code)
-                if conflict_id is not None:
-                    raise ValueError(
-                        f"Код {new_code!r} уже используется электростанцией id={conflict_id} "
-                        f"в версии БД {getattr(station, 'database_version_id', None)}"
-                    )
-                changes.append(f"external_code: {old_code or 'не указано'} → {new_code}")
-                station.external_code = new_code
-
-            old_kto = (getattr(station, "kto", None) or "").strip()
-            kto_field = getattr(form, "kto", None)
-            new_kto = (kto_field.data or "").strip() if kto_field is not None else old_kto
-            if old_kto != new_kto:
-                if new_kto:
-                    conflict_id = _station_kto_conflict_id(station, new_kto)
+        if (
+            current_user.is_authenticated
+            and getattr(current_user, "is_admin", False)
+            and (only_fields is None or {"external_code", "kto"}.intersection(only_fields))
+        ):
+            if should_update("external_code"):
+                old_code = (getattr(station, "external_code", None) or "").strip()
+                new_code = (getattr(form, "external_code", None).data or "").strip()
+                if not new_code:
+                    raise ValueError("external_code не может быть пустым.")
+                if old_code != new_code:
+                    conflict_id = _station_external_code_conflict_id(station, new_code)
                     if conflict_id is not None:
                         raise ValueError(
-                            f"Код КТО {new_kto!r} уже используется электростанцией id={conflict_id} "
+                            f"Код {new_code!r} уже используется электростанцией id={conflict_id} "
                             f"в версии БД {getattr(station, 'database_version_id', None)}"
                         )
-                changes.append(f"Код КТО: {old_kto or 'не указано'} → {new_kto or 'не указано'}")
-                station.kto = new_kto or None
+                    changes.append(f"external_code: {old_code or 'не указано'} → {new_code}")
+                    station.external_code = new_code
+
+            if should_update("kto"):
+                old_kto = (getattr(station, "kto", None) or "").strip()
+                kto_field = getattr(form, "kto", None)
+                new_kto = (kto_field.data or "").strip() if kto_field is not None else old_kto
+                if old_kto != new_kto:
+                    if new_kto:
+                        conflict_id = _station_kto_conflict_id(station, new_kto)
+                        if conflict_id is not None:
+                            raise ValueError(
+                                f"Код КТО {new_kto!r} уже используется электростанцией id={conflict_id} "
+                                f"в версии БД {getattr(station, 'database_version_id', None)}"
+                            )
+                    changes.append(f"Код КТО: {old_kto or 'не указано'} → {new_kto or 'не указано'}")
+                    station.kto = new_kto or None
 
         # Название + субъект РФ: проверка уникальности до присваивания
-        new_name = _normalize_angle_quotes(form.name.data) if can_edit_core else station.name
+        new_name = (
+            _normalize_angle_quotes(form.name.data)
+            if can_edit_core and should_update("name")
+            else station.name
+        )
         new_district_id = (
-            form.id_regional_district.data if can_edit_core else station.id_regional_district
+            form.id_regional_district.data
+            if can_edit_core and should_update("id_regional_district")
+            else station.id_regional_district
         )
         if can_edit_core and (
             station.name != new_name or station.id_regional_district != new_district_id
@@ -4649,11 +4665,11 @@ def update_station_from_form_service(
                         "Станция с таким названием уже существует в выбранном субъекте РФ и версии БД."
                     )
 
-        if can_edit_core and station.name != new_name:
+        if can_edit_core and should_update("name") and station.name != new_name:
             changes.append(f"Название: {station.name} → {new_name}")
             station.name = new_name
 
-        if can_edit_core:
+        if can_edit_core and should_update("id_condition_type"):
             # Состояние
             new_condition_type_id = int(form.id_condition_type.data)
             new_condition_type = db.session.query(ConditionType).filter_by(id=new_condition_type_id).first()
@@ -4664,16 +4680,18 @@ def update_station_from_form_service(
                     changes.append(f"Состояние: {old_value} → {new_value}")
                 station.id_condition_type = new_condition_type.id
 
+        if can_edit_core and should_update("id_station_group"):
             # Группа электростанции
             new_group_id = form.id_station_group.data
             if new_group_id:
                 group_exists = db.session.query(StationGroup).filter_by(id=new_group_id).first()
-                if group_exists and station.id_group != new_group_id:
+                if group_exists and station.id_station_group != new_group_id:
                     old_group = station.group.name if station.group else "не указано"
                     new_group = group_exists.name
                     changes.append(f"Группа: {old_group} → {new_group}")
-                    station.id_group = new_group_id
+                    station.id_station_group = new_group_id
 
+        if can_edit_core and should_update("note"):
             # Примечание
             old_note = station.note.strip() if station.note and station.note.strip() else None
             new_note = form.note.data.strip() if form.note.data and form.note.data.strip() else None
@@ -4681,7 +4699,7 @@ def update_station_from_form_service(
                 changes.append(f"Примечание: {station.note} → {new_note}")
                 station.note = new_note
 
-        if can_edit_fuel:
+        if can_edit_fuel and should_update("station_sign"):
             # Признак электростанции
             new_station_sign_raw = getattr(form, "station_sign", None)
             new_station_sign_value = (
@@ -4703,7 +4721,7 @@ def update_station_from_form_service(
                 )
                 station.station_sign = new_station_sign
 
-        if can_edit_core:
+        if can_edit_core and should_update("id_regional_district"):
             # Субъект РФ
             if station.id_regional_district != new_district_id:
                 old_value = station.regional_district.name if station.regional_district else "не указано"
@@ -4758,6 +4776,7 @@ def update_station_from_form_service(
                                     f"Пожалуйста, выберите соответствующую региональную энергосистему или измените субъект РФ."
                                 )
 
+        if can_edit_core and should_update("location"):
             # Местоположение
             new_location_raw = getattr(form, "location", None).data if getattr(form, "location", None) is not None else None
             new_location = _norm_text(new_location_raw) or None
@@ -4766,7 +4785,12 @@ def update_station_from_form_service(
                 changes.append(f"Местоположение: {old_location or 'не указано'} → {new_location or 'не указано'}")
                 station.location = new_location
 
-        if can_edit_generation:
+        if can_edit_generation and (
+            only_fields is None
+            or only_fields.intersection(
+                {"id_station_type", "id_regional_energy_system", "id_energy_unit"}
+            )
+        ):
             # Тип  электростанции
             if form.id_station_type.data and int(form.id_station_type.data) != 0:
                 new_station_type_id = int(form.id_station_type.data)
@@ -5262,6 +5286,178 @@ def save_station_owner_energy_generation_service(
         log_to_db(
             user,
             f"Изменения в электростанции {station.name} ({rd_name}), выработка электроэнергии от собственника (млн кВтч)",
+            details="; ".join(changes),
+            entity_type="station",
+            entity_id=station.id,
+        )
+        return changes
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def station_snee_energy_consumption_by_year(
+    station_id: int,
+    start_year: int,
+    end_year: int,
+    station_version_id: int | None,
+) -> dict[int, object]:
+    """Потребление электроэнергии СНЭЭ по годам (млн кВтч)."""
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_snee_energy_consumption_model import (
+        StationSneeEnergyConsumption,
+    )
+
+    query = StationSneeEnergyConsumption.query.filter(
+        StationSneeEnergyConsumption.id_station == station_id,
+        StationSneeEnergyConsumption.year_number >= start_year,
+        StationSneeEnergyConsumption.year_number <= end_year,
+    )
+    query = filter_by_explicit_db_version(
+        query, StationSneeEnergyConsumption, station_version_id
+    )
+    return {row.year_number: row.electricity_consumption for row in query.all()}
+
+
+def station_snee_efficiency_percent(
+    station_id: int, station_version_id: int | None
+):
+    """КПД СНЭЭ для версии БД станции."""
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_snee_efficiency_model import StationSneeEfficiency
+
+    query = StationSneeEfficiency.query.filter(StationSneeEfficiency.id_station == station_id)
+    query = filter_by_explicit_db_version(query, StationSneeEfficiency, station_version_id)
+    record = query.first()
+    return record.efficiency_percent if record else None
+
+
+def save_station_snee_energy_consumption_service(
+    user,
+    station: Station,
+    station_version_id: int | None,
+    start_year: int,
+    end_year: int,
+    form_data,
+) -> list:
+    """Сохраняет годовое потребление электроэнергии электростанции СНЭЭ."""
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.generation.models.station.station_snee_energy_consumption_model import (
+        StationSneeEnergyConsumption,
+    )
+    from app.generation.models.station.station_snee_efficiency_model import StationSneeEfficiency
+    from app.generation.services.machine_services.machine_services import to_decimal, is_same_decimal
+
+    changes: list[str] = []
+
+    def _log_num(value) -> str:
+        if value is None:
+            return "не указано"
+        return str(value).replace(".", ",").rstrip("0").rstrip(",") or "0"
+
+    try:
+        query = StationSneeEnergyConsumption.query.filter(
+            StationSneeEnergyConsumption.id_station == station.id,
+            StationSneeEnergyConsumption.year_number >= start_year,
+            StationSneeEnergyConsumption.year_number <= end_year,
+        )
+        query = filter_by_explicit_db_version(
+            query, StationSneeEnergyConsumption, station_version_id
+        )
+        by_year = {row.year_number: row for row in query.all()}
+
+        for year in range(start_year, end_year + 1):
+            field = f"st_snee_consumption_{year}"
+            raw_value = form_data.get(field)
+            if not _station_numeric_field_changed(
+                raw_value, form_data.get(f"{field}_orig")
+            ):
+                continue
+
+            new_value = to_decimal(raw_value)
+            record = by_year.get(year)
+            old_value = record.electricity_consumption if record else None
+            if new_value is None:
+                if record is None or old_value is None:
+                    continue
+                record.electricity_consumption = None
+                db.session.add(record)
+                changes.append(f"{year} г.: {_log_num(old_value)} → не указано")
+            elif record is not None and old_value is not None and is_same_decimal(
+                to_decimal(old_value), new_value
+            ):
+                continue
+            elif record is None:
+                record = StationSneeEnergyConsumption(
+                    id_station=station.id,
+                    year_number=year,
+                    electricity_consumption=new_value,
+                )
+                set_db_version_on_create(record)
+                if station_version_id is not None:
+                    record.database_version_id = station_version_id
+                db.session.add(record)
+                by_year[year] = record
+                changes.append(f"{year} г.: не указано → {_log_num(new_value)}")
+            else:
+                record.electricity_consumption = new_value
+                db.session.add(record)
+                changes.append(f"{year} г.: {_log_num(old_value)} → {_log_num(new_value)}")
+
+        efficiency_raw = form_data.get("st_snee_efficiency_percent")
+        efficiency_orig = form_data.get("st_snee_efficiency_percent_orig")
+        if _station_numeric_field_changed(efficiency_raw, efficiency_orig):
+            efficiency_value = to_decimal(efficiency_raw)
+            if efficiency_raw not in (None, "") and str(efficiency_raw).strip() and efficiency_value is None:
+                raise ValueError("Введите числовое значение КПД.")
+            if efficiency_value is not None and not (0 <= efficiency_value <= 100):
+                raise ValueError("КПД должен быть в диапазоне от 0 до 100 %.")
+
+            efficiency_query = StationSneeEfficiency.query.filter(
+                StationSneeEfficiency.id_station == station.id
+            )
+            efficiency_query = filter_by_explicit_db_version(
+                efficiency_query, StationSneeEfficiency, station_version_id
+            )
+            efficiency_record = efficiency_query.first()
+            old_efficiency = efficiency_record.efficiency_percent if efficiency_record else None
+            if efficiency_value is None:
+                if efficiency_record is not None:
+                    db.session.delete(efficiency_record)
+                    changes.append("КПД: {} → не указано".format(_log_num(old_efficiency)))
+            elif efficiency_record is None:
+                efficiency_record = StationSneeEfficiency(
+                    id_station=station.id, efficiency_percent=efficiency_value
+                )
+                set_db_version_on_create(efficiency_record)
+                if station_version_id is not None:
+                    efficiency_record.database_version_id = station_version_id
+                db.session.add(efficiency_record)
+                changes.append("КПД: не указано → {} %".format(_log_num(efficiency_value)))
+            elif not is_same_decimal(to_decimal(old_efficiency), efficiency_value):
+                efficiency_record.efficiency_percent = efficiency_value
+                db.session.add(efficiency_record)
+                changes.append(
+                    "КПД: {} % → {} %".format(
+                        _log_num(old_efficiency), _log_num(efficiency_value)
+                    )
+                )
+
+        if not changes:
+            return []
+
+        try:
+            quick_fix_seq(
+                SCHEMA_GENERATION, "gs_gen_station_snee_energy_consumptions", "id"
+            )
+            quick_fix_seq(SCHEMA_GENERATION, "gs_gen_station_snee_efficiencies", "id")
+        except Exception:
+            pass
+        _commit_with_retry()
+        rd_name = station.regional_district.name if station.regional_district else "не указано"
+        log_to_db(
+            user,
+            f"Изменения в электростанции {station.name} ({rd_name}), потребление электроэнергии и КПД СНЭЭ",
             details="; ".join(changes),
             entity_type="station",
             entity_id=station.id,

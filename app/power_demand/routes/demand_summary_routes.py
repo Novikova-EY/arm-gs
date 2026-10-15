@@ -115,20 +115,31 @@ def _attach_pd_summary_client_render(context: dict, *, scope: str, data_path: st
 def _build_summary_data_json_response(
     *, scope: str, context_builder, cache_scope: str | None = None
 ) -> Any:
-    import copy
-
     data_segments = parse_pd_data_segments(scope)
     entity_pagination = parse_pd_entity_pagination(scope)
     resolved_cache_scope = cache_scope or scope
 
+    build_only_requested_page = bool(
+        cache_scope is None
+        and entity_pagination is not None
+        and entity_pagination[1] > 0
+        and data_segments == frozenset({PD_SUMMARY_SEGMENT_CORE})
+    )
+
     def full_build_loader() -> dict:
-        """Полное дерево без пагинации — общее для всех pd_page / pd_page_size."""
-        context = context_builder(for_shell=False, data_segments=data_segments)
+        context = context_builder(
+            for_shell=False,
+            data_segments=data_segments,
+            **(
+                {"entity_pagination": entity_pagination}
+                if build_only_requested_page
+                else {}
+            ),
+        )
         boundary_rows = None
         if (
-            not needs_full_summary_build(data_segments)
-            # core пагинируется целиком (prefix + секции + суффикс ТИТЭС);
-            # boundary нужен только для ленивых сегментов (chi, ee, nt_extra, …).
+            not build_only_requested_page
+            and not needs_full_summary_build(data_segments)
             and data_segments != frozenset({PD_SUMMARY_SEGMENT_CORE})
         ):
             core_context = context_builder(
@@ -144,11 +155,14 @@ def _build_summary_data_json_response(
 
     def page_loader() -> dict:
         bundle = cached_load_pd_summary_full_build(
-            resolved_cache_scope, full_build_loader
+            resolved_cache_scope,
+            full_build_loader,
+            include_pagination=build_only_requested_page,
         )
-        # Копия: prepare/overrides мутируют dict строк; кэш должен остаться чистым.
-        context = copy.deepcopy(bundle["context"])
-        boundary_rows = copy.deepcopy(bundle.get("boundary_rows"))
+        # build_summary_data_json_response копирует только строки текущей страницы
+        # перед применением формульных overrides; копировать всё дерево не нужно.
+        context = dict(bundle["context"])
+        boundary_rows = bundle.get("boundary_rows")
         payload = build_summary_data_json_response(
             context,
             entity_pagination=entity_pagination,
@@ -183,7 +197,9 @@ def _parse_oes_max_summary_args() -> dict:
     }
 
 
-def _build_oes_max_summary_context(*, for_shell: bool, data_segments=None) -> dict:
+def _build_oes_max_summary_context(
+    *, for_shell: bool, data_segments=None, entity_pagination=None
+) -> dict:
     args = _parse_oes_max_summary_args()
     context = build_oes_summary_context(
         _parse_rounding_digits(),
@@ -195,6 +211,7 @@ def _build_oes_max_summary_context(*, for_shell: bool, data_segments=None) -> di
         oes_territory_ordered=args["oes_ordered"],
         for_client_render_shell=for_shell,
         data_segments=data_segments,
+        entity_pagination=entity_pagination,
     )
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
@@ -235,7 +252,9 @@ def _parse_fo_max_summary_args() -> dict:
     }
 
 
-def _build_fo_max_summary_context(*, for_shell: bool, data_segments=None) -> dict:
+def _build_fo_max_summary_context(
+    *, for_shell: bool, data_segments=None, entity_pagination=None
+) -> dict:
     args = _parse_fo_max_summary_args()
     context = build_federal_district_summary_context(
         _parse_rounding_digits(),
@@ -249,6 +268,7 @@ def _build_fo_max_summary_context(*, for_shell: bool, data_segments=None) -> dic
         fo_max_extended_parameters=True,
         for_client_render_shell=for_shell,
         data_segments=data_segments,
+        entity_pagination=entity_pagination,
     )
     if for_shell:
         context.update(get_demand_summary_filter_refdata())
@@ -287,7 +307,9 @@ def _parse_ez_max_summary_args() -> dict:
     }
 
 
-def _build_ez_max_summary_context(*, for_shell: bool, data_segments=None) -> dict:
+def _build_ez_max_summary_context(
+    *, for_shell: bool, data_segments=None, entity_pagination=None
+) -> dict:
     args = _parse_ez_max_summary_args()
     context = build_energy_zones_summary_context(
         _parse_rounding_digits(),
@@ -300,6 +322,7 @@ def _build_ez_max_summary_context(*, for_shell: bool, data_segments=None) -> dic
         ez_max_extended_parameters=True,
         for_client_render_shell=for_shell,
         data_segments=data_segments,
+        entity_pagination=entity_pagination,
     )
     if for_shell:
         context.update(get_demand_summary_filter_refdata())

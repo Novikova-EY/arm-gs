@@ -39,6 +39,10 @@ from app.api.services.gentypes_info_exchange_services import (
     DATASET_GENTYPES_INFO,
     load_gentypes_info_dataset,
 )
+from app.api.services.hour_info_exchange_services import (
+    DATASET_HOUR_INFO,
+    load_hour_info_dataset,
+)
 from app.api.services.line_capital_investments_exchange_services import (
     DATASET_LINE_CAPITAL_INVESTMENTS,
     load_line_capital_investments_dataset,
@@ -88,6 +92,7 @@ DATASET_LOADERS: dict[str, DatasetLoader] = {
     DATASET_GENERATION_STATIONS: load_generation_stations_dataset,
     DATASET_GENERATION_MACHINES: load_generation_machines_dataset,
     DATASET_DAYMONTH_INFO: load_daymonth_info_dataset,
+    DATASET_HOUR_INFO: load_hour_info_dataset,
     DATASET_LINE_CAPITAL_INVESTMENTS: load_line_capital_investments_dataset,
     DATASET_MONTH_INFO: load_month_info_dataset,
     DATASET_NEWLINES_BUILDING: load_newlines_building_dataset,

@@ -10,6 +10,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 
+from flask import g, has_request_context
 from sqlalchemy.orm import selectinload
 
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
@@ -59,6 +60,7 @@ from app.common.perimeter_variant.registry import (
     is_o1_perimeter_variant_code,
     kaliningrad_sync_area_year_bounds,
     perimeter_entity_context_for_model,
+    preload_perimeter_entity_contexts,
     perimeter_variant_display_label_for_entity,
     perimeter_variant_options_for_entity,
     perimeter_variant_year_bounds_for_code,
@@ -1164,6 +1166,21 @@ def _expand_summary_entity_perimeter_variants(
 def _expand_summary_entities_perimeter_variants(
     entities: list[SummaryEntity],
 ) -> list[SummaryEntity]:
+    perimeter_context_requests = []
+    pending = list(entities)
+    while pending:
+        entity = pending.pop()
+        if (
+            entity.demand_model_name
+            and entity.parent_fk_column
+            and entity.parent_id is not None
+        ):
+            perimeter_context_requests.append(
+                (entity.demand_model_name, entity.parent_fk_column, entity.parent_id)
+            )
+        pending.extend(entity.children)
+    preload_perimeter_entity_contexts(perimeter_context_requests)
+
     out: list[SummaryEntity] = []
     for entity in entities:
         out.extend(_expand_summary_entity_perimeter_variants(entity))
@@ -1472,6 +1489,7 @@ def _apply_national_prefix_oes_formulas(
 def _build_oes_raw_entities(
     *,
     always_show_subject_row_under_res: bool = False,
+    include_tites: bool = True,
 ) -> list[SummaryEntity]:
     """Полное дерево сводки по ОЭС без территориальных фильтров (для объединения выборов и «без фильтра»).
 
@@ -1487,10 +1505,30 @@ def _build_oes_raw_entities(
         )
     )
 
+    if include_tites:
+        tites_entity = _build_tites_entity()
+        if tites_entity is not None:
+            entities.append(tites_entity)
+    return entities
+
+
+def _paginate_oes_entities_with_lazy_tites(
+    entities: list[SummaryEntity],
+    pagination: tuple[int, int] | None,
+    data_segments: frozenset[str] | None,
+) -> tuple[list[SummaryEntity], dict[str, Any] | None]:
+    paginated, meta = _paginate_summary_entities_for_page(
+        entities, "oes", pagination, data_segments
+    )
+    if meta and meta.get("enabled") and meta.get("page", 1) < meta.get("total_pages", 1):
+        return paginated, meta
+
     tites_entity = _build_tites_entity()
     if tites_entity is not None:
         entities.append(tites_entity)
-    return entities
+    return _paginate_summary_entities_for_page(
+        entities, "oes", pagination, data_segments
+    )
 
 
 def _build_oes_union_energy_system_entities(
@@ -1535,6 +1573,149 @@ def _prepare_summary_demand_bulk_load() -> None:
 
     activate_power_demand_rows_bulk()
     preload_power_demand_rows_for_summary()
+
+
+def _is_core_page_build(
+    pagination: tuple[int, int] | None,
+    data_segments: frozenset[str] | None,
+) -> bool:
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CORE,
+    )
+
+    return (
+        pagination is not None
+        and pagination[1] > 0
+        and data_segments == frozenset({PD_SUMMARY_SEGMENT_CORE})
+    )
+
+
+def _paginate_summary_entities_for_page(
+    entities: list[SummaryEntity],
+    scope: str,
+    pagination: tuple[int, int] | None,
+    data_segments: frozenset[str] | None,
+) -> tuple[list[SummaryEntity], dict[str, Any] | None]:
+    from app.power_demand.services.pd_summary_data_segments import (
+        PD_SUMMARY_SEGMENT_CORE,
+    )
+
+    if pagination is None or data_segments != frozenset({PD_SUMMARY_SEGMENT_CORE}):
+        return entities, None
+    page, page_size = pagination
+    if page_size <= 0:
+        return entities, None
+    from app.power_demand.services.pd_summary_entity_pagination import (
+        paginate_summary_entities_for_scope,
+    )
+
+    return paginate_summary_entities_for_scope(
+        entities, scope, page=page, page_size=page_size
+    )
+
+
+def _attach_prebuilt_entity_pagination(
+    context: dict[str, Any], pagination_meta: dict[str, Any] | None
+) -> None:
+    if pagination_meta is None:
+        return
+    context["pd_entity_pagination"] = pagination_meta
+    context["pd_summary_rows_pre_paginated"] = True
+
+
+def _iter_summary_entity_tree(entities: list[SummaryEntity]):
+    pending = list(reversed(entities))
+    while pending:
+        entity = pending.pop()
+        yield entity
+        pending.extend(reversed(entity.children))
+
+
+def _oes_page_formula_dependency_entities(
+    source_entities: list[SummaryEntity],
+    visible_entities: list[SummaryEntity],
+    pagination_meta: dict[str, Any] | None,
+) -> list[SummaryEntity]:
+    """Секции-источники для формул синхронных зон на первой странице ОЭС."""
+    if not pagination_meta or pagination_meta.get("page") != 1:
+        return []
+
+    visible_ues_ids = {
+        int(entity.id_union_energy_system)
+        for entity in visible_entities
+        if entity.demand_model_name == UnionEnergySystemDemandParameter.__name__
+        and entity.id_union_energy_system is not None
+    }
+    required_ues_ids: set[int] = set()
+    east_id = _resolve_union_energy_system_id_by_name_cf(_UES_EAST_NAME_CF)
+    if east_id is not None:
+        required_ues_ids.add(int(east_id))
+
+    kaliningrad_res_id = _resolve_regional_energy_system_id_by_name_cf(
+        _KALININGRAD_ES_NAME_CF
+    )
+    if kaliningrad_res_id is not None:
+        for entity in _iter_summary_entity_tree(source_entities):
+            if (
+                entity.demand_model_name == RegionalEnergySystemDemandParameter.__name__
+                and entity.parent_id == kaliningrad_res_id
+                and entity.id_union_energy_system is not None
+            ):
+                required_ues_ids.add(int(entity.id_union_energy_system))
+                break
+
+    missing_ids = required_ues_ids - visible_ues_ids
+    if not missing_ids:
+        return []
+    dependencies = [
+        entity
+        for entity in source_entities
+        if entity.demand_model_name == UnionEnergySystemDemandParameter.__name__
+        and entity.id_union_energy_system is not None
+        and int(entity.id_union_energy_system) in missing_ids
+    ]
+    return _expand_summary_entities_perimeter_variants(dependencies)
+
+
+def _append_oes_page_formula_dependency_rows(
+    context: dict[str, Any], dependencies: list[SummaryEntity], rounding_digits: int
+) -> None:
+    if not dependencies:
+        return
+    years = list(context.get("years") or [])
+    rows = _flatten_entities(
+        dependencies,
+        years,
+        rounding_digits,
+        avg_temp_uses_global_rounding=bool(
+            context.get("avg_temp_uses_global_rounding")
+        ),
+    )
+    dependency_ids = {
+        int(entity.id_union_energy_system)
+        for entity in dependencies
+        if entity.id_union_energy_system is not None
+    }
+    context["summary_rows"].extend(rows)
+    context["_pd_page_dependency_ues_ids"] = sorted(dependency_ids)
+
+
+def _remove_oes_page_formula_dependency_rows(context: dict[str, Any]) -> None:
+    dependency_ids = {
+        int(value)
+        for value in context.pop("_pd_page_dependency_ues_ids", ())
+        if value is not None
+    }
+    if not dependency_ids:
+        return
+    rows = context.get("summary_rows") or []
+    visible_rows = [
+        row
+        for row in rows
+        if row.get("id_union_energy_system") is None
+        or int(row["id_union_energy_system"]) not in dependency_ids
+    ]
+    context["summary_rows"] = _rebuild_summary_entity_row_blocks(visible_rows)
 
 
 def _summary_data_segments_requested(
@@ -1654,6 +1835,7 @@ def _finalize_oes_summary_context(
     tag_summary_rows_before_section_blocks(ctx["summary_rows"], "oes")
 
     _filter_power_demand_summary_context_segments(ctx, data_segments, scope="oes")
+    _remove_oes_page_formula_dependency_rows(ctx)
 
 
 def _finalize_fo_summary_context(
@@ -1845,6 +2027,7 @@ def build_oes_summary_context(
     avg_temp_uses_global_rounding: bool = False,
     for_client_render_shell: bool = False,
     data_segments: frozenset[str] | None = None,
+    entity_pagination: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
     """Сводка по ОЭС (GET ds_ues, ds_res, ds_rd, ds_eu).
 
@@ -1890,7 +2073,10 @@ def build_oes_summary_context(
 
     if has_territory_selection:
         base_entities = copy.deepcopy(
-            _build_oes_raw_entities(always_show_subject_row_under_res=bool(rd_l))
+            _build_oes_raw_entities(
+                always_show_subject_row_under_res=bool(rd_l),
+                include_tites=False,
+            )
         )
         base_entities = _strip_oes_ees_russia_nt_parent_aggregate(base_entities)
         f_ues = frozenset(ues_l)
@@ -1907,6 +2093,12 @@ def build_oes_summary_context(
                 ent = _oes_promote_subjects_only_under_ees_russia(ent, f_rd)
             elif res_l:
                 ent = _oes_promote_res_only_under_ees_russia(ent, f_res)
+        ent, pagination_meta = _paginate_oes_entities_with_lazy_tites(
+            ent, entity_pagination, data_segments
+        )
+        dependencies = _oes_page_formula_dependency_entities(
+            base_entities, ent, pagination_meta
+        )
         ent = _expand_summary_entities_perimeter_variants(ent)
         summary_rows = _flatten_entities(
             ent, years, rounding_digits, avg_temp_uses_global_rounding=avg_temp_uses_global_rounding
@@ -1924,12 +2116,22 @@ def build_oes_summary_context(
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
         ctx["summary_rows"] = summary_rows
+        _attach_prebuilt_entity_pagination(ctx, pagination_meta)
+        _append_oes_page_formula_dependency_rows(ctx, dependencies, rounding_digits)
         _finalize_oes_summary_context(ctx, rounding_digits, data_segments)
         return ctx
 
-    entities = _expand_summary_entities_perimeter_variants(
-        _build_oes_raw_entities(always_show_subject_row_under_res=False)
+    source_entities = _build_oes_raw_entities(
+        always_show_subject_row_under_res=False,
+        include_tites=False,
     )
+    entities, pagination_meta = _paginate_oes_entities_with_lazy_tites(
+        source_entities, entity_pagination, data_segments
+    )
+    dependencies = _oes_page_formula_dependency_entities(
+        source_entities, entities, pagination_meta
+    )
+    entities = _expand_summary_entities_perimeter_variants(entities)
     ctx = _build_summary_context(
         entities=entities,
         page_title="Максимумы потребления мощности по энергосистемам",
@@ -1942,6 +2144,8 @@ def build_oes_summary_context(
         filter_year_list=filter_year_list,
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
+    _attach_prebuilt_entity_pagination(ctx, pagination_meta)
+    _append_oes_page_formula_dependency_rows(ctx, dependencies, rounding_digits)
     _finalize_oes_summary_context(ctx, rounding_digits, data_segments)
     return ctx
 
@@ -2363,6 +2567,7 @@ def build_federal_district_summary_context(
     fo_max_extended_parameters: bool = False,
     for_client_render_shell: bool = False,
     data_segments: frozenset[str] | None = None,
+    entity_pagination: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
     """Сводка по ФО и РЭС (GET ds_fd, ds_res).
 
@@ -2429,6 +2634,9 @@ def build_federal_district_summary_context(
         if f_fd or f_res:
             entities = prune_summary_entities_fo(entities, f_fd, f_res)
 
+    entities, pagination_meta = _paginate_summary_entities_for_page(
+        entities, "fo", entity_pagination, data_segments
+    )
     entities = _expand_summary_entities_perimeter_variants(entities)
     ctx = _build_summary_context(
         entities=entities,
@@ -2443,6 +2651,7 @@ def build_federal_district_summary_context(
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
     ctx["fo_max_extended_parameters"] = fo_max_extended_parameters
+    _attach_prebuilt_entity_pagination(ctx, pagination_meta)
     _finalize_fo_summary_context(ctx, rounding_digits, data_segments)
     return ctx
 
@@ -2553,7 +2762,11 @@ def _inject_fo_max_cz_russia_calculated_max_row(
     )
 
 
-def _build_ez_raw_entities(*, ez_max_extended_parameters: bool = False) -> list[SummaryEntity]:
+def _build_ez_raw_entities(
+    *,
+    ez_max_extended_parameters: bool = False,
+    include_new_territories: bool = True,
+) -> list[SummaryEntity]:
     """Префикс «Сводной таблицы» (ЦЗ→ЭЭС→ЕЭС→СЗ) + дерево энергозон (без ТИТЭС)."""
     entities: list[SummaryEntity] = list(
         # Тот же набор параметров ЕЭС России, что на ОЭС/ФО (без «через ЭЗ» только на ЭЗ).
@@ -2565,6 +2778,7 @@ def _build_ez_raw_entities(*, ez_max_extended_parameters: bool = False) -> list[
     entities.extend(
         _build_energy_zone_entities(
             ez_max_extended_parameters=ez_max_extended_parameters,
+            include_new_territories=include_new_territories,
         )
     )
     return entities
@@ -2583,6 +2797,7 @@ def build_energy_zones_summary_context(
     ez_max_extended_parameters: bool = False,
     for_client_render_shell: bool = False,
     data_segments: frozenset[str] | None = None,
+    entity_pagination: tuple[int, int] | None = None,
 ) -> dict[str, Any]:
     """Сводка по энергозонам (GET ds_ez, ds_res).
 
@@ -2614,6 +2829,9 @@ def build_energy_zones_summary_context(
             avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
         )
     _prepare_summary_demand_bulk_load()
+    skip_hidden_new_territories = _is_core_page_build(
+        entity_pagination, data_segments
+    )
     dsy, dey = _effective_data_year_bounds(
         start_year, end_year, data_start_year, data_end_year
     )
@@ -2627,6 +2845,7 @@ def build_energy_zones_summary_context(
         base_entities = copy.deepcopy(
             _build_ez_raw_entities(
                 ez_max_extended_parameters=ez_max_extended_parameters,
+                include_new_territories=not skip_hidden_new_territories,
             )
         )
         f_ez = frozenset(ez_l)
@@ -2634,6 +2853,9 @@ def build_energy_zones_summary_context(
         ent = prune_summary_entities_ez(base_entities, f_ez, f_res)
         if _ez_res_only_flat_mode(f_ez, f_res):
             ent = _flatten_energy_zone_parents_when_res_filtered(ent)
+        ent, pagination_meta = _paginate_summary_entities_for_page(
+            ent, "ez", entity_pagination, data_segments
+        )
         ent = _expand_summary_entities_perimeter_variants(ent)
         summary_rows = _flatten_entities(
             ent, years, rounding_digits, avg_temp_uses_global_rounding=avg_temp_uses_global_rounding
@@ -2652,12 +2874,20 @@ def build_energy_zones_summary_context(
         )
         ctx["summary_rows"] = summary_rows
         ctx["ez_max_extended_parameters"] = ez_max_extended_parameters
+        _attach_prebuilt_entity_pagination(ctx, pagination_meta)
         _finalize_ez_summary_context(ctx, rounding_digits, data_segments)
         return ctx
 
-    entities = _expand_summary_entities_perimeter_variants(
-        _build_ez_raw_entities(ez_max_extended_parameters=ez_max_extended_parameters)
+    entities, pagination_meta = _paginate_summary_entities_for_page(
+        _build_ez_raw_entities(
+            ez_max_extended_parameters=ez_max_extended_parameters,
+            include_new_territories=not skip_hidden_new_territories,
+        ),
+        "ez",
+        entity_pagination,
+        data_segments,
     )
+    entities = _expand_summary_entities_perimeter_variants(entities)
     ctx = _build_summary_context(
         entities=entities,
         page_title="Максимумы потребления мощности по энергозонам",
@@ -2671,6 +2901,7 @@ def build_energy_zones_summary_context(
         avg_temp_uses_global_rounding=avg_temp_uses_global_rounding,
     )
     ctx["ez_max_extended_parameters"] = ez_max_extended_parameters
+    _attach_prebuilt_entity_pagination(ctx, pagination_meta)
     _finalize_ez_summary_context(ctx, rounding_digits, data_segments)
     return ctx
 
@@ -9421,7 +9652,19 @@ def _south_federal_district_for_nt_attachment() -> tuple[FederalDistrict | None,
 
 
 def _new_territories_regional_district_ids() -> frozenset[int]:
-    return frozenset(int(rd.id) for rd in _load_new_territories_regional_districts())
+    if has_request_context():
+        request_cache = g.setdefault("_pd_new_territories_cache", {})
+        if "regional_district_ids" in request_cache:
+            return request_cache["regional_district_ids"]
+    else:
+        request_cache = None
+
+    district_ids = frozenset(
+        int(rd.id) for rd in _load_new_territories_regional_districts()
+    )
+    if request_cache is not None:
+        request_cache["regional_district_ids"] = district_ids
+    return district_ids
 
 
 def _load_new_territories_regional_districts() -> list[RegionalDistrict]:
@@ -10428,7 +10671,9 @@ def _build_regional_energy_system_entity_for_energy_zone(
 
 
 def _build_energy_zone_entities(
-    *, ez_max_extended_parameters: bool = False
+    *,
+    ez_max_extended_parameters: bool = False,
+    include_new_territories: bool = True,
 ) -> list[SummaryEntity]:
     ez_parameters = (
         PARAMETERS_ENERGY_ZONE_MAX
@@ -10499,7 +10744,7 @@ def _build_energy_zone_entities(
                 id_energy_zone=ez.id,
             )
         )
-    if inject_zone_index >= 0:
+    if include_new_territories and inject_zone_index >= 0:
         south = _find_south_union_energy_system()
         south_ues_id = int(south.id) if south is not None else None
         nt_entity = _build_new_territories_energy_zone_entity(
@@ -10517,7 +10762,7 @@ def _build_energy_zone_entities(
                 last_south_child_index=inject_after_res_index,
             )
             entities[inject_zone_index] = replace(zone_ent, children=new_ch)
-    else:
+    elif include_new_territories:
         nt_entity = _build_new_territories_energy_zone_entity()
         if nt_entity is not None:
             entities.append(nt_entity)

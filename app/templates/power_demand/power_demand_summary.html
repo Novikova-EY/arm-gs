@@ -672,7 +672,7 @@
     {% set _coeff_mixin_sample_col_w = "7rem" %}
     {% set _coeff_mixin_source_col_w = "7.5rem" %}
     {# Для coeff ширины числовых колонок не задаём в % — см. комментарий выше. #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/power_demand_summary_page.css') }}?v=4">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/power_demand_summary_page.css') }}?v=6">
     <style id="pd-summary-col-vars">
     .power-demand-summary-table {
         --pd-summary-entity-col-w: {{ summary_entity_col_w }};
@@ -1882,10 +1882,10 @@
 
 {% if pd_summary_client_render | default(false) %}
 <script type="application/json" id="pd-summary-client-render-config">{{ pd_summary_client_render_config | tojson }}</script>
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=32"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_client_render.js') }}?v=34"></script>
 {% endif %}
 
-<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_layout.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='js/power_demand/demand_summary_page_layout.js') }}?v=6"></script>
 
 {% if can_edit_summary_cells %}
 <script src="{{ url_for('static', filename='js/power_demand/demand_summary_row_paste.js') }}"></script>

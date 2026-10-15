@@ -6,12 +6,12 @@
 {% if current_user.is_authenticated %}
 <div class="container-fluid mt-2">
   <div class="d-flex justify-content-end align-items-center flex-wrap gap-2 mb-2">
-    <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5">Модуль «Балансы ЭЭ и ЭМ»</a>
+    <a href="{{ url_for('energy_balance_bp.hub') }}" class="btn btn-secondary fs-5">Модуль «Балансы электрической энергии и мощности»</a>
     <a href="{{ url_for('energy_balance_bp.ee_generation') }}" class="btn btn-secondary fs-5">Выработка ЭЭ</a>
   </div>
 
   <div class="col-12 mb-2">
-    <h2 class="text-center mb-3">{{ page_title }}</h2>
+    <h1 class="text-center mb-3">{{ page_title }}</h1>
   </div>
 
   <div class="col-12 mb-2">
@@ -181,6 +181,12 @@
     #eeGenerationTotalsTable td.ee-control-cell {
       vertical-align: middle;
     }
+    #eeGenerationTotalsTable td.ee-control-cell.is-save-success {
+      box-shadow: inset 0 0 0 2px var(--bs-success);
+    }
+    #eeGenerationTotalsTable td.ee-control-cell.is-save-error {
+      box-shadow: inset 0 0 0 2px var(--bs-danger);
+    }
   </style>
 
   <div class="ee-totals-wrap table-responsive">
@@ -335,12 +341,13 @@ document.addEventListener("DOMContentLoaded", function () {
       if (level === "res" && !resId) return;
       if (level !== "res" && level !== "russia" && !entityId) return;
 
+      const cell = input.closest('td');
+      if (cell) cell.classList.remove("is-save-success", "is-save-error");
       const parsed = parseRaw(input.value);
       if (Number.isNaN(parsed)) {
-        input.classList.add("is-invalid");
+        if (cell) cell.classList.add("is-save-error");
         return;
       }
-      input.classList.remove("is-invalid");
 
       const payload = {
         level: level,
@@ -374,10 +381,11 @@ document.addEventListener("DOMContentLoaded", function () {
           });
         })
         .then(function (body) {
+          if (cell) cell.classList.add("is-save-success");
           input.value = body.display || "";
         })
         .catch(function (error) {
-          input.classList.add("is-invalid");
+          if (cell) cell.classList.add("is-save-error");
           console.error(error);
         });
     }
@@ -385,7 +393,8 @@ document.addEventListener("DOMContentLoaded", function () {
     table.addEventListener("input", function (event) {
       const input = event.target.closest("input.ee-control-value");
       if (!input || !table.contains(input)) return;
-      input.classList.remove("is-invalid");
+      const cell = input.closest('td');
+      if (cell) cell.classList.remove("is-save-success", "is-save-error");
       const prev = timers.get(input);
       if (prev) clearTimeout(prev);
       timers.set(

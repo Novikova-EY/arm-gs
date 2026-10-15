@@ -28,9 +28,12 @@
         }
         h1 {
             margin: 0 0 1rem;
-            font-size: 1.5rem;
+            font-size: calc(1.375rem + 1.5vw);
             font-weight: 600;
             color: #0d47a1;
+        }
+        @media (min-width: 1200px) {
+            h1 { font-size: 2.5rem; }
         }
         p {
             margin: 0 0 0.75rem;

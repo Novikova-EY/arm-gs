@@ -5,7 +5,7 @@
 {% block content %}
 {% if current_user.is_authenticated %}
   <div class="container mt-5">
-      <h2 class="mb-4"><i class="fas fa-plus-circle"></i> Р”РѕР±Р°РІРеС‚СЊ С‚РеРї С‚РѕРїР»РеРІР°</h2>
+      <h1 class="mb-4"><i class="fas fa-plus-circle"></i> Р”РѕР±Р°РІРеС‚СЊ С‚РеРї С‚РѕРїР»РеРІР°</h1>
 
       <form action="{{ url_for('fuel_bp.fuel_refdata_add_fuel_type') }}" method="POST">
         {{ form.hidden_tag() }}
