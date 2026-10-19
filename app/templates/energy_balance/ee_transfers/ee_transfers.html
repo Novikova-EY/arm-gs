@@ -244,7 +244,7 @@ content %} {% if current_user.is_authenticated %}
 
           {% for period_num, period_label in period_columns %}
           {% set editable_period = (ee_period_mode == 'years' and period_num in editable_years) or (ee_period_mode == 'months' and selected_year in editable_years) %}
-          {% if editable_period %}
+          {% if can_edit_energy_balance and editable_period %}
           {% set cell_value = transfer_row.periods.get(period_num) %}
           {% set cell_display = format_transfer_cell(cell_value) %}
           <td class="ee-transfer-value-cell" data-year="{{ selected_year if ee_period_mode == 'months' else period_num }}" data-month="{{ period_num if ee_period_mode == 'months' else 0 }}" data-raw="{{ cell_value if cell_value is not none else '' }}">
@@ -372,6 +372,8 @@ content %} {% if current_user.is_authenticated %}
 </script>
 
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/common/excel_export_fetch.js') }}?v=1"></script>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -543,50 +545,10 @@ content %} {% if current_user.is_authenticated %}
 
       if (!form || !exportBtn) return;
 
-      const newBtn = exportBtn.cloneNode(true);
-
-      exportBtn.parentNode.replaceChild(newBtn, exportBtn);
-
-      function parseFilenameFromContentDisposition(cd) {
-        if (!cd) return "export.xlsx";
-
-        const mUtf = /filename\*=UTF-8''([^;\n]+)/i.exec(cd);
-
-        if (mUtf && mUtf[1]) {
-          try {
-            return decodeURIComponent(mUtf[1].trim());
-          } catch (e) {
-            return mUtf[1].trim();
-          }
-        }
-
-        const mQuot = /filename="([^"]+)"/i.exec(cd);
-
-        if (mQuot && mQuot[1]) return mQuot[1].trim();
-
-        const mBare = /filename=([^;\n]+)/i.exec(cd);
-
-        if (mBare && mBare[1])
-          return mBare[1].trim().replace(/^["']|["']$/g, "");
-
-        return "export.xlsx";
-      }
-
-      newBtn.addEventListener("click", function (e) {
+      exportBtn.addEventListener("click", function (e) {
         e.preventDefault();
 
         e.stopPropagation();
-
-        const button = this;
-
-        if (button.disabled) return;
-
-        const originalHtml = button.innerHTML;
-
-        button.disabled = true;
-
-        button.innerHTML =
-          '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Экспорт…';
 
         const params = new URLSearchParams(
           new URL(window.location.href).search,
@@ -638,59 +600,7 @@ content %} {% if current_user.is_authenticated %}
             params.append("transfer_to_ues_filter", cb.value);
           });
 
-        const exportUrl = form.action + "?" + params.toString();
-
-        fetch(exportUrl, { method: "GET", credentials: "same-origin" })
-          .then((response) => {
-            if (!response.ok) {
-              return response.text().then((text) => {
-                throw new Error(
-                  `Ошибка сервера (${response.status}): ${text.substring(0, 200)}`,
-                );
-              });
-            }
-
-            const contentType = response.headers.get("content-type") || "";
-
-            if (
-              contentType.includes("application/vnd.openxmlformats") ||
-              contentType.includes("application/vnd.ms-excel")
-            ) {
-              return response.blob().then((blob) => {
-                const url = window.URL.createObjectURL(blob);
-
-                const a = document.createElement("a");
-
-                a.href = url;
-
-                a.download = parseFilenameFromContentDisposition(
-                  response.headers.get("content-disposition"),
-                );
-
-                document.body.appendChild(a);
-
-                a.click();
-
-                window.URL.revokeObjectURL(url);
-
-                document.body.removeChild(a);
-              });
-            }
-
-            return response.text().then(() => {
-              throw new Error("Получен неожиданный тип ответа от сервера");
-            });
-          })
-
-          .catch((error) => {
-            alert("Ошибка при экспорте данных: " + error.message);
-          })
-
-          .finally(() => {
-            button.innerHTML = originalHtml;
-
-            button.disabled = false;
-          });
+        window.armGsExportExcel(exportBtn, form.action + "?" + params.toString());
       });
     })();
   });

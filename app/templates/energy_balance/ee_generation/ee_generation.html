@@ -69,6 +69,7 @@ content %} {% if current_user.is_authenticated %}
       .page-table-scroll #eeGenerationTable thead th {
         position: sticky;
         top: var(--pd-summary-controls-sticky-height, 0px);
+        font-size: 1rem;
         z-index: 50;
         background-color: var(--bs-success-bg-subtle, #d1e7dd);
         box-shadow: inset 0 -1px 0
@@ -86,10 +87,14 @@ content %} {% if current_user.is_authenticated %}
       #eeGenerationTable tbody tr.ee-control-row > td {
         background-color: var(--bs-secondary-bg, #e2e3e5) !important;
       }
+      #eeGenerationTable thead th .filter-button {
+        font-size: inherit;
+      }
       #eeGenerationTable input.ee-control-value {
         min-width: 4.5rem;
         max-width: 7rem;
         margin: 0 auto;
+        font-size: inherit;
         font-weight: 600;
       }
       #eeGenerationTable td.ee-control-cell.is-save-success {
@@ -110,7 +115,7 @@ content %} {% if current_user.is_authenticated %}
       #eeGenerationTable thead .ee-year-feature-caption {
         display: block;
         margin-top: 0.2rem;
-        font-size: 0.82em;
+        font-size: inherit;
         line-height: 1.3;
         font-weight: inherit;
         text-align: center;

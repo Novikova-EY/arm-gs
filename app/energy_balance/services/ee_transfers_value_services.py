@@ -19,6 +19,7 @@ from app.energy_balance.models.regional_energy_system_transfer_model import (
     RegionalEnergySystemTransfer,
 )
 from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache
+from app.energy_balance.services.change_log_services import log_cell_change
 from app.energy_balance.services.ee_import_export_oes_value_services import (
     recalculate_ee_import_export_oes_values,
 )
@@ -82,6 +83,7 @@ def update_ee_transfer_value(
     year: Any,
     month: Any,
     raw_value: Any,
+    user: Any = None,
 ) -> dict[str, Any]:
     try:
         year_number = int(year)
@@ -185,6 +187,9 @@ def update_ee_transfer_value(
             transfer_value=value,
         )
         db.session.add(record)
+        previous_value = None
+    else:
+        previous_value = record.transfer_value
 
     if not record.source_oes_name:
         # Перетоки без ОЭС в файле выводятся на странице по ОЭС источника.
@@ -201,4 +206,22 @@ def update_ee_transfer_value(
 
     _commit_with_retry()
     clear_energy_balance_cache()
+    period_label = (
+        f"{year_number} г."
+        if month_number == EE_TRANSFER_PERIOD_YEAR
+        else f"{year_number} г., месяц {month_number}"
+    )
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, переток электроэнергии",
+        period_label,
+        previous_value,
+        value,
+        context=(
+            f"Лист: перетоки ЭЭ; ОЭС: "
+            f"{ues_names.get(union_energy_system_id, union_energy_system_id)}; "
+            f"источник: {getattr(record, 'from_display_name', None) or '—'}; "
+            f"получатель: {getattr(record, 'to_display_name', None) or '—'}"
+        ),
+    )
     return {"year": year_number, "month": month_number, "value": value}

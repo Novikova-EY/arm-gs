@@ -41,7 +41,12 @@ def load_hydro_own_needs_coefficients(
 
 
 def save_hydro_own_needs_coefficient(
-    station_id: int, station_type_key: str, raw_value: Any
+    station_id: int,
+    station_type_key: str,
+    raw_value: Any,
+    *,
+    user: Any = None,
+    station_name: str | None = None,
 ) -> Decimal | None:
     if station_type_key not in HYDRO_STATION_TYPE_KEYS:
         raise ValueError("Коэффициент доступен только для ГЭС и ГАЭС")
@@ -62,10 +67,14 @@ def save_hydro_own_needs_coefficient(
         EeBalanceStationOwnNeedsCoefficient.station_type_key == station_type_key,
     )
     existing = query.one_or_none()
+    previous_value = None if existing is None else existing.coefficient
     if coefficient is None:
         if existing is not None:
             db.session.delete(existing)
             _commit_with_retry()
+            _log_coefficient_change(
+                user, station_id, station_name, station_type_key, previous_value, None
+            )
         return None
     if existing is None:
         existing = EeBalanceStationOwnNeedsCoefficient(
@@ -78,4 +87,30 @@ def save_hydro_own_needs_coefficient(
     else:
         existing.coefficient = coefficient
     _commit_with_retry()
+    _log_coefficient_change(
+        user, station_id, station_name, station_type_key, previous_value, coefficient
+    )
     return Decimal(str(existing.coefficient))
+
+
+def _log_coefficient_change(
+    user: Any,
+    station_id: int,
+    station_name: str | None,
+    station_type_key: str,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, коэффициент собственных нужд ГЭС/ГАЭС",
+        "Коэффициент собственных нужд",
+        old_value,
+        new_value,
+        context=(
+            f"Станция: {station_name or f'id={station_id}'} "
+            f"({station_type_key.upper()})"
+        ),
+    )

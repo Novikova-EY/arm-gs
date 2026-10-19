@@ -128,8 +128,8 @@ def generation_mwh(value: Any) -> float:
 
 
 def capacity_mw(value: Any) -> float:
-    """Установленная мощность, МВт — 2 знака после запятой."""
-    return _quantize_number(value, "0.01")
+    """Установленная мощность, МВт — 6 знаков после запятой (как в БД)."""
+    return _quantize_number(value, "0.000001")
 
 
 def energy_zone_number(raw: Any) -> int | None:
@@ -380,6 +380,7 @@ def build_station_year_row(
     capacity: Any,
     generation: Any,
     planned: bool,
+    preserve_generation_precision: bool = False,
 ) -> dict[str, Any]:
     return {
         KEY_YEAR: int(year),
@@ -392,7 +393,11 @@ def build_station_year_row(
         KEY_CAPACITY: json_number(capacity_mw(capacity)) or 0,
         KEY_PLANNED: bool(planned),
         KEY_ENERGY_ZONE: energy_zone_number(energy_zone),
-        KEY_GENERATION: json_number(generation_mwh(generation)) or 0,
+        KEY_GENERATION: (
+            generation if generation is not None else Decimal("0")
+        )
+        if preserve_generation_precision
+        else json_number(generation_mwh(generation)) or 0,
     }
 
 
@@ -529,6 +534,8 @@ def build_generation_objects_rows(
     years: list[int],
     capacity_map: dict[tuple[int, int], Decimal],
     generation_map: dict[tuple[int, int], Decimal],
+    *,
+    preserve_generation_precision: bool = False,
 ) -> list[dict[str, Any]]:
     """Станция × год. Планируемая: Руст года = 0, а в будущем году Руст > 0.
 
@@ -569,6 +576,7 @@ def build_generation_objects_rows(
                     capacity=capacity,
                     generation=generation,
                     planned=planned,
+                    preserve_generation_precision=preserve_generation_precision,
                 )
             )
     return rows
@@ -580,6 +588,7 @@ def load_generation_objects_dataset(
     year: int | None = None,
     start_year: int | None = None,
     end_year: int | None = None,
+    preserve_generation_precision: bool = False,
 ) -> dict[str, Any]:
     resolved_id, version_number = resolve_database_version(version_id)
     all_years = load_exchange_years(resolved_id)
@@ -596,6 +605,7 @@ def load_generation_objects_dataset(
         years,
         _load_station_capacity_map(station_ids, all_years, resolved_id),
         _load_station_generation_map(station_ids, years, resolved_id),
+        preserve_generation_precision=preserve_generation_precision,
     )
     return dataset_envelope(
         DATASET_GENERATION_STATIONS,

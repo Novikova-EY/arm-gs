@@ -78,6 +78,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
       <div class="col-12 mb-2 px-2 fuel-params-page-title">
         <h1 class="text-center mb-4">Сведения о работе ТЭС</h1>
         <div
+          id="fuelParamsAddButtons"
           class="d-flex justify-content-end align-items-center flex-wrap gap-2"
         >
           <a
@@ -130,7 +131,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
         _fuel_hier.get('fuel_param_columns') else [ ('numb1120', 'Код группы оборудования', false), ('nust', 'Суммарная установленная мощность, МВт', true),
         ('nr', 'Суммарная располагаемая мощность, МВт', true), ('e', 'Выработка ЭЭ, млн кВтч',
         true), ('ewtp', 'Теплофикационная выработка ЭЭ, тыс.кВтч', true),
-        ('eotp', 'Отпуск ЭЭ, млн кВтч', true), ('eust', 'Расход топлива на ЭЭ, тут/⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true),
+        ('eotp', 'Отпуск ЭЭ, млн кВтч', true), ('eust', 'Расход топлива на ЭЭ, т у.т./⁠тыс.кВтч', true), ('eurt', 'УРУТ на отпуск ЭЭ, г у.т./кВтч', true),
         ('sn_ee', 'СН на производство электроэнергии, тыс. кВт·ч', true),
         ('snk', 'СН на выработку ЭЭ, %', true), ('nt', 'Тепловая мощность отборов, Гкал/ч',
         true), ('nt_sum', 'Сумма тепловых мощностей, Гкал/ч', true), ('q', 'Отпуск ТЭ, тыс.Гкал', true), ('qotr', 'Тепловое потребление (отборов турбин), тыс.Гкал', true), ('turt',
@@ -170,7 +171,27 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
         endfor %} {% set fuel_detail_non_coal_count =
         fuel_detail_non_coal_columns|length %} {% set fuel_detail_coal_count =
         fuel_detail_coal_columns|length %} {% set ugol_group_label =
-        fuel_nazvl_to_name.get('ugol', 'Уголь, в т.ч.') %} {% if can_edit_bulk
+        fuel_nazvl_to_name.get('ugol', 'Уголь, в т.ч.') %}
+
+        {% macro fuel_param_aggregate_row(label, aggregate_row, columns, sum_attrs, collapse_under) %}
+        <tr class="text-center align-middle {{ aggregate_row.row_class }}" style="font-weight: bold">
+          <td>{{ label }}</td>
+          {% for attr, column_label, is_numeric in columns %}
+          {% set is_hier_sum = attr in sum_attrs %}
+          <td class="fuel-param-col-{{ attr }}{% if is_hier_sum %} fuel-hier-sum-cell{% endif %}"
+              data-column="{{ attr }}"
+              {% if collapse_under.get(attr) %}data-fuel-hier-under="{{ collapse_under.get(attr) }}"{% endif %}>
+            {% if is_hier_sum %}
+            <span class="fuel-hier-sum-value">{% if is_numeric and aggregate_row.summary and attr in aggregate_row.summary %}{{ render_numeric_or_dash(aggregate_row.summary[attr], true) }}{% endif %}</span>
+            {% elif is_numeric and aggregate_row.summary and attr in aggregate_row.summary %}
+            {{ render_numeric_or_dash(aggregate_row.summary[attr], true) }}
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endmacro %}
+
+        {% if can_edit_bulk
         %}
         <form
           method="POST"
@@ -269,7 +290,7 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                   colspan="{{ fuel_type_col_count.n }}"
                   class="fuel-types-group-header"
                 >
-                  Расход топлива, тыс. тут
+                  Расход топлива, тыс. т у.т.
                 </th>
                 {% endif %}
               </tr>
@@ -360,6 +381,11 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
               {% if equipment_group_fuel_params_hierarchy and
               equipment_group_fuel_params_hierarchy|length > 0 %} {% for
               est_block in equipment_group_fuel_params_hierarchy %}
+              {% if est_block.get('is_russia_row') %}
+                {% for aggregate_row in est_block.get('aggregate_rows') or [] %}
+                  {{ fuel_param_aggregate_row('Россия, всего', aggregate_row, fuel_param_columns, fuel_hier_sum_attrs, fuel_collapse_under) }}
+                {% endfor %}
+              {% else %}
               {{ fuel_hierarchy_level_header(est_block.est_id, est_block.est_name, column_count, 'table-light text-center', 'vertical-align: middle; font-weight: bold') }}
               {% for ues_block in est_block.ues_list %}
               {{ fuel_hierarchy_level_header(ues_block.ues_id, ues_block.ues_name, column_count, 'table-primary text-center', 'vertical-align: middle; font-weight: bold') }}
@@ -556,7 +582,17 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
                 </td>
                 {% endfor %}
               </tr>
-              {% endif %} {% endfor %} {% endfor %} {% endfor %} {% else %} {%
+              {% endif %} {% endfor %}
+              {% for aggregate_row in ues_block.get('aggregate_rows') or [] %}
+                {{ fuel_param_aggregate_row(ues_block.ues_name ~ ', всего', aggregate_row, fuel_param_columns, fuel_hier_sum_attrs, fuel_collapse_under) }}
+              {% endfor %}
+              {% endfor %}
+              {% if est_block.aggregate_rows and ('ЕЭС' in est_block.est_name.upper() or 'ТИТЭС' in est_block.est_name.upper()) %}
+                {% for aggregate_row in est_block.aggregate_rows %}
+                  {{ fuel_param_aggregate_row(est_block.est_name ~ ', всего', aggregate_row, fuel_param_columns, fuel_hier_sum_attrs, fuel_collapse_under) }}
+                {% endfor %}
+              {% endif %}
+              {% endif %} {% endfor %} {% else %} {%
               for row in equipment_group_fuel_param_rows|default([]) %} {% set
               group_entity = row[0] %} {% set param = row[1] %} {% set
               group_name = (group_entity.name if group_entity and
@@ -1311,6 +1347,12 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
   }
 </style>
 
+{# Кнопки «Добавить электростанцию» / «Добавить группу оборудования» прячем
+при прокрутке таблицы вниз #}
+{% set selectors = ['#fuelParamsAddButtons'] %}
+{% set scroll_container = '.fuel-params-top' %}
+{% include 'fuel/shared/sticky_hide_on_scroll_script.html' %}
+
 <script src="{{ url_for('static', filename='js/fuel/fuel_param_cell_warnings.js') }}"></script>
 <script src="{{ url_for('static', filename='js/fuel/fuel_edit_hide_empty_rows.js') }}"></script>
 <script>
@@ -1998,12 +2040,14 @@ import eg_name_cell_class, eg_name_label, fuel_hierarchy_level_header %} {% bloc
               refreshIndependentScrolls();
           }
 
-          /* По умолчанию активна — нижние таблицы видны */
-          applyFuelDetailPanelsVisibility(true);
+          var storageKey = 'fuelParamsDetailPanelsVisible';
+          var savedVisibility = localStorage.getItem(storageKey);
+          applyFuelDetailPanelsVisibility(savedVisibility !== 'false');
 
           toggleBtn.addEventListener('click', function () {
               var visible = toggleBtn.getAttribute('aria-pressed') !== 'true';
               applyFuelDetailPanelsVisibility(visible);
+              localStorage.setItem(storageKey, String(visible));
           });
       })();
 

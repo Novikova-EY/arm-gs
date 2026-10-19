@@ -30,6 +30,10 @@ FILL_UES = PatternFill(start_color="CCE5FF", end_color="CCE5FF", fill_type="soli
 FILL_RES_HEADER = PatternFill(start_color="E6E6E6", end_color="E6E6E6", fill_type="solid")
 FILL_STATION_SUMMARY = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
 FILL_RES_SUMMARY = PatternFill(start_color="D1ECF1", end_color="D1ECF1", fill_type="solid")
+FILL_OES_SUMMARY = PatternFill(start_color="D4EDDA", end_color="D4EDDA", fill_type="solid")
+FILL_EES_SUMMARY = PatternFill(start_color="D9EAF7", end_color="D9EAF7", fill_type="solid")
+FILL_TITES_SUMMARY = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+FILL_RUSSIA_SUMMARY = PatternFill(start_color="F4CCCC", end_color="F4CCCC", fill_type="solid")
 
 
 def write_merged_section_row(ws, row: int, num_cols: int, title: str, fill: PatternFill) -> int:

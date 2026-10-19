@@ -39,12 +39,12 @@ def _render_report(kind: str):
     endpoint = _report_list_endpoint(kind)
     if request.args.get("reset_filters") == "1":
         keep = {}
-        for key in ("year", "per_page", "show_totals", "show_empty_rows"):
+        for key in ("per_page", "show_totals", "show_empty_rows", "rounding_digits"):
             value = request.args.get(key)
             if value not in (None, ""):
                 keep[key] = value
         return redirect(url_for(endpoint, **keep))
-    context = build_gis_tek_page_context(kind, request.args)
+    context = build_gis_tek_page_context(kind, request.args, user=current_user)
     context["can_edit"] = can_edit_ecology(current_user)
     context["form"] = StationFilterForm()
     context["show_ved_filter"] = True
@@ -58,7 +58,17 @@ def _render_report(kind: str):
         reset_keep["per_page"] = context["per_page_param"]
     reset_keep["show_totals"] = "1" if context.get("show_totals") else "0"
     reset_keep["show_empty_rows"] = "1" if context.get("show_empty_rows") else "0"
+    reset_keep["rounding_digits"] = str(context.get("rounding_digits"))
     context["station_filters_reset_url"] = url_for(endpoint, **reset_keep)
+    context["year_reset_url"] = url_for(
+        endpoint,
+        reset_filters=1,
+        **{
+            key: reset_keep[key]
+            for key in ("per_page", "show_totals", "show_empty_rows", "rounding_digits")
+            if key in reset_keep
+        },
+    )
     context["import_endpoint"] = (
         "ecology_bp.gis_tek_pg_import"
         if kind == REPORT_PG
@@ -105,7 +115,7 @@ def _import_report(kind: str):
 
 
 def _export_report(kind: str):
-    stream = build_gis_tek_excel_stream(kind, request.args)
+    stream = build_gis_tek_excel_stream(kind, request.args, user=current_user)
     filename = (
         "gis_tek_parnikovye_gazy.xlsx" if kind == REPORT_PG else "gis_tek_zagryaznyayushchie_veshchestva.xlsx"
     )

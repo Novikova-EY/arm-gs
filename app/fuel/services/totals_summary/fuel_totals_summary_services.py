@@ -42,14 +42,16 @@ _SUM_ATTRS = tuple(
 
 
 def parse_aggregation_types(args) -> list[str]:
-    """Как на generation/totals_summary: ees|tites|fo|oes|russia|sync_area_{id}."""
+    """Разбирает фильтры итогов; если параметр не задан — показывает ЕЭС."""
+    raw_aggregation_types = args.getlist("aggregation_type")
+    if not raw_aggregation_types:
+        return ["ees"]
+
     aggregation_types = [
         (at or "").strip().lower()
-        for at in args.getlist("aggregation_type")
+        for at in raw_aggregation_types
         if (at or "").strip()
     ]
-    if not aggregation_types:
-        aggregation_types = ["ees"] if len(args) == 0 else []
 
     valid_types = {"fo", "oes", "ees", "tites", "russia"}
     filtered: list[str] = []
@@ -62,7 +64,7 @@ def parse_aggregation_types(args) -> list[str]:
             except ValueError:
                 continue
             filtered.append(at)
-    return filtered or (["ees"] if len(args) == 0 else [])
+    return filtered
 
 
 def resolve_rounding_digits(raw: Any, default: int = 1) -> int:

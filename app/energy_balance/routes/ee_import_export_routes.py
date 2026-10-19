@@ -2,9 +2,10 @@
 from datetime import datetime
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
+from app.energy_balance.services.access_services import can_edit_energy_balance
 from app.energy_balance.services.ee_import_export_export_services import (
     export_ee_import_export_to_excel,
 )
@@ -81,7 +82,7 @@ def ee_import_export():
         direction_filter=direction_filter,
         country_filter=country_filter,
     )
-    page_data["can_edit"] = True
+    page_data["can_edit"] = can_edit_energy_balance(current_user)
     filter_year_list = sorted(set(get_ee_balance_filter_year_list()) | {start_year, end_year})
     return render_template(
         "energy_balance/ee_import_export/ee_import_export.html",
@@ -107,8 +108,9 @@ def ee_import_export_value():
             ues_id=ues_id,
             country_id=country_id,
             year=year,
-            direction=data.get("direction"),
+            direction=data.get("direction") or "import",
             raw_value=data.get("value"),
+            user=current_user,
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400

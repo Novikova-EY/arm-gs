@@ -8,7 +8,10 @@ from decimal import Decimal
 from sqlalchemy.orm import selectinload
 
 from app.common.services.database_version_filter import get_current_db_version_id
-from app.ecology.services.ecology_decimal_helpers import decimal_or_none as _decimal_or_none
+from app.ecology.services.ecology_decimal_helpers import (
+    decimal_or_none as _decimal_or_none,
+    drop_float_noise as _drop_float_noise,
+)
 from app.ecology.services.ecology_request_helpers import parse_truthy_arg
 from app.ecology.services.ecology_text_helpers import text_contains
 from app.ecology.models.pg_report_gis_tek_model import PGReportGisTek
@@ -19,13 +22,25 @@ from app.ecology.services.gis_tek_constants import (
     REPORT_ZV,
     VALUE_COLUMN_GROUPS,
     VALUE_COLUMNS,
+    VED_AFFILIATION_BY_CODE,
+    VED_STATION_TYPE_BY_CODE,
     ZV_DERIVED_ATTRS,
     ZV_EMISSIONS_BANNER_TITLE,
     ZV_GASEOUS_AND_LIQUID_FORMULA_KEY,
     ZV_GASEOUS_AND_LIQUID_PARTS,
+    ZV_NORM_ATTR,
+    ZV_NORM_DEFAULT_PARTS,
+    ZV_NORM_LABEL,
+    ZV_NORM_PARAM,
+    ZV_NORM_PARTS,
     ZV_TOTAL_FORMULA_KEY,
     ZV_TOTAL_PARTS,
 )
+from app.ecology.services.gis_tes_fuel_comparison_constants import (
+    TERRITORY_FILTER_KEYS,
+    VED_FILTER_TO_VALUES,
+)
+from app.ecology.services.operating_tes_page_services import resolve_rounding_digits
 from app.energy_consumption.forms.energy_consumption_parameter_forms import EmptyCSRFForm
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
@@ -35,7 +50,6 @@ from app.fuel.models.fue_equipment_group_set_station_model import (
 from app.refdata.models.energy_systems.regional_energy_system_model import (
     RegionalEnergySystem,
 )
-from app.refdata.models.years.year_model import Year
 
 
 REPORT_MODELS = {
@@ -45,14 +59,55 @@ REPORT_MODELS = {
 
 UNKNOWN_UES = "Не указано"
 UNKNOWN_RES = "Не указано"
+UNKNOWN_STATION_TYPE = "—"
+UNKNOWN_AFFILIATION = "—"
+
+# «Принадлежность» — тот же код VED, что и у типа станции (1, 2 — отрасль; 3, 4 — промпредприятия).
+_AFFILIATION_BY_STATION_TYPE: dict[str, str] = {
+    VED_STATION_TYPE_BY_CODE[code]: VED_AFFILIATION_BY_CODE[code]
+    for code in VED_STATION_TYPE_BY_CODE
+}
 
 IDENTITY_COLUMNS = [
     ("station_numb", "Код группы оборудования (numb)", False),
     ("gis_tek_station_name", "Электростанция (ГИС ТЭК)", False),
     ("generation_station_name", "Электростанция (Генерация)", False),
-    ("equipment_group_name", "Группа оборудования (Топливо)", False),
-    ("station_type", "Тип станции", False),
+    ("station_affiliation", "Принадлежность", False),
 ]
+
+# Выпадающие фильтры в шапке таблицы: столбец → параметр запроса.
+HEADER_FILTER_PARAMS: dict[str, str] = {
+    "gis_tek_station_name": "gis_tek_station_name_filter",
+    "generation_station_name": "generation_station_name_filter",
+    "station_affiliation": "station_affiliation_filter",
+}
+NO_VALUE_PLACEHOLDER = "—"
+
+# Код группы оборудования видит только администратор.
+ADMIN_ONLY_IDENTITY_KEYS = frozenset({"station_numb"})
+ADMIN_ROLE_NAMES = frozenset({"admin", "админ"})
+
+
+def is_admin_user(user) -> bool:
+    """Пользователь с ролью «admin» / «Админ»."""
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    names = {
+        str(name or "").strip().casefold()
+        for name in (getattr(user, "role_names", None) or [])
+    }
+    return bool(names & ADMIN_ROLE_NAMES)
+
+
+def identity_columns_for(user) -> list[tuple[str, str, bool]]:
+    """Столбцы-идентификаторы страницы с учётом прав пользователя."""
+    if is_admin_user(user):
+        return list(IDENTITY_COLUMNS)
+    return [
+        column
+        for column in IDENTITY_COLUMNS
+        if column[0] not in ADMIN_ONLY_IDENTITY_KEYS
+    ]
 
 
 def can_edit_ecology(user) -> bool:
@@ -71,6 +126,26 @@ def _parse_year(raw, fallback: int | None) -> int | None:
         return int(raw)
     except (TypeError, ValueError):
         return fallback
+
+
+def _nearest_year(value: int | None, years: list[int]) -> int | None:
+    """Ближайший доступный год, если выбранного нет в списке."""
+    if value is None or not years or value in years:
+        return value
+    return min(years, key=lambda year: (abs(year - value), year))
+
+
+def _resolve_year(args, years: list[int], default_year: int | None) -> int | None:
+    """Выбранный год страницы («Год») с приведением к списку годов фильтра.
+
+    Для совместимости принимается и start_year — от ссылок с диапазоном годов.
+    """
+    value = _parse_year(args.get("year"), None)
+    if value is None:
+        value = _parse_year(args.get("start_year"), None)
+    if value is None:
+        value = default_year
+    return _nearest_year(value, years)
 
 
 def _coerce_numb(raw) -> int | None:
@@ -127,6 +202,80 @@ def collect_numb_filter_choices(rows: list[dict]) -> list[int]:
     return sorted(values)
 
 
+def _unique_values(values) -> list[str]:
+    names = {
+        str(value or "").strip()
+        for value in values
+        if str(value or "").strip()
+        and str(value or "").strip() != NO_VALUE_PLACEHOLDER
+    }
+    return sorted(names, key=str.casefold)
+
+
+def header_filter_selected(args) -> dict[str, str]:
+    """Выбранные значения выпадающих фильтров шапки таблицы."""
+    selected: dict[str, str] = {}
+    for column_key, param in HEADER_FILTER_PARAMS.items():
+        values = _args_getlist(args, param)
+        selected[column_key] = str(values[0] or "").strip() if values else ""
+    return selected
+
+
+def header_filter_choices(rows: list[dict]) -> dict[str, list[str]]:
+    """Значения для выпадающих фильтров шапки (до фильтрации по самой шапке)."""
+    gis_names: list = []
+    affiliations: list = []
+    generation_names: list = []
+    for row in rows or []:
+        gis_names.append(row.get("gis_tek_station_name"))
+        affiliations.append(row.get("station_affiliation"))
+        for station in row.get("generation_stations") or []:
+            if isinstance(station, dict):
+                generation_names.append(station.get("name"))
+    return {
+        "gis_tek_station_name": _unique_values(gis_names),
+        "generation_station_name": _unique_values(generation_names),
+        "station_affiliation": _unique_values(affiliations),
+    }
+
+
+def apply_gis_tek_header_filters(
+    rows: list[dict],
+    selected: dict[str, str] | None,
+) -> list[dict]:
+    """Фильтры из шапки: «ГИС ТЭК», станции «Генерации», принадлежность."""
+    filters = {
+        key: str(value or "").strip() for key, value in (selected or {}).items()
+    }
+    out = list(rows or [])
+    gis_name = filters.get("gis_tek_station_name")
+    if gis_name:
+        out = [
+            row
+            for row in out
+            if str(row.get("gis_tek_station_name") or "").strip() == gis_name
+        ]
+    generation_name = filters.get("generation_station_name")
+    if generation_name:
+        out = [
+            row
+            for row in out
+            if any(
+                isinstance(station, dict)
+                and str(station.get("name") or "").strip() == generation_name
+                for station in row.get("generation_stations") or []
+            )
+        ]
+    affiliation = filters.get("station_affiliation")
+    if affiliation:
+        out = [
+            row
+            for row in out
+            if str(row.get("station_affiliation") or "").strip() == affiliation
+        ]
+    return out
+
+
 def _parse_per_page(raw) -> int | str:
     if raw is None or str(raw).strip() == "":
         return 25
@@ -150,13 +299,92 @@ def parse_show_empty_rows_arg(args) -> bool:
     return parse_truthy_arg(args, "show_empty_rows", casefold=True)
 
 
-def display_station_type(value) -> str:
-    if value is None:
-        return "—"
-    s = str(value).strip()
-    if not s or s == "0":
-        return "—"
-    return s
+def parse_norm_zv_parts(args) -> list[str]:
+    """Слагаемые столбца «Нормируемые ЗВ», выбранные в шапке таблицы.
+
+    Без параметра в ссылке — набор по умолчанию; пустое значение параметра —
+    сознательно очищенный выбор (столбец без сумм).
+    """
+    raw = _args_getlist(args, ZV_NORM_PARAM)
+    if not raw:
+        return list(ZV_NORM_DEFAULT_PARTS)
+    selected = {
+        name
+        for item in raw
+        for name in (part.strip() for part in str(item or "").split(","))
+        if name in ZV_NORM_PARTS
+    }
+    return [attr for attr in ZV_NORM_PARTS if attr in selected]
+
+
+def station_type_from_ved(ved) -> str:
+    """Тип станции по коду ved строки «Топливо» (прочие коды — не указан)."""
+    try:
+        code = int(ved)
+    except (TypeError, ValueError):
+        return UNKNOWN_STATION_TYPE
+    return VED_STATION_TYPE_BY_CODE.get(code, UNKNOWN_STATION_TYPE)
+
+
+def station_affiliation(station_type: str) -> str:
+    """«Принадлежность» по типу станции: отрасль (ved 1, 2) / промпредприятие (ved 3, 4)."""
+    return _AFFILIATION_BY_STATION_TYPE.get(station_type, UNKNOWN_AFFILIATION)
+
+
+def _first_ved_label(params) -> str | None:
+    for param in params or []:
+        label = station_type_from_ved(getattr(param, "ved", None))
+        if label != UNKNOWN_STATION_TYPE:
+            return label
+    return None
+
+
+def station_types_by_equipment_group(
+    groups,
+    year: int | None,
+    version_id: int | None,
+) -> dict[int, str]:
+    """Тип станции по VED за год: equipment_group_id -> подпись.
+
+    Своя строка «Топливо» за год; у оболочки составной станции своего ved нет
+    (ved=0 — антидубль), поэтому тип берётся у её дочерних групп, если он у них один.
+    """
+    group_list = [group for group in groups or [] if getattr(group, "id", None) is not None]
+    if year is None or not group_list:
+        return {}
+    from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+        load_equipment_group_fuel_params_for_groups,
+    )
+
+    params_by_group = load_equipment_group_fuel_params_for_groups(
+        [group.id for group in group_list],
+        start_year=int(year),
+        end_year=int(year),
+        version_id=version_id,
+    )
+    label_by_group = {
+        group.id: _first_ved_label(params_by_group.get(group.id)) for group in group_list
+    }
+    child_ids_by_main: dict[int, list[int]] = {}
+    for group in group_list:
+        main = _coerce_numb(getattr(group, "main", None))
+        if main:
+            child_ids_by_main.setdefault(main, []).append(group.id)
+
+    out: dict[int, str] = {}
+    for group in group_list:
+        label = label_by_group.get(group.id)
+        if label is None:
+            numb = _coerce_numb(getattr(group, "numb", None))
+            child_labels = {
+                label_by_group.get(child_id)
+                for child_id in (child_ids_by_main.get(numb) or [])
+            } - {None}
+            if len(child_labels) == 1:
+                label = child_labels.pop()
+        if label is not None:
+            out[group.id] = label
+    return out
 
 
 def equipment_group_title(group: EquipmentGroup | None) -> str:
@@ -261,8 +489,6 @@ def apply_gis_tek_territory_filters(
 
 
 def _territory_id_filters_active(filters: dict | None) -> bool:
-    from app.ecology.services.gis_tes_fuel_comparison_constants import TERRITORY_FILTER_KEYS
-
     selected = filters or {}
     return any(selected.get(key) for key in TERRITORY_FILTER_KEYS[:5])
 
@@ -290,7 +516,6 @@ def _matching_ved_equipment_group_ids(
     year: int | None,
     version_id: int | None,
 ) -> set[int] | None:
-    from app.ecology.services.gis_tes_fuel_comparison_constants import VED_FILTER_TO_VALUES
     from app.ecology.services.gis_tes_pg_from_fuel_services import _eg_ids_matching_ved
 
     ved_group = str(territory_filters.get("ved_filter") or "").strip()
@@ -343,6 +568,29 @@ def sum_gaseous_and_liquid(metrics: dict | None) -> Decimal | None:
     return _sum_parts(metrics, ZV_GASEOUS_AND_LIQUID_PARTS)
 
 
+def sum_norm_zv(metrics: dict | None, parts) -> Decimal | None:
+    """Сумма выбранных слагаемых столбца «Нормируемые ЗВ»; None, если все они пусты."""
+    return _sum_parts(metrics, tuple(parts or ()))
+
+
+def norm_zv_options() -> list[tuple[str, str]]:
+    """Слагаемые столбца «Нормируемые ЗВ» с подписями столбцов ЗВ (кроме «всего»)."""
+    return [
+        (attr, label)
+        for attr, label in VALUE_COLUMNS[REPORT_ZV]
+        if attr in ZV_NORM_PARTS
+    ]
+
+
+def norm_zv_caption(parts) -> str:
+    """Подпись столбца «Нормируемые ЗВ» со списком выбранных слагаемых (для выгрузки Excel)."""
+    selected = set(parts or ())
+    labels = [label for attr, label in norm_zv_options() if attr in selected]
+    if not labels:
+        return f"{ZV_NORM_LABEL} (слагаемые не выбраны)"
+    return f"{ZV_NORM_LABEL} (" + " + ".join(labels) + ")"
+
+
 def sum_zv_total(metrics: dict | None) -> Decimal | None:
     """Сумма твёрдых и газообразных/жидких веществ; None, если оба слагаемых пустые."""
     return _sum_parts(metrics, ZV_TOTAL_PARTS)
@@ -382,7 +630,13 @@ def _empty_metrics(kind: str) -> dict:
     return values
 
 
-def _row_from_group(group, report, kind: str, year: int | None) -> dict:
+def _row_from_group(
+    group,
+    report,
+    kind: str,
+    year: int | None,
+    station_type: str = UNKNOWN_STATION_TYPE,
+) -> dict:
     """Строка страницы: группа из «Топливо», показатели — из отчёта ГИС ТЭК, если есть."""
     ues_name, res_name, ues_sort, res_sort = _ues_res_for_group(group)
     version_id = getattr(group, "database_version_id", None)
@@ -395,13 +649,11 @@ def _row_from_group(group, report, kind: str, year: int | None) -> dict:
         numb = _coerce_numb(getattr(report, "station_numb", None)) or numb
         values = _metrics_from_record(report, kind)
         gis_name = report.gis_tek_station_name or "—"
-        station_type = display_station_type(report.station_type)
         rec_id = getattr(report, "id", None)
         year_number = getattr(report, "year_number", None) or year
     else:
         values = _empty_metrics(kind)
         gis_name = "—"
-        station_type = "—"
         rec_id = None
         year_number = year
     return {
@@ -412,6 +664,7 @@ def _row_from_group(group, report, kind: str, year: int | None) -> dict:
         "generation_station_name": generation_station_name,
         "equipment_group_id": getattr(group, "id", None),
         "equipment_group_name": equipment_group_title(group),
+        "station_affiliation": station_affiliation(station_type),
         "station_type": station_type,
         "year_number": year_number,
         "metrics": values,
@@ -451,8 +704,10 @@ def build_rows_from_equipment_groups(
     records: list,
     kind: str,
     year: int | None,
+    station_types: dict[int, str] | None = None,
 ) -> list[dict]:
     """Все группы оборудования текущей версии + наложение строк отчёта ГИС ТЭК."""
+    types_by_group = station_types or {}
     by_numb: dict[int, object] = {}
     unmatched: list = []
     for rec in records or []:
@@ -468,7 +723,9 @@ def build_rows_from_equipment_groups(
         report = by_numb.get(numb) if numb is not None else None
         if numb is not None and report is not None:
             used.add(numb)
-        rows.append(_row_from_group(group, report, kind, year))
+        group_id = getattr(group, "id", None)
+        station_type = types_by_group.get(group_id, UNKNOWN_STATION_TYPE)
+        rows.append(_row_from_group(group, report, kind, year, station_type))
     for numb, rec in by_numb.items():
         if numb not in used:
             rows.append(_row_dict(rec, kind))
@@ -547,8 +804,15 @@ def sum_row_metrics(rows: list[dict], kind: str) -> dict:
     return out
 
 
-def _region_summary(label: str, source_rows: list[dict], kind: str) -> dict:
+def _region_summary(
+    label: str,
+    source_rows: list[dict],
+    kind: str,
+    norm_zv_parts: list[str] | None = None,
+) -> dict:
     metrics = sum_row_metrics(source_rows, kind)
+    if kind == REPORT_ZV and norm_zv_parts is not None:
+        metrics[ZV_NORM_ATTR] = sum_norm_zv(metrics, norm_zv_parts)
     return {
         "label": label,
         "metrics": metrics,
@@ -562,6 +826,7 @@ def attach_gis_tek_region_summaries(
     display_rows: list[dict],
     page_rows: list[dict],
     kind: str,
+    norm_zv_parts: list[str] | None = None,
 ) -> None:
     """Итоги РЭС/ОЭС, если на странице последняя строка региона."""
     page_ids = {_row_identity(row) for row in page_rows or []}
@@ -590,7 +855,9 @@ def attach_gis_tek_region_summaries(
                 for row in all_rows or []
                 if row.get("ues_name") == ues_name and row.get("res_name") == res_name
             ]
-            res_block["summary"] = _region_summary(f"{res_name}, всего", source, kind)
+            res_block["summary"] = _region_summary(
+                f"{res_name}, всего", source, kind, norm_zv_parts
+            )
         last_ues = _last(
             display_rows,
             lambda row, ues=ues_name: row.get("ues_name") == ues,
@@ -598,52 +865,75 @@ def attach_gis_tek_region_summaries(
         if last_ues is None or _row_identity(last_ues) not in page_ids:
             continue
         source = [row for row in all_rows or [] if row.get("ues_name") == ues_name]
-        ues_block["summary"] = _region_summary(f"{ues_name}, всего", source, kind)
+        ues_block["summary"] = _region_summary(
+            f"{ues_name}, всего", source, kind, norm_zv_parts
+        )
 
 
-def _available_years(model, version_id: int | None) -> tuple[list[int], bool]:
+def _drop_metrics_noise(metrics: dict | None) -> None:
+    """Срезает хвост float-шума источника в значениях строки/сводки (на месте)."""
+    if not metrics:
+        return
+    for attr, value in metrics.items():
+        metrics[attr] = _drop_float_noise(value)
+
+
+def drop_float_noise_in_hierarchy(hierarchy: list[dict]) -> None:
+    """Значения страницы без float-шума источника: строки и итоги РЭС/ОЭС."""
+    for ues_block in hierarchy or []:
+        _drop_metrics_noise((ues_block.get("summary") or {}).get("metrics"))
+        for res_block in ues_block.get("res_list") or []:
+            for row in res_block.get("rows") or []:
+                _drop_metrics_noise(row.get("metrics"))
+            _drop_metrics_noise((res_block.get("summary") or {}).get("metrics"))
+
+
+def _data_years(model, version_id: int | None) -> list[int]:
+    """Годы, за которые есть строки отчёта (для выбора года по умолчанию)."""
     query = model.query.with_entities(model.year_number).distinct()
     if version_id is not None:
         query = query.filter(model.database_version_id == version_id)
     else:
         query = query.filter(model.database_version_id.is_(None))
-    years = sorted({int(y) for (y,) in query.all() if y is not None})
+    return sorted({int(y) for (y, ) in query.all() if y is not None})
+
+
+def _filter_years() -> list[int]:
+    """Список годов фильтра — как на /generation/stations/station_list."""
+    from app.common.services.get_services.years.years_get_services import (
+        get_filter_end_year,
+        get_filter_start_year,
+        get_year_list_full,
+    )
+
+    years = sorted(
+        {
+            int(year.number)
+            for year in get_year_list_full()
+            if getattr(year, "number", None) is not None
+        }
+    )
     if years:
-        return years, True
-    year_q = Year.query.with_entities(Year.number)
-    if version_id is not None:
-        year_q = year_q.filter(Year.database_version_id == version_id)
-    else:
-        year_q = year_q.filter(Year.database_version_id.is_(None))
-    return sorted({int(y) for (y,) in year_q.all() if y is not None}), False
+        return years
+    return list(range(get_filter_start_year(), get_filter_end_year() + 1))
 
 
-def _available_station_types(model, version_id: int | None) -> list[str]:
-    query = model.query.with_entities(model.station_type).distinct()
-    if version_id is not None:
-        query = query.filter(model.database_version_id == version_id)
-    else:
-        query = query.filter(model.database_version_id.is_(None))
-    values = []
-    for (raw,) in query.all():
-        label = display_station_type(raw)
-        if label != "—":
-            values.append(label)
-    return sorted(set(values), key=lambda s: s.lower())
+def _station_type_choices() -> list[str]:
+    """Варианты фильтра «Тип станции» — подписи VED из колонки."""
+    return [VED_STATION_TYPE_BY_CODE[code] for code in sorted(VED_STATION_TYPE_BY_CODE)]
 
 
-def build_gis_tek_page_context(kind: str, args) -> dict:
+def build_gis_tek_page_context(kind: str, args, user=None) -> dict:
     model = REPORT_MODELS[kind]
     version_id = get_current_db_version_id()
-    years, years_from_data = _available_years(model, version_id)
-    if years_from_data:
-        default_year = years[-1]
+    years = _filter_years()
+    data_years = _data_years(model, version_id)
+    if data_years:
+        default_year = data_years[-1]
     else:
         from config import START_YEAR
         default_year = START_YEAR if START_YEAR in years else (years[-1] if years else None)
-    selected_year = _parse_year(args.get("year"), default_year)
-    if selected_year is not None and years and selected_year not in years:
-        selected_year = default_year
+    selected_year = _resolve_year(args, years, default_year)
 
     per_page = _parse_per_page(args.get("per_page"))
     try:
@@ -660,6 +950,8 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
     q = str(territory_filters.get("station_name_filter") or q or "").strip()
     show_totals = parse_show_totals_arg(args)
     show_empty_rows = parse_show_empty_rows_arg(args)
+    rounding_digits = resolve_rounding_digits(args.get("rounding_digits"))
+    norm_zv_selected = parse_norm_zv_parts(args) if kind == REPORT_ZV else []
 
     query = model.query
     if version_id is not None:
@@ -671,7 +963,13 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
 
     records = query.all()
     groups = _equipment_group_query(version_id).all()
-    rows = build_rows_from_equipment_groups(groups, records, kind, selected_year)
+    rows = build_rows_from_equipment_groups(
+        groups,
+        records,
+        kind,
+        selected_year,
+        station_types_by_equipment_group(groups, selected_year, version_id),
+    )
     rows = apply_gis_tek_territory_filters(
         rows,
         territory_filters,
@@ -684,6 +982,9 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
     )
     if station_type_filter:
         rows = [row for row in rows if row["station_type"] == station_type_filter]
+    header_selected = header_filter_selected(args)
+    header_filter_values = header_filter_choices(rows)
+    rows = apply_gis_tek_header_filters(rows, header_selected)
     numb1120_filter_choices = collect_numb_filter_choices(rows)
     if numb1120_filter:
         wanted = set(numb1120_filter)
@@ -703,6 +1004,8 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
         )
     )
     for row in rows:
+        if kind == REPORT_ZV:
+            row["metrics"][ZV_NORM_ATTR] = sum_norm_zv(row["metrics"], norm_zv_selected)
         row["is_empty"] = metrics_are_empty(row.get("metrics"), kind)
     display_rows = rows if show_empty_rows else [row for row in rows if not row["is_empty"]]
 
@@ -725,11 +1028,29 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
 
     hierarchy = _build_hierarchy(page_rows)
     if show_totals:
-        attach_gis_tek_region_summaries(hierarchy, rows, display_rows, page_rows, kind)
+        attach_gis_tek_region_summaries(
+            hierarchy,
+            rows,
+            display_rows,
+            page_rows,
+            kind,
+            norm_zv_parts=norm_zv_selected,
+        )
+
+    if rounding_digits == 0:
+        # «Не округлять» показывает значение целиком, поэтому показываем только
+        # значащие цифры: хвост вроде 105,10000000000001 — шум исходного double.
+        drop_float_noise_in_hierarchy(hierarchy)
 
     value_columns = list(VALUE_COLUMNS[kind])
     value_column_groups = list(VALUE_COLUMN_GROUPS.get(kind) or [])
     value_column_banner = ZV_EMISSIONS_BANNER_TITLE if kind == REPORT_ZV else ""
+    norm_zv_selectable: list[tuple[str, str]] = []
+    if kind == REPORT_ZV:
+        # Столбец-сумма выбранных слагаемых — последним, справа от столбцов ЗВ.
+        norm_zv_selectable = norm_zv_options()
+        value_columns.append((ZV_NORM_ATTR, ZV_NORM_LABEL))
+        value_column_groups.append((ZV_NORM_LABEL, [(ZV_NORM_ATTR, "")]))
     if value_column_banner and value_column_groups:
         header_rowspan = 3
         group_rowspan = 2
@@ -739,7 +1060,8 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
     else:
         header_rowspan = 1
         group_rowspan = 1
-    column_count = len(IDENTITY_COLUMNS) + len(value_columns)
+    identity_columns = identity_columns_for(user)
+    column_count = len(identity_columns) + len(value_columns)
     value_column_formulas: dict[str, str] = {}
     if kind == REPORT_ZV:
         from app.ecology.services.formula_text.operating_tes_formula_text_services import (
@@ -757,6 +1079,7 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
         q
         or station_type_filter
         or numb1120_filter
+        or any(header_selected.values())
         or (territory_filters.get("gen_company_filter") or "").strip()
         or (territory_filters.get("ved_filter") or "").strip()
         or _territory_id_filters_active(territory_filters)
@@ -770,10 +1093,16 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
         "kind": kind,
         "page_title": PAGE_TITLES[kind],
         "hierarchy": hierarchy,
-        "identity_columns": IDENTITY_COLUMNS,
+        "identity_columns": identity_columns,
+        "show_numb_column": is_admin_user(user),
         "value_columns": value_columns,
         "value_column_groups": value_column_groups,
         "value_column_banner": value_column_banner,
+        "norm_zv_attr": ZV_NORM_ATTR,
+        "norm_zv_label": ZV_NORM_LABEL,
+        "norm_zv_options": norm_zv_selectable,
+        "norm_zv_selected": norm_zv_selected,
+        "norm_zv_default": list(ZV_NORM_DEFAULT_PARTS),
         "header_rowspan": header_rowspan,
         "group_rowspan": group_rowspan,
         "value_column_formulas": value_column_formulas,
@@ -785,15 +1114,18 @@ def build_gis_tek_page_context(kind: str, args) -> dict:
         "per_page_param": "all" if show_all else str(per_page_value or 25),
         "selected_year": selected_year,
         "filter_year_list": years,
-        "station_types": _available_station_types(model, version_id),
+        "station_types": _station_type_choices(),
         "station_type_filter": station_type_filter,
         "q": q,
         "numb1120_filter": numb1120_filter or [],
         "numb1120_filter_choices": numb1120_filter_choices,
+        "header_filter_params": HEADER_FILTER_PARAMS,
+        "header_filter_choices": header_filter_values,
+        "header_filter_selected": header_selected,
         "has_active_filters": has_active_filters,
         "can_edit": False,
         "form": EmptyCSRFForm(),
-        "rounding_digits": 1,
+        "rounding_digits": rounding_digits,
         "show_totals": show_totals,
         "show_empty_rows": show_empty_rows,
     }

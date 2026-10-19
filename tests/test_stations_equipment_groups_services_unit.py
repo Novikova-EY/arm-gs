@@ -13,7 +13,9 @@ from app.fuel.services.stations.stations_equipment_groups_services import (
     _reapply_display_merges_for_page_blocks,
     _split_group_block_by_station_hierarchy,
     _territorial_filter_or_fk_or_obl,
+    drop_legacy_duplicate_group_cell_blocks,
     filter_legacy_duplicate_equipment_group_ids,
+    filter_redundant_standalone_equipment_group_ids,
     prepare_equipment_group_blocks_for_display,
 )
 
@@ -820,3 +822,160 @@ def test_filter_legacy_duplicate_equipment_group_ids_keeps_current_version():
     ]
     kept = filter_legacy_duplicate_equipment_group_ids(rows, 37)
     assert kept == {28293, 17333, 30805}
+
+
+def test_filter_redundant_standalone_drops_shell_of_linked_group():
+    """Строка «Без станции» убирается, если та же группа есть со станцией."""
+    identity_rows = [
+        # Улан-Удэнская ТЭЦ-2: оболочка без связей и связанная копия того же кода
+        (14692, "85130732-f6cf-5b79-ac4b-3555f97c8076"),
+        (14693, "85130732-f6cf-5b79-ac4b-3555f97c8076"),
+        # группа без связей, второго представления нет
+        (17136, "990768bb-dffa-5938-8a5f-95b3d8f6bfa1"),
+    ]
+    kept = filter_redundant_standalone_equipment_group_ids(
+        identity_rows,
+        {14692, 14693, 17136},
+        standalone_ids={14692, 17136},
+    )
+    assert kept == {14693, 17136}
+
+
+def test_filter_redundant_standalone_keeps_shell_when_no_linked_row():
+    identity_rows = [
+        (14692, "same-code"),
+        (14693, "same-code"),
+    ]
+    kept = filter_redundant_standalone_equipment_group_ids(
+        identity_rows,
+        {14692, 14693},
+        standalone_ids={14692, 14693},
+    )
+    assert kept == {14692, 14693}
+
+
+def test_filter_redundant_standalone_keeps_row_without_external_code():
+    identity_rows = [
+        (100, None),
+        (101, ""),
+        (102, "code-of-linked"),
+    ]
+    kept = filter_redundant_standalone_equipment_group_ids(
+        identity_rows,
+        {100, 101, 102},
+        standalone_ids={100, 101, 102},
+    )
+    assert kept == {100, 101, 102}
+
+
+def test_filter_redundant_standalone_keeps_shell_when_linked_row_filtered_out():
+    """Связанная копия ушла из выборки — оболочку оставляем."""
+    identity_rows = [
+        (14692, "85130732-f6cf-5b79-ac4b-3555f97c8076"),
+        (14693, "85130732-f6cf-5b79-ac4b-3555f97c8076"),
+    ]
+    kept = filter_redundant_standalone_equipment_group_ids(
+        identity_rows,
+        {14692},
+        standalone_ids={14692},
+    )
+    assert kept == {14692}
+
+
+def test_filter_redundant_standalone_without_standalone_ids_is_noop():
+    identity_rows = [(1, "code"), (2, "code")]
+    assert filter_redundant_standalone_equipment_group_ids(
+        identity_rows, {1, 2}, standalone_ids=set()
+    ) == {1, 2}
+    assert filter_redundant_standalone_equipment_group_ids([], {1, 2}, {1}) == {1, 2}
+
+
+def _group_block(group_id, *, name, numb, version_id, station_id=29462, type_id=1388):
+    group = SimpleNamespace(
+        id=group_id,
+        name=name,
+        name_ext=None,
+        numb=numb,
+        main=None,
+        comp=None,
+        database_version_id=version_id,
+    )
+    if station_id is None:
+        station_entry = {"station": None, "links": []}
+    else:
+        station_entry = {
+            "station": _station(station_id, "Станция"),
+            "links": [{"equipment_group_type": SimpleNamespace(id=type_id)}],
+        }
+    return {"equipment_group": group, "station_entries": [station_entry]}
+
+
+def test_drop_legacy_duplicate_group_cell_blocks_drops_legacy_shell():
+    """Улан-Удэнская ТЭЦ-2: оболочка без версии даёт ту же строку, что и группа версии 37."""
+    legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
+    current = _group_block(30555, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=37)
+    other = _group_block(30557, name="Улан-Удэнская ТЭЦ-2 (ТЭЦ-130 ата)", numb=1164, version_id=37)
+
+    kept, dropped_ids = drop_legacy_duplicate_group_cell_blocks(
+        [legacy, current, other], 37
+    )
+
+    assert dropped_ids == {14693}
+    assert [block["equipment_group"].id for block in kept] == [30555, 30557]
+
+
+def test_drop_legacy_duplicate_group_cell_blocks_keeps_unmatched_legacy():
+    """Дубля в текущей версии нет — legacy-строку оставляем."""
+    legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
+    current = _group_block(30555, name="Другая группа", numb=999, version_id=37)
+
+    kept, dropped_ids = drop_legacy_duplicate_group_cell_blocks([legacy, current], 37)
+
+    assert dropped_ids == set()
+    assert kept == [legacy, current]
+
+
+def test_drop_legacy_duplicate_group_cell_blocks_requires_all_slots_covered():
+    """У legacy-блока есть ещё тип группы, которого нет у блока версии — строку не убираем."""
+    legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
+    legacy["station_entries"][0]["links"].append(
+        {"equipment_group_type": SimpleNamespace(id=1055)}
+    )
+    current = _group_block(30555, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=37)
+
+    kept, dropped_ids = drop_legacy_duplicate_group_cell_blocks([legacy, current], 37)
+
+    assert dropped_ids == set()
+    assert kept == [legacy, current]
+
+
+def test_drop_legacy_duplicate_group_cell_blocks_keeps_current_version_rows():
+    """Строки текущей версии не убираются, даже если совпадают друг с другом."""
+    first = _group_block(30555, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=37)
+    second = _group_block(30556, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=37)
+
+    kept, dropped_ids = drop_legacy_duplicate_group_cell_blocks([first, second], 37)
+
+    assert dropped_ids == set()
+    assert kept == [first, second]
+
+
+def test_drop_legacy_duplicate_group_cell_blocks_ignores_standalone():
+    """Блоки без станции не участвуют: у них нет слота «станция + тип»."""
+    legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None, station_id=None)
+    current = _group_block(30555, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=37, station_id=None)
+
+    kept, dropped_ids = drop_legacy_duplicate_group_cell_blocks([legacy, current], 37)
+
+    assert dropped_ids == set()
+    assert kept == [legacy, current]
+
+
+def test_drop_legacy_duplicate_group_cell_blocks_without_version_is_noop():
+    legacy = _group_block(14693, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=None)
+    current = _group_block(30555, name="Улан-Удэнская ТЭЦ-2", numb=671, version_id=37)
+
+    assert drop_legacy_duplicate_group_cell_blocks([legacy, current], None) == (
+        [legacy, current],
+        set(),
+    )

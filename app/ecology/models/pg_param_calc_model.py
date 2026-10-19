@@ -73,19 +73,19 @@ class PGParamCalc(db.Model, AuditMixin):
         viewonly=True,
     )
 
-    # Расход газа, тут (GAZ_ek)
+    # Расход газа, т у.т. (GAZ_ek)
     gas_consumption_tce = db.Column(Numeric(36, 16), nullable=True)
 
     # Выбросы СО2 от сжигания газа, т (CO2_gaz)
     co2_from_gas_t = db.Column(Numeric(36, 16), nullable=True)
 
-    # Расход мазута, тут (MAZUT_ek)
+    # Расход мазута, т у.т. (MAZUT_ek)
     oil_fuel_consumption_tce = db.Column(Numeric(36, 16), nullable=True)
 
     # Выбросы СО2 от сжигания мазута, т (CO2_mazut)
     co2_from_oil_fuel_t = db.Column(Numeric(36, 16), nullable=True)
 
-    # Расход твердого топлива, тут (TvTopl_ek)
+    # Расход твердого топлива, т у.т. (TvTopl_ek)
     solid_fuel_consumption_tce = db.Column(Numeric(36, 16), nullable=True)
     
     # Выбросы СО2 от сжигания твердого топлива, т (CO2_ugol)

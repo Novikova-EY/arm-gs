@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import io
+from decimal import Decimal
 
 from openpyxl import Workbook
 
@@ -44,6 +45,19 @@ def test_safe_int_and_decimal():
     assert safe_decimal("1 429,669") == safe_decimal("1429.669")
 
 
+def test_safe_decimal_drops_float_noise_from_excel_cells():
+    # Числовая ячейка Excel — double: 3.1300000000000003 — это 3.13 плюс шум double.
+    assert safe_decimal(3.1300000000000003) == Decimal("3.13")
+    assert safe_decimal(105.10000000000001) == Decimal("105.1")
+    assert safe_decimal(9370.800000000001) == Decimal("9370.8")
+    # Точные значения и текст со всеми знаками не трогаем.
+    assert safe_decimal(1.522) == Decimal("1.522")
+    assert safe_decimal(863585.0) == Decimal("863585")
+    assert safe_decimal("1,02963561999219") == Decimal("1.02963561999219")
+    # Для текста ограничение по знакам после запятой остаётся прежним (max_digits).
+    assert safe_decimal("0.12345678901234567890") == Decimal("0.1234567890123457")
+
+
 def test_read_gis_tek_sheet_pg_headers():
     wb = Workbook()
     ws = wb.active
@@ -57,7 +71,7 @@ def test_read_gis_tek_sheet_pg_headers():
             "Электростанция (БАЗА)",
             "Тип станции",
             "Год",
-            "Расход газа, тут",
+            "Расход газа, т у.т.",
             "Выбросы СО2 от сжигания газа, т",
         ]
     )

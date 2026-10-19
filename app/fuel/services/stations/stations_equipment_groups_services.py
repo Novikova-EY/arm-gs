@@ -391,6 +391,54 @@ def get_standalone_equipment_group_ids(version_id=None, strict_version=False):
     return {r[0] for r in q.all()}
 
 
+def get_composite_station_equipment_group_ids(version_id=None, strict_version=False):
+    """
+    Возвращает множество ID групп оборудования, входящих в составные станции:
+    родители (COMP=1, MAIN пуст) и все группы, входящие в них (MAIN = numb родителя).
+
+    :param strict_version: если True, при выбранной версии только database_version_id == version_id.
+    """
+    from app.extensions import db
+
+    if version_id is None:
+        version_id = get_current_db_version_id()
+
+    def _with_version(q):
+        if version_id is None:
+            return q.filter(EquipmentGroup.database_version_id.is_(None))
+        if strict_version:
+            return q.filter(EquipmentGroup.database_version_id == version_id)
+        return q.filter(
+            or_(
+                EquipmentGroup.database_version_id == version_id,
+                EquipmentGroup.database_version_id.is_(None),
+            )
+        )
+
+    parent_rows = _with_version(
+        db.session.query(EquipmentGroup.id, EquipmentGroup.numb).filter(
+            EquipmentGroup.comp == 1,
+            or_(EquipmentGroup.main.is_(None), EquipmentGroup.main == 0),
+        )
+    ).all()
+    parent_ids = {row[0] for row in parent_rows}
+    parent_numbs = {
+        numb for numb in (_as_int(row[1]) for row in parent_rows) if numb is not None
+    }
+    if not parent_numbs:
+        return parent_ids
+
+    child_ids = {
+        row[0]
+        for row in _with_version(
+            db.session.query(EquipmentGroup.id).filter(
+                EquipmentGroup.main.in_(parent_numbs)
+            )
+        ).all()
+    }
+    return parent_ids | child_ids
+
+
 def get_standalone_equipment_group_blocks(version_id=None, only_ids=None):
     """
     Возвращает блоки для одиночных групп оборудования в формате, совместимом
@@ -749,7 +797,8 @@ def get_filtered_equipment_group_ids_all(
     и standalone), отфильтрованных по атрибутам самой EquipmentGroup.
 
     Фильтры: территориальные (EST, ОЭС, РЭС, ФО, субъект), название группы,
-    тип электростанции ТЭС (для привязанных групп — только если станция ТЭС; standalone всегда включаются).
+    тип электростанции ТЭС (для привязанных групп — только если станция ТЭС; standalone всегда включаются),
+    composite_only (только составные станции: родитель comp=1 и входящие в него группы).
 
     :param standalone_ids_precalc: если передан (например из build_equipment_group_hierarchy_eg_first),
         не вызывается повторный запрос get_standalone_equipment_group_ids при фильтре по типу электростанции.
@@ -797,6 +846,12 @@ def get_filtered_equipment_group_ids_all(
         )
 
     territorial_ids = {r[0] for r in q.distinct().all()}
+
+    # «Составные станции»: родитель (comp=1) и все входящие в него группы
+    if _filters.get("composite_only"):
+        territorial_ids &= get_composite_station_equipment_group_ids(
+            version_id, strict_version=strict_version
+        )
 
     station_pick = _linked_equipment_group_ids_matching_station_filters(
         _filters, version_id, strict_version
@@ -2995,6 +3050,102 @@ def filter_legacy_duplicate_equipment_group_ids(identity_rows, version_id):
     return keep
 
 
+def filter_redundant_standalone_equipment_group_ids(
+    identity_rows, filtered_eg_ids, standalone_ids
+):
+    """
+    Убирает из выборки standalone-оболочки групп, если ту же группу (external_code)
+    в выборке представляет строка, привязанная к электростанции.
+
+    У такой оболочки нет ни станции, ни типа группы, ни агрегатов — на странице
+    это лишняя строка «Без станции» с тем же numb и названием, что и у связанной
+    строки группы; карточка оболочки при этом может не открываться (у группы нет
+    записи в текущей версии БД).
+
+    :param identity_rows: [(EquipmentGroup.id, external_code), ...] по выборке
+    :param filtered_eg_ids: ID групп, оставшихся в выборке
+    :param standalone_ids: ID групп без связи со станцией
+    :return: обновлённый набор ID выборки
+    """
+    selection = set(filtered_eg_ids or ())
+    standalone = set(standalone_ids or ())
+    if not identity_rows or not standalone:
+        return selection
+
+    code_by_id = {
+        eid: (code or "").strip()
+        for eid, code in identity_rows
+        if eid in selection
+    }
+    linked_codes = {
+        code for eid, code in code_by_id.items() if code and eid not in standalone
+    }
+    if not linked_codes:
+        return selection
+
+    return {
+        eid
+        for eid in selection
+        if not (eid in standalone and code_by_id.get(eid, "") in linked_codes)
+    }
+
+
+def drop_legacy_duplicate_group_cell_blocks(blocks, version_id):
+    """
+    Убирает legacy-блоки групп, которые дают на странице ту же строку, что и блок
+    текущей версии: та же ячейка «Группа оборудования» (numb + название) и тот же
+    слот «электростанция + тип группы».
+
+    Иначе у станции остаются две одинаковые строки (в версии 37 — оболочка
+    «Улан-Удэнская ТЭЦ-2» без версии и группа текущей версии), обе подсвечиваются
+    красным как дубль numb, а карточка оболочки не открывается.
+
+    :param blocks: блоки страницы (EquipmentGroup-first)
+    :param version_id: текущая версия БД
+    :return: (оставшиеся блоки, ID убранных групп)
+    """
+    if version_id is None or not blocks:
+        return blocks, set()
+
+    def _slot_keys(block):
+        keys = set()
+        for entry in block.get("station_entries") or []:
+            station_id = getattr(entry.get("station"), "id", None)
+            if not station_id:
+                continue
+            for link in entry.get("links") or []:
+                group_type = link.get("equipment_group_type")
+                keys.add((station_id, getattr(group_type, "id", None)))
+        return keys
+
+    def _cell_keys(block):
+        cell = _equipment_group_display_merge_key(block.get("equipment_group"))
+        return {(slot, cell) for slot in _slot_keys(block)}
+
+    current_cells = set()
+    for block in blocks:
+        equipment_group = block.get("equipment_group")
+        if getattr(equipment_group, "database_version_id", None) == version_id:
+            current_cells |= _cell_keys(block)
+    if not current_cells:
+        return blocks, set()
+
+    kept = []
+    dropped_ids = set()
+    for block in blocks:
+        equipment_group = block.get("equipment_group")
+        if getattr(equipment_group, "database_version_id", None) == version_id:
+            kept.append(block)
+            continue
+        # legacy-блок убираем, только если все его строки закрыты блоками текущей версии
+        cells = _cell_keys(block)
+        if cells and cells <= current_cells:
+            dropped_ids.add(getattr(equipment_group, "id", None))
+            continue
+        kept.append(block)
+    return kept, dropped_ids
+
+
 def build_equipment_group_hierarchy_eg_first(
     filters=None,
     start_year=None,
@@ -3047,6 +3198,13 @@ def build_equipment_group_hierarchy_eg_first(
         filtered_eg_ids = filter_legacy_duplicate_equipment_group_ids(
             [(row[0], row[1], row[2]) for row in identity_rows],
             version_id,
+        )
+        # Оболочки «Без станции» для групп, которые в выборке показаны со станцией
+        # (та же группа по external_code) — лишний дубль на странице.
+        filtered_eg_ids = filter_redundant_standalone_equipment_group_ids(
+            [(row[0], row[1]) for row in identity_rows],
+            filtered_eg_ids,
+            standalone_ids,
         )
         numb_rows = [(row[0], row[3]) for row in identity_rows if row[0] in filtered_eg_ids]
     choices = sorted(
@@ -3101,6 +3259,19 @@ def build_equipment_group_hierarchy_eg_first(
                 version_id, only_ids=filtered_standalone_ids
             )
         )
+
+    # Legacy-строка группы, которую в выборке уже показывает строка текущей версии
+    # (та же ячейка группы и тот же слот «станция + тип») — лишняя строка-дубль.
+    blocks, dropped_duplicate_ids = drop_legacy_duplicate_group_cell_blocks(
+        blocks, version_id
+    )
+    if dropped_duplicate_ids:
+        duplicate_ids = duplicate_numb_equipment_group_ids(
+            numb_rows, filtered_eg_ids - dropped_duplicate_ids
+        )
+        if duplicate_numb_ids_out is not None:
+            duplicate_numb_ids_out.clear()
+            duplicate_numb_ids_out.update(duplicate_ids)
 
     # Раскладываем блоки по иерархии электростанции, а не только по полям EquipmentGroup.
     # Это важно для ошибочно "склеенных" групп, связанных со станциями из разных регионов.

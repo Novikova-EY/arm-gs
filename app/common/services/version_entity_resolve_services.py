@@ -63,6 +63,35 @@ def load_by_id_with_version(
     return apply_db_version_filter(resolved_q, model_class, requested_version_id).first()
 
 
+def load_by_id_with_version_or_anchor(
+    model_class: type,
+    entity_id: int,
+    requested_version_id: Optional[int],
+    *,
+    query_factory: Optional[Callable[[], Any]] = None,
+) -> Optional[T]:
+    """
+    Как load_by_id_with_version, но если сущности нет в запрошенной версии —
+    возвращает якорную запись с этим id (строку другой версии / без версии).
+
+    Нужно там, где по ссылке из списка со смешанными версиями должна открываться
+    карточка: например группа оборудования есть только в других версиях БД,
+    и карточка отдавала 404 вместо самой записи.
+    """
+    entity = load_by_id_with_version(
+        model_class,
+        entity_id,
+        requested_version_id,
+        query_factory=query_factory,
+    )
+    if entity:
+        return entity
+
+    if query_factory is not None:
+        return query_factory().first()
+    return db.session.query(model_class).filter(model_class.id == entity_id).first()
+
+
 def load_station_with_version(
     query_factory: Callable[[], Any],
     requested_version_id: Optional[int],

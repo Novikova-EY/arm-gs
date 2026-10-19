@@ -228,6 +228,7 @@
             </td>
             {% else %}
             <td class="ee-control-cell p-1">
+              {% if can_edit_energy_balance %}
               <input type="text"
                      class="form-control form-control-sm text-center ee-control-value"
                      data-level="{{ row.level }}"
@@ -240,6 +241,9 @@
                      value="{{ row.input_values.get(period_num, '') }}"
                      inputmode="decimal"
                      aria-label="{{ row.label }} за {{ period_label }}">
+              {% else %}
+              {{ row.input_values.get(period_num, '') }}
+              {% endif %}
             </td>
             {% endif %}
             {% endfor %}

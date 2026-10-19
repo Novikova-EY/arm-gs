@@ -71,10 +71,10 @@ class OperatingTesFuelCharacteristic(db.Model, AuditMixin):
     # Низшая теплота сгорания QH, ккал/кг
     qh_kcal = db.Column(Numeric(36, 16), nullable=True)
 
-    # Удельный выброс оксидов азота bj, кг/тут
+    # Удельный выброс оксидов азота bj, кг/т у.т.
     bj = db.Column(Numeric(36, 16), nullable=True)
 
-    # Национальный коэффициент эмиссии CO2 (KCO2), т/тут
+    # Национальный коэффициент эмиссии CO2 (KCO2), т/т у.т.
     k_co2 = db.Column(Numeric(36, 16), nullable=True)
 
     # Коэффициент доли потери тепла от химической неполноты сгорания R, %
@@ -83,7 +83,7 @@ class OperatingTesFuelCharacteristic(db.Model, AuditMixin):
     # Потери тепла от химической неполноты сгорания q3, %
     q_chem = db.Column(Numeric(36, 16), nullable=True)
 
-    # Коэффициент перевода в условное топливо, тут/т
+    # Коэффициент перевода в условное топливо, т у.т./т
     tut_per_t = db.Column(Numeric(36, 16), nullable=True)
 
     # Энергосодержание, ТДж/тыс. т натур. топлива

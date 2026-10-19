@@ -564,7 +564,7 @@ block content %} {% if current_user.is_authenticated %}
           %}
           {%
           if
-          row.editable_values and (row.value_save_kind != 'generation' or can_edit)
+          can_edit_energy_balance and row.editable_values and (row.value_save_kind != 'generation' or can_edit)
           %}data-editable="1"
           {%
           endif
@@ -608,6 +608,7 @@ block content %} {% if current_user.is_authenticated %}
                 >{{ row.origin_sheet_name }}:</span
               >
               {% endif %}
+              {% if can_edit_energy_balance %}
               <input
                 type="text"
                 class="form-control form-control-sm pb-custom-label"
@@ -615,7 +616,7 @@ block content %} {% if current_user.is_authenticated %}
                 placeholder="Введите наименование"
                 aria-label="Наименование строки"
               />
-              {% if row.can_add_custom_flow %}
+              {% if can_edit_energy_balance and row.can_add_custom_flow %}
               <button
                 type="button"
                 class="btn btn-outline-success btn-sm pb-custom-add"
@@ -635,6 +636,9 @@ block content %} {% if current_user.is_authenticated %}
               >
                 <i class="bi bi-trash"></i>
               </button>
+              {% else %}
+              {{ row.label }}
+              {% endif %}
             </div>
             {% else %} {% if row.key == 'flow_total' %}
             <button
@@ -750,7 +754,7 @@ block content %} {% if current_user.is_authenticated %}
               style="cursor: help; font-size: 0.9em; vertical-align: -0.1em"
               aria-label="Формула расчёта"
             ></i
-            >{% endif %} {% if row.can_add_custom_flow %}
+            >{% endif %} {% if can_edit_energy_balance and row.can_add_custom_flow %}
             <span class="pb-row-actions">
               <button
                 type="button"
@@ -770,7 +774,7 @@ block content %} {% if current_user.is_authenticated %}
           >
             {{ row.unit if row.unit is defined else '' }}
           </td>
-          {% for year in years %} {% set year_editable = row.editable_values and
+          {% for year in years %} {% set year_editable = can_edit_energy_balance and row.editable_values and
           (row.value_save_kind != 'generation' or can_edit) and
           (row.editable_years is not defined or not row.editable_years or
           year in row.editable_years) %}

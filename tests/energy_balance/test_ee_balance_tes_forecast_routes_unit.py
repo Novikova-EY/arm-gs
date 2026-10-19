@@ -35,7 +35,11 @@ def test_ural_without_tyumen_generation_value_is_saved_under_custom_slug():
             json={"year": 2026, "row_key": "generation_tes", "value": "12"},
         ),
         patch.object(routes, "_can_edit_ves_ses_energy", return_value=True),
-        patch.object(routes, "get_ee_balance_sheet", return_value={"slug": "ural"}),
+        patch.object(
+            routes,
+            "get_ee_balance_sheet",
+            return_value={"slug": "ural", "sheet_name": "Урал"},
+        ),
         patch.object(
             routes,
             "update_ee_balance_manual_generation_value",
@@ -47,9 +51,13 @@ def test_ural_without_tyumen_generation_value_is_saved_under_custom_slug():
         )
 
     assert response.get_json()["ok"] is True
-    update.assert_called_once_with(
-        "ural-without-tyumen", "generation_tes", 2026, "12"
+    assert update.call_args.args == (
+        "ural-without-tyumen",
+        "generation_tes",
+        2026,
+        "12",
     )
+    assert update.call_args.kwargs["sheet_name"] == "Урал"
 
 
 def test_tes_forecast_update_returns_formula_cells():

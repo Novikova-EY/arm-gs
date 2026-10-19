@@ -322,6 +322,16 @@ def paginate_fuel_eg_station_hierarchy(
     )
     page_items = flat_items[start_idx:end_idx]
 
+    # Итоги ОЭС/ЕЭС считаются по всей выборке, но отображаются один раз —
+    # на странице, завершающей соответствующий блок. Россия — на последней странице.
+    last_est_item_index = {}
+    last_ues_item_index = {}
+    for index, item in enumerate(flat_items):
+        est_id = item.get("est_id")
+        ues_key = (est_id, item.get("ues_id"))
+        last_est_item_index[est_id] = index
+        last_ues_item_index[ues_key] = index
+
     # est_id -> ues_id -> res_id -> (station_id, station_name, cluster_key) -> [group_block, ...]
     grouped: dict = defaultdict(
         lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -339,6 +349,11 @@ def paginate_fuel_eg_station_hierarchy(
 
     paged_hierarchy: list = []
     for est_block in hierarchy_flat or []:
+        if est_block.get("is_russia_row"):
+            if end_idx >= total_count:
+                paged_hierarchy.append(est_block)
+            continue
+
         est_id = est_block.get("est_id")
         if est_id not in grouped:
             continue
@@ -432,24 +447,41 @@ def paginate_fuel_eg_station_hierarchy(
                         ],
                         "station_blocks": station_blocks_out,
                         "res_summary": res_summary,
+                        "hide_res_summary": res_block.get("hide_res_summary", False),
                     }
                 )
 
             if res_list_out:
+                ues_complete = (
+                    end_idx > last_ues_item_index.get((est_id, ues_id), total_count)
+                )
                 ues_list_out.append(
                     {
                         "ues_id": ues_id,
                         "ues_name": ues_block.get("ues_name"),
                         "res_list": res_list_out,
+                        "aggregate_rows": (
+                            ues_block.get("aggregate_rows") or []
+                            if ues_complete
+                            else []
+                        ),
                     }
                 )
 
         if ues_list_out:
+            est_complete = (
+                end_idx > last_est_item_index.get(est_id, total_count)
+            )
             paged_hierarchy.append(
                 {
                     "est_id": est_id,
                     "est_name": est_block.get("est_name"),
                     "ues_list": ues_list_out,
+                    "aggregate_rows": (
+                        est_block.get("aggregate_rows") or []
+                        if est_complete
+                        else []
+                    ),
                 }
             )
 

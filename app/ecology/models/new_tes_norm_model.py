@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Нормативы удельных выбросов расчёта по новым ТЭС (кг/тут, т/тут)."""
+"""Нормативы удельных выбросов расчёта по новым ТЭС (кг/т у.т., т/т у.т.)."""
 from sqlalchemy import ForeignKeyConstraint, Numeric, UniqueConstraint
 from sqlalchemy.sql import func
 
@@ -52,15 +52,15 @@ class NewTesNorm(db.Model, AuditMixin):
         viewonly=True,
     )
 
-    # Зола, кг/тут
+    # Зола, кг/т у.т.
     ash = db.Column(Numeric(36, 16), nullable=True)
-    # Сера (SO2), кг/тут
+    # Сера (SO2), кг/т у.т.
     so2 = db.Column(Numeric(36, 16), nullable=True)
-    # Азот (NOx), кг/тут
+    # Азот (NOx), кг/т у.т.
     nox = db.Column(Numeric(36, 16), nullable=True)
-    # Монооксид углерода, кг/тут
+    # Монооксид углерода, кг/т у.т.
     co = db.Column(Numeric(36, 16), nullable=True)
-    # Парниковые газы (CO2), т/тут
+    # Парниковые газы (CO2), т/т у.т.
     pg = db.Column(Numeric(36, 16), nullable=True)
 
     note = db.Column(db.Text, nullable=True)

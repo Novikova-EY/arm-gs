@@ -34,7 +34,7 @@ TERRITORIES: tuple[dict[str, Any], ...] = (
 )
 
 CALC_SHEETS: tuple[dict[str, Any], ...] = (
-    {'slug': 'toplivo', 'sheet_name': 'Данные по модулю Топливо', 'page_title': 'Топливные показатели (модуль Топливо)', 'unit': 'тыс.тут', 'layout': 'fuel'},
+    {'slug': 'toplivo', 'sheet_name': 'Данные по модулю Топливо', 'page_title': 'Топливные показатели (модуль Топливо)', 'unit': 'тыс. т у.т.', 'layout': 'fuel'},
     {'slug': 'spravochnik', 'sheet_name': 'Справочник', 'page_title': 'Справочник характеристик топлива', 'unit': '', 'layout': 'spravochnik'},
     {'slug': 'khar-topl', 'sheet_name': 'Характеристики', 'page_title': 'Характеристика топлив, продуктов сгорания, удельных выбросов', 'unit': '', 'layout': 'chars'},
     {'slug': 'koeff', 'sheet_name': 'Коэффициенты', 'unit': '', 'layout': 'coeff'},
@@ -46,7 +46,7 @@ CALC_SHEETS: tuple[dict[str, Any], ...] = (
     {'slug': 'pg-tj', 'sheet_name': 'ПГ через ТДж', 'page_title': 'Выбросы ПАРНИКОВЫХ ГАЗОВ (оксидов углерода) в атмосферу МвыбCO2, млн т/год', 'unit': 'млн т', 'layout': 'emission_tj'},
     {'slug': 'obemy', 'sheet_name': 'Объемы', 'unit': 'тыс. т', 'layout': 'volumes'},
     {'slug': 'udel-e', 'sheet_name': 'Удельные по привед Э', 'unit': 'г/кВт·ч', 'layout': 'specific_e'},
-    {'slug': 'udel-fuel', 'sheet_name': 'Удельные по топл', 'unit': 'кг/тут', 'layout': 'specific_fuel'},
+    {'slug': 'udel-fuel', 'sheet_name': 'Удельные по топл', 'unit': 'кг/т у.т.', 'layout': 'specific_fuel'},
     {'slug': 'udel-ee', 'sheet_name': 'Удельные только по ЭЭ', 'unit': 'г/кВт·ч', 'layout': 'specific_ee'},
 )
 
@@ -506,7 +506,7 @@ CHAR_COLUMNS: tuple[tuple[str, str], ...] = (
     ('k_co2', 'КСО2'),
     ('r_chem', 'R, %'),
     ('q_chem', 'q3, %'),
-    ('tut_per_t', 'тут/тн'),
+    ('tut_per_t', 'т у.т./тн'),
     ('tj_per_kt', 'ТДж/тыс т натур'),
     ('t_co2_per_tj', 'т СО2/ТДж'),
     ('k_natural', 'K'),

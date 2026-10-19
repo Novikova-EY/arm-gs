@@ -17,6 +17,7 @@
     <td class="ee-control-cell p-1"
         data-res-id="{{ res_id }}"
         data-period="{{ period_num }}">
+        {% if can_edit_energy_balance %}
         <input type="text"
                class="form-control form-control-sm text-center ee-control-value"
                data-res-id="{{ res_id }}"
@@ -24,6 +25,9 @@
                value="{{ format_generation_input_value(control_value, rounding_digits) }}"
                inputmode="decimal"
                aria-label="Контрольное значение за {{ period_label }}">
+        {% else %}
+        {{ format_generation_input_value(control_value, rounding_digits) }}
+        {% endif %}
     </td>
     {% endfor %}
 </tr>

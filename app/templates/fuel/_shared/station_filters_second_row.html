@@ -197,7 +197,7 @@
 
             <!-- Правая часть (импорт) -->
             <div class="d-flex align-items-center gap-2 ms-auto flex-wrap flex-shrink-0">
-                {% if current_user.has_admin %}
+                {% if (show_energy_balance_excel_io and can_edit_energy_balance) or (not show_energy_balance_excel_io and current_user.has_admin) %}
                 {% if show_specific_fuel_consumption_import|default(false) and hide_specific_fuel_consumption_import_button|default(false) %}
                 {% elif show_specific_fuel_consumption_import|default(false) %}
                 <form action="{{ import_specific_fuel_consumption_action|default(url_for('fuel_bp.import_equipment_group_specific_fuel_consumption')) }}"

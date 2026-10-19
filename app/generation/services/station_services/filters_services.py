@@ -514,6 +514,13 @@ def extract_filters_from_args(args):
             "yes",
             "on",
         ),
+        # Только группы оборудования составных станций (comp=1) и входящие в них группы
+        "composite_only": str(args.get("composite_only") or "0").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ),
         # Станции с суммарной установленной мощностью (на as-of год) > 100 МВт
         "um_gt_100": args.get("um_gt_100", "0") == "1",
         "sort_by": args.get("sort_by", "id"),

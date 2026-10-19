@@ -1050,6 +1050,7 @@ def update_res_control_generation_value(
     *,
     period_mode: str = EE_PERIOD_MODE_YEARS,
     selected_year: int | None = None,
+    user: Any = None,
 ) -> dict[str, Any]:
     """Upsert контрольной выработки РЭС; пустое значение удаляет запись."""
     from decimal import InvalidOperation
@@ -1085,12 +1086,16 @@ def update_res_control_generation_value(
     )
     q = filter_by_db_version(q, RegionalEnergySystemEnergyGeneration)
     existing = q.one_or_none()
+    previous_value = None if existing is None else existing.electricity_generation
 
     if parsed is None:
         if existing is not None:
             db.session.delete(existing)
             _commit_with_retry()
             clear_energy_balance_cache()
+            _log_res_control_change(
+                user, res_id_int, year_number, month_number, previous_value, None
+            )
         return {
             "res_id": res_id_int,
             "period_key": int(period_key),
@@ -1114,6 +1119,9 @@ def update_res_control_generation_value(
 
     _commit_with_retry()
     clear_energy_balance_cache()
+    _log_res_control_change(
+        user, res_id_int, year_number, month_number, previous_value, parsed
+    )
     return {
         "res_id": res_id_int,
         "period_key": int(period_key),
@@ -1121,6 +1129,44 @@ def update_res_control_generation_value(
         "month_number": month_number,
         "value": parsed,
     }
+
+
+def _log_res_control_change(
+    user: Any,
+    res_id: int,
+    year_number: int,
+    month_number: int,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    """Журнал контрольной выработки РЭС: «было → стало»."""
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    if month_number == RES_ENERGY_GENERATION_PERIOD_YEAR:
+        period_label = f"{year_number} г."
+    else:
+        period_label = f"{year_number} г., месяц {month_number}"
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, контрольная выработка по РЭС",
+        period_label,
+        old_value,
+        new_value,
+        context=f"Лист: выработка ЭЭ; РЭС: {_res_name(res_id) or f'id={res_id}'}",
+    )
+
+
+def _res_name(res_id: int) -> str | None:
+    try:
+        from app.extensions import db
+        from app.refdata.models.energy_systems.regional_energy_system_model import (
+            RegionalEnergySystem,
+        )
+
+        row = db.session.get(RegionalEnergySystem, int(res_id))
+        return getattr(row, "name", None)
+    except Exception:
+        return None
 
 
 def get_station_ee_generation_page_data(

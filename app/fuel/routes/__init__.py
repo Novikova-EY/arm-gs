@@ -3,6 +3,7 @@ from flask import Blueprint
 fuel_bp = Blueprint("fuel_bp", __name__)
 
 from .fuel_routes import *  # noqa: F401,F403
+from .station_power_comparison_routes import *  # noqa: F401,F403
 from .fuel_calculation_routes import *  # noqa: F401,F403
 from .calculation.fuel_calculation_edit_data_routes import *  # noqa: F401,F403
 from .calculation.distribution_stage_routes import *  # noqa: F401,F403

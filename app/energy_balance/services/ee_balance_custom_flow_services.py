@@ -28,6 +28,7 @@ _CONFIG = CustomFlowConfig(
     value_model=EeBalanceCustomFlowValue,
     value_field="value_mln_kvtch",
     directions=CUSTOM_FLOW_DIRECTIONS,
+    action="Изменения в балансе ЭЭ, строки перетока",
 )
 
 custom_flow_row_key = _shared.custom_flow_row_key
@@ -47,16 +48,21 @@ def add_custom_flow_row(
     direction: str,
     label: str = "",
     parent_key: str | None = None,
+    user: Any = None,
 ) -> dict[str, Any]:
-    return _shared.add_custom_flow_row(_CONFIG, slug, direction, label, parent_key)
+    return _shared.add_custom_flow_row(
+        _CONFIG, slug, direction, label, parent_key, user=user
+    )
 
 
-def delete_custom_flow_row(slug: str, row_id: int) -> bool:
-    return _shared.delete_custom_flow_row(_CONFIG, slug, row_id)
+def delete_custom_flow_row(slug: str, row_id: int, user: Any = None) -> bool:
+    return _shared.delete_custom_flow_row(_CONFIG, slug, row_id, user=user)
 
 
-def update_custom_flow_label(slug: str, row_id: int, label: str) -> dict[str, Any] | None:
-    return _shared.update_custom_flow_label(_CONFIG, slug, row_id, label)
+def update_custom_flow_label(
+    slug: str, row_id: int, label: str, user: Any = None
+) -> dict[str, Any] | None:
+    return _shared.update_custom_flow_label(_CONFIG, slug, row_id, label, user=user)
 
 
 def update_custom_flow_value(
@@ -64,5 +70,8 @@ def update_custom_flow_value(
     row_id: int,
     year: int,
     raw_value: Any,
+    user: Any = None,
 ) -> dict[str, Any]:
-    return _shared.update_custom_flow_value(_CONFIG, slug, row_id, year, raw_value)
+    return _shared.update_custom_flow_value(
+        _CONFIG, slug, row_id, year, raw_value, user=user
+    )

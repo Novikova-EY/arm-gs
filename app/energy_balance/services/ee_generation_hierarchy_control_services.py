@@ -145,6 +145,7 @@ def update_hierarchy_control_generation_value(
     *,
     period_mode: str = "years",
     selected_year: int | None = None,
+    user: Any = None,
 ) -> dict[str, Any]:
     """Upsert контрольной выработки по уровню иерархии; пустое значение удаляет запись."""
     level_key = (level or "").strip().lower()
@@ -173,12 +174,16 @@ def update_hierarchy_control_generation_value(
         q = q.filter(EnergySystemEnergyGenerationControl.entity_id == entity)
     q = filter_by_db_version(q, EnergySystemEnergyGenerationControl)
     existing = q.one_or_none()
+    previous_value = None if existing is None else existing.electricity_generation
 
     if parsed is None:
         if existing is not None:
             db.session.delete(existing)
             _commit_with_retry()
             clear_energy_balance_cache()
+            _log_hierarchy_control_change(
+                user, level_key, entity, year_number, month_number, previous_value, None
+            )
         return {
             "level": level_key,
             "entity_id": entity,
@@ -202,9 +207,74 @@ def update_hierarchy_control_generation_value(
 
     _commit_with_retry()
     clear_energy_balance_cache()
+    _log_hierarchy_control_change(
+        user, level_key, entity, year_number, month_number, previous_value, parsed
+    )
     return {
         "level": level_key,
         "entity_id": entity,
         "period_key": int(period_key),
         "value": parsed,
     }
+
+
+_HIERARCHY_LEVEL_LABELS = {
+    "russia": "Россия в целом",
+    "est": "Часть энергосистемы России",
+    "sa": "Синхронная зона",
+    "ues": "ОЭС",
+}
+
+
+def _log_hierarchy_control_change(
+    user: Any,
+    level: str,
+    entity_id: int | None,
+    year_number: int,
+    month_number: int,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    """Журнал контрольной выработки по уровням иерархии: «было → стало»."""
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    if month_number == HIERARCHY_CONTROL_PERIOD_YEAR:
+        period_label = f"{year_number} г."
+    else:
+        period_label = f"{year_number} г., месяц {month_number}"
+    level_label = _HIERARCHY_LEVEL_LABELS.get(level, level)
+    entity_label = _hierarchy_entity_name(level, entity_id) or (
+        f"id={entity_id}" if entity_id is not None else "Россия в целом"
+    )
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, контрольная выработка по иерархии",
+        period_label,
+        old_value,
+        new_value,
+        context=f"Лист: выработка ЭЭ; {level_label}: {entity_label}",
+    )
+
+
+def _hierarchy_entity_name(level: str, entity_id: int | None) -> str | None:
+    if entity_id is None:
+        return None
+    if level == "est":
+        from app.refdata.models.energy_systems.energy_system_type_model import (
+            EnergySystemType as entity_model,
+        )
+    elif level == "sa":
+        from app.refdata.models.energy_systems.synchronous_area_model import (
+            SynchronousArea as entity_model,
+        )
+    elif level == "ues":
+        from app.refdata.models.energy_systems.union_energy_system_model import (
+            UnionEnergySystem as entity_model,
+        )
+    else:
+        return None
+    try:
+        row = db.session.get(entity_model, int(entity_id))
+        return getattr(row, "name", None)
+    except Exception:
+        return None

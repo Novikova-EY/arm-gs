@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.ecology.models.pg_report_gis_tek_model import PGReportGisTek
 from app.ecology.models.zv_report_gis_tek_model import ZVReportGisTek
+from app.ecology.services.ecology_decimal_helpers import drop_float_noise
 from app.ecology.services.gis_tek_constants import (
     REPORT_PG,
     REPORT_ZV,
@@ -40,7 +41,7 @@ REPORT_MODELS = {
 # Старые заголовки Excel «БАЗА_ГИС ТЭК» (до переименования нефтетоплива в мазут).
 VALUE_LABEL_ALIASES = {
     REPORT_PG: {
-        "oil_fuel_consumption_tce": ("Расход нефтетоплива, тут",),
+        "oil_fuel_consumption_tce": ("Расход нефтетоплива, т у.т.",),
         "co2_from_oil_fuel_t": ("Выбросы СО2 от сжигания нефтетоплива, т",),
     },
 }
@@ -233,11 +234,16 @@ def safe_decimal(value, max_digits: int = 16) -> Decimal | None:
         if not s or s.lower() in ("nan", "—", "-", "–"):
             return None
         value = s.replace(",", ".")
+    # Числовая ячейка Excel — double: у результата арифметики бывает хвост
+    # вроде 105.10000000000001, который в БД хранить нечего.
+    from_float = isinstance(value, float)
     try:
         if isinstance(value, Decimal):
             dec_val = value
         else:
             dec_val = Decimal(str(value))
+        if from_float:
+            dec_val = drop_float_noise(dec_val)
         raw_scale = -dec_val.as_tuple().exponent if dec_val.as_tuple().exponent < 0 else 0
         scale = min(raw_scale, max_digits)
         if scale <= 0:

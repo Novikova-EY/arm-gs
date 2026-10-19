@@ -26,6 +26,7 @@ class CustomFlowConfig:
     value_model: type
     value_field: str
     directions: tuple[str, ...]
+    action: str = ""
 
 
 def custom_flow_row_key(direction: str, row_id: int) -> str:
@@ -208,6 +209,7 @@ def add_custom_flow_row(
     direction: str,
     label: str = "",
     parent_key: str | None = None,
+    user: Any = None,
 ) -> dict[str, Any]:
     from app.energy_balance.services.power_balance_page_services import (
         resolve_custom_flow_parent_key,
@@ -260,6 +262,12 @@ def add_custom_flow_row(
     db.session.add(row)
     _commit_with_retry()
     db.session.refresh(row)
+    _log_custom_flow(
+        config,
+        user,
+        slug,
+        [f"добавлена строка: {label or 'без наименования'} (направление: {direction})"],
+    )
     return _serialize_row(config, row)
 
 
@@ -286,7 +294,9 @@ def _descendant_rows(config: CustomFlowConfig, slug: str, parent_key: str) -> li
     return collected
 
 
-def delete_custom_flow_row(config: CustomFlowConfig, slug: str, row_id: int) -> bool:
+def delete_custom_flow_row(
+    config: CustomFlowConfig, slug: str, row_id: int, user: Any = None
+) -> bool:
     row = _get_row(config, slug, row_id)
     if row is None:
         return False
@@ -295,6 +305,9 @@ def delete_custom_flow_row(config: CustomFlowConfig, slug: str, row_id: int) -> 
         db.session.delete(child)
     db.session.delete(row)
     _commit_with_retry()
+    _log_custom_flow(
+        config, user, slug, [f"удалена строка: {row.label or 'без наименования'}"]
+    )
     return True
 
 
@@ -303,12 +316,26 @@ def update_custom_flow_label(
     slug: str,
     row_id: int,
     label: str,
+    user: Any = None,
 ) -> dict[str, Any] | None:
     row = _get_row(config, slug, row_id)
     if row is None:
         return None
+    previous_label = row.label
     row.label = str(label or "").strip()
     _commit_with_retry()
+    from app.energy_balance.services.change_log_services import value_change
+
+    _log_custom_flow(
+        config,
+        user,
+        slug,
+        [
+            value_change(
+                "Наименование строки", previous_label, row.label, number=False
+            )
+        ],
+    )
     return _serialize_row(config, row)
 
 
@@ -318,6 +345,7 @@ def update_custom_flow_value(
     row_id: int,
     year: int,
     raw_value: Any,
+    user: Any = None,
 ) -> dict[str, Any]:
     row = _get_row(config, slug, row_id)
     if row is None:
@@ -350,10 +378,15 @@ def update_custom_flow_value(
     )
     if parsed is None:
         if existing is not None:
+            previous_value = getattr(existing, config.value_field, None)
             db.session.delete(existing)
             _commit_with_retry()
+            _log_custom_flow_value(
+                config, user, slug, row, year_int, previous_value, None
+            )
         return {"year": year_int, "value": None}
     if existing is None:
+        previous_value = None
         existing = config.value_model(
             id_row=row.id,
             year_number=year_int,
@@ -362,6 +395,51 @@ def update_custom_flow_value(
         setattr(existing, config.value_field, parsed)
         db.session.add(existing)
     else:
+        previous_value = getattr(existing, config.value_field, None)
         setattr(existing, config.value_field, parsed)
     _commit_with_retry()
+    _log_custom_flow_value(config, user, slug, row, year_int, previous_value, parsed)
     return {"year": year_int, "value": parsed}
+
+
+def _custom_flow_action(config: CustomFlowConfig) -> str:
+    return config.action or "Изменения в строках перетока"
+
+
+def _log_custom_flow(
+    config: CustomFlowConfig,
+    user: Any,
+    slug: str,
+    lines: list[str],
+) -> None:
+    from app.energy_balance.services.change_log_services import (
+        log_energy_balance_change,
+    )
+
+    log_energy_balance_change(
+        user, _custom_flow_action(config), lines, context=f"Лист: {slug}"
+    )
+
+
+def _log_custom_flow_value(
+    config: CustomFlowConfig,
+    user: Any,
+    slug: str,
+    row,
+    year: int,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    log_cell_change(
+        user,
+        _custom_flow_action(config),
+        f"{year} г.",
+        old_value,
+        new_value,
+        context=(
+            f"Лист: {slug}; строка: {row.label or 'без наименования'} "
+            f"({row.direction})"
+        ),
+    )

@@ -1,0 +1,43 @@
+{# Скрывает переданные по селекторам элементы, когда пользователь прокручивает
+   страницу вниз, и показывает их снова у верха страницы. #}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var hideOnScrollSelectors = {{ selectors|default([])|tojson }};
+    var hideOnScrollElements = [];
+    hideOnScrollSelectors.forEach(function (selector) {
+      document.querySelectorAll(selector).forEach(function (el) {
+        if (hideOnScrollElements.indexOf(el) === -1) hideOnScrollElements.push(el);
+      });
+    });
+    if (!hideOnScrollElements.length) return;
+
+    var scrollContainer = document.querySelector({{ scroll_container|default('')|tojson }}) || window;
+    var hideOnScrollThreshold = {{ threshold|default(80)|int }};
+    var hideOnScrollHidden = null;
+    var hideOnScrollTicking = false;
+
+    function getScrollTop() {
+      return scrollContainer === window ? window.scrollY : scrollContainer.scrollTop;
+    }
+
+    function applyHideOnScroll() {
+      var hidden = getScrollTop() > hideOnScrollThreshold;
+      if (hidden === hideOnScrollHidden) return;
+      hideOnScrollHidden = hidden;
+      hideOnScrollElements.forEach(function (el) {
+        el.style.display = hidden ? 'none' : '';
+      });
+    }
+
+    scrollContainer.addEventListener('scroll', function () {
+      if (hideOnScrollTicking) return;
+      hideOnScrollTicking = true;
+      window.requestAnimationFrame(function () {
+        hideOnScrollTicking = false;
+        applyHideOnScroll();
+      });
+    }, { passive: true });
+
+    applyHideOnScroll();
+  });
+</script>

@@ -141,30 +141,30 @@ KEY_LABELS: dict[str, str] = {
     "PROCH_ekol": "прочие газообразные и жидкие",
     "BLST": "Принадлежность",
     "GAZ_6tp": "газ",
-    "GAZ_All": "Расход газа, всего, тут",
+    "GAZ_All": "Расход газа, всего, т у.т.",
     "GAZ_estestv": "газ естественный",
-    "GAZ_ESTEST": "в т.ч. расход газа естественного, тут",
-    "GAZ_ek": "Расход газа, тут",
-    "d_gaz": "Разность по газу, тут",
+    "GAZ_ESTEST": "в т.ч. расход газа естественного, т у.т.",
+    "GAZ_ek": "Расход газа, т у.т.",
+    "d_gaz": "Разность по газу, т у.т.",
     "CO2_gaz": "Выбросы СО2 от сжигания газа, т",
     "K_gaz_ek": "Коэффициент эмиссии (газ)",
     "MAZUT_6tp": "мазут",
-    "MAZUT_ek": "Расход мазута, тут",
-    "d_mazut": "Разность по мазуту, тут",
+    "MAZUT_ek": "Расход мазута, т у.т.",
+    "d_mazut": "Разность по мазуту, т у.т.",
     "CO2_mazut": "Выбросы СО2 от сжигания мазута, т",
     "K_mazut_ek": "Коэффициент эмиссии (мазут)",
     "TVERD_TOPL_6tp": "твердое топливо",
-    "TvTopl_6tp": "Расход твердого топлива, тут",
-    "TvTopl_ek": "Расход твердого топлива, тут",
-    "d_tv": "Разность по твердому топливу, тут",
+    "TvTopl_6tp": "Расход твердого топлива, т у.т.",
+    "TvTopl_ek": "Расход твердого топлива, т у.т.",
+    "d_tv": "Разность по твердому топливу, т у.т.",
     "CO2_ugol": "Выбросы СО2 от сжигания твердого топлива, т",
     "K_ugol_ek": "Коэффициент эмиссии (твердое)",
-    "PROCH_6tp": "Расход прочих видов топлива, тут",
+    "PROCH_6tp": "Расход прочих видов топлива, т у.т.",
     "ZV_normir": "Итого ЗВ по нормируемым ингредиентам",
     "energy": "Приведенная энергия, млн. кВт.ч",
-    "udel_tv": "Удельные твердое, кг/тут",
-    "udel_SO2": "Удельные сера, кг/тут",
-    "udel_NOx": "Удельные азот, кг/тут",
+    "udel_tv": "Удельные твердое, кг/т у.т.",
+    "udel_SO2": "Удельные сера, кг/т у.т.",
+    "udel_NOx": "Удельные азот, кг/т у.т.",
     "udel_na_energ": "Удельные на приведенную, г/кВт.ч",
     "normir_ZV_na_ee": "на выработку электроэнергии",
     "normir_ZV_na_energ": "Нормируемые ЗВ на приведенную, г/кВт.ч",
@@ -172,7 +172,7 @@ KEY_LABELS: dict[str, str] = {
     "normir_SO2_na_energ": "Нормируемые сера на приведенную, г/кВт.ч",
     "normir_NOx_na_energ": "Нормируемые азот на приведенную, г/кВт.ч",
     "CO2": "Выброшено ПГ всего, т",
-    "UD_CO2_ek": "Удельные выбросы ПГ на единицу топлива, кг/тут",
+    "UD_CO2_ek": "Удельные выбросы ПГ на единицу топлива, кг/т у.т.",
     "UD_CO2_ener": "Удельные выбросы ПГ на единицу энергии, г/кВт.ч",
     "SF6": "SF6",
     "Gen_komp": "Генерирующая компания",
@@ -215,6 +215,24 @@ ZV_EE_SPECIFIC_AFTER_KEY = "udel_na_energ"
 DIFF_HIGHLIGHT_COLUMN_KEYS = frozenset({"d_mazut", "d_gaz", "d_tv"})
 # Расчётные столбцы: только на лету (не из Excel / не хранятся в PGParamCalc).
 PG_DERIVED_COLUMN_KEYS = frozenset(COLUMN_FORMULA_KEYS)
+# «Коэффициент эмиссии»: округляются отдельным селектором «Округл (k эмис)».
+EMISSION_COEFFICIENT_COLUMN_KEYS = frozenset({"K_gaz_ek", "K_mazut_ek", "K_ugol_ek"})
+# «Удельные» столбцы ЗВ: округляются отдельным селектором «Округл (удельные)».
+ZV_SPECIFIC_ROUNDING_COLUMN_KEYS = frozenset(
+    {
+        # Удельные выбросы нормируемых ЗВ по ингредиентам, кг/т у.т.
+        "udel_tv",
+        "udel_SO2",
+        "udel_NOx",
+        # Удельные по электрической энергии, г/кВтч
+        "udel_na_energ",
+        "normir_ZV_na_ee",
+        "normir_ZV_na_energ",
+        "normir_TVERD_na_energ",
+        "normir_SO2_na_energ",
+        "normir_NOx_na_energ",
+    }
+)
 
 # Поля макета, которые на странице берутся из ТЭП группы оборудования (numb1120 + Year).
 FUEL_OVERLAY_BY_KEY: dict[str, str] = {
@@ -230,7 +248,7 @@ FUEL_OVERLAY_BY_KEY: dict[str, str] = {
     "Teplo": "q",
 }
 
-# Расход топлива из ТЭП: в БД тыс. тут → на странице тут (×1000).
+# Расход топлива из ТЭП: в БД тыс. т у.т. → на странице т у.т. (×1000).
 FUEL_TCE_OVERLAY_BY_KEY: dict[str, str] = {
     "TvTopl_6tp": "ugol_tce",
     "TVERD_TOPL_6tp": "solid_tce",
@@ -244,14 +262,14 @@ FUEL_TCE_OVERLAY_BY_KEY: dict[str, str] = {
 
 # Подписи столбцов расхода топлива из ТЭП (код Access — отдельно, как на fuel params).
 FUEL_TCE_HEADER_META: dict[str, dict[str, str]] = {
-    "GAZ_All": {"label": "Расход газа, всего, тут", "access_code": "GAZ + ISK_GAZ"},
+    "GAZ_All": {"label": "Расход газа, всего, т у.т.", "access_code": "GAZ + ISK_GAZ"},
     "GAZ_6tp": {"label": "газ", "access_code": "GAZ + ISK_GAZ"},
-    "GAZ_ESTEST": {"label": "в т.ч. расход газа естественного, тут", "access_code": "GAZ"},
+    "GAZ_ESTEST": {"label": "в т.ч. расход газа естественного, т у.т.", "access_code": "GAZ"},
     "GAZ_estestv": {"label": "газ естественный", "access_code": "GAZ"},
     "MAZUT_6tp": {"label": "мазут", "access_code": "MAZUT"},
-    "TvTopl_6tp": {"label": "Расход твердого топлива, тут", "access_code": "UGOL"},
+    "TvTopl_6tp": {"label": "Расход твердого топлива, т у.т.", "access_code": "UGOL"},
     "TVERD_TOPL_6tp": {"label": "твердое топливо", "access_code": "UGOL + TORF"},
-    "PROCH_6tp": {"label": "Расход прочих видов топлива, тут", "access_code": "PROCH"},
+    "PROCH_6tp": {"label": "Расход прочих видов топлива, т у.т.", "access_code": "PROCH"},
 }
 FUEL_TCE_HEADER_LABELS: dict[str, str] = {
     key: meta["label"] for key, meta in FUEL_TCE_HEADER_META.items()
@@ -268,10 +286,41 @@ PG_ANALYSIS_SHEET_SLUGS = frozenset({"pg-vse", "pg-bez-kot"})
 ZV_ANALYSIS_SHEET_SLUGS = frozenset({"zv-vse", "zv-bez-kot"})
 ANALYSIS_SHEET_SLUGS = PG_ANALYSIS_SHEET_SLUGS | ZV_ANALYSIS_SHEET_SLUGS
 BEZ_KOT_SHEET_SLUGS = frozenset({"pg-bez-kot", "zv-bez-kot"})
+# Страницы «С котельными»: котельные показываем только в составе станции (main не пуст/0).
+VSE_SHEET_SLUGS = frozenset({"pg-vse", "zv-vse"})
 # Порядок витрины ЗВ: пары ключей Excel, которые меняются местами.
 ZV_DISPLAY_COLUMN_SWAPS: tuple[tuple[str, str], ...] = (
     ("VIBROS_ekol", "VIBR_cnt"),
 )
+
+# Сверка с модулем «Генерация» на вкладках «С котельными»: станционные
+# «Руст, МВт» и «Выработка ЭЭ, млн кВтч (Генерация)» из карточки станции.
+STATION_GENERATION_SHEET_SLUGS = VSE_SHEET_SLUGS
+STATION_RUST_COLUMN_KEY = "nust_generation"
+STATION_GENERATION_COLUMN_KEY = "W_en_generation"
+# (новый столбец, подпись, столбцы макета: после первого найденного вставляем и с ним сверяем)
+STATION_GENERATION_COLUMNS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
+    (STATION_RUST_COLUMN_KEY, "Руст, МВт", ("NUST", "nust")),
+    (STATION_GENERATION_COLUMN_KEY, "Выработка ЭЭ, млн кВтч (Генерация)", ("W_en",)),
+)
+STATION_GENERATION_COLUMN_KEYS = frozenset(
+    key for key, _header, _macro_keys in STATION_GENERATION_COLUMNS
+)
+STATION_GENERATION_COLUMN_LABELS: dict[str, str] = {
+    key: header for key, header, _macro_keys in STATION_GENERATION_COLUMNS
+}
+# Станция группы оборудования не привязана в модуле «Генерация» (как на /ecology/gis_tek/).
+GENERATION_STATION_UNKNOWN_NAME = "—"
+
+# Столбец «Принадлежность» на вкладках «С котельными»: отрасль / промпредприятие
+# по коду VED строки «Топливо» — те же значения, что на страницах ГИС ТЭК.
+STATION_AFFILIATION_SHEET_SLUGS = VSE_SHEET_SLUGS
+STATION_AFFILIATION_COLUMN_KEY = "station_affiliation"
+STATION_AFFILIATION_LABEL = "Принадлежность"
+# Вставляется сразу после «Отпуск ТЭ, тыс.Гкал» (Q).
+STATION_AFFILIATION_AFTER_KEY = "Teplo"
+# Нет данных ГИС ТЭК — то же значение, что в столбце на страницах ГИС ТЭК.
+STATION_AFFILIATION_UNKNOWN = "—"
 
 # Шапка ЗВ как на /ecology/gis_tek/pollutants/: группа + «всего» = сумма слагаемых.
 ZV_GASEOUS_TOTAL_KEY = "GAZ and ZHID"
@@ -308,6 +357,13 @@ ZV_ECOLOGY_OVERLAY_BY_KEY: dict[str, str] = {
 ZV_ECOLOGY_VALUE_FIELDS: tuple[str, ...] = tuple(
     dict.fromkeys(ZV_ECOLOGY_OVERLAY_BY_KEY.values())
 )
+# Столбцы ЗВ, которые можно править на страницах анализа (ZVParamCalc).
+ZV_ECOLOGY_EDITABLE_KEYS = frozenset(ZV_ECOLOGY_OVERLAY_BY_KEY)
+# После правки столбца пересчитываем итоги и удельные (как на странице).
+ZV_ECOLOGY_EDIT_RELATED_KEYS: dict[str, tuple[str, ...]] = {
+    key: (key,) + tuple(ZV_COLUMN_FORMULA_KEYS)
+    for key in ZV_ECOLOGY_OVERLAY_BY_KEY
+}
 
 # Верхняя строка шапки ПГ: объединение столбцов вместо «Отчет» / «Макет Экология».
 # NUST / W_en / Teplo не группируются — ячейки тянутся на всю высоту шапки.
@@ -323,21 +379,21 @@ PG_DIFF_HEADER_KEYS = frozenset({"d_gaz", "d_mazut", "d_tv"})
 
 # 2-я строка шапки ПГ: без привязки к виду топлива (вид — в 1-й строке групп).
 PG_GENERIC_FUEL_LEAF_LABELS: dict[str, str] = {
-    "GAZ_All": "Расход топлива, всего, тут",
-    "GAZ_6tp": "Расход топлива, всего, тут",
-    "GAZ_ESTEST": "в т.ч. расход газа естественного, тут",
-    "GAZ_ek": "Расход топлива, тут",
-    "d_gaz": "Разность по расходу топлива, тут",
+    "GAZ_All": "Расход топлива, всего, т у.т.",
+    "GAZ_6tp": "Расход топлива, всего, т у.т.",
+    "GAZ_ESTEST": "в т.ч. расход газа естественного, т у.т.",
+    "GAZ_ek": "Расход топлива, т у.т.",
+    "d_gaz": "Разность по расходу топлива, т у.т.",
     "CO2_gaz": "Выбросы СО2 от сжигания топлива, т",
     "K_gaz_ek": "Коэффициент эмиссии",
-    "MAZUT_6tp": "Расход топлива, тут",
-    "MAZUT_ek": "Расход топлива, тут",
-    "d_mazut": "Разность по расходу топлива, тут",
+    "MAZUT_6tp": "Расход топлива, т у.т.",
+    "MAZUT_ek": "Расход топлива, т у.т.",
+    "d_mazut": "Разность по расходу топлива, т у.т.",
     "CO2_mazut": "Выбросы СО2 от сжигания топлива, т",
     "K_mazut_ek": "Коэффициент эмиссии",
-    "TvTopl_6tp": "Расход топлива, тут",
-    "TvTopl_ek": "Расход топлива, тут",
-    "d_tv": "Разность по расходу топлива, тут",
+    "TvTopl_6tp": "Расход топлива, т у.т.",
+    "TvTopl_ek": "Расход топлива, т у.т.",
+    "d_tv": "Разность по расходу топлива, т у.т.",
     "CO2_ugol": "Выбросы СО2 от сжигания топлива, т",
     "K_ugol_ek": "Коэффициент эмиссии",
 }
@@ -405,7 +461,7 @@ def zv_gaseous_header_group() -> tuple[str, tuple[str, ...], dict[str, str]]:
 def zv_specific_emission_header_group() -> tuple[str, tuple[str, ...], dict[str, str]]:
     """Группа шапки: удельные выбросы нормируемых ЗВ по ингредиентам."""
     return (
-        "Удельные выбросы нормируемых ЗВ по ингредиентам, кг/тут",
+        "Удельные выбросы нормируемых ЗВ по ингредиентам, кг/т у.т.",
         ("udel_tv", "udel_SO2", "udel_NOx"),
         {
             "udel_tv": "твердое топливо",
@@ -428,7 +484,7 @@ def zv_normir_ingredient_header_group() -> tuple[str, tuple[str, ...], dict[str,
     )
 
 
-ZV_FUEL_CONSUMPTION_BANNER_TITLE = "Расход топлива, тут"
+ZV_FUEL_CONSUMPTION_BANNER_TITLE = "Расход топлива, т у.т."
 ZV_FUEL_CONSUMPTION_KEYS: tuple[str, ...] = (
     "GAZ_6tp",
     "GAZ_estestv",

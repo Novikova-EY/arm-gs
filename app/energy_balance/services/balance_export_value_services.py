@@ -23,6 +23,8 @@ class ExportValueConfig:
     value_model: type
     value_field: str
     export_row_key: str
+    action: str = ""
+    change_label: str = "Значение"
 
 
 def load_export_inputs(
@@ -73,6 +75,9 @@ def update_export_value(
     slug: str,
     year: int,
     raw_value: Any,
+    *,
+    user: Any = None,
+    sheet_name: str | None = None,
 ) -> dict[str, Any]:
     slug = str(slug or "").strip()
     if not slug:
@@ -98,10 +103,13 @@ def update_export_value(
     )
     if parsed is None:
         if existing is not None:
+            previous_value = getattr(existing, config.value_field, None)
             db.session.delete(existing)
             _commit_with_retry()
+            _log_export_change(config, user, slug, sheet_name, year_int, previous_value, None)
         return {"year": year_int, "value": None}
     if existing is None:
+        previous_value = None
         existing = config.value_model(
             sheet_slug=slug,
             year_number=year_int,
@@ -110,6 +118,31 @@ def update_export_value(
         setattr(existing, config.value_field, parsed)
         db.session.add(existing)
     else:
+        previous_value = getattr(existing, config.value_field, None)
         setattr(existing, config.value_field, parsed)
     _commit_with_retry()
+    _log_export_change(config, user, slug, sheet_name, year_int, previous_value, parsed)
     return {"year": year_int, "value": parsed}
+
+
+def _log_export_change(
+    config: ExportValueConfig,
+    user: Any,
+    slug: str,
+    sheet_name: str | None,
+    year: int,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    if not config.action:
+        return
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    log_cell_change(
+        user,
+        config.action,
+        f"{config.change_label}, {year} г.",
+        old_value,
+        new_value,
+        context=f"Лист: {sheet_name or slug}",
+    )

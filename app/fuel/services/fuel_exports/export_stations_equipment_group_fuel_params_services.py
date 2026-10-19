@@ -25,6 +25,10 @@ from app.fuel.services.fuel_exports.hierarchy_excel_layout import (
     FILL_RES_SUMMARY,
     FILL_STATION_SUMMARY,
     FILL_UES,
+    FILL_OES_SUMMARY,
+    FILL_EES_SUMMARY,
+    FILL_TITES_SUMMARY,
+    FILL_RUSSIA_SUMMARY,
     equipment_group_id_cell,
     next_data_row_index,
     style_data_row,
@@ -204,7 +208,29 @@ def export_stations_equipment_group_fuel_params_to_excel(
             if v is not None and len(str(v)) > max_lengths[i]:
                 max_lengths[i] = len(str(v))
 
+    def _write_aggregate_rows(label, aggregate_rows, fill):
+        for aggregate_row in aggregate_rows or []:
+            summary = aggregate_row.get("summary") or {}
+            row_data = ["—", label]
+            for attr, _column_label, is_numeric in FUEL_PARAM_COLUMNS:
+                row_data.append(
+                    _format_summary_value(
+                        summary, attr, is_numeric, rounding_digits
+                    )
+                )
+            _bump_lengths(row_data)
+            ws.append(apply_nbsp_to_row(row_data))
+            style_data_row(ws, ws.max_row, bold=True, fill=fill)
+
     for est_block in hierarchy:
+        if est_block.get("is_russia_row"):
+            _write_aggregate_rows(
+                "Россия, всего",
+                est_block.get("aggregate_rows"),
+                FILL_RUSSIA_SUMMARY,
+            )
+            continue
+
         title = est_block.get("est_name") or "—"
         _bump_lengths([title] + [""] * (num_cols - 1))
         write_merged_section_row(
@@ -304,6 +330,24 @@ def export_stations_equipment_group_fuel_params_to_excel(
                     _bump_lengths(row_data)
                     ws.append(apply_nbsp_to_row(row_data))
                     style_data_row(ws, ws.max_row, bold=True, fill=FILL_RES_SUMMARY)
+
+            _write_aggregate_rows(
+                f"{ues_title}, всего",
+                ues_block.get("aggregate_rows"),
+                FILL_OES_SUMMARY,
+            )
+
+        est_name_upper = title.upper()
+        if est_block.get("aggregate_rows") and "ЕЭС" in est_name_upper:
+            est_fill = FILL_EES_SUMMARY
+        elif est_block.get("aggregate_rows") and "ТИТЭС" in est_name_upper:
+            est_fill = FILL_TITES_SUMMARY
+        else:
+            est_fill = None
+        if est_fill is not None:
+            _write_aggregate_rows(
+                f"{title}, всего", est_block.get("aggregate_rows"), est_fill
+            )
 
     for col_idx, max_length in enumerate(max_lengths, start=1):
         adjusted_width = min(max_length + 2, 60)

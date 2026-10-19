@@ -1,0 +1,11 @@
+{# Шапка столбца «Нормируемые ЗВ»: выбор слагаемых суммы (см. gis_tek_norm_zv_header_filter.js). #}
+<select id="normZvHeaderFilter"
+        class="d-none norm-zv-header-filter"
+        multiple
+        data-placeholder="{{ norm_zv_label|default('Нормируемые ЗВ') }}"
+        data-default="{{ (norm_zv_default|default([]))|join(',') }}"
+        aria-label="Слагаемые столбца «Нормируемые ЗВ»">
+    {% for attr, label in norm_zv_options|default([]) %}
+    <option value="{{ attr }}"{% if attr in norm_zv_selected|default([]) %} selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+</select>

@@ -10,7 +10,7 @@ from app.ecology.services.ecology_decimal_helpers import decimal_or_none as _d
 
 
 def zv_mass_tonnes(b_tce: Any, u_kg_per_tce: Any) -> Decimal | None:
-    """М, т = В, тыс. тут × У, кг/тут."""
+    """М, т = В, тыс. т у.т. × У, кг/т у.т."""
     b = _d(b_tce)
     u = _d(u_kg_per_tce)
     if b is None or u is None:
@@ -19,7 +19,7 @@ def zv_mass_tonnes(b_tce: Any, u_kg_per_tce: Any) -> Decimal | None:
 
 
 def zv_mass_thousand_tonnes(b_tce: Any, u_kg_per_tce: Any) -> Decimal | None:
-    """М, тыс. т = (В, тыс. тут × У, кг/тут) / 1000."""
+    """М, тыс. т = (В, тыс. т у.т. × У, кг/т у.т.) / 1000."""
     tonnes = zv_mass_tonnes(b_tce, u_kg_per_tce)
     if tonnes is None:
         return None
@@ -27,7 +27,7 @@ def zv_mass_thousand_tonnes(b_tce: Any, u_kg_per_tce: Any) -> Decimal | None:
 
 
 def pg_mass_thousand_tonnes(b_tce: Any, u_t_per_tce: Any) -> Decimal | None:
-    """М CO2, тыс. т = В, тыс. тут × У, т/тут."""
+    """М CO2, тыс. т = В, тыс. т у.т. × У, т/т у.т."""
     b = _d(b_tce)
     u = _d(u_t_per_tce)
     if b is None or u is None:

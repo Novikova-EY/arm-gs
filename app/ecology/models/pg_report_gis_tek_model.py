@@ -87,19 +87,19 @@ class PGReportGisTek(db.Model, AuditMixin):
         viewonly=True,
     )
 
-    # Расход газа, тут
+    # Расход газа, т у.т.
     gas_consumption_tce = db.Column(Numeric(36, 16), nullable=True)
 
     # Выбросы СО2 от сжигания газа, т
     co2_from_gas_t = db.Column(Numeric(36, 16), nullable=True)
 
-    # Расход мазута, тут
+    # Расход мазута, т у.т.
     oil_fuel_consumption_tce = db.Column(Numeric(36, 16), nullable=True)
 
     # Выбросы СО2 от сжигания мазута, т
     co2_from_oil_fuel_t = db.Column(Numeric(36, 16), nullable=True)
 
-    # Расход твердого топлива, тут
+    # Расход твердого топлива, т у.т.
     solid_fuel_consumption_tce = db.Column(Numeric(36, 16), nullable=True)
     
     # Выбросы СО2 от сжигания твердого топлива, т

@@ -41,11 +41,11 @@ ENERGY_BLOCK_CHAIN: tuple[dict[str, str], ...] = (
     {"step": "3", "result": "ekotp", "formula": "(e − ewtp) · (1 − snk/100)", "unit": "тыс. кВт·ч"},
     {"step": "4", "result": "etpotp", "formula": "ewtp · sntp", "unit": "тыс. кВт·ч"},
     {"step": "5", "result": "eotp", "formula": "ekotp + etpotp", "unit": "тыс. кВт·ч"},
-    {"step": "6", "result": "eust", "formula": "(ekotp · bk + etpotp · btp) / 1000", "unit": "тут"},
+    {"step": "6", "result": "eust", "formula": "(ekotp · bk + etpotp · btp) / 1000", "unit": "т у.т."},
     {"step": "7", "result": "eurt", "formula": "eust / eotp · 1000", "unit": "г у.т./кВт·ч"},
     {"step": "8", "result": "sn_t", "formula": "sn_te / q · 1000", "unit": "кВт·ч/Гкал"},
-    {"step": "9", "result": "tust", "formula": "q · turt / 1000", "unit": "тут"},
-    {"step": "10", "result": "b", "formula": "eust + tust", "unit": "тут"},
+    {"step": "9", "result": "tust", "formula": "q · turt / 1000", "unit": "т у.т."},
+    {"step": "10", "result": "b", "formula": "eust + tust", "unit": "т у.т."},
 )
 
 EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
@@ -81,7 +81,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "kind": "both",
         "formula": "btp_calc = EURT − K · (1 − EWTP/E) · 100",
         "notes": (
-            "Не путать с тут/кВтч (тонны). Вход EUST: … + etpotp · btp. "
+            "Не путать с т у.т./кВтч (тонны). Вход EUST: … + etpotp · btp. "
             "Типичные значения ~180–400."
         ),
     },
@@ -343,7 +343,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "access": "EUST",
         "label": "Расход топлива на электроэнергию",
         "meaning": "Абсолютный расход условного топлива, относимый на выработку/отпуск ЭЭ.",
-        "unit": "тут",
+        "unit": "т у.т.",
         "unit_conf": "inferred",
         "group": "Энергобаланс ЭЭ",
         "model": "FuelParam",
@@ -412,7 +412,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "access": "TUST",
         "label": "Расход топлива на тепло",
         "meaning": "Абсолютный расход условного топлива на отпуск тепла.",
-        "unit": "тут",
+        "unit": "т у.т.",
         "unit_conf": "inferred",
         "group": "Тепло",
         "model": "FuelParam",
@@ -458,7 +458,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "access": "B",
         "label": "Расход топлива, всего",
         "meaning": "Суммарный расход условного топлива (ЭЭ + тепло). База для разложения по formtxt.",
-        "unit": "тут",
+        "unit": "т у.т.",
         "unit_conf": "inferred",
         "group": "Топливо (сумма и виды)",
         "model": "FuelParam",
@@ -473,7 +473,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "meaning": (
             "Разложение b по видам: газ, искусственный газ, мазут, торф, сланцы, прочее, уголь (сумма)."
         ),
-        "unit": "тут",
+        "unit": "т у.т.",
         "unit_conf": "inferred",
         "group": "Топливо (сумма и виды)",
         "model": "FuelParam",
@@ -489,7 +489,7 @@ EQUIPMENT_GROUP_PARAMS: tuple[dict[str, Any], ...] = (
         "access": "DON … SAH",
         "label": "Региональные угли (Дон, Подм, Кузбасс, … Сахалин)",
         "meaning": "Расход условного топлива по бассейнам/регионам угля.",
-        "unit": "тут",
+        "unit": "т у.т.",
         "unit_conf": "inferred",
         "group": "Топливо (сумма и виды)",
         "model": "FuelParam",

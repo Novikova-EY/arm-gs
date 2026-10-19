@@ -2755,6 +2755,26 @@ def stations_without_equipment_group_auto_assign():
     )
 
 
+def _build_toggle_url(flag_name, is_on):
+    """URL текущей страницы групп оборудования с переключённым флагом-переключателем.
+
+    Сохраняет остальные query-параметры (фильтры), сбрасывает только пагинацию.
+    """
+    toggle_args = request.args.to_dict(flat=False)
+    toggle_args.pop("page", None)
+    if is_on:
+        toggle_args.pop(flag_name, None)
+    else:
+        toggle_args[flag_name] = ["1"]
+    return url_for(
+        "fuel_bp.stations_equipment_groups",
+        **{
+            key: (values[0] if len(values) == 1 else values)
+            for key, values in toggle_args.items()
+        },
+    )
+
+
 @fuel_bp.route("/stations_equipment_groups", methods=["GET", "POST"])
 @login_required
 def stations_equipment_groups():
@@ -2897,19 +2917,10 @@ def stations_equipment_groups():
     soft_composite_import_report = session.get("soft_composite_import_report")
 
     show_missing_numb = bool(filters.get("missing_numb"))
-    missing_numb_toggle_args = request.args.to_dict(flat=False)
-    missing_numb_toggle_args.pop("page", None)
-    if show_missing_numb:
-        missing_numb_toggle_args.pop("missing_numb", None)
-    else:
-        missing_numb_toggle_args["missing_numb"] = ["1"]
-    missing_numb_toggle_url = url_for(
-        "fuel_bp.stations_equipment_groups",
-        **{
-            key: (values[0] if len(values) == 1 else values)
-            for key, values in missing_numb_toggle_args.items()
-        },
-    )
+    missing_numb_toggle_url = _build_toggle_url("missing_numb", show_missing_numb)
+
+    show_composite_only = bool(filters.get("composite_only"))
+    composite_only_toggle_url = _build_toggle_url("composite_only", show_composite_only)
 
     return render_template(
         "fuel/equipment_groups/stations_equipment_groups.html",
@@ -2918,6 +2929,8 @@ def stations_equipment_groups():
         numb1120_filter_choices=numb1120_filter_choices,
         show_missing_numb=show_missing_numb,
         missing_numb_toggle_url=missing_numb_toggle_url,
+        show_composite_only=show_composite_only,
+        composite_only_toggle_url=composite_only_toggle_url,
         duplicate_numb_ids=duplicate_numb_ids,
         **context,
     )
@@ -3166,16 +3179,37 @@ def stations_equipment_group_fuel_params():
             and getattr(eg, "id", None) is not None
         }
     )
+    aggregate_equipment_group_ids = sorted(
+        {
+            int(eg.id)
+            for eg, _param in (rows or [])
+            if eg is not None and getattr(eg, "id", None) is not None
+        }
+    )
     extra_fuel_param_by_group_year = _load_extra_fuel_param_by_group_year(
-        equipment_group_ids,
+        aggregate_equipment_group_ids,
         start_year=start_year,
         end_year=end_year,
     )
     enrich_fuel_hierarchy_summaries_with_extra(
-        equipment_group_fuel_params_hierarchy,
+        hierarchy_full,
         extra_fuel_param_by_group_year,
         fuel_extra_column_attrs,
     )
+    if show_all:
+        equipment_group_fuel_params_hierarchy = hierarchy_full
+    else:
+        (
+            equipment_group_fuel_params_hierarchy,
+            total_eg_count,
+            total_pages,
+            current_page,
+        ) = paginate_fuel_eg_station_hierarchy(
+            hierarchy_full,
+            page,
+            per_page,
+            FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS,
+        )
 
     fuel_param_warn_sets = build_fuel_param_row_warn_sets(rows)
     composite_parts_sum_mismatch_by_row = build_composite_parts_sum_mismatch_by_row(
@@ -4373,12 +4407,16 @@ def equipment_group_edit(equipment_group_id):
     Редактирование доступно только роли admin.
     Включает таблицы топливных параметров (из equipment_group_details)."""
     from app.common.services.database_version_filter import get_current_db_version_id
-    from app.common.services.version_entity_resolve_services import load_by_id_with_version
+    from app.common.services.version_entity_resolve_services import (
+        load_by_id_with_version_or_anchor,
+    )
     from app.fuel.models.fue_equipment_group_model import EquipmentGroup
 
     can_edit = current_user.is_authenticated and current_user.has_admin
 
-    resolved_group = load_by_id_with_version(
+    # Группа из другой версии БД (legacy-оболочка) открывается своей же карточкой,
+    # а не 404: в текущей версии для неё может не быть строки с тем же external_code.
+    resolved_group = load_by_id_with_version_or_anchor(
         EquipmentGroup,
         equipment_group_id,
         get_current_db_version_id(),

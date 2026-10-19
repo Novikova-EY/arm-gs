@@ -21,6 +21,7 @@ from app.energy_balance.models.regional_energy_system_transfer_model import (
     RegionalEnergySystemTransfer,
 )
 from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache
+from app.energy_balance.services.change_log_services import log_cell_change
 from app.energy_balance.services.ee_transfers_page_services import (
     _get_res_territory_maps,
     _infer_transfer_target_res_id,
@@ -139,6 +140,7 @@ def update_ee_receive_transfer_value(
     target_ues_id: int,
     year: int,
     raw_value: Any,
+    user: Any = None,
 ) -> dict[str, Any]:
     try:
         year_number = int(year)
@@ -188,6 +190,7 @@ def update_ee_receive_transfer_value(
         )
         .first()
     )
+    previous_value = None if existing is None else existing.transfer_value
 
     if value is None:
         if existing is None:
@@ -217,6 +220,17 @@ def update_ee_receive_transfer_value(
 
     _commit_with_retry()
     clear_energy_balance_cache()
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, приём/передача электроэнергии по ОЭС",
+        f"{year_number} г.",
+        previous_value,
+        value,
+        context=(
+            f"Лист: приём/передача ЭЭ по ОЭС; источник: {source.name}; "
+            f"приёмщик: {target.name}"
+        ),
+    )
     return {"year": year_number, "value": value}
 
 

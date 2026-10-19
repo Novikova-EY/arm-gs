@@ -15,6 +15,8 @@ from flask_login import current_user
 from sqlalchemy import or_, func
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.energy_balance.services.access_services import can_edit_energy_balance
+
 from app.common.services.database_version_filter import (
     filter_by_db_version,
     filter_by_explicit_db_version,
@@ -62,9 +64,6 @@ from app.generation.models.station.station_owner_energy_generation_model import 
     StationOwnerEnergyGeneration,
 )
 from app.generation.services.station_services.groupped_services import build_hierarchy_structure
-from app.generation.services.station_services.station_access_services import (
-    can_fuel_user_edit_decentralized_station_details,
-)
 from app.generation.services.station_services.station_power_aggregation import (
     machine_not_archived_clause,
 )
@@ -86,16 +85,6 @@ from app.generation.services.station_services.ves_ses_plan_generation_services i
 from app.refdata.models.energy_systems.regional_energy_system_model import RegionalEnergySystem
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.territories.regional_district_model import RegionalDistrict
-
-_EDIT_ROLES = frozenset(
-    {
-        "admin",
-        "generation-admin",
-        "generation-editor",
-        "generation_admin",
-        "generation_editor",
-    }
-)
 
 METRIC_CAPACITY = "capacity"
 METRIC_ENERGY = "energy"
@@ -195,12 +184,7 @@ def _ves_ses_station_row_sort_key(row: dict[str, Any]) -> tuple:
 
 
 def _can_edit_ves_ses_energy() -> bool:
-    if not getattr(current_user, "is_authenticated", False):
-        return False
-    role_names = set(getattr(current_user, "role_names", None) or [])
-    if role_names & _EDIT_ROLES:
-        return True
-    return False
+    return can_edit_energy_balance(current_user)
 
 
 def _empty_year_map(years: list[int]) -> dict[int, Decimal | None]:
@@ -1656,9 +1640,3 @@ def _visible_owner_years(years: list[int], year_features: dict[int, str]) -> lis
         if year in year_set and year not in owner_years:
             owner_years.append(year)
     return owner_years
-
-
-def can_edit_station_energy_row(station: Station) -> bool:
-    if _can_edit_ves_ses_energy():
-        return True
-    return can_fuel_user_edit_decentralized_station_details(current_user, station)

@@ -6,14 +6,18 @@ import functools
 import logging
 import math
 from collections import defaultdict
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal, localcontext
 from pathlib import Path
 from typing import Any
 
 from openpyxl import load_workbook
 
 from app.common.services.get_services.years.years_get_services import get_year_feature_dict
-from app.ecology.services.ecology_decimal_helpers import decimal_or_none as _decimal_or_none
+from app.ecology.services.ecology_decimal_helpers import (
+    SIGNIFICANT_DIGITS,
+    decimal_or_none as _decimal_or_none,
+    drop_float_noise,
+)
 from app.ecology.services.ecology_request_helpers import (
     arg_values as _arg_values,
     parse_truthy_arg,
@@ -25,6 +29,7 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     DEFAULT_PER_PAGE,
     DEFAULT_SHEET_SLUG,
     DIFF_HIGHLIGHT_COLUMN_KEYS,
+    EMISSION_COEFFICIENT_COLUMN_KEYS,
     FUEL_OVERLAY_BY_KEY,
     FUEL_TCE_HEADER_META,
     FUEL_TCE_OVERLAY_BY_KEY,
@@ -34,6 +39,7 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     KCAL_PER_KWH,
     KEY_LABELS,
     NETWORK_XLSX_PATH,
+    ANALYSIS_SHEET_SLUGS,
     PG_ANALYSIS_SHEET_SLUGS,
     PG_DERIVED_COLUMN_KEYS,
     PG_DIFF_HEADER_KEYS,
@@ -41,11 +47,25 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     PG_ECOLOGY_EDITABLE_KEYS,
     PG_ECOLOGY_OVERLAY_BY_KEY,
     PG_ECOLOGY_VALUE_FIELDS,
+    ZV_ECOLOGY_EDIT_RELATED_KEYS,
+    ZV_ECOLOGY_EDITABLE_KEYS,
     ZV_ECOLOGY_OVERLAY_BY_KEY,
     ZV_ECOLOGY_VALUE_FIELDS,
     PG_FUEL_HEADER_GROUP_KEYS,
     PG_FUEL_HEADER_GROUPS,
     SKIP_SHEET_NAME,
+    GENERATION_STATION_UNKNOWN_NAME,
+    STATION_AFFILIATION_AFTER_KEY,
+    STATION_AFFILIATION_COLUMN_KEY,
+    STATION_AFFILIATION_LABEL,
+    STATION_AFFILIATION_SHEET_SLUGS,
+    STATION_AFFILIATION_UNKNOWN,
+    STATION_GENERATION_COLUMNS,
+    STATION_GENERATION_COLUMN_KEYS,
+    STATION_GENERATION_COLUMN_KEY,
+    STATION_GENERATION_COLUMN_LABELS,
+    STATION_GENERATION_SHEET_SLUGS,
+    STATION_RUST_COLUMN_KEY,
     ZV_ANALYSIS_SHEET_SLUGS,
     ZV_COLUMN_FORMULA_KEYS,
     ZV_DISPLAY_COLUMN_SWAPS,
@@ -59,6 +79,7 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     ZV_MAZUT_FUEL_KEYS,
     ZV_SOLID_FUEL_KEYS,
     ZV_SOLID_KEY,
+    ZV_SPECIFIC_ROUNDING_COLUMN_KEYS,
     ZV_TOTAL_KEY,
     STICKY_COL_COUNT,
     STICKY_COLUMN_KEYS,
@@ -1014,7 +1035,7 @@ def apply_fuel_indicators(
     columns: list[dict[str, Any]],
     overlay: dict[tuple[int, int], dict[str, Any]],
 ) -> list[Any]:
-    """Подставляет ФО/ОЭС/субъект/станцию/Nust/E/Q и расходы топлива (тут) из ТЭП."""
+    """Подставляет ФО/ОЭС/субъект/станцию/Nust/E/Q и расходы топлива (т у.т.) из ТЭП."""
     numb = _row_numb(raw_row, columns)
     year = _row_year(raw_row, columns)
     if numb is None or year is None:
@@ -1165,7 +1186,7 @@ def load_zv_ecology_overlay_by_numb_year(
     numbs: set[int],
     years: list[int],
 ) -> dict[tuple[int, int], dict[str, Any]]:
-    """Отчетные ЗВ (ZVReportGisTek): ключ (numb1120, год)."""
+    """Параметры анализа ЗВ (если есть) иначе отчетные ЗВ: ключ (numb1120, год)."""
     slug = str(sheet_slug or "").strip()
     if slug not in ZV_ANALYSIS_SHEET_SLUGS or not numbs or not years:
         return {}
@@ -1173,6 +1194,7 @@ def load_zv_ecology_overlay_by_numb_year(
         from flask import has_app_context
 
         from app.common.services.database_version_filter import get_current_db_version_id
+        from app.ecology.models.zv_param_calc_model import ZVParamCalc
         from app.ecology.models.zv_report_gis_tek_model import ZVReportGisTek
 
         if not has_app_context():
@@ -1185,16 +1207,29 @@ def load_zv_ecology_overlay_by_numb_year(
             ZVReportGisTek.station_numb.in_(numb_list),
             ZVReportGisTek.year_number.in_(year_list),
         )
+        param_q = ZVParamCalc.query.filter(
+            ZVParamCalc.sheet_slug == slug,
+            ZVParamCalc.station_numb.in_(numb_list),
+            ZVParamCalc.year_number.in_(year_list),
+        )
         if version_id is not None:
             report_q = report_q.filter(
                 ZVReportGisTek.database_version_id == version_id
             )
+            param_q = param_q.filter(ZVParamCalc.database_version_id == version_id)
 
         result: dict[tuple[int, int], dict[str, Any]] = {}
         for report in report_q.all():
+            # Отчет: только заполненные поля (пустые не затирают Excel).
             result[(int(report.station_numb), int(report.year_number))] = _zv_values_from_row(
                 report,
                 include_none=False,
+            )
+        for param in param_q.all():
+            # Параметры страницы перекрывают отчет/Excel целиком (в т.ч. None).
+            result[(int(param.station_numb), int(param.year_number))] = _zv_values_from_row(
+                param,
+                include_none=True,
             )
         return result
     except Exception:
@@ -1202,6 +1237,80 @@ def load_zv_ecology_overlay_by_numb_year(
             "ecology comparison: ZV overlay load failed (sheet=%s)", sheet_slug
         )
         return {}
+
+
+# Строки для пересчёта ЗВ после правки: значения ЗВ, топливо/ТЭП и расчётные итоги.
+ZV_RELATED_CALC_KEYS: tuple[str, ...] = (
+    "TVERD_V",
+    "SO2_gaz",
+    "CO_gaz",
+    "NOx_gaz",
+    "UGLEVOD",
+    "LOS",
+    "PROCH_ekol",
+    "GAZ_6tp",
+    "MAZUT_6tp",
+    "TVERD_TOPL_6tp",
+    "W_en",
+    "Teplo",
+) + tuple(ZV_COLUMN_FORMULA_KEYS)
+
+
+def _zv_ecology_values_by_key(
+    zv_values: dict[str, Any] | None,
+    fuel: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Свод значений по ключам столбцов для пересчёта итогов и удельных после правки."""
+    by_key: dict[str, Any] = {
+        excel_key: (zv_values or {}).get(field)
+        for excel_key, field in ZV_ECOLOGY_OVERLAY_BY_KEY.items()
+    }
+    by_key["GAZ_6tp"] = (fuel or {}).get("gaz_all_tce")
+    by_key["MAZUT_6tp"] = (fuel or {}).get("mazut_tce")
+    by_key["TVERD_TOPL_6tp"] = (fuel or {}).get("solid_tce")
+    by_key["W_en"] = (fuel or {}).get("e")
+    by_key["Teplo"] = (fuel or {}).get("q")
+    columns = [
+        {"key": key, "source_index": index}
+        for index, key in enumerate(ZV_RELATED_CALC_KEYS)
+    ]
+    filled = _compute_derived_columns(
+        [by_key.get(key) for key in ZV_RELATED_CALC_KEYS],
+        columns,
+    )
+    return dict(zip(ZV_RELATED_CALC_KEYS, filled))
+
+
+def _load_hidden_boiler_numbs(sheet_slug: str) -> set[int]:
+    """
+    NUMB1120 котельных, которые на этой вкладке не показываем
+    (см. hidden_boiler_numbs_for_sheet).
+
+    Без контекста приложения (юнит-тесты) отбор пропускается.
+    """
+    from flask import has_app_context
+
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.ecology.services.gis_tes_pg_from_fuel_services import (
+        hidden_boiler_numbs_for_sheet,
+    )
+
+    if not has_app_context():
+        return set()
+    return hidden_boiler_numbs_for_sheet(sheet_slug, get_current_db_version_id())
+
+
+def _drop_boiler_groups(
+    groups: list[dict[str, Any]],
+    sheet_slug: str,
+) -> list[dict[str, Any]]:
+    """Убирает строки котельных, которых на этой вкладке быть не должно."""
+    hidden_boiler_numbs = _load_hidden_boiler_numbs(sheet_slug)
+    if not hidden_boiler_numbs:
+        return groups
+    return [
+        group for group in groups if group.get("numb") not in hidden_boiler_numbs
+    ]
 
 
 def _pg_ecology_values_by_key(
@@ -1247,6 +1356,7 @@ def format_related_pg_ecology_cells(
     year_number: int,
     column_key: str,
     rounding_digits: int | str | None = None,
+    emission_rounding_digits: int | str | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Форматирует отредактированную ячейку и все расчётные d_* / K_* / CO2 / UD_*."""
     key = str(column_key or "").strip()
@@ -1259,6 +1369,7 @@ def format_related_pg_ecology_cells(
         if item and item not in ordered:
             ordered.append(item)
     digits = resolve_rounding_digits(rounding_digits)
+    emission_digits = resolve_optional_rounding_digits(emission_rounding_digits)
     numb = int(station_numb)
     year = int(year_number)
     pg = load_pg_ecology_overlay_by_numb_year(sheet_slug, {numb}, [year]).get(
@@ -1268,9 +1379,14 @@ def format_related_pg_ecology_cells(
     by_key = _pg_ecology_values_by_key(pg, fuel)
     result: dict[str, dict[str, Any]] = {}
     for rel_key in ordered:
-        text = _format_value(by_key.get(rel_key), True, digits)
+        text = _format_value(
+            by_key.get(rel_key),
+            True,
+            column_rounding_digits({"key": rel_key}, digits, emission_digits),
+        )
         result[rel_key] = {
             "text": text,
+            "title": _format_full_value(by_key.get(rel_key)),
             "nonzero": rel_key in DIFF_HIGHLIGHT_COLUMN_KEYS and _display_is_nonzero(text),
         }
     return result
@@ -1283,6 +1399,7 @@ def save_analysis_pg_ecology_cell(
     column_key: str,
     value: Any,
     rounding_digits: int | str | None = None,
+    emission_rounding_digits: int | str | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Сохраняет параметр ПГ и возвращает обновлённые отображаемые ячейки."""
     key = str(column_key or "").strip()
@@ -1305,7 +1422,119 @@ def save_analysis_pg_ecology_cell(
         int(year_number),
         key,
         rounding_digits,
+        emission_rounding_digits,
     )
+
+
+def format_related_zv_ecology_cells(
+    sheet_slug: str,
+    station_numb: int,
+    year_number: int,
+    column_key: str,
+    rounding_digits: int | str | None = None,
+    specific_rounding_digits: int | str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Форматирует отредактированную ячейку ЗВ и все расчётные итоги/удельные."""
+    key = str(column_key or "").strip()
+    related = ZV_ECOLOGY_EDIT_RELATED_KEYS.get(key)
+    if not related:
+        related = (key,) + tuple(ZV_COLUMN_FORMULA_KEYS) if key else tuple(ZV_COLUMN_FORMULA_KEYS)
+    # Уникальный порядок: правка, затем расчётные.
+    ordered: list[str] = []
+    for item in related:
+        if item and item not in ordered:
+            ordered.append(item)
+    digits = resolve_rounding_digits(rounding_digits)
+    specific_digits = resolve_optional_rounding_digits(specific_rounding_digits)
+    numb = int(station_numb)
+    year = int(year_number)
+    zv = load_zv_ecology_overlay_by_numb_year(sheet_slug, {numb}, [year]).get(
+        (numb, year)
+    )
+    fuel = load_fuel_indicators_by_numb_year({numb}, [year]).get((numb, year))
+    by_key = _zv_ecology_values_by_key(zv, fuel)
+    result: dict[str, dict[str, Any]] = {}
+    for rel_key in ordered:
+        text = _format_value(
+            by_key.get(rel_key),
+            True,
+            column_rounding_digits({"key": rel_key}, digits, specific_digits=specific_digits),
+        )
+        result[rel_key] = {
+            "text": text,
+            "title": _format_full_value(by_key.get(rel_key)),
+            "nonzero": rel_key in DIFF_HIGHLIGHT_COLUMN_KEYS and _display_is_nonzero(text),
+        }
+    return result
+
+
+def save_analysis_zv_ecology_cell(
+    sheet_slug: str,
+    station_numb: int,
+    year_number: int,
+    column_key: str,
+    value: Any,
+    rounding_digits: int | str | None = None,
+    specific_rounding_digits: int | str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Сохраняет параметр ЗВ и возвращает обновлённые отображаемые ячейки."""
+    key = str(column_key or "").strip()
+    field = ZV_ECOLOGY_OVERLAY_BY_KEY.get(key)
+    if not field:
+        raise ValueError(f"Столбец недоступен для редактирования: {column_key!r}")
+    from app.ecology.services.analysis_zv_param_services import (
+        upsert_analysis_zv_param_values,
+    )
+
+    upsert_analysis_zv_param_values(
+        sheet_slug,
+        int(station_numb),
+        int(year_number),
+        {field: value},
+    )
+    return format_related_zv_ecology_cells(
+        sheet_slug,
+        int(station_numb),
+        int(year_number),
+        key,
+        rounding_digits,
+        specific_rounding_digits,
+    )
+
+
+def save_analysis_ecology_cell(
+    sheet_slug: str,
+    station_numb: int,
+    year_number: int,
+    column_key: str,
+    value: Any,
+    rounding_digits: int | str | None = None,
+    emission_rounding_digits: int | str | None = None,
+    specific_rounding_digits: int | str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Сохраняет правку страницы анализа ЗВ или ПГ."""
+    slug = str(sheet_slug or "").strip()
+    if slug in PG_ANALYSIS_SHEET_SLUGS:
+        return save_analysis_pg_ecology_cell(
+            slug,
+            station_numb,
+            year_number,
+            column_key,
+            value,
+            rounding_digits,
+            emission_rounding_digits,
+        )
+    if slug in ZV_ANALYSIS_SHEET_SLUGS:
+        return save_analysis_zv_ecology_cell(
+            slug,
+            station_numb,
+            year_number,
+            column_key,
+            value,
+            rounding_digits,
+            specific_rounding_digits,
+        )
+    raise ValueError(f"Лист недоступен для редактирования: {sheet_slug!r}")
 
 
 def _sum_optional(*values: Any) -> Decimal | None:
@@ -1319,7 +1548,7 @@ def _sum_optional(*values: Any) -> Decimal | None:
 
 
 def _thousand_tut_to_tce(value: Any) -> Decimal | None:
-    """тыс. тут (Топливо) → тут (страницы анализа)."""
+    """тыс. т у.т. (Топливо) → т у.т. (страницы анализа)."""
     amount = _decimal_or_none(value)
     if amount is None:
         return None
@@ -1557,6 +1786,9 @@ def _is_empty_numeric_row(values: list[Any], columns: list[dict[str, Any]]) -> b
     for index, column in enumerate(columns):
         if not column["numeric"]:
             continue
+        if str(column.get("key") or "") in STATION_GENERATION_COLUMN_KEYS:
+            # Столбцы сверки с «Генерацией» не влияют на скрытие пустых строк.
+            continue
         has_numeric = True
         value = values[index] if index < len(values) else None
         if _is_blank(value):
@@ -1569,6 +1801,28 @@ def _is_empty_numeric_row(values: list[Any], columns: list[dict[str, Any]]) -> b
     return has_numeric
 
 
+def column_rounding_digits(
+    column: dict[str, Any],
+    digits: int,
+    emission_digits: int | None = None,
+    specific_digits: int | None = None,
+) -> int:
+    """Знаки после запятой для столбца: у «Коэффициента эмиссии» и «Удельных» свои."""
+    key = str(column.get("key") or "")
+    if emission_digits is not None and key in EMISSION_COEFFICIENT_COLUMN_KEYS:
+        return emission_digits
+    if specific_digits is not None and key in ZV_SPECIFIC_ROUNDING_COLUMN_KEYS:
+        return specific_digits
+    return digits
+
+
+def resolve_optional_rounding_digits(value: Any) -> int | None:
+    """Знаки отдельного селектора; пусто — столбец округляется как основной «Округл»."""
+    if value in (None, ""):
+        return None
+    return resolve_rounding_digits(value)
+
+
 def _format_value(value: Any, numeric: bool, digits: int) -> str:
     if _is_blank(value):
         return ""
@@ -1576,7 +1830,39 @@ def _format_value(value: Any, numeric: bool, digits: int) -> str:
         if isinstance(value, float) and value.is_integer():
             return str(int(value))
         return str(value)
+    if digits == 0:
+        # «Не округлять» показывает значение целиком, поэтому оставляем только
+        # значащие цифры: хвост вроде 802393,6000000001 — шум исходного double,
+        # а не данные (как на страницах ГИС ТЭК).
+        cleaned = drop_float_noise(value)
+        if cleaned is not None:
+            value = cleaned
     return format_cell(value, digits=digits)
+
+
+def _format_full_value(value: Any) -> str:
+    """Значение целиком для подсказки при наведении: как в БД/расчёте, без округления."""
+    if _is_blank(value):
+        return ""
+    return format_cell(value, digits=0)
+
+
+# Столбцы-идентификаторы строки: подсказка со значением целиком им не нужна.
+FULL_VALUE_TOOLTIP_SKIP_KEYS = frozenset({"numb1120", "Year", "NAME", "Stancia"})
+
+
+def cell_titles(filled: list[Any], columns: list[dict[str, Any]]) -> list[str]:
+    """Подсказки к ячейкам строки: значение ячейки без выбранного округления."""
+    titles: list[str] = []
+    for column in columns:
+        key = str(column.get("key") or "")
+        index = column.get("source_index")
+        if not column.get("numeric") or key in FULL_VALUE_TOOLTIP_SKIP_KEYS or index is None:
+            titles.append("")
+            continue
+        value = filled[index] if index < len(filled) else None
+        titles.append(_format_full_value(value))
+    return titles
 
 
 def _display_is_nonzero(display: Any) -> bool:
@@ -1629,60 +1915,69 @@ _ID_FILTER_TO_FIELD = {
 }
 
 
+def _clean_number(value: Any) -> Decimal | None:
+    """Число без хвоста float-шума источника; None — пусто или не число.
+
+    Расчётные столбцы страницы (d_*, K_*, CO2, UD_*, ЗВ) считаем от очищенных
+    значений: иначе разность 3121 и 3120,2000000000003 даёт 0,7999999999997272.
+    """
+    if _is_blank(value) or isinstance(value, bool):
+        return None
+    return drop_float_noise(value)
+
+
+def _significant_float(value: Decimal) -> float:
+    """Расчётный столбец страницы — float, как и значения макета, но без шума."""
+    return float(drop_float_noise(value))
+
+
 def _safe_subtract(a: Any, b: Any) -> Any:
     """Безопасное вычитание: возвращает разность или None, если любое значение пусто."""
-    if _is_blank(a) or _is_blank(b):
+    left = _clean_number(a)
+    right = _clean_number(b)
+    if left is None or right is None:
         return None
-    if isinstance(a, bool) or isinstance(b, bool):
-        return None
-    try:
-        return float(a) - float(b)
-    except (TypeError, ValueError):
-        return None
+    return _significant_float(left - right)
 
 
 def _safe_divide(numerator: Any, denominator: Any) -> Any:
     """Безопасное деление: None при пустых значениях или нулевом знаменателе."""
-    if _is_blank(numerator) or _is_blank(denominator):
+    left = _clean_number(numerator)
+    right = _clean_number(denominator)
+    if left is None or right is None or right == 0:
         return None
-    if isinstance(numerator, bool) or isinstance(denominator, bool):
-        return None
-    try:
-        denom = float(denominator)
-        if denom == 0:
-            return None
-        return float(numerator) / denom
-    except (TypeError, ValueError):
-        return None
+    with localcontext() as ctx:
+        ctx.prec = SIGNIFICANT_DIGITS
+        ctx.rounding = ROUND_HALF_UP
+        return float(+(left / right))
 
 
 def _safe_sum(*values: Any) -> Any:
     """Сумма числовых слагаемых; None, если все пустые или есть нечисло."""
-    total = 0.0
-    has_value = False
+    total: Decimal | None = None
     for value in values:
         if _is_blank(value) or isinstance(value, bool):
             continue
-        try:
-            total += float(value)
-        except (TypeError, ValueError):
+        part = _clean_number(value)
+        if part is None:
             return None
-        has_value = True
-    return total if has_value else None
+        total = part if total is None else total + part
+    if total is None:
+        return None
+    return _significant_float(total)
 
 
 def _brought_energy_mln_kwh(w_en: Any, teplo: Any) -> Any:
     """Приведённая энергия, млн кВт·ч: W_en + Teplo / 859,8 · 1000."""
-    if _is_blank(w_en) and _is_blank(teplo):
+    energy = _clean_number(w_en)
+    heat = _clean_number(teplo)
+    if energy is None and heat is None:
         return None
-    if isinstance(w_en, bool) or isinstance(teplo, bool):
-        return None
-    try:
-        energy = 0.0 if _is_blank(w_en) else float(w_en)
-        heat = 0.0 if _is_blank(teplo) else float(teplo)
-    except (TypeError, ValueError):
-        return None
-    return energy + heat / KCAL_PER_KWH * 1000.0
+    with localcontext() as ctx:
+        ctx.prec = SIGNIFICANT_DIGITS
+        ctx.rounding = ROUND_HALF_UP
+        total = (energy or Decimal(0)) + (heat or Decimal(0)) / Decimal(str(KCAL_PER_KWH)) * 1000
+        return float(+total)
 
 
 def _compute_differences(
@@ -1779,7 +2074,8 @@ def _compute_specific_co2(
         value = None
         if not missing:
             fuel_total = _safe_sum(*fuel_parts)
-            co2_kg = None if _is_blank(co2) else float(co2) * 1000.0
+            co2_value = _clean_number(co2)
+            co2_kg = None if co2_value is None else co2_value * 1000
             value = _safe_divide(co2_kg, fuel_total)
         if len(out) <= ud_ek_idx:
             out.extend([None] * (ud_ek_idx - len(out) + 1))
@@ -1874,14 +2170,11 @@ def _assign_filled(
 
 
 def _kg_per_tce(mass_t: Any, fuel_tce: Any) -> Any:
-    """т → кг/тут: масса, т · 1000 / расход топлива, тут."""
-    if _is_blank(mass_t):
+    """т → кг/т у.т.: масса, т · 1000 / расход топлива, т у.т."""
+    mass = _clean_number(mass_t)
+    if mass is None:
         return None
-    try:
-        kg = float(mass_t) * 1000.0
-    except (TypeError, ValueError):
-        return None
-    return _safe_divide(kg, fuel_tce)
+    return _safe_divide(mass * 1000, fuel_tce)
 
 
 def _compute_zv_specific_metrics(
@@ -1983,6 +2276,361 @@ def ensure_zv_electricity_specific_column(
     )
 
 
+def _first_column_key(
+    columns: list[dict[str, Any]],
+    keys: tuple[str, ...],
+) -> str | None:
+    """Первый из ключей, который есть среди столбцов."""
+    present = {str(column.get("key") or "") for column in columns}
+    return next((key for key in keys if key in present), None)
+
+
+def station_generation_check_pairs(
+    columns: list[dict[str, Any]],
+) -> dict[str, str]:
+    """Столбец «Генерации» → столбец макета, с которым сверяется ячейка страницы."""
+    pairs: dict[str, str] = {}
+    for key, _header, macro_keys in STATION_GENERATION_COLUMNS:
+        counterpart = _first_column_key(columns, macro_keys)
+        if counterpart is not None and _column_index(columns, {key}) is not None:
+            pairs[key] = counterpart
+    return pairs
+
+
+def ensure_station_generation_columns(
+    columns: list[dict[str, Any]],
+    header_rows: list[list[dict[str, Any]]],
+    data_rows: list[list[Any]] | None = None,
+) -> None:
+    """Столбцы «Руст, МВт» и «Выработка ЭЭ, млн кВтч (Генерация)» сразу после столбцов ТЭП."""
+    for key, header, macro_keys in STATION_GENERATION_COLUMNS:
+        after_key = _first_column_key(columns, macro_keys)
+        if after_key is None:
+            continue
+        insert_column_after(
+            columns,
+            header_rows,
+            after_key,
+            {"key": key, "numeric": True, "sticky": False},
+            header,
+            data_rows=data_rows,
+        )
+
+
+def ensure_station_affiliation_column(
+    columns: list[dict[str, Any]],
+    header_rows: list[list[dict[str, Any]]],
+    data_rows: list[list[Any]] | None = None,
+) -> None:
+    """Столбец «Принадлежность» сразу после «Отпуск ТЭ, тыс.Гкал» (Q)."""
+    insert_column_after(
+        columns,
+        header_rows,
+        STATION_AFFILIATION_AFTER_KEY,
+        {"key": STATION_AFFILIATION_COLUMN_KEY, "numeric": False, "sticky": False},
+        STATION_AFFILIATION_LABEL,
+        data_rows=data_rows,
+    )
+
+
+def apply_full_height_headers(
+    columns: list[dict[str, Any]],
+    header_rows: list[list[dict[str, Any]]],
+    labels: dict[str, str],
+    *,
+    highlight_flag: str | None = None,
+) -> None:
+    """Подписи вставленных столбцов: одна ячейка на всю высоту шапки, как у столбцов ТЭП."""
+    if not labels:
+        return
+    index_by_key = {
+        str(column["key"]): index
+        for index, column in enumerate(columns)
+        if column.get("key")
+    }
+    for column in columns:
+        key = str(column.get("key") or "")
+        if key not in labels:
+            continue
+        column["label"] = labels[key]
+        if highlight_flag:
+            column[highlight_flag] = True
+    if not header_rows:
+        return
+    for row in header_rows:
+        row[:] = [
+            cell for cell in row if str(cell.get("column_key") or "") not in labels
+        ]
+    top = header_rows[0]
+    for key, header in labels.items():
+        index = index_by_key.get(key)
+        if index is None:
+            continue
+        cell = {
+            "text": header,
+            "rowspan": len(header_rows),
+            "colspan": 1,
+            "sticky": False,
+            "col_index": columns[index].get("source_index"),
+            "column_key": key,
+            "diff_highlight": False,
+            "fuel_tep_highlight": False,
+        }
+        if highlight_flag:
+            cell[highlight_flag] = True
+        top.insert(_insert_index_for_column(top, index, columns, index_by_key), cell)
+
+
+def station_generation_mismatch(
+    cells: list[Any],
+    columns: list[dict[str, Any]],
+    check_pairs: dict[str, str],
+) -> list[bool]:
+    """Ячейки новых столбцов, где станционное значение не совпало со столбцом макета."""
+    index_by_key = {
+        str(column.get("key") or ""): index for index, column in enumerate(columns)
+    }
+    flags = [False] * len(cells)
+    for key, counterpart in check_pairs.items():
+        index = index_by_key.get(key)
+        target = index_by_key.get(counterpart)
+        if index is None or target is None or index >= len(cells) or target >= len(cells):
+            continue
+        flags[index] = bool(cells[index]) and cells[index] != cells[target]
+    return flags
+
+
+def apply_station_generation_overlay(
+    filled: list[Any],
+    columns: list[dict[str, Any]],
+    overlay: dict[str, Any],
+) -> list[Any]:
+    """Название станции «Генерации» и её «Руст»/выработка для строки года."""
+    names = overlay.get("names_by_numb") or {}
+    values = overlay.get("values_by_numb_year") or {}
+    if not names and not values:
+        return filled
+    out = list(filled)
+    numb = _row_numb(out, columns)
+    name = names.get(numb) if numb is not None else None
+    if name:
+        for name_key in ("NAME", "Stancia"):
+            index = _column_index(columns, {name_key})
+            if index is not None and index < len(out):
+                out[index] = name
+    year = _row_year(out, columns)
+    row_values = values.get((numb, year)) if numb is not None and year is not None else None
+    for key, value in (row_values or {}).items():
+        index = _column_index(columns, {key})
+        if index is not None and index < len(out):
+            out[index] = value
+    return out
+
+
+def _generation_stations_by_numb(
+    numbs: list[int],
+    version_id: int | None,
+) -> dict[int, dict[int, str]]:
+    """NUMB группы оборудования → {ID станции «Генерации»: её название}."""
+    from app.ecology.services.gis_tek_page_services import (
+        _equipment_group_query,
+        linked_generation_stations,
+    )
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    groups = (
+        _equipment_group_query(version_id)
+        .filter(EquipmentGroup.numb.in_(numbs))
+        .all()
+    )
+    stations_by_numb: dict[int, dict[int, str]] = {}
+    for group in groups:
+        linked = stations_by_numb.setdefault(int(group.numb), {})
+        for station in linked_generation_stations(group, version_id):
+            linked[int(station["id"])] = str(station["name"])
+    return stations_by_numb
+
+
+def _station_links_by_numb(
+    stations_by_numb: dict[int, dict[int, str]],
+) -> dict[int, list[dict[str, Any]]]:
+    """Ссылки на карточку станции: порядок имён как в столбце «Электростанция»."""
+    return {
+        numb: [
+            {"id": station_id, "name": name}
+            for station_id, name in sorted(
+                stations.items(), key=lambda item: (item[1].casefold(), item[0])
+            )
+        ]
+        for numb, stations in stations_by_numb.items()
+    }
+
+
+def load_generation_station_links_by_numb(
+    numbs: set[int],
+) -> dict[int, list[dict[str, Any]]]:
+    """Станции «Генерации», привязанные к группам оборудования (по их NUMB).
+
+    Пустой список у NUMB — группа не привязана к станции: на страницах анализа
+    «С котельными» такие группы не показываем.
+    """
+    numb_list = sorted({int(numb) for numb in numbs or [] if numb is not None})
+    if not numb_list:
+        return {}
+    from flask import has_app_context
+
+    if not has_app_context():
+        return {}
+
+    from app.common.services.database_version_filter import get_current_db_version_id
+
+    return _station_links_by_numb(
+        _generation_stations_by_numb(numb_list, get_current_db_version_id())
+    )
+
+
+def load_station_generation_overlay(
+    numbs: set[int],
+    years: list[int],
+) -> dict[str, Any]:
+    """Станции «Генерации» по группам оборудования текущей версии БД.
+
+    Названия те же, что в столбце «Электростанция (Генерация)» на /ecology/gis_tek/,
+    значения — как в карточке станции: «Руст, МВт» из строки «Всего по электростанции»
+    и годовая выработка из таблицы «Выработка электроэнергии электростанцией, млн кВтч».
+    Несколько станций у одной группы оборудования суммируются.
+    """
+    numb_list = sorted({int(numb) for numb in numbs or [] if numb is not None})
+    year_list = sorted({int(year) for year in years or [] if year is not None})
+    if not numb_list or not year_list:
+        return {}
+    from flask import has_app_context
+
+    if not has_app_context():
+        return {}
+
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.generation.services.station_services.station_power_aggregation import (
+        load_stations_powers_by_year,
+    )
+    from app.generation.services.station_services.station_services import (
+        stations_annual_energy_by_year,
+    )
+
+    version_id = get_current_db_version_id()
+    stations_by_numb = _generation_stations_by_numb(numb_list, version_id)
+    names_by_numb = {
+        numb: ", ".join(sorted(stations.values(), key=str.casefold))
+        or GENERATION_STATION_UNKNOWN_NAME
+        for numb, stations in stations_by_numb.items()
+    }
+    # Те же станции для гиперссылок на карточку: порядок как в names_by_numb.
+    station_links_by_numb = _station_links_by_numb(stations_by_numb)
+    station_ids = {
+        station_id for stations in stations_by_numb.values() for station_id in stations
+    }
+    powers = load_stations_powers_by_year(station_ids, year_list, version_id)
+    energy = stations_annual_energy_by_year(
+        station_ids, year_list[0], year_list[-1], version_id
+    )
+    values: dict[tuple[int, int], dict[str, Any]] = {}
+    for numb, stations in stations_by_numb.items():
+        for year in year_list:
+            rust = _safe_sum(
+                *(
+                    powers.get(station_id, {}).get(year, {}).get("p_ust")
+                    for station_id in stations
+                )
+            )
+            generation = _safe_sum(
+                *(energy.get(station_id, {}).get(year) for station_id in stations)
+            )
+            if rust is None and generation is None:
+                continue
+            values[(numb, year)] = {
+                STATION_RUST_COLUMN_KEY: rust,
+                STATION_GENERATION_COLUMN_KEY: generation,
+            }
+    return {
+        "names_by_numb": names_by_numb,
+        "station_links_by_numb": station_links_by_numb,
+        "values_by_numb_year": values,
+    }
+
+
+def load_station_affiliations_by_numb_year(
+    numbs: set[int],
+    years: list[int],
+) -> dict[tuple[int, int], str]:
+    """«Принадлежность» групп оборудования по годам — как на страницах ГИС ТЭК.
+
+    Тип станции берётся из кода VED строки «Топливо» за год; у оболочки составной
+    станции своего ved нет, поэтому тип берётся у её дочерних групп, если он у них
+    один (та же логика, что на /ecology/gis_tek/pg/ и /ecology/gis_tek/pollutants/).
+    """
+    numb_list = sorted({int(numb) for numb in numbs or [] if numb is not None})
+    year_list = sorted({int(year) for year in years or [] if year is not None})
+    if not numb_list or not year_list:
+        return {}
+    from flask import has_app_context
+
+    if not has_app_context():
+        return {}
+
+    from sqlalchemy import or_
+
+    from app.common.services.database_version_filter import get_current_db_version_id
+    from app.ecology.services.gis_tek_page_services import (
+        _equipment_group_query,
+        station_affiliation,
+        station_types_by_equipment_group,
+    )
+    from app.fuel.models.fue_equipment_group_model import EquipmentGroup
+
+    version_id = get_current_db_version_id()
+    wanted = set(numb_list)
+    groups = (
+        _equipment_group_query(version_id)
+        .filter(or_(EquipmentGroup.numb.in_(numb_list), EquipmentGroup.main.in_(numb_list)))
+        .all()
+    )
+    out: dict[tuple[int, int], str] = {}
+    for year in year_list:
+        types_by_group = station_types_by_equipment_group(groups, year, version_id)
+        for group in groups:
+            try:
+                numb = int(group.numb)
+            except (TypeError, ValueError):
+                continue
+            if numb not in wanted:
+                continue
+            value = station_affiliation(types_by_group.get(group.id))
+            current = out.get((numb, year))
+            if current is None or (
+                current == STATION_AFFILIATION_UNKNOWN
+                and value != STATION_AFFILIATION_UNKNOWN
+            ):
+                out[(numb, year)] = value
+    return out
+
+
+def apply_station_affiliation_cells(
+    filled: list[Any],
+    columns: list[dict[str, Any]],
+    affiliations: dict[tuple[int, int], str],
+) -> list[Any]:
+    """Подставляет «Принадлежность» строки года; без данных ГИС ТЭК — «—»."""
+    index = _column_index(columns, {STATION_AFFILIATION_COLUMN_KEY})
+    if index is None or index >= len(filled):
+        return filled
+    numb = _row_numb(filled, columns)
+    year = _row_year(filled, columns)
+    value = affiliations.get((numb, year)) if numb is not None and year is not None else None
+    out = list(filled)
+    out[index] = value or STATION_AFFILIATION_UNKNOWN
+    return out
+
+
 def _compute_derived_columns(
     filled: list[Any],
     source_columns: list[dict[str, Any]],
@@ -2004,6 +2652,8 @@ def _empty_territorial_filter_payload() -> dict[str, Any]:
         data[key] = []
     data["station_name_filter"] = ""
     data["gen_company_filter"] = ""
+    data["station_header_filter"] = ""
+    data["affiliation_filter"] = ""
     return data
 
 
@@ -2030,6 +2680,14 @@ def parse_territory_filters(args: Any = None) -> dict[str, Any]:
     gen_values = _arg_values(args, "gen_company_filter")
     filters["station_name_filter"] = str(station_values[0]).strip() if station_values else ""
     filters["gen_company_filter"] = str(gen_values[0]).strip() if gen_values else ""
+    station_header_values = _arg_values(args, "station_header_filter")
+    filters["station_header_filter"] = (
+        str(station_header_values[0]).strip() if station_header_values else ""
+    )
+    affiliation_values = _arg_values(args, "affiliation_filter")
+    filters["affiliation_filter"] = (
+        str(affiliation_values[0]).strip() if affiliation_values else ""
+    )
     allowed_ved = {key for key, _label in VED_FILTER_OPTIONS}
     ved_raw = [str(value).strip() for value in _arg_values(args, "ved_filter")]
     ved_value = next((value for value in ved_raw if value in allowed_ved), "")
@@ -2055,6 +2713,8 @@ def load_territorial_filter_context(filters: dict[str, Any] | None = None) -> di
         data[key] = list(selected.get(key) or [])
     data["station_name_filter"] = selected.get("station_name_filter") or ""
     data["gen_company_filter"] = selected.get("gen_company_filter") or ""
+    data["station_header_filter"] = selected.get("station_header_filter") or ""
+    data["affiliation_filter"] = selected.get("affiliation_filter") or ""
     data["ved_filter"] = selected.get("ved_filter") or ""
     data["ved_filter_options"] = [
         {"value": value, "label": label} for value, label in VED_FILTER_OPTIONS
@@ -2072,6 +2732,8 @@ def _keep_query_args(
     include_years: bool = True,
     include_view: bool = True,
     per_page: Any = None,
+    emission_digits: int | None = None,
+    specific_digits: int | None = None,
 ) -> dict[str, Any]:
     query: dict[str, Any] = {}
     if include_years:
@@ -2083,6 +2745,10 @@ def _keep_query_args(
             query["view_year"] = view_year
     if digits is not None:
         query["rounding_digits"] = digits
+    if emission_digits is not None:
+        query["emission_rounding_digits"] = emission_digits
+    if specific_digits is not None:
+        query["specific_rounding_digits"] = specific_digits
     for key in TERRITORY_FILTER_KEYS[:5]:
         values = filters.get(key) or []
         if values:
@@ -2090,6 +2756,12 @@ def _keep_query_args(
     station = (filters.get("station_name_filter") or "").strip()
     if station:
         query["station_name_filter"] = station
+    station_header = str(filters.get("station_header_filter") or "").strip()
+    if station_header:
+        query["station_header_filter"] = station_header
+    affiliation = str(filters.get("affiliation_filter") or "").strip()
+    if affiliation:
+        query["affiliation_filter"] = affiliation
     gen_company = (filters.get("gen_company_filter") or "").strip()
     if gen_company:
         query["gen_company_filter"] = gen_company
@@ -2337,6 +3009,8 @@ def _format_summary_row(
     digits: int,
     key: str,
     is_first: bool,
+    emission_digits: int | None = None,
+    specific_digits: int | None = None,
 ) -> dict[str, Any]:
     year_idx = _column_index(source_columns, {"Year"})
     if year_idx is not None:
@@ -2359,11 +3033,12 @@ def _format_summary_row(
         _format_value(
             filled[column["source_index"]] if column["source_index"] < len(filled) else None,
             column["numeric"],
-            digits,
+            column_rounding_digits(column, digits, emission_digits, specific_digits),
         )
         for column in visible_columns
     ]
-    # Подпись итога всегда в столбце станции (даже если в filled уже есть).
+    titles = cell_titles(filled, visible_columns)
+    # Подпись итога всегда в столбце станции (даже когда в filled уже есть).
     for index, column in enumerate(visible_columns):
         if column.get("key") in ("NAME", "Stancia"):
             cells[index] = label
@@ -2375,6 +3050,11 @@ def _format_summary_row(
         bool(column.get("diff_highlight")) and _display_is_nonzero(text)
         for column, text in zip(visible_columns, cells)
     ]
+    cell_mismatch = station_generation_mismatch(
+        cells,
+        visible_columns,
+        station_generation_check_pairs(visible_columns),
+    )
     visible_filled = [
         filled[column["source_index"]] if column["source_index"] < len(filled) else None
         for column in visible_columns
@@ -2383,7 +3063,9 @@ def _format_summary_row(
         "key": key,
         "year": year,
         "cells": cells,
+        "titles": titles,
         "cell_nonzero": cell_nonzero,
+        "cell_mismatch": cell_mismatch,
         "is_empty": _is_empty_numeric_row(visible_filled, visible_columns),
         "is_group_first": is_first,
         "is_summary": True,
@@ -2399,6 +3081,8 @@ def build_region_summary_block(
     visible_columns: list[dict[str, Any]],
     digits: int,
     key_prefix: str,
+    emission_digits: int | None = None,
+    specific_digits: int | None = None,
 ) -> dict[str, Any] | None:
     """Итоговые строки уровня (РЭС/ОЭС/ЕЭС) по годам."""
     by_year: dict[int, list[list[Any]]] = defaultdict(list)
@@ -2425,6 +3109,8 @@ def build_region_summary_block(
                 digits=digits,
                 key=f"{key_prefix}-{year}",
                 is_first=loop_i == 0,
+                emission_digits=emission_digits,
+                specific_digits=specific_digits,
             )
         )
     if not rows:
@@ -2457,6 +3143,8 @@ def attach_region_summaries(
     source_columns: list[dict[str, Any]],
     visible_columns: list[dict[str, Any]],
     digits: int,
+    emission_digits: int | None = None,
+    specific_digits: int | None = None,
 ) -> list[dict[str, Any]]:
     """Добавляет итоги РЭС/ОЭС/ЕЭС, когда на странице последний блок региона."""
     by_res, by_ues, by_est = _index_groups_by_region(all_groups)
@@ -2476,6 +3164,8 @@ def attach_region_summaries(
                         visible_columns=visible_columns,
                         digits=digits,
                         key_prefix=f"sum-res-{res_key}",
+                        emission_digits=emission_digits,
+                        specific_digits=specific_digits,
                     )
             ues_res_list = ues_block.get("res_list") or []
             if not ues_res_list:
@@ -2493,6 +3183,8 @@ def attach_region_summaries(
                     visible_columns=visible_columns,
                     digits=digits,
                     key_prefix=f"sum-ues-{ues_key}",
+                    emission_digits=emission_digits,
+                    specific_digits=specific_digits,
                 )
         est_ues_list = est_block.get("ues_list") or []
         if not est_ues_list:
@@ -2513,6 +3205,8 @@ def attach_region_summaries(
                 visible_columns=visible_columns,
                 digits=digits,
                 key_prefix=f"sum-est-{est_key}",
+                emission_digits=emission_digits,
+                specific_digits=specific_digits,
             )
     return hierarchy
 
@@ -2602,6 +3296,81 @@ def _group_sort_key(group: dict[str, Any]) -> tuple:
     )
 
 
+def _group_station_name(group: dict[str, Any]) -> str:
+    """Название станции группы — как в столбце «Электростанция»."""
+    return _cell_text((group.get("meta") or {}).get("station_name"))
+
+
+def _group_affiliation_sets(
+    groups: list[dict[str, Any]],
+    years: list[int],
+) -> list[set[str]]:
+    """«Принадлежность» каждой группы (по годам) — как в столбце таблицы."""
+    numbs: set[int] = set()
+    for group in groups:
+        for numb in group.get("member_numbs") or [group.get("numb")]:
+            if isinstance(numb, int):
+                numbs.add(numb)
+    mapping = load_station_affiliations_by_numb_year(numbs, years) if years else {}
+    result: list[set[str]] = []
+    for group in groups:
+        values: set[str] = set()
+        for numb in group.get("member_numbs") or [group.get("numb")]:
+            if not isinstance(numb, int):
+                continue
+            for year in years:
+                value = mapping.get((numb, year))
+                if value:
+                    values.add(value)
+        result.append(values or {STATION_AFFILIATION_UNKNOWN})
+    return result
+
+
+def apply_header_filters(
+    groups: list[dict[str, Any]],
+    visible_columns: list[dict[str, Any]],
+    filters: dict[str, Any],
+    years: list[int],
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """Отбирает группы по фильтрам в шапке и возвращает варианты для списков."""
+    station_header_filter = str(filters.get("station_header_filter") or "").strip()
+    affiliation_filter = str(filters.get("affiliation_filter") or "").strip()
+    station_choices = sorted(
+        {name for group in groups if (name := _group_station_name(group))},
+        key=str.casefold,
+    )
+    has_affiliation_column = (
+        _column_index(visible_columns, {STATION_AFFILIATION_COLUMN_KEY}) is not None
+    )
+    affiliation_sets = (
+        _group_affiliation_sets(groups, years) if has_affiliation_column else []
+    )
+    # «—» — не принадлежность, а отсутствие данных ГИС ТЭК, поэтому в списке фильтра
+    # его нет (как на /ecology/gis_tek/pg/ и /ecology/gis_tek/pollutants/).
+    affiliation_choices = sorted(
+        {
+            value
+            for values in affiliation_sets
+            for value in values
+            if value != STATION_AFFILIATION_UNKNOWN
+        },
+        key=str.casefold,
+    )
+    if station_header_filter:
+        groups = [
+            group
+            for group in groups
+            if _group_station_name(group) == station_header_filter
+        ]
+    if affiliation_filter and affiliation_sets:
+        groups = [
+            group
+            for group, values in zip(groups, affiliation_sets)
+            if affiliation_filter in values
+        ]
+    return groups, station_choices, affiliation_choices
+
+
 def _paginate_groups(
     groups: list[dict[str, Any]],
     page: int,
@@ -2681,6 +3450,8 @@ def build_comparison_table_context(
     start_year: Any = None,
     end_year: Any = None,
     rounding_digits: Any = None,
+    emission_rounding_digits: Any = None,
+    specific_rounding_digits: Any = None,
     view_year: Any = None,
     source_path: str | Path | None = None,
     request_args: Any = None,
@@ -2698,7 +3469,7 @@ def build_comparison_table_context(
     years_all = list(parsed["years"])
     planning_start = None
     planning_end = None
-    if sheet["slug"] in PG_ANALYSIS_SHEET_SLUGS:
+    if sheet["slug"] in ANALYSIS_SHEET_SLUGS:
         try:
             from app.common.services.get_services.years.years_get_services import (
                 get_filter_end_year,
@@ -2747,9 +3518,31 @@ def build_comparison_table_context(
         start, end = end, start
     range_years = [year for year in years_all if start is not None and end is not None and start <= year <= end]
     digits = resolve_rounding_digits(rounding_digits)
+    emission_digits = (
+        resolve_rounding_digits(emission_rounding_digits)
+        if emission_rounding_digits not in (None, "")
+        else digits
+    )
+    specific_digits = (
+        resolve_rounding_digits(specific_rounding_digits)
+        if specific_rounding_digits not in (None, "")
+        else digits
+    )
     source_columns = parsed["columns"]
     if sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS:
         ensure_zv_electricity_specific_column(
+            source_columns,
+            parsed["header_rows"],
+            parsed.get("rows"),
+        )
+    if sheet["slug"] in STATION_GENERATION_SHEET_SLUGS:
+        ensure_station_generation_columns(
+            source_columns,
+            parsed["header_rows"],
+            parsed.get("rows"),
+        )
+    if sheet["slug"] in STATION_AFFILIATION_SHEET_SLUGS:
+        ensure_station_affiliation_column(
             source_columns,
             parsed["header_rows"],
             parsed.get("rows"),
@@ -2777,9 +3570,24 @@ def build_comparison_table_context(
         apply_zv_display_column_order(visible_columns, header_rows)
         apply_zv_leaf_group_headers(visible_columns, header_rows)
         apply_zv_analysis_banner_headers(visible_columns, header_rows)
+        for column in visible_columns:
+            if column.get("key") in ZV_ECOLOGY_EDITABLE_KEYS:
+                column["editable"] = True
     _attach_column_formula_tooltips(header_rows, _column_formula_texts())
     if sheet["slug"] in PG_ANALYSIS_SHEET_SLUGS or sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS:
         drop_key_header_row(header_rows)
+    apply_full_height_headers(
+        visible_columns,
+        header_rows,
+        STATION_GENERATION_COLUMN_LABELS,
+        highlight_flag="station_generation_highlight",
+    )
+    apply_full_height_headers(
+        visible_columns,
+        header_rows,
+        {STATION_AFFILIATION_COLUMN_KEY: STATION_AFFILIATION_LABEL},
+    )
+    station_check_pairs = station_generation_check_pairs(visible_columns)
     territory_filters = parse_territory_filters(request_args)
     numb1120_filter = _as_int_ids(_arg_values(request_args, "numb1120_filter"))
     territory_filters["numb1120_filter"] = numb1120_filter
@@ -2791,7 +3599,7 @@ def build_comparison_table_context(
     territory_filters["show_empty_rows"] = show_empty_rows
     territory_filters["show_reported"] = show_reported
 
-    if sheet["slug"] in PG_ANALYSIS_SHEET_SLUGS and start is not None and end is not None:
+    if sheet["slug"] in ANALYSIS_SHEET_SLUGS and start is not None and end is not None:
         from app.ecology.services.gis_tes_pg_from_fuel_services import (
             collect_pg_groups_from_fuel,
             fill_pg_group_year_rows,
@@ -2806,10 +3614,19 @@ def build_comparison_table_context(
             visible_columns=visible_columns,
             digits=digits,
             hydrate=False,
+            emission_digits=emission_digits,
+            specific_digits=specific_digits,
         )
         if numb1120_filter:
             wanted_numbs = set(numb1120_filter)
-            groups = [group for group in groups if group.get("numb") in wanted_numbs]
+            # У сводной строки составной станции в numb — код головы, а фильтр может
+            # содержать код любой её подгруппы.
+            groups = [
+                group
+                for group in groups
+                if group.get("numb") in wanted_numbs
+                or wanted_numbs.intersection(group.get("member_numbs") or ())
+            ]
             numb1120_filter_choices = sorted(
                 {n for n in numb1120_filter_choices if n in wanted_numbs}
                 or {
@@ -2841,12 +3658,35 @@ def build_comparison_table_context(
             if sheet["slug"] in PG_ANALYSIS_SHEET_SLUGS
             else {}
         )
+        station_generation_overlay = (
+            load_station_generation_overlay(numbs, range_years)
+            if sheet["slug"] in STATION_GENERATION_SHEET_SLUGS
+            else {}
+        )
+        station_links_by_numb = (
+            station_generation_overlay.get("station_links_by_numb") or {}
+        )
+        station_affiliations = (
+            load_station_affiliations_by_numb_year(
+                numbs, sorted({year for _numb, year in overlay})
+            )
+            if sheet["slug"] in STATION_AFFILIATION_SHEET_SLUGS
+            else {}
+        )
         grouped: dict[Any, list[dict[str, Any]]] = defaultdict(list)
         for index, raw in visible_raw:
             year = _row_year(raw)
             filled = apply_fuel_indicators(raw, source_columns, overlay)
             if pg_overlay:
                 filled = apply_pg_ecology_overlay(filled, source_columns, pg_overlay)
+            if station_generation_overlay:
+                filled = apply_station_generation_overlay(
+                    filled, source_columns, station_generation_overlay
+                )
+            if station_affiliations:
+                filled = apply_station_affiliation_cells(
+                    filled, source_columns, station_affiliations
+                )
             numb = _row_numb(raw, source_columns)
             fuel = overlay.get((numb, year)) if numb is not None and year is not None else None
             if not row_matches_territory_filters(filled, source_columns, fuel, territory_filters):
@@ -2856,14 +3696,20 @@ def build_comparison_table_context(
                 _format_value(
                     filled[column["source_index"]] if column["source_index"] < len(filled) else None,
                     column["numeric"],
-                    digits,
+                    column_rounding_digits(
+                        column, digits, emission_digits, specific_digits
+                    ),
                 )
                 for column in visible_columns
             ]
+            titles = cell_titles(filled, visible_columns)
             cell_nonzero = [
                 bool(column.get("diff_highlight")) and _display_is_nonzero(text)
                 for column, text in zip(visible_columns, cells)
             ]
+            cell_mismatch = station_generation_mismatch(
+                cells, visible_columns, station_check_pairs
+            )
             visible_filled = [
                 filled[column["source_index"]] if column["source_index"] < len(filled) else None
                 for column in visible_columns
@@ -2874,7 +3720,9 @@ def build_comparison_table_context(
                     "key": f"{sheet['slug']}-{index}-{year or ''}",
                     "year": year,
                     "cells": cells,
+                    "titles": titles,
                     "cell_nonzero": cell_nonzero,
+                    "cell_mismatch": cell_mismatch,
                     "is_empty": _is_empty_numeric_row(visible_filled, visible_columns),
                     "fuel": fuel,
                     "filled": filled,
@@ -2893,6 +3741,7 @@ def build_comparison_table_context(
                     "id": group_id,
                     "numb": group_id if isinstance(group_id, int) else None,
                     "meta": meta,
+                    "station_links": station_links_by_numb.get(group_id) or [],
                     "rowspan": len(items),
                     "filled_by_year": {
                         item["year"]: item["filled"]
@@ -2904,7 +3753,9 @@ def build_comparison_table_context(
                             "key": item["key"],
                             "year": item["year"],
                             "cells": item["cells"],
+                            "titles": item["titles"],
                             "cell_nonzero": item["cell_nonzero"],
+                            "cell_mismatch": item["cell_mismatch"],
                             "is_empty": item["is_empty"],
                             "is_group_first": loop_i == 0,
                         }
@@ -2913,6 +3764,8 @@ def build_comparison_table_context(
                 }
             )
         groups.sort(key=_group_sort_key)
+        if sheet["slug"] in ZV_ANALYSIS_SHEET_SLUGS:
+            groups = _drop_boiler_groups(groups, sheet["slug"])
         numb1120_filter_choices = sorted(
             {group["numb"] for group in groups if isinstance(group.get("numb"), int)}
         )
@@ -2920,10 +3773,19 @@ def build_comparison_table_context(
             wanted_numbs = set(numb1120_filter)
             groups = [group for group in groups if group.get("numb") in wanted_numbs]
 
+    # Фильтры в шапке: «Электростанция» и «Принадлежность».
+    station_header_filter = str(
+        territory_filters.get("station_header_filter") or ""
+    ).strip()
+    affiliation_filter = str(territory_filters.get("affiliation_filter") or "").strip()
+    groups, station_filter_choices, affiliation_filter_choices = apply_header_filters(
+        groups, visible_columns, territory_filters, list(range_years)
+    )
+
     page_groups, current_page, total_pages, total_count, per_page_value = _paginate_groups(
         groups, page, per_page
     )
-    if sheet["slug"] in PG_ANALYSIS_SHEET_SLUGS and start is not None and end is not None:
+    if sheet["slug"] in ANALYSIS_SHEET_SLUGS and start is not None and end is not None:
         from app.ecology.services.gis_tes_pg_from_fuel_services import (
             fill_pg_group_year_rows,
         )
@@ -2938,6 +3800,8 @@ def build_comparison_table_context(
             source_columns=source_columns,
             visible_columns=visible_columns,
             digits=digits,
+            emission_digits=emission_digits,
+            specific_digits=specific_digits,
         )
     hierarchy = _build_hierarchy(page_groups)
     if show_totals:
@@ -2947,6 +3811,8 @@ def build_comparison_table_context(
             source_columns=source_columns,
             visible_columns=visible_columns,
             digits=digits,
+            emission_digits=emission_digits,
+            specific_digits=specific_digits,
         )
     keep_query = _keep_query_args(
         start,
@@ -2956,6 +3822,8 @@ def build_comparison_table_context(
         territory_filters,
         include_view=False,
         per_page=per_page_value,
+        emission_digits=emission_digits,
+        specific_digits=specific_digits,
     )
     context = {
         "page_title": sheet["page_title"],
@@ -2970,6 +3838,8 @@ def build_comparison_table_context(
         "start_year": start,
         "end_year": end,
         "rounding_digits": digits,
+        "emission_rounding_digits": emission_digits,
+        "specific_rounding_digits": specific_digits,
         "year_features": _year_features(),
         "sticky_col_count": sticky_col_count,
         "keep_query": keep_query,
@@ -2982,6 +3852,8 @@ def build_comparison_table_context(
             territory_filters,
             include_years=False,
             per_page=per_page_value,
+            emission_digits=emission_digits,
+            specific_digits=specific_digits,
         ),
         "current_page": current_page,
         "total_pages": total_pages,
@@ -2992,12 +3864,19 @@ def build_comparison_table_context(
         "rowspan_column_keys": ROWSPAN_COLUMN_KEYS,
         "numb1120_filter": numb1120_filter,
         "numb1120_filter_choices": numb1120_filter_choices,
+        "station_header_filter": station_header_filter,
+        "station_filter_choices": station_filter_choices,
+        "affiliation_filter": affiliation_filter,
+        "affiliation_filter_choices": affiliation_filter_choices,
         "show_totals": show_totals,
         "show_empty_rows": show_empty_rows,
         "show_reported": show_reported,
         "has_reported_columns": has_reported_columns,
+        "station_check_pairs": station_check_pairs,
         "has_active_filters": bool(
             numb1120_filter
+            or station_header_filter
+            or affiliation_filter
             or (territory_filters.get("station_name_filter") or "").strip()
             or (territory_filters.get("gen_company_filter") or "").strip()
             or str(territory_filters.get("ved_filter") or "").strip()

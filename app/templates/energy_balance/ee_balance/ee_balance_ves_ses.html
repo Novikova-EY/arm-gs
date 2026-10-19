@@ -420,10 +420,15 @@ block content %} {% if current_user.is_authenticated %}
       #vesSesTable tbody tr.ves-ses-header > td.ves-ses-dtype-cell {
         z-index: 9;
       }
+      /* Липкие левые колонки: фон при наведении обязательно непрозрачный.
+         Bootstrap --bs-table-hover-bg полупрозрачный (rgba(0,0,0,.075)), и при наведении
+         сквозь липкие ячейки просвечивают уехавшие вбок ячейки годов — данные строк
+         «налезают» на Наименование / Тип станции / Тип данных.
+         #ececec = та же заливка, что и rgba(0,0,0,.075) поверх белого, но без прозрачности. */
       #vesSesTable.table-hover > tbody > tr:hover > td.ves-ses-name-cell,
       #vesSesTable.table-hover > tbody > tr:hover > td.ves-ses-type-cell,
       #vesSesTable.table-hover > tbody > tr:hover > td.ves-ses-dtype-cell {
-        background-color: var(--bs-table-hover-bg, #ececec);
+        background-color: #ececec;
       }
       #vesSesTable tr[data-station-id][data-ves-metric="energy"] > td.ves-ses-dtype-cell {
         background-color: #e7f1ff;

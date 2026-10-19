@@ -35,7 +35,7 @@ NEW_TES_CALC_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "toplivo",
         "sheet_name": "Данные по модулю Топливо",
         "page_title": "Топливные показатели новых ТЭС (модуль Топливо)",
-        "unit": "тыс.тут",
+        "unit": "тыс. т у.т.",
         "layout": "fuel",
     },
     {
@@ -98,7 +98,7 @@ NEW_TES_CALC_SHEETS: tuple[dict[str, Any], ...] = (
         "slug": "udel-fuel",
         "sheet_name": "Удельные по топл",
         "page_title": "Удельные выбросы на топливо",
-        "unit": "кг/тут",
+        "unit": "кг/т у.т.",
         "layout": "specific_fuel",
     },
     {
@@ -115,7 +115,7 @@ NEW_TES_EMISSION_VIEW: dict[str, dict[str, Any]] = {
         "kind": "pair",
         "left_metric": "b",
         "right_metric": "ash",
-        "left_title": "В, тыс.тут",
+        "left_title": "В, тыс. т у.т.",
         "right_title": "М, тыс.т",
         "left_formula_key": "nt_fuel_b",
         "right_formula_key": "nt_zv_thous",
@@ -125,7 +125,7 @@ NEW_TES_EMISSION_VIEW: dict[str, dict[str, Any]] = {
         "kind": "pair",
         "left_metric": "b",
         "right_metric": "so2",
-        "left_title": "В, тыс.тут",
+        "left_title": "В, тыс. т у.т.",
         "right_title": "М, тыс.т",
         "left_formula_key": "nt_fuel_b",
         "right_formula_key": "nt_zv_thous",
@@ -135,7 +135,7 @@ NEW_TES_EMISSION_VIEW: dict[str, dict[str, Any]] = {
         "kind": "pair",
         "left_metric": "b",
         "right_metric": "nox",
-        "left_title": "В, тыс.тут",
+        "left_title": "В, тыс. т у.т.",
         "right_title": "М, тыс.т",
         "left_formula_key": "nt_fuel_b",
         "right_formula_key": "nt_zv_thous",
@@ -145,7 +145,7 @@ NEW_TES_EMISSION_VIEW: dict[str, dict[str, Any]] = {
         "kind": "pair",
         "left_metric": "b",
         "right_metric": "co",
-        "left_title": "В, тыс.тут",
+        "left_title": "В, тыс. т у.т.",
         "right_title": "М, т",
         "left_formula_key": "nt_fuel_b",
         "right_formula_key": "nt_zv_tonnes",
@@ -155,7 +155,7 @@ NEW_TES_EMISSION_VIEW: dict[str, dict[str, Any]] = {
         "kind": "pair",
         "left_metric": "b",
         "right_metric": "pg",
-        "left_title": "В, тыс.тут",
+        "left_title": "В, тыс. т у.т.",
         "right_title": "М, тыс.т",
         "left_formula_key": "nt_fuel_b",
         "right_formula_key": "nt_pg_mass",
@@ -178,11 +178,11 @@ NORM_COLUMNS: tuple[tuple[str, str], ...] = (
 
 NORM_HEADER_GROUPS: tuple[dict[str, Any], ...] = (
     {
-        "title": "До 100 МВт, кг/тут (ПГ — т/тут)",
+        "title": "До 100 МВт, кг/т у.т. (ПГ — т/т у.т.)",
         "keys": ("ash_le100", "so2_le100", "nox_le100", "co_le100", "pg_le100"),
     },
     {
-        "title": "Более 100 МВт, кг/тут (ПГ — т/тут)",
+        "title": "Более 100 МВт, кг/т у.т. (ПГ — т/т у.т.)",
         "keys": ("ash_gt100", "so2_gt100", "nox_gt100", "co_gt100", "pg_gt100"),
     },
 )

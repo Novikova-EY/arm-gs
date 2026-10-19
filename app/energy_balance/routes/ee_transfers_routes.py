@@ -3,7 +3,7 @@ from datetime import datetime
 from urllib.parse import parse_qs, urlparse
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
 from app.energy_balance.services.ee_transfers_export_services import export_ee_transfers_to_excel
@@ -251,6 +251,7 @@ def ee_transfer_value():
             year=data.get("year"),
             month=data.get("month"),
             raw_value=data.get("value"),
+            user=current_user,
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400

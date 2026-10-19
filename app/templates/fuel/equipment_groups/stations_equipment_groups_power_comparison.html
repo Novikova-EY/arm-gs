@@ -1,0 +1,498 @@
+{% extends 'base.html' %} {% block title %}Сравнение значений мощностей в модуле "Топливо" и модуле "Генерация"{%
+endblock %} {% block extra_head %}
+<style>
+  .power-comparison-table {
+    min-width: 1200px;
+  }
+  .power-comparison-scroll {
+    max-height: calc(100vh - 250px);
+    overflow: auto;
+  }
+  .power-comparison-table.with-p-rasp {
+    min-width: 1400px;
+  }
+  /* Шапка закреплена в прокручиваемой области таблицы. */
+  .power-comparison-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .power-comparison-table thead th {
+    position: sticky;
+    background-color: #d1e7dd;
+    background-clip: padding-box;
+    box-shadow:
+      inset 0 -1px 0 #a3b1a8,
+      inset 0 1px 0 #a3b1a8;
+  }
+  .power-comparison-table thead tr:first-child th {
+    top: 0;
+    z-index: 4;
+  }
+  .power-comparison-table thead tr:nth-child(2) th {
+    top: var(--power-head-row-height, 41px);
+    z-index: 3;
+  }
+  .power-comparison-table td,
+  .power-comparison-table th {
+    vertical-align: middle;
+  }
+  .power-comparison-table .power-summary td {
+    font-weight: 700;
+  }
+  .power-comparison-table .power-system td {
+    background: #e9ecef !important;
+  }
+  .power-comparison-table .power-ues td {
+    background: #cfe2ff !important;
+  }
+  .power-comparison-table .power-res td {
+    background: #e2e3e5 !important;
+  }
+  .power-comparison-table .power-station td,
+  .power-comparison-table .power-station-group td {
+    background: inherit !important;
+  }
+  .power-comparison-table .power-unassigned td,
+  .power-comparison-table .power-unassigned_station td,
+  .power-comparison-table .power-unclassified td {
+    background: #fff3cd !important;
+  }
+  .power-comparison-table .detail-row td {
+    font-weight: 400;
+  }
+  .power-comparison-table .numb-row td {
+    font-weight: 700;
+    background: #eef4ff;
+  }
+  .power-comparison-table td.table-danger {
+    box-shadow: inset 0 0 0 9999px #f8d7da;
+    font-weight: 700;
+  }
+  .power-comparison-table .numeric {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .power-comparison-table .group-label {
+    min-width: 240px;
+  }
+  .power-comparison-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: end;
+    gap: 0.5rem;
+  }
+  .power-comparison-toolbar__pagination {
+    justify-self: center;
+  }
+  .power-comparison-toolbar__actions {
+    justify-self: end;
+  }
+  @media (max-width: 900px) {
+    .power-comparison-toolbar {
+      grid-template-columns: 1fr;
+    }
+    .power-comparison-toolbar__pagination,
+    .power-comparison-toolbar__actions {
+      justify-self: start;
+    }
+  }
+</style>
+{% endblock %} {% block content %} {% if current_user.is_authenticated %}
+<div class="container-fluid mt-3">
+  <div
+    class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"
+  >
+    <h1 class="h3 mb-0 text-center flex-grow-1">
+      Сравнение значений мощностей в модуле "Топливо" и модуле "Генерация"
+    </h1>
+    <a
+      href="{{ url_for('fuel_bp.stations_equipment_groups') }}"
+      class="btn btn-outline-secondary"
+    >
+      Назад к группам оборудования
+    </a>
+  </div>
+
+  <div class="power-comparison-toolbar mb-3">
+    <form method="get" class="d-flex align-items-end gap-2">
+      <div>
+        <label for="comparison-year" class="form-label mb-1"
+          >Год сравнения</label
+        >
+        <select
+          id="comparison-year"
+          name="year"
+          class="form-select w-auto"
+          onchange="this.form.submit()"
+        >
+          {% for choice in comparison.year_choices %}
+          <option
+            value="{{ choice.value }}"
+            {% if comparison.selected_year == choice.value %}selected{% endif %}
+          >
+            {{ choice.label }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if comparison.show_p_rasp %}<input
+        type="hidden"
+        name="p_rasp"
+        value="1"
+      />{% endif %} {% if comparison.show_ved0 %}<input
+        type="hidden"
+        name="ved0"
+        value="1"
+      />{% endif %} {% if comparison.show_boilers %}<input
+        type="hidden"
+        name="boilers"
+        value="1"
+      />{% endif %} {% if comparison.rounding_digits %}<input
+        type="hidden"
+        name="rounding_digits"
+        value="{{ comparison.rounding_digits }}"
+      />{% endif %}
+      <noscript
+        ><button type="submit" class="btn btn-primary">Показать</button></noscript
+      >
+    </form>
+
+    <div class="power-comparison-toolbar__pagination">
+      {% if comparison.pagination %}
+      {% set current_page = comparison.pagination.current_page %}
+      {% set total_pages = comparison.pagination.total_pages %}
+      {% set pagination_endpoint = 'fuel_bp.station_power_comparison' %}
+      {% include 'generation/includes/pagination_station.html' %}
+      {% endif %}
+    </div>
+
+    <div class="power-comparison-toolbar__actions d-flex align-items-end flex-wrap gap-2">
+      <a
+        href="{{ url_for('fuel_bp.export_station_power_comparison', year=comparison.selected_year, p_rasp='1' if comparison.show_p_rasp else None, ved0='1' if comparison.show_ved0 else None, boilers='1' if comparison.show_boilers else None, rounding_digits=comparison.rounding_digits if comparison.rounding_digits else None) }}"
+        class="btn btn-outline-success"
+        title="Выгрузить все строки сравнения с текущими параметрами"
+        >Выгрузить в Excel</a
+      >
+      <a
+        href="{{ url_for('fuel_bp.station_power_comparison', year=comparison.selected_year, page=comparison.pagination.current_page if comparison.pagination else 1, p_rasp='1' if comparison.show_p_rasp else None, ved0='1' if comparison.show_ved0 else None, boilers=None if comparison.show_boilers else '1', rounding_digits=comparison.rounding_digits if comparison.rounding_digits else None) }}"
+        class="btn {% if comparison.show_boilers %}btn-secondary{% else %}btn-outline-secondary{% endif %}"
+        role="button"
+        aria-pressed="{{ 'true' if comparison.show_boilers else 'false' }}"
+        >Котельные</a
+      >
+      <a
+        href="{{ url_for('fuel_bp.station_power_comparison', year=comparison.selected_year, page=comparison.pagination.current_page if comparison.pagination else 1, p_rasp='1' if comparison.show_p_rasp else None, ved0=None if comparison.show_ved0 else '1', boilers='1' if comparison.show_boilers else None, rounding_digits=comparison.rounding_digits if comparison.rounding_digits else None) }}"
+        class="btn {% if comparison.show_ved0 %}btn-warning{% else %}btn-outline-warning{% endif %}"
+        role="button"
+        aria-pressed="{{ 'true' if comparison.show_ved0 else 'false' }}"
+        >VED=0</a
+      >
+      <a
+        href="{{ url_for('fuel_bp.station_power_comparison', year=comparison.selected_year, page=comparison.pagination.current_page if comparison.pagination else 1, p_rasp=None if comparison.show_p_rasp else '1', ved0='1' if comparison.show_ved0 else None, boilers='1' if comparison.show_boilers else None, rounding_digits=comparison.rounding_digits if comparison.rounding_digits else None) }}"
+        class="btn {% if comparison.show_p_rasp %}btn-success{% else %}btn-outline-success{% endif %}"
+        role="button"
+        aria-pressed="{{ 'true' if comparison.show_p_rasp else 'false' }}"
+        >Ррасп</a
+      >
+      <form method="get" class="d-flex align-items-center gap-1">
+        <input type="hidden" name="year" value="{{ comparison.selected_year }}" />
+        {% if comparison.pagination %}<input
+          type="hidden"
+          name="page"
+          value="{{ comparison.pagination.current_page }}"
+        />{% endif %} {% if comparison.show_p_rasp %}<input
+          type="hidden"
+          name="p_rasp"
+          value="1"
+        />{% endif %} {% if comparison.show_ved0 %}<input
+          type="hidden"
+          name="ved0"
+          value="1"
+        />{% endif %} {% if comparison.show_boilers %}<input
+          type="hidden"
+          name="boilers"
+          value="1"
+        />{% endif %}
+        <label for="rounding-digits" class="mb-0 text-nowrap">Округл:</label>
+        <select
+          id="rounding-digits"
+          name="rounding_digits"
+          class="form-select w-auto"
+          onchange="this.form.submit()"
+        >
+          <option value="0" {% if not comparison.rounding_digits %}selected{% endif %}>Не округлять</option>
+          <option value="1" {% if comparison.rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+          <option value="2" {% if comparison.rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+          <option value="3" {% if comparison.rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+          <option value="-1" {% if comparison.rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+        </select>
+      </form>
+    </div>
+  </div>
+
+  {% macro power(value) -%} {%- if value is none -%}—{%- else -%} {{
+  value|format_decimal_trim(comparison.rounding_digits) }} {%- endif -%} {%-
+  endmacro %}
+
+  <p class="text-muted small mb-2">
+    Итоги NUST/NR считаются по территории топливной группы для всех строк с VED &gt; 0,
+    как на странице «Итоговые суммы»: в том числе без связи с ТЭС и с типом «котельная».
+    Переключатели «Котельные» и «VED=0» меняют показ строк, но не итоги.
+  </p>
+  <div class="table-responsive power-comparison-scroll">
+    <table
+      class="table table-sm table-bordered table-hover table-striped power-comparison-table {% if comparison.show_p_rasp %}with-p-rasp{% endif %}"
+    >
+      <thead class="table-success">
+        <tr class="text-center">
+          <th>Станция</th>
+          <th>Код группы оборудования (numb)</th>
+          <th>Группа оборудования</th>
+          <th>Тип группы оборудования</th>
+          <th>ст. №</th>
+          <th>Тип агрегата</th>
+          <th>Руст, МВт</th>
+          {% if comparison.show_p_rasp %}
+          <th>Ррасп, МВт</th>
+          {% endif %}
+          <th>NUST, МВт</th>
+          {% if comparison.show_p_rasp %}
+          <th>NR, МВт</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in comparison.display_rows %} {% if row.kind ==
+        'station_group' %}
+        <tr class="power-summary power-station-group" title="{{ row.title }}">
+          <td class="group-label">
+            {% if row.show_station_label is not defined or row.show_station_label %}{% for station in row.stations %}{% if not loop.first %} / {% endif %}<a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ station.name }}</a>{% endfor %}{% endif %}{% if row.has_numb_comparison and (row.p_ust_mismatch
+            or (comparison.show_p_rasp and row.p_rasp_mismatch)) %}<span
+              class="badge text-bg-danger ms-2"
+              >расхождение</span
+            >{% endif %}
+          </td>
+          <td>{{ row.numb if row.numb is not none else '—' }}</td>
+          <td>{% if row.tree_prefix %}<span class="text-muted me-1" aria-hidden="true">{{ row.tree_prefix }}</span>{% endif %}{% if row.equipment_group_id %}<a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=row.equipment_group_id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ row.group_name }}</a>{% else %}{{ row.group_name }}{% endif %}</td>
+          <td>{{ row.group_type }}</td>
+          <td>{{ row.machine_number }}</td>
+          <td>
+            {% for machine in row.machines %}{% if not loop.first %}; {% endif %}{% if machine.id %}<a href="{{ url_for('station_bp.machine_details', station_id=machine.station_id or row.station_id, machine_id=machine.id, **request.args) }}" class="text-decoration-none">{{ machine.name }}</a>{% else %}{{ machine.name }}{% endif %}{% endfor %}{% if row.is_archived %}<span
+              class="badge text-bg-warning ms-1"
+              >есть архивный агрегат</span
+            >{% endif %}{% if not row.has_power_row %}<span
+              class="badge text-bg-secondary ms-1"
+              >есть агрегат без записи мощности за год</span
+            >{% endif %}{% if not row.has_param %}<span
+              class="badge text-bg-secondary ms-1"
+              >нет NUST/NR за год</span
+            >{% elif row.ved_warning %}<span class="badge text-bg-warning ms-1"
+              >ved={{ row.ved_display }}</span
+            >{% endif %}
+          </td>
+          <td
+            class="numeric {% if row.p_ust_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.p_ust) }}
+          </td>
+          {% if comparison.show_p_rasp %}
+          <td
+            class="numeric {% if row.p_rasp_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.p_rasp) }}
+          </td>
+          {% endif %}
+          <td
+            class="numeric {% if row.p_ust_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.nust) }}
+          </td>
+          {% if comparison.show_p_rasp %}
+          <td
+            class="numeric {% if row.p_rasp_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.nr) }}
+          </td>
+          {% endif %}
+        </tr>
+        {% elif row.kind in ['system', 'ues', 'res', 'station', 'unassigned',
+        'unassigned_station', 'unclassified'] %} {% set row_class =
+        'power-' ~ row.kind %}
+        <tr class="power-summary {{ row_class }}">
+          <td colspan="6" class="group-label">
+            {% if row.kind == 'station' and row.station_id %}<a href="{{ url_for('station_bp.station_details', station_id=row.station_id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}{% if row.kind == 'station' and not
+            row.has_records %}<span class="badge text-bg-secondary ms-2"
+              >нет записей за год</span
+            >{% endif %}{% if row.kind == 'station' and row.has_numb_comparison
+            and (row.p_ust_mismatch or (comparison.show_p_rasp and
+            row.p_rasp_mismatch)) %}<span class="badge text-bg-danger ms-2"
+              >расхождение</span
+            >{% endif %}{% if row.kind == 'unclassified' %}
+            <span class="text-muted small">(территория не определена — в итоги ЕЭС / ОЭС / РЭС не входят)</span>{% endif
+            %}
+          </td>
+          <td
+            class="numeric {% if row.kind == 'station' and row.has_numb_comparison and row.p_ust_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.p_ust) }}
+          </td>
+          {% if comparison.show_p_rasp %}
+          <td
+            class="numeric {% if row.kind == 'station' and row.has_numb_comparison and row.p_rasp_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.p_rasp) }}
+          </td>
+          {% endif %}
+          <td
+            class="numeric {% if row.kind == 'station' and row.has_numb_comparison and row.p_ust_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.nust) }}
+          </td>
+          {% if comparison.show_p_rasp %}
+          <td
+            class="numeric {% if row.kind == 'station' and row.has_numb_comparison and row.p_rasp_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.nr) }}
+          </td>
+          {% endif %}
+        </tr>
+        {% elif row.kind in ['generation', 'generation_orphan'] %}
+        <tr
+          class="detail-row {% if row.is_archived %}table-warning{% elif not row.has_power_row %}table-light{% endif %}"
+          title="{{ row.title }}"
+        >
+          <td>
+            {% if row.kind == 'generation_orphan' %}Без станции{% endif %}
+          </td>
+          <td>{{ row.numb if row.numb is not none else '—' }}</td>
+          {% if row.equipment_group_cell_first is not defined or
+          row.equipment_group_cell_first %}
+          <td rowspan="{{ row.equipment_group_cell_rowspan|default(1) }}">
+            {% if row.tree_prefix %}<span class="text-muted me-1" aria-hidden="true">{{ row.tree_prefix }}</span>{% endif %}{% if row.equipment_group_id %}<a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=row.equipment_group_id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ row.group_name }}</a>{% else %}{{ row.group_name }}{% endif %}
+          </td>
+          <td rowspan="{{ row.equipment_group_cell_rowspan|default(1) }}">
+            {{ row.group_type }}
+          </td>
+          {% endif %}
+          <td>{{ row.machine_number }}</td>
+          <td>
+            {% if row.kind == 'generation' and row.machine_id and row.station_id %}<a href="{{ url_for('station_bp.machine_details', station_id=row.station_id, machine_id=row.machine_id, **request.args) }}" class="text-decoration-none">{{ row.machine_type }}</a>{% else %}{{ row.machine_type }}{% endif %}{% if row.is_archived %}<span
+              class="badge text-bg-warning ms-1"
+              >архив</span
+            >{% elif not row.has_power_row %}<span
+              class="badge text-bg-secondary ms-1"
+              >нет записи за год</span
+            >{% endif %}
+          </td>
+          <td class="numeric">{{ power(row.p_ust) }}</td>
+          {% if comparison.show_p_rasp %}
+          <td class="numeric">{{ power(row.p_rasp) }}</td>
+          {% endif %}
+          <td class="numeric">—</td>
+          {% if comparison.show_p_rasp %}
+          <td class="numeric">—</td>
+          {% endif %}
+        </tr>
+        {% elif row.kind == 'numb' %}
+        <tr
+          class="detail-row numb-row"
+          title="Итог по коду numb {{ row.numb }}: Руст {{ power(row.p_ust) }} / NUST {{ power(row.nust) }}{% if comparison.show_p_rasp %}; Ррасп {{ power(row.p_rasp) }} / NR {{ power(row.nr) }}{% endif %}"
+        >
+          <td colspan="6" class="group-label">
+            Итого по коду numb {{ row.numb }}{% if row.p_ust_mismatch or
+            (comparison.show_p_rasp and row.p_rasp_mismatch) %}<span
+              class="badge text-bg-danger ms-2"
+              >расхождение</span
+            >{% endif %}
+          </td>
+          <td
+            class="numeric {% if row.p_ust_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.p_ust) }}
+          </td>
+          {% if comparison.show_p_rasp %}
+          <td
+            class="numeric {% if row.p_rasp_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.p_rasp) }}
+          </td>
+          {% endif %}
+          <td
+            class="numeric {% if row.p_ust_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.nust) }}
+          </td>
+          {% if comparison.show_p_rasp %}
+          <td
+            class="numeric {% if row.p_rasp_mismatch %}table-danger{% endif %}"
+          >
+            {{ power(row.nr) }}
+          </td>
+          {% endif %}
+        </tr>
+        {% elif row.kind == 'fuel' %}
+        <tr
+          class="detail-row {% if not row.has_param or row.ved is none or row.ved|int <= 0 %}table-warning{% endif %}"
+          title="{{ row.title }}{% if row.ved0_check %}; NUST родителя={{ power(row.nust) }}, сумма частей={{ power(row.ved0_check.parts_nust) }}{% if comparison.show_p_rasp %}; NR родителя={{ power(row.nr) }}, сумма частей={{ power(row.ved0_check.parts_nr) }}{% endif %}{% endif %}"
+        >
+          <td>
+            {% if row.ambiguous_station_links %}{% for station in row.ambiguous_station_links %}{% if not loop.first %}; {% endif %}<a href="{{ url_for('station_bp.station_details', station_id=station.id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ station.name }}</a>{% endfor %}{% elif row.station_name and row.station_name.startswith('Без связи') %}{{ row.station_name }}{% endif %}
+          </td>
+          <td>
+            {{ row.numb if row.numb is not none else '—' }}
+            {% if not row.has_param %}<span class="badge text-bg-secondary ms-1">нет NUST/NR за год</span>{% elif row.ved is not none and row.ved|int == 0 %}<span class="badge text-bg-warning ms-1">ved=0 — строка группировки</span>{% elif row.ved is none or row.ved|int < 0 %}<span class="badge text-bg-warning ms-1">ved={{ row.ved if row.ved is not none else 'NULL' }}</span>{% endif %}
+            {% if row.ved0_check %}{% if row.ved0_check.nust_mismatch or (comparison.show_p_rasp and row.ved0_check.nr_mismatch) %}<span class="badge text-bg-danger ms-1">расхождение с суммой частей</span>{% elif comparison.show_p_rasp %}<span class="badge text-bg-success ms-1">NUST/NR совпадают с суммой частей</span>{% else %}<span class="badge text-bg-success ms-1">NUST совпадает с суммой частей</span>{% endif %}{% endif %}
+          </td>
+          <td colspan="{{ 6 if comparison.show_p_rasp else 5 }}">
+            {% if row.tree_prefix %}<span class="text-muted me-1" aria-hidden="true">{{ row.tree_prefix }}</span>{% endif %}{% if row.group_id %}<a href="{{ url_for('fuel_bp.equipment_group_edit', equipment_group_id=row.group_id, **request.args) }}" class="text-decoration-none" target="_blank" rel="noopener noreferrer">{{ row.group_name }}</a>{% endif %}
+          </td>
+          <td class="numeric {% if row.ved0_check and row.ved0_check.nust_mismatch %}table-danger{% endif %}">
+            {{ power(row.nust) }}
+            {% if row.ved0_check %}<div class="small text-muted">Σ частей: {{ power(row.ved0_check.parts_nust) }}</div>{% endif %}
+          </td>
+          {% if comparison.show_p_rasp %}
+          <td class="numeric {% if row.ved0_check and row.ved0_check.nr_mismatch %}table-danger{% endif %}">
+            {{ power(row.nr) }}
+            {% if row.ved0_check %}<div class="small text-muted">Σ частей: {{ power(row.ved0_check.parts_nr) }}</div>{% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endif %} {% else %}
+        <tr>
+          <td
+            colspan="{{ 10 if comparison.show_p_rasp else 8 }}"
+            class="text-center text-muted"
+          >
+            За выбранный год записей не найдено.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if comparison.pagination %}
+  <div class="d-flex justify-content-center mt-3">
+    {% set current_page = comparison.pagination.current_page %} {% set
+    total_pages = comparison.pagination.total_pages %} {% set
+    pagination_endpoint = 'fuel_bp.station_power_comparison' %} {% include
+    'generation/includes/pagination_station.html' %}
+  </div>
+  {% endif %}
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const table = document.querySelector(".power-comparison-table");
+      const firstHeaderRow = table && table.tHead && table.tHead.rows[0];
+      if (!firstHeaderRow) return;
+
+      const updateHeaderOffset = function () {
+        table.style.setProperty(
+          "--power-head-row-height",
+          firstHeaderRow.getBoundingClientRect().height + "px",
+        );
+      };
+      updateHeaderOffset();
+      window.addEventListener("resize", updateHeaderOffset, { passive: true });
+    });
+  </script>
+</div>
+{% endif %} {% endblock %}

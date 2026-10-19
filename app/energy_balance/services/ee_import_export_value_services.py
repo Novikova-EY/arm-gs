@@ -15,6 +15,7 @@ from app.common.services.help_services import parse_decimal_from_display
 from app.common.services.tranzaction_services import _commit_with_retry
 from app.energy_balance.models.ee_import_export_oes_value_model import EeImportExportOesValue
 from app.energy_balance.services.energy_balance_cache import clear_energy_balance_cache
+from app.energy_balance.services.change_log_services import log_cell_change
 from app.extensions import db
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
 from app.refdata.models.territories.foreign_border_country_model import ForeignBorderCountry
@@ -50,6 +51,7 @@ def update_ee_import_export_value(
     year: int,
     direction: str = "import",
     raw_value: Any,
+    user: Any = None,
 ) -> dict[str, Any]:
     try:
         year_number = int(year)
@@ -99,6 +101,7 @@ def update_ee_import_export_value(
         )
         .first()
     )
+    previous_value = None if existing is None else existing.transfer_value
 
     if value is None:
         if existing is None:
@@ -128,4 +131,12 @@ def update_ee_import_export_value(
 
     _commit_with_retry()
     clear_energy_balance_cache()
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, импорт/экспорт электроэнергии по ОЭС",
+        f"{year_number} г., {'импорт' if direction == 'import' else 'экспорт'}",
+        previous_value,
+        value,
+        context=f"Лист: импорт/экспорт ЭЭ по ОЭС; ОЭС: {oes.name}; страна: {country.name}",
+    )
     return {"year": year_number, "value": value}

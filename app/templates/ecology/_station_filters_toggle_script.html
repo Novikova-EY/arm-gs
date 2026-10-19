@@ -1,18 +1,34 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const collapseEl = document.getElementById("filtersCollapse");
-    const buttonEl = document.getElementById("filtersToggleBtn");
-
-    function highlightButton() {
+    // Пока блок раскрыт, его кнопка-переключатель подсвечивается синим.
+    function highlightButton(buttonEl) {
         if (!buttonEl) return;
         buttonEl.classList.remove("btn-outline-secondary");
         buttonEl.classList.add("btn-primary", "text-white");
     }
 
-    function resetButton() {
+    function resetButton(buttonEl) {
         if (!buttonEl) return;
         buttonEl.classList.remove("btn-primary", "btn-warning", "text-white");
         buttonEl.classList.add("btn-outline-secondary");
+    }
+
+    function bindCollapseHighlight(collapseId, buttonId) {
+        const collapseEl = document.getElementById(collapseId);
+        const buttonEl = document.getElementById(buttonId);
+        if (!collapseEl || !buttonEl) return collapseEl;
+        if (collapseEl.classList.contains("show")) {
+            highlightButton(buttonEl);
+        } else {
+            resetButton(buttonEl);
+        }
+        collapseEl.addEventListener("shown.bs.collapse", function () {
+            highlightButton(buttonEl);
+        });
+        collapseEl.addEventListener("hide.bs.collapse", function () {
+            resetButton(buttonEl);
+        });
+        return collapseEl;
     }
 
     function initFilters() {
@@ -21,18 +37,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    const collapseEl = bindCollapseHighlight("filtersCollapse", "filtersToggleBtn");
+    bindCollapseHighlight("importExportCollapse", "importExportToggleBtn");
+
     if (collapseEl && collapseEl.classList.contains("show")) {
-        highlightButton();
         initFilters();
-    } else {
-        resetButton();
     }
 
     if (!collapseEl) return;
-    collapseEl.addEventListener("shown.bs.collapse", function () {
-        highlightButton();
-        initFilters();
-    });
-    collapseEl.addEventListener("hide.bs.collapse", resetButton);
+    collapseEl.addEventListener("shown.bs.collapse", initFilters);
 });
 </script>

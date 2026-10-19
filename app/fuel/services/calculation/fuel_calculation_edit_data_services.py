@@ -837,11 +837,15 @@ def enrich_fuel_hierarchy_summaries_with_extra(
     extra_attrs: frozenset[str] | set[str] | None,
 ) -> None:
     """
-    Дополняет station_summary / res_summary суммами по столбцам ExtraFuelParam
-    (значения не лежат на основной записи FuelParam).
+    Дополняет station_summary, res_summary и территориальные итоги суммами
+    по столбцам ExtraFuelParam (значения не лежат на основной записи FuelParam).
     """
     if not hierarchy or not extra_by_gy or not extra_attrs:
         return
+
+    from app.fuel.services.equipment_groups.composite_station_semantics import (
+        fuel_param_row_participates,
+    )
 
     def _sum_extra(rows_to_sum: list) -> dict[str, Decimal]:
         summary: dict[str, Decimal] = {}
@@ -865,15 +869,42 @@ def enrich_fuel_hierarchy_summaries_with_extra(
             summary[attr] = total
         return summary
 
+    def _territory_rows(station_blocks: list) -> list:
+        rows = []
+        for station_block in station_blocks:
+            station_rows = [
+                row
+                for group_block in station_block.get("group_blocks") or []
+                for row in group_block.get("rows") or []
+            ]
+            has_any_ved = any(
+                param is not None and getattr(param, "ved", None) is not None
+                for _eg, param in station_rows
+            )
+            if has_any_ved:
+                station_rows = [
+                    (eg, param)
+                    for eg, param in station_rows
+                    if fuel_param_row_participates(param)
+                ]
+            rows.extend(station_rows)
+        return rows
+
+    all_station_blocks = []
     for est_block in hierarchy:
+        est_station_blocks = []
         for ues_block in est_block.get("ues_list") or []:
+            ues_station_blocks = []
             for res_block in ues_block.get("res_list") or []:
                 res_rows: list = []
                 for gb in res_block.get("group_blocks") or []:
                     res_rows.extend(gb.get("rows") or [])
                 if res_block.get("res_summary") is not None and res_rows:
                     res_block["res_summary"].update(_sum_extra(res_rows))
-                for station_block in res_block.get("station_blocks") or []:
+                station_blocks = res_block.get("station_blocks") or []
+                ues_station_blocks.extend(station_blocks)
+                est_station_blocks.extend(station_blocks)
+                for station_block in station_blocks:
                     station_rows: list = []
                     for gb in station_block.get("group_blocks") or []:
                         # В итог станции не кладём родителя составной (как в enrich).
@@ -895,6 +926,22 @@ def enrich_fuel_hierarchy_summaries_with_extra(
                     for ynum, y_rows in by_year.items():
                         bucket = summary_by_year.setdefault(ynum, {})
                         bucket.update(_sum_extra(y_rows))
+
+            ues_rows = _territory_rows(ues_station_blocks)
+            for aggregate_row in ues_block.get("aggregate_rows") or []:
+                aggregate_row.setdefault("summary", {}).update(_sum_extra(ues_rows))
+
+        all_station_blocks.extend(est_station_blocks)
+        est_rows = _territory_rows(est_station_blocks)
+        for aggregate_row in est_block.get("aggregate_rows") or []:
+            aggregate_row.setdefault("summary", {}).update(_sum_extra(est_rows))
+
+    russia_rows = _territory_rows(all_station_blocks)
+    for russia_block in hierarchy:
+        if not russia_block.get("is_russia_row"):
+            continue
+        for aggregate_row in russia_block.get("aggregate_rows") or []:
+            aggregate_row.setdefault("summary", {}).update(_sum_extra(russia_rows))
 
 
 def _load_extra_fuel_param_by_group_year(

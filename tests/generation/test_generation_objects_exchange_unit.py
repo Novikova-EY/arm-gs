@@ -11,10 +11,12 @@ def test_json_number_int_and_float():
     assert svc.json_number(None) is None
 
 
-def test_capacity_mw_two_decimals():
+def test_capacity_mw_six_decimals():
     assert svc.capacity_mw("450") == 450.0
-    assert svc.capacity_mw("60.006") == 60.01
-    assert svc.capacity_mw("60.004") == 60.0
+    assert svc.capacity_mw("60.006") == 60.006
+    assert svc.capacity_mw("60.004") == 60.004
+    assert svc.capacity_mw("60.0000041") == 60.000004
+    assert svc.capacity_mw("60.0000051") == 60.000005
     assert svc.capacity_mw(None) == 0.0
 
 
@@ -23,6 +25,27 @@ def test_generation_mwh_converts_and_rounds():
     assert svc.generation_mwh("0.000323") == 0.0
     assert svc.generation_mwh("0.000523") == 0.001
     assert svc.generation_mwh(None) == 0.0
+
+
+def test_station_year_row_can_keep_generation_value_from_database():
+    from decimal import Decimal
+
+    row = svc.build_station_year_row(
+        external_code="st-1",
+        name="ТЭС 1",
+        station_type="ТЭС",
+        year=2032,
+        subject="Регион",
+        zone=None,
+        oes=None,
+        energy_zone=None,
+        capacity=0,
+        generation=Decimal("12.3456789"),
+        planned=False,
+        preserve_generation_precision=True,
+    )
+
+    assert row[svc.KEY_GENERATION] == Decimal("12.3456789")
 
 
 def test_energy_zone_number_parses_int():
@@ -165,7 +188,7 @@ def test_build_station_year_row_keys():
         zone="1-я синхронная зона",
         oes="ТИТЭС Сибири",
         energy_zone="10",
-        capacity=100,
+        capacity="100.1234567",
         generation="12.5",
         planned=True,
     )
@@ -190,7 +213,7 @@ def test_build_station_year_row_keys():
     assert row[svc.KEY_ENERGY_ZONE] == 10
     assert row[svc.KEY_GENERATION] == 12.5
     assert row[svc.KEY_PLANNED] is True
-    assert row[svc.KEY_CAPACITY] == 100
+    assert row[svc.KEY_CAPACITY] == 100.123457
 
 
 def test_json_date_or_dash_and_year_as_date():

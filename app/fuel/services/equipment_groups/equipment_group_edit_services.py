@@ -231,9 +231,12 @@ def get_equipment_group_edit_context(equipment_group_id):
     Возвращает dict с equipment_group и choices для каждого FK-поля.
     """
     from app.common.services.database_version_filter import get_current_db_version_id
-    from app.common.services.version_entity_resolve_services import load_by_id_with_version
+    from app.common.services.version_entity_resolve_services import (
+        load_by_id_with_version_or_anchor,
+    )
 
-    group = load_by_id_with_version(
+    # Карточка открывается и для группы, которой нет в текущей версии (legacy-оболочка).
+    group = load_by_id_with_version_or_anchor(
         EquipmentGroup,
         equipment_group_id,
         get_current_db_version_id(),

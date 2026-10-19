@@ -152,6 +152,9 @@ def update_balance_sheet_note(
     slug: str,
     row_key: Any,
     raw_note: Any,
+    *,
+    user: Any = None,
+    sheet_name: str | None = None,
 ) -> dict[str, Any]:
     kind_norm = _normalize_kind(kind)
     slug_norm = str(slug or "").strip()
@@ -171,10 +174,12 @@ def update_balance_sheet_note(
         )
         .one_or_none()
     )
+    previous_note = "" if existing is None else (existing.note_text or "")
     if not note:
         if existing is not None:
             db.session.delete(existing)
             _commit_with_retry()
+            _log_note_change(user, kind_norm, slug, sheet_name, key_norm, previous_note, "")
         return {"note": "", "row_key": key_norm}
     if existing is None:
         existing = BalanceSheetNote(
@@ -188,4 +193,28 @@ def update_balance_sheet_note(
     else:
         existing.note_text = note
     _commit_with_retry()
+    _log_note_change(user, kind_norm, slug, sheet_name, key_norm, previous_note, note)
     return {"note": note, "row_key": key_norm}
+
+
+def _log_note_change(
+    user: Any,
+    kind: str,
+    slug: str,
+    sheet_name: str | None,
+    row_key: str,
+    old_note: Any,
+    new_note: Any,
+) -> None:
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    balance_label = "балансе мощности" if kind == BALANCE_KIND_POWER else "балансе ЭЭ"
+    log_cell_change(
+        user,
+        f"Изменения в {balance_label}, примечание строки",
+        f"Примечание строки «{row_key}»",
+        old_note,
+        new_note,
+        context=f"Лист: {sheet_name or slug}",
+        number=False,
+    )

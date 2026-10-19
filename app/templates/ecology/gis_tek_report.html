@@ -16,13 +16,12 @@
     </div>
 </div>
 
-<div class="container-fluid mt-2">
-    <div class="table-responsive" id="stationsTableContainer">
+<div class="container-fluid mt-2 gis-tek-report-shell">
+    <div class="gis-tek-report-content">
         <div class="d-flex justify-content-end align-items-center flex-wrap gap-2">
             <a href="{{ url_for('ecology_bp.hub') }}" class="btn btn-secondary fs-5">
                 <i class="bi bi-tree"></i> Модуль «Экология»
             </a>
-            <a href="{{ url_for('fuel_bp.stations_equipment_groups') }}" class="btn btn-secondary fs-5">Словарь станций и групп оборудования</a>
         </div>
 
         <div class="col-12 mb-2">
@@ -34,26 +33,120 @@
         {% set value_column_groups = value_column_groups|default([]) %}
         {% set value_column_formulas = value_column_formulas|default({}) %}
         {% set value_column_banner = value_column_banner|default('') %}
+        {% set header_filter_params = header_filter_params|default({}) %}
+        {% set header_filter_choices = header_filter_choices|default({}) %}
+        {% set header_filter_selected = header_filter_selected|default({}) %}
         {% set header_rowspan = header_rowspan|default(2 if value_column_groups else 1) %}
         {% set group_rowspan = group_rowspan|default(header_rowspan) %}
         {% set identity_col_count = identity_columns|length %}
         <style>
+          .gis-tek-report-shell {
+            height: calc(100dvh - var(--app-topbar-height, 64px) - 1rem);
+            min-height: 560px;
+            max-height: calc(100dvh - var(--app-topbar-height, 64px) - 1rem);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+          }
+          .gis-tek-report-content {
+            flex: 1 1 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+          }
+          #stationsTableContainer {
+            flex: 1 1 0;
+            min-height: 0;
+            overflow: auto;
+          }
+          #gisTekReportTable > thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+          }
+          #gisTekReportTable > thead th {
+            background-color: var(--bs-success-bg-subtle, #d1e7dd);
+          }
           #gisTekReportTable.ot-hide-empty tbody tr.ot-row-empty-hidden { display: none !important; }
           #gisTekReportTable tbody tr.gis-tek-summary-row > td {
             font-weight: 700;
             background-color: #fff3cd;
           }
+          #gisTekReportTable th.norm-zv-col,
+          #gisTekReportTable tbody td.norm-zv-col {
+            background-color: #eaf3ff;
+          }
+          #gisTekReportTable th .gis-tek-header-filter {
+            margin-top: 0.3rem;
+            font-weight: 400;
+            font-size: 0.8rem;
+            padding-top: 0.1rem;
+            padding-bottom: 0.1rem;
+            width: 100%;
+            min-width: 0;
+          }
+          /* Фильтры во всех шапках прижаты к нижнему краю ячейки, чтобы строка фильтров была единой. */
+          #gisTekReportTable > thead th.gis-tek-filter-th {
+            padding-bottom: 2.4rem;
+          }
+          #gisTekReportTable > thead th.gis-tek-filter-th.norm-zv-leaf {
+            padding-bottom: 0;
+          }
+          #gisTekReportTable > thead th.gis-tek-filter-th > .gis-tek-header-filter,
+          #gisTekReportTable > thead th.gis-tek-filter-th > .numb1120-filter-wrap,
+          #gisTekReportTable > thead th.gis-tek-filter-th > .norm-zv-filter-wrap {
+            position: absolute;
+            left: 0.3rem;
+            right: 0.3rem;
+            bottom: 0.35rem;
+            width: auto;
+            min-width: 0;
+            margin-top: 0;
+          }
+          #gisTekReportTable > thead th.gis-tek-filter-th > .numb1120-filter-wrap {
+            width: auto;
+            min-width: 0;
+            max-width: none;
+          }
+          #gisTekReportTable > thead th.gis-tek-filter-th > .gis-tek-header-filter {
+            height: 2rem;
+            font-size: 0.85rem;
+          }
+          /* «Нормируемые ЗВ»: подпись вровень с группой столбцов, фильтр — у нижнего края. */
+          #gisTekReportTable > thead th.norm-zv-col {
+            vertical-align: top;
+            padding-top: 0.35rem;
+          }
         </style>
+        <div class="table-responsive" id="stationsTableContainer">
         <table id="gisTekReportTable"
-               class="table table-hover table-striped table-bordered table-responsive{% if not show_empty_rows|default(false) %} ot-hide-empty{% endif %}">
+               class="table table-hover table-striped table-bordered align-middle{% if not show_empty_rows|default(false) %} ot-hide-empty{% endif %}">
             <thead class="table-success">
                 <tr class="text-center align-middle" style="word-wrap: break-word; text-align: center; vertical-align: middle;">
                     {% for key, label, is_numeric in identity_columns %}
                     {% if key == 'station_numb' %}
-                    {{ fuel_param_numb1120_header_th(header_rowspan, 'Код группы оборудования', (numb1120_filter|default([])), (numb1120_filter_choices|default([])), 'numb') }}
+                    {{ fuel_param_numb1120_header_th(header_rowspan, 'Код группы оборудования', (numb1120_filter|default([])), (numb1120_filter_choices|default([])), 'numb', extra_class='gis-tek-filter-th') }}
                     {% else %}
-                    <th rowspan="{{ header_rowspan }}" style="width: {% if key in ('gis_tek_station_name', 'generation_station_name', 'equipment_group_name') %}220px{% else %}90px{% endif %};">
+                    <th rowspan="{{ header_rowspan }}"{% if key in header_filter_params %} class="gis-tek-filter-th"{% endif %} style="width: {% if key in ('gis_tek_station_name', 'generation_station_name') %}220px{% elif key == 'station_affiliation' %}130px{% else %}90px{% endif %};">
                         {{ label }}
+                        {% if key in header_filter_params %}
+                        {% set _filter_param = header_filter_params[key] %}
+                        {% set _filter_selected = header_filter_selected.get(key, '') %}
+                        {% set _filter_values = header_filter_choices.get(key, []) %}
+                        <select class="form-select form-select-sm gis-tek-header-filter"
+                                data-filter-param="{{ _filter_param }}"
+                                aria-label="Фильтр: {{ label }}"
+                                title="Фильтр: {{ label }}">
+                            <option value="">Все</option>
+                            {% for choice in _filter_values %}
+                            <option value="{{ choice }}"{% if choice == _filter_selected %} selected{% endif %}>{{ choice }}</option>
+                            {% endfor %}
+                            {% if _filter_selected and _filter_selected not in _filter_values %}
+                            <option value="{{ _filter_selected }}" selected>{{ _filter_selected }}</option>
+                            {% endif %}
+                        </select>
+                        {% endif %}
                     </th>
                     {% endif %}
                     {% endfor %}
@@ -64,7 +157,8 @@
                     {% set sub_label = group_cols[0][1] if group_cols|length == 1 else none %}
                     {% if group_cols|length == 1 and not sub_label %}
                     {% set group_attr = group_cols[0][0] %}
-                    <th rowspan="{{ group_rowspan }}" style="width: 110px;">{{ group_label }}{% if value_column_formulas.get(group_attr) %}
+                    {% set is_norm = group_attr == norm_zv_attr|default('') %}
+                    <th {% if is_norm %}rowspan="1" class="norm-zv-col"{% else %}rowspan="{{ group_rowspan }}"{% endif %} style="width: 110px;">{{ group_label }}{% if value_column_formulas.get(group_attr) %}
                       <i class="bi bi-info-circle text-primary ms-1"
                          data-bs-toggle="tooltip"
                          data-bs-placement="top"
@@ -95,7 +189,8 @@
                     {% set sub_label = group_cols[0][1] if group_cols|length == 1 else none %}
                     {% if group_cols|length == 1 and not sub_label %}
                     {% set group_attr = group_cols[0][0] %}
-                    <th rowspan="{{ group_rowspan }}" style="width: 110px;">{{ group_label }}{% if value_column_formulas.get(group_attr) %}
+                    {% set is_norm = group_attr == norm_zv_attr|default('') %}
+                    <th {% if is_norm %}rowspan="1" class="norm-zv-col"{% else %}rowspan="{{ group_rowspan }}"{% endif %} style="width: 110px;">{{ group_label }}{% if value_column_formulas.get(group_attr) %}
                       <i class="bi bi-info-circle text-primary ms-1"
                          data-bs-toggle="tooltip"
                          data-bs-placement="top"
@@ -122,6 +217,8 @@
                          style="cursor: help; font-size: 0.9em;"
                          aria-label="Формула"></i>
                       {% endif %}</th>
+                    {% elif attr == norm_zv_attr|default('') %}
+                    <th class="norm-zv-col gis-tek-filter-th norm-zv-leaf" style="width: 110px;">{% include 'ecology/_gis_tek_norm_zv_header.html' %}</th>
                     {% endif %}
                     {% endfor %}
                     {% endfor %}
@@ -140,7 +237,9 @@
                             </tr>
                             {% for row in res_block.rows %}
                             <tr class="text-center align-middle{% if row.is_empty %} ot-row-empty-hidden{% endif %}">
+                                {% if show_numb_column %}
                                 <td>{{ row.station_numb if row.station_numb is not none else '—' }}</td>
+                                {% endif %}
                                 <td class="text-start">{{ row.gis_tek_station_name }}</td>
                                 <td class="text-start">
                                     {% if row.generation_stations %}
@@ -155,20 +254,11 @@
                                         —
                                     {% endif %}
                                 </td>
-                                <td class="text-start">
-                                    {% if row.equipment_group_id %}
-                                    <a href="{{ url_for('fuel_bp.equipment_group_details', equipment_group_id=row.equipment_group_id) }}" class="text-decoration-none">
-                                        {{ row.equipment_group_name }}
-                                    </a>
-                                    {% else %}
-                                        {{ row.equipment_group_name }}
-                                    {% endif %}
-                                </td>
-                                <td>{{ row.station_type }}</td>
+                                <td>{{ row.station_affiliation }}</td>
                                 {% for attr, label in value_columns %}
-                                <td>
+                                <td{% if attr == norm_zv_attr|default('') %} class="norm-zv-col"{% endif %}>
                                     {% set v = row['metrics'].get(attr) %}
-                                    {% if v is not none %}{{ v | format_decimal }}{% else %}—{% endif %}
+                                    {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}—{% endif %}
                                 </td>
                                 {% endfor %}
                             </tr>
@@ -177,9 +267,9 @@
                             <tr class="text-center align-middle gis-tek-summary-row{% if res_block.summary.is_empty %} ot-row-empty-hidden{% endif %}">
                                 <td colspan="{{ identity_col_count }}">{{ res_block.summary.label }}</td>
                                 {% for attr, label in value_columns %}
-                                <td>
+                                <td{% if attr == norm_zv_attr|default('') %} class="norm-zv-col"{% endif %}>
                                     {% set v = res_block.summary.metrics.get(attr) %}
-                                    {% if v is not none %}{{ v | format_decimal }}{% else %}—{% endif %}
+                                    {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}—{% endif %}
                                 </td>
                                 {% endfor %}
                             </tr>
@@ -189,9 +279,9 @@
                         <tr class="text-center align-middle gis-tek-summary-row{% if ues_block.summary.is_empty %} ot-row-empty-hidden{% endif %}">
                             <td colspan="{{ identity_col_count }}">{{ ues_block.summary.label }}</td>
                             {% for attr, label in value_columns %}
-                            <td>
+                            <td{% if attr == norm_zv_attr|default('') %} class="norm-zv-col"{% endif %}>
                                 {% set v = ues_block.summary.metrics.get(attr) %}
-                                {% if v is not none %}{{ v | format_decimal }}{% else %}—{% endif %}
+                                {% if v is not none %}{{ v | format_decimal(rounding_digits) }}{% else %}—{% endif %}
                             </td>
                             {% endfor %}
                         </tr>
@@ -211,11 +301,13 @@
                 {% include 'generation/includes/pagination_station.html' %}
             {% endif %}
         </div>
+        </div>
     </div>
 </div>
 {% endif %}
 
 <script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ecology/gis_tek_norm_zv_header_filter.js') }}?v=4"></script>
 <script id="filters-data" type="application/json">
   {{ {
       'energy_system_type_list': energy_system_type_list|default([], true),
@@ -255,13 +347,18 @@
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 {% include 'ecology/_station_filters_toggle_script.html' %}
 <script>
+    // Оверлей «Загрузка отчетных данных...» закрываем, когда страница реально показана:
+    // если переход отменён или страница открыта из кеша, он иначе остался бы поверх таблицы
+    // и блокировал бы работу (в том числе после выгрузки в Excel).
+    function hideGisTekLoadingOverlay() {
+        const overlay = document.getElementById('loading-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+    window.addEventListener('pageshow', hideGisTekLoadingOverlay);
     window.addEventListener('load', function() {
-        setTimeout(function() {
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) {
-                overlay.style.display = 'none';
-            }
-        }, 300);
+        setTimeout(hideGisTekLoadingOverlay, 300);
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
             new bootstrap.Tooltip(el);
         });
@@ -281,6 +378,29 @@
             params.set('page', '1');
             const qs = params.toString();
             window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+        });
+        const roundingSelect = document.getElementById('rounding_digits');
+        roundingSelect?.addEventListener('change', function () {
+            const params = new URLSearchParams(window.location.search);
+            params.set('rounding_digits', roundingSelect.value);
+            params.delete('page');
+            const qs = params.toString();
+            window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+        });
+        document.querySelectorAll('select.gis-tek-header-filter').forEach(function (selectEl) {
+            selectEl.addEventListener('change', function () {
+                const param = selectEl.dataset.filterParam;
+                if (!param) return;
+                const params = new URLSearchParams(window.location.search);
+                if (selectEl.value) {
+                    params.set(param, selectEl.value);
+                } else {
+                    params.delete(param);
+                }
+                params.delete('page');
+                const qs = params.toString();
+                window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+            });
         });
     });
 </script>

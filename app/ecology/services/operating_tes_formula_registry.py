@@ -181,7 +181,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         pages=EMISSION_PAGES,
         aggregation_level="Столбец",
         cell_name="Перевод в натур. (Вн)",
-        default_text="Вн = В / K (если нет K — тут/тн)",
+        default_text="Вн = В / K (если нет K — т у.т./тн)",
     ),
     _def(
         "capture",
@@ -314,7 +314,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         pages=frozenset({PAGE_UDEL_FUEL}),
         aggregation_level="Лист",
         cell_name="Заголовок страницы",
-        default_text="кг/тут = тыс. т / тыс. тут · 1000",
+        default_text="кг/т у.т. = тыс. т / тыс. т у.т. · 1000",
     ),
     _def(
         "sheet_udel_ee",
@@ -327,21 +327,21 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         "d_mazut",
         pages=frozenset({PAGE_ANALYSIS_PG_BEZ_KOT, PAGE_ANALYSIS_PG_VSE}),
         aggregation_level="Столбец",
-        cell_name="Разность по израсходованному мазуту, тут",
+        cell_name="Разность по израсходованному мазуту, т у.т.",
         default_text="d_mazut = MAZUT_6tp − MAZUT_ek",
     ),
     _def(
         "d_gaz",
         pages=frozenset({PAGE_ANALYSIS_PG_BEZ_KOT, PAGE_ANALYSIS_PG_VSE}),
         aggregation_level="Столбец",
-        cell_name="Разность по израсходованному газу, тут",
+        cell_name="Разность по израсходованному газу, т у.т.",
         default_text="d_gaz = GAZ_ESTEST − GAZ_ek",
     ),
     _def(
         "d_tv",
         pages=frozenset({PAGE_ANALYSIS_PG_BEZ_KOT, PAGE_ANALYSIS_PG_VSE}),
         aggregation_level="Столбец",
-        cell_name="Разность по израсходованному твердому топливу, тут",
+        cell_name="Разность по израсходованному твердому топливу, т у.т.",
         default_text="d_tv = TvTopl_6tp − TvTopl_ek",
     ),
     _def(
@@ -350,7 +350,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Столбец",
         cell_name="Коэффициент эмиссии (газ)",
         default_text=(
-            "K_gaz_ek = Выбросы СО2 от сжигания газа, т / Расход газа, тут "
+            "K_gaz_ek = Выбросы СО2 от сжигания газа, т / Расход газа, т у.т. "
             "(CO2_gaz / GAZ_ek)"
         ),
     ),
@@ -360,7 +360,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Столбец",
         cell_name="Коэффициент эмиссии (мазут)",
         default_text=(
-            "K_mazut_ek = Выбросы СО2 от сжигания мазута, т / Расход мазута, тут "
+            "K_mazut_ek = Выбросы СО2 от сжигания мазута, т / Расход мазута, т у.т. "
             "(CO2_mazut / MAZUT_ek)"
         ),
     ),
@@ -370,7 +370,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Столбец",
         cell_name="Коэффициент эмиссии (твердое)",
         default_text=(
-            "K_ugol_ek = Выбросы СО2 от сжигания твердого топлива, т / Расход твердого топлива, тут "
+            "K_ugol_ek = Выбросы СО2 от сжигания твердого топлива, т / Расход твердого топлива, т у.т. "
             "(CO2_ugol / TvTopl_ek)"
         ),
     ),
@@ -390,10 +390,10 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         "UD_CO2_ek",
         pages=frozenset({PAGE_ANALYSIS_PG_BEZ_KOT, PAGE_ANALYSIS_PG_VSE}),
         aggregation_level="Столбец",
-        cell_name="Удельные выбросы ПГ на единицу топлива, кг/т у.т.",
+        cell_name="Удельные выбросы ПГ на единицу топлива, кг/т у.т.",
         default_text=(
             "UD_CO2_ek = Выброшено ПГ всего, т · 1000 "
-            "/ (Расход газа + мазута + твердого топлива, т у.т.) "
+            "/ (Расход газа + мазута + твердого топлива, т у.т.) "
             "(CO2 · 1000 / (GAZ_ek + MAZUT_ek + TvTopl_ek))"
         ),
     ),
@@ -524,7 +524,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Столбец",
         cell_name="твердое топливо",
         default_text=(
-            "кг/т у.т. = твердые вещества, т · 1000 / (мазут + уголь, тут) "
+            "кг/т у.т. = твердые вещества, т · 1000 / (мазут + уголь, т у.т.) "
             "(TVERD_V · 1000 / (MAZUT_6tp + TVERD_TOPL_6tp))"
         ),
     ),
@@ -534,7 +534,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Столбец",
         cell_name="сера",
         default_text=(
-            "кг/т у.т. = диоксид серы, т · 1000 / (мазут + уголь, тут) "
+            "кг/т у.т. = диоксид серы, т · 1000 / (мазут + уголь, т у.т.) "
             "(SO2_gaz · 1000 / (MAZUT_6tp + TVERD_TOPL_6tp))"
         ),
     ),
@@ -544,7 +544,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         aggregation_level="Столбец",
         cell_name="азот",
         default_text=(
-            "кг/т у.т. = оксиды азота, т · 1000 / (газ + мазут + уголь, тут) "
+            "кг/т у.т. = оксиды азота, т · 1000 / (газ + мазут + уголь, т у.т.) "
             "(NOx_gaz · 1000 / (GAZ_6tp + MAZUT_6tp + TVERD_TOPL_6tp))"
         ),
     ),
@@ -552,29 +552,29 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         "nt_fuel_b",
         pages=frozenset({PAGE_ZOLA, PAGE_SERA, PAGE_AZOT, PAGE_CO, PAGE_PG}),
         aggregation_level="Столбец",
-        cell_name="В, тыс.тут",
-        default_text="В — расход топлива новых ТЭС (d ≠ 1), тыс. тут",
+        cell_name="В, тыс. т у.т.",
+        default_text="В — расход топлива новых ТЭС (d ≠ 1), тыс. т у.т.",
     ),
     _def(
         "nt_zv_tonnes",
         pages=frozenset({PAGE_ZOLA, PAGE_SERA, PAGE_AZOT, PAGE_CO, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="М ЗВ, т",
-        default_text="М, т = В, тыс. тут × У, кг/тут; У — норматив листа «Нормативы» (до 100 МВт / более 100 МВт по Nуст)",
+        default_text="М, т = В, тыс. т у.т. × У, кг/т у.т.; У — норматив листа «Нормативы» (до 100 МВт / более 100 МВт по Nуст)",
     ),
     _def(
         "nt_zv_thous",
         pages=frozenset({PAGE_ZOLA, PAGE_SERA, PAGE_AZOT, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="М ЗВ, тыс. т",
-        default_text="М, тыс. т = (В, тыс. тут × У, кг/тут) / 1000",
+        default_text="М, тыс. т = (В, тыс. т у.т. × У, кг/т у.т.) / 1000",
     ),
     _def(
         "nt_pg_mass",
         pages=frozenset({PAGE_PG, PAGE_OBEMY}),
         aggregation_level="Показатель",
         cell_name="М CO2, тыс. т",
-        default_text="М CO2, тыс. т = В, тыс. тут × У, т/тут",
+        default_text="М CO2, тыс. т = В, тыс. т у.т. × У, т/т у.т.",
     ),
     _def(
         "nt_zv_sum",
@@ -590,8 +590,8 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
         cell_name="Заголовок страницы",
         default_text=(
             "Новые ТЭС: сумма классов до 100 МВт и более 100 МВт. "
-            "М ЗВ, т = В × У (кг/тут); на «Объемах» тыс. т = М / 1000 (кроме CO, т). "
-            "М CO2, тыс. т = В × У (т/тут)"
+            "М ЗВ, т = В × У (кг/т у.т.); на «Объемах» тыс. т = М / 1000 (кроме CO, т). "
+            "М CO2, тыс. т = В × У (т/т у.т.)"
         ),
     ),
     _def(
@@ -603,7 +603,7 @@ OPERATING_TES_FORMULA_REGISTRY: tuple[OperatingTesFormulaDef, ...] = (
             "Массовый выброс золы для агрегатов до 100 МВт — в диапазоне 1,76–2,93, "
             "более 100 МВт — 0,59–1,76 в зависимости от приведенного содержания золы. "
             "Для каменных углей массовый выброс оксидов азота выше, чем у бурых; "
-            "для 2020 года сера не более 5 кг/т.у.т. — не учитывали"
+            "для 2020 года сера не более 5 кг/т у.т. — не учитывали"
         ),
     ),
     _def(

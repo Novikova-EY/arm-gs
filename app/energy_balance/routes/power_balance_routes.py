@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from flask import abort, current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
 from app.energy_balance.services.power_balance_custom_flow_services import (
@@ -121,6 +121,7 @@ def power_balance_custom_flow_add(slug: str):
             direction,
             label=str(data.get("label") or ""),
             parent_key=parent_key or None,
+            user=current_user,
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
@@ -139,7 +140,7 @@ def power_balance_custom_flow_item(slug: str, row_id: int):
     _require_sheet(slug)
     if request.method == "DELETE":
         try:
-            deleted = delete_custom_flow_row(slug, row_id)
+            deleted = delete_custom_flow_row(slug, row_id, user=current_user)
         except Exception:
             current_app.logger.exception("Не удалось удалить строку перетока баланса мощности")
             return jsonify(ok=False, error="Не удалось удалить строку"), 500
@@ -150,7 +151,9 @@ def power_balance_custom_flow_item(slug: str, row_id: int):
     data = request.get_json(silent=True) or {}
     if "label" in data and "year" not in data:
         try:
-            row = update_custom_flow_label(slug, row_id, str(data.get("label") or ""))
+            row = update_custom_flow_label(
+                slug, row_id, str(data.get("label") or ""), user=current_user
+            )
         except Exception:
             current_app.logger.exception("Не удалось сохранить наименование перетока баланса мощности")
             return jsonify(ok=False, error="Не удалось сохранить наименование"), 500
@@ -164,7 +167,9 @@ def power_balance_custom_flow_item(slug: str, row_id: int):
         data.get("rounding_digits", request.args.get("rounding_digits"))
     )
     try:
-        saved = update_custom_flow_value(slug, row_id, data.get("year"), data.get("value"))
+        saved = update_custom_flow_value(
+            slug, row_id, data.get("year"), data.get("value"), user=current_user
+        )
     except KeyError:
         return jsonify(ok=False, error="Строка не найдена"), 404
     except ValueError as exc:
@@ -183,7 +188,7 @@ def power_balance_custom_flow_item(slug: str, row_id: int):
 @energy_balance_bp.route("/power_balance/<slug>/export_value/", methods=["PATCH"])
 @login_required
 def power_balance_export_value(slug: str):
-    _require_sheet(slug)
+    sheet = _require_sheet(slug)
     data = request.get_json(silent=True) or {}
     if "year" not in data:
         return jsonify(ok=False, error="Неверный запрос"), 400
@@ -191,7 +196,13 @@ def power_balance_export_value(slug: str):
         data.get("rounding_digits", request.args.get("rounding_digits"))
     )
     try:
-        saved = update_power_balance_export_value(slug, data.get("year"), data.get("value"))
+        saved = update_power_balance_export_value(
+            slug,
+            data.get("year"),
+            data.get("value"),
+            user=current_user,
+            sheet_name=sheet.get("sheet_name"),
+        )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
@@ -208,7 +219,7 @@ def power_balance_export_value(slug: str):
 @energy_balance_bp.route("/power_balance/<slug>/demand_cold_value/", methods=["PATCH"])
 @login_required
 def power_balance_demand_cold_value(slug: str):
-    _require_sheet(slug)
+    sheet = _require_sheet(slug)
     data = request.get_json(silent=True) or {}
     if "year" not in data:
         return jsonify(ok=False, error="Неверный запрос"), 400
@@ -216,7 +227,13 @@ def power_balance_demand_cold_value(slug: str):
         data.get("rounding_digits", request.args.get("rounding_digits"))
     )
     try:
-        saved = update_power_balance_demand_cold_value(slug, data.get("year"), data.get("value"))
+        saved = update_power_balance_demand_cold_value(
+            slug,
+            data.get("year"),
+            data.get("value"),
+            user=current_user,
+            sheet_name=sheet.get("sheet_name"),
+        )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
@@ -235,11 +252,16 @@ def power_balance_demand_cold_value(slug: str):
 @energy_balance_bp.route("/power_balance/<slug>/note/", methods=["PATCH"])
 @login_required
 def power_balance_note(slug: str):
-    _require_sheet(slug)
+    sheet = _require_sheet(slug)
     data = request.get_json(silent=True) or {}
     try:
         saved = update_balance_sheet_note(
-            BALANCE_KIND_POWER, slug, data.get("row_key"), data.get("note")
+            BALANCE_KIND_POWER,
+            slug,
+            data.get("row_key"),
+            data.get("note"),
+            user=current_user,
+            sheet_name=sheet.get("sheet_name"),
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400

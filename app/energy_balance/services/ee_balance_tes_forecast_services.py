@@ -1851,7 +1851,8 @@ def _write_month_value(
     month: int,
     parsed: Decimal | None,
     version_id: int | None,
-) -> None:
+) -> Decimal | None:
+    """Пишет значение месяца и возвращает предыдущее — для журнала «было → стало»."""
     existing = (
         _value_query()
         .filter(
@@ -1862,10 +1863,11 @@ def _write_month_value(
         )
         .one_or_none()
     )
+    previous_value = None if existing is None else existing.value_mln_kvtch
     if parsed is None:
         if existing is not None:
             db.session.delete(existing)
-        return
+        return previous_value
     if existing is None:
         db.session.add(
             EeBalanceTesMonthlyValue(
@@ -1877,8 +1879,9 @@ def _write_month_value(
                 database_version_id=version_id,
             )
         )
-        return
+        return previous_value
     existing.value_mln_kvtch = parsed
+    return previous_value
 
 
 def update_tes_forecast_value(
@@ -1889,6 +1892,7 @@ def update_tes_forecast_value(
     raw_value: Any,
     *,
     rounding_digits: int,
+    user: Any = None,
 ) -> dict[str, Any]:
     slug = str(sheet.get("slug") or "").strip()
     if not slug:
@@ -1930,7 +1934,7 @@ def update_tes_forecast_value(
         "month": month_int,
         "version_id": version_id,
     }
-    _write_month_value(row_key=key, parsed=parsed, **write_kw)
+    previous_value = _write_month_value(row_key=key, parsed=parsed, **write_kw)
     if key == ROW_CONSUMPTION_SHARE and parsed is not None:
         annual = load_tes_forecast_annual_consumption(sheet, year_int)
         if annual is not None and annual != 0:
@@ -1945,6 +1949,15 @@ def update_tes_forecast_value(
     elif key in machine_to_station:
         _write_month_value(row_key=machine_to_station[key], parsed=None, **write_kw)
     _commit_with_retry()
+    _log_tes_forecast_change(
+        user,
+        str(sheet.get("sheet_name") or slug),
+        key,
+        year_int,
+        month_int,
+        previous_value,
+        parsed,
+    )
 
     payload = build_tes_forecast_year_payload(
         sheet,
@@ -1965,3 +1978,24 @@ def update_tes_forecast_value(
         "formula_cells": {ROW_CONSUMPTION: consumption_row.get("formula_months") or []},
         "tes_total": payload["tes_total"],
     }
+
+
+def _log_tes_forecast_change(
+    user: Any,
+    sheet_label: str,
+    row_key: str,
+    year: int,
+    month: int,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, помесячный расчёт выработки ТЭС",
+        f"Строка «{row_key}», {year} г., месяц {month}",
+        old_value,
+        new_value,
+        context=f"Лист: {sheet_label}",
+    )

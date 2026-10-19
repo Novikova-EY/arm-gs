@@ -47,6 +47,7 @@
             <form method="get" action="{{ url_for('fuel_bp.totals_summary') }}" id="totalsFilterForm" class="d-flex align-items-center gap-2 ms-auto flex-wrap">
                 <input type="hidden" name="start_year" value="{{ start_year }}">
                 <input type="hidden" name="end_year" value="{{ end_year }}">
+                <input type="hidden" name="aggregation_type" value="">
 
                 <input type="checkbox" class="btn-check" id="aggregationEES" name="aggregation_type" value="ees" {% if 'ees' in aggregation_types %}checked{% endif %}>
                 <label for="aggregationEES" class="btn {% if 'ees' in aggregation_types %}btn-primary{% else %}btn-outline-primary{% endif %} px-3 text-center" style="min-width: 80px;">ЕЭС</label>

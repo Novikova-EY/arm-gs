@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import calendar
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Iterable, Mapping
 
 from sqlalchemy import func, or_
@@ -39,6 +39,9 @@ from app.generation.services.station_services.station_type_flags import (
 
 VES_SES_SAMPLE_YEARS = 7
 RAMP_SECOND_YEAR_SHARE = Decimal("0.5")
+# Значения выработки лежат в Numeric(25, 16): расчёт и запись из БД
+# сравниваются на точности хранения, иначе хвост дроби ломает равенство.
+STORED_DECIMAL_SCALE = Decimal("0.0000000000000001")
 SES_PLAN_CAPACITY_FACTOR = Decimal("1.5")
 VES_PLAN_CAPACITY_FACTOR = Decimal("2.5")
 PLAN_CAPACITY_FACTOR = {
@@ -91,6 +94,10 @@ PLAN_RULE_MIN_OWNER_SAMPLE_EQUAL = (
 
 def _norm_year_feature(name: Any) -> str:
     return " ".join(str(name or "").split()).casefold().replace("ё", "е")
+
+
+def _at_stored_scale(value: Decimal) -> Decimal:
+    return value.quantize(STORED_DECIMAL_SCALE, rounding=ROUND_HALF_UP)
 
 
 def _positive_decimal(raw: Any) -> Decimal | None:
@@ -773,22 +780,25 @@ def _station_plan_capacity_map(
     return loaded.get(int(station_id)) or {}
 
 
-def attach_ves_ses_plan_generation(
+def station_plan_generation(
     station,
     *,
     start_year: int,
     end_year: int,
     station_version_id: int | None,
     year_features: Mapping[Any, Any] | None = None,
-) -> None:
-    """Дополняет карточку станции расчётом план-ячеек (без записи в БД)."""
-    station.station_energy_plan_calc_by_year = {}
-    station.station_energy_plan_rule_by_year = {}
-    station.station_energy_min_sample_value = None
-    station.ves_ses_plan_years = []
-    station.ves_ses_current_year = None
+) -> dict[str, Any] | None:
+    """
+    Расчёт плановой выработки ВЭС/СЭС для окна [start_year, end_year].
+
+    Ключи результата: current_year, plan_years, energy_by_year (факт с запасом
+    на 7-летнюю выборку), owner_by_year, commission_year, capacity_by_year,
+    type_key, exploitation_date_expected, min_sample, calculated, rules.
+    None, если станция не ВЭС/СЭС или в справочнике лет нет текущего
+    и плановых лет.
+    """
     if not is_ves_or_ses_station(station):
-        return
+        return None
 
     if year_features is None:
         from app.common.services.get_services.years.year_feature_services import (
@@ -798,10 +808,8 @@ def attach_ves_ses_plan_generation(
         year_features = get_year_feature_dict() or {}
 
     current_year, plan_years = classify_ves_ses_generation_years(year_features)
-    station.ves_ses_current_year = current_year
-    station.ves_ses_plan_years = plan_years
     if current_year is None and not plan_years:
-        return
+        return None
 
     from app.generation.services.station_services.station_services import (
         station_annual_energy_by_year,
@@ -818,16 +826,6 @@ def attach_ves_ses_plan_generation(
     owner_full = station_owner_energy_by_year(
         station.id, window_start, load_end, station_version_id
     )
-    station.station_energy_by_year = {
-        year: energy_full.get(year)
-        for year in range(int(start_year), int(end_year) + 1)
-        if energy_full.get(year) is not None
-    }
-    station.station_owner_energy_by_year = {
-        year: owner_full.get(year)
-        for year in range(int(start_year), int(end_year) + 1)
-        if owner_full.get(year) is not None
-    }
 
     commission_year = station_commission_year_from_machines(station)
     if commission_year is None:
@@ -837,22 +835,138 @@ def attach_ves_ses_plan_generation(
     exploitation_dates = load_station_exploitation_dates([station.id], station_version_id)
     exploitation_date_expected = exploitation_dates.get(station.id) or ""
 
+    type_key = ves_ses_type_key(station)
+    capacity_by_year = _station_plan_capacity_map(
+        station.id,
+        list(range(int(start_year), int(end_year) + 1)) or plan_years,
+        station_version_id,
+    )
     min_sample, calculated, rules = compute_ves_ses_plan_generation(
         energy_full,
         owner_full,
         current_year=current_year,
         plan_years=plan_years,
         commission_year=commission_year,
-        capacity_by_year=_station_plan_capacity_map(
-            station.id,
-            list(range(int(start_year), int(end_year) + 1)) or plan_years,
-            station_version_id,
-        ),
-        type_key=ves_ses_type_key(station),
+        capacity_by_year=capacity_by_year,
+        type_key=type_key,
         exploitation_date_expected=exploitation_date_expected,
     )
-    station.station_energy_min_sample_value = min_sample
-    station.station_energy_plan_calc_by_year = calculated
-    station.station_energy_plan_rule_by_year = rules
-    station.ves_ses_commission_year = commission_year
-    station.ves_ses_exploitation_date_expected = exploitation_date_expected
+    return {
+        "current_year": current_year,
+        "plan_years": plan_years,
+        "energy_by_year": energy_full,
+        "owner_by_year": owner_full,
+        "commission_year": commission_year,
+        "capacity_by_year": capacity_by_year,
+        "type_key": type_key,
+        "exploitation_date_expected": exploitation_date_expected,
+        "min_sample": min_sample,
+        "calculated": calculated,
+        "rules": rules,
+    }
+
+
+def plan_calc_after_owner_edit(
+    station,
+    *,
+    year: int,
+    start_year: int,
+    end_year: int,
+    previous_owner_value: Any,
+    station_version_id: int | None,
+    year_features: Mapping[Any, Any] | None = None,
+) -> tuple[Decimal | None, str | None]:
+    """
+    Расчётное значение годовой ячейки «Выработка электроэнергии» после правки
+    выработки от собственника: (значение, правило) либо (None, None), если
+    синхронизировать нечего.
+
+    Значение отдаётся только для года, где ячейка показывала расчёт (в таблице
+    выработки пусто или сохранено ровно прежнее расчётное значение). Значение,
+    введённое прямо в таблице выработки, не перезаписываем.
+    previous_owner_value хранит выработку от собственника до правки (в том
+    виде, в каком её прислал клиент): по ней считается прежнее расчётное
+    значение. start_year/end_year задают окно страницы, от него зависит
+    набор лет для установленной мощности.
+    """
+    from app.generation.services.machine_services.machine_services import to_decimal
+
+    plan = station_plan_generation(
+        station,
+        start_year=start_year,
+        end_year=end_year,
+        station_version_id=station_version_id,
+        year_features=year_features,
+    )
+    if plan is None:
+        return None, None
+
+    owner_before = dict(plan["owner_by_year"])
+    owner_before[int(year)] = previous_owner_value
+    _min_sample, calculated_before, _rules = compute_ves_ses_plan_generation(
+        plan["energy_by_year"],
+        owner_before,
+        current_year=plan["current_year"],
+        plan_years=plan["plan_years"],
+        commission_year=plan["commission_year"],
+        capacity_by_year=plan["capacity_by_year"],
+        type_key=plan["type_key"],
+        exploitation_date_expected=plan["exploitation_date_expected"],
+    )
+    calc_before = calculated_before.get(int(year))
+    if calc_before is None:
+        return None, None
+
+    stored = to_decimal(plan["energy_by_year"].get(int(year)))
+    if stored is not None and _at_stored_scale(stored) != _at_stored_scale(calc_before):
+        return None, None
+
+    calc_after = plan["calculated"].get(int(year))
+    if calc_after is None:
+        return None, None
+    return calc_after, plan["rules"].get(int(year))
+
+
+def attach_ves_ses_plan_generation(
+    station,
+    *,
+    start_year: int,
+    end_year: int,
+    station_version_id: int | None,
+    year_features: Mapping[Any, Any] | None = None,
+) -> None:
+    """Дополняет карточку станции расчётом план-ячеек (без записи в БД)."""
+    station.station_energy_plan_calc_by_year = {}
+    station.station_energy_plan_rule_by_year = {}
+    station.station_energy_min_sample_value = None
+    station.ves_ses_plan_years = []
+    station.ves_ses_current_year = None
+
+    plan = station_plan_generation(
+        station,
+        start_year=start_year,
+        end_year=end_year,
+        station_version_id=station_version_id,
+        year_features=year_features,
+    )
+    if plan is None:
+        return
+
+    station.ves_ses_current_year = plan["current_year"]
+    station.ves_ses_plan_years = plan["plan_years"]
+    station.station_energy_by_year = {
+        year: plan["energy_by_year"].get(year)
+        for year in range(int(start_year), int(end_year) + 1)
+        if plan["energy_by_year"].get(year) is not None
+    }
+    station.station_owner_energy_by_year = {
+        year: plan["owner_by_year"].get(year)
+        for year in range(int(start_year), int(end_year) + 1)
+        if plan["owner_by_year"].get(year) is not None
+    }
+
+    station.station_energy_min_sample_value = plan["min_sample"]
+    station.station_energy_plan_calc_by_year = plan["calculated"]
+    station.station_energy_plan_rule_by_year = plan["rules"]
+    station.ves_ses_commission_year = plan["commission_year"]
+    station.ves_ses_exploitation_date_expected = plan["exploitation_date_expected"]

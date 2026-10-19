@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from flask import abort, current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 from sqlalchemy.orm import joinedload
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
@@ -55,7 +55,6 @@ from app.energy_balance.services.ee_balance_ves_ses_page_services import (
     build_ges_page_context,
     build_snee_page_context,
     build_ves_ses_page_context,
-    can_edit_station_energy_row,
 )
 from app.energy_balance.services.ee_balance_ves_ses_excel_services import (
     export_ves_ses_to_excel,
@@ -272,13 +271,15 @@ def ee_balance_ves_ses_value():
     if kind == "coefficient":
         if not (is_ges or is_gaes):
             return jsonify(ok=False, error="Коэффициент доступен только для ГЭС и ГАЭС"), 400
-        if not can_edit_station_energy_row(station):
+        if not _can_edit_ves_ses_energy():
             return jsonify(ok=False, error="Недостаточно прав"), 403
         try:
             coefficient = save_hydro_own_needs_coefficient(
                 station.id,
                 "ges" if is_ges else "gaes",
                 data.get("value"),
+                user=current_user,
+                station_name=station.name,
             )
         except ValueError as exc:
             return jsonify(ok=False, error=str(exc)), 400
@@ -299,7 +300,7 @@ def ee_balance_ves_ses_value():
         )
     if is_station_focus and kind != "energy":
         return jsonify(ok=False, error="Для АЭС, ГЭС, ГАЭС и СНЭЭ доступно только редактирование выработки"), 400
-    if not can_edit_station_energy_row(station):
+    if not _can_edit_ves_ses_energy():
         return jsonify(ok=False, error="Недостаточно прав"), 403
 
     version_id = get_current_db_version_id()
@@ -503,6 +504,7 @@ def ee_balance_tes_forecast_value(slug: str):
             data.get("month"),
             data.get("value"),
             rounding_digits=digits,
+            user=current_user,
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
@@ -547,6 +549,7 @@ def ee_balance_custom_flow_add(slug: str):
             direction,
             label=str(data.get("label") or ""),
             parent_key=parent_key or None,
+            user=current_user,
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
@@ -565,7 +568,7 @@ def ee_balance_custom_flow_item(slug: str, row_id: int):
     _require_sheet(slug)
     if request.method == "DELETE":
         try:
-            deleted = delete_custom_flow_row(slug, row_id)
+            deleted = delete_custom_flow_row(slug, row_id, user=current_user)
         except Exception:
             current_app.logger.exception("Не удалось удалить строку перетока баланса электрической энергии")
             return jsonify(ok=False, error="Не удалось удалить строку"), 500
@@ -576,7 +579,7 @@ def ee_balance_custom_flow_item(slug: str, row_id: int):
     data = request.get_json(silent=True) or {}
     if "label" in data and "year" not in data:
         try:
-            row = update_custom_flow_label(slug, row_id, str(data.get("label") or ""))
+            row = update_custom_flow_label(slug, row_id, str(data.get("label") or ""), user=current_user)
         except Exception:
             current_app.logger.exception("Не удалось сохранить наименование перетока баланса электрической энергии")
             return jsonify(ok=False, error="Не удалось сохранить наименование"), 500
@@ -590,7 +593,9 @@ def ee_balance_custom_flow_item(slug: str, row_id: int):
         data.get("rounding_digits", request.args.get("rounding_digits"))
     )
     try:
-        saved = update_custom_flow_value(slug, row_id, data.get("year"), data.get("value"))
+        saved = update_custom_flow_value(
+            slug, row_id, data.get("year"), data.get("value"), user=current_user
+        )
     except KeyError:
         return jsonify(ok=False, error="Строка не найдена"), 404
     except ValueError as exc:
@@ -612,10 +617,11 @@ def ee_balance_generation_value(slug: str):
     if not _can_edit_ves_ses_energy():
         return jsonify(ok=False, error="Недостаточно прав"), 403
     if slug == URAL_WITHOUT_TYUMEN_SLUG:
-        if get_ee_balance_sheet("ural") is None:
+        sheet = get_ee_balance_sheet("ural")
+        if sheet is None:
             abort(404)
     else:
-        _require_sheet(slug)
+        sheet = _require_sheet(slug)
     data = request.get_json(silent=True) or {}
     if "year" not in data:
         return jsonify(ok=False, error="Неверный запрос"), 400
@@ -628,6 +634,8 @@ def ee_balance_generation_value(slug: str):
             data.get("row_key"),
             data.get("year"),
             data.get("value"),
+            user=current_user,
+            sheet_name=sheet.get("sheet_name"),
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
@@ -649,12 +657,18 @@ def ee_balance_generation_value(slug: str):
 @energy_balance_bp.route("/ee_balance/<slug>/note/", methods=["PATCH"])
 @login_required
 def ee_balance_note(slug: str):
+    sheet = None
     if slug not in {URAL_WITHOUT_TYUMEN_SLUG, SEVERO_ZAPAD_CENTER_SLUG}:
-        _require_sheet(slug)
+        sheet = _require_sheet(slug)
     data = request.get_json(silent=True) or {}
     try:
         saved = update_balance_sheet_note(
-            BALANCE_KIND_EE, slug, data.get("row_key"), data.get("note")
+            BALANCE_KIND_EE,
+            slug,
+            data.get("row_key"),
+            data.get("note"),
+            user=current_user,
+            sheet_name=(sheet or {}).get("sheet_name"),
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
@@ -682,8 +696,9 @@ def ee_balance_import_export_value(slug: str):
             ues_id=ues_id,
             country_id=country_id,
             year=year,
-            direction=data.get("direction"),
+            direction=data.get("direction") or "import",
             raw_value=data.get("value"),
+            user=current_user,
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
@@ -720,6 +735,7 @@ def ee_balance_receive_transfer_value(slug: str):
             target_ues_id=target_ues_id,
             year=year,
             raw_value=data.get("value"),
+            user=current_user,
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400

@@ -14,12 +14,15 @@
   {% set is_station = col.key in ['NAME', 'Stancia'] %}
   {% if is_span_col and not row.is_group_first %}
   {% else %}
-  <td class="text-center{% if col.sticky %} cmp-sticky{% if is_station %} cmp-station-name{% endif %} text-start{% else %} cmp-data{% endif %}{% if col.diff_highlight %} cmp-diff-col{% endif %}{% if col.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}{% if is_span_col %} fuel-param-group-span{% endif %}"
+  <td class="text-center{% if col.sticky %} cmp-sticky{% if is_station %} cmp-station-name{% endif %} text-start{% else %} cmp-data{% endif %}{% if col.diff_highlight %} cmp-diff-col{% endif %}{% if col.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}{% if col.station_generation_highlight %} cmp-station-gen-col{% endif %}{% if is_span_col %} fuel-param-group-span{% endif %}"
       data-col-key="{{ col.key }}"
+      {% if row.titles and row.titles[loop.index0] %}title="{{ row.titles[loop.index0] }}"{% endif %}
       {% if is_span_col %}rowspan="{{ summary.rowspan }}"{% endif %}
       {% if col.sticky %}data-cmp-col="{{ col.sticky_index }}" style="left: var(--cmp-sticky-{{ col.sticky_index }}, 0px);"{% endif %}>
     {% if col.diff_highlight and row.cell_nonzero[loop.index0] %}
     <span class="cmp-diff-nonzero">{{ cell }}</span>
+    {% elif row.cell_mismatch and row.cell_mismatch[loop.index0] %}
+    <span class="cmp-station-gen-mismatch">{{ cell }}</span>
     {% else %}
     {{ cell }}
     {% endif %}
@@ -29,6 +32,20 @@
 </tr>
 {% endfor %}
 {% endif %}
+{%- endmacro %}
+
+{# Названия станций «Генерации» в столбце «Электростанция» — ссылки на карточку станции.
+   Все названия выводятся обычным начертанием, независимо от признака составной станции. #}
+{% macro station_links_label(group) -%}
+{%- if group.equipment_group is defined and group.equipment_group and group.is_composite_child|default(false) and group.show_composite_cluster|default(false) -%}
+<span class="equipment-group-tree-prefix" aria-hidden="true">└</span>
+{%- endif -%}
+{%- for station in group.station_links -%}
+{%- if not loop.first %}, {% endif -%}
+<a href="{{ url_for('station_bp.station_details', station_id=station.id) }}"
+   class="text-decoration-none"
+   target="_blank" rel="noopener noreferrer">{{ station.name }}</a>
+{%- endfor -%}
 {%- endmacro %}
 
 {% block title %}{{ page_title }}{% endblock %}
@@ -75,6 +92,15 @@
                       aria-controls="filtersCollapse">
                 🔍 Фильтры / Поиск
               </button>
+              <button id="importExportToggleBtn"
+                      class="btn btn-outline-secondary text-dark"
+                      type="button"
+                      data-bs-toggle="collapse"
+                      data-bs-target="#importExportCollapse"
+                      aria-expanded="false"
+                      aria-controls="importExportCollapse">
+                📁 Экспорт
+              </button>
             </div>
             <div class="flex-grow-1 d-flex justify-content-center align-items-center">
               <p class="mb-0 fw-bold">Найдено групп оборудования: {{ total_count }}</p>
@@ -83,6 +109,41 @@
         </div>
 
         {% include 'generation/stations/station_filters_first_row.html' %}
+
+        {# Строка экспорта — между строкой фильтров по станциям и строкой годов. #}
+        <div class="col-12 mb-2">
+          <div class="collapse mt-2" id="importExportCollapse">
+            <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+              {# Экспорт как на /ecology/gis_tek/pg/: файл забирается через fetch,
+                 чтобы страница не уходила в навигацию и не оставалась под прелоадером. #}
+              <form method="GET"
+                    action="{{ url_for('ecology_bp.gis_tes_fuel_comparison_export', sheet_slug=sheet.slug) }}"
+                    id="gisTesExportForm">
+                {% for key, value in request.args.items(multi=True) %}
+                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endfor %}
+                <button type="button" class="btn btn-outline-success d-inline-flex align-items-center justify-content-center gap-2" id="gisTesExportBtn">
+                  <i class="bi bi-file-earmark-excel" aria-hidden="true"></i> Экспорт в Excel
+                </button>
+              </form>
+              <script src="{{ url_for('static', filename='js/common/excel_export_fetch.js') }}?v=1"></script>
+              <script>
+                (function () {
+                  var form = document.getElementById('gisTesExportForm');
+                  var btn = document.getElementById('gisTesExportBtn');
+                  if (!form || !btn || typeof window.armGsExportExcel !== 'function') { return; }
+                  btn.addEventListener('click', function () {
+                    var params = new URLSearchParams();
+                    new FormData(form).forEach(function (value, key) { params.append(key, value); });
+                    params.delete('page');
+                    var query = params.toString();
+                    window.armGsExportExcel(btn, form.action + (query ? '?' + query : ''));
+                  });
+                })();
+              </script>
+            </div>
+          </div>
+        </div>
 
         <div class="col-12 mb-2">
           <div class="d-flex align-items-center w-100 flex-wrap gap-3">
@@ -143,6 +204,30 @@
                       title="Скрыть строки, у которых все значения пусты или равны нулю">
                 Пустые строки
               </button>
+              {% if sheet.group == 'pg' %}
+              <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
+                <label for="emission_rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл (k эмис):</label>
+                <select id="emission_rounding_digits" name="emission_rounding_digits_ui" class="form-select" style="min-width: 140px;">
+                  <option value="0" {% if emission_rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                  <option value="1" {% if emission_rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                  <option value="2" {% if emission_rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                  <option value="3" {% if emission_rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                  <option value="-1" {% if emission_rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+              </div>
+              {% endif %}
+              {% if sheet.group == 'zv' %}
+              <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
+                <label for="specific_rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл (удельные):</label>
+                <select id="specific_rounding_digits" name="specific_rounding_digits_ui" class="form-select" style="min-width: 140px;">
+                  <option value="0" {% if specific_rounding_digits == 0 %}selected{% endif %}>Не округлять</option>
+                  <option value="1" {% if specific_rounding_digits == 1 %}selected{% endif %}>1 знак</option>
+                  <option value="2" {% if specific_rounding_digits == 2 %}selected{% endif %}>2 знака</option>
+                  <option value="3" {% if specific_rounding_digits == 3 %}selected{% endif %}>3 знака</option>
+                  <option value="-1" {% if specific_rounding_digits == -1 %}selected{% endif %}>Целое число</option>
+                </select>
+              </div>
+              {% endif %}
               <div class="d-flex align-items-center gap-1 flex-shrink-0" style="min-width: 11rem;">
                 <label for="rounding_digits" class="mb-0 flex-shrink-0" style="white-space: nowrap;">Округл:</label>
                 <select id="rounding_digits" name="rounding_digits_ui" class="form-select" style="min-width: 140px;">
@@ -318,6 +403,11 @@
           padding-left: 0.2rem;
           padding-right: 0.2rem;
         }
+        /* Все ячейки тела — по центру высоты строки. Иначе текст в нередактируемых
+           ячейках прижат к верху (baseline), а input в редактируемых стоит по центру. */
+        #gisTesFuelTable > tbody > tr > td {
+          vertical-align: middle;
+        }
         #gisTesFuelTable td.cmp-sticky:not(.cmp-station-name) {
           white-space: nowrap;
           overflow: hidden;
@@ -350,7 +440,9 @@
           max-width: 100%;
           box-sizing: border-box;
         }
-        #gisTesFuelTable.ot-hide-empty tbody tr.ot-row-empty-hidden { display: none !important; }
+        /* Пустые строки убираем из сетки полностью: при display: none браузер всё равно
+           считает их высоту в ячейках с rowspan, из-за чего «плыла» вся таблица. */
+        #gisTesFuelTable.ot-hide-empty tbody tr.ot-row-empty-hidden { visibility: collapse !important; }
         #gisTesFuelTable.table-striped > tbody > tr:nth-of-type(odd) > td.cmp-sticky {
           background-color: #f2f2f2 !important;
           --bs-table-bg: #f2f2f2;
@@ -407,6 +499,23 @@
         #gisTesFuelTable.table-hover > tbody > tr:hover > td.cmp-fuel-tep-col {
           background-color: #c8ced4 !important;
         }
+        /* Руст / выработка станции из «Генерации» — сверка со столбцами ТЭП. */
+        #gisTesFuelTable > thead th.cmp-station-gen-col {
+          background-color: #ffe0b2 !important;
+        }
+        #gisTesFuelTable tbody td.cmp-station-gen-col {
+          background-color: #ffe0b2 !important;
+        }
+        #gisTesFuelTable.table-striped > tbody > tr:nth-of-type(odd) > td.cmp-station-gen-col {
+          background-color: #f6d6a6 !important;
+        }
+        #gisTesFuelTable.table-hover > tbody > tr:hover > td.cmp-station-gen-col {
+          background-color: #f3cb92 !important;
+        }
+        #gisTesFuelTable tbody td.cmp-station-gen-col .cmp-station-gen-mismatch {
+          color: var(--bs-danger, #dc3545) !important;
+          font-weight: 600;
+        }
         #gisTesFuelTable input.ot-edit-value {
           width: 100%;
           min-width: 0;
@@ -425,6 +534,13 @@
           /* не даём input раздувать столбец шире остальных */
           width: 6.5rem;
         }
+        /* Сохранение правки: зелёный контур при успехе, красный при ошибке — как на ee_transfers. */
+        #gisTesFuelTable tbody td.is-save-success {
+          box-shadow: inset 0 0 0 2px var(--bs-success);
+        }
+        #gisTesFuelTable tbody td.is-save-error {
+          box-shadow: inset 0 0 0 2px var(--bs-danger);
+        }
         /* Разделительные полосы между группами оборудования — как на stations_equipment_group_fuel_params. */
         #gisTesFuelTable tbody tr.fuel-param-group-last > td,
         #gisTesFuelTable tbody td.fuel-param-group-span {
@@ -436,15 +552,42 @@
         #gisTesFuelTable.table-striped > tbody > tr.cmp-summary-row > * {
           --bs-table-accent-bg: transparent;
         }
+        /* Фильтры в шапке «Электростанция» и «Принадлежность» — у нижнего края шапки. */
+        #gisTesFuelTable > thead th.gis-tes-filter-th {
+          padding-bottom: 2.4rem;
+        }
+        #gisTesFuelTable > thead th.gis-tes-filter-th > .gis-tes-header-filter,
+        #gisTesFuelTable > thead th.gis-tes-filter-th > .numb1120-filter-wrap {
+          position: absolute;
+          left: 0.25rem;
+          right: 0.25rem;
+          bottom: 0.35rem;
+          width: auto;
+          min-width: 0;
+          height: 2rem;
+          font-size: 0.85rem;
+          padding-top: 0.1rem;
+          padding-bottom: 0.1rem;
+          margin-top: 0;
+          z-index: 2;
+        }
+        /* «Принадлежность» — не липкий столбец (position: static), поэтому абсолютный
+           фильтр получал в containing block всю строку шапки и растягивался почти на всю
+           таблицу. Привязываем его к самому столбцу: ширина = ширине столбца. */
+        #gisTesFuelTable > thead th.gis-tes-filter-th:not(.cmp-sticky) {
+          position: relative;
+        }
       </style>
 
       <div id="stationsTableContainer">
         <table
-          class="table table-hover table-striped table-bordered align-middle power-demand-summary-table{% if not show_empty_rows|default(false) %} ot-hide-empty{% endif %}"
+          class="table table-hover table-striped table-bordered power-demand-summary-table{% if not show_empty_rows|default(false) %} ot-hide-empty{% endif %}"
           id="gisTesFuelTable"
           data-can-edit="{{ '1' if can_edit|default(false) else '0' }}"
           data-update-url="{% if can_edit|default(false) %}{{ url_for('ecology_bp.gis_tes_fuel_comparison_update_value', sheet_slug=sheet.slug) }}{% endif %}"
           data-rounding-digits="{{ rounding_digits }}"
+          data-emission-rounding-digits="{{ emission_rounding_digits }}"
+          data-specific-rounding-digits="{{ specific_rounding_digits }}"
         >
           <thead class="table-success">
             {% for header_row in header_rows %}
@@ -457,11 +600,11 @@
                  'Код группы оборудования',
                  numb1120_filter|default([]),
                  numb1120_filter_choices|default([]),
-                 extra_class='cmp-sticky text-center align-middle',
+                 extra_class='cmp-sticky text-center align-middle gis-tes-filter-th',
                  sticky_col=cell.col_index
                ) }}
             {% else %}
-            <th class="text-center align-middle{% if cell.sticky %} cmp-sticky{% else %} cmp-data{% endif %}{% if cell.column_key in ['NAME', 'Stancia'] %} cmp-station-name{% endif %}{% if cell.diff_highlight %} cmp-diff-col{% endif %}{% if cell.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}"
+            <th class="text-center align-middle{% if cell.sticky %} cmp-sticky{% else %} cmp-data{% endif %}{% if cell.column_key in ['NAME', 'Stancia'] %} cmp-station-name{% endif %}{% if cell.column_key in ['NAME', 'Stancia', 'station_affiliation'] %} gis-tes-filter-th{% endif %}{% if cell.diff_highlight %} cmp-diff-col{% endif %}{% if cell.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}{% if cell.station_generation_highlight %} cmp-station-gen-col{% endif %}"
                 {% if cell.rowspan > 1 %}rowspan="{{ cell.rowspan }}"{% endif %}
                 {% if cell.colspan > 1 %}colspan="{{ cell.colspan }}"{% endif %}
                 {% if cell.sticky %}data-cmp-col="{{ cell.col_index }}" style="left: var(--cmp-sticky-{{ cell.col_index }}, 0px);"{% endif %}
@@ -472,6 +615,27 @@
                  title="{{ cell.formula_tooltip|e }}"
                  style="cursor: help; font-size: 0.9em;"
                  aria-label="Формула"></i>
+              {% endif %}
+              {% if cell.column_key in ['NAME', 'Stancia'] %}
+              <select class="form-select form-select-sm gis-tes-header-filter"
+                      data-filter-param="station_header_filter"
+                      aria-label="Фильтр: Электростанция"
+                      title="Фильтр: Электростанция">
+                <option value="">Все</option>
+                {% for choice in station_filter_choices|default([]) %}
+                <option value="{{ choice }}"{% if choice == station_header_filter|default('') %} selected{% endif %}>{{ choice }}</option>
+                {% endfor %}
+              </select>
+              {% elif cell.column_key == 'station_affiliation' %}
+              <select class="form-select form-select-sm gis-tes-header-filter"
+                      data-filter-param="affiliation_filter"
+                      aria-label="Фильтр: Принадлежность"
+                      title="Фильтр: Принадлежность">
+                <option value="">Все</option>
+                {% for choice in affiliation_filter_choices|default([]) %}
+                <option value="{{ choice }}"{% if choice == affiliation_filter|default('') %} selected{% endif %}>{{ choice }}</option>
+                {% endfor %}
+              </select>
               {% endif %}</th>
             {% endif %}
             {% endfor %}
@@ -497,17 +661,20 @@
                       {% set is_station = col.key in ['NAME', 'Stancia'] %}
                       {% if is_span_col and not row.is_group_first %}
                       {% else %}
-                      <td class="text-center{% if col.sticky %} cmp-sticky{% if is_station %} cmp-station-name{% endif %} text-start{% else %} cmp-data{% endif %}{% if col.diff_highlight %} cmp-diff-col{% endif %}{% if col.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}{% if is_span_col %} fuel-param-group-span{% endif %}{% if is_station and group.equipment_group is defined and group.equipment_group %} {{ eg_name_cell_class({'is_composite_parent': group.is_composite_parent|default(false), 'is_composite_child': group.is_composite_child|default(false), 'show_composite_cluster': group.show_composite_cluster|default(false)}) }}{% endif %}"
+                      <td class="text-center{% if col.sticky %} cmp-sticky{% if is_station %} cmp-station-name{% endif %} text-start{% else %} cmp-data{% endif %}{% if col.diff_highlight %} cmp-diff-col{% endif %}{% if col.fuel_tep_highlight %} cmp-fuel-tep-col{% endif %}{% if col.station_generation_highlight %} cmp-station-gen-col{% endif %}{% if is_span_col %} fuel-param-group-span{% endif %}{% if is_station and group.equipment_group is defined and group.equipment_group %} {{ eg_name_cell_class({'is_composite_parent': false, 'is_composite_child': group.is_composite_child|default(false), 'show_composite_cluster': group.show_composite_cluster|default(false)}) }}{% endif %}"
                           data-col-key="{{ col.key }}"
+                          {% if row.titles and row.titles[loop.index0] %}title="{{ row.titles[loop.index0] }}"{% endif %}
                           {% if col.key in ('d_gaz','d_mazut','d_tv','K_gaz_ek','K_mazut_ek','K_ugol_ek','CO2','UD_CO2_ek','UD_CO2_ener') %}data-pg-derived="1"{% endif %}
                           {% if is_span_col %}rowspan="{{ group.rowspan }}"{% endif %}
                           {% if col.sticky %}data-cmp-col="{{ col.sticky_index }}" style="left: var(--cmp-sticky-{{ col.sticky_index }}, 0px);"{% endif %}>
-                        {% if is_station and group.equipment_group is defined and group.equipment_group %}
+                        {% if is_station and group.station_links is defined and group.station_links %}
+                        {{ station_links_label(group) }}
+                        {% elif is_station and group.equipment_group is defined and group.equipment_group %}
                         {{ eg_name_label(
                              group.equipment_group,
                              cell,
                              {
-                               'is_composite_parent': group.is_composite_parent|default(false),
+                               'is_composite_parent': false,
                                'is_composite_child': group.is_composite_child|default(false),
                                'show_composite_cluster': group.show_composite_cluster|default(false)
                              },
@@ -520,11 +687,15 @@
                                data-year="{{ row.year }}"
                                data-numb="{{ group.numb }}"
                                value="{{ cell }}"
+                               data-original="{{ cell }}"
+                               {% if row.titles and row.titles[loop.index0] %}title="{{ row.titles[loop.index0] }}"{% endif %}
                                size="1"
                                inputmode="decimal"
                                aria-label="{{ col.key }}">
                         {% elif col.diff_highlight and row.cell_nonzero[loop.index0] %}
                         <span class="cmp-diff-nonzero">{{ cell }}</span>
+                        {% elif row.cell_mismatch and row.cell_mismatch[loop.index0] %}
+                        <span class="cmp-station-gen-mismatch">{{ cell }}</span>
                         {% else %}
                         {{ cell }}
                         {% endif %}
@@ -568,6 +739,18 @@
     document.getElementById('rounding_digits')?.addEventListener('change', function () {
       const url = new URL(window.location.href);
       url.searchParams.set('rounding_digits', this.value);
+      url.searchParams.delete('page');
+      window.location.href = url.toString();
+    });
+    document.getElementById('emission_rounding_digits')?.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      url.searchParams.set('emission_rounding_digits', this.value);
+      url.searchParams.delete('page');
+      window.location.href = url.toString();
+    });
+    document.getElementById('specific_rounding_digits')?.addEventListener('change', function () {
+      const url = new URL(window.location.href);
+      url.searchParams.set('specific_rounding_digits', this.value);
       url.searchParams.delete('page');
       window.location.href = url.toString();
     });
@@ -686,6 +869,10 @@
     const updateUrl = table?.dataset.updateUrl;
     const canEdit = table?.dataset.canEdit === '1';
     const roundingDigits = table?.dataset.roundingDigits || '';
+    // «Округл (k эмис)» — только для столбцов «Коэффициент эмиссии».
+    const emissionRoundingDigits = table?.dataset.emissionRoundingDigits || roundingDigits;
+    // «Округл (удельные)» — только для удельных столбцов ЗВ.
+    const specificRoundingDigits = table?.dataset.specificRoundingDigits || roundingDigits;
     const CSRF = {% if csrf_token is string %}{{ csrf_token|tojson }}{% else %}{{ csrf_token()|tojson }}{% endif %};
     const KCAL_PER_KWH = 859.8;
     const DIFF_KEYS = {d_gaz: 1, d_mazut: 1, d_tv: 1};
@@ -699,20 +886,41 @@
       const n = Number(s);
       return Number.isFinite(n) ? n : null;
     };
+    // «Округл» как format_decimal_for_display на сервере: -1 — целое, 0 — без округления,
+    // 1..3 — знаки после запятой; пусто или неизвестное значение — 1 знак.
+    const ROUNDING_CHOICES = [-1, 0, 1, 2, 3];
     const formatNum = function (value, digitsRaw) {
       if (value == null || !Number.isFinite(value)) return '';
       let digits = parseInt(digitsRaw, 10);
-      if (!Number.isFinite(digits)) digits = 1;
-      let n = value;
-      if (digits >= 0) {
+      if (ROUNDING_CHOICES.indexOf(digits) === -1) digits = 1;
+      const negative = value < 0;
+      const abs = Math.abs(value);
+      let fixed;
+      if (digits === -1) {
+        // половинки — от нуля, как ROUND_HALF_UP
+        fixed = String(Math.round(abs));
+      } else if (digits === 0) {
+        // без округления: только значащие цифры (15), как drop_float_noise на сервере
+        fixed = String(abs);
+        if (fixed.indexOf('e') === -1) {
+          fixed = String(Number(abs.toPrecision(15)));
+        }
+        if (fixed.indexOf('e') !== -1) fixed = abs.toFixed(12);
+      } else {
         const f = Math.pow(10, digits);
-        n = Math.round(n * f) / f;
+        fixed = (Math.round(abs * f) / f).toFixed(digits);
       }
-      let fixed = digits >= 0 ? n.toFixed(digits) : String(n);
-      if (digits > 0) fixed = fixed.replace(/\.?0+$/, '');
-      const parts = fixed.split('.');
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-      return parts.length > 1 ? parts[0] + ',' + parts[1] : parts[0];
+      let intPart = fixed;
+      let frac = null;
+      const dot = fixed.indexOf('.');
+      if (dot !== -1) {
+        intPart = fixed.slice(0, dot);
+        frac = fixed.slice(dot + 1).replace(/0+$/, '') || null;
+      }
+      intPart = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      const text = frac ? intPart + ',' + frac : intPart;
+      // сервер для -0 отдаёт «0», а не «-0»
+      return negative && text !== '0' ? '-' + text : text;
     };
     const readCellNum = function (tr, key) {
       const td = tr.querySelector('td[data-col-key="' + key + '"]');
@@ -787,9 +995,9 @@
       writeDerivedCell(tr, 'd_gaz', dGaz, digits);
       writeDerivedCell(tr, 'd_mazut', dMazut, digits);
       writeDerivedCell(tr, 'd_tv', dTv, digits);
-      writeDerivedCell(tr, 'K_gaz_ek', kGaz, digits);
-      writeDerivedCell(tr, 'K_mazut_ek', kMazut, digits);
-      writeDerivedCell(tr, 'K_ugol_ek', kUgol, digits);
+      writeDerivedCell(tr, 'K_gaz_ek', kGaz, emissionRoundingDigits);
+      writeDerivedCell(tr, 'K_mazut_ek', kMazut, emissionRoundingDigits);
+      writeDerivedCell(tr, 'K_ugol_ek', kUgol, emissionRoundingDigits);
       writeDerivedCell(tr, 'CO2', co2, digits);
       writeDerivedCell(tr, 'UD_CO2_ek', udEk, digits);
       writeDerivedCell(tr, 'UD_CO2_ener', udEn, digits);
@@ -799,11 +1007,23 @@
       Object.keys(values).forEach(function (key) {
         const info = values[key] || {};
         const text = info.text == null ? '' : String(info.text);
+        const title = info.title == null ? '' : String(info.title);
         const td = tr.querySelector('td[data-col-key="' + key + '"]');
         if (!td) return;
+        // Подсказка при наведении — полное значение независимо от «Округл».
+        if (title) {
+          td.title = title;
+        } else {
+          td.removeAttribute('title');
+        }
         const cellInput = td.querySelector('input.ot-edit-value');
         if (cellInput) {
           cellInput.value = text;
+          if (title) {
+            cellInput.title = title;
+          } else {
+            cellInput.removeAttribute('title');
+          }
           return;
         }
         if (info.nonzero) {
@@ -821,33 +1041,63 @@
       table.querySelectorAll('tbody tr[data-row-key]').forEach(recalcDerivedRow);
     }
     if (canEdit && updateUrl) {
+      // Enter — сохранить сразу, Escape — вернуть значение, с которым клетка пришла с сервера.
+      table.addEventListener('keydown', function (event) {
+        const input = event.target.closest('input.ot-edit-value');
+        if (!input) return;
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          input.blur();
+        } else if (event.key === 'Escape') {
+          input.value = input.dataset.original || '';
+          input.blur();
+        }
+      });
       table.querySelectorAll('input.ot-edit-value').forEach(function (input) {
         input.addEventListener('input', function () {
+          const td = input.closest('td');
+          if (td) td.classList.remove('is-save-success', 'is-save-error');
           recalcDerivedRow(input.closest('tr'));
         });
-        input.addEventListener('change', function () {
+        input.addEventListener('change', async function () {
+          if (input.value === (input.dataset.original || '')) return;
           const tr = input.closest('tr');
+          const td = input.closest('td');
           recalcDerivedRow(tr);
-          fetch(updateUrl, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF || ''},
-            body: JSON.stringify({
-              year: input.dataset.year,
-              numb: input.dataset.numb,
-              field: input.dataset.field,
-              value: input.value,
-              rounding_digits: roundingDigits
-            })
-          }).then(function (resp) {
-            if (!resp.ok) throw new Error('save failed');
-            return resp.json();
-          }).then(function (data) {
-            if (!data.ok) throw new Error(data.error || 'save failed');
+          input.disabled = true;
+          if (td) td.classList.remove('is-save-success', 'is-save-error');
+          try {
+            const response = await fetch(updateUrl, {
+              method: 'PATCH',
+              credentials: 'same-origin',
+              headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF || ''},
+              body: JSON.stringify({
+                year: input.dataset.year,
+                numb: input.dataset.numb,
+                field: input.dataset.field,
+                value: input.value,
+                rounding_digits: roundingDigits,
+                emission_rounding_digits: emissionRoundingDigits,
+                specific_rounding_digits: specificRoundingDigits
+              })
+            });
+            const result = await response.json().catch(function () { return {}; });
+            if (!response.ok || result.ok === false) {
+              throw new Error(result.error || 'Ошибка сохранения значения');
+            }
             input.classList.remove('is-invalid');
-            applyRelatedValues(tr, data.values);
-          }).catch(function () {
+            applyRelatedValues(tr, result.values);
+            input.dataset.original = input.value;
+            if (td) td.classList.add('is-save-success');
+          } catch (error) {
+            input.value = input.dataset.original || '';
+            recalcDerivedRow(tr);
             input.classList.add('is-invalid');
-          });
+            if (td) td.classList.add('is-save-error');
+            window.alert(error.message || 'Ошибка сохранения значения');
+          } finally {
+            input.disabled = false;
+          }
         });
       });
     }
@@ -858,6 +1108,14 @@
         if (overlay) overlay.style.display = 'none';
       });
     }
+
+    // Общий прелоадер (base.html) показывается при уходе со страницы. Если переход
+    // отменён или страница открыта из кеша, он так и остался бы висеть поверх таблицы
+    // и блокировал бы работу — скрываем его, когда страница реально показана.
+    window.addEventListener('pageshow', function () {
+      const preloader = document.getElementById('preloader');
+      if (preloader) preloader.style.display = 'none';
+    });
   });
 </script>
 <script id="filters-data" type="application/json">
@@ -899,5 +1157,24 @@
 <script src="{{ url_for('static', filename='js/generation/stations/station_filters_first_row.js') }}"></script>
 {% include 'ecology/_station_filters_toggle_script.html' %}
 <script src="{{ url_for('static', filename='js/fuel/numb1120_header_filter.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('select.gis-tes-header-filter').forEach(function (selectEl) {
+      selectEl.addEventListener('change', function () {
+        const param = selectEl.dataset.filterParam;
+        if (!param) { return; }
+        const params = new URLSearchParams(window.location.search);
+        if (selectEl.value) {
+          params.set(param, selectEl.value);
+        } else {
+          params.delete(param);
+        }
+        params.delete('page');
+        const qs = params.toString();
+        window.location.href = window.location.pathname + (qs ? '?' + qs : '');
+      });
+    });
+  });
+</script>
 {% endif %}
 {% endblock %}

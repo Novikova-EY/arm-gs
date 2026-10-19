@@ -1,0 +1,10 @@
+﻿import psycopg2
+conn = psycopg2.connect(host="localhost", port=5432, dbname="gs_gen", user="generation", password="R7fP9wQk")
+cur = conn.cursor()
+cur.execute("select station_numb, gis_tek_station_name, count(*) from gs_eco.gs_eco_gis_tek_greenhouse_gas_params where station_numb=89 group by 1,2")
+print("report pg 89:", cur.fetchall())
+cur.execute("select station_numb, gis_tek_station_name, count(*) from gs_eco.gs_eco_gis_tek_greenhouse_gas_params where station_numb in (88,89,90,91) group by 1,2 order by 1")
+for r in cur.fetchall(): print(r)
+cur.execute("select table_name from information_schema.tables where table_schema='gs_eco' order by 1")
+print(*[r[0] for r in cur.fetchall()], sep="\n")
+conn.close()

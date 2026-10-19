@@ -361,6 +361,10 @@ Legacy-алиасы: `/generation/stations/api/datasets/<database_version>/<data
 годовая выработка (значение как в БД, млн кВт·ч; ключ — «Производство электроэнергии
 в году, МВт*ч», до 3 знаков после запятой).
 
+В JSON-наборе выработка округляется до 3 знаков (контракт внешнего API).
+Выгрузка этого набора в Excel со страницы `/output_documents_transfer`
+берёт выработку из БД без округления ([`output_documents_excel_export_services.py`](../../app/api/services/output_documents_excel_export_services.py)).
+
 Признак «планируемая»: `true`, если сумма Руст неархивных агрегатов в этом году = 0,
 а в более позднем году относительно «Год» эта сумма > 0.
 

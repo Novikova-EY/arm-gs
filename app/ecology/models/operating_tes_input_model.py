@@ -54,7 +54,7 @@ class OperatingTesInputValue(db.Model, AuditMixin):
     # Ключ строки: вид топлива, ee_generation, heat_output, fuel_total
     row_key = db.Column(db.String(80), nullable=False, index=True)
 
-    # Значение: топливо — тыс. тут; выработка ЭЭ — млрд.кВтч; отпуск тепла — тыс.Гкал
+    # Значение: топливо — тыс. т у.т.; выработка ЭЭ — млрд.кВтч; отпуск тепла — тыс.Гкал
     value = db.Column(Numeric(36, 16), nullable=True)
     
     # Примечание

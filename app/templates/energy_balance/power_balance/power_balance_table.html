@@ -419,12 +419,13 @@
                 {% if row.origin_sheet_name %}
                 <span class="text-muted small text-nowrap">{{ row.origin_sheet_name }}:</span>
                 {% endif %}
+                {% if can_edit_energy_balance %}
                 <input type="text"
                        class="form-control form-control-sm pb-custom-label"
                        value="{{ row.label }}"
                        placeholder="Введите наименование"
                        aria-label="Наименование строки">
-                {% if row.can_add_custom_flow %}
+                {% if can_edit_energy_balance and row.can_add_custom_flow %}
                 <button type="button"
                         class="btn btn-outline-success btn-sm pb-custom-add"
                         data-parent-key="{{ row.key }}"
@@ -440,6 +441,9 @@
                         aria-label="Удалить строку">
                   <i class="bi bi-trash"></i>
                 </button>
+                {% else %}
+                {{ row.label }}
+                {% endif %}
               </div>
               {% else %}
               {% if row.key == 'flow_total' %}
@@ -471,7 +475,7 @@
                  title="{{ row.formula_tooltip|e }}"
                  style="cursor: help; font-size: 0.9em; vertical-align: -0.1em;"
                  aria-label="Формула расчёта"></i>{% endif %}
-              {% if row.can_add_custom_flow %}
+              {% if can_edit_energy_balance and row.can_add_custom_flow %}
               <span class="pb-row-actions">
                 <button type="button"
                         class="btn btn-outline-success btn-sm pb-custom-add"
@@ -500,7 +504,7 @@
                 {% if nowrap_year_tooltip %}data-bs-custom-class="pb-tooltip-nowrap"{% endif %}
                 title="{{ tip_lines|map('e')|join('<br>') }}"
                 {% endif %}>
-              {% if row.editable_values %}
+              {% if can_edit_energy_balance and row.editable_values %}
               <input type="text"
                      class="form-control form-control-sm pb-custom-value"
                      data-year="{{ year }}"

@@ -61,6 +61,7 @@ from app.generation.services.station_services.station_type_flags import (
 )
 from app.generation.services.station_services.ves_ses_plan_generation_services import (
     attach_ves_ses_plan_generation,
+    plan_calc_after_owner_edit,
 )
 from app.generation.prospective_places.services.hydro_energy_forecast_services import (
     build_hydro_forecast_view,
@@ -192,6 +193,17 @@ def _rounding_for_station_energy_fragment(primary_param: str) -> int:
     if v is not None:
         return v
     return 1
+
+
+def _rounding_from_energy_payload(payload: dict) -> int:
+    """Округление из PATCH ячейки; клиент шлёт текущий выбор списка «Округл»."""
+    try:
+        digits = int(payload.get("rounding"))
+    except (TypeError, ValueError):
+        digits = None
+    if digits in _ALLOWED_STATION_ROUNDINGS:
+        return digits
+    return _rounding_for_station_energy_fragment("rounding_digits_gen")
 
 
 from app.common.services.get_services.energy_systems.energy_system_type_get_services import (
@@ -2175,6 +2187,64 @@ def station_details_station_owner_energy_row(station_id):
     return resp
 
 
+def _sync_owner_generation_to_plan_cell(
+    user,
+    station,
+    *,
+    year: int,
+    previous_owner_value,
+    plan_start_year: int,
+    plan_end_year: int,
+    station_version_id: int | None,
+    rounding_digits: int,
+) -> dict | None:
+    """
+    Переносит сохранённую выработку от собственника в план-ячейку таблицы
+    «Выработка электроэнергии» (ВЭС/СЭС со вводом в плановом периоде).
+
+    Возвращает данные для ответа клиенту ({year, value, rule}) или None,
+    если ячейка показывала не расчёт.
+    """
+    from app.common.services.help_services import format_decimal_for_display
+
+    value, rule = plan_calc_after_owner_edit(
+        station,
+        year=year,
+        start_year=plan_start_year,
+        end_year=plan_end_year,
+        previous_owner_value=previous_owner_value,
+        station_version_id=station_version_id,
+    )
+    if value is None:
+        return None
+
+    stored = station_annual_energy_by_year(
+        station.id, year, year, station_version_id
+    ).get(year)
+    gen_changes = save_station_energy_generation_service(
+        user,
+        station,
+        station_version_id,
+        year,
+        year,
+        {
+            f"st_gen_{year}": str(value),
+            f"st_gen_{year}_orig": (
+                format_decimal_for_display(stored, digits=rounding_digits)
+                if stored is not None
+                else ""
+            ),
+        },
+    )
+    if not gen_changes:
+        return None
+    return {
+        "year": year,
+        "value": format_decimal_for_display(value, digits=rounding_digits),
+        "rule": rule or "",
+    }
+
+
 @station_bp.route(
     "/station_details/<int:station_id>/energy_value",
     methods=["PATCH"],
@@ -2184,7 +2254,12 @@ def station_details_energy_value(station_id):
     """Сохраняет одно значение выработки, потребления или КПД СНЭЭ."""
     payload = request.get_json(silent=True) or {}
     kind = payload.get("kind")
-    if kind not in {"generation", "snee_consumption", "snee_efficiency"}:
+    if kind not in {
+        "generation",
+        "owner_generation",
+        "snee_consumption",
+        "snee_efficiency",
+    }:
         return jsonify(ok=False, error="Неизвестный тип значения"), 400
 
     current_version_id = get_current_db_version_id()
@@ -2213,6 +2288,8 @@ def station_details_energy_value(station_id):
         return jsonify(ok=False, error="Недостаточно прав"), 403
     if kind in {"snee_consumption", "snee_efficiency"} and not _is_snee_station(station):
         return jsonify(ok=False, error="Поле доступно только для электростанций СНЭЭ"), 400
+    if kind == "owner_generation" and not _is_ves_or_ses_station(station):
+        return jsonify(ok=False, error="Поле доступно только для электростанций СЭС и ВЭС"), 400
 
     raw_value = payload.get("value")
     raw_value = "" if raw_value is None else str(raw_value)
@@ -2233,6 +2310,17 @@ def station_details_energy_value(station_id):
             f"st_gen_{year}_orig": payload.get("orig", ""),
         }
         save = save_station_energy_generation_service
+        start_year = end_year = year
+    elif kind == "owner_generation":
+        try:
+            year = int(payload.get("year"))
+        except (TypeError, ValueError):
+            return jsonify(ok=False, error="Неверный год"), 400
+        form_data = {
+            f"st_owner_gen_{year}": raw_value,
+            f"st_owner_gen_{year}_orig": payload.get("orig", ""),
+        }
+        save = save_station_owner_energy_generation_service
         start_year = end_year = year
     elif kind == "snee_consumption":
         try:
@@ -2262,10 +2350,28 @@ def station_details_energy_value(station_id):
             end_year,
             form_data,
         )
-        if changes:
+        gen_sync = None
+        if kind == "owner_generation":
+            plan_start_year = request.args.get("start_year", type=int)
+            plan_end_year = request.args.get("end_year", type=int)
+            if plan_start_year is None:
+                plan_start_year = get_filter_start_year()
+            if plan_end_year is None:
+                plan_end_year = get_filter_end_year()
+            gen_sync = _sync_owner_generation_to_plan_cell(
+                current_user,
+                station,
+                year=year,
+                previous_owner_value=payload.get("orig", ""),
+                plan_start_year=plan_start_year,
+                plan_end_year=plan_end_year,
+                station_version_id=station_version_id,
+                rounding_digits=_rounding_from_energy_payload(payload),
+            )
+        if changes or gen_sync:
             invalidate_cache("station_full", station_id=station.id)
             invalidate_cache_pattern("station_list:*")
-        return jsonify(ok=True, changed=bool(changes))
+        return jsonify(ok=True, changed=bool(changes or gen_sync), gen=gen_sync)
     except ValueError as exc:
         db.session.rollback()
         return jsonify(ok=False, error=str(exc)), 400

@@ -3,16 +3,33 @@
 
 from __future__ import annotations
 
-from flask import abort, current_app, jsonify, redirect, render_template, request, url_for
+from datetime import datetime
+
+from flask import (
+    abort,
+    current_app,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 from flask_login import current_user, login_required
+from werkzeug.datastructures import MultiDict
 
 from app.common.services.help_services import parse_decimal_from_display
 from app.ecology.routes.ecology_bp import ecology_bp
+from app.ecology.services.export_gis_tes_fuel_comparison_services import (
+    export_comparison_table_to_excel,
+)
 from app.ecology.services.gis_tek_page_services import can_edit_ecology
-from app.ecology.services.gis_tes_fuel_comparison_constants import PG_ANALYSIS_SHEET_SLUGS
+from app.ecology.services.gis_tes_fuel_comparison_constants import (
+    ANALYSIS_SHEET_SLUGS,
+)
 from app.ecology.services.gis_tes_fuel_comparison_services import (
     build_comparison_table_context,
-    save_analysis_pg_ecology_cell,
+    save_analysis_ecology_cell,
 )
 from app.generation.forms.station_forms import StationFilterForm
 
@@ -27,6 +44,8 @@ def gis_tes_fuel_comparison(sheet_slug: str):
                 "start_year",
                 "end_year",
                 "rounding_digits",
+                "emission_rounding_digits",
+                "specific_rounding_digits",
                 "per_page",
                 "show_totals",
                 "show_empty_rows",
@@ -42,13 +61,22 @@ def gis_tes_fuel_comparison(sheet_slug: str):
         start_year=request.args.get("start_year"),
         end_year=request.args.get("end_year"),
         rounding_digits=request.args.get("rounding_digits"),
+        emission_rounding_digits=request.args.get("emission_rounding_digits"),
+        specific_rounding_digits=request.args.get("specific_rounding_digits"),
         request_args=request.args,
     )
     if context is None:
         abort(404)
     year_keep = {
         key: context[key]
-        for key in ("start_year", "end_year", "rounding_digits", "per_page")
+        for key in (
+            "start_year",
+            "end_year",
+            "rounding_digits",
+            "emission_rounding_digits",
+            "specific_rounding_digits",
+            "per_page",
+        )
         if context.get(key) is not None
     }
     year_keep["show_totals"] = "1" if context.get("show_totals") else "0"
@@ -65,9 +93,39 @@ def gis_tes_fuel_comparison(sheet_slug: str):
         **year_keep,
     )
     context["can_edit"] = bool(
-        can_edit_ecology(current_user) and sheet_slug in PG_ANALYSIS_SHEET_SLUGS
+        can_edit_ecology(current_user) and sheet_slug in ANALYSIS_SHEET_SLUGS
     )
     return render_template("ecology/analysis/gis_tes_fuel_comparison.html", **context)
+
+
+@ecology_bp.route("/analysis/<sheet_slug>/export.xlsx")
+@login_required
+def gis_tes_fuel_comparison_export(sheet_slug: str):
+    """Выгрузка таблицы анализа в Excel (все страницы, с ОЭС/РЭС)."""
+    export_args = MultiDict(request.args)
+    export_args["per_page"] = "all"
+    context = build_comparison_table_context(
+        sheet_slug,
+        start_year=export_args.get("start_year"),
+        end_year=export_args.get("end_year"),
+        rounding_digits=export_args.get("rounding_digits"),
+        emission_rounding_digits=export_args.get("emission_rounding_digits"),
+        specific_rounding_digits=export_args.get("specific_rounding_digits"),
+        request_args=export_args,
+    )
+    if context is None:
+        abort(404)
+    stream = export_comparison_table_to_excel(context)
+    filename = f"ecology_analysis_{sheet_slug}_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
+    return send_file(
+        stream,
+        as_attachment=True,
+        download_name=filename,
+        mimetype=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+        max_age=0,
+    )
 
 
 @ecology_bp.route("/analysis/<sheet_slug>/value/", methods=["PATCH"])
@@ -75,7 +133,7 @@ def gis_tes_fuel_comparison(sheet_slug: str):
 def gis_tes_fuel_comparison_update_value(sheet_slug: str):
     if not can_edit_ecology(current_user):
         return jsonify(ok=False, error="Недостаточно прав"), 403
-    if sheet_slug not in PG_ANALYSIS_SHEET_SLUGS:
+    if sheet_slug not in ANALYSIS_SHEET_SLUGS:
         return jsonify(ok=False, error="Лист только для просмотра"), 400
     data = request.get_json(silent=True) or {}
     column_key = str(data.get("field") or "").strip()
@@ -90,17 +148,25 @@ def gis_tes_fuel_comparison_update_value(sheet_slug: str):
     except Exception:
         return jsonify(ok=False, error="Некорректное число"), 400
     try:
-        values = save_analysis_pg_ecology_cell(
+        values = save_analysis_ecology_cell(
             sheet_slug,
             station_numb,
             year_number,
             column_key,
             amount,
             rounding_digits=data.get("rounding_digits") or request.args.get("rounding_digits"),
+            emission_rounding_digits=(
+                data.get("emission_rounding_digits")
+                or request.args.get("emission_rounding_digits")
+            ),
+            specific_rounding_digits=(
+                data.get("specific_rounding_digits")
+                or request.args.get("specific_rounding_digits")
+            ),
         )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400
     except Exception:
-        current_app.logger.exception("Не удалось сохранить параметр анализа ПГ")
+        current_app.logger.exception("Не удалось сохранить параметр анализа ЗВ/ПГ")
         return jsonify(ok=False, error="Не удалось сохранить"), 500
     return jsonify(ok=True, values=values)

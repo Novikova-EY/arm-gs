@@ -273,6 +273,9 @@ def update_ee_balance_manual_generation_value(
     row_key: str,
     year: int,
     raw_value: Any,
+    *,
+    user: Any = None,
+    sheet_name: str | None = None,
 ) -> dict[str, Any]:
     slug = str(slug or "").strip()
     if not slug:
@@ -303,10 +306,14 @@ def update_ee_balance_manual_generation_value(
         )
         .one_or_none()
     )
+    previous_value = None if existing is None else existing.value_mln_kvtch
     if parsed is None:
         if existing is not None:
             db.session.delete(existing)
             _commit_with_retry()
+            _log_manual_generation_change(
+                user, sheet_name, slug, key, year_int, previous_value, None
+            )
         return {"year": year_int, "row_key": key, "value": None}
     if existing is None:
         existing = EeBalanceManualGenerationValue(
@@ -320,4 +327,28 @@ def update_ee_balance_manual_generation_value(
     else:
         existing.value_mln_kvtch = parsed
     _commit_with_retry()
+    _log_manual_generation_change(
+        user, sheet_name, slug, key, year_int, previous_value, parsed
+    )
     return {"year": year_int, "row_key": key, "value": parsed}
+
+
+def _log_manual_generation_change(
+    user: Any,
+    sheet_name: str | None,
+    slug: str,
+    row_key: str,
+    year: int,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    log_cell_change(
+        user,
+        "Изменения в балансе ЭЭ, ручной ввод выработки",
+        f"Строка «{row_key}», {year} г.",
+        old_value,
+        new_value,
+        context=f"Лист: {sheet_name or slug}",
+    )

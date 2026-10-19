@@ -1,6 +1,10 @@
             <td class="align-middle pb-note-cell{% if row.kind == 'total' %} fw-bold{% endif %}{% if row.italic %} fst-italic{% endif %}">
+              {% if can_edit_energy_balance %}
               <textarea class="form-control form-control-sm pb-row-note"
                         rows="1"
                         maxlength="4000"
                         aria-label="Примечание">{{ row.note|default('') }}</textarea>
+              {% else %}
+              <span style="white-space: pre-wrap">{{ row.note|default('') }}</span>
+              {% endif %}
             </td>

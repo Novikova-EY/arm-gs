@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Агрегация расхода топлива действующих ТЭС из модуля «Топливо» по территориям макета."""
+"""Топливные показатели действующих и планируемых групп по территориям макета."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import and_, case, exists, func, or_
+from sqlalchemy import and_, case, func, or_
 
 from app.common.services.database_version_filter import get_current_db_version_id
 from app.ecology.services.ecology_decimal_helpers import decimal_or_none as _to_decimal
@@ -18,7 +18,6 @@ from app.ecology.services.operating_tes_constants import (
     TOP_INPUT_FIELD,
     VED_INDUSTRIAL,
     VED_INDUSTRY,
-    VED_PARENT_SHELL,
 )
 from app.extensions import db
 from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (
@@ -26,14 +25,13 @@ from app.fuel.models.fue_equipment_group_extra_fuel_param_model import (
 )
 from app.fuel.models.fue_equipment_group_fuel_param_model import EquipmentGroupFuelParam
 from app.fuel.models.fue_equipment_group_model import EquipmentGroup
-from app.fuel.models.fue_equipment_group_set_model import EquipmentGroupSet
-from app.fuel.models.fue_equipment_group_set_station_model import EquipmentGroupSetStation
-from app.generation.models.station.station_model import Station
+from app.fuel.services.equipment_groups.equipment_group_fuel_params_services import (
+    restrict_equipment_group_query_to_current_version,
+)
 from app.refdata.models.energy_systems.regional_energy_system_model import (
     RegionalEnergySystem,
 )
 from app.refdata.models.energy_systems.union_energy_system_model import UnionEnergySystem
-from app.refdata.models.refdata_for_stations.station.station_type_model import StationType
 
 _BUCKET_FIELDS = FUEL_MAIN_SUM_FIELDS + FUEL_EXTRA_SUM_FIELDS
 
@@ -83,20 +81,6 @@ def match_special_slug(ues_name: str | None, res_name: str | None) -> str | None
 
 def empty_fuel_bucket() -> dict[str, Decimal]:
     return {field: Decimal("0") for field in _BUCKET_FIELDS}
-
-
-def _tes_station_exists():
-    """Группа связана со станцией типа «ТЭС» (справочник /refdata/station_type)."""
-    return exists().where(
-        and_(
-            EquipmentGroupSet.equipment_group_id == EquipmentGroup.id,
-            EquipmentGroupSet.equipment_group_set_station_id
-            == EquipmentGroupSetStation.id,
-            EquipmentGroupSetStation.station_id == Station.id,
-            Station.id_station_type == StationType.id,
-            func.lower(StationType.name) == "тэс",
-        )
-    )
 
 
 def _ved_int(value: Any) -> int | None:
@@ -174,8 +158,9 @@ def load_operating_tes_fuel_inputs(
     operating: bool = True,
     by_capacity: bool = False,
 ) -> dict[int, dict[str, Any]]:
-    """year → territory_slug → поля топлива (тыс. тут / млн кВтч / тыс. Гкал).
+    """year → territory_slug → поля топлива (тыс. т у.т. / млн кВтч / тыс. Гкал).
 
+    «Всего» охватывает все участвующие группы, как «Россия, всего» в Топливе.
     Если by_capacity=True, значение территории — {le100, gt100} → bucket.
     """
     wanted = [int(y) for y in years if y is not None]
@@ -188,7 +173,6 @@ def load_operating_tes_fuel_inputs(
     if not wanted:
         return result
     version_id = get_current_db_version_id()
-    tes_exists = _tes_station_exists()
     main_sums = [
         func.coalesce(func.sum(getattr(EquipmentGroupFuelParam, f)), 0)
         for f in FUEL_MAIN_SUM_FIELDS
@@ -221,6 +205,9 @@ def load_operating_tes_fuel_inputs(
                 == EquipmentGroupFuelParam.equipment_group_id,
                 EquipmentGroupExtraFuelParam.year_number
                 == EquipmentGroupFuelParam.year_number,
+                EquipmentGroupExtraFuelParam.database_version_id.is_not_distinct_from(
+                    EquipmentGroupFuelParam.database_version_id
+                ),
             ),
         )
         .outerjoin(
@@ -233,22 +220,16 @@ def load_operating_tes_fuel_inputs(
         )
         .filter(EquipmentGroupFuelParam.year_number.in_(wanted))
         .filter(equipment_group_operating_clause(operating=operating))
-        .filter(tes_exists)
+        # Тот же состав, что в «Россия, всего»: все группы с VED > 0,
+        # независимо от наличия связи со станцией, но строго в своей версии.
+        .filter(EquipmentGroupFuelParam.ved > 0)
         .filter(
-            or_(
-                EquipmentGroupFuelParam.ved.is_(None),
-                EquipmentGroupFuelParam.ved != VED_PARENT_SHELL,
+            EquipmentGroupFuelParam.database_version_id.is_not_distinct_from(
+                EquipmentGroup.database_version_id
             )
         )
     )
-    if version_id is not None:
-        query = query.filter(EquipmentGroup.database_version_id == version_id)
-        query = query.filter(
-            or_(
-                EquipmentGroupFuelParam.database_version_id == version_id,
-                EquipmentGroupFuelParam.database_version_id.is_(None),
-            )
-        )
+    query = restrict_equipment_group_query_to_current_version(query, version_id)
     group_cols = [
         EquipmentGroupFuelParam.year_number,
         EquipmentGroupFuelParam.ved,
@@ -349,7 +330,7 @@ def _collapse_indent(attr: str, collapse_under: dict[str, str]) -> int:
 
 
 def get_fuel_module_consumption_row_specs() -> list[dict[str, Any]]:
-    """Строки раздела «Расход топлива, тыс. тут» как на /fuel/calculation/equipment_group_fuel_params_edit_data."""
+    """Строки раздела «Расход топлива, тыс. т у.т.» как на /fuel/calculation/equipment_group_fuel_params_edit_data."""
     from app.ecology.services.operating_tes_constants import KIND_TOTAL, KIND_VALUE
     from app.fuel.services.calculation.fuel_calculation_edit_data_services import (
         assemble_fuel_edit_data_param_columns,
@@ -369,7 +350,7 @@ def get_fuel_module_consumption_row_specs() -> list[dict[str, Any]]:
                 {
                     "key": "b",
                     "label": "Расход топлива",
-                    "unit": "тыс.тут",
+                    "unit": "тыс. т у.т.",
                     "indent": 0,
                     "kind": KIND_TOTAL,
                 }

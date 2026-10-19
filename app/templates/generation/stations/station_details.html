@@ -938,10 +938,12 @@
         </div>
         <style>
             #station-energy-generation-table td.is-save-success,
+            #station-owner-energy-generation-table td.is-save-success,
             #station-snee-energy-consumption-table td.is-save-success {
                 box-shadow: inset 0 0 0 2px var(--bs-success);
             }
             #station-energy-generation-table td.is-save-error,
+            #station-owner-energy-generation-table td.is-save-error,
             #station-snee-energy-consumption-table td.is-save-error {
                 box-shadow: inset 0 0 0 2px var(--bs-danger);
             }
@@ -1142,7 +1144,7 @@
                         if (ownerTable && typeof window.initProspectivePlaceForecastRowPaste === 'function') {
                             window.initProspectivePlaceForecastRowPaste(ownerTable);
                         }
-                        var saveUrl = {{ url_for('station_bp.station_details_energy_value', station_id=station.id)|tojson }};
+                        var saveUrl = {{ url_for('station_bp.station_details_energy_value', station_id=station.id, start_year=start_year, end_year=end_year)|tojson }};
                         var saveRequests = new WeakMap();
                         var csrfInput = document.querySelector('#stationUnifiedSaveForm input[name="csrf_token"]');
                         var csrfToken = csrfInput ? csrfInput.value : '';
@@ -1178,6 +1180,25 @@
                             }
                         }
 
+                        // Значение из таблицы «от собственника» попало в план-ячейку
+                        // таблицы «Выработка электроэнергии» (ответ поля gen).
+                        function applyPlanGenerationSync(data) {
+                            var sync = data && data.gen;
+                            if (!sync) return;
+                            var genInput = document.querySelector(
+                                '#station-energy-generation-table [name="st_gen_' + sync.year + '"]'
+                            );
+                            if (!genInput) return;
+                            genInput.value = sync.value;
+                            if (sync.rule) {
+                                genInput.title = sync.rule;
+                                var genCell = genInput.closest('td');
+                                if (genCell) genCell.title = sync.rule;
+                            }
+                            updateOrigField(genInput, sync.value);
+                            markSaveState(genInput, 'is-save-success');
+                        }
+
                         function sendCellSave(input, value, orig, state) {
                             state.inFlight = true;
                             var payload = {
@@ -1186,6 +1207,11 @@
                                 value: value,
                                 orig: orig
                             };
+                            if (payload.kind === 'owner_generation') {
+                                // Значение план-ячейки приходит в ответе уже округлённым.
+                                var roundingSelect = document.getElementById('rounding_digits_gen');
+                                payload.rounding = roundingSelect ? roundingSelect.value : '';
+                            }
                             fetch(saveUrl, {
                                 method: 'PATCH',
                                 credentials: 'same-origin',
@@ -1202,9 +1228,10 @@
                                     }
                                     return data;
                                 });
-                            }).then(function () {
+                            }).then(function (data) {
                                 updateOrigField(input, value);
                                 if (input.value === value) markSaveState(input, 'is-save-success');
+                                applyPlanGenerationSync(data);
                             }).catch(function (error) {
                                 if (input.value === value) {
                                     input.value = orig;

@@ -105,6 +105,9 @@ def update_power_balance_demand_cold_value(
     slug: str,
     year: int,
     raw_value: Any,
+    *,
+    user: Any = None,
+    sheet_name: str | None = None,
 ) -> dict[str, Any]:
     slug = str(slug or "").strip()
     if not slug:
@@ -130,10 +133,13 @@ def update_power_balance_demand_cold_value(
     )
     if parsed is None:
         if existing is not None:
+            previous_value = getattr(existing, "value_mw", None)
             db.session.delete(existing)
             _commit_with_retry()
+            _log_demand_cold_change(user, sheet_name, slug, year_int, previous_value, None)
         return {"year": year_int, "value": None}
     if existing is None:
+        previous_value = None
         existing = PowerBalanceDemandColdValue(
             sheet_slug=slug,
             year_number=year_int,
@@ -142,6 +148,28 @@ def update_power_balance_demand_cold_value(
         )
         db.session.add(existing)
     else:
+        previous_value = getattr(existing, "value_mw", None)
         existing.value_mw = parsed
     _commit_with_retry()
+    _log_demand_cold_change(user, sheet_name, slug, year_int, previous_value, parsed)
     return {"year": year_int, "value": parsed}
+
+
+def _log_demand_cold_change(
+    user: Any,
+    sheet_name: str | None,
+    slug: str,
+    year: int,
+    old_value: Any,
+    new_value: Any,
+) -> None:
+    from app.energy_balance.services.change_log_services import log_cell_change
+
+    log_cell_change(
+        user,
+        "Изменения в балансе мощности, максимум потребления для холодной пятидневки",
+        f"Максимум потребления (холодная пятидневка), {year} г.",
+        old_value,
+        new_value,
+        context=f"Лист: {sheet_name or slug}",
+    )

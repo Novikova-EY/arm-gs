@@ -2,9 +2,10 @@
 from datetime import datetime
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
+from app.energy_balance.services.access_services import can_edit_energy_balance
 from app.energy_balance.services.ee_receive_transfer_oes_export_services import (
     export_ee_receive_transfer_oes_to_excel,
 )
@@ -78,7 +79,7 @@ def ee_receive_transfer_oes():
         oes_filter=oes_filter,
         filters={"union_energy_system_filter": source_ues_filter},
     )
-    page_data["can_edit"] = True
+    page_data["can_edit"] = can_edit_energy_balance(current_user)
     filter_year_list = sorted(set(get_ee_balance_filter_year_list()) | {start_year, end_year})
     return render_template(
         "energy_balance/ee_import_export/ee_import_export.html",

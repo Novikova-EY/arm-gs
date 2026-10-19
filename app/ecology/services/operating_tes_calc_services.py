@@ -14,7 +14,7 @@ KCAL_PER_KJ = Decimal("4.1868")
 
 
 def conversion_k(chars: Mapping[str, Any] | None) -> Decimal | None:
-    """K перевода тут → натур. Если нет K, берём тут/тн."""
+    """K перевода т у.т. → натур. Если нет K, берём т у.т./тн."""
     if not chars:
         return None
     k = _d(chars.get("k_natural"))
@@ -149,7 +149,7 @@ def specific_per_energy(mass: Any, energy_bln_kwh: Any) -> Decimal | None:
 
 
 def specific_per_fuel(mass: Any, b_tce: Any) -> Decimal | None:
-    """кг/тут = тыс. т / тыс. тут · 1000."""
+    """кг/т у.т. = тыс. т / тыс. т у.т. · 1000."""
     m = _d(mass)
     b = _d(b_tce)
     if m is None or b is None or b == 0:

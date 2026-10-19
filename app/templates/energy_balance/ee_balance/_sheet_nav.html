@@ -14,7 +14,7 @@
     {{ url_for('energy_balance_bp.power_balance_table', slug='ees-rossii') }}
   {%- endif -%}
 {%- endmacro %}
-<div class="d-flex align-items-center gap-2 w-100 pb-1 energy-balance-sheet-nav">
+<div class="d-flex gap-2 w-100 pb-1 energy-balance-sheet-nav">
   <div class="d-flex flex-nowrap gap-2 energy-balance-sheet-tabs">
     {% for group in sheet_groups %}
       {% for nav_sheet in group.sheets %}
@@ -22,21 +22,21 @@
       {% set is_synchronous_zone = group.group == 'sz' and nav_sheet.slug not in ['european-ees', 'synchronous-zones'] %}
       {% if not is_synchronous_zone and not (current_slug == 'ees-rossii' and nav_sheet.slug == 'vostok') %}
       <a href="{{ ee_balance_sheet_url(href_slug) }}"
-         class="btn {% if nav_sheet.slug == first_row_active_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
+         class="btn fs-5 {% if nav_sheet.slug == first_row_active_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
         {{ nav_sheet.sheet_name }}
       </a>
       {% endif %}
       {% if current_slug == 'ees-rossii' and nav_sheet.slug == '2-sz-ees-vostok' %}
       <a href="{{ ee_balance_sheet_url('vostok') }}"
-         class="btn btn-outline-primary energy-balance-sheet-tab">ОЭС Востока</a>
+         class="btn fs-5 btn-outline-primary energy-balance-sheet-tab">ОЭС Востока</a>
       {% endif %}
       {% endfor %}
     {% endfor %}
   </div>
   <a href="{{ power_balance_url() }}"
-     class="btn btn-secondary energy-balance-sheet-utility-tab">Балансы ЭМ</a>
+     class="btn fs-5 btn-secondary energy-balance-sheet-utility-tab">Балансы ЭМ</a>
   <a href="{{ url_for('energy_balance_bp.hub') }}"
-     class="btn btn-secondary energy-balance-sheet-utility-tab">
+     class="btn fs-5 btn-secondary energy-balance-sheet-utility-tab">
     <i class="bi bi-gear-wide-connected" aria-hidden="true"></i> Модуль «Балансы электрической энергии и мощности»
   </a>
 </div>
@@ -44,7 +44,7 @@
 <div class="d-flex flex-nowrap gap-2 w-100 pb-1 energy-balance-sheet-tabs" role="navigation" aria-label="Энергосистемы ТИТЭС Востока">
   {% for nav_sheet in tites_east_child_sheets %}
   <a href="{{ ee_balance_sheet_url(nav_sheet.slug) }}"
-     class="btn {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
+     class="btn fs-5 {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
     {{ nav_sheet.sheet_name }}
   </a>
   {% endfor %}
@@ -55,7 +55,7 @@
   {% for nav_sheet in synchronous_zone_subtab_sheets %}
   {% set href_slug = nav_sheet.first_child_slug if nav_sheet.first_child_slug else nav_sheet.slug %}
   <a href="{{ ee_balance_sheet_url(href_slug) }}"
-     class="btn {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
+     class="btn fs-5 {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
     {{ nav_sheet.sheet_name }}
   </a>
   {% endfor %}
@@ -65,7 +65,7 @@
 <div class="d-flex flex-nowrap gap-2 w-100 pb-1 energy-balance-sheet-tabs" role="navigation" aria-label="Варианты баланса Европейской части ЕЭС">
   {% for nav_sheet in european_ees_subtab_sheets %}
   <a href="{{ ee_balance_sheet_url(nav_sheet.slug) }}"
-     class="btn {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
+     class="btn fs-5 {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
     {{ nav_sheet.sheet_name }}
   </a>
   {% endfor %}
@@ -75,7 +75,7 @@
 <div class="d-flex flex-nowrap gap-2 w-100 pb-1 energy-balance-sheet-tabs" role="navigation" aria-label="Разделы баланса ОЭС Урала">
   {% for nav_sheet in ural_subtab_sheets %}
   <a href="{{ ee_balance_sheet_url(nav_sheet.slug) }}"
-     class="btn {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
+     class="btn fs-5 {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
     {{ nav_sheet.sheet_name }}
   </a>
   {% endfor %}
@@ -85,7 +85,7 @@
 <div class="d-flex flex-nowrap gap-2 w-100 pb-1 energy-balance-sheet-tabs" role="navigation" aria-label="Разделы баланса ОЭС Северо-Запада">
   {% for nav_sheet in severo_zapad_subtabs %}
   <a href="{{ ee_balance_sheet_url(nav_sheet.slug) }}"
-     class="btn {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
+     class="btn fs-5 {% if nav_sheet.slug == current_slug %}btn-primary{% else %}btn-outline-primary{% endif %} energy-balance-sheet-tab">
     {{ nav_sheet.sheet_name }}
   </a>
   {% endfor %}

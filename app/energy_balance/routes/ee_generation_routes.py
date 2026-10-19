@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from flask import current_app, flash, jsonify, redirect, render_template, request, send_file, session, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from app.energy_balance.routes.energy_balance_bp import energy_balance_bp
 from app.energy_balance.services.station_ee_generation_page_services import (
@@ -226,6 +226,7 @@ def ee_generation_control_value():
                 data.get("value"),
                 period_mode=ee_period_mode,
                 selected_year=selected_year_int,
+                user=current_user,
             )
         else:
             from app.energy_balance.services.ee_generation_hierarchy_control_services import (
@@ -239,6 +240,7 @@ def ee_generation_control_value():
                 data.get("value"),
                 period_mode=ee_period_mode,
                 selected_year=selected_year_int,
+                user=current_user,
             )
     except ValueError as exc:
         return jsonify(ok=False, error=str(exc)), 400

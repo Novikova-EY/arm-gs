@@ -24,6 +24,8 @@ _CONFIG = ExportValueConfig(
     value_model=PowerBalanceExportValue,
     value_field="value_mw",
     export_row_key=EXPORT_ROW_KEY,
+    action="Изменения в балансе мощности, экспорт мощности",
+    change_label="Экспорт мощности",
 )
 
 
@@ -35,5 +37,14 @@ def load_power_balance_export_inputs(
     return load_export_inputs(_CONFIG, years, sheets)
 
 
-def update_power_balance_export_value(slug: str, year: int, raw_value: Any):
-    return update_export_value(_CONFIG, slug, year, raw_value)
+def update_power_balance_export_value(
+    slug: str,
+    year: int,
+    raw_value: Any,
+    *,
+    user: Any = None,
+    sheet_name: str | None = None,
+):
+    return update_export_value(
+        _CONFIG, slug, year, raw_value, user=user, sheet_name=sheet_name
+    )

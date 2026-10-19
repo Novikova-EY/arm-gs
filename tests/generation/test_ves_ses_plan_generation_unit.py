@@ -2,7 +2,11 @@
 """Расчёт плановой выработки ВЭС/СЭС: 7-летний минимум и сравнение с собственником."""
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
+from app.generation.services.station_services import (
+    ves_ses_plan_generation_services as plan_services,
+)
 from app.generation.services.station_services.ves_ses_plan_generation_services import (
     PLAN_RULE_CAPACITY_SES,
     PLAN_RULE_CAPACITY_SES_PARTIAL,
@@ -15,6 +19,7 @@ from app.generation.services.station_services.ves_ses_plan_generation_services i
     compute_ves_ses_plan_generation,
     filter_commission_ramp_sample,
     min_generation_over_sample,
+    plan_calc_after_owner_edit,
     plan_generation_explained,
     plan_generation_for_year,
     sample_generation_pairs,
@@ -416,3 +421,160 @@ def test_ves_ses_rows_empty_without_types(monkeypatch):
         lambda: [],
     )
     assert build_ves_ses_page_rows([2024, 2025], digits=1, year_features={})[0] == []
+
+
+def _plan_after_owner_edit(calculated, rules, **overrides):
+    """План-расчёт в том виде, в каком его отдаёт station_plan_generation."""
+    plan = {
+        "current_year": 2025,
+        "plan_years": [2026, 2027, 2028],
+        "energy_by_year": {},
+        "owner_by_year": {},
+        "commission_year": 2028,
+        "capacity_by_year": {2028: Decimal("10")},
+        "type_key": "ses",
+        "exploitation_date_expected": "",
+        "min_sample": None,
+        "calculated": calculated,
+        "rules": rules,
+    }
+    plan.update(overrides)
+    return plan
+
+
+def _patch_plan(monkeypatch, plan):
+    monkeypatch.setattr(
+        plan_services, "station_plan_generation", lambda *_args, **_kwargs: plan
+    )
+
+
+def test_owner_edit_fills_empty_plan_cell_for_station_commissioned_in_plan(monkeypatch):
+    """Ввод в плановом периоде: пустая ячейка выработки получает выработку собственника."""
+    plan = _plan_after_owner_edit(
+        {2028: Decimal("112.74")},
+        {2028: PLAN_RULE_OWNER_IN_PLAN},
+        owner_by_year={2028: Decimal("112.74")},
+    )
+    _patch_plan(monkeypatch, plan)
+
+    value, rule = plan_services.plan_calc_after_owner_edit(
+        SimpleNamespace(),
+        year=2028,
+        start_year=2024,
+        end_year=2031,
+        previous_owner_value="",
+        station_version_id=4,
+    )
+
+    assert value == Decimal("112.74")
+    assert rule == PLAN_RULE_OWNER_IN_PLAN
+
+
+def test_owner_edit_skips_plan_cell_with_manual_value(monkeypatch):
+    """Значение, введённое прямо в таблице выработки, правкой собственника не трогаем."""
+    plan = _plan_after_owner_edit(
+        {2028: Decimal("112.74")},
+        {2028: PLAN_RULE_OWNER_IN_PLAN},
+        owner_by_year={2028: Decimal("112.74")},
+        energy_by_year={2028: Decimal("90")},
+    )
+    _patch_plan(monkeypatch, plan)
+
+    value, rule = plan_services.plan_calc_after_owner_edit(
+        SimpleNamespace(),
+        year=2028,
+        start_year=2024,
+        end_year=2031,
+        previous_owner_value="10",
+        station_version_id=4,
+    )
+
+    assert (value, rule) == (None, None)
+
+
+def test_owner_edit_keeps_sync_when_stored_value_is_rounded_calc(monkeypatch):
+    """В БД расчёт лежит с точностью Numeric(25, 16): хвост дроби не мешает синхронизации."""
+    # Расчёт до правки: 1,5 × 72 × 31/366 (ввод 01.12.2028) = 9,147540983606557377...
+    calc_before = Decimal(72) * Decimal("1.5") * Decimal(31) / Decimal(366)
+    stored = Decimal("9.1475409836065574")
+    plan = _plan_after_owner_edit(
+        {2028: Decimal("50")},
+        {2028: PLAN_RULE_OWNER_IN_PLAN},
+        owner_by_year={2028: Decimal("50")},
+        energy_by_year={2028: stored},
+        capacity_by_year={2028: Decimal("72")},
+        exploitation_date_expected="01.12.2028",
+    )
+    _patch_plan(monkeypatch, plan)
+
+    value, rule = plan_services.plan_calc_after_owner_edit(
+        SimpleNamespace(),
+        year=2028,
+        start_year=2024,
+        end_year=2031,
+        previous_owner_value="",
+        station_version_id=4,
+    )
+
+    assert calc_before != stored
+    assert value == Decimal("50")
+    assert rule == PLAN_RULE_OWNER_IN_PLAN
+
+
+def test_owner_edit_syncs_plan_cell_of_long_operating_station(monkeypatch):
+    """Ячейка показывала минимум из собственника и выборки: остаётся расчётной."""
+    plan = _plan_after_owner_edit(
+        {2027: Decimal("7")},
+        {2027: PLAN_RULE_MIN_OWNER_SAMPLE_OWNER},
+        owner_by_year={2027: Decimal("7")},
+        energy_by_year={2024: Decimal("8.72"), 2027: Decimal("8.72")},
+        commission_year=2010,
+        capacity_by_year={2010: Decimal("10"), 2027: Decimal("10")},
+        min_sample=Decimal("8.72"),
+    )
+    _patch_plan(monkeypatch, plan)
+
+    value, rule = plan_services.plan_calc_after_owner_edit(
+        SimpleNamespace(),
+        year=2027,
+        start_year=2024,
+        end_year=2031,
+        previous_owner_value="20",
+        station_version_id=4,
+    )
+
+    assert value == Decimal("7")
+    assert rule == PLAN_RULE_MIN_OWNER_SAMPLE_OWNER
+
+
+def test_owner_edit_without_plan_calc_gives_nothing_to_sync(monkeypatch):
+    plan = _plan_after_owner_edit({}, {}, owner_by_year={2025: Decimal("5")})
+    _patch_plan(monkeypatch, plan)
+
+    value, rule = plan_services.plan_calc_after_owner_edit(
+        SimpleNamespace(),
+        year=2025,
+        start_year=2024,
+        end_year=2031,
+        previous_owner_value="",
+        station_version_id=4,
+    )
+
+    assert (value, rule) == (None, None)
+
+
+def test_owner_edit_without_plan_for_station(monkeypatch):
+    monkeypatch.setattr(
+        plan_services, "station_plan_generation", lambda *_args, **_kwargs: None
+    )
+
+    value, rule = plan_services.plan_calc_after_owner_edit(
+        SimpleNamespace(),
+        year=2025,
+        start_year=2024,
+        end_year=2031,
+        previous_owner_value="",
+        station_version_id=4,
+    )
+
+    assert (value, rule) == (None, None)

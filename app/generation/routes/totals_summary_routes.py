@@ -30,6 +30,7 @@ def totals_summary():
     from app.common.services.get_services.years.years_get_services import (
         get_filter_start_year,
         get_filter_end_year,
+        get_year_numbers_sorted_for_current_db_version,
     )
     from app.common.services.get_services.territories.federal_district_get_services import (
         get_federal_district_list_full,
@@ -281,6 +282,11 @@ def totals_summary():
         if f"sync_area_{sa_id}" in aggregation_types:
             should_show_totals["synchronous_areas"][sa_id] = True
 
+    # Список годов должен совпадать с фильтром на странице списка станций.
+    filter_year_list = get_year_numbers_sorted_for_current_db_version()
+    if not filter_year_list:
+        filter_year_list = list(range(get_filter_start_year(), get_filter_end_year() + 1))
+
     # Получаем year_features
     year_features = get_year_feature_dict()
 
@@ -306,6 +312,7 @@ def totals_summary():
         "tes_machine_type_list": tes_machine_type_list,
         "fuel_type_list": fuel_type_list,
         "year_features": year_features,
+        "filter_year_list": filter_year_list,
         # Агрегированные данные
         **energy_system_type_aggregates,
         **total_energy_system_type_aggregates,

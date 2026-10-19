@@ -4930,6 +4930,41 @@ def station_annual_energy_by_year(
     }
 
 
+def stations_annual_energy_by_year(
+    station_ids,
+    start_year: int,
+    end_year: int,
+    station_version_id: int | None,
+) -> dict[int, dict[int, object]]:
+    """Годовые выработки множества станций: {id станции: {год: млн кВтч}}.
+
+    Пакетный вариант station_annual_energy_by_year для страниц, где нужны
+    значения сразу по многим станциям.
+    """
+    from app.common.services.database_version_filter import filter_by_explicit_db_version
+    from app.energy_balance.models.station_energy_generation_model import (
+        STATION_ENERGY_GENERATION_PERIOD_YEAR,
+        StationEnergyGeneration,
+    )
+
+    ids = sorted({int(station_id) for station_id in station_ids if station_id is not None})
+    if not ids:
+        return {}
+    query = StationEnergyGeneration.query.filter(
+        StationEnergyGeneration.id_station.in_(ids),
+        StationEnergyGeneration.year_number >= start_year,
+        StationEnergyGeneration.year_number <= end_year,
+        StationEnergyGeneration.month_number == STATION_ENERGY_GENERATION_PERIOD_YEAR,
+    )
+    query = filter_by_explicit_db_version(query, StationEnergyGeneration, station_version_id)
+    result: dict[int, dict[int, object]] = {}
+    for row in query.all():
+        result.setdefault(int(row.id_station), {})[int(row.year_number)] = (
+            row.electricity_generation
+        )
+    return result
+
+
 def _station_numeric_field_changed(raw_value, orig_value) -> bool:
     """
     Сравнивает ввод формы с исходным значением.

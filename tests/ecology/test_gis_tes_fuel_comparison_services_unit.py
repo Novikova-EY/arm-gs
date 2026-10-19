@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from openpyxl import Workbook
 
+from decimal import Decimal
+
 from app.ecology.services.gis_tes_fuel_comparison_constants import (
     COMPARISON_SHEETS,
     DEFAULT_SHEET_SLUG,
@@ -12,6 +14,9 @@ from app.ecology.services.gis_tes_fuel_comparison_constants import (
     PG_ECOLOGY_EDITABLE_KEYS,
     PG_ECOLOGY_OVERLAY_BY_KEY,
     SKIP_SHEET_NAME,
+    ZV_ECOLOGY_EDIT_RELATED_KEYS,
+    ZV_ECOLOGY_EDITABLE_KEYS,
+    ZV_ECOLOGY_OVERLAY_BY_KEY,
     get_comparison_sheet,
     list_comparison_sheets_for_group,
     pg_ecology_header_labels,
@@ -20,13 +25,17 @@ from app.ecology.services.gis_tes_fuel_comparison_services import (
     _attach_column_formula_tooltips,
     _compute_differences,
     _display_is_nonzero,
+    _drop_boiler_groups,
     _pg_ecology_values_by_key,
     _safe_subtract,
+    _zv_ecology_values_by_key,
     apply_fuel_indicators,
     apply_fuel_tep_headers,
     apply_fuel_tce_headers,
     apply_pg_ecology_headers,
     apply_pg_ecology_overlay,
+    apply_station_affiliation_cells,
+    apply_station_generation_overlay,
     apply_zv_ecology_overlay,
     apply_pg_fuel_group_headers,
     apply_zv_gaseous_group_headers,
@@ -38,18 +47,33 @@ from app.ecology.services.gis_tes_fuel_comparison_services import (
     build_header_cells,
     clear_comparison_cache,
     drop_key_header_row,
+    load_station_affiliations_by_numb_year,
+    load_station_generation_overlay,
     parse_sheet_rows,
     prepare_visible_table,
+    save_analysis_ecology_cell,
     save_analysis_pg_ecology_cell,
+    save_analysis_zv_ecology_cell,
+    station_generation_check_pairs,
+    station_generation_mismatch,
 )
 from types import SimpleNamespace
 from typing import Any
 
 
-def _patch_pg_groups_from_fuel(monkeypatch, year_rows: list[tuple[int, int, str]]) -> None:
-    """Мок состава групп из Топливо: [(numb, year, name), ...]."""
+def _patch_pg_groups_from_fuel(
+    monkeypatch,
+    year_rows: list[tuple[int, int, str]],
+    fuel_overlay: dict[tuple[int, int], dict[str, Any]] | None = None,
+) -> None:
+    """Мок состава групп из Топливо: [(numb, year, name), ...].
+
+    filters.(...)_filter из страницы передаются в листинг Топлива; мок учитывает
+    имя группы и ID-фильтры по тем же ключам, что и row_matches_territory_filters.
+    """
     import app.common.services.database_version_filter as dvf
     import app.ecology.services.analysis_pg_param_services as aps
+    import app.ecology.services.analysis_zv_param_services as azps
     import app.fuel.services.calculation.fuel_calculation_edit_data_services as fced
     import app.fuel.services.equipment_groups.equipment_group_fuel_params_services as egfps
     import app.fuel.services.stations.stations_equipment_groups_services as segs
@@ -62,11 +86,57 @@ def _patch_pg_groups_from_fuel(monkeypatch, year_rows: list[tuple[int, int, str]
     flat = [item for items in by_numb.values() for item in items]
     choices = sorted(by_numb)
 
+    def _unique_egs(rows):
+        seen = set()
+        out = []
+        for eg, _param in rows:
+            if eg.id in seen:
+                continue
+            seen.add(eg.id)
+            out.append(eg)
+        return out
+
+    _ID_FILTER_FIELDS = (
+        ("energy_system_type_filter", "energy_system_type_id"),
+        ("union_energy_system_filter", "ues_id"),
+        ("regional_energy_system_filter", "res_id"),
+        ("federal_district_filter", "federal_district_id"),
+        ("regional_district_filter", "regional_district_id"),
+    )
+
+    def _fuel_listing(**kwargs):
+        filters = kwargs.get("filters") or {}
+        name_q = str(filters.get("equipment_group_name_filter") or "").strip().casefold()
+        rows = flat
+        if name_q:
+            rows = [
+                item
+                for item in flat
+                if name_q in str(getattr(item[0], "name", "") or "").casefold()
+            ]
+        for filter_key, field in _ID_FILTER_FIELDS:
+            selected = filters.get(filter_key) or []
+            if not selected:
+                continue
+            wanted = {int(value) for value in selected}
+            rows = [
+                item
+                for item in rows
+                if int(
+                    ((fuel_overlay or {}).get((item[0].id, item[1].year_number)) or {}).get(
+                        field
+                    )
+                    or 0
+                )
+                in wanted
+            ]
+        return {"rows": rows, "numb1120_filter_choices": choices}
+
     monkeypatch.setattr(dvf, "get_current_db_version_id", lambda: 1)
     monkeypatch.setattr(
         egfps,
         "get_equipment_groups_with_fuel_params_data",
-        lambda **kwargs: {"rows": flat, "numb1120_filter_choices": choices},
+        _fuel_listing,
     )
     monkeypatch.setattr(fced, "_expand_fuel_param_rows_for_year_interval", lambda rows, start, end: rows)
     monkeypatch.setattr(
@@ -88,13 +158,17 @@ def _patch_pg_groups_from_fuel(monkeypatch, year_rows: list[tuple[int, int, str]
                                     {
                                         "group_blocks": [
                                             {
-                                                "equipment_group": items[0][0],
-                                                "rows": items,
+                                                "equipment_group": eg,
+                                                "rows": [
+                                                    item
+                                                    for item in rows
+                                                    if item[0].id == eg.id
+                                                ],
                                                 "is_composite_parent": False,
                                                 "is_composite_child": False,
                                                 "show_composite_cluster": False,
                                             }
-                                            for items in by_numb.values()
+                                            for eg in _unique_egs(rows)
                                         ]
                                     }
                                 ],
@@ -108,10 +182,30 @@ def _patch_pg_groups_from_fuel(monkeypatch, year_rows: list[tuple[int, int, str]
     monkeypatch.setattr(egfps, "should_suppress_aggregate_rows_for_filters", lambda filters: False)
     monkeypatch.setattr(segs, "get_standalone_equipment_group_ids", lambda **kwargs: set())
     monkeypatch.setattr(
-        "app.ecology.services.gis_tes_pg_from_fuel_services.get_boiler_equipment_group_ids",
-        lambda version_id=None: set(),
+        "app.ecology.services.gis_tes_pg_from_fuel_services.hidden_boiler_numbs_for_sheet",
+        lambda sheet_slug, version_id=None: set(),
     )
     monkeypatch.setattr(aps, "seed_missing_analysis_pg_params_from_reports", lambda *a, **k: 0)
+    monkeypatch.setattr(azps, "seed_missing_analysis_zv_params_from_reports", lambda *a, **k: 0)
+    # Группы состава привязаны к станциям «Генерации»: иначе на «С котельными»
+    # такие группы не показываются.
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_generation_station_links_by_numb",
+        lambda numbs: {
+            int(numb): [{"id": int(numb), "name": f"Станция {numb}"}]
+            for numb in numbs
+        },
+    )
+
+
+def test_drop_boiler_groups_hides_boilers_without_parent(monkeypatch):
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services._load_hidden_boiler_numbs",
+        lambda sheet_slug: {38},
+    )
+    groups = [{"numb": 708}, {"numb": 38}, {"numb": None}]
+
+    assert _drop_boiler_groups(groups, "zv-vse") == [{"numb": 708}, {"numb": None}]
 
 
 def test_four_sheets_except_list1():
@@ -359,15 +453,15 @@ def test_apply_fuel_tce_headers_renames_consumption_columns():
         ]
     ]
     apply_fuel_tce_headers(columns, headers)
-    assert headers[0][0]["text"] == "Расход газа, всего, тут"
+    assert headers[0][0]["text"] == "Расход газа, всего, т у.т."
     assert headers[0][0]["access_code"] == "GAZ + ISK_GAZ"
-    assert headers[0][1]["text"] == "в т.ч. расход газа естественного, тут"
+    assert headers[0][1]["text"] == "в т.ч. расход газа естественного, т у.т."
     assert headers[0][1]["access_code"] == "GAZ"
     assert headers[0][2]["text"] == "мазут"
     assert headers[0][2]["access_code"] == "MAZUT"
-    assert headers[0][3]["text"] == "Расход твердого топлива, тут"
+    assert headers[0][3]["text"] == "Расход твердого топлива, т у.т."
     assert headers[0][3]["access_code"] == "UGOL"
-    assert headers[0][4]["text"] == "Расход прочих видов топлива, тут"
+    assert headers[0][4]["text"] == "Расход прочих видов топлива, т у.т."
     assert headers[0][4]["access_code"] == "PROCH"
     assert all(col.get("fuel_tep_highlight") is True for col in columns)
     assert all(cell.get("fuel_tep_highlight") is True for cell in headers[0])
@@ -443,9 +537,19 @@ def test_context_keeps_selected_year(tmp_path, monkeypatch):
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
     wb.save(path)
     clear_comparison_cache()
+    _patch_pg_groups_from_fuel(
+        monkeypatch, [(1, 2017, "ТЭЦ"), (1, 2018, "ТЭЦ")]
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {
+            (1, 2017): {"e": 12.44, "ved": 1},
+            (1, 2018): {"e": 8, "ved": 1},
+        },
+    )
     monkeypatch.setattr(
         "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
-        lambda: {2017: "отч"},
+        lambda: {},
     )
     context = build_comparison_table_context(
         "zv-bez-kot",
@@ -522,9 +626,27 @@ def test_zv_vse_gaseous_total_is_sum_with_pollutants_formula(tmp_path, monkeypat
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
     wb.save(path)
     clear_comparison_cache()
+    _patch_pg_groups_from_fuel(monkeypatch, [(1, 2017, "ТЭЦ")])
     monkeypatch.setattr(
         "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
         lambda: {2017: "отч"},
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {},
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_zv_ecology_overlay_by_numb_year",
+        lambda sheet_slug, numbs, years: {
+            (1, 2017): {
+                "sulfur_dioxide": 1,
+                "carbon_monoxide": 2,
+                "nitrogen_oxides": 3,
+                "hydrocarbons": 4,
+                "voc": 5,
+                "other_gaseous_and_liquid": 6,
+            }
+        },
     )
     context = build_comparison_table_context(
         "zv-vse",
@@ -644,6 +766,11 @@ def test_territory_filters_and_hidden_geo_columns(tmp_path, monkeypatch):
         "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
         lambda numbs, years: overlay,
     )
+    _patch_pg_groups_from_fuel(
+        monkeypatch,
+        [(1, 2017, "Архангельская ТЭЦ"), (2, 2017, "ТЭЦ-2")],
+        fuel_overlay=overlay,
+    )
     by_name = build_comparison_table_context(
         "zv-bez-kot",
         start_year=2017,
@@ -701,6 +828,9 @@ def test_hierarchy_headers_and_pagination(tmp_path, monkeypatch):
         "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
         lambda: {},
     )
+    _patch_pg_groups_from_fuel(
+        monkeypatch, [(1, 2017, "ТЭЦ-1"), (2, 2017, "ТЭЦ-2"), (3, 2017, "ТЭЦ-3")]
+    )
     overlay = {
         (1, 2017): {
             "energy_system_type_id": 10,
@@ -747,8 +877,8 @@ def test_hierarchy_headers_and_pagination(tmp_path, monkeypatch):
     assert page1["current_page"] == 1
     assert page1["per_page"] == 1
     assert page1["hierarchy"][0]["est_name"] == "ЕЭС"
-    assert page1["hierarchy"][0]["ues_list"][0]["ues_name"] == "ОЭС Северо-Запада"
-    assert page1["hierarchy"][0]["ues_list"][0]["res_list"][0]["res_name"] == "Архангельская"
+    assert page1["hierarchy"][0]["ues_list"][0]["ues_name"] == "ОЭС"
+    assert page1["hierarchy"][0]["ues_list"][0]["res_list"][0]["res_name"] == "РЭС"
     assert len(page1["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"]) == 1
 
     page2 = build_comparison_table_context(
@@ -760,7 +890,8 @@ def test_hierarchy_headers_and_pagination(tmp_path, monkeypatch):
     )
     assert page2 is not None
     assert page2["current_page"] == 2
-    assert page2["hierarchy"][0]["ues_list"][0]["res_list"][0]["res_name"] == "Карельская"
+    page2_groups = page2["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"]
+    assert [group["numb"] for group in page2_groups] == [2]
 
     by_code = build_comparison_table_context(
         "zv-bez-kot",
@@ -772,7 +903,7 @@ def test_hierarchy_headers_and_pagination(tmp_path, monkeypatch):
     assert by_code is not None
     assert by_code["total_count"] == 1
     assert by_code["numb1120_filter"] == [2]
-    assert by_code["numb1120_filter_choices"] == [1, 2, 3]
+    assert by_code["numb1120_filter_choices"] == [2]
     assert by_code["has_active_filters"] is True
     assert by_code["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["numb"] == 2
     clear_comparison_cache()
@@ -845,10 +976,10 @@ def test_save_analysis_pg_ecology_cell_rejects_unknown_column():
 
 def test_pg_ecology_header_labels_are_fuel_agnostic():
     labels = pg_ecology_header_labels()
-    assert labels["GAZ_All"] == "Расход топлива, всего, тут"
-    assert labels["GAZ_ESTEST"] == "в т.ч. расход газа естественного, тут"
-    assert labels["GAZ_ek"] == "Расход топлива, тут"
-    assert labels["d_gaz"] == "Разность по расходу топлива, тут"
+    assert labels["GAZ_All"] == "Расход топлива, всего, т у.т."
+    assert labels["GAZ_ESTEST"] == "в т.ч. расход газа естественного, т у.т."
+    assert labels["GAZ_ek"] == "Расход топлива, т у.т."
+    assert labels["d_gaz"] == "Разность по расходу топлива, т у.т."
     assert labels["CO2_gaz"] == "Выбросы СО2 от сжигания топлива, т"
     assert labels["K_gaz_ek"] == "Коэффициент эмиссии"
     assert labels["MAZUT_6tp"] == labels["GAZ_ek"]
@@ -890,15 +1021,15 @@ def test_apply_pg_ecology_headers_rewrites_caption_cells():
     ]
     apply_pg_ecology_headers(columns, headers)
     assert headers[0][0]["text"] == "Газ"
-    assert headers[1][0]["text"] == "Расход топлива, всего, тут"
+    assert headers[1][0]["text"] == "Расход топлива, всего, т у.т."
     assert headers[1][0]["access_code"] == "GAZ + ISK_GAZ"
-    assert headers[1][1]["text"] == "Расход топлива, тут"
+    assert headers[1][1]["text"] == "Расход топлива, т у.т."
     assert headers[1][2]["text"] == "Выбросы СО2 от сжигания топлива, т"
-    assert headers[1][3]["text"] == "Расход топлива, тут"
-    assert headers[1][4]["text"] == "Разность по расходу топлива, тут"
+    assert headers[1][3]["text"] == "Расход топлива, т у.т."
+    assert headers[1][4]["text"] == "Разность по расходу топлива, т у.т."
     assert headers[1][5]["text"] == "Коэффициент эмиссии"
     assert headers[2][0]["text"] == "GAZ_ek"
-    assert columns[1]["label"] == "Расход топлива, тут"
+    assert columns[1]["label"] == "Расход топлива, т у.т."
 
 
 def test_drop_key_header_row_keeps_captions():
@@ -906,7 +1037,7 @@ def test_drop_key_header_row_keeps_captions():
         [{"text": "Газ", "column_key": "GAZ_All", "is_key": False}],
         [
             {
-                "text": "Расход топлива, тут",
+                "text": "Расход топлива, т у.т.",
                 "column_key": "GAZ_ek",
                 "is_key": False,
             }
@@ -958,7 +1089,7 @@ def test_apply_pg_fuel_group_headers_replaces_report_ecology_row():
             {"text": "Отчет", "column_key": None, "col_index": 6, "rowspan": 1, "colspan": 5},
             {"text": "Макет Экология", "column_key": "GAZ_ek", "rowspan": 1, "colspan": 1},
             {
-                "text": "Разность по израсходованному газу, тут",
+                "text": "Разность по израсходованному газу, т у.т.",
                 "column_key": "d_gaz",
                 "rowspan": 2,
                 "colspan": 1,
@@ -967,7 +1098,7 @@ def test_apply_pg_fuel_group_headers_replaces_report_ecology_row():
             {"text": "Отчет", "column_key": "MAZUT_6tp", "rowspan": 1, "colspan": 1},
             {"text": "Макет Экология", "column_key": "MAZUT_ek", "rowspan": 1, "colspan": 1},
             {
-                "text": "Разность по израсходованному мазуту, тут",
+                "text": "Разность по израсходованному мазуту, т у.т.",
                 "column_key": "d_mazut",
                 "rowspan": 2,
                 "colspan": 1,
@@ -976,7 +1107,7 @@ def test_apply_pg_fuel_group_headers_replaces_report_ecology_row():
             {"text": "Отчет", "column_key": "TvTopl_6tp", "rowspan": 1, "colspan": 1},
             {"text": "Макет Экология", "column_key": "TvTopl_ek", "rowspan": 1, "colspan": 1},
             {
-                "text": "Разность по израсходованному твердому топливу, тут",
+                "text": "Разность по израсходованному твердому топливу, т у.т.",
                 "column_key": "d_tv",
                 "rowspan": 2,
                 "colspan": 1,
@@ -1025,9 +1156,9 @@ def test_apply_pg_fuel_group_headers_replaces_report_ecology_row():
     assert "NUST" not in mid_by_key
     assert "W_en" not in mid_by_key
     assert "Teplo" not in mid_by_key
-    assert "Разность по израсходованному газу, тут" == mid_by_key["d_gaz"]
-    assert "Разность по израсходованному мазуту, тут" == mid_by_key["d_mazut"]
-    assert "Разность по израсходованному твердому топливу, тут" == mid_by_key["d_tv"]
+    assert "Разность по израсходованному газу, т у.т." == mid_by_key["d_gaz"]
+    assert "Разность по израсходованному мазуту, т у.т." == mid_by_key["d_mazut"]
+    assert "Разность по израсходованному твердому топливу, т у.т." == mid_by_key["d_tv"]
     assert all(
         "6тп-экол" not in str(cell.get("text") or "").casefold()
         for row in headers
@@ -1209,7 +1340,7 @@ def test_apply_zv_leaf_group_headers_spans_specific_and_normir_ingredients():
     ]
     apply_zv_leaf_group_headers(columns, headers)
     drop_key_header_row(headers)
-    assert specific_title == "Удельные выбросы нормируемых ЗВ по ингредиентам, кг/тут"
+    assert specific_title == "Удельные выбросы нормируемых ЗВ по ингредиентам, кг/т у.т."
     assert normir_title == "в том числе по ингредиентам"
     specific_group = next(cell for cell in headers[0] if cell["text"] == specific_title)
     normir_group = next(cell for cell in headers[0] if cell["text"] == normir_title)
@@ -1331,7 +1462,7 @@ def test_apply_zv_fuel_consumption_group_headers():
 
     title, fuel_keys, leaf_labels = zv_fuel_consumption_header_group()
     assert title == ZV_FUEL_CONSUMPTION_BANNER_TITLE
-    assert title == "Расход топлива, тут"
+    assert title == "Расход топлива, т у.т."
     keys = ["NAME", *fuel_keys, "VIBROS_ekol"]
     columns = [
         {
@@ -1508,6 +1639,7 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
         extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
     wb.save(path)
     clear_comparison_cache()
+    _patch_pg_groups_from_fuel(monkeypatch, [(1, 2017, "ТЭЦ")])
     monkeypatch.setattr(
         "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
         lambda: {},
@@ -1532,8 +1664,11 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
         "numb1120",
         "Year",
         "nust",
+        "nust_generation",
         "W_en",
+        "W_en_generation",
         "Teplo",
+        "station_affiliation",
         "VIBROS_ekol",
     ]
     shown = build_comparison_table_context(
@@ -1552,10 +1687,13 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
         "numb1120",
         "Year",
         "nust",
+        "nust_generation",
         "nust_vibr",
         "W_en",
+        "W_en_generation",
         "W_en_vibr",
         "Teplo",
+        "station_affiliation",
         "Teplo_vibr",
         "VIBR_cnt",
         "VIBROS_ekol",
@@ -1571,6 +1709,353 @@ def test_zv_vse_reported_columns_toggle(tmp_path, monkeypatch):
     assert header_by_key["Teplo_vibr"] == "Тепло отчитавшихся, тыс. Гкалл"
     assert header_by_key["VIBR_cnt"] == "Количество отчитавшихся"
     clear_comparison_cache()
+
+
+def _station_generation_workbook(path):
+    """«ЗВ_всё» с ТЭП-столбцами NUST/E — для столбцов сверки с «Генерацией»."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ЗВ_всё"
+    ws.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "nust", "W_en"])
+    ws.append(
+        [
+            "ФО",
+            "ОЭС",
+            "Субъект",
+            "Станция",
+            "Код",
+            "Год",
+            "Установленная мощность, МВт",
+            "Выработка электроэнергии, млн. кВт.ч",
+        ]
+    )
+    ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 100, 500])
+    ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 100, 500])
+    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
+        wb.create_sheet(title)
+        extra = wb[title]
+        extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
+        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 1])
+        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 1])
+    wb.save(path)
+    clear_comparison_cache()
+
+
+def _station_generation_context(slug, path, overlay, monkeypatch, **kwargs):
+    _patch_pg_groups_from_fuel(
+        monkeypatch,
+        [(708, 2017, "ТЭЦ-1 (котельная)"), (708, 2018, "ТЭЦ-1 (котельная)")],
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
+        lambda: {},
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {
+            (708, 2017): {"nust": 100, "e": 500, "q": 30, "ved": 1},
+            (708, 2018): {"nust": 100, "e": 500, "q": 30, "ved": 1},
+        },
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_station_generation_overlay",
+        lambda numbs, years: overlay,
+    )
+    context = build_comparison_table_context(
+        slug,
+        start_year=kwargs.pop("start_year", 2017),
+        end_year=kwargs.pop("end_year", 2018),
+        rounding_digits=kwargs.pop("rounding_digits", 1),
+        source_path=path,
+        **kwargs,
+    )
+    clear_comparison_cache()
+    return context
+
+
+def test_zv_vse_station_generation_columns_follow_tep_columns(tmp_path, monkeypatch):
+    path = tmp_path / "zv-generation.xlsx"
+    _station_generation_workbook(path)
+    context = _station_generation_context(
+        "zv-vse",
+        path,
+        {
+            "names_by_numb": {708: "ТЭЦ-1"},
+            "station_links_by_numb": {708: [{"id": 501, "name": "ТЭЦ-1"}]},
+            "values_by_numb_year": {
+                (708, 2017): {
+                    "nust_generation": Decimal("100.0"),
+                    "W_en_generation": Decimal("500.5"),
+                }
+            },
+        },
+        monkeypatch,
+    )
+    assert context is not None
+    keys = [column["key"] for column in context["columns"]]
+    assert keys == [
+        "NAME",
+        "numb1120",
+        "Year",
+        "nust",
+        "nust_generation",
+        "W_en",
+        "W_en_generation",
+    ]
+    assert context["station_check_pairs"] == {
+        "nust_generation": "nust",
+        "W_en_generation": "W_en",
+    }
+    header_by_key = {
+        cell.get("column_key"): cell
+        for row in context["header_rows"]
+        for cell in row
+        if cell.get("column_key")
+    }
+    assert header_by_key["nust_generation"]["text"] == "Руст, МВт"
+    assert header_by_key["W_en_generation"]["text"] == "Выработка ЭЭ, млн кВтч (Генерация)"
+    assert header_by_key["nust_generation"]["station_generation_highlight"] is True
+    assert header_by_key["nust_generation"]["rowspan"] == len(context["header_rows"])
+    assert header_by_key["W_en_generation"]["rowspan"] == len(context["header_rows"])
+
+    rows = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["rows"]
+    group = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]
+    assert group["station_links"] == [{"id": 501, "name": "ТЭЦ-1"}]
+    assert [row["year"] for row in rows] == [2017, 2018]
+    by_key = {key: rows[0]["cells"][index] for index, key in enumerate(keys)}
+    assert by_key["NAME"] == "ТЭЦ-1"
+    assert by_key["nust"] == "100"
+    assert by_key["nust_generation"] == "100"
+    assert by_key["W_en"] == "500"
+    assert by_key["W_en_generation"] == "500,5"
+    assert rows[0]["cell_mismatch"][keys.index("nust_generation")] is False
+    assert rows[0]["cell_mismatch"][keys.index("W_en_generation")] is True
+    # Год без станционных данных: ячейки пустые и не краснеют; название станции есть.
+    assert rows[1]["cells"][keys.index("nust_generation")] == ""
+    assert rows[1]["cells"][keys.index("W_en_generation")] == ""
+    assert rows[1]["cells"][keys.index("NAME")] == "ТЭЦ-1"
+    assert rows[1]["cell_mismatch"][keys.index("nust_generation")] is False
+
+
+def test_station_generation_columns_absent_on_bez_kot_sheets(tmp_path, monkeypatch):
+    path = tmp_path / "zv-generation-none.xlsx"
+    _station_generation_workbook(path)
+    context = _station_generation_context(
+        "zv-bez-kot",
+        path,
+        {
+            "names_by_numb": {708: "ТЭЦ-1"},
+            "values_by_numb_year": {(708, 2017): {"nust_generation": 100.0}},
+        },
+        monkeypatch,
+    )
+    assert context is not None
+    keys = [column["key"] for column in context["columns"]]
+    assert "nust_generation" not in keys
+    assert "W_en_generation" not in keys
+    assert context["station_check_pairs"] == {}
+    rows = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["rows"]
+    assert rows[0]["cells"][keys.index("NAME")] == "ТЭЦ-1 (котельная)"
+
+
+def test_apply_station_generation_overlay_sets_name_and_values():
+    columns = [
+        {"key": "NAME", "numeric": False, "source_index": 0},
+        {"key": "numb1120", "numeric": True, "source_index": 1},
+        {"key": "Year", "numeric": True, "source_index": 2},
+        {"key": "nust_generation", "numeric": True, "source_index": 3},
+    ]
+    filled = ["ТЭЦ-1 (котельная)", 708, 2017, None]
+    overlay = {
+        "names_by_numb": {708: "ТЭЦ-1"},
+        "values_by_numb_year": {(708, 2017): {"nust_generation": Decimal("95.5")}},
+    }
+    assert apply_station_generation_overlay(filled, columns, overlay) == [
+        "ТЭЦ-1",
+        708,
+        2017,
+        Decimal("95.5"),
+    ]
+    # Группы с другой нумерацией и строки без года не меняются.
+    assert apply_station_generation_overlay(
+        ["Котельные Коми", 38, 2017, None], columns, overlay
+    ) == ["Котельные Коми", 38, 2017, None]
+
+
+def test_station_generation_mismatch_flags_only_filled_cells():
+    columns = [
+        {"key": "nust", "numeric": True},
+        {"key": "nust_generation", "numeric": True},
+        {"key": "W_en", "numeric": True},
+        {"key": "W_en_generation", "numeric": True},
+    ]
+    pairs = station_generation_check_pairs(columns)
+    assert pairs == {"nust_generation": "nust", "W_en_generation": "W_en"}
+    assert station_generation_mismatch(
+        ["100", "90", "500", "500"], columns, pairs
+    ) == [False, True, False, False]
+    assert station_generation_mismatch(
+        ["100", "", "500", ""], columns, pairs
+    ) == [False, False, False, False]
+    # Столбца макета для сверки нет — красного шрифта тоже.
+    assert station_generation_mismatch(
+        ["90"], [{"key": "nust_generation", "numeric": True}], pairs
+    ) == [False]
+
+
+def test_load_station_generation_overlay_without_app_context():
+    assert load_station_generation_overlay({708}, [2017]) == {}
+    assert load_station_generation_overlay(set(), [2017]) == {}
+    assert load_station_generation_overlay({708}, []) == {}
+
+
+def _station_affiliation_workbook(path):
+    """«ЗВ_всё» с ТЭП-столбцом «Отпуск ТЭ» — для столбца «Принадлежность»."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ЗВ_всё"
+    ws.append(
+        ["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "nust", "W_en", "Teplo"]
+    )
+    ws.append(
+        [
+            "ФО",
+            "ОЭС",
+            "Субъект",
+            "Станция",
+            "Код",
+            "Год",
+            "Установленная мощность, МВт",
+            "Выработка электроэнергии, млн. кВт.ч",
+            "Отпуск ТЭ, тыс.Гкал",
+        ]
+    )
+    ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 100, 500, 30])
+    ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 100, 500, 30])
+    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
+        wb.create_sheet(title)
+        extra = wb[title]
+        extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en", "Teplo"])
+        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2017, 1, 30])
+        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1 (котельная)", 708, 2018, 1, 30])
+    wb.save(path)
+    clear_comparison_cache()
+
+
+def _station_affiliation_context(slug, path, affiliations, monkeypatch):
+    _patch_pg_groups_from_fuel(
+        monkeypatch,
+        [(708, 2017, "ТЭЦ-1 (котельная)"), (708, 2018, "ТЭЦ-1 (котельная)")],
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
+        lambda: {},
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {
+            (708, 2017): {"nust": 100, "e": 500, "q": 30, "ved": 1},
+            (708, 2018): {"nust": 100, "e": 500, "q": 30, "ved": 1},
+        },
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_station_affiliations_by_numb_year",
+        lambda numbs, years: affiliations,
+    )
+    context = build_comparison_table_context(
+        slug,
+        start_year=2017,
+        end_year=2018,
+        rounding_digits=1,
+        source_path=path,
+    )
+    clear_comparison_cache()
+    return context
+
+
+def test_zv_vse_station_affiliation_column_follows_teplo_column(tmp_path, monkeypatch):
+    path = tmp_path / "zv-affiliation.xlsx"
+    _station_affiliation_workbook(path)
+    context = _station_affiliation_context(
+        "zv-vse", path, {(708, 2017): "отрасль"}, monkeypatch
+    )
+    assert context is not None
+    keys = [column["key"] for column in context["columns"]]
+    assert keys == [
+        "NAME",
+        "numb1120",
+        "Year",
+        "nust",
+        "nust_generation",
+        "W_en",
+        "W_en_generation",
+        "Teplo",
+        "station_affiliation",
+    ]
+    assert keys.index("Teplo") + 1 == keys.index("station_affiliation")
+    assert context["columns"][keys.index("station_affiliation")]["numeric"] is False
+    header = {
+        cell.get("column_key"): cell
+        for row in context["header_rows"]
+        for cell in row
+        if cell.get("column_key")
+    }
+    assert header["station_affiliation"]["text"] == "Принадлежность"
+    assert header["station_affiliation"]["rowspan"] == len(context["header_rows"])
+    assert "station_generation_highlight" not in header["station_affiliation"]
+
+    rows = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["rows"]
+    assert [row["year"] for row in rows] == [2017, 2018]
+    assert rows[0]["cells"][keys.index("station_affiliation")] == "отрасль"
+    # Год без данных ГИС ТЭК — «—», как в столбце на страницах ГИС ТЭК.
+    assert rows[1]["cells"][keys.index("station_affiliation")] == "—"
+
+
+def test_station_affiliation_column_absent_on_bez_kot_sheets(tmp_path, monkeypatch):
+    path = tmp_path / "zv-affiliation-none.xlsx"
+    _station_affiliation_workbook(path)
+    context = _station_affiliation_context(
+        "zv-bez-kot", path, {(708, 2017): "отрасль"}, monkeypatch
+    )
+    assert context is not None
+    keys = [column["key"] for column in context["columns"]]
+    assert "station_affiliation" not in keys
+    assert all(
+        cell.get("column_key") != "station_affiliation"
+        for row in context["header_rows"]
+        for cell in row
+    )
+
+
+def test_apply_station_affiliation_cells_fills_unknown_with_dash():
+    columns = [
+        {"key": "NAME", "numeric": False},
+        {"key": "numb1120", "numeric": True},
+        {"key": "Year", "numeric": True},
+        {"key": "station_affiliation", "numeric": False},
+    ]
+    affiliations = {(708, 2017): "промпредприятие"}
+    assert apply_station_affiliation_cells(
+        ["ТЭЦ-1", 708, 2017, None], columns, affiliations
+    ) == ["ТЭЦ-1", 708, 2017, "промпредприятие"]
+    # Нет данных по группе/году, нет года, нет столбца — «—» или строка без изменений.
+    assert apply_station_affiliation_cells(
+        ["ТЭЦ-1", 999, 2017, None], columns, affiliations
+    ) == ["ТЭЦ-1", 999, 2017, "—"]
+    assert apply_station_affiliation_cells(
+        ["ТЭЦ-1", 708, None, None], columns, affiliations
+    ) == ["ТЭЦ-1", 708, None, "—"]
+    assert apply_station_affiliation_cells(
+        ["ТЭЦ-1", 708, 2017, None],
+        [column for column in columns if column["key"] != "station_affiliation"],
+        affiliations,
+    ) == ["ТЭЦ-1", 708, 2017, None]
+
+
+def test_load_station_affiliations_without_app_context():
+    assert load_station_affiliations_by_numb_year({708}, [2017]) == {}
+    assert load_station_affiliations_by_numb_year(set(), [2017]) == {}
+    assert load_station_affiliations_by_numb_year({708}, []) == {}
 
 
 def test_apply_pg_ecology_overlay():
@@ -1813,6 +2298,100 @@ def test_ved_filter_parsing_and_matching():
     assert row_matches_territory_filters(["ТЭЦ"], columns, {"ved": 99}, {"ved_filter": ""})
 
 
+def test_header_station_and_affiliation_filters(monkeypatch):
+    from app.ecology.services.gis_tes_fuel_comparison_services import (
+        _keep_query_args,
+        apply_header_filters,
+        parse_territory_filters,
+    )
+
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_station_affiliations_by_numb_year",
+        lambda numbs, years: {
+            (1, 2023): "отрасль",
+            (2, 2023): "промпредприятие",
+            (3, 2023): "—",
+        },
+    )
+    columns = [{"key": "Stancia"}, {"key": "station_affiliation"}]
+    groups = [
+        {"numb": 1, "meta": {"station_name": "ТЭЦ-1"}},
+        {"numb": 2, "meta": {"station_name": "ТЭЦ-2"}},
+        {"numb": None, "meta": {"station_name": ""}},
+    ]
+
+    kept, station_choices, affiliation_choices = apply_header_filters(
+        groups, columns, {}, [2023]
+    )
+    assert [group["numb"] for group in kept] == [1, 2, None]
+    assert station_choices == ["ТЭЦ-1", "ТЭЦ-2"]
+    # «—» (нет данных ГИС ТЭК) в списке принадлежности не предлагается.
+    assert affiliation_choices == ["отрасль", "промпредприятие"]
+
+    by_station, _, _ = apply_header_filters(
+        groups, columns, {"station_header_filter": "ТЭЦ-2"}, [2023]
+    )
+    assert [group["numb"] for group in by_station] == [2]
+
+    by_affiliation, _, _ = apply_header_filters(
+        groups, columns, {"affiliation_filter": "промпредприятие"}, [2023]
+    )
+    assert [group["numb"] for group in by_affiliation] == [2]
+
+    unknown, _, _ = apply_header_filters(
+        groups, columns, {"affiliation_filter": "—"}, [2023]
+    )
+    assert [group["numb"] for group in unknown] == [None]
+
+    # Группы без данных ГИС ТЭК дают пустой список принадлежностей.
+    only_unknown, _, no_choices = apply_header_filters(
+        [
+            {"numb": 3, "meta": {"station_name": "ТЭЦ-3"}},
+            {"numb": None, "meta": {"station_name": ""}},
+        ],
+        columns,
+        {},
+        [2023],
+    )
+    assert [group["numb"] for group in only_unknown] == [3, None]
+    assert no_choices == []
+
+    # Без столбца «Принадлежность» фильтр не применяется и вариантов нет.
+    without_column, _, choices = apply_header_filters(
+        groups, [{"key": "Stancia"}], {"affiliation_filter": "отрасль"}, [2023]
+    )
+    assert [group["numb"] for group in without_column] == [1, 2, None]
+    assert choices == []
+
+    parsed = parse_territory_filters(
+        {
+            "station_header_filter": [" Архангельская ТЭЦ "],
+            "affiliation_filter": ["отрасль"],
+        }
+    )
+    assert parsed["station_header_filter"] == "Архангельская ТЭЦ"
+    assert parsed["affiliation_filter"] == "отрасль"
+    empty = parse_territory_filters(None)
+    assert empty["station_header_filter"] == ""
+    assert empty["affiliation_filter"] == ""
+
+    keep = _keep_query_args(
+        2023,
+        2024,
+        1,
+        None,
+        {
+            "station_header_filter": "Архангельская ТЭЦ",
+            "affiliation_filter": "отрасль",
+            "show_totals": False,
+            "show_empty_rows": False,
+            "show_reported": False,
+        },
+    )
+    assert keep["station_header_filter"] == "Архангельская ТЭЦ"
+    assert keep["affiliation_filter"] == "отрасль"
+
+
 def test_safe_subtract():
     assert _safe_subtract(100, 30) == 70.0
     assert _safe_subtract(10.5, 10.5) == 0.0
@@ -1823,6 +2402,65 @@ def test_safe_subtract():
     assert _safe_subtract("abc", 10) is None
     assert _safe_subtract(True, 10) is None
     assert _safe_subtract(10, True) is None
+
+
+def test_safe_math_ignores_source_float_noise():
+    """Хвост double из БД не должен попадать в расчётные столбцы страницы."""
+    from app.ecology.services.gis_tes_fuel_comparison_services import (
+        _format_value,
+        _safe_divide,
+        _safe_sum,
+    )
+
+    # d_mazut: 3121 − 3120,2000000000003 (так значение лежит в Numeric(36,16)).
+    assert _safe_subtract(3121, Decimal("3120.2000000000003")) == 0.8
+    assert _safe_sum(Decimal("1604.1000000000001"), Decimal("1582.1")) == 3186.2
+
+    # K_gaz_ek = CO2 / расход газа: в «Не округлять» — только значащие цифры.
+    ratio = _safe_divide(Decimal("1275805.8000000000000"), Decimal("802393.6000000001"))
+    assert _format_value(ratio, True, 0) == "1,58999997008949"
+
+
+def test_format_value_keeps_significant_digits_when_not_rounding():
+    from app.ecology.services.gis_tes_fuel_comparison_services import _format_value
+
+    assert _format_value(Decimal("802393.6000000001"), True, 0) == "802 393,6"
+    assert _format_value(Decimal("3120.2000000000003"), True, 0) == "3 120,2"
+    assert _format_value(Decimal("1275805.8000000000"), True, 0) == "1 275 805,8"
+    assert _format_value(Decimal("0.00008782455212957862"), True, 0) == "0,0000878245521295786"
+    # Округление до заданных знаков не изменилось.
+    assert _format_value(Decimal("1275805.8000000000000"), True, 2) == "1 275 805,8"
+    assert _format_value(Decimal("1275805.8000000000000"), True, 1) == "1 275 805,8"
+
+
+def test_cell_titles_show_value_whole_regardless_of_rounding():
+    """Подсказка к ячейке — значение целиком, как в БД, без учёта «Округл»."""
+    from app.ecology.services.gis_tes_fuel_comparison_services import cell_titles
+
+    columns = [
+        {"key": "numb1120", "numeric": True, "source_index": 0},
+        {"key": "Year", "numeric": True, "source_index": 1},
+        {"key": "NAME", "numeric": False, "source_index": 2},
+        {"key": "GAZ_ek", "numeric": True, "source_index": 3},
+        {"key": "K_gaz_ek", "numeric": True, "source_index": 4},
+        {"key": "Teplo", "numeric": True, "source_index": 5},
+    ]
+    filled = [
+        1,
+        2024,
+        "Архангельская ТЭЦ",
+        Decimal("802393.6000000001"),
+        Decimal("1.589999970089492"),
+        None,
+    ]
+    assert cell_titles(filled, columns) == [
+        "",
+        "",
+        "",
+        "802 393,6000000001",
+        "1,589999970089492",
+        "",
+    ]
 
 
 def test_safe_divide():
@@ -2217,7 +2855,7 @@ def test_attach_d_mazut_formula_tooltip_on_caption_not_key_row():
     headers = [
         [
             {
-                "text": "Разность по израсходованному мазуту, тут",
+                "text": "Разность по израсходованному мазуту, т у.т.",
                 "column_key": "d_mazut",
                 "is_key": False,
             },
@@ -2290,13 +2928,13 @@ def test_pg_pages_recompute_difference_columns_and_attach_formulas(tmp_path, mon
             "Год",
             "Мазут 6ТП",
             "Мазут макет",
-            "Разность по израсходованному мазуту, тут",
+            "Разность по израсходованному мазуту, т у.т.",
             "Газ естественный",
             "Газ макет",
-            "Разность по израсходованному газу, тут",
+            "Разность по израсходованному газу, т у.т.",
             "Твердое 6ТП",
             "Твердое макет",
-            "Разность по израсходованному твердому топливу, тут",
+            "Разность по израсходованному твердому топливу, т у.т.",
         ]
     )
     ws.append(
@@ -2446,4 +3084,543 @@ def test_pg_pages_recompute_difference_columns_and_attach_formulas(tmp_path, mon
         for row in ctx["header_rows"]
         for cell in row
     )
+    clear_comparison_cache()
+
+
+def test_format_related_pg_cells_rounds_emission_coefficients_separately(monkeypatch):
+    """«Округл (k эмис)» округляет только K_*, остальные ячейки — как «Округл»."""
+    import app.ecology.services.gis_tes_fuel_comparison_services as svc
+
+    monkeypatch.setattr(
+        svc,
+        "load_pg_ecology_overlay_by_numb_year",
+        lambda sheet_slug, numbs, years: {
+            (1, 2017): {
+                "gas_consumption_tce": 802393.6,
+                "co2_from_gas_t": 1275805.8,
+            }
+        },
+    )
+    monkeypatch.setattr(
+        svc,
+        "load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {(1, 2017): {}},
+    )
+
+    rounded = svc.format_related_pg_ecology_cells(
+        "pg-bez-kot", 1, 2017, "GAZ_ek", rounding_digits=1, emission_rounding_digits=3
+    )
+    assert rounded["GAZ_ek"]["text"] == "802 393,6"
+    assert rounded["K_gaz_ek"]["text"] == "1,59"
+
+    whole = svc.format_related_pg_ecology_cells(
+        "pg-bez-kot", 1, 2017, "GAZ_ek", rounding_digits=1, emission_rounding_digits=0
+    )
+    assert whole["K_gaz_ek"]["text"] == "1,58999997008949"
+
+
+def test_emission_rounding_digits_apply_only_to_emission_columns(tmp_path, monkeypatch):
+    path = tmp_path / "cmp-emission.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ПГ_без кот"
+    ws.append(
+        [
+            "Fed_okr",
+            "nameoes",
+            "oblast",
+            "Stancia",
+            "numb1120",
+            "Year",
+            "GAZ_ek",
+            "CO2_gaz",
+            "K_gaz_ek",
+            "W_en",
+        ]
+    )
+    ws.append(
+        [
+            "ФО",
+            "ОЭС",
+            "Субъект",
+            "Станция",
+            "Код",
+            "Год",
+            "Газ макет",
+            "Выбросы СО2 газа",
+            "Коэффициент эмиссии (газ)",
+            "Выработка",
+        ]
+    )
+    ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ-1", 1, 2017, 802393.6, 1275805.8, 999.0, 500.0])
+    for title in ("ЗВ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+        extra = wb.create_sheet(title)
+        extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
+        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
+    wb.save(path)
+    clear_comparison_cache()
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
+        lambda: {},
+    )
+    _patch_pg_groups_from_fuel(monkeypatch, [(1, 2017, "ТЭЦ-1")])
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {(1, 2017): {"e": 500.0, "ved": 1}},
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_pg_ecology_overlay_by_numb_year",
+        lambda sheet_slug, numbs, years: {
+            (1, 2017): {
+                "gas_consumption_tce": 802393.6,
+                "co2_from_gas_t": 1275805.8,
+            }
+        },
+    )
+
+    def _cells(emission_rounding_digits):
+        ctx = build_comparison_table_context(
+            "pg-bez-kot",
+            start_year=2017,
+            end_year=2017,
+            rounding_digits=1,
+            emission_rounding_digits=emission_rounding_digits,
+            source_path=path,
+        )
+        assert ctx is not None
+        assert ctx["emission_rounding_digits"] == emission_rounding_digits
+        keys = [column["key"] for column in ctx["columns"]]
+        cells = ctx["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["rows"][0][
+            "cells"
+        ]
+        return {key: cells[index] for index, key in enumerate(keys)}
+
+    three_digits = _cells(3)
+    assert three_digits["K_gaz_ek"] == "1,59"
+    assert three_digits["GAZ_ek"] == "802 393,6"
+
+    not_rounded = _cells(0)
+    assert not_rounded["K_gaz_ek"] == "1,58999997008949"
+    assert not_rounded["GAZ_ek"] == "802 393,6"
+    clear_comparison_cache()
+
+
+def test_format_related_zv_cells_rounds_specific_columns_separately(monkeypatch):
+    """«Округл (удельные)» округляет только удельные столбцы ЗВ."""
+    import app.ecology.services.gis_tes_fuel_comparison_services as svc
+
+    monkeypatch.setattr(
+        svc,
+        "load_zv_ecology_overlay_by_numb_year",
+        lambda sheet_slug, numbs, years: {
+            (1, 2017): {
+                "solid_substances": 3.33333,
+                "sulfur_dioxide": 10.123456,
+                "nitrogen_oxides": 4.98765,
+            }
+        },
+    )
+    monkeypatch.setattr(
+        svc,
+        "load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {
+            (1, 2017): {
+                "e": 3.0,
+                "q": 1.0,
+                "gaz_all_tce": 100.0,
+                "mazut_tce": 20.0,
+                "solid_tce": 50.0,
+            }
+        },
+    )
+
+    rounded = svc.format_related_zv_ecology_cells(
+        "zv-vse", 1, 2017, "SO2_gaz", rounding_digits=1, specific_rounding_digits=3
+    )
+    assert rounded["SO2_gaz"]["text"] == "10,1"
+    assert rounded["udel_SO2"]["text"] == "144,621"
+    assert rounded["normir_ZV_na_ee"]["text"] == "6,148"
+
+    whole = svc.format_related_zv_ecology_cells(
+        "zv-vse", 1, 2017, "SO2_gaz", rounding_digits=1, specific_rounding_digits=0
+    )
+    assert whole["udel_SO2"]["text"] == "144,6208"
+
+
+def test_zv_specific_rounding_digits_apply_only_to_specific_columns(tmp_path, monkeypatch):
+    path = tmp_path / "cmp-zv-specific.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ЗВ_без кот"
+    keys = [
+        "Fed_okr",
+        "nameoes",
+        "oblast",
+        "Stancia",
+        "numb1120",
+        "Year",
+        "SO2_gaz",
+        "NOx_gaz",
+        "TVERD_V",
+        "GAZ_6tp",
+        "MAZUT_6tp",
+        "TVERD_TOPL_6tp",
+        "W_en",
+        "Teplo",
+        "udel_na_energ",
+        "normir_ZV_na_ee",
+        "udel_tv",
+        "udel_SO2",
+        "udel_NOx",
+        "normir_TVERD_na_energ",
+        "normir_SO2_na_energ",
+        "normir_NOx_na_energ",
+    ]
+    ws.append(keys)
+    ws.append(keys)
+    ws.append(
+        [
+            "СЗ",
+            "ОЭС СЗ",
+            "АО",
+            "ТЭЦ-1",
+            1,
+            2017,
+            10.123456,
+            4.98765,
+            3.33333,
+            100.0,
+            20.0,
+            50.0,
+            3.0,
+            1.0,
+            999.0,
+            999.0,
+            999.0,
+            999.0,
+            999.0,
+            999.0,
+            999.0,
+            999.0,
+        ]
+    )
+    for title in ("ПГ_без кот", "ЗВ_всё", "ПГ_всё", "Лист1"):
+        extra = wb.create_sheet(title)
+        extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
+        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 1, 2017, 1])
+    wb.save(path)
+    clear_comparison_cache()
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
+        lambda: {},
+    )
+    _patch_pg_groups_from_fuel(monkeypatch, [(1, 2017, "ТЭЦ-1")])
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {
+            (1, 2017): {
+                "e": 3.0,
+                "q": 1.0,
+                "gaz_all_tce": 100.0,
+                "mazut_tce": 20.0,
+                "solid_tce": 50.0,
+                "ved": 1,
+            }
+        },
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_zv_ecology_overlay_by_numb_year",
+        lambda sheet_slug, numbs, years: {
+            (1, 2017): {
+                "solid_substances": 3.33333,
+                "sulfur_dioxide": 10.123456,
+                "nitrogen_oxides": 4.98765,
+            }
+        },
+    )
+
+    def _cells(specific_rounding_digits):
+        ctx = build_comparison_table_context(
+            "zv-bez-kot",
+            start_year=2017,
+            end_year=2017,
+            rounding_digits=1,
+            specific_rounding_digits=specific_rounding_digits,
+            source_path=path,
+        )
+        assert ctx is not None
+        assert ctx["specific_rounding_digits"] == specific_rounding_digits
+        keys = [column["key"] for column in ctx["columns"]]
+        cells = ctx["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]["rows"][0][
+            "cells"
+        ]
+        return {key: cells[index] for index, key in enumerate(keys)}
+
+    three_digits = _cells(3)
+    assert three_digits["SO2_gaz"] == "10,1"
+    assert three_digits["udel_SO2"] == "144,621"
+    assert three_digits["normir_ZV_na_ee"] == "6,148"
+
+    not_rounded = _cells(0)
+    assert not_rounded["SO2_gaz"] == "10,1"
+    assert not_rounded["udel_SO2"] == "144,6208"
+    clear_comparison_cache()
+
+
+def test_zv_ecology_edit_mapping_keys():
+    assert ZV_ECOLOGY_OVERLAY_BY_KEY == {
+        "TVERD_V": "solid_substances",
+        "SO2_gaz": "sulfur_dioxide",
+        "CO_gaz": "carbon_monoxide",
+        "NOx_gaz": "nitrogen_oxides",
+        "UGLEVOD": "hydrocarbons",
+        "LOS": "voc",
+        "PROCH_ekol": "other_gaseous_and_liquid",
+    }
+    assert ZV_ECOLOGY_EDITABLE_KEYS == frozenset(ZV_ECOLOGY_OVERLAY_BY_KEY)
+    derived = (
+        "VIBROS_ekol",
+        "GAZ and ZHID",
+        "energy",
+        "ZV_normir",
+        "udel_na_energ",
+        "normir_ZV_na_ee",
+        "normir_ZV_na_energ",
+        "normir_TVERD_na_energ",
+        "normir_SO2_na_energ",
+        "normir_NOx_na_energ",
+        "udel_tv",
+        "udel_SO2",
+        "udel_NOx",
+    )
+    assert ZV_ECOLOGY_EDIT_RELATED_KEYS["SO2_gaz"] == ("SO2_gaz",) + derived
+    assert ZV_ECOLOGY_EDIT_RELATED_KEYS["TVERD_V"] == ("TVERD_V",) + derived
+    assert set(ZV_ECOLOGY_EDIT_RELATED_KEYS) == set(ZV_ECOLOGY_OVERLAY_BY_KEY)
+
+
+def test_zv_ecology_values_by_key_recomputes_totals_and_specific():
+    by_key = _zv_ecology_values_by_key(
+        {
+            "solid_substances": 10,
+            "sulfur_dioxide": 5,
+            "carbon_monoxide": 4,
+            "nitrogen_oxides": 3,
+            "hydrocarbons": 2,
+            "voc": 1,
+            "other_gaseous_and_liquid": 0.5,
+        },
+        {
+            "gaz_all_tce": 1000,
+            "mazut_tce": 200,
+            "solid_tce": 300,
+            "e": 500,
+            "q": 859.8,
+        },
+    )
+    assert by_key["GAZ and ZHID"] == 15.5
+    assert by_key["VIBROS_ekol"] == 25.5
+    assert by_key["ZV_normir"] == 18
+    assert by_key["energy"] == 1500
+    assert abs(by_key["udel_na_energ"] - 25.5 / 1500) < 1e-9
+    assert abs(by_key["normir_ZV_na_ee"] - 18 / 500) < 1e-9
+    assert abs(by_key["normir_ZV_na_energ"] - 18 / 1500) < 1e-9
+    assert abs(by_key["udel_tv"] - 10 * 1000 / 500) < 1e-9
+    assert abs(by_key["udel_SO2"] - 5 * 1000 / 500) < 1e-9
+    assert abs(by_key["udel_NOx"] - 3 * 1000 / 1500) < 1e-9
+
+
+def test_save_analysis_zv_ecology_cell_saves_mapped_field(monkeypatch):
+    calls = []
+
+    def _upsert(sheet_slug, station_numb, year_number, values):
+        calls.append((sheet_slug, station_numb, year_number, values))
+
+    monkeypatch.setattr(
+        "app.ecology.services.analysis_zv_param_services.upsert_analysis_zv_param_values",
+        _upsert,
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_zv_ecology_overlay_by_numb_year",
+        lambda sheet_slug, numbs, years: {
+            (708, 2017): {
+                "solid_substances": 10,
+                "sulfur_dioxide": 15,
+                "carbon_monoxide": 4,
+                "nitrogen_oxides": 3,
+                "hydrocarbons": 2,
+                "voc": 1,
+                "other_gaseous_and_liquid": 0.5,
+            }
+        },
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {},
+    )
+
+    values = save_analysis_zv_ecology_cell(
+        "zv-vse", 708, 2017, "SO2_gaz", Decimal("15"), rounding_digits=1
+    )
+
+    assert calls == [("zv-vse", 708, 2017, {"sulfur_dioxide": Decimal("15")})]
+    assert values["SO2_gaz"]["text"] == "15"
+    assert values["GAZ and ZHID"]["text"] == "25,5"
+    assert values["VIBROS_ekol"]["text"] == "35,5"
+    assert values["SO2_gaz"]["nonzero"] is False
+
+
+def test_related_zv_cells_return_full_value_as_title(monkeypatch):
+    """В ответе на правку рядом с округлённым текстом — полное значение для подсказки."""
+    import app.ecology.services.gis_tes_fuel_comparison_services as svc
+
+    monkeypatch.setattr(
+        svc,
+        "load_zv_ecology_overlay_by_numb_year",
+        lambda slug, numbs, years: {
+            (708, 2017): {"sulfur_dioxide": Decimal("15.123456789")}
+        },
+    )
+    monkeypatch.setattr(svc, "load_fuel_indicators_by_numb_year", lambda numbs, years: {})
+
+    values = svc.format_related_zv_ecology_cells(
+        "zv-vse", 708, 2017, "SO2_gaz", rounding_digits=1
+    )
+
+    assert values["SO2_gaz"]["text"] == "15,1"
+    assert values["SO2_gaz"]["title"] == "15,123456789"
+
+
+def test_save_analysis_zv_ecology_cell_rejects_unknown_column():
+    try:
+        save_analysis_zv_ecology_cell("zv-vse", 1, 2017, "W_en", 1)
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "недоступен" in str(exc).lower()
+
+
+def test_save_analysis_ecology_cell_dispatches_by_sheet(monkeypatch):
+    import app.ecology.services.gis_tes_fuel_comparison_services as svc
+
+    pg_calls = []
+    zv_calls = []
+    monkeypatch.setattr(
+        svc, "save_analysis_pg_ecology_cell", lambda *args: pg_calls.append(args) or {}
+    )
+    monkeypatch.setattr(
+        svc, "save_analysis_zv_ecology_cell", lambda *args: zv_calls.append(args) or {}
+    )
+
+    svc.save_analysis_ecology_cell("pg-vse", 1, 2017, "GAZ_ek", 1, 2, 3)
+    svc.save_analysis_ecology_cell("zv-bez-kot", 2, 2017, "SO2_gaz", 2, 2, 2, 3)
+
+    assert pg_calls == [("pg-vse", 1, 2017, "GAZ_ek", 1, 2, 3)]
+    assert zv_calls == [("zv-bez-kot", 2, 2017, "SO2_gaz", 2, 2, 3)]
+    try:
+        svc.save_analysis_ecology_cell("zv-other", 1, 2017, "SO2_gaz", 1)
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "недоступен" in str(exc).lower()
+
+
+def test_zv_analysis_columns_are_editable_and_use_params_overlay(tmp_path, monkeypatch):
+    path = tmp_path / "zv-edit.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "ЗВ_всё"
+    ws.append(
+        [
+            "Fed_okr",
+            "nameoes",
+            "oblname",
+            "NAME",
+            "numb1120",
+            "Year",
+            "VIBROS_ekol",
+            "TVERD_V",
+            "GAZ and ZHID",
+            "SO2_gaz",
+            "CO_gaz",
+            "NOx_gaz",
+            "UGLEVOD",
+            "LOS",
+            "PROCH_ekol",
+        ]
+    )
+    ws.append(
+        [
+            "ФО",
+            "ОЭС",
+            "Субъект",
+            "Станция",
+            "Код",
+            "Год",
+            "Всего ЗВ",
+            "Твердые",
+            "всего",
+            "диоксид серы",
+            "оксид углерода",
+            "оксиды азота",
+            "углеводороды",
+            "ЛОС",
+            "прочие",
+        ]
+    )
+    ws.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 708, 2017, 999, 1, 999, 1, 1, 1, 1, 1, 1])
+    for title in ("ПГ_без кот", "ЗВ_без кот", "ПГ_всё", "Лист1"):
+        extra = wb.create_sheet(title)
+        extra.append(["Fed_okr", "nameoes", "oblname", "NAME", "numb1120", "Year", "W_en"])
+        extra.append(["СЗ", "ОЭС СЗ", "АО", "ТЭЦ", 708, 2017, 1])
+    wb.save(path)
+    clear_comparison_cache()
+    _patch_pg_groups_from_fuel(monkeypatch, [(708, 2017, "ТЭЦ-1")])
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.get_year_feature_dict",
+        lambda: {2017: "отч"},
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_fuel_indicators_by_numb_year",
+        lambda numbs, years: {
+            (708, 2017): {
+                "gaz_all_tce": 1000,
+                "mazut_tce": 200,
+                "solid_tce": 300,
+                "e": 500,
+                "q": 0,
+                "ved": 1,
+            }
+        },
+    )
+    monkeypatch.setattr(
+        "app.ecology.services.gis_tes_fuel_comparison_services.load_zv_ecology_overlay_by_numb_year",
+        lambda sheet_slug, numbs, years: {
+            (708, 2017): {
+                "solid_substances": 10,
+                "sulfur_dioxide": 15,
+                "carbon_monoxide": 4,
+                "nitrogen_oxides": 3,
+                "hydrocarbons": 2,
+                "voc": 1,
+                "other_gaseous_and_liquid": 0.5,
+            }
+        },
+    )
+    context = build_comparison_table_context(
+        "zv-vse",
+        start_year=2017,
+        end_year=2017,
+        rounding_digits=1,
+        source_path=path,
+    )
+    assert context is not None
+    group = context["hierarchy"][0]["ues_list"][0]["res_list"][0]["groups"][0]
+    by_key = {
+        col["key"]: group["rows"][0]["cells"][i]
+        for i, col in enumerate(context["columns"])
+    }
+    assert by_key["TVERD_V"] == "10"
+    assert by_key["SO2_gaz"] == "15"
+    assert by_key["GAZ and ZHID"] == "25,5"
+    assert by_key["VIBROS_ekol"] == "35,5"
+    editable = {col["key"] for col in context["columns"] if col.get("editable")}
+    assert editable == set(ZV_ECOLOGY_OVERLAY_BY_KEY)
     clear_comparison_cache()

@@ -120,6 +120,11 @@ FUEL_PARAMS_HIERARCHY_SUMMARY_SKIP_ATTRS = frozenset({
     "eurt", "snk", "turt", "sn_t", "h",
 })
 
+# Итоговые строки «{ОЭС/ЕЭС/Россия}, всего»: формульные суммы по территории.
+FUEL_PARAMS_AGGREGATE_ROW_CLASS = (
+    "fuel-param-detail-row fuel-param-summary-row fuel-param-aggregate-row"
+)
+
 # На страницах ТЭП: считать по формуле, если есть входы; иначе — ручной ввод.
 # h: при hfix=1 формула не применяется (фиксация ЧЧИУМ).
 _FUEL_PARAM_DERIVED_FILL_RULE = (
@@ -675,10 +680,16 @@ def should_suppress_aggregate_rows_for_filters(filters) -> bool:
 def apply_suppress_aggregate_rows_to_hierarchy(hierarchy):
     """
     Убирает агрегированные суммы: строки родителя «…, всего», station_summary
-    и итог «РЭС, всего». Сами группы из фильтра остаются обычными строками.
+    и территориальные итоги. Сами группы из фильтра остаются обычными строками.
     """
+    if isinstance(hierarchy, list):
+        hierarchy[:] = [
+            block for block in hierarchy if not block.get("is_russia_row")
+        ]
     for est in hierarchy or []:
+        est["aggregate_rows"] = []
         for ues in est.get("ues_list") or []:
+            ues["aggregate_rows"] = []
             for res in ues.get("res_list") or []:
                 res["hide_res_summary"] = True
                 res["res_summary"] = {}
@@ -1143,6 +1154,82 @@ def _equipment_group_station_sort_key(item, display_orders_by_group_id=None):
     )
 
 
+def build_fuel_params_aggregate_rows(station_blocks, row_class=""):
+    """
+    Итоги по территории (ОЭС / ЕЭС / ТИТЭС / Россия) для строки уровня иерархии:
+    «{name}, всего» с суммами по station_blocks (группы × годы).
+
+    Строки вне уровня (например дочерние с ved=0) не суммируются;
+    если ved не заполнен нигде — считаются все строки (legacy, как в _compute_summary).
+    """
+    rows_list = []
+    for station_block in station_blocks or []:
+        station_rows = [
+            row
+            for group_block in station_block.get("group_blocks") or []
+            for row in group_block.get("rows") or []
+        ]
+        rows_list.extend(_rows_for_fuel_params_summary(station_rows))
+    if not rows_list:
+        return []
+    classes = " ".join(
+        part for part in (FUEL_PARAMS_AGGREGATE_ROW_CLASS, row_class) if part
+    )
+    return [
+        {
+            "row_class": classes,
+            "summary": compute_fuel_params_summary(rows_list),
+        }
+    ]
+
+
+def _rows_for_fuel_params_summary(rows):
+    """
+    Строки для итога по территории:
+    - при заполненном ved — только ved>0;
+    - если у всех ved пуст (legacy до перезагрузки Access) — все строки.
+    """
+    rows_list = list(rows or [])
+    has_any_ved = any(
+        param is not None and getattr(param, "ved", None) is not None
+        for _eg, param in rows_list
+    )
+    if not has_any_ved:
+        return rows_list
+    return [
+        (eg, param)
+        for eg, param in rows_list
+        if fuel_param_row_participates(param)
+    ]
+
+
+def compute_fuel_params_summary(rows):
+    """
+    Суммы по атрибутам для строк (eg, param) — те же правила, что в итогах РЭС:
+    объёмные складываются, удельные (SKIP_ATTRS) — пусто, затем производные отношения.
+    """
+    from decimal import Decimal
+
+    summary = {}
+    for attr in FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS:
+        if attr in FUEL_PARAMS_HIERARCHY_SUMMARY_SKIP_ATTRS:
+            summary[attr] = None
+            continue
+        total = Decimal(0)
+        any_val = False
+        for _eg, param in rows or []:
+            val = getattr(param, attr, None) if param is not None else None
+            if val is None:
+                continue
+            try:
+                total += Decimal(str(val))
+                any_val = True
+            except (TypeError, ValueError):
+                pass
+        summary[attr] = total if any_val else None
+    return apply_fuel_param_derived_ratios_to_mapping(summary)
+
+
 def build_equipment_group_fuel_params_hierarchy(
     rows,
     use_equipment_group_hierarchy_only=False,
@@ -1236,31 +1323,8 @@ def build_equipment_group_fuel_params_hierarchy(
         return (1 if rid == -1 else 0, res_names.get(rid, ""))
 
     def _compute_summary(rows_to_sum):
-        from decimal import Decimal
-        summary = {}
-        for attr in FUEL_PARAMS_HIERARCHY_SUMMARY_NUMERIC_ATTRS:
-            if attr in FUEL_PARAMS_HIERARCHY_SUMMARY_SKIP_ATTRS:
-                summary[attr] = None
-                continue
-            total = Decimal(0)
-            any_val = False
-            for _eg, param in rows_to_sum:
-                # В сумму станции/РЭС — только строки с ved>0 (антидубль родителя).
-                if not fuel_param_row_participates(param):
-                    # Legacy: если ved ни у кого не заполнен — суммируем как раньше.
-                    # Решаем ниже по флагу; здесь пропускаем явный ved=0.
-                    ved = getattr(param, "ved", None) if param is not None else None
-                    if ved is not None:
-                        continue
-                val = getattr(param, attr, None) if param is not None else None
-                if val is not None:
-                    try:
-                        total += Decimal(str(val))
-                        any_val = True
-                    except (TypeError, ValueError):
-                        pass
-            summary[attr] = total if any_val else None
-        return apply_fuel_param_derived_ratios_to_mapping(summary)
+        """Суммы уровня — общие правила страницы и итогов ОЭС/ЕЭС/Россия."""
+        return compute_fuel_params_summary(rows_to_sum)
 
     def _rows_for_station_summary(group_blocks):
         """
@@ -1271,17 +1335,7 @@ def build_equipment_group_fuel_params_hierarchy(
         all_rows = []
         for gb in group_blocks:
             all_rows.extend(gb["rows"])
-        has_any_ved = any(
-            param is not None and getattr(param, "ved", None) is not None
-            for _eg, param in all_rows
-        )
-        if not has_any_ved:
-            return all_rows
-        return [
-            (eg, param)
-            for eg, param in all_rows
-            if fuel_param_row_participates(param)
-        ]
+        return _rows_for_fuel_params_summary(all_rows)
 
     def _enrich_station_block_composite(station_blocks_list):
         enrich_station_blocks_composite_display(
@@ -1339,19 +1393,63 @@ def build_equipment_group_fuel_params_hierarchy(
                     "res_summary": res_summary,
                     "hide_res_summary": bool(suppress_aggregate_rows),
                 })
+            ues_station_blocks = [
+                sb for rb in res_list for sb in rb["station_blocks"]
+            ]
             ues_list.append({
                 "ues_id": ues_id,
                 "ues_name": ues_names.get(ues_id, "—"),
                 "res_list": res_list,
+                "aggregate_rows": (
+                    build_fuel_params_aggregate_rows(
+                        ues_station_blocks,
+                        row_class="table-success",
+                    )
+                    if ues_id != -1
+                    else []
+                ),
             })
+        est_station_blocks = [
+            sb
+            for ub in ues_list
+            for rb in ub["res_list"]
+            for sb in rb["station_blocks"]
+        ]
         hierarchy_flat.append({
             "est_id": est_id,
             "est_name": est_names.get(est_id, "—"),
             "ues_list": ues_list,
+            "aggregate_rows": build_fuel_params_aggregate_rows(
+                est_station_blocks,
+                row_class=(
+                    "table-info"
+                    if "ЕЭС" in est_names.get(est_id, "").upper()
+                    else "table-warning"
+                    if "ТИТЭС" in est_names.get(est_id, "").upper()
+                    else ""
+                ),
+            ),
         })
 
     if suppress_aggregate_rows:
         apply_suppress_aggregate_rows_to_hierarchy(hierarchy_flat)
+    else:
+        # Россия, всего — последняя строка таблицы (по всем ЕЭС/ТИТЭС и ОЭС).
+        russia_station_blocks = [
+            sb
+            for est_block in hierarchy_flat
+            for ues_block in est_block["ues_list"]
+            for res_block in ues_block["res_list"]
+            for sb in res_block["station_blocks"]
+        ]
+        if russia_station_blocks:
+            hierarchy_flat.append({
+                "is_russia_row": True,
+                "aggregate_rows": build_fuel_params_aggregate_rows(
+                    russia_station_blocks,
+                    row_class="table-danger",
+                ),
+            })
 
     return hierarchy_flat
 
